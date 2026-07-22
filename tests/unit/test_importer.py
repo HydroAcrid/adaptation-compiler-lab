@@ -28,7 +28,7 @@ from adaptation_compiler_lab.domain.values import (
     Scope,
     SyntheticOrigin,
 )
-from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore
+from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore, RawEncryptionKey
 from adaptation_compiler_lab.persistence.sqlite import SqliteUnitOfWorkFactory
 
 
@@ -97,7 +97,10 @@ def _services(tmp_path: Path) -> tuple[DomainRecordStore, LocalRawPayloadStore]:
     factory.initialize()
     return (
         DomainRecordStore(factory, subject_id="synthetic-user"),
-        LocalRawPayloadStore(tmp_path / "raw-evidence"),
+        LocalRawPayloadStore(
+            tmp_path / "raw-evidence",
+            encryption_key=RawEncryptionKey(b"r" * 32),
+        ),
     )
 
 
@@ -117,7 +120,10 @@ def test_safe_synthetic_bundle_imports_metadata_and_segregated_raw_bytes(tmp_pat
 
     assert result.imported_record_keys == ("evidence:evidence-import-1@1.0.0",)
     assert len(record_store.list(record_kind="evidence")) == 1
-    assert (raw_store.root / result.raw_payload_refs[0]).read_text(encoding="utf-8") == text
+    assert (
+        raw_store.read(raw_store.reference_for(text.encode(), media_type="text/plain"))
+        == text.encode()
+    )
 
 
 def test_secret_like_payload_is_rejected_before_raw_storage(tmp_path: Path) -> None:

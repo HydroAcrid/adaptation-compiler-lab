@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
+import os
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -103,8 +105,167 @@ def test_help_exposes_named_fail_closed_workflows() -> None:
         "export",
         "benchmark",
         "schema",
+        "identity",
+        "consent",
+        "capture-preview",
     ):
         assert command in result.output
+
+
+def test_synthetic_identity_consent_and_capture_preview_cli(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = _initialize(tmp_path, subject_id="kevin")
+    key_file = tmp_path / "keys" / "governance.pem"
+    key_file.parent.mkdir()
+    identity_file = tmp_path / "identity.json"
+    consent_file = tmp_path / "consent.json"
+    capture_file = tmp_path / "capture.json"
+    monkeypatch.setenv("TEST_SIGNING_PASSPHRASE", "correct horse battery staple")
+    identity_request = _write_json(
+        tmp_path / "identity-request.json",
+        {
+            "identity_id": "kevin-governance-1",
+            "subject_id": "kevin",
+            "roles": ["activation", "consent", "custody", "release", "review"],
+            "created_at": NOW.isoformat(),
+            "expires_at": (NOW + timedelta(days=365)).isoformat(),
+        },
+    )
+
+    created = runner.invoke(
+        app,
+        [
+            "identity",
+            "create",
+            str(identity_request),
+            "--key-file",
+            str(key_file),
+            "--passphrase-env",
+            "TEST_SIGNING_PASSPHRASE",
+            "--output",
+            str(identity_file),
+            "--workspace",
+            str(workspace),
+        ],
+    )
+    assert created.exit_code == 0, created.output
+    assert key_file.exists()
+    assert "PRIVATE KEY" not in identity_file.read_text(encoding="utf-8")
+
+    monkeypatch.setenv("ACLAB_SIGNING_KEY_FILE", str(key_file))
+    monkeypatch.setenv("ACLAB_SIGNING_KEY_PASSPHRASE", "correct horse battery staple")
+    consent_request = _write_json(
+        tmp_path / "consent-request.json",
+        {
+            "receipt_id": "consent-synthetic-1",
+            "subject_id": "kevin",
+            "source_selector": {
+                "source_system": "synthetic_fixture",
+                "selection_method": "synthetic_fixture",
+                "source_ids": ["fixture-1"],
+            },
+            "scope": {"subject_ids": ["kevin"]},
+            "permitted_uses": ["construction"],
+            "issued_at": NOW.isoformat(),
+            "expires_at": (NOW + timedelta(days=1)).isoformat(),
+            "retention_until": (NOW + timedelta(days=30)).isoformat(),
+            "policy_version": "1.0.0",
+        },
+    )
+    issued = runner.invoke(
+        app,
+        [
+            "consent",
+            "issue",
+            str(consent_request),
+            "--identity-id",
+            "kevin-governance-1",
+            "--output",
+            str(consent_file),
+            "--workspace",
+            str(workspace),
+        ],
+    )
+    assert issued.exit_code == 0, issued.output
+
+    capture_request = _write_json(
+        tmp_path / "capture-request.json",
+        {
+            "receipt_id": "capture-synthetic-1",
+            "subject_id": "kevin",
+            "consent_receipt_id": "consent-synthetic-1",
+            "source_selector": {
+                "source_system": "synthetic_fixture",
+                "selection_method": "synthetic_fixture",
+                "source_ids": ["fixture-1"],
+            },
+            "source_version": "synthetic-1.0",
+            "source_schema_digest": "sha256:" + "a" * 64,
+            "payload_digest": "sha256:" + "b" * 64,
+            "captured_at": (NOW + timedelta(minutes=1)).isoformat(),
+            "synthetic": True,
+        },
+    )
+    previewed = runner.invoke(
+        app,
+        [
+            "capture-preview",
+            "create",
+            str(capture_request),
+            "--identity-id",
+            "kevin-governance-1",
+            "--output",
+            str(capture_file),
+            "--workspace",
+            str(workspace),
+        ],
+    )
+    verified = runner.invoke(
+        app,
+        [
+            "capture-preview",
+            "verify",
+            str(capture_file),
+            str(consent_file),
+            str(identity_file),
+        ],
+    )
+
+    assert previewed.exit_code == 0, previewed.output
+    assert verified.exit_code == 0, verified.output
+    assert json.loads(verified.stdout)["valid"] is True
+
+
+def test_identity_command_fails_closed_without_passphrase_key_material(tmp_path: Path) -> None:
+    workspace = _initialize(tmp_path, subject_id="kevin")
+    request = _write_json(
+        tmp_path / "identity-request.json",
+        {
+            "identity_id": "kevin-governance-1",
+            "subject_id": "kevin",
+            "roles": ["consent"],
+            "created_at": NOW.isoformat(),
+        },
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "identity",
+            "create",
+            str(request),
+            "--key-file",
+            str(tmp_path / "missing-passphrase.pem"),
+            "--passphrase-env",
+            "INTENTIONALLY_UNSET_ACLAB_TEST_VALUE",
+            "--workspace",
+            str(workspace),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "passphrase environment variable is unavailable" in result.output
 
 
 def test_workspace_init_status_and_duplicate_init_fail_closed(tmp_path: Path) -> None:
@@ -133,8 +294,13 @@ def test_invalid_record_returns_structured_error_without_traceback(tmp_path: Pat
     assert "Traceback" not in result.output
 
 
-def test_bundle_import_list_and_show_is_a_local_auditable_workflow(tmp_path: Path) -> None:
+def test_bundle_import_list_and_show_is_a_local_auditable_workflow(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     workspace = _initialize(tmp_path)
+    key_file = tmp_path / "raw-payload.key"
+    key_file.write_text(base64.b64encode(os.urandom(32)).decode("ascii"), encoding="ascii")
+    monkeypatch.setenv("ACLAB_RAW_KEY_FILE", str(key_file))
     text = "Synthetic feedback payload with no credentials."
     evidence = _evidence(text)
     bundle = tmp_path / "bundle.json"
@@ -183,7 +349,9 @@ def test_bundle_import_list_and_show_is_a_local_auditable_workflow(tmp_path: Pat
     assert shown_payload["record_id"] == evidence.record_id
     assert text not in shown.stdout
     raw_files = tuple((workspace / "raw-evidence" / "sha256").glob("**/*"))
-    assert any(path.is_file() and path.read_text(encoding="utf-8") == text for path in raw_files)
+    assert any(
+        path.is_file() and text.encode("utf-8") not in path.read_bytes() for path in raw_files
+    )
 
 
 def test_release_candidate_snapshots_have_explicit_list_and_show(tmp_path: Path) -> None:

@@ -5,6 +5,7 @@ description = "Research foundation for evidence-backed, external-artifact adapta
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "cryptography>=44,<47",
     "pydantic>=2.10,<3",
     "typer>=0.15,<1",
 ]

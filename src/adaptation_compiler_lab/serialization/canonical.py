@@ -12,6 +12,7 @@ from adaptation_compiler_lab.domain.records import (
     Artifact,
     EvaluationCase,
     Evidence,
+    EvidenceV1,
     LessonCandidate,
     Outcome,
     Release,
@@ -41,12 +42,22 @@ RECORD_MODELS: Mapping[RecordKind, type[VersionedRecord]] = {
     RecordKind.TARGET_PACK: TargetPack,
 }
 
+RECORD_MODELS_V1: Mapping[RecordKind, type[VersionedRecord]] = {
+    **RECORD_MODELS,
+    RecordKind.EVIDENCE: EvidenceV1,
+}
+
 
 def canonical_json(value: BaseModel | Mapping[str, object]) -> str:
     """Serialize a validated value with stable keys, spacing, Unicode, and null handling."""
 
     if isinstance(value, BaseModel):
         payload = value.model_dump(mode="json", exclude_none=False, round_trip=True)
+        # The v1.0 canonical byte contract predates signed governance references. Keeping those
+        # absent fields out preserves every existing synthetic digest and reference exactly.
+        if isinstance(value, Evidence) and value.schema_version == "1.0":
+            payload.pop("consent_receipt_ref", None)
+            payload.pop("capture_receipt_ref", None)
     else:
         payload = dict(value)
     return json.dumps(
@@ -137,7 +148,7 @@ def deserialize_record(payload: str | bytes) -> VersionedRecord:
         raise ValueError("top-level record JSON must be an object")
     record_type_raw = raw.get("record_type")
     schema_version = raw.get("schema_version")
-    if schema_version != "1.0":
+    if schema_version not in {"1.0", "1.1"}:
         raise ValueError(f"unsupported schema version: {schema_version!r}")
     if not isinstance(record_type_raw, str):
         raise ValueError(f"unsupported record type: {record_type_raw!r}")
@@ -145,6 +156,8 @@ def deserialize_record(payload: str | bytes) -> VersionedRecord:
         record_kind = RecordKind(record_type_raw)
     except (TypeError, ValueError) as error:
         raise ValueError(f"unsupported record type: {record_type_raw!r}") from error
+    if schema_version == "1.1" and record_kind is not RecordKind.EVIDENCE:
+        raise ValueError("schema version 1.1 is defined only for Evidence")
     model = RECORD_MODELS[record_kind]
     return model.model_validate_json(payload)
 

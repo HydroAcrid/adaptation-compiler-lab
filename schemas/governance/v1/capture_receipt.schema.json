@@ -1,0 +1,210 @@
+{
+  "$defs": {
+    "ConsentReceiptRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "governance_type": {
+          "const": "consent_receipt",
+          "default": "consent_receipt",
+          "title": "Governance Type",
+          "type": "string"
+        },
+        "object_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "content_digest"
+      ],
+      "title": "ConsentReceiptRef",
+      "type": "object"
+    },
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    },
+    "SourceSelector": {
+      "additionalProperties": false,
+      "description": "Explicit bounded source selection; content never widens this selector.",
+      "properties": {
+        "selection_method": {
+          "enum": [
+            "synthetic_fixture",
+            "explicit_task_ids"
+          ],
+          "title": "Selection Method",
+          "type": "string"
+        },
+        "source_ids": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "source_system": {
+          "enum": [
+            "synthetic_fixture",
+            "codex_app_server"
+          ],
+          "title": "Source System",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_system",
+        "selection_method",
+        "source_ids"
+      ],
+      "title": "SourceSelector",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Signed record of a payload capture or synthetic capture preview.",
+  "properties": {
+    "captured_at": {
+      "format": "date-time",
+      "title": "Captured At",
+      "type": "string"
+    },
+    "consent_ref": {
+      "$ref": "#/$defs/ConsentReceiptRef"
+    },
+    "governance_type": {
+      "const": "capture_receipt",
+      "default": "capture_receipt",
+      "title": "Governance Type",
+      "type": "string"
+    },
+    "payload_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Payload Digest",
+      "type": "string"
+    },
+    "receipt_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signature": {
+      "$ref": "#/$defs/SignatureEnvelope"
+    },
+    "source_schema_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Schema Digest",
+      "type": "string"
+    },
+    "source_selector": {
+      "$ref": "#/$defs/SourceSelector"
+    },
+    "source_version": {
+      "minLength": 1,
+      "title": "Source Version",
+      "type": "string"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    },
+    "synthetic": {
+      "title": "Synthetic",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "subject_id",
+    "consent_ref",
+    "source_selector",
+    "source_version",
+    "source_schema_digest",
+    "payload_digest",
+    "captured_at",
+    "synthetic",
+    "signature"
+  ],
+  "title": "CaptureReceipt",
+  "type": "object"
+}

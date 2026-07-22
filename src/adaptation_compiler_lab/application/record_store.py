@@ -193,7 +193,7 @@ def _decode_stored_record(
         raise DomainStoreError("stored domain record key does not match the requested key")
     if stored.key.kind not in {kind.value for kind in RecordKind}:
         raise DomainStoreError("stored record kind is not a supported domain record kind")
-    if stored.schema_version != "1.0":
+    if stored.schema_version not in {"1.0", "1.1"}:
         raise DomainStoreError("stored domain record has an unsupported schema version")
     if stored.canonicalization_version != CANONICALIZATION_VERSION:
         raise DomainStoreError("stored domain record has an unsupported canonicalization version")

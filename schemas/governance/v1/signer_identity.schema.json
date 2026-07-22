@@ -1,0 +1,149 @@
+{
+  "$defs": {
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    },
+    "SignerRole": {
+      "enum": [
+        "consent",
+        "review",
+        "release",
+        "activation",
+        "custody"
+      ],
+      "title": "SignerRole",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Self-signed public identity for one dedicated local Ed25519 key.",
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "expires_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expires At"
+    },
+    "governance_type": {
+      "const": "signer_identity",
+      "default": "signer_identity",
+      "title": "Governance Type",
+      "type": "string"
+    },
+    "identity_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Identity Id",
+      "type": "string"
+    },
+    "key_fingerprint": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Key Fingerprint",
+      "type": "string"
+    },
+    "public_key_base64": {
+      "minLength": 1,
+      "title": "Public Key Base64",
+      "type": "string"
+    },
+    "roles": {
+      "items": {
+        "$ref": "#/$defs/SignerRole"
+      },
+      "minItems": 1,
+      "title": "Roles",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signature": {
+      "$ref": "#/$defs/SignatureEnvelope"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "identity_id",
+    "subject_id",
+    "public_key_base64",
+    "key_fingerprint",
+    "roles",
+    "created_at",
+    "signature"
+  ],
+  "title": "SignerIdentity",
+  "type": "object"
+}

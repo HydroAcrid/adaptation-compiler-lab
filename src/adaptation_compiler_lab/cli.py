@@ -9,13 +9,14 @@ is inspectable and replayable.
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from collections import Counter
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
-from typing import Annotated, NoReturn, cast
+from typing import Annotated, Literal, NoReturn, cast
 
 import typer
 from pydantic import BaseModel, TypeAdapter, ValidationError
@@ -65,13 +66,42 @@ from adaptation_compiler_lab.domain import (
     Release,
     ReleaseCandidateState,
     ReleaseRef,
+    Scope,
 )
-from adaptation_compiler_lab.domain.base import FrozenModel, SemVer, UtcDateTime
+from adaptation_compiler_lab.domain.base import (
+    FrozenModel,
+    Identifier,
+    NonEmptyStr,
+    SemVer,
+    Sha256Digest,
+    UtcDateTime,
+)
+from adaptation_compiler_lab.domain.enums import PermittedUse
 from adaptation_compiler_lab.evaluation.candidates import (
     CandidateGenerationContext,
     generate_evaluation_candidates,
 )
+from adaptation_compiler_lab.governance import (
+    CaptureReceipt,
+    ConsentReceipt,
+    GovernanceObjectKind,
+    SignerIdentity,
+    SignerRole,
+    SourceSelector,
+)
+from adaptation_compiler_lab.governance.signing import (
+    SIGNING_KEY_PASSPHRASE_ENV,
+    GovernanceSigner,
+    create_signer_identity,
+    governance_ref,
+    load_private_key_from_environment,
+    sign_capture,
+    sign_consent,
+    verify_signed_governance,
+    write_new_private_key,
+)
 from adaptation_compiler_lab.persistence.errors import PersistenceError
+from adaptation_compiler_lab.persistence.governance import GovernanceLedger
 from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore
 from adaptation_compiler_lab.persistence.records import RecordKey
 from adaptation_compiler_lab.persistence.sqlite import SqliteUnitOfWorkFactory
@@ -116,6 +146,11 @@ activation_app = typer.Typer(help="Manage explicit audited activation pointers."
 export_app = typer.Typer(help="Create sanitized, payload-free local exports.")
 benchmark_app = typer.Typer(help="Validate blinded four-condition benchmark manifests.")
 schema_app = typer.Typer(help="Export versioned JSON validation schemas.")
+identity_app = typer.Typer(help="Create and verify dedicated local signing identities.")
+consent_app = typer.Typer(help="Issue and verify exact signed consent receipts.")
+capture_preview_app = typer.Typer(
+    help="Create synthetic signed capture previews without accessing source tasks."
+)
 
 app.add_typer(workspace_app, name="workspace")
 app.add_typer(record_app, name="record")
@@ -130,6 +165,9 @@ app.add_typer(activation_app, name="activation")
 app.add_typer(export_app, name="export")
 app.add_typer(benchmark_app, name="benchmark")
 app.add_typer(schema_app, name="schema")
+app.add_typer(identity_app, name="identity")
+app.add_typer(consent_app, name="consent")
+app.add_typer(capture_preview_app, name="capture-preview")
 
 WorkspaceOption = Annotated[
     Path,
@@ -186,6 +224,38 @@ class CandidateExpiryRequest(FrozenModel):
     actor: ActorRef
     disposition_id: str
     rationale: str
+
+
+class IdentityCreateRequest(FrozenModel):
+    identity_id: Identifier
+    subject_id: Identifier
+    roles: tuple[SignerRole, ...]
+    created_at: UtcDateTime
+    expires_at: UtcDateTime | None = None
+
+
+class ConsentIssueRequest(FrozenModel):
+    receipt_id: Identifier
+    subject_id: Identifier
+    source_selector: SourceSelector
+    scope: Scope
+    permitted_uses: tuple[PermittedUse, ...]
+    issued_at: UtcDateTime
+    expires_at: UtcDateTime
+    retention_until: UtcDateTime
+    policy_version: SemVer
+
+
+class CapturePreviewRequest(FrozenModel):
+    receipt_id: Identifier
+    subject_id: Identifier
+    consent_receipt_id: Identifier
+    source_selector: SourceSelector
+    source_version: NonEmptyStr
+    source_schema_digest: Sha256Digest
+    payload_digest: Sha256Digest
+    captured_at: UtcDateTime
+    synthetic: bool = True
 
 
 def _validation_message(error: ValidationError) -> str:
@@ -263,6 +333,16 @@ def _write_new_text(path: Path, content: str) -> Path:
     return resolved
 
 
+def _preflight_optional_output(path: Path | None) -> None:
+    if path is None:
+        return
+    resolved = path.expanduser().resolve()
+    if resolved.exists():
+        raise FileExistsError(f"refusing to overwrite output: {resolved}")
+    if not resolved.parent.is_dir():
+        raise FileNotFoundError(f"output parent does not exist: {resolved.parent}")
+
+
 def _emit_or_write(value: BaseModel | Mapping[str, object], output: Path | None) -> None:
     payload = (
         value.model_dump(mode="json", round_trip=True) if isinstance(value, BaseModel) else value
@@ -307,6 +387,25 @@ def _candidate_services(
 def _review_workflow(workspace: Path) -> HumanReviewWorkflow:
     _, store = _record_store(workspace)
     return HumanReviewWorkflow(store)
+
+
+def _governance_ledger(workspace: Path) -> tuple[WorkspacePaths, str, GovernanceLedger]:
+    paths, subject_id = load_workspace(workspace)
+    ledger = GovernanceLedger(paths.database, subject_id=subject_id)
+    ledger.initialize()
+    return paths, subject_id, ledger
+
+
+def _governance_signer(paths: WorkspacePaths, identity: SignerIdentity) -> GovernanceSigner:
+    private_key = load_private_key_from_environment(workspace_root=paths.root)
+    signer = GovernanceSigner(
+        private_key=private_key,
+        identity_id=identity.identity_id,
+        subject_id=identity.subject_id,
+    )
+    if signer.fingerprint != identity.key_fingerprint:
+        raise ValueError("configured signing key does not match the registered identity")
+    return signer
 
 
 def _key(kind: RecordKind, record_id: str, version: str) -> RecordKey:
@@ -362,6 +461,159 @@ def workspace_status(workspace: WorkspaceOption) -> None:
                 "workspace": str(paths.root),
             }
         )
+
+
+@identity_app.command("create")
+def identity_create(
+    request_file: Annotated[Path, typer.Argument(help="Unsigned identity request JSON.")],
+    key_file: Annotated[
+        Path,
+        typer.Option("--key-file", help="New encrypted Ed25519 key outside the workspace."),
+    ],
+    workspace: WorkspaceOption,
+    output: Annotated[Path | None, typer.Option("--output")] = None,
+    passphrase_env: Annotated[
+        str,
+        typer.Option("--passphrase-env", help="Environment variable holding the key passphrase."),
+    ] = SIGNING_KEY_PASSPHRASE_ENV,
+) -> None:
+    """Create and register a self-signed public identity; never print private key bytes."""
+
+    with _handled():
+        paths, subject_id, ledger = _governance_ledger(workspace)
+        request = _load_model(request_file, IdentityCreateRequest)
+        _preflight_optional_output(output)
+        if request.subject_id != subject_id:
+            raise ValueError("identity subject does not match the workspace subject")
+        if ledger.get(GovernanceObjectKind.SIGNER_IDENTITY, request.identity_id) is not None:
+            raise ValueError("signer identity already exists")
+        passphrase = os.environ.get(passphrase_env)
+        if not passphrase:
+            raise ValueError(
+                f"signing-key passphrase environment variable is unavailable: {passphrase_env}"
+            )
+        private_key = write_new_private_key(
+            key_file,
+            passphrase=passphrase,
+            workspace_root=paths.root,
+        )
+        signer = GovernanceSigner(
+            private_key=private_key,
+            identity_id=request.identity_id,
+            subject_id=request.subject_id,
+        )
+        identity = create_signer_identity(
+            signer,
+            roles=request.roles,
+            created_at=request.created_at,
+            expires_at=request.expires_at,
+        )
+        ledger.add(identity)
+        _emit_or_write(identity, output)
+
+
+@identity_app.command("verify")
+def identity_verify(
+    identity_file: Annotated[Path, typer.Argument(help="Signed identity JSON.")],
+) -> None:
+    """Verify a self-signature without requiring private-key access."""
+
+    with _handled():
+        identity = _load_model(identity_file, SignerIdentity)
+        verify_signed_governance(identity, identity)
+        _emit({"content_digest": canonical_digest(identity), "valid": True})
+
+
+@consent_app.command("issue")
+def consent_issue(
+    request_file: Annotated[Path, typer.Argument(help="Unsigned synthetic consent request JSON.")],
+    identity_id: Annotated[str, typer.Option("--identity-id")],
+    workspace: WorkspaceOption,
+    output: Annotated[Path | None, typer.Option("--output")] = None,
+) -> None:
+    """Issue a signed synthetic consent receipt; real task consent is deferred to Milestone 5."""
+
+    with _handled():
+        paths, subject_id, ledger = _governance_ledger(workspace)
+        request = _load_model(request_file, ConsentIssueRequest)
+        _preflight_optional_output(output)
+        identity = ledger.require_identity(identity_id)
+        if request.subject_id != subject_id:
+            raise ValueError("consent subject does not match the workspace subject")
+        if request.source_selector.source_system != "synthetic_fixture":
+            raise ValueError("Milestone 1 consent commands accept synthetic selectors only")
+        signer = _governance_signer(paths, identity)
+        receipt = sign_consent(request.model_dump(mode="json", round_trip=True), signer)
+        ledger.add(receipt)
+        _emit_or_write(receipt, output)
+
+
+@consent_app.command("verify")
+def consent_verify(
+    receipt_file: Annotated[Path, typer.Argument(help="Signed consent receipt JSON.")],
+    identity_file: Annotated[Path, typer.Argument(help="Signer identity JSON.")],
+) -> None:
+    """Verify consent bytes, signer binding, and validity bounds."""
+
+    with _handled():
+        receipt = _load_model(receipt_file, ConsentReceipt)
+        identity = _load_model(identity_file, SignerIdentity)
+        verify_signed_governance(identity, identity)
+        verify_signed_governance(receipt, identity)
+        _emit({"content_digest": canonical_digest(receipt), "valid": True})
+
+
+@capture_preview_app.command("create")
+def capture_preview_create(
+    request_file: Annotated[
+        Path, typer.Argument(help="Unsigned synthetic capture-preview request JSON.")
+    ],
+    identity_id: Annotated[str, typer.Option("--identity-id")],
+    workspace: WorkspaceOption,
+    output: Annotated[Path | None, typer.Option("--output")] = None,
+) -> None:
+    """Sign metadata for a synthetic preview without reading or storing payload bytes."""
+
+    with _handled():
+        paths, subject_id, ledger = _governance_ledger(workspace)
+        request = _load_model(request_file, CapturePreviewRequest)
+        _preflight_optional_output(output)
+        identity = ledger.require_identity(identity_id)
+        consent_value = ledger.get(GovernanceObjectKind.CONSENT_RECEIPT, request.consent_receipt_id)
+        if not isinstance(consent_value, ConsentReceipt):
+            raise ValueError("referenced consent receipt is unavailable")
+        if request.subject_id != subject_id:
+            raise ValueError("capture subject does not match the workspace subject")
+        if not request.synthetic or request.source_selector.source_system != "synthetic_fixture":
+            raise ValueError("Milestone 1 capture previews accept synthetic selectors only")
+        if request.source_selector != consent_value.source_selector:
+            raise ValueError("capture selector must exactly match consent")
+        signer = _governance_signer(paths, identity)
+        unsigned = request.model_dump(mode="json", round_trip=True, exclude={"consent_receipt_id"})
+        unsigned["consent_ref"] = governance_ref(consent_value).model_dump(mode="json")
+        receipt = sign_capture(unsigned, signer)
+        ledger.add(receipt)
+        _emit_or_write(receipt, output)
+
+
+@capture_preview_app.command("verify")
+def capture_preview_verify(
+    receipt_file: Annotated[Path, typer.Argument(help="Signed capture receipt JSON.")],
+    consent_file: Annotated[Path, typer.Argument(help="Exact signed consent receipt JSON.")],
+    identity_file: Annotated[Path, typer.Argument(help="Signer identity JSON.")],
+) -> None:
+    """Verify a preview and its exact consent linkage without payload access."""
+
+    with _handled():
+        receipt = _load_model(receipt_file, CaptureReceipt)
+        consent = _load_model(consent_file, ConsentReceipt)
+        identity = _load_model(identity_file, SignerIdentity)
+        verify_signed_governance(identity, identity)
+        verify_signed_governance(consent, identity)
+        verify_signed_governance(receipt, identity)
+        if receipt.consent_ref != governance_ref(consent):
+            raise ValueError("capture receipt does not bind the supplied consent receipt")
+        _emit({"content_digest": canonical_digest(receipt), "valid": True})
 
 
 @record_app.command("validate")
@@ -439,7 +691,10 @@ def record_import_bundle(
             bundle,
             expected_subject_id=subject_id,
             record_store=DomainRecordStore(factory, subject_id=subject_id),
-            raw_store=LocalRawPayloadStore(paths.raw_evidence),
+            raw_store=LocalRawPayloadStore.from_environment(
+                paths.raw_evidence,
+                workspace_root=paths.root,
+            ),
         )
         _emit(result)
 
@@ -1512,14 +1767,17 @@ def benchmark_validate(
 @schema_app.command("export")
 def schema_export(
     output_directory: Annotated[Path, typer.Argument(help="New or empty output directory.")],
+    version: Annotated[str, typer.Option("--version")] = "1.0",
 ) -> None:
-    """Explicitly export all eight versioned domain schemas."""
+    """Export immutable v1.0 schemas or the additive Evidence v1.1 schema."""
 
     with _handled():
+        if version not in {"1.0", "1.1"}:
+            raise ValueError("schema version must be 1.0 or 1.1")
         resolved = output_directory.expanduser().resolve()
         if resolved.exists() and (not resolved.is_dir() or any(resolved.iterdir())):
             raise FileExistsError("schema output directory must be new or empty")
-        written = export_json_schemas(resolved)
+        written = export_json_schemas(resolved, version=cast(Literal["1.0", "1.1"], version))
         _emit({"count": len(written), "files": [str(path) for path in written]})
 
 

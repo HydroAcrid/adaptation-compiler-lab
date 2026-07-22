@@ -1,8 +1,8 @@
 """The eight versioned top-level domain contracts."""
 
-from typing import Annotated, Literal
+from typing import Annotated, ClassVar, Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from adaptation_compiler_lab.domain.base import (
     ActorRef,
@@ -43,6 +43,8 @@ from adaptation_compiler_lab.domain.enums import (
 )
 from adaptation_compiler_lab.domain.references import (
     ArtifactRef,
+    CaptureReceiptRef,
+    ConsentReceiptRef,
     EvaluationCaseRef,
     EvidenceRef,
     LessonCandidateRef,
@@ -181,8 +183,10 @@ class Outcome(VersionedRecord):
         return self
 
 
-class Evidence(VersionedRecord):
+class EvidenceV1(VersionedRecord):
     """Atomic observation or immutable observation reference in the raw boundary."""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(title="Evidence")
 
     record_type: Literal[RecordKind.EVIDENCE] = RecordKind.EVIDENCE
     observed_at: UtcDateTime
@@ -219,7 +223,7 @@ class Evidence(VersionedRecord):
         return value
 
     @model_validator(mode="after")
-    def provenance_context_is_well_formed(self) -> "Evidence":
+    def provenance_context_is_well_formed(self) -> "EvidenceV1":
         primary_contexts = sum(
             context is not None
             for context in (self.task_ref, self.evaluation_case_ref, self.synthetic_origin)
@@ -254,6 +258,34 @@ class Evidence(VersionedRecord):
             forbidden = {PermittedUse.CONSTRUCTION, PermittedUse.PROMOTION}
             if forbidden & set(self.privacy.permitted_uses):
                 raise ValueError("held-out evidence cannot be used for construction or promotion")
+        return self
+
+
+class Evidence(EvidenceV1):
+    """Evidence v1.0 compatibility plus exact signed-governance references in v1.1."""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(title="Evidence")
+    # Pydantic supports a schema-discriminating field widening here; other records retain the
+    # base Literal["1.0"] contract and the serializer admits 1.1 only for Evidence.
+    schema_version: Literal["1.0", "1.1"] = "1.0"  # type: ignore[assignment]
+    consent_receipt_ref: ConsentReceiptRef | None = None
+    capture_receipt_ref: CaptureReceiptRef | None = None
+
+    @model_validator(mode="after")
+    def governance_references_match_schema_and_source(self) -> "Evidence":
+        references = (self.consent_receipt_ref, self.capture_receipt_ref)
+        if self.schema_version == "1.0":
+            if any(reference is not None for reference in references):
+                raise ValueError("Evidence v1.0 cannot carry governance references")
+            return self
+        if self.source_class is SourceClass.SYNTHETIC:
+            if any(reference is not None for reference in references):
+                raise ValueError("synthetic Evidence v1.1 does not claim real consent or capture")
+            return self
+        if any(reference is None for reference in references):
+            raise ValueError(
+                "non-synthetic Evidence v1.1 requires exact consent and capture references"
+            )
         return self
 
 

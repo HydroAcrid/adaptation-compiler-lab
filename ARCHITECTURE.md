@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **implemented local MVP foundation; file-only and synthetic-only**
+Status: **Milestone 1 implemented; local, file-only, and synthetic-only**
 
 ## 1. System shape
 
@@ -11,7 +11,9 @@ external files according to a declared capability profile.
 
 ```mermaid
 flowchart LR
-    I["Typed synthetic import"] --> R["Task / Outcome / Evidence ledger"]
+    K["External Ed25519 and AES keys"] --> G["Signed governance ledger"]
+    G --> I["Typed synthetic import"]
+    I --> R["Task / Outcome / Evidence ledger"]
     R --> E["Evaluation candidate and review"]
     E --> L["Lesson candidate and routing"]
     L --> A["Artifact evaluation and approval"]
@@ -24,6 +26,9 @@ flowchart LR
 
 The dotted edge means that a release/pack may be registered for a future experiment only after the
 four condition bundles are frozen. Benchmark results never alter that release.
+
+Milestone 1 does not connect this graph to Codex or Claude Code. The governance CLI signs only
+synthetic selectors and capture previews; no source enumeration or raw user capture is reachable.
 
 ## 2. Records and relationships
 
@@ -43,6 +48,20 @@ TaskRecord --> Outcome --> EvaluationCase
 Evidence may support, contradict, or limit a claim. An `Artifact` retains direct evidence links
 even when it also references a lesson. A `Release` holds exact approved artifact versions, while a
 `TargetPack` is a derived rendering and never the canonical learned asset.
+
+Four signed governance objects sit beside, rather than inside, the eight-record portable contract:
+
+| Object | Responsibility | Binding |
+| --- | --- | --- |
+| `SignerIdentity` | Self-signed public identity and role/validity declaration for one dedicated Ed25519 key. | Subject, raw public key, fingerprint, roles, creation/expiry, signature. |
+| `ConsentReceipt` | Permission boundary for a selected source. | Subject, exact selector, scope, uses, expiry, retention, policy, signer/signature. |
+| `CaptureReceipt` | Capture or synthetic-preview attestation. | Exact consent digest, selector, source/schema digest, payload digest, time, signer/signature. |
+| `GovernanceEvent` | Uniform signed review, release, activation, or custody action. | Exact target reference/digest, decision, reason, policy, time, role, signature. |
+
+Evidence v1.0 remains immutable and readable. Evidence v1.1 adds exact consent and capture refs.
+For non-synthetic evidence the admission policy resolves both signed objects and checks subject,
+scope, permitted uses, expiry, retention, selector, and payload digest. Synthetic v1.1 evidence
+cannot borrow real receipts.
 
 ## 3. Trust, provenance, and privacy controls
 
@@ -65,17 +84,21 @@ Promotion and release validation enforce:
 - closed artifact routing with reviewable escalation rationale; and
 - secret-like-content/path scanning during import, rendering, and sanitized export.
 
-Raw payload bytes reside in a separate content-addressed raw store. The metadata ledger and all
-pack renderers use minimized promoted records; raw data is neither an artifact body nor target
-instruction. Privacy removal/restriction must invalidate dependents for review rather than silently
-preserving their verified status.
+Raw payload bytes reside in a separate AES-256-GCM content-addressed raw store. The address is the
+plaintext SHA-256; ciphertext uses a fresh 96-bit nonce and authenticates digest, media type, and
+plaintext size. The 32-byte AES key and encrypted Ed25519 private key are separate and external to
+the workspace/repository. Missing key, wrong fingerprint, malformed envelope, or failed tag
+verification stops access. The metadata ledger and all pack renderers use minimized promoted
+records; raw data is neither an artifact body nor target instruction. Privacy removal/restriction
+must invalidate dependents for review rather than silently preserving their verified status.
 
 ## 4. Storage and lifecycle
 
-SQLite is a local metadata ledger with checksummed migrations, append-only record/link/lifecycle
-and activation journals, rollback-by-default units of work, and subject isolation. A domain-store
-adapter reconstructs and validates typed records from the ledger. The raw-evidence store is a
-separate local content-addressed namespace.
+SQLite is a local metadata ledger with checksummed migrations, append-only record/link/lifecycle,
+activation, and signed-governance journals, rollback-by-default units of work, and subject
+isolation. The governance store verifies canonical bytes, digest, signature, signer role, and
+subject on both write and read. A domain-store adapter reconstructs and validates typed records
+from the ledger. The encrypted raw-evidence store remains a separate namespace.
 
 Content lifecycle and activation are deliberately separate:
 
@@ -108,6 +131,7 @@ user configuration, or assert compatibility with a particular agent/model versio
 ```text
 src/adaptation_compiler_lab/
   domain/           strict records, values, references, enums
+  governance/       signed identity/receipt/event contracts and Ed25519 custody
   provenance/       lineage, authority, scope/privacy policy
   evaluation/       evaluation-candidate extraction and policy
   routing/          least-invasive route policy
@@ -118,18 +142,20 @@ src/adaptation_compiler_lab/
   benchmark/        registration models, manifest, validation
   serialization/    canonical JSON and schema export
   cli.py            Typer command surface
-schemas/v1/         generated schemas for the eight top-level records
+schemas/v1/         immutable schemas for the eight v1.0 records
+schemas/v1_1/       additive Evidence v1.1 schema snapshot
+schemas/governance/v1/ signed governance schema snapshots
 tests/              unit and synthetic end-to-end coverage
 ```
 
 ## 7. Implementation sequence and next boundary
 
-Completed sequence: contracts and canonical serialization; provenance/routing policies; local
-ledger/raw isolation; review/evaluation/release lifecycle; target rendering; benchmark registration;
-CLI and synthetic integration tests.
+Completed sequence through Milestone 1: contracts and canonical serialization; provenance/routing
+policies; review/evaluation/release lifecycle; target rendering; benchmark registration; Ed25519
+governance; AES raw isolation; v1.1 evidence lineage; CLI and synthetic integration tests.
 
-The next authorized work, if explicitly approved, should be a separate design for consented source
-capture and an isolated execution/scoring harness. It must first resolve retention, deletion,
-authenticated source locators/capture methods, holdout custody and split-manifest binding, target
-capability/version pinning, artifact/release withdrawal operations, and human-review operations.
-It must not blur the current file-only renderer into a live Codex or Claude Code integration.
+The next gated milestone, only after explicit approval, is withdrawal, recall, and deterministic
+conflict semantics. It will add invalidation/tombstone/impact/recall records and complete dependency
+cascades. Milestone 1 intentionally does not implement destructive purge, revocation, release
+retirement, pack invalidation, or automatic activation deactivation. Benchmark custody, connectors,
+real corpus capture, live execution, and scoring remain later gates.
