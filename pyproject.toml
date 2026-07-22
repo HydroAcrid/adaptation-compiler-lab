@@ -1,0 +1,48 @@
+[project]
+name = "adaptation-compiler-lab"
+version = "0.1.0"
+description = "Research foundation for evidence-backed, external-artifact adaptation transfer"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "pydantic>=2.10,<3",
+    "typer>=0.15,<1",
+]
+
+[project.scripts]
+adaptation-compiler-lab = "adaptation_compiler_lab.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.120",
+    "mypy>=1.18.2",
+    "pytest>=8.4.2",
+    "ruff>=0.14.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/adaptation_compiler_lab"]
+
+[tool.mypy]
+files = ["src", "tests"]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+
+[tool.pytest.ini_options]
+addopts = ["-ra", "--strict-config", "--strict-markers"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "RUF", "SIM", "UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["adaptation_compiler_lab"]

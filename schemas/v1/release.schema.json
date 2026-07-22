@@ -1,0 +1,527 @@
+{
+  "$defs": {
+    "ActorKind": {
+      "enum": [
+        "user",
+        "human_reviewer",
+        "agent",
+        "tool",
+        "system"
+      ],
+      "title": "ActorKind",
+      "type": "string"
+    },
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "display_name": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "kind": {
+          "$ref": "#/$defs/ActorKind"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "actor_id",
+        "kind"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "Approval": {
+      "additionalProperties": false,
+      "properties": {
+        "approver": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "decided_at": {
+          "format": "date-time",
+          "title": "Decided At",
+          "type": "string"
+        },
+        "decision": {
+          "$ref": "#/$defs/ApprovalDecision"
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "rationale": {
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision",
+        "approver",
+        "decided_at",
+        "policy_version",
+        "rationale"
+      ],
+      "title": "Approval",
+      "type": "object"
+    },
+    "ApprovalDecision": {
+      "enum": [
+        "approved",
+        "rejected"
+      ],
+      "title": "ApprovalDecision",
+      "type": "string"
+    },
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "artifact",
+          "default": "artifact",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "ConstructionBoundary": {
+      "additionalProperties": false,
+      "properties": {
+        "construction_cutoff": {
+          "format": "date-time",
+          "title": "Construction Cutoff",
+          "type": "string"
+        },
+        "custody_policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Custody Policy Version",
+          "type": "string"
+        },
+        "held_out_sealed": {
+          "const": true,
+          "default": true,
+          "title": "Held Out Sealed",
+          "type": "boolean"
+        },
+        "split_manifest_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Split Manifest Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "construction_cutoff",
+        "split_manifest_digest",
+        "custody_policy_version"
+      ],
+      "title": "ConstructionBoundary",
+      "type": "object"
+    },
+    "EvaluationAttestation": {
+      "additionalProperties": false,
+      "properties": {
+        "case_ref": {
+          "$ref": "#/$defs/EvaluationCaseRef"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "evaluator": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "evaluator_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Evaluator Version",
+          "type": "string"
+        },
+        "independent_of_proposer": {
+          "title": "Independent Of Proposer",
+          "type": "boolean"
+        },
+        "partition": {
+          "$ref": "#/$defs/Partition"
+        },
+        "result": {
+          "$ref": "#/$defs/EvaluationResult"
+        },
+        "result_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Result Digest",
+          "type": "string"
+        },
+        "subject_ref": {
+          "$ref": "#/$defs/ExactRecordRef"
+        }
+      },
+      "required": [
+        "case_ref",
+        "subject_ref",
+        "result",
+        "evaluator",
+        "evaluator_version",
+        "evaluated_at",
+        "result_digest",
+        "partition",
+        "independent_of_proposer"
+      ],
+      "title": "EvaluationAttestation",
+      "type": "object"
+    },
+    "EvaluationCaseRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "evaluation_case",
+          "default": "evaluation_case",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "EvaluationCaseRef",
+      "type": "object"
+    },
+    "EvaluationResult": {
+      "enum": [
+        "passed",
+        "failed",
+        "inconclusive"
+      ],
+      "title": "EvaluationResult",
+      "type": "string"
+    },
+    "ExactRecordRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Digest"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "$ref": "#/$defs/RecordKind"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_type",
+        "record_id",
+        "record_version"
+      ],
+      "title": "ExactRecordRef",
+      "type": "object"
+    },
+    "Partition": {
+      "enum": [
+        "construction",
+        "development",
+        "held_out",
+        "synthetic"
+      ],
+      "title": "Partition",
+      "type": "string"
+    },
+    "RecordKind": {
+      "description": "Top-level records supported by the version 1 interchange contract.",
+      "enum": [
+        "task_record",
+        "outcome",
+        "evidence",
+        "evaluation_case",
+        "lesson_candidate",
+        "artifact",
+        "release",
+        "target_pack"
+      ],
+      "title": "RecordKind",
+      "type": "string"
+    },
+    "ReleaseRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "release",
+          "default": "release",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "ReleaseRef",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Immutable manifest of exact approved artifact versions.",
+  "properties": {
+    "approval": {
+      "$ref": "#/$defs/Approval"
+    },
+    "artifact_refs": {
+      "items": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "title": "Artifact Refs",
+      "type": "array"
+    },
+    "construction_boundary": {
+      "$ref": "#/$defs/ConstructionBoundary"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "$ref": "#/$defs/ActorRef"
+    },
+    "development_evaluations": {
+      "items": {
+        "$ref": "#/$defs/EvaluationAttestation"
+      },
+      "title": "Development Evaluations",
+      "type": "array"
+    },
+    "is_empty_release": {
+      "title": "Is Empty Release",
+      "type": "boolean"
+    },
+    "manifest_state": {
+      "const": "released",
+      "default": "released",
+      "title": "Manifest State",
+      "type": "string"
+    },
+    "policy_version": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "policy_versions": {
+      "items": {
+        "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Policy Versions",
+      "type": "array"
+    },
+    "predecessor_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ReleaseRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "record_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Record Id",
+      "type": "string"
+    },
+    "record_type": {
+      "const": "release",
+      "default": "release",
+      "title": "Record Type",
+      "type": "string"
+    },
+    "record_version": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+      "title": "Record Version",
+      "type": "string"
+    },
+    "release_version": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+      "title": "Release Version",
+      "type": "string"
+    },
+    "released_at": {
+      "format": "date-time",
+      "title": "Released At",
+      "type": "string"
+    },
+    "rollback_target_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ReleaseRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "schema_versions": {
+      "items": {
+        "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Schema Versions",
+      "type": "array"
+    },
+    "supersedes_refs": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ReleaseRef"
+      },
+      "title": "Supersedes Refs",
+      "type": "array"
+    },
+    "target_compatibility": {
+      "default": [],
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Target Compatibility",
+      "type": "array"
+    }
+  },
+  "required": [
+    "record_id",
+    "record_version",
+    "created_at",
+    "created_by",
+    "policy_version",
+    "release_version",
+    "released_at",
+    "artifact_refs",
+    "is_empty_release",
+    "schema_versions",
+    "policy_versions",
+    "construction_boundary",
+    "development_evaluations",
+    "approval"
+  ],
+  "title": "Release",
+  "type": "object"
+}

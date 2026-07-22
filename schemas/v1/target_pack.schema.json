@@ -1,0 +1,653 @@
+{
+  "$defs": {
+    "ActorKind": {
+      "enum": [
+        "user",
+        "human_reviewer",
+        "agent",
+        "tool",
+        "system"
+      ],
+      "title": "ActorKind",
+      "type": "string"
+    },
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "display_name": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "kind": {
+          "$ref": "#/$defs/ActorKind"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "actor_id",
+        "kind"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ArtifactKind": {
+      "enum": [
+        "memory",
+        "preference",
+        "example",
+        "procedure",
+        "prompt_rule",
+        "skill",
+        "tool_recommendation"
+      ],
+      "title": "ArtifactKind",
+      "type": "string"
+    },
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "artifact",
+          "default": "artifact",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "evidence",
+          "default": "evidence",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "LossMateriality": {
+      "enum": [
+        "non_material",
+        "material"
+      ],
+      "title": "LossMateriality",
+      "type": "string"
+    },
+    "PermittedUse": {
+      "enum": [
+        "construction",
+        "development_evaluation",
+        "promotion",
+        "target_delivery",
+        "benchmark",
+        "audit"
+      ],
+      "title": "PermittedUse",
+      "type": "string"
+    },
+    "PrivacyContext": {
+      "additionalProperties": false,
+      "properties": {
+        "consent_basis": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Consent Basis",
+          "type": "string"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        },
+        "permitted_uses": {
+          "items": {
+            "$ref": "#/$defs/PermittedUse"
+          },
+          "minItems": 1,
+          "title": "Permitted Uses",
+          "type": "array"
+        },
+        "review_state": {
+          "$ref": "#/$defs/PrivacyReviewState",
+          "default": "pending"
+        },
+        "reviewed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewed At"
+        },
+        "reviewed_by": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/SensitivityClass"
+        }
+      },
+      "required": [
+        "sensitivity",
+        "consent_basis",
+        "permitted_uses"
+      ],
+      "title": "PrivacyContext",
+      "type": "object"
+    },
+    "PrivacyReviewState": {
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "title": "PrivacyReviewState",
+      "type": "string"
+    },
+    "ReleaseRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "release",
+          "default": "release",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "ReleaseRef",
+      "type": "object"
+    },
+    "RenderedEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_ref": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "authority_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Authority Digest",
+          "type": "string"
+        },
+        "behavioral_contract_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Behavioral Contract Digest",
+          "type": "string"
+        },
+        "byte_length": {
+          "minimum": 0,
+          "title": "Byte Length",
+          "type": "integer"
+        },
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "entry_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Entry Id",
+          "type": "string"
+        },
+        "evidence_refs": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "minItems": 1,
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "output_path": {
+          "minLength": 1,
+          "title": "Output Path",
+          "type": "string"
+        },
+        "precedence": {
+          "title": "Precedence",
+          "type": "integer"
+        },
+        "scope_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Scope Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entry_id",
+        "output_path",
+        "content_digest",
+        "byte_length",
+        "artifact_ref",
+        "evidence_refs",
+        "precedence",
+        "scope_digest",
+        "behavioral_contract_digest",
+        "authority_digest"
+      ],
+      "title": "RenderedEntry",
+      "type": "object"
+    },
+    "RenderingLoss": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArtifactRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "field_path": {
+          "minLength": 1,
+          "title": "Field Path",
+          "type": "string"
+        },
+        "materiality": {
+          "$ref": "#/$defs/LossMateriality"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "field_path",
+        "materiality",
+        "reason"
+      ],
+      "title": "RenderingLoss",
+      "type": "object"
+    },
+    "SensitivityClass": {
+      "enum": [
+        "public",
+        "internal",
+        "private",
+        "confidential",
+        "restricted",
+        "prohibited_secret"
+      ],
+      "title": "SensitivityClass",
+      "type": "string"
+    },
+    "TargetCapabilityProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "fail_on_material_loss": {
+          "const": true,
+          "default": true,
+          "title": "Fail On Material Loss",
+          "type": "boolean"
+        },
+        "max_context_tokens": {
+          "exclusiveMinimum": 0,
+          "title": "Max Context Tokens",
+          "type": "integer"
+        },
+        "maximum_sensitivity": {
+          "$ref": "#/$defs/SensitivityClass"
+        },
+        "profile_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "profile_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Profile Version",
+          "type": "string"
+        },
+        "supported_artifact_kinds": {
+          "items": {
+            "$ref": "#/$defs/ArtifactKind"
+          },
+          "minItems": 1,
+          "title": "Supported Artifact Kinds",
+          "type": "array"
+        },
+        "supported_scope_dimensions": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Supported Scope Dimensions",
+          "type": "array"
+        },
+        "supports_authority_labels": {
+          "title": "Supports Authority Labels",
+          "type": "boolean"
+        },
+        "supports_evidence_trace": {
+          "title": "Supports Evidence Trace",
+          "type": "boolean"
+        },
+        "supports_expiry": {
+          "title": "Supports Expiry",
+          "type": "boolean"
+        },
+        "supports_precedence": {
+          "title": "Supports Precedence",
+          "type": "boolean"
+        },
+        "target_family": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Target Family",
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile_id",
+        "profile_version",
+        "target_family",
+        "supported_artifact_kinds",
+        "supported_scope_dimensions",
+        "supports_precedence",
+        "supports_evidence_trace",
+        "supports_authority_labels",
+        "supports_expiry",
+        "max_context_tokens",
+        "maximum_sensitivity"
+      ],
+      "title": "TargetCapabilityProfile",
+      "type": "object"
+    },
+    "TargetPackState": {
+      "enum": [
+        "built",
+        "validated",
+        "rejected"
+      ],
+      "title": "TargetPackState",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Immutable target-specific manifest derived from exactly one frozen release.",
+  "properties": {
+    "contains_raw_evidence": {
+      "const": false,
+      "default": false,
+      "title": "Contains Raw Evidence",
+      "type": "boolean"
+    },
+    "context_token_cost": {
+      "minimum": 0,
+      "title": "Context Token Cost",
+      "type": "integer"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "$ref": "#/$defs/ActorRef"
+    },
+    "entries": {
+      "items": {
+        "$ref": "#/$defs/RenderedEntry"
+      },
+      "title": "Entries",
+      "type": "array"
+    },
+    "executes_tools": {
+      "const": false,
+      "default": false,
+      "title": "Executes Tools",
+      "type": "boolean"
+    },
+    "losses": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/RenderingLoss"
+      },
+      "title": "Losses",
+      "type": "array"
+    },
+    "material_semantics_preserved": {
+      "title": "Material Semantics Preserved",
+      "type": "boolean"
+    },
+    "modifies_model_weights": {
+      "const": false,
+      "default": false,
+      "title": "Modifies Model Weights",
+      "type": "boolean"
+    },
+    "omitted_artifact_refs": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "title": "Omitted Artifact Refs",
+      "type": "array"
+    },
+    "ordering_rationale": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Ordering Rationale",
+      "type": "array"
+    },
+    "policy_version": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "privacy": {
+      "$ref": "#/$defs/PrivacyContext"
+    },
+    "record_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Record Id",
+      "type": "string"
+    },
+    "record_type": {
+      "const": "target_pack",
+      "default": "target_pack",
+      "title": "Record Type",
+      "type": "string"
+    },
+    "record_version": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+      "title": "Record Version",
+      "type": "string"
+    },
+    "release_ref": {
+      "$ref": "#/$defs/ReleaseRef"
+    },
+    "renderer_version": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+      "title": "Renderer Version",
+      "type": "string"
+    },
+    "runtime_selector_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Runtime Selector Digest"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/TargetPackState"
+    },
+    "target_profile": {
+      "$ref": "#/$defs/TargetCapabilityProfile"
+    },
+    "warnings": {
+      "default": [],
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "record_id",
+    "record_version",
+    "created_at",
+    "created_by",
+    "policy_version",
+    "state",
+    "release_ref",
+    "target_profile",
+    "renderer_version",
+    "entries",
+    "ordering_rationale",
+    "context_token_cost",
+    "privacy",
+    "material_semantics_preserved"
+  ],
+  "title": "TargetPack",
+  "type": "object"
+}
