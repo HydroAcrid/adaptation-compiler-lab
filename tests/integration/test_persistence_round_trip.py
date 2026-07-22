@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore
+from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore, RawEncryptionKey
 from adaptation_compiler_lab.persistence.records import (
     ActivationEvent,
     LifecycleEvent,
@@ -93,7 +93,9 @@ def test_synthetic_release_graph_survives_reopen_without_raw_payload_leakage(
     tmp_path: Path,
 ) -> None:
     database_path = tmp_path / "ledger" / "ledger.sqlite3"
-    raw_store = LocalRawPayloadStore(tmp_path / "raw-evidence")
+    raw_store = LocalRawPayloadStore(
+        tmp_path / "raw-evidence", encryption_key=RawEncryptionKey(b"r" * 32)
+    )
     secret = b"synthetic-secret-that-must-not-enter-ledger"
     raw_reference = raw_store.put(secret, media_type="text/plain")
 

@@ -4,16 +4,29 @@ Last updated: 2026-07-22
 
 ## Current milestone
 
-The locally runnable, synthetic-only adaptation-compiler foundation is implemented. This replaces
-the earlier specification-only stopping point while retaining every project boundary: no real data,
-live Codex/Claude Code use, model modification, executable tools, Kairn, web UI, remote service,
-publication, commit, or push.
+**Milestone 1 — Governance, Identity, and Privacy Foundation is implemented.** Work stops at this
+gate until explicit approval for Milestone 2. The existing private GitHub repository is the
+code/documentation system of record. Public publication and remote research-data/key storage remain
+excluded. No real data, source-task access, Codex/Claude Code use, holdout reveal, model
+modification, executable tools, Kairn, or web UI occurred.
 
 ## Completed scope
 
 - Strict Pydantic v2 contracts for all eight required records, canonical JSON/digests, exact
   references, generated versioned schemas, enums, scopes, authority, privacy, approvals, and
   lifecycle values.
+- Self-signed `SignerIdentity` plus signed `ConsentReceipt`, `CaptureReceipt`, and
+  `GovernanceEvent` contracts. Canonical Ed25519 signing covers consent, capture preview, review,
+  release, activation, and custody purposes with signer role, subject, fingerprint, and validity
+  checks.
+- Evidence v1.1 exact consent/capture references and admission checks for scope, uses, expiry,
+  retention, selector, signature, and payload digest. Immutable Evidence v1.0 synthetic records and
+  schema snapshots remain readable and digest-compatible.
+- AES-256-GCM raw payload storage with random nonce, authenticated metadata, separate external
+  32-byte keys, encrypted-on-disk round trips, explicit legacy-v1 synthetic read compatibility,
+  and fail-closed missing/wrong/tampered-key behavior.
+- Append-only signed-governance migration/table and read/write verification. The CLI adds
+  `identity`, `consent`, and `capture-preview` groups and rejects non-synthetic selectors.
 - Evaluation-first candidate extraction and review workflow; evidence, scope, partition, privacy,
   and least-invasive-routing validation; non-self human approval requirements.
 - Checksummed SQLite migrations, append-only local record/link/lifecycle/activation journals,
@@ -45,30 +58,35 @@ uv run pytest
 uv build
 ```
 
-The verified handoff result is: lockfile resolution succeeded; Ruff formatting and linting passed;
-mypy reported no issues in 93 source files; pytest reported 187 passed; and both the source archive
-and wheel built successfully. These checks confirm local implementation and synthetic workflow
-behavior. They do not verify target-agent compatibility, human-review quality, holdout custody,
-privacy compliance, or the research hypothesis.
+The Milestone 1 final verification reports locked dependency sync, Ruff format/lint success, mypy
+success across 101 source files, 212 passing tests, 10 explicit schema/migration checks, successful
+source/wheel builds, and clean credential/private-path/raw-payload scans. These checks confirm local
+implementation and synthetic workflow behavior; they do not verify target-agent compatibility,
+human-review quality, operational holdout custody, real-data privacy compliance, or the research
+hypothesis.
 
 ## Explicitly not implemented
 
-- Authenticated ingestion of Codex work, real user consent, or processing of real source records.
+- Withdrawal, revocation, dependency-impact computation, purge/tombstone, recall cascade, release
+  retirement, pack invalidation, or atomic active-release deactivation (Milestone 2).
+- Signed benchmark custody/registration/result objects, sealed bundles, access logs, budget freeze,
+  or complete feasibility preregistration (Milestone 3).
+- Authenticated ingestion of Codex work, real user consent selection, or processing of real source
+  records (Milestone 5).
 - Live Codex/Claude Code invocation, installation, configuration, or integration.
 - Benchmark execution, task generation, scoring, statistical analysis, or performance claims.
 - Authenticated original-source locator/capture metadata for real evidence, cryptographic binding
   between a declared split-manifest digest and an independently custodied manifest, or a verified
   evaluation-result registry.
-- Artifact withdrawal/revocation and release-retirement commands. Immutable versioning, candidate
-  expiry, supersession, and activation rollback exist, but are not a complete real-world recall
-  process.
+- Version-pinned Codex/Claude connectors or even a live no-user-data smoke test (Milestone 4).
 - Weight training/fine-tuning/LoRA, automatic tool generation/execution, Kairn, web UI, remote
   storage/services, collaboration backend, publication, or repository publishing.
 
-## Immediate follow-on decisions before any real-data or live-agent phase
+## Exact next gate
 
-Resolve consent and deletion/retention operations; authenticated channel provenance; independent
-holdout custody, access logs, and split-manifest binding; target capability/version pinning; human
-reviewer identity and approval policy; artifact/release withdrawal semantics; benchmark
-endpoint/power/scoring design; and external operational security. These are not implementation gaps
-to silently fill with synthetic assumptions.
+Milestone 2, if explicitly approved, is limited to withdrawal, recall, and conflict semantics:
+`InvalidationEvent`, `TombstoneReceipt`, `DependencyImpact`, `RecallReport`, dependency preflight,
+explicit destructive confirmation, append-only tombstones, deterministic conflict precedence, and
+active-release deactivation. It must stop after its own checks, merged PR, and Obsidian update.
+Benchmark custody, connectors, real task access, Claude installation/calls, and live data remain
+forbidden during that milestone.

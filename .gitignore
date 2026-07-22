@@ -22,3 +22,6 @@ htmlcov/
 local-data/
 raw-evidence/
 benchmark/sealed/
+*.pem
+*.key
+private-keys/

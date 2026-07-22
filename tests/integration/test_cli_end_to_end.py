@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
+import os
 from datetime import timedelta
 from pathlib import Path
 from typing import cast
@@ -371,6 +373,9 @@ def test_complete_synthetic_cli_flow_builds_four_packs_and_rolls_back(
         Scope(subject_ids=("subject-kevin",), project_ids=("synthetic-project",)),
     )
     workspace = tmp_path / "workspace"
+    raw_key = tmp_path / "raw-payload.key"
+    raw_key.write_text(base64.b64encode(os.urandom(32)).decode("ascii"), encoding="ascii")
+    monkeypatch.setenv("ACLAB_RAW_KEY_FILE", str(raw_key))
     _run(
         [
             "workspace",

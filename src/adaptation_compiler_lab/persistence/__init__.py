@@ -5,6 +5,7 @@ from adaptation_compiler_lab.persistence.fixtures import (
     FixtureLoader,
     FixtureLoadResult,
 )
+from adaptation_compiler_lab.persistence.governance import GovernanceLedger
 from adaptation_compiler_lab.persistence.migrations import Migration, MigrationRunner
 from adaptation_compiler_lab.persistence.records import (
     ActivationEvent,
@@ -26,6 +27,7 @@ __all__ = [
     "FixtureLoadResult",
     "FixtureLoader",
     "FixtureSet",
+    "GovernanceLedger",
     "LifecycleEvent",
     "Migration",
     "MigrationRunner",

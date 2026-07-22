@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from adaptation_compiler_lab.domain import RecordKind
+from adaptation_compiler_lab.governance.schema_export import governance_schema_bundle
 from adaptation_compiler_lab.serialization import schema_bundle
 
 
@@ -22,4 +23,27 @@ def test_checked_in_json_schemas_match_the_pydantic_contracts() -> None:
 
     assert {path.name for path in directory.glob("*.schema.json")} == expected
     for name, schema in schema_bundle().items():
+        assert json.loads((directory / f"{name}.schema.json").read_text(encoding="utf-8")) == schema
+
+
+def test_evidence_v11_schema_snapshot_matches_the_additive_contract() -> None:
+    directory = Path(__file__).parents[1] / "schemas" / "v1_1"
+    schemas = schema_bundle("1.1")
+
+    assert set(schemas) == {"evidence"}
+    assert {path.name for path in directory.glob("*.schema.json")} == {"evidence.schema.json"}
+    assert (
+        json.loads((directory / "evidence.schema.json").read_text(encoding="utf-8"))
+        == schemas["evidence"]
+    )
+
+
+def test_governance_v1_schema_snapshots_match_signed_contracts() -> None:
+    directory = Path(__file__).parents[1] / "schemas" / "governance" / "v1"
+    schemas = governance_schema_bundle()
+
+    assert {path.name for path in directory.glob("*.schema.json")} == {
+        f"{name}.schema.json" for name in schemas
+    }
+    for name, schema in schemas.items():
         assert json.loads((directory / f"{name}.schema.json").read_text(encoding="utf-8")) == schema

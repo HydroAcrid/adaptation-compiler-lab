@@ -13,8 +13,8 @@ experiment; no study, target invocation, scoring run, or empirical comparison ha
 | Condition | Material visible to the target | Construction rule |
 | --- | --- | --- |
 | Base agent | Standard frozen task wrapper only. | No adaptation material. |
-| Ordinary memory | Concise ordinary notes. | Built from permitted construction information under the registered budget. |
-| Strong manually written profile | Careful human synthesis of eligible preferences, procedures, examples, and constraints. | Built from the same permitted construction information and budget. |
+| Ordinary memory | Deterministic chronological rendering of explicit approved feedback, with exact deduplication and no inferred procedures. | Built from the same eligible construction corpus under the common ceiling. |
+| Strong manually written profile | Careful human synthesis of eligible preferences, procedures, examples, and constraints. | An independent skilled human uses the same eligible corpus, no holdout access, and a recorded 90-minute limit. |
 | Compiled adaptation pack | Approved release rendered to the registered target profile. | Built only through typed provenance, review, routing, and release gates. |
 
 The source-derived conditions must use the same permitted construction corpus and registered
@@ -43,9 +43,9 @@ construction. A new experimental cycle requires a new frozen release and fresh h
   token/time/retry budget, and evaluator version across conditions.
 - Randomize condition order within task and use clean sessions/workspaces to prevent cross-condition
   state leakage. Do not allow target memory or runtime selectors to persist learned results.
-- Keep target-visible context size equal for the three source-derived conditions at the registered
-  confirmatory budget. Report actual tokens/bytes and any separately registered natural-size
-  sensitivity.
+- Apply the same target-visible ceiling to the three source-derived conditions; do not pad shorter
+  materials. The planned feasibility ceiling is 3,000 adaptation tokens and 12,000 UTF-8 bytes,
+  subject to Milestone 3 preregistration. Report actual tokens and bytes.
 - Use task-family/repository clusters rather than treating repeated trials or related tasks as
   independent observations.
 - Blind condition identity for human raters and retain automated evidence, raw scores, adjudication,
@@ -71,6 +71,11 @@ construction-cutoff and construction-to-heldout reference constraints. It does *
 cryptographically bind the declared split-manifest digest to an independently custodied manifest,
 control file permissions, operate a sealed evaluator, launch an agent, calculate statistics, or
 substitute for preregistration and independent custody.
+
+Milestone 1 does not freeze the feasibility registration, create custody objects, bind a sealed
+bundle, reveal tasks, or write results. The planned Milestone 3 design is four held-out tasks,
+four conditions, and two repetitions (32 target runs), but it becomes normative only when its
+signed custody/registration artifacts and tests are merged before source construction.
 
 ## 7. Reporting boundary
 

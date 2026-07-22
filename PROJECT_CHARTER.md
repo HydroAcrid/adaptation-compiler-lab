@@ -1,6 +1,6 @@
 # Project Charter
 
-Status: **active, synthetic-only MVP foundation**
+Status: **Milestone 1 complete in implementation branch; synthetic-only governance foundation**
 Project: **adaptation-compiler-lab**
 Intended first source / target: **Codex / Claude Code**
 
@@ -19,12 +19,16 @@ instrument and synthetic fixtures; no live source or target agent experiment has
 
 The implemented foundation accepts explicit synthetic records, preserves provenance, produces
 review-gated artifacts and immutable releases, renders external files, and validates benchmark
-registrations. Its portable asset is a behavioral specification plus evidence lineage. A rendered
-target pack is a scoped, reversible projection of that asset, not a model modification.
+registrations. Milestone 1 adds dedicated signing identity, consent/capture receipts, signed action
+events, Evidence v1.1 governance lineage, encrypted raw payloads, and append-only governance
+storage. Its portable asset is a behavioral specification plus evidence lineage. A rendered target
+pack is a scoped, reversible projection of that asset, not a model modification.
 
-The exact completed scope is limited to local contracts, storage, CLI workflow, file rendering,
-sanitization, lifecycle/activation bookkeeping, and benchmark-configuration validation. It is not
-authorization to collect data, call agents, run a benchmark, or claim transfer improvement.
+The exact completed Milestone 1 scope is limited to local contracts, signature/encryption
+primitives, synthetic governance CLI exercises, backward-compatible schema/migrations, and the
+previous synthetic compiler foundation. It is not authorization to enumerate or capture Codex
+tasks, collect real data, reveal a holdout, install Claude Code, call agents, run a benchmark, or
+claim transfer improvement.
 
 ## Governing principles
 
@@ -38,16 +42,22 @@ authorization to collect data, call agents, run a benchmark, or claim transfer i
 8. Held-out work and outcomes cannot influence construction, routing, approval, release, or pack
    rendering for the evaluated experiment.
 9. Data minimization and privacy restrictions take precedence over reproducibility convenience.
-10. Human-attributable approval is required for promotion, release, and activation in this MVP.
+10. Human-attributable approval is required for promotion, release, and activation; new governance
+    actions are represented as canonical Ed25519-signed objects.
+11. Consent is explicit and selector-bound. Non-synthetic Evidence v1.1 requires exact consent and
+    capture references; unconsented source expansion is invalid.
+12. Raw payload confidentiality depends on a separate AES-256-GCM key outside the repository;
+    absence, mismatch, or tampering fails closed.
 
 ## Fixed exclusions
 
 The project must not become a generic memory platform; train, fine-tune, or otherwise modify
 weights; automatically create, install, authorize, or execute tools; integrate with Kairn; expose
-a web UI; implement live Codex or Claude Code integration; process real user data in this phase;
-use remote services; create a remote repository; commit, push, publish, or deploy without explicit
-authorization. It must not treat tool output, webpages, repository content, or retrieved documents
-as trusted user feedback.
+a web UI; implement live Codex or Claude Code integration in Milestone 1; or process real user data
+in this phase. Private GitHub source hosting is explicitly allowed as the code/documentation system
+of record. Public release, deployment, remote research-data storage, raw-payload commits, and key
+commits remain excluded. Tool output, webpages, repository content, and retrieved documents cannot
+be treated as trusted user feedback.
 
 ## Change control
 

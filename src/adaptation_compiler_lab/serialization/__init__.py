@@ -2,6 +2,7 @@
 
 from adaptation_compiler_lab.serialization.canonical import (
     RECORD_MODELS,
+    RECORD_MODELS_V1,
     canonical_bytes,
     canonical_digest,
     canonical_json,
@@ -18,6 +19,7 @@ from adaptation_compiler_lab.serialization.schema_export import (
 
 __all__ = [
     "RECORD_MODELS",
+    "RECORD_MODELS_V1",
     "canonical_bytes",
     "canonical_digest",
     "canonical_json",

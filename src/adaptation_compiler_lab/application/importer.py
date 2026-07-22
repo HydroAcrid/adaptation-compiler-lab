@@ -12,6 +12,7 @@ from pydantic import Field, model_validator
 
 from adaptation_compiler_lab.application.record_store import DomainRecordStore
 from adaptation_compiler_lab.domain.base import FrozenModel, Identifier, NonEmptyStr, SemVer
+from adaptation_compiler_lab.domain.enums import SourceClass
 from adaptation_compiler_lab.domain.records import Evidence, Outcome, TaskRecord
 from adaptation_compiler_lab.persistence.errors import PersistenceError
 from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore, RawPayloadRef
@@ -91,6 +92,20 @@ def import_task_bundle(
                 "source import accepts only TaskRecord, Outcome, and Evidence records"
             )
     source_records = cast(tuple[TaskRecord | Outcome | Evidence, ...], records)
+    if not raw_store.encrypted:
+        raise BundleImportError("AES-256-GCM raw-payload key is required before import")
+    for record in source_records:
+        if not isinstance(record, Evidence):
+            continue
+        synthetic_compatibility = record.privacy.consent_basis.startswith("synthetic-")
+        if record.schema_version == "1.0" and (
+            record.source_class is not SourceClass.SYNTHETIC and not synthetic_compatibility
+        ):
+            raise BundleImportError(
+                "new non-synthetic imports require Evidence v1.1 signed governance"
+            )
+        if record.schema_version == "1.1" and record.source_class is not SourceClass.SYNTHETIC:
+            raise BundleImportError("real capture is disabled until the consented-corpus milestone")
 
     from adaptation_compiler_lab.provenance import validate_lineage
 

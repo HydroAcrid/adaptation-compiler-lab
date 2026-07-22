@@ -6,6 +6,23 @@ from adaptation_compiler_lab.domain.base import FrozenModel, Identifier, SemVer,
 from adaptation_compiler_lab.domain.enums import RecordKind
 
 
+class GovernanceRef(FrozenModel):
+    """Exact content-addressed reference to one signed governance object."""
+
+    governance_type: Literal["consent_receipt", "capture_receipt"]
+    object_id: Identifier
+    schema_version: Literal["1.0"] = "1.0"
+    content_digest: Sha256Digest
+
+
+class ConsentReceiptRef(GovernanceRef):
+    governance_type: Literal["consent_receipt"] = "consent_receipt"
+
+
+class CaptureReceiptRef(GovernanceRef):
+    governance_type: Literal["capture_receipt"] = "capture_receipt"
+
+
 class ExactRecordRef(FrozenModel):
     record_type: RecordKind
     record_id: Identifier
