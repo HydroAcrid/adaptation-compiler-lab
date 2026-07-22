@@ -1,0 +1,825 @@
+{
+  "$defs": {
+    "ActorKind": {
+      "enum": [
+        "user",
+        "human_reviewer",
+        "agent",
+        "tool",
+        "system"
+      ],
+      "title": "ActorKind",
+      "type": "string"
+    },
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "display_name": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "kind": {
+          "$ref": "#/$defs/ActorKind"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "actor_id",
+        "kind"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "AuthorityClass": {
+      "enum": [
+        "user_normative",
+        "authorized_evaluator",
+        "project_policy",
+        "observational",
+        "proposal_only",
+        "untrusted_context",
+        "synthetic_only"
+      ],
+      "title": "AuthorityClass",
+      "type": "string"
+    },
+    "ClaimType": {
+      "enum": [
+        "user_preference",
+        "user_correction",
+        "user_acceptance",
+        "project_requirement",
+        "task_outcome",
+        "behavioral_effectiveness",
+        "repository_fact",
+        "external_fact",
+        "proposed_lesson",
+        "synthetic_expectation"
+      ],
+      "title": "ClaimType",
+      "type": "string"
+    },
+    "EvaluationCaseRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "evaluation_case",
+          "default": "evaluation_case",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "EvaluationCaseRef",
+      "type": "object"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "evidence",
+          "default": "evidence",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "EvidenceState": {
+      "enum": [
+        "raw",
+        "derived",
+        "tombstoned"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "OutcomeRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "outcome",
+          "default": "outcome",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "OutcomeRef",
+      "type": "object"
+    },
+    "Partition": {
+      "enum": [
+        "construction",
+        "development",
+        "held_out",
+        "synthetic"
+      ],
+      "title": "Partition",
+      "type": "string"
+    },
+    "PayloadReference": {
+      "additionalProperties": false,
+      "description": "Reference to bytes retained in the segregated evidence store.",
+      "properties": {
+        "byte_length": {
+          "minimum": 0,
+          "title": "Byte Length",
+          "type": "integer"
+        },
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "locator": {
+          "minLength": 1,
+          "title": "Locator",
+          "type": "string"
+        },
+        "media_type": {
+          "minLength": 1,
+          "title": "Media Type",
+          "type": "string"
+        },
+        "span": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PayloadSpan"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "locator",
+        "content_digest",
+        "media_type",
+        "byte_length"
+      ],
+      "title": "PayloadReference",
+      "type": "object"
+    },
+    "PayloadSpan": {
+      "additionalProperties": false,
+      "properties": {
+        "end": {
+          "exclusiveMinimum": 0,
+          "title": "End",
+          "type": "integer"
+        },
+        "start": {
+          "minimum": 0,
+          "title": "Start",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "title": "PayloadSpan",
+      "type": "object"
+    },
+    "PermittedUse": {
+      "enum": [
+        "construction",
+        "development_evaluation",
+        "promotion",
+        "target_delivery",
+        "benchmark",
+        "audit"
+      ],
+      "title": "PermittedUse",
+      "type": "string"
+    },
+    "PrivacyContext": {
+      "additionalProperties": false,
+      "properties": {
+        "consent_basis": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Consent Basis",
+          "type": "string"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        },
+        "permitted_uses": {
+          "items": {
+            "$ref": "#/$defs/PermittedUse"
+          },
+          "minItems": 1,
+          "title": "Permitted Uses",
+          "type": "array"
+        },
+        "review_state": {
+          "$ref": "#/$defs/PrivacyReviewState",
+          "default": "pending"
+        },
+        "reviewed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewed At"
+        },
+        "reviewed_by": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/SensitivityClass"
+        }
+      },
+      "required": [
+        "sensitivity",
+        "consent_basis",
+        "permitted_uses"
+      ],
+      "title": "PrivacyContext",
+      "type": "object"
+    },
+    "PrivacyReviewState": {
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "title": "PrivacyReviewState",
+      "type": "string"
+    },
+    "RedactionState": {
+      "enum": [
+        "none",
+        "redacted",
+        "tombstoned"
+      ],
+      "title": "RedactionState",
+      "type": "string"
+    },
+    "Scope": {
+      "additionalProperties": false,
+      "description": "Machine-comparable applicability bounds.\n\nEmpty optional dimensions mean unconstrained. Subjects are never unconstrained in this\nsingle-user prototype. A narrower scope may restrict a dimension, add exclusions or\nactivation conditions, and shrink the validity window.",
+      "properties": {
+        "activation_conditions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Activation Conditions",
+          "type": "array"
+        },
+        "environment_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Environment Ids",
+          "type": "array"
+        },
+        "exclusions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Exclusions",
+          "type": "array"
+        },
+        "project_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Project Ids",
+          "type": "array"
+        },
+        "repository_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Repository Ids",
+          "type": "array"
+        },
+        "subject_ids": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Subject Ids",
+          "type": "array"
+        },
+        "target_families": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Target Families",
+          "type": "array"
+        },
+        "task_classes": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Task Classes",
+          "type": "array"
+        },
+        "valid_from": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid From"
+        },
+        "valid_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid Until"
+        },
+        "workspace_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Workspace Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "subject_ids"
+      ],
+      "title": "Scope",
+      "type": "object"
+    },
+    "SensitivityClass": {
+      "enum": [
+        "public",
+        "internal",
+        "private",
+        "confidential",
+        "restricted",
+        "prohibited_secret"
+      ],
+      "title": "SensitivityClass",
+      "type": "string"
+    },
+    "SourceClass": {
+      "enum": [
+        "explicit_user_feedback",
+        "authorized_human_evaluation",
+        "deterministic_execution_observation",
+        "agent_generated",
+        "tool_output",
+        "repository_content",
+        "web_content",
+        "retrieved_document",
+        "system_policy",
+        "synthetic"
+      ],
+      "title": "SourceClass",
+      "type": "string"
+    },
+    "SyntheticOrigin": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "fixture_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Fixture Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fixture_id",
+        "description"
+      ],
+      "title": "SyntheticOrigin",
+      "type": "object"
+    },
+    "TaskRecordRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "const": null,
+          "default": null,
+          "title": "Content Digest",
+          "type": "null"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "task_record",
+          "default": "task_record",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version"
+      ],
+      "title": "TaskRecordRef",
+      "type": "object"
+    },
+    "Transformation": {
+      "additionalProperties": false,
+      "properties": {
+        "actor": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "input_evidence_refs": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "minItems": 1,
+          "title": "Input Evidence Refs",
+          "type": "array"
+        },
+        "method": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Method",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "transformed_at": {
+          "format": "date-time",
+          "title": "Transformed At",
+          "type": "string"
+        },
+        "transformer_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Transformer Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "method",
+        "transformer_version",
+        "policy_version",
+        "actor",
+        "transformed_at",
+        "input_evidence_refs"
+      ],
+      "title": "Transformation",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Atomic observation or immutable observation reference in the raw boundary.",
+  "properties": {
+    "allowed_claim_types": {
+      "items": {
+        "$ref": "#/$defs/ClaimType"
+      },
+      "minItems": 1,
+      "title": "Allowed Claim Types",
+      "type": "array"
+    },
+    "authority_class": {
+      "$ref": "#/$defs/AuthorityClass"
+    },
+    "authority_reason": {
+      "minLength": 1,
+      "title": "Authority Reason",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "$ref": "#/$defs/ActorRef"
+    },
+    "evaluation_case_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EvaluationCaseRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "observed_at": {
+      "format": "date-time",
+      "title": "Observed At",
+      "type": "string"
+    },
+    "outcome_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/OutcomeRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "parent_evidence_refs": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/EvidenceRef"
+      },
+      "title": "Parent Evidence Refs",
+      "type": "array"
+    },
+    "partition": {
+      "$ref": "#/$defs/Partition"
+    },
+    "payload": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PayloadReference"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "policy_version": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "privacy": {
+      "$ref": "#/$defs/PrivacyContext"
+    },
+    "producer": {
+      "$ref": "#/$defs/ActorRef"
+    },
+    "record_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Record Id",
+      "type": "string"
+    },
+    "record_type": {
+      "const": "evidence",
+      "default": "evidence",
+      "title": "Record Type",
+      "type": "string"
+    },
+    "record_version": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+      "title": "Record Version",
+      "type": "string"
+    },
+    "redaction_state": {
+      "$ref": "#/$defs/RedactionState"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/Scope"
+    },
+    "source_class": {
+      "$ref": "#/$defs/SourceClass"
+    },
+    "state": {
+      "$ref": "#/$defs/EvidenceState"
+    },
+    "synthetic_origin": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SyntheticOrigin"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "task_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TaskRecordRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "transformation": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Transformation"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "record_id",
+    "record_version",
+    "created_at",
+    "created_by",
+    "policy_version",
+    "observed_at",
+    "producer",
+    "source_class",
+    "authority_class",
+    "authority_reason",
+    "allowed_claim_types",
+    "state",
+    "redaction_state",
+    "payload",
+    "scope",
+    "privacy",
+    "partition"
+  ],
+  "title": "Evidence",
+  "type": "object"
+}
