@@ -124,9 +124,9 @@ but have not been exercised against a target API.
 
 Milestone 4 implements the version-pinned source/runner/scorer ports, Codex generated-schema
 verification, and a clean Claude Code command/sandbox/trace contract. Fake fixtures pass
-conformance, and a pinned Codex app server initialized against an empty source home. The required
-authenticated no-user-data Claude smoke is blocked on a dedicated Console API key; no API call has
-occurred.
+conformance, a pinned Codex app server initialized against an empty source home, and the
+authenticated no-user-data Claude smoke passed with only synthetic content. This proves target
+connectivity and instrumentation, not adaptation performance.
 
 The project still has not read real source tasks, authored real condition materials, retrieved a
 holdout, created trial records from real runs, scored work, or calculated an empirical comparison.

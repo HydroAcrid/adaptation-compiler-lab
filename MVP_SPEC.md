@@ -1,7 +1,7 @@
 # MVP Specification
 
-Status: **Milestone 4 synthetic connector conformance implemented; authenticated target smoke pending**
-Implementation status: **no real source data, Claude API call, held-out reveal, or benchmark execution**
+Status: **Milestone 4 version-pinned connector conformance and authenticated target smoke complete**
+Implementation status: **no real source data, held-out reveal, or benchmark execution**
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** describe the
 implemented MVP contract unless explicitly marked as future work.

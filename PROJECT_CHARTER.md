@@ -1,6 +1,6 @@
 # Project Charter
 
-Status: **Milestone 4 synthetic connector conformance implemented; live Claude smoke pending**
+Status: **Milestone 4 version-pinned connectors and authenticated synthetic smoke complete**
 Project: **adaptation-compiler-lab**
 Intended first source / target: **Codex / Claude Code**
 

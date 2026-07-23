@@ -1,22 +1,23 @@
 # Implementation Status
 
-Last updated: 2026-07-22
+Last updated: 2026-07-23
 
 ## Current milestone
 
-**Milestone 4 — Version-Pinned Connectors and Synthetic Conformance is implemented except for its
-authenticated live no-user-data Claude smoke.** The synthetic and local runtime gates pass, but
-neither Windows nor WSL currently provides a dedicated spend-limited Anthropic Console API key.
-Milestone 4 therefore remains open on its branch and Milestone 5 has not begun.
+**Milestone 4 — Version-Pinned Connectors and Synthetic Conformance has passed its technical exit
+gate.** Synthetic conformance, pinned local runtime verification, the empty-home Codex handshake,
+and the authenticated live no-user-data Claude smoke all pass. The branch is ready for final
+verification and merge; Milestone 5 has not begun.
 
 The project owner has authorized automatic continuation after complete milestone exit gates. This
 removes the handoff pause, not objective research/privacy prerequisites. Exact per-task consent,
 independent-human profile authorship, independent custody/scoring roles, credentials, frozen
 materials, and held-out isolation still fail closed.
 
-No real Codex task was listed or read. No Claude API call, held-out reveal, condition construction,
-target trial, scoring operation, model modification, executable-tool creation, Kairn integration,
-web UI, public release, or remote research-data storage occurred.
+No real Codex task was listed or read. The only target API calls used synthetic smoke content; no
+held-out reveal, condition construction, target trial, scoring operation, model modification,
+executable-tool creation, Kairn integration, web UI, public release, or remote research-data
+storage occurred.
 
 ## Completed scope
 
@@ -62,6 +63,9 @@ web UI, public release, or remote research-data storage occurred.
   accessed no user source data.
 - Added a sanitized machine-readable conformance status and a detailed Milestone 4 conformance
   record. No raw trace, executable path, private path, credential, or research payload is stored.
+- Passed the accepted authenticated Claude smoke against the pinned model for USD $0.01566765. It
+  independently verified exact synthetic output, captured only allowed `Read` and `Edit` uses,
+  destroyed the workspace/configuration, and persisted only a minimized digest receipt.
 
 ## Verification performed
 
@@ -76,41 +80,39 @@ uv run pytest
 uv build
 ```
 
-The current full suite formats and type-checks 127 Python files, passes 272 tests, and builds both
+The current full suite formats and type-checks 127 Python files, passes 274 tests, and builds both
 the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, runtime
 lock, and six generated Codex schema snapshots are packaged. The real Codex runtime verifier
 matched the pinned binary and canonical generated-schema digest
 `sha256:e2d36bf67743ea6d89f93b598efaaffd873a1be0668a775401ab8817b808a851`.
 The real Claude/sandbox verifier matched all local binary/version/helper pins and successfully
-started a bubblewrap user namespace; it did not call the API.
+started a bubblewrap user namespace. The accepted authenticated smoke then exercised the API under
+the frozen model/tool/sandbox contract.
 
-Repository credential/private-path/raw-payload scans and exact final test counts must be rerun after
-the authenticated smoke before the PR can merge. Passing synthetic/runtime checks establishes
-instrument integrity only, not transfer quality.
+Repository credential/private-path/raw-payload scans and exact final test counts must be rerun
+before the PR merges. Passing synthetic/runtime/live-smoke checks establishes instrument integrity
+only, not transfer quality.
 
 ## Explicitly not implemented or exercised
 
 - No real source inventory/capture, signed consent selection for actual task IDs, eight-task corpus,
   source outcome attestation, lesson review, real artifact release, or frozen condition bundle.
-- No authenticated Claude smoke, target API trace, independent post-run test evidence, disposable
-  pilot worktree coordinator, randomization-secret reveal, or live trial.
+- No real target trial, independent post-run test evidence, disposable pilot worktree coordinator,
+  randomization-secret reveal, or condition-bearing target trace.
 - No independent skilled-human profile author, independent custodian, independent scorer, blinded
   adjudication operation, statistical report, or retention purge of real payloads.
 - No result about whether the compiled pack beats base, ordinary memory, or a strong profile.
 - No weight training/fine-tuning/LoRA, automatic tool creation/installation, Kairn, web UI, public
   publication, powered study, or remote research-data storage.
 
-## Exact blocker and next action
+## Gate result and next action
 
-Milestone 4 needs one dedicated spend-limited Anthropic Console API key. The operator must make it
-available without placing it in chat or the repository, either:
+The dedicated Console credential now resides outside the workspaces in an owner-readable-only WSL
+file. It is never committed, printed, or persisted in a trace. The runner continues to reject
+ambiguous sources, broad key-file permissions, workspace-local keys, alternate providers, and
+missing sandbox support.
 
-1. as `ANTHROPIC_API_KEY` in the process environment; or
-2. in a local external file readable only by its owner (`chmod 600`), then provide only that file
-   path.
-
-The runner rejects ambiguous sources, broad key-file permissions, a key file inside the target
-workspace, alternate providers, and missing sandbox support. Once the key is available, run the
-documented USD $0.25/no-user-data smoke, seal only its sanitized receipt, rerun every verification
-and leak scan, open/merge the Milestone 4 PR, update Obsidian, and continue automatically to
-Milestone 5. No real source inventory call may occur before that sequence completes.
+Seal the final verification results, merge the Milestone 4 PR, update Obsidian, and continue
+automatically to Milestone 5. Milestone 5 may list only minimized eligible source metadata before
+requiring signed consent for each exact selected task ID; it may not capture a payload, construct
+condition material, or reveal held-out work without its remaining objective gates.

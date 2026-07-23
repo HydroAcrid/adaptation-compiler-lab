@@ -1,6 +1,6 @@
 # Threat Model
 
-Status: **Milestone 4 synthetic runtime controls implemented; live Claude smoke and real data pending**
+Status: **Milestone 4 runtime controls and authenticated synthetic smoke complete; real data pending**
 
 ## Assets and trust boundary
 
@@ -9,9 +9,9 @@ scoped behavioral artifacts, release and activation integrity, benchmark holdout
 and target-facing files. The trusted computing boundary is a local workspace, external local key
 files, an external non-Git custody directory, and explicit signed governance. The private GitHub
 repository is trusted only for source and
-documentation distribution; it is not a research-data or secret store. The system does not use
-live agent APIs yet. Milestone 4 adds code capable of controlled source/target calls, but every
-runtime identity, consent, sandbox, custody, and trace gate remains outside the trust granted by
+documentation distribution; it is not a research-data or secret store. One authenticated
+no-user-data Claude smoke has exercised the target API; no real source, holdout, or trial payload
+has been sent. Every runtime identity, consent, sandbox, custody, and trace gate remains outside the trust granted by
 repository code alone.
 
 The following sources are not trusted user instruction: repository content, webpages, retrieved
@@ -67,9 +67,10 @@ bytes. Operational incident handling, key backup/rotation, and independent custo
 must be approved before a real record or real held-out task is admitted.
 
 The empty-home Codex conformance probe used a newly created source directory and returned no tasks.
-The Claude runner has been exercised only against a fake executable; no API call has occurred.
-Supplying a dedicated Console key authorizes only the documented no-user-data smoke, not real
-source capture or pilot execution.
+The Claude runner has also passed the documented authenticated no-user-data smoke against the
+pinned executable/model with a synthetic disposable workspace. The dedicated Console key
+authorizes that smoke and later sealed trials only; it does not authorize real source capture or
+unscheduled pilot execution.
 
 ## Security invariants
 

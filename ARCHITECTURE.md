@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **Milestone 4 synthetic connector conformance implemented; live Claude smoke pending**
+Status: **Milestone 4 version-pinned connectors and authenticated synthetic smoke complete**
 
 ## 1. System shape
 
@@ -53,10 +53,10 @@ flowchart LR
 ```
 
 The Codex connector is implemented and has been exercised only against fake fixtures and a newly
-created empty source home. The Claude runner is implemented and fake-conformant, but no target API
-call has occurred because the dedicated Console key is absent. Neither adapter is exposed through a
-general CLI command. Real source enumeration/capture, held-out retrieval, trial execution, and
-scoring remain unreachable until their coordinator and governance gates exist.
+created empty source home. The Claude runner passed one accepted authenticated synthetic smoke
+against the pinned model and sandbox. Neither adapter is exposed through a general CLI command.
+Real source capture, held-out retrieval, trial execution, and scoring remain unreachable until
+their coordinator and governance gates exist.
 
 ## 2. Records and relationships
 
@@ -249,13 +249,14 @@ cascades; deterministic conflict resolution; signed benchmark custody/registrati
 objects; encrypted external bundle binding; append-only access/adjudication; preregistration freeze;
 and synthetic security tests.
 
-Milestone 4's code portion now adds the explicit ports, fake fixtures, binary and generated-schema
+Milestone 4 adds the explicit ports, fake fixtures, binary and generated-schema
 drift checks, read-only Codex app-server adapter, fixed-model Claude runner, clean configuration,
 hard sandbox, tool/network denials, structured trace validation, timeout, and teardown. The pinned
-Codex empty-home handshake passes. The exit gate is still blocked by the missing dedicated Console
-API key needed for one authenticated no-user-data Claude smoke.
+Codex empty-home handshake and the authenticated no-user-data Claude smoke pass. The accepted smoke
+cost USD $0.01566765, captured only allowed `Read` and `Edit` uses, persisted no raw trace, and
+destroyed its synthetic workspace.
 
-Once that smoke passes, the branch may merge and work may continue automatically to Milestone 5.
+After the Milestone 4 branch merges, work may continue automatically to Milestone 5.
 Automatic continuation does not weaken objective gates: eight exact task IDs still require signed
 per-task consent; the strong profile requires an independent skilled human; held-out custody and
 randomization secrets require assigned operators; and real target trials require frozen materials

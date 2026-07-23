@@ -20,16 +20,19 @@ from adaptation_compiler_lab.connectors.ports import TargetRunner
 from adaptation_compiler_lab.domain.base import FrozenModel, NonEmptyStr, Sha256Digest, UtcDateTime
 
 _CONDITION: Final = """Milestone 4 synthetic conformance condition.
-Use only the supplied synthetic fixture. Read fixture.txt, then use the Write tool to create
-smoke-output.txt containing exactly:
+Use only the supplied synthetic fixture. Read fixture.txt, then use an allowed file-mutation tool
+(Write or Edit) to create smoke-output.txt containing exactly this UTF-8 text with no trailing
+newline:
 synthetic-smoke-ok
+Use exactly those two tool calls. Do not re-read or otherwise verify the output; finish
+immediately after the file mutation.
 Do not use Bash, network access, agents, web tools, plugins, skills, memory, or external files.
 """
 _TASK: Final = """M4_LIVE_SMOKE_TASK
 Complete the synthetic conformance operation described in the injected condition. The workspace
 contains no user or repository data.
 """
-_EXPECTED_OUTPUT: Final = b"synthetic-smoke-ok\n"
+_EXPECTED_OUTPUT: Final = b"synthetic-smoke-ok"
 
 
 class LiveSmokeError(RuntimeConformanceError):
@@ -94,12 +97,26 @@ def run_live_no_user_data_smoke(
                 condition_digest=sha256_file(condition),
                 allowed_bash_commands=(),
                 max_seconds=300,
-                max_turns=3,
+                max_turns=4,
                 max_usd=0.25,
             )
         )
         if result.timed_out or result.exit_code != 0:
-            raise LiveSmokeError("live smoke did not complete successfully")
+            result_metadata = sorted(
+                {
+                    (
+                        str(event.get("subtype", "none")),
+                        str(event.get("is_error", "none")),
+                    )
+                    for event in result.events
+                    if event.get("type") == "result"
+                }
+            )
+            raise LiveSmokeError(
+                "live smoke did not complete successfully; "
+                f"exit_code={result.exit_code}; timed_out={result.timed_out}; "
+                f"result_metadata={result_metadata}"
+            )
         if not output.is_file() or output.read_bytes() != _EXPECTED_OUTPUT:
             raise LiveSmokeError("live smoke output failed independent verification")
         init_events = [
@@ -116,13 +133,29 @@ def run_live_no_user_data_smoke(
         ):
             raise LiveSmokeError("live smoke tool inventory is malformed")
         observed_tool_uses = {
-            item.get("name")
+            name
             for event in result.events
             for item in _objects(event)
-            if item.get("type") == "tool_use"
+            if item.get("type") in {"tool_use", "tool_result"}
+            for name in (item.get("name"), item.get("tool_name"))
+            if isinstance(name, str)
         }
-        if "Write" not in observed_tool_uses:
-            raise LiveSmokeError("live smoke did not capture the required Write tool use")
+        if "Read" not in observed_tool_uses or not observed_tool_uses.intersection(
+            {"Edit", "Write"}
+        ):
+            observed = ", ".join(sorted(observed_tool_uses)) or "none"
+            event_types = sorted(
+                {
+                    item_type
+                    for event in result.events
+                    for item in _objects(event)
+                    if isinstance((item_type := item.get("type")), str)
+                }
+            )
+            raise LiveSmokeError(
+                "live smoke did not capture required Read and file-mutation tool uses; "
+                f"observed tool names: {observed}; event types: {', '.join(event_types)}"
+            )
         cost = result_events[0].get("total_cost_usd")
         if (
             not isinstance(cost, int | float)

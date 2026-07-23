@@ -92,11 +92,10 @@ not return held-out plaintext.
 Milestone 4's connector and runner APIs are also library-only. Their packaged runtime lock contains
 public versions and digests, never executable paths or credentials. The local conformance record is
 in [`MILESTONE_4_CONFORMANCE.md`](MILESTONE_4_CONFORMANCE.md). Its synthetic checks pass, including
-an empty-home Codex app-server handshake. The live Claude smoke is blocked until a dedicated
-spend-limited Console API key is supplied through `ANTHROPIC_API_KEY` or a mode-0600 external file;
-ambient OAuth is intentionally unavailable in bare mode. Real source inventory, corpus
-construction, holdout reveal, live trials, and scoring remain closed until their preceding gates
-pass.
+an empty-home Codex app-server handshake. Its authenticated no-user-data Claude smoke also passes
+against the pinned Sonnet model with a minimized signed-by-digest receipt and no persisted raw
+trace. Real source capture, corpus construction, holdout reveal, live trials, and scoring remain
+closed until their preceding gates pass.
 
 ## Documentation
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 from pathlib import Path
@@ -20,6 +21,7 @@ from adaptation_compiler_lab.connectors.pins import (
 from adaptation_compiler_lab.runners import (
     ClaudeCodeTargetRunner,
     ClaudeRuntimePaths,
+    LiveSmokeReceipt,
     TargetExecutionError,
     run_live_no_user_data_smoke,
 )
@@ -46,6 +48,8 @@ def argument_after(flag):
 prompt = sys.stdin.read()
 if "TIMEOUT_MARKER" in prompt:
     time.sleep(30)
+if "LEAK_KEY_MARKER" in prompt:
+    print(os.environ["ANTHROPIC_API_KEY"], flush=True)
 
 condition_path = pathlib.Path(argument_after("--append-system-prompt-file"))
 settings_path = pathlib.Path(argument_after("--settings"))
@@ -63,11 +67,14 @@ print(json.dumps({
 }), flush=True)
 
 if "M4_LIVE_SMOKE_TASK" in prompt:
-    pathlib.Path("smoke-output.txt").write_text("synthetic-smoke-ok\\n", encoding="utf-8")
+    pathlib.Path("smoke-output.txt").write_text("synthetic-smoke-ok", encoding="utf-8")
     print(json.dumps({
         "type": "assistant",
         "message": {
-            "content": [{"type": "tool_use", "name": "Write", "input": {}}]
+            "content": [
+                {"type": "tool_use", "name": "Read", "input": {}},
+                {"type": "tool_use", "name": "Write", "input": {}},
+            ]
         },
     }), flush=True)
 
@@ -366,6 +373,11 @@ def test_forbidden_tool_in_trace_invalidates_run(tmp_path: Path) -> None:
     assert set(Path(tempfile.gettempdir()).glob("acl-claude-config-*")) == before
 
 
+def test_credential_in_process_output_invalidates_run(tmp_path: Path) -> None:
+    with pytest.raises(TargetExecutionError, match="exposed the API credential"):
+        _runner(tmp_path).run(_request(tmp_path, prompt="LEAK_KEY_MARKER"))
+
+
 def test_timeout_terminates_process_and_tears_down(tmp_path: Path) -> None:
     request = _request(tmp_path, prompt="TIMEOUT_MARKER")
     request = request.model_copy(update={"max_seconds": 1})
@@ -397,3 +409,20 @@ def test_live_smoke_wrapper_returns_only_sanitized_receipt(tmp_path: Path) -> No
     serialized = receipt.model_dump_json()
     assert "synthetic-smoke-ok" not in serialized
     assert "synthetic-api-key-placeholder" not in serialized
+
+
+def test_committed_live_smoke_receipt_is_minimized_and_digest_bound() -> None:
+    repository = Path(__file__).parents[3]
+    status = json.loads((repository / "conformance" / "milestone-4.json").read_text())
+    receipt_path = repository / status["live_smoke_receipt"]
+    receipt = LiveSmokeReceipt.model_validate_json(receipt_path.read_text(), strict=True)
+
+    assert status["live_no_user_data_smoke"] == "passed"
+    assert status["live_smoke_receipt_sha256"] == sha256_file(receipt_path)
+    assert receipt.model_id == "claude-sonnet-5"
+    assert receipt.total_cost_usd <= 0.25
+    assert receipt.workspace_destroyed is True
+    assert receipt.raw_trace_persisted is False
+    assert receipt.user_data_used is False
+    assert receipt.source_data_used is False
+    assert receipt.held_out_data_used is False

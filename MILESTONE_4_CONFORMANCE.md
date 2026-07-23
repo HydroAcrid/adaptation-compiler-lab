@@ -1,7 +1,6 @@
 # Milestone 4 Conformance Record
 
-Status: **synthetic conformance passed; live no-user-data Claude smoke blocked on a dedicated
-Console API key**
+Status: **synthetic conformance and authenticated live no-user-data Claude smoke passed**
 
 This milestone turns the prior file-only target assumptions into explicit, narrow runtime
 boundaries. It does not authorize source capture, enumerate a user's Codex tasks, reveal held-out
@@ -90,26 +89,37 @@ Synthetic fixtures prove:
   forbidden trace tools, malformed streams, timeout, and teardown behavior fail closed; and
 - arbitrary synthetic credential values do not enter command or trace records.
 
-`run_live_no_user_data_smoke` is the sole authenticated smoke procedure. It creates and destroys a
+`run_live_no_user_data_smoke` is the authenticated smoke procedure. It creates and destroys a
 new synthetic workspace, permits no Bash command, independently verifies one exact output file,
-requires a captured `Write` tool use and bounded cost evidence, then returns only a minimized
-digest receipt. It never returns or persists the raw stream.
+requires captured `Read` plus an allowed `Edit` or `Write` file-mutation use and bounded cost
+evidence, then returns only a minimized digest receipt. It never returns or persists the raw
+stream.
 
 The local pinned Codex binary also completed a real app-server initialize plus empty-home
 `thread/list` conformance probe. This used a newly created empty source home and accessed no user
 task data.
 
-The live Claude smoke has not run because neither Windows nor WSL currently supplies the required
-dedicated Console API key. Passing synthetic tests or an unauthenticated CLI probe is not a
-substitute. Milestone 4 remains open, no Milestone 5 source branch may begin, and no real Codex
-inventory call is authorized until that smoke succeeds and the milestone PR is merged.
+The accepted live Claude smoke ran on 2026-07-23 against Claude Code `2.1.218` and
+`claude-sonnet-5`. It cost USD $0.01566765, observed only the allowed `Read` and `Edit` data/action
+tools, independently verified the exact output digest, destroyed its workspace/configuration, and
+persisted no raw trace. The minimized receipt is
+`conformance/milestone-4-live-smoke.json`.
+
+Live validation used six bounded synthetic development attempts. Five were rejected locally before
+a receipt could be sealed while the acceptance fixture was aligned with actual tool choice and
+turn-limit behavior; one passed. Every attempt used no user, source, repository, or held-out data
+and had an independent USD $0.25 ceiling. Costs for rejected attempts were not persisted, so the
+record makes no unsupported aggregate-cost claim.
+
+Milestone 4's technical exit gate now passes. No real Codex inventory call occurred before this
+result. The milestone PR must merge before Milestone 5 inventory and exact per-task consent begin.
 
 ## Live smoke acceptance
 
 Once a dedicated spend-limited Console key is available either in the process environment or in a
 mode-0600 file outside every workspace/repository, the smoke must use a new `/tmp` synthetic
-workspace with no repository/user content, one synthetic condition, at most three turns, five
-minutes, and USD $0.25. It must:
+workspace with no repository/user content, one synthetic condition, at most four tool-use turns,
+five minutes, and USD $0.25. It must:
 
 1. verify every runtime/schema digest before launch;
 2. write one harmless synthetic output file using an allowed tool;

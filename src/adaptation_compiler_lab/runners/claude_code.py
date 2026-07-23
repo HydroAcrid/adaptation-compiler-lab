@@ -406,6 +406,9 @@ class ClaudeCodeTargetRunner:
                 stdout += timeout_stdout
                 stderr += timeout_stderr
                 exit_code = None
+            api_key = environment["ANTHROPIC_API_KEY"]
+            if api_key in stdout or api_key in stderr:
+                raise TargetExecutionError("Claude output exposed the API credential")
             events = _parse_stream(stdout)
             _assert_trace_conformance(
                 events,
