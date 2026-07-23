@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -68,6 +69,22 @@ def test_fixture_tree_digest_ignores_runtime_cache_files(tmp_path: Path) -> None
     (cache / "value.cpython-312.pyc").write_bytes(b"runtime-only")
 
     assert development_tree_digest(tmp_path) == before
+
+
+def test_development_design_binds_repository_state_helper(tmp_path: Path) -> None:
+    root = tmp_path / "development_benchmark"
+    shutil.copytree(_root(), root)
+    before = load_codex_development_design(root, frozen_at=NOW)
+    helper = root / "tasks" / "communication" / "independent" / "scorer_support.py"
+    helper.write_text(
+        helper.read_text(encoding="utf-8") + "\n# digest change\n",
+        encoding="utf-8",
+    )
+    after = load_codex_development_design(root, frozen_at=NOW)
+
+    before_task = next(item for item in before.tasks if item.task_id == "development-communication")
+    after_task = next(item for item in after.tasks if item.task_id == "development-communication")
+    assert before_task.independent_scorer_digest != after_task.independent_scorer_digest
 
 
 def _observation(task: str, condition: str, index: int) -> CodexDevelopmentRunObservation:

@@ -6,6 +6,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from scorer_support import repository_changed_paths
+
 
 def load_module(workspace: Path):
     spec = importlib.util.spec_from_file_location("support_plan", workspace / "support_plan.py")
@@ -40,19 +42,7 @@ def main() -> None:
         )
         >= 0,
     }
-    changed = {
-        line[3:].strip()
-        for line in __import__("subprocess")
-        .run(
-            ["git", "status", "--porcelain"],
-            cwd=workspace,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        .stdout.splitlines()
-        if line.strip()
-    }
+    changed = repository_changed_paths(workspace)
     neutral = {
         "only_allowed_source_changed": changed <= {"support_plan.py"},
         "no_agent_configuration_added": not any(

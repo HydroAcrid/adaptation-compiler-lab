@@ -3,10 +3,11 @@ from __future__ import annotations
 import importlib.util
 import inspect
 import json
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+from scorer_support import repository_changed_paths
 
 
 def load_module(workspace: Path):
@@ -53,17 +54,7 @@ def main() -> None:
             "explicit_replacement_opt_in_exists": opt_in is not None,
             "explicit_replacement_opt_in_works": opt_in_works,
         }
-    changed = {
-        line[3:].strip()
-        for line in subprocess.run(
-            ["git", "status", "--porcelain"],
-            cwd=workspace,
-            check=True,
-            capture_output=True,
-            text=True,
-        ).stdout.splitlines()
-        if line.strip()
-    }
+    changed = repository_changed_paths(workspace)
     neutral = {
         "only_allowed_source_changed": changed <= {"sync_file.py"},
         "no_agent_configuration_added": not any(

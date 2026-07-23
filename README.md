@@ -11,9 +11,9 @@ contexts authored/reviewed the strong static profile, four conditions passed the
 and deterministic software custody sealed the hidden tasks, mapping, 32-cell order, and exact
 condition materials. No held-out task has been exposed to construction, and no paid benchmark
 trial has run. Milestone 5.5 completed a separate 16-cell subscription-backed Codex development
-diagnostic on public non-held-out tasks. The result was not sufficiently diagnostic, and compiled
-adaptation did not beat or tie the strong static profile; paid cross-agent execution remains
-closed.
+diagnostic on public non-held-out tasks. The result was not sufficiently diagnostic. Its apparent
+strong-profile advantage came from one ambiguous, brittlely scored task, so it does not justify a
+compiler or pack change. Paid cross-agent execution remains closed.
 
 ## What is here
 
@@ -125,5 +125,7 @@ after valid trials.
   real corpus/material freeze, software custody, and paid-run gate.
 - [`MILESTONE_5_5_CODEX_DEVELOPMENT_GATE.md`](MILESTONE_5_5_CODEX_DEVELOPMENT_GATE.md): separate
   non-held-out Codex subscription design, isolation contract, blinded result, and stop boundary.
+- [`MILESTONE_5_5_DIAGNOSTIC_ANALYSIS.md`](MILESTONE_5_5_DIAGNOSTIC_ANALYSIS.md): task matrix,
+  bytecode-state repair, causal analysis, and the unexecuted GPT-5.6 Luna follow-up.
 - [`MILESTONE_6_AUTHORIZATION_GATE.md`](MILESTONE_6_AUTHORIZATION_GATE.md): exact frozen bindings,
   runtime/spend ceilings, and the explicit authorization required before paid execution.
