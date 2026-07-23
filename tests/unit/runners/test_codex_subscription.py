@@ -15,6 +15,7 @@ from adaptation_compiler_lab.benchmark.codex_development import (
 from adaptation_compiler_lab.benchmark.role_packets import ApprovedSourceFamily
 from adaptation_compiler_lab.runners import codex_subscription
 from adaptation_compiler_lab.runners.codex_subscription import (
+    CodexExecutionContract,
     CodexSubscriptionError,
     CodexSubscriptionRunner,
 )
@@ -47,10 +48,50 @@ if sys.argv[1:] == ["login", "status"]:
     )
     print("Logged in using ChatGPT")
     raise SystemExit(0)
+if sys.argv[1] == "app-server":
+    for line in sys.stdin:
+        request = json.loads(line)
+        if request.get("method") == "initialize":
+            print(json.dumps({"id": request["id"], "result": {"userAgent": "fake"}}), flush=True)
+        elif request.get("method") == "model/list":
+            print(
+                json.dumps(
+                    {
+                        "id": request["id"],
+                        "result": {
+                            "data": [
+                                {
+                                    "hidden": False,
+                                    "id": "gpt-5.6-terra",
+                                    "model": "gpt-5.6-terra",
+                                    "supportedReasoningEfforts": [
+                                        {"reasoningEffort": "high"}
+                                    ],
+                                },
+                                {
+                                    "hidden": False,
+                                    "id": "gpt-5.6-luna",
+                                    "model": "gpt-5.6-luna",
+                                    "supportedReasoningEfforts": [
+                                        {"reasoningEffort": "medium"}
+                                    ],
+                                },
+                            ],
+                            "nextCursor": None,
+                        },
+                    }
+                ),
+                flush=True,
+            )
+    raise SystemExit(0)
 assert "--ask-for-approval" not in sys.argv
 assert 'approval_policy="never"' in sys.argv
 assert any("PYTHONDONTWRITEBYTECODE" in value for value in sys.argv)
 assert sys.argv[-1] == "-"
+model = sys.argv[sys.argv.index("--model") + 1]
+assert model in {"gpt-5.6-terra", "gpt-5.6-luna"}
+if model == "gpt-5.6-luna":
+    assert 'model_reasoning_effort="medium"' in sys.argv
 assert "Explain the purpose before procedural detail." not in " ".join(sys.argv)
 profile = pathlib.Path(os.environ["CODEX_HOME"], "development.config.toml")
 assert profile.is_file()
@@ -130,6 +171,12 @@ def test_auth_and_run_use_only_copied_chatgpt_state(
     )
 
     assert runner.verify_chatgpt_authentication() == "Logged in using ChatGPT"
+    assert runner.verify_model_availability() == {
+        "hidden": False,
+        "model": "gpt-5.6-terra",
+        "reasoning_effort": "high",
+        "service_mode": "standard",
+    }
     result = runner.run(_request(), workspace=_workspace(tmp_path / "workspace"))
 
     assert result.exit_code == 0
@@ -141,6 +188,41 @@ def test_auth_and_run_use_only_copied_chatgpt_state(
     assert not result.session_files_persisted
     assert not result.api_key_environment_present
     assert not result.forbidden_ambient_surface_observed
+    assert not result.model_reroute_observed
+    assert result.model == "gpt-5.6-terra"
+    assert result.reasoning_effort == "high"
+    assert result.service_mode == "standard"
+
+
+def test_runner_accepts_explicit_luna_medium_standard_contract(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    executable = _fake_cli(tmp_path / "codex")
+    digest = _sha(executable.read_bytes())
+    monkeypatch.setattr(codex_subscription, "_EXPECTED_CLI_DIGEST", digest)
+    auth = tmp_path / "auth.json"
+    auth.write_text("{}\n", encoding="utf-8")
+    auth.chmod(0o600)
+    runner = CodexSubscriptionRunner(
+        executable=executable,
+        saved_auth_file=auth,
+        contract=CodexExecutionContract(
+            cli_version="codex-cli 0.145.0",
+            cli_digest=digest,
+            model="gpt-5.6-luna",
+            reasoning_effort="medium",
+            service_mode="standard",
+            max_seconds=10,
+        ),
+    )
+
+    assert runner.verify_model_availability()["model"] == "gpt-5.6-luna"
+    result = runner.run(_request(), workspace=_workspace(tmp_path / "workspace"))
+
+    assert result.trace_conformant
+    assert result.model == "gpt-5.6-luna"
+    assert result.reasoning_effort == "medium"
 
 
 def test_runner_rejects_ambient_agent_guidance(

@@ -1,0 +1,10 @@
+{
+  "protocol_id": "readiness-feasibility-v1",
+  "frozen": true,
+  "minimum_pass_rate": 0.75,
+  "minimum_valid_rate": 0.8,
+  "non_evaluable_statuses": [
+    "provider_error",
+    "timeout"
+  ]
+}

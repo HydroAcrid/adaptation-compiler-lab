@@ -1,0 +1,18 @@
+[
+  {
+    "status": "passed",
+    "trial_id": "trial-001"
+  },
+  {
+    "status": "failed",
+    "trial_id": "trial-002"
+  },
+  {
+    "status": "timeout",
+    "trial_id": "trial-003"
+  },
+  {
+    "status": "passed",
+    "trial_id": "trial-004"
+  }
+]
