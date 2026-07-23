@@ -1,6 +1,11 @@
 # Milestone 6 Paid-Run Authorization Gate
 
-Status: **prepared; not authorized; no held-out task revealed or target trial started**
+Status: **suspended; not authorized; no held-out task revealed or target trial started**
+
+The project owner inserted and completed the separate Milestone 5.5 Codex development gate before
+this boundary. That gate was not sufficiently diagnostic and did not show compiled adaptation
+beating or tying the strong static profile. This document preserves the frozen Milestone 6
+bindings, but it is not current authorization to execute them. No full paid pilot may start.
 
 This is the final handoff before provider-billed execution. It is a substantive authorization
 boundary, not a pleasantry: approval permits the sealed runner to decrypt the frozen internal
