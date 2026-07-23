@@ -19,16 +19,27 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey,
 
 from adaptation_compiler_lab.domain.base import UtcDateTime
 from adaptation_compiler_lab.domain.references import (
+    AdjudicationRecordRef,
+    BenchmarkRegistrationRef,
     CaptureReceiptRef,
+    ConditionMaterialReceiptRef,
     ConsentReceiptRef,
+    CustodyAccessEventRef,
+    CustodyManifestRef,
     DependencyImpactRef,
     InvalidationEventRef,
     RecallReportRef,
     TombstoneReceiptRef,
+    TrialResultRef,
 )
 from adaptation_compiler_lab.governance.models import (
+    AdjudicationRecord,
+    BenchmarkRegistration,
     CaptureReceipt,
+    ConditionMaterialReceipt,
     ConsentReceipt,
+    CustodyAccessEvent,
+    CustodyManifest,
     DependencyImpact,
     GovernanceEvent,
     GovernanceEventType,
@@ -39,6 +50,7 @@ from adaptation_compiler_lab.governance.models import (
     SignerIdentity,
     SignerRole,
     TombstoneReceipt,
+    TrialResult,
 )
 from adaptation_compiler_lab.serialization.canonical import canonical_bytes, canonical_digest
 
@@ -323,6 +335,114 @@ def sign_recall_report(unsigned: Mapping[str, object], signer: GovernanceSigner)
     return draft.model_copy(update={"signature": envelope})
 
 
+def sign_custody_manifest(
+    unsigned: Mapping[str, object], signer: GovernanceSigner
+) -> CustodyManifest:
+    sealed_at = _timestamp(unsigned, "sealed_at")
+    placeholder = signer.envelope(unsigned, purpose="custody_manifest", signed_at=sealed_at)
+    draft = CustodyManifest.model_validate_json(
+        json.dumps({**unsigned, "signature": placeholder.model_dump(mode="json")})
+    )
+    normalized = _unsigned_payload(draft)
+    envelope = signer.envelope(normalized, purpose="custody_manifest", signed_at=sealed_at)
+    return draft.model_copy(update={"signature": envelope})
+
+
+def sign_benchmark_registration(
+    unsigned: Mapping[str, object], signer: GovernanceSigner
+) -> BenchmarkRegistration:
+    registered_at = _timestamp(unsigned, "registered_at")
+    placeholder = signer.envelope(
+        unsigned,
+        purpose="benchmark_registration",
+        signed_at=registered_at,
+    )
+    draft = BenchmarkRegistration.model_validate_json(
+        json.dumps({**unsigned, "signature": placeholder.model_dump(mode="json")})
+    )
+    normalized = _unsigned_payload(draft)
+    envelope = signer.envelope(
+        normalized,
+        purpose="benchmark_registration",
+        signed_at=registered_at,
+    )
+    return draft.model_copy(update={"signature": envelope})
+
+
+def sign_condition_material_receipt(
+    unsigned: Mapping[str, object], signer: GovernanceSigner
+) -> ConditionMaterialReceipt:
+    frozen_at = _timestamp(unsigned, "frozen_at")
+    placeholder = signer.envelope(
+        unsigned,
+        purpose="condition_material_receipt",
+        signed_at=frozen_at,
+    )
+    draft = ConditionMaterialReceipt.model_validate_json(
+        json.dumps({**unsigned, "signature": placeholder.model_dump(mode="json")})
+    )
+    normalized = _unsigned_payload(draft)
+    envelope = signer.envelope(
+        normalized,
+        purpose="condition_material_receipt",
+        signed_at=frozen_at,
+    )
+    return draft.model_copy(update={"signature": envelope})
+
+
+def sign_trial_result(unsigned: Mapping[str, object], signer: GovernanceSigner) -> TrialResult:
+    scored_at = _timestamp(unsigned, "scored_at")
+    placeholder = signer.envelope(unsigned, purpose="trial_result", signed_at=scored_at)
+    draft = TrialResult.model_validate_json(
+        json.dumps({**unsigned, "signature": placeholder.model_dump(mode="json")})
+    )
+    normalized = _unsigned_payload(draft)
+    envelope = signer.envelope(normalized, purpose="trial_result", signed_at=scored_at)
+    return draft.model_copy(update={"signature": envelope})
+
+
+def sign_adjudication_record(
+    unsigned: Mapping[str, object], signer: GovernanceSigner
+) -> AdjudicationRecord:
+    adjudicated_at = _timestamp(unsigned, "adjudicated_at")
+    placeholder = signer.envelope(
+        unsigned,
+        purpose="adjudication_record",
+        signed_at=adjudicated_at,
+    )
+    draft = AdjudicationRecord.model_validate_json(
+        json.dumps({**unsigned, "signature": placeholder.model_dump(mode="json")})
+    )
+    normalized = _unsigned_payload(draft)
+    envelope = signer.envelope(
+        normalized,
+        purpose="adjudication_record",
+        signed_at=adjudicated_at,
+    )
+    return draft.model_copy(update={"signature": envelope})
+
+
+def sign_custody_access_event(
+    unsigned: Mapping[str, object], signer: GovernanceSigner
+) -> CustodyAccessEvent:
+    occurred_at = _timestamp(unsigned, "occurred_at")
+    placeholder = signer.envelope(
+        unsigned,
+        purpose="custody_access_event",
+        signed_at=occurred_at,
+    )
+    draft = CustodyAccessEvent.model_validate_json(
+        json.dumps({**unsigned, "signature": placeholder.model_dump(mode="json")})
+    )
+    normalized = _unsigned_payload(draft)
+    envelope = signer.envelope(
+        normalized,
+        purpose="custody_access_event",
+        signed_at=occurred_at,
+    )
+    return draft.model_copy(update={"signature": envelope})
+
+
 def _timestamp(payload: Mapping[str, object], field: str) -> datetime:
     value = payload.get(field)
     if isinstance(value, datetime):
@@ -381,7 +501,21 @@ def _required_role(value: SignedGovernanceObject) -> SignerRole | None:
             GovernanceEventType.ACTIVATION_DECISION: SignerRole.ACTIVATION,
             GovernanceEventType.CUSTODY_ACTION: SignerRole.CUSTODY,
         }[value.event_type]
-    if isinstance(value, (DependencyImpact, InvalidationEvent, TombstoneReceipt, RecallReport)):
+    if isinstance(
+        value,
+        (
+            DependencyImpact,
+            InvalidationEvent,
+            TombstoneReceipt,
+            RecallReport,
+            CustodyManifest,
+            BenchmarkRegistration,
+            ConditionMaterialReceipt,
+            TrialResult,
+            AdjudicationRecord,
+            CustodyAccessEvent,
+        ),
+    ):
         return SignerRole.CUSTODY
     return None
 
@@ -410,13 +544,43 @@ def governance_ref(value: TombstoneReceipt) -> TombstoneReceiptRef: ...
 def governance_ref(value: RecallReport) -> RecallReportRef: ...
 
 
+@overload
+def governance_ref(value: CustodyManifest) -> CustodyManifestRef: ...
+
+
+@overload
+def governance_ref(value: BenchmarkRegistration) -> BenchmarkRegistrationRef: ...
+
+
+@overload
+def governance_ref(value: ConditionMaterialReceipt) -> ConditionMaterialReceiptRef: ...
+
+
+@overload
+def governance_ref(value: TrialResult) -> TrialResultRef: ...
+
+
+@overload
+def governance_ref(value: AdjudicationRecord) -> AdjudicationRecordRef: ...
+
+
+@overload
+def governance_ref(value: CustodyAccessEvent) -> CustodyAccessEventRef: ...
+
+
 def governance_ref(
     value: ConsentReceipt
     | CaptureReceipt
     | DependencyImpact
     | InvalidationEvent
     | TombstoneReceipt
-    | RecallReport,
+    | RecallReport
+    | CustodyManifest
+    | BenchmarkRegistration
+    | ConditionMaterialReceipt
+    | TrialResult
+    | AdjudicationRecord
+    | CustodyAccessEvent,
 ) -> (
     ConsentReceiptRef
     | CaptureReceiptRef
@@ -424,6 +588,12 @@ def governance_ref(
     | InvalidationEventRef
     | TombstoneReceiptRef
     | RecallReportRef
+    | CustodyManifestRef
+    | BenchmarkRegistrationRef
+    | ConditionMaterialReceiptRef
+    | TrialResultRef
+    | AdjudicationRecordRef
+    | CustodyAccessEventRef
 ):
     """Return an exact typed reference without exposing signed contents."""
 
@@ -438,4 +608,16 @@ def governance_ref(
         return InvalidationEventRef(object_id=value.event_id, content_digest=digest)
     if isinstance(value, TombstoneReceipt):
         return TombstoneReceiptRef(object_id=value.receipt_id, content_digest=digest)
-    return RecallReportRef(object_id=value.report_id, content_digest=digest)
+    if isinstance(value, RecallReport):
+        return RecallReportRef(object_id=value.report_id, content_digest=digest)
+    if isinstance(value, CustodyManifest):
+        return CustodyManifestRef(object_id=value.manifest_id, content_digest=digest)
+    if isinstance(value, BenchmarkRegistration):
+        return BenchmarkRegistrationRef(object_id=value.registration_id, content_digest=digest)
+    if isinstance(value, ConditionMaterialReceipt):
+        return ConditionMaterialReceiptRef(object_id=value.receipt_id, content_digest=digest)
+    if isinstance(value, TrialResult):
+        return TrialResultRef(object_id=value.result_id, content_digest=digest)
+    if isinstance(value, AdjudicationRecord):
+        return AdjudicationRecordRef(object_id=value.adjudication_id, content_digest=digest)
+    return CustodyAccessEventRef(object_id=value.event_id, content_digest=digest)

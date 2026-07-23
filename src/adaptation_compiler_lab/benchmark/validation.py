@@ -6,7 +6,11 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from adaptation_compiler_lab.benchmark.models import BenchmarkConfig, BenchmarkOutcomeRecord
+from adaptation_compiler_lab.benchmark.models import (
+    BenchmarkConfig,
+    BenchmarkOutcomeRecord,
+    FeasibilityDesign,
+)
 from adaptation_compiler_lab.domain.enums import Partition
 
 
@@ -28,6 +32,18 @@ def validate_benchmark_config(value: BenchmarkConfig | dict[str, Any]) -> Benchm
     payload = value.model_dump(mode="python") if isinstance(value, BenchmarkConfig) else value
     try:
         return BenchmarkConfig.model_validate(payload)
+    except ValidationError as error:
+        raise BenchmarkConfigurationError(error) from error
+
+
+def validate_feasibility_design(
+    value: FeasibilityDesign | dict[str, Any],
+) -> FeasibilityDesign:
+    """Validate the exact machine-readable Milestone 3 preregistration."""
+
+    payload = value.model_dump(mode="python") if isinstance(value, FeasibilityDesign) else value
+    try:
+        return FeasibilityDesign.model_validate(payload)
     except ValidationError as error:
         raise BenchmarkConfigurationError(error) from error
 

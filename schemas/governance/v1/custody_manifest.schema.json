@@ -1,0 +1,230 @@
+{
+  "$defs": {
+    "BlindedSplitManifest": {
+      "additionalProperties": false,
+      "description": "The complete construction-visible view of the held-out split.",
+      "properties": {
+        "benchmark_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Benchmark Id",
+          "type": "string"
+        },
+        "held_out_tasks": {
+          "items": {
+            "$ref": "#/$defs/BlindedTaskDescriptor"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Held Out Tasks",
+          "type": "array"
+        },
+        "manifest_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Manifest Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "benchmark_id",
+        "held_out_tasks"
+      ],
+      "title": "BlindedSplitManifest",
+      "type": "object"
+    },
+    "BlindedTaskDescriptor": {
+      "additionalProperties": false,
+      "description": "Payload-free held-out task metadata visible to construction components.",
+      "properties": {
+        "blind_family_id": {
+          "pattern": "^family-[0-9a-f]{12,64}$",
+          "title": "Blind Family Id",
+          "type": "string"
+        },
+        "blind_task_id": {
+          "pattern": "^task-[0-9a-f]{12,64}$",
+          "title": "Blind Task Id",
+          "type": "string"
+        },
+        "stratum": {
+          "$ref": "#/$defs/TaskStratum"
+        }
+      },
+      "required": [
+        "blind_task_id",
+        "blind_family_id",
+        "stratum"
+      ],
+      "title": "BlindedTaskDescriptor",
+      "type": "object"
+    },
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    },
+    "TaskStratum": {
+      "description": "Required task strata from the benchmark protocol.",
+      "enum": [
+        "direct_transfer",
+        "failure_recurrence",
+        "compositional",
+        "neutral_control",
+        "conflict_safety"
+      ],
+      "title": "TaskStratum",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Signed binding between a blinded split and one external encrypted bundle.",
+  "properties": {
+    "benchmark_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Benchmark Id",
+      "type": "string"
+    },
+    "blinded_split": {
+      "$ref": "#/$defs/BlindedSplitManifest"
+    },
+    "encryption_algorithm": {
+      "const": "AES-256-GCM",
+      "default": "AES-256-GCM",
+      "title": "Encryption Algorithm",
+      "type": "string"
+    },
+    "governance_type": {
+      "const": "custody_manifest",
+      "default": "custody_manifest",
+      "title": "Governance Type",
+      "type": "string"
+    },
+    "manifest_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Manifest Id",
+      "type": "string"
+    },
+    "policy_version": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "sealed_at": {
+      "format": "date-time",
+      "title": "Sealed At",
+      "type": "string"
+    },
+    "sealed_bundle_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Sealed Bundle Digest",
+      "type": "string"
+    },
+    "sealed_plaintext_bytes": {
+      "exclusiveMinimum": 0,
+      "title": "Sealed Plaintext Bytes",
+      "type": "integer"
+    },
+    "sealed_plaintext_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Sealed Plaintext Digest",
+      "type": "string"
+    },
+    "signature": {
+      "$ref": "#/$defs/SignatureEnvelope"
+    },
+    "split_manifest_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Split Manifest Digest",
+      "type": "string"
+    },
+    "storage_boundary": {
+      "const": "outside_compiler_workspace",
+      "default": "outside_compiler_workspace",
+      "title": "Storage Boundary",
+      "type": "string"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "manifest_id",
+    "subject_id",
+    "benchmark_id",
+    "blinded_split",
+    "split_manifest_digest",
+    "sealed_bundle_digest",
+    "sealed_plaintext_digest",
+    "sealed_plaintext_bytes",
+    "policy_version",
+    "sealed_at",
+    "signature"
+  ],
+  "title": "CustodyManifest",
+  "type": "object"
+}

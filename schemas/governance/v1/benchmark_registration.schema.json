@@ -1,0 +1,552 @@
+{
+  "$defs": {
+    "AdaptationMaterialBudget": {
+      "additionalProperties": false,
+      "description": "Common target-visible ceilings; shorter materials are never padded.",
+      "properties": {
+        "pad_shorter_materials": {
+          "const": false,
+          "default": false,
+          "title": "Pad Shorter Materials",
+          "type": "boolean"
+        },
+        "report_actual_usage": {
+          "const": true,
+          "default": true,
+          "title": "Report Actual Usage",
+          "type": "boolean"
+        },
+        "token_ceiling": {
+          "const": 3000,
+          "default": 3000,
+          "title": "Token Ceiling",
+          "type": "integer"
+        },
+        "utf8_byte_ceiling": {
+          "const": 12000,
+          "default": 12000,
+          "title": "Utf8 Byte Ceiling",
+          "type": "integer"
+        }
+      },
+      "title": "AdaptationMaterialBudget",
+      "type": "object"
+    },
+    "BenchmarkCondition": {
+      "description": "The four mandatory confirmatory conditions.",
+      "enum": [
+        "base",
+        "ordinary_memory",
+        "strong_static_profile",
+        "compiled_adaptation"
+      ],
+      "title": "BenchmarkCondition",
+      "type": "string"
+    },
+    "CustodyManifestRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "governance_type": {
+          "const": "custody_manifest",
+          "default": "custody_manifest",
+          "title": "Governance Type",
+          "type": "string"
+        },
+        "object_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "content_digest"
+      ],
+      "title": "CustodyManifestRef",
+      "type": "object"
+    },
+    "FeasibilityDesign": {
+      "additionalProperties": false,
+      "description": "Machine-readable preregistration for the single descriptive pilot.",
+      "properties": {
+        "adaptation_budget": {
+          "$ref": "#/$defs/AdaptationMaterialBudget"
+        },
+        "conditions": {
+          "default": [
+            "base",
+            "ordinary_memory",
+            "strong_static_profile",
+            "compiled_adaptation"
+          ],
+          "items": {
+            "$ref": "#/$defs/BenchmarkCondition"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Conditions",
+          "type": "array"
+        },
+        "construction_view": {
+          "const": "blind_ids_strata_and_signed_digest_only",
+          "default": "blind_ids_strata_and_signed_digest_only",
+          "title": "Construction View",
+          "type": "string"
+        },
+        "design_id": {
+          "const": "codex-to-claude-feasibility-v1",
+          "default": "codex-to-claude-feasibility-v1",
+          "title": "Design Id",
+          "type": "string"
+        },
+        "held_out_payload_location": {
+          "const": "encrypted_external_custody_store",
+          "default": "encrypted_external_custody_store",
+          "title": "Held Out Payload Location",
+          "type": "string"
+        },
+        "held_out_task_count": {
+          "const": 4,
+          "default": 4,
+          "title": "Held Out Task Count",
+          "type": "integer"
+        },
+        "ordinary_memory": {
+          "$ref": "#/$defs/OrdinaryMemoryProtocol"
+        },
+        "planned_target_runs": {
+          "const": 32,
+          "default": 32,
+          "title": "Planned Target Runs",
+          "type": "integer"
+        },
+        "protocol_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Protocol Version",
+          "type": "string"
+        },
+        "repetitions_per_condition": {
+          "const": 2,
+          "default": 2,
+          "title": "Repetitions Per Condition",
+          "type": "integer"
+        },
+        "scoring": {
+          "$ref": "#/$defs/FeasibilityScoringPlan"
+        },
+        "strong_profile": {
+          "$ref": "#/$defs/StrongProfileProtocol"
+        },
+        "study_classification": {
+          "const": "descriptive_feasibility_not_powered",
+          "default": "descriptive_feasibility_not_powered",
+          "title": "Study Classification",
+          "type": "string"
+        },
+        "target_agent": {
+          "const": "Claude Code",
+          "default": "Claude Code",
+          "title": "Target Agent",
+          "type": "string"
+        },
+        "target_model_selection_rule": {
+          "const": "stable_sonnet_full_id_pinned_in_milestone_4_before_source_construction",
+          "default": "stable_sonnet_full_id_pinned_in_milestone_4_before_source_construction",
+          "title": "Target Model Selection Rule",
+          "type": "string"
+        },
+        "task_families": {
+          "default": [
+            "direct_transfer",
+            "failure_recurrence",
+            "compositional",
+            "neutral_control"
+          ],
+          "items": {
+            "$ref": "#/$defs/TaskStratum"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Task Families",
+          "type": "array"
+        },
+        "trial_limits": {
+          "$ref": "#/$defs/FeasibilityTrialLimits"
+        }
+      },
+      "title": "FeasibilityDesign",
+      "type": "object"
+    },
+    "FeasibilityScoringPlan": {
+      "additionalProperties": false,
+      "description": "Frozen scoring, validity, and follow-on decision thresholds.",
+      "properties": {
+        "automated_correctness_percent": {
+          "const": 60,
+          "default": 60,
+          "title": "Automated Correctness Percent",
+          "type": "integer"
+        },
+        "bootstrap_intervals_exploratory_only": {
+          "const": true,
+          "default": true,
+          "title": "Bootstrap Intervals Exploratory Only",
+          "type": "boolean"
+        },
+        "change_discipline_percent": {
+          "const": 15,
+          "default": 15,
+          "title": "Change Discipline Percent",
+          "type": "integer"
+        },
+        "compiled_must_match_or_exceed_every_comparator": {
+          "const": true,
+          "default": true,
+          "title": "Compiled Must Match Or Exceed Every Comparator",
+          "type": "boolean"
+        },
+        "maximum_guardrail_regression_percentage_points": {
+          "const": 5,
+          "default": 5,
+          "title": "Maximum Guardrail Regression Percentage Points",
+          "type": "integer"
+        },
+        "minimum_valid_trial_percent": {
+          "const": 90,
+          "default": 90,
+          "title": "Minimum Valid Trial Percent",
+          "type": "integer"
+        },
+        "p_values_allowed": {
+          "const": false,
+          "default": false,
+          "title": "P Values Allowed",
+          "type": "boolean"
+        },
+        "paired_by_task_and_repetition": {
+          "const": true,
+          "default": true,
+          "title": "Paired By Task And Repetition",
+          "type": "boolean"
+        },
+        "requirement_coverage_percent": {
+          "const": 25,
+          "default": 25,
+          "title": "Requirement Coverage Percent",
+          "type": "integer"
+        },
+        "unresolved_high_severity_adverse_cases_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Unresolved High Severity Adverse Cases Allowed",
+          "type": "boolean"
+        }
+      },
+      "title": "FeasibilityScoringPlan",
+      "type": "object"
+    },
+    "FeasibilityTrialLimits": {
+      "additionalProperties": false,
+      "description": "Preregistered live-pilot limits that later milestones must preserve.",
+      "properties": {
+        "per_trial_minutes": {
+          "const": 30,
+          "default": 30,
+          "title": "Per Trial Minutes",
+          "type": "integer"
+        },
+        "per_trial_turns": {
+          "const": 40,
+          "default": 40,
+          "title": "Per Trial Turns",
+          "type": "integer"
+        },
+        "per_trial_usd": {
+          "const": 5,
+          "default": 5,
+          "title": "Per Trial Usd",
+          "type": "integer"
+        },
+        "retry_rule": {
+          "const": "one_pre_action_transient_provider_failure_only",
+          "default": "one_pre_action_transient_provider_failure_only",
+          "title": "Retry Rule",
+          "type": "string"
+        },
+        "total_pilot_usd": {
+          "const": 200,
+          "default": 200,
+          "title": "Total Pilot Usd",
+          "type": "integer"
+        }
+      },
+      "title": "FeasibilityTrialLimits",
+      "type": "object"
+    },
+    "OrdinaryMemoryProtocol": {
+      "additionalProperties": false,
+      "description": "Frozen comparator rule that does not infer new procedures.",
+      "properties": {
+        "deduplication": {
+          "const": "exact_canonical_digest",
+          "default": "exact_canonical_digest",
+          "title": "Deduplication",
+          "type": "string"
+        },
+        "eligible_content": {
+          "const": "explicit_approved_user_feedback",
+          "default": "explicit_approved_user_feedback",
+          "title": "Eligible Content",
+          "type": "string"
+        },
+        "inferred_procedures_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Inferred Procedures Allowed",
+          "type": "boolean"
+        },
+        "ordering": {
+          "const": "observed_at_then_evidence_id",
+          "default": "observed_at_then_evidence_id",
+          "title": "Ordering",
+          "type": "string"
+        }
+      },
+      "title": "OrdinaryMemoryProtocol",
+      "type": "object"
+    },
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    },
+    "StrongProfileProtocol": {
+      "additionalProperties": false,
+      "description": "Frozen independent-human comparator construction rule.",
+      "properties": {
+        "author_may_score_results": {
+          "const": false,
+          "default": false,
+          "title": "Author May Score Results",
+          "type": "boolean"
+        },
+        "author_role": {
+          "const": "independent_skilled_human",
+          "default": "independent_skilled_human",
+          "title": "Author Role",
+          "type": "string"
+        },
+        "held_out_access_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Held Out Access Allowed",
+          "type": "boolean"
+        },
+        "same_eligible_corpus": {
+          "const": true,
+          "default": true,
+          "title": "Same Eligible Corpus",
+          "type": "boolean"
+        },
+        "time_limit_minutes": {
+          "const": 90,
+          "default": 90,
+          "title": "Time Limit Minutes",
+          "type": "integer"
+        }
+      },
+      "title": "StrongProfileProtocol",
+      "type": "object"
+    },
+    "TaskStratum": {
+      "description": "Required task strata from the benchmark protocol.",
+      "enum": [
+        "direct_transfer",
+        "failure_recurrence",
+        "compositional",
+        "neutral_control",
+        "conflict_safety"
+      ],
+      "title": "TaskStratum",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Signed preregistration binding the frozen design to held-out custody.",
+  "properties": {
+    "benchmark_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Benchmark Id",
+      "type": "string"
+    },
+    "condition_blind_ids": {
+      "items": {
+        "pattern": "^cond-[0-9a-f]{12,64}$",
+        "type": "string"
+      },
+      "maxItems": 4,
+      "minItems": 4,
+      "title": "Condition Blind Ids",
+      "type": "array"
+    },
+    "construction_cutoff": {
+      "format": "date-time",
+      "title": "Construction Cutoff",
+      "type": "string"
+    },
+    "custody_manifest_ref": {
+      "$ref": "#/$defs/CustodyManifestRef"
+    },
+    "design": {
+      "$ref": "#/$defs/FeasibilityDesign"
+    },
+    "design_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Design Digest",
+      "type": "string"
+    },
+    "governance_type": {
+      "const": "benchmark_registration",
+      "default": "benchmark_registration",
+      "title": "Governance Type",
+      "type": "string"
+    },
+    "policy_version": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "randomization_algorithm": {
+      "const": "sha256_counter_shuffle_v1",
+      "default": "sha256_counter_shuffle_v1",
+      "title": "Randomization Algorithm",
+      "type": "string"
+    },
+    "randomization_seed_commitment": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Randomization Seed Commitment",
+      "type": "string"
+    },
+    "registered_at": {
+      "format": "date-time",
+      "title": "Registered At",
+      "type": "string"
+    },
+    "registration_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Registration Id",
+      "type": "string"
+    },
+    "reveal_not_before": {
+      "format": "date-time",
+      "title": "Reveal Not Before",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signature": {
+      "$ref": "#/$defs/SignatureEnvelope"
+    },
+    "source_construction_not_before": {
+      "format": "date-time",
+      "title": "Source Construction Not Before",
+      "type": "string"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "registration_id",
+    "subject_id",
+    "benchmark_id",
+    "design",
+    "design_digest",
+    "custody_manifest_ref",
+    "condition_blind_ids",
+    "construction_cutoff",
+    "source_construction_not_before",
+    "reveal_not_before",
+    "randomization_seed_commitment",
+    "policy_version",
+    "registered_at",
+    "signature"
+  ],
+  "title": "BenchmarkRegistration",
+  "type": "object"
+}

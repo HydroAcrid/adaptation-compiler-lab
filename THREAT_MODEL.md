@@ -1,13 +1,14 @@
 # Threat Model
 
-Status: **Milestone 2 controls implemented for synthetic local operation; real data is out of scope**
+Status: **Milestone 3 controls implemented for synthetic local operation; real data is out of scope**
 
 ## Assets and trust boundary
 
 Protected assets are raw evidence, signing/encryption keys, consent scope, user-intent authority,
-scoped behavioral artifacts, release and activation integrity, benchmark holdout integrity, and
-target-facing files. The trusted computing boundary is a local workspace, external local key
-files, and explicit signed governance. The private GitHub repository is trusted only for source and
+scoped behavioral artifacts, release and activation integrity, benchmark holdout/result integrity,
+and target-facing files. The trusted computing boundary is a local workspace, external local key
+files, an external non-Git custody directory, and explicit signed governance. The private GitHub
+repository is trusted only for source and
 documentation distribution; it is not a research-data or secret store. The system does not use
 live agent APIs.
 
@@ -37,7 +38,12 @@ approval, or artifact promotion.
 | Key or raw data committed to GitHub | Keys are required to resolve outside the workspace; scans reject credential-like and private-path material; documentation forbids raw research data in Git. | A compromised operator can bypass local policy, so branch review and repository scanning remain necessary. |
 | Invasive artifact or implicit tool execution | Closed routes, evaluation-only option, heightened skill/tool recommendation rationale, file-only rendering. | A downstream human may choose to use a recommendation; this project never executes it. |
 | Unsupported/lossy target mapping | Explicit target profile, rendering trace, capability negotiation, validation failure rather than broad fallback. | Current target profiles are prototype assumptions, not a live compatibility guarantee. |
-| Holdout leakage | Partition labels, construction/held-out graph checks, benchmark bundle/custody/freeze validation, synthetic contamination tests. | Actual custody/access logging and independent evaluator procedures are future work. |
+| Held-out bundle or split substitution | External AES-256-GCM envelope authenticates benchmark/split/plaintext metadata; signed `CustodyManifest` binds the blinded split and ciphertext digest; substitution and signature-tamper property tests fail closed. | Host compromise and truly independent physical/operator custody remain operational risks. |
+| Premature holdout reveal | Construction sees only blind task/family IDs, strata, and signed digest; reveal requests are signed allow/deny events and fail before the registered boundary or complete four-condition freeze; no plaintext-returning API exists. | Milestone 6's sealed runner must implement the eventual authorized handoff without widening this API. |
+| Unequal comparator information or covert padding | Atomic material-set validation requires identical eligible corpus, source tasks/evaluations, and wrapper across source-derived conditions; exact actual tokens/bytes are recorded under common ceilings; padding is forbidden. | Human profile quality and tokenizer reproducibility require controlled operations in later milestones. |
+| Access-log deletion or reordering | Every custody action is canonical-signed, sequence-numbered, exact-ref linked, and append-only; chain validation detects gaps, substitution, and reordered history. | SQLite/host administrators remain inside the local trust boundary; independent replication is not claimed. |
+| Trial-result or score correction rewriting history | Signed `TrialResult` rows are immutable and cell-bound; corrections append signed digest-only `AdjudicationRecord` chains. | No live scorer exists yet, and reviewer competence/independence remains procedural. |
+| Holdout leakage through construction metadata | Blind-ID formats reject condition labels; split metadata contains no prompts, answers, rubrics, paths, or raw locators; construction/held-out graph and cutoff checks remain enforced. | Blind strata can still reveal broad task family; the frozen design accepts this intentionally. |
 | State leakage between benchmark conditions | Protocol requires clean sessions and frozen condition wrappers. | No execution harness exists yet to enforce it. |
 | Reversible-operation failure | Immutable artifacts/releases/packs and approval-gated canary, activation, supersession, rollback events. | No external installation occurs, so rollback is only local pointer state in this MVP. |
 
@@ -48,9 +54,9 @@ credential, or private project data is authorized. Synthetic consent/capture rec
 mechanism without authorizing collection. The intended real-data contract already requires exact
 selector, scope, uses, expiry, retention, signer, signature, source/schema digest, and payload
 digest, but the capture boundary remains disabled. Withdrawal, dependency recall, purge/tombstone,
-and atomic local deactivation are implemented only against synthetic records. Operational incident
-handling and independent holdout custody must be implemented and approved before a real record is
-ingested.
+atomic local deactivation, and benchmark-custody mechanics are implemented only with synthetic
+bytes. Operational incident handling, key backup/rotation, and independent custodian procedures
+must be approved before a real record or real held-out task is admitted.
 
 ## Security invariants
 
@@ -68,6 +74,11 @@ ingested.
     immutable record.
 11. Revoked or expired material cannot support approval, promotion, release, rendering, or
     activation.
+12. Held-out bundle bytes remain encrypted outside both workspace and Git; no signed record exposes
+    their locator or content.
+13. Registration precedes source construction, complete condition freeze precedes reveal
+    authorization, and construction never receives held-out payloads.
+14. Trial results and access history are append-only; corrections extend signed chains.
 
 ## Incident posture
 

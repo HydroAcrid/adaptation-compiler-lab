@@ -1,86 +1,130 @@
 # Benchmark Protocol
 
-Status: **normative protocol with implemented registration validation only**
+Status: **Milestone 3 normative feasibility design frozen; synthetic custody/registry implemented;
+no held-out reveal or trial execution**
 
-## 1. Claim under test
+## 1. Claim and study class
 
-The first eventual study asks whether a compiled adaptation pack improves a fixed target coding
-agent on unseen tasks relative to three preregistered comparators. This document specifies a future
-experiment; no study, target invocation, scoring run, or empirical comparison has occurred.
+The first eventual study asks whether a compiled adaptation pack improves a fixed Claude Code
+target on unseen coding tasks relative to three comparators. This is a descriptive single-user
+feasibility pilot, not a powered or confirmatory comparison. Building the compiler, sealing a
+bundle, or passing synthetic tests is not evidence that transfer improves performance.
 
-## 2. Required conditions
+The byte-frozen machine representation is
+`preregistration/feasibility-pilot-v1.json`, whose raw SHA-256 is
+`4a56aa96ccb692e43c7a23a416e272531be60e9df75d8213ae121f19c153189f`. The adjacent `.sha256`
+sidecar and foundation tests detect semantic and byte drift. It was frozen before source-corpus
+construction and must not be edited after held-out access; a changed design requires a new version.
+
+## 2. Frozen design
+
+The pilot has one held-out task in each of four task families:
+
+1. Direct transfer.
+2. Failure recurrence.
+3. Compositional use of multiple learned behaviors.
+4. Neutral control, where adaptation should not create harmful over-application.
+
+Each task is run under four conditions with two repetitions per condition: 4 tasks × 4 conditions ×
+2 repetitions = **32 planned target runs**. Task, family, and condition identities are opaque in
+construction and scoring views. The target-model selection rule—not the model itself—is frozen:
+Milestone 4 must resolve and pin the stable Sonnet full model ID before source construction.
+
+## 3. Conditions and equal-information rule
 
 | Condition | Material visible to the target | Construction rule |
 | --- | --- | --- |
-| Base agent | Standard frozen task wrapper only. | No adaptation material. |
-| Ordinary memory | Deterministic chronological rendering of explicit approved feedback, with exact deduplication and no inferred procedures. | Built from the same eligible construction corpus under the common ceiling. |
-| Strong manually written profile | Careful human synthesis of eligible preferences, procedures, examples, and constraints. | An independent skilled human uses the same eligible corpus, no holdout access, and a recorded 90-minute limit. |
-| Compiled adaptation pack | Approved release rendered to the registered target profile. | Built only through typed provenance, review, routing, and release gates. |
+| Base agent | The common frozen task wrapper only. | No adaptation material, corpus reference, or authoring step. |
+| Ordinary memory | Explicit approved user feedback in deterministic chronological order. | Sort by observation time then Evidence ID, deduplicate exact canonical digests, and infer no procedures. |
+| Strong manually written profile | A careful human synthesis of eligible preferences, procedures, examples, and constraints. | An identified independent skilled human uses the same eligible corpus, receives no holdout access, spends at most 90 minutes, and may not score results. |
+| Compiled adaptation pack | The approved release rendered to the frozen target profile. | Construct only through typed provenance, evaluation, review, routing, promotion, and release gates. |
 
-The source-derived conditions must use the same permitted construction corpus and registered
-information boundary. The base condition must receive no adaptation material. Differences besides
-registered condition materials are prohibited.
+The three source-derived conditions must bind the same eligible-corpus digest, source task IDs,
+source evaluation-case IDs, and common wrapper digest. The registry rejects the entire material set
+atomically if any condition differs, is missing, was built before registration, claims held-out
+access, or reveals condition identity through a blind ID. Milestone 5 must validate every claimed
+source ID and timestamp against the registered cutoff before signing these receipts.
 
-## 3. Freeze and holdout isolation
+Each source-derived condition has the same ceiling: **3,000 target-visible adaptation tokens and
+12,000 UTF-8 bytes**. Actual tokens and bytes are signed. Shorter materials stay shorter; padding
+and hidden stored material are prohibited. Equality is an information-access and ceiling rule, not
+a requirement to make the three artifacts the same length.
 
-Before any candidate extraction, profile/memory authoring, routing, artifact evaluation, release
-selection, or rendering, freeze the construction cutoff, task-family split/custody policy, novelty
-criteria, target/model/runtime/tool settings, token budget, scoring protocol, and analysis plan.
+## 4. Custody and information flow
 
-Before held-out reveal, freeze and hash all four condition bundles, including profile and memory
-files, release/pack digests, renderers, wrappers, runtime selectors, randomization, retries,
-budgets, and evaluation configuration. Held-out prompts, fixtures, tests, rubrics, answers, traces,
-scores, and any derivative are inaccessible to construction actors and components. The validated
-configuration represents this separation with partitions, blind IDs, custody records, cluster
-assignments, and bundle hashes.
+Held-out payload bytes remain in an AES-256-GCM sealed bundle outside the compiler workspace and
+outside every Git repository. The custody key is separate from evidence-encryption and signing
+keys. The authenticated envelope binds the benchmark ID, blinded split digest, plaintext digest and
+length, and key fingerprint. A signed `CustodyManifest` binds those values to exactly four
+payload-free task descriptors containing only blind task ID, blind family ID, and stratum. It never
+records a storage path.
 
-After a held-out task or result is exposed, it is retired from use as a holdout for later adaptation
-construction. A new experimental cycle requires a new frozen release and fresh heldout material.
+Construction components may see only those blinded descriptors and the signed split digest. They
+must not see held-out prompts, repositories, fixtures, tests, rubrics, answers, traces, scores, raw
+locators, or derivatives. Seal verification returns authenticated metadata only. This milestone
+intentionally has no plaintext-returning custody method.
 
-## 4. Execution requirements for a future run
+Every seal, verification, and reveal request appends a canonical signed `CustodyAccessEvent` with an
+exact prior-event reference. A reveal request is denied before its registered time boundary, before
+all four condition receipts freeze, or when any reference/digest fails verification. An allowed
+event is authorization evidence for a later sealed runner; it is not the payload itself.
 
-- Pin the target agent/model/version, system wrapper, operating environment, tools/network policy,
-  token/time/retry budget, and evaluator version across conditions.
-- Randomize condition order within task and use clean sessions/workspaces to prevent cross-condition
-  state leakage. Do not allow target memory or runtime selectors to persist learned results.
-- Apply the same target-visible ceiling to the three source-derived conditions; do not pad shorter
-  materials. The planned feasibility ceiling is 3,000 adaptation tokens and 12,000 UTF-8 bytes,
-  subject to Milestone 3 preregistration. Report actual tokens and bytes.
-- Use task-family/repository clusters rather than treating repeated trials or related tasks as
-  independent observations.
-- Blind condition identity for human raters and retain automated evidence, raw scores, adjudication,
-  deviations, and integrity-audit results.
+## 5. Freeze lifecycle
 
-## 5. Outcomes and analysis plan
+The ordered lifecycle is:
 
-Before unsealing, register a primary task-utility score, safety and neutral-task guardrails, practical
-superiority margin, missing-data rules, cluster-aware estimator, and multiplicity adjustment for all
-three compiled-pack contrasts. Report each contrast, uncertainty interval, safety outcome, cost,
-token use, failures, exclusions, and deviations regardless of direction.
+1. Seal the external split and sign its `CustodyManifest` plus initial access event.
+2. Sign `BenchmarkRegistration`, binding the frozen design/custody digests, construction cutoff,
+   source-construction start, reveal boundary, four blind condition IDs, randomization algorithm,
+   and seed commitment.
+3. Construct source-derived material only after registration from the eligible pre-cutoff corpus.
+4. Sign and atomically persist exactly four `ConditionMaterialReceipt` objects. All common
+   information, wrapper, author, size, no-padding, and no-holdout constraints must pass together.
+5. Permit a signed reveal request only after the registered boundary and complete material freeze.
+6. In later milestones, verify all frozen digests before any target run.
 
-A valid negative or mixed result is informative. The hypothesis is not supported merely because a
-pack exists or because it beats one weak baseline. Any post-hoc change to a bundle, task set,
-metric, exclusion, or analysis invalidates the confirmatory comparison and requires fresh holdout.
+Any post-freeze change to the split, wrapper, corpus, condition material, target/runtime policy,
+randomization, scorer, metric, or exclusion rule creates a new registration and requires a fresh
+holdout. Exposed tasks are retired from future holdout use.
 
-## 6. What the current code validates
+## 6. Trial results and adjudication
 
-The benchmark module validates a declarative registration: four recognized conditions, blind
-condition IDs, construction/held-out partitions, clusters, frozen bundles, custody fields,
-source-derived information equality, budget constraints, deterministic manifest identity, and
-construction-cutoff and construction-to-heldout reference constraints. It does **not**
-cryptographically bind the declared split-manifest digest to an independently custodied manifest,
-control file permissions, operate a sealed evaluator, launch an agent, calculate statistics, or
-substitute for preregistration and independent custody.
+A signed immutable `TrialResult` represents one blinded task/condition/repetition cell and binds
+the exact registration, condition material, trial record, environment, rubric, automated-test
+evidence, scorer, validity, and guardrails. It records three normalized components:
 
-Milestone 2 does not freeze the feasibility registration, create custody objects, bind a sealed
-bundle, reveal tasks, or write results. The planned Milestone 3 design is four held-out tasks,
-four conditions, and two repetitions (32 target runs), but it becomes normative only when its
-signed custody/registration artifacts and tests are merged before source construction.
+- 60% automated correctness;
+- 25% requirement coverage; and
+- 15% change discipline and maintainability.
 
-## 7. Reporting boundary
+The target agent's self-report is never scoring evidence. Security violations, forbidden
+operations, leakage, cost, latency, tool failures, and incomplete runs are separate guardrails.
+Corrections never replace a result row. A signed `AdjudicationRecord` extends an exact, ordered
+history and carries only original/corrected value digests, the decision, reviewer, time, and reason;
+private corrected values remain outside metadata.
 
-Any future report must distinguish portable behavioral specifications from target-native files,
-promotion evaluation cases from held-out benchmark tasks, confirmatory from exploratory analysis,
-and single-user evidence from population claims. Private source content must not be published merely
-to reproduce an experiment; use schemas, hashes, synthetic fixtures, and controlled audit access
-instead.
+The future analysis is paired by task and repetition. It reports condition means, medians, paired
+differences, and exploratory bootstrap intervals. It reports no p-values and makes no hypothesis-
+confirmation claim. Fewer than 90% valid trial records, any custody/condition leakage, or any result
+without exact frozen environment and bundle digests makes the pilot an instrumentation failure with
+no condition comparison.
+
+A separately powered study may be recommended only if the feasibility pilot is valid, the compiled
+pack point estimate is at least as high as every comparator, no guardrail regresses by more than
+five percentage points, and no high-severity adverse case remains unresolved.
+
+## 7. Later execution boundary
+
+Milestone 6, if separately approved, must randomize the 32 trials in the committed seeded order and
+use a fresh disposable worktree and empty target configuration/session per run. Each trial is
+limited to 30 minutes, 40 turns, and USD $5; the pilot is capped at USD $200. Only a transient
+provider failure before any tool call or file change may receive one retry. These limits are frozen
+now but are not implemented or exercised in Milestone 3.
+
+Milestone 3 does not install or call Claude Code, implement Codex/Claude connectors, read real source
+tasks, author real condition materials, retrieve a holdout, create trial records from real runs,
+score work, or calculate an empirical comparison. Its tests establish that the experimental
+paperwork and custody machinery fail closed under synthetic substitution, tampering, premature
+reveal, unequal information, budget violations, blind-label leakage, access-log manipulation, and
+result rewriting. Operational custodian independence, connector/runtime isolation, human-profile
+authorship, scorer operations, and live execution remain later gates.

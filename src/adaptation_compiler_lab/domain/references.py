@@ -16,6 +16,12 @@ class GovernanceRef(FrozenModel):
         "invalidation_event",
         "tombstone_receipt",
         "recall_report",
+        "custody_manifest",
+        "benchmark_registration",
+        "condition_material_receipt",
+        "trial_result",
+        "adjudication_record",
+        "custody_access_event",
     ]
     object_id: Identifier
     schema_version: Literal["1.0"] = "1.0"
@@ -44,6 +50,30 @@ class TombstoneReceiptRef(GovernanceRef):
 
 class RecallReportRef(GovernanceRef):
     governance_type: Literal["recall_report"] = "recall_report"
+
+
+class CustodyManifestRef(GovernanceRef):
+    governance_type: Literal["custody_manifest"] = "custody_manifest"
+
+
+class BenchmarkRegistrationRef(GovernanceRef):
+    governance_type: Literal["benchmark_registration"] = "benchmark_registration"
+
+
+class ConditionMaterialReceiptRef(GovernanceRef):
+    governance_type: Literal["condition_material_receipt"] = "condition_material_receipt"
+
+
+class TrialResultRef(GovernanceRef):
+    governance_type: Literal["trial_result"] = "trial_result"
+
+
+class AdjudicationRecordRef(GovernanceRef):
+    governance_type: Literal["adjudication_record"] = "adjudication_record"
+
+
+class CustodyAccessEventRef(GovernanceRef):
+    governance_type: Literal["custody_access_event"] = "custody_access_event"
 
 
 class ExactRecordRef(FrozenModel):

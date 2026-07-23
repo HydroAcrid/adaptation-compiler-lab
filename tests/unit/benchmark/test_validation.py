@@ -54,6 +54,8 @@ def bundle(
         material_digest=digest("b"),
         stored_tokens=100 if source_derived else 0,
         target_visible_tokens=100 if source_derived else 0,
+        stored_bytes=400 if source_derived else 0,
+        target_visible_bytes=400 if source_derived else 0,
         source_task_ids=("task-construction",) if source_derived else (),
         source_evaluation_case_ids=("case-construction",) if source_derived else (),
         frozen_at=moment(3),
@@ -143,6 +145,7 @@ def valid_config() -> BenchmarkConfig:
             tokenizer_version="1.0.0",
             storage_ceiling=200,
             runtime_ceiling=200,
+            utf8_byte_ceiling=800,
             budget_ladder=(50, 100, 200),
             minimum_viable_rung=50,
             c_match=100,
@@ -173,12 +176,15 @@ def test_valid_four_condition_config_and_manifest_are_deterministic() -> None:
     assert {item.condition for item in config.condition_bundles} == set(BenchmarkCondition)
 
 
-def test_every_source_derived_bundle_is_exactly_size_matched() -> None:
+def test_shorter_source_derived_bundle_is_allowed_without_padding() -> None:
     data = config_data()
     data["condition_bundles"][1]["target_visible_tokens"] = 99
+    data["condition_bundles"][1]["stored_tokens"] = 99
 
-    with pytest.raises(BenchmarkConfigurationError, match="equal c_match"):
-        validate_benchmark_config(data)
+    validated = validate_benchmark_config(data)
+
+    assert validated.condition_bundles[1].target_visible_tokens == 99
+    assert not validated.condition_bundles[1].padded
 
 
 def test_confirmatory_storage_cannot_hide_uninjected_material() -> None:
@@ -186,6 +192,15 @@ def test_confirmatory_storage_cannot_hide_uninjected_material() -> None:
     data["condition_bundles"][1]["stored_tokens"] = 101
 
     with pytest.raises(BenchmarkConfigurationError, match="storage and target-visible"):
+        validate_benchmark_config(data)
+
+
+def test_confirmatory_bundle_must_stay_within_utf8_byte_ceiling() -> None:
+    data = config_data()
+    data["condition_bundles"][1]["stored_bytes"] = 801
+    data["condition_bundles"][1]["target_visible_bytes"] = 801
+
+    with pytest.raises(BenchmarkConfigurationError, match="UTF-8 byte ceiling"):
         validate_benchmark_config(data)
 
 
@@ -296,10 +311,12 @@ def test_task_family_cannot_cross_partitions() -> None:
 
 
 def test_outcome_uses_registered_utility_and_catastrophic_floor() -> None:
-    outcome = _outcome("run-1", "cond-000000000001")
+    outcome = _outcome("run-1", "cond-000000000001").model_copy(
+        update={"adaptation_score": 0.8, "quality_score": 0.2}
+    )
     catastrophic = outcome.model_copy(update={"catastrophic_safety_violation": True})
 
-    assert outcome.normalized_utility == pytest.approx(0.8)
+    assert outcome.normalized_utility == pytest.approx(0.83)
     assert catastrophic.normalized_utility == 0.0
     outcomes = tuple(
         _outcome(f"run-{index}", blind_id)

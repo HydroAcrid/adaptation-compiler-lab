@@ -1,8 +1,10 @@
 """Smoke tests for the installable project and published contracts."""
 
 import json
+from hashlib import sha256
 from pathlib import Path
 
+from adaptation_compiler_lab.benchmark.models import FeasibilityDesign
 from adaptation_compiler_lab.domain import RecordKind
 from adaptation_compiler_lab.governance.schema_export import governance_schema_bundle
 from adaptation_compiler_lab.serialization import schema_bundle
@@ -47,3 +49,14 @@ def test_governance_v1_schema_snapshots_match_signed_contracts() -> None:
     }
     for name, schema in schemas.items():
         assert json.loads((directory / f"{name}.schema.json").read_text(encoding="utf-8")) == schema
+
+
+def test_feasibility_preregistration_is_typed_and_digest_frozen() -> None:
+    root = Path(__file__).parents[1] / "preregistration"
+    path = root / "feasibility-pilot-v1.json"
+    encoded = path.read_bytes()
+    design = FeasibilityDesign.model_validate_json(encoded)
+    expected = (root / "feasibility-pilot-v1.sha256").read_text(encoding="ascii").strip()
+
+    assert design == FeasibilityDesign()
+    assert expected == f"{sha256(encoded).hexdigest()}  {path.name}"

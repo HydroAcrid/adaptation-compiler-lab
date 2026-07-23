@@ -1,0 +1,62 @@
+{
+  "adaptation_budget": {
+    "pad_shorter_materials": false,
+    "report_actual_usage": true,
+    "token_ceiling": 3000,
+    "utf8_byte_ceiling": 12000
+  },
+  "conditions": [
+    "base",
+    "ordinary_memory",
+    "strong_static_profile",
+    "compiled_adaptation"
+  ],
+  "construction_view": "blind_ids_strata_and_signed_digest_only",
+  "design_id": "codex-to-claude-feasibility-v1",
+  "held_out_payload_location": "encrypted_external_custody_store",
+  "held_out_task_count": 4,
+  "ordinary_memory": {
+    "deduplication": "exact_canonical_digest",
+    "eligible_content": "explicit_approved_user_feedback",
+    "inferred_procedures_allowed": false,
+    "ordering": "observed_at_then_evidence_id"
+  },
+  "planned_target_runs": 32,
+  "protocol_version": "1.0.0",
+  "repetitions_per_condition": 2,
+  "scoring": {
+    "automated_correctness_percent": 60,
+    "bootstrap_intervals_exploratory_only": true,
+    "change_discipline_percent": 15,
+    "compiled_must_match_or_exceed_every_comparator": true,
+    "maximum_guardrail_regression_percentage_points": 5,
+    "minimum_valid_trial_percent": 90,
+    "p_values_allowed": false,
+    "paired_by_task_and_repetition": true,
+    "requirement_coverage_percent": 25,
+    "unresolved_high_severity_adverse_cases_allowed": false
+  },
+  "strong_profile": {
+    "author_may_score_results": false,
+    "author_role": "independent_skilled_human",
+    "held_out_access_allowed": false,
+    "same_eligible_corpus": true,
+    "time_limit_minutes": 90
+  },
+  "study_classification": "descriptive_feasibility_not_powered",
+  "target_agent": "Claude Code",
+  "target_model_selection_rule": "stable_sonnet_full_id_pinned_in_milestone_4_before_source_construction",
+  "task_families": [
+    "direct_transfer",
+    "failure_recurrence",
+    "compositional",
+    "neutral_control"
+  ],
+  "trial_limits": {
+    "per_trial_minutes": 30,
+    "per_trial_turns": 40,
+    "per_trial_usd": 5,
+    "retry_rule": "one_pre_action_transient_provider_failure_only",
+    "total_pilot_usd": 200
+  }
+}

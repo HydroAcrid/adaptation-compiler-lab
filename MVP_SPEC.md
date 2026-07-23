@@ -1,6 +1,6 @@
 # MVP Specification
 
-Status: **Milestone 2 implemented; local, synthetic-only recall foundation**
+Status: **Milestone 3 implemented; local, synthetic-only benchmark custody foundation**
 Implementation status: **no live agents, real data, or benchmark execution**
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** describe the
@@ -11,8 +11,8 @@ implemented MVP contract unless explicitly marked as future work.
 The MVP is a local compiler and experiment-preparation instrument. It models a completed task,
 its outcome and evidence, makes a reviewable evaluation candidate before promoting a correction or
 failure, produces typed artifacts, freezes a release, and renders a target-specific external pack.
-It validates a four-condition benchmark registration but does not execute target agents or score
-their work.
+It persists a signed four-condition benchmark registration and custody ledger, but does not reveal
+held-out work, execute target agents, or perform scoring.
 
 The intended first study compares the following conditions on held-out tasks:
 
@@ -71,6 +71,16 @@ that binds non-synthetic observations to exact signed consent and capture receip
   its canonical digest. It MUST authenticate the ciphertext before unlink, retain no raw content in
   the tombstone, restore bytes if the metadata transaction fails, and fail closed without the AES
   key.
+- `CustodyManifest`, `BenchmarkRegistration`, `ConditionMaterialReceipt`, `TrialResult`,
+  `AdjudicationRecord`, and `CustodyAccessEvent` MUST be canonical signed governance objects and
+  MUST remain append-only in the local ledger.
+- The encrypted held-out bundle MUST reside outside the compiler workspace and any Git repository,
+  use a custody key distinct from raw-evidence and signing keys, and bind its ciphertext digest,
+  authenticated plaintext digest/length, benchmark ID, and blinded split digest.
+- Construction code MUST receive only four blind task IDs, four blind family IDs, the four frozen
+  strata, and the signed split digest. The custody API MUST NOT expose held-out plaintext.
+- A reveal request MUST create a signed allowed/denied access event. It MUST be denied before the
+  registered reveal boundary or before all four condition receipts have frozen successfully.
 
 ### Compiler safeguards
 
@@ -102,6 +112,17 @@ that binds non-synthetic observations to exact signed consent and capture receip
 - Recall MUST preserve immutable record content and append lifecycle overlays. When a recalled
   dependency reaches an active release or pack, its deactivation MUST commit atomically with the
   record invalidations.
+- Benchmark registration MUST precede source construction. Condition freeze MUST reject partial
+  sets, mismatched wrappers, unequal eligible construction corpora, unequal source-task/evaluation
+  access, held-out access, label-revealing blind IDs, padding, and material above 3,000 target
+  tokens or 12,000 UTF-8 bytes.
+- Ordinary memory MUST be a deterministic chronological rendering of explicit approved user
+  feedback with exact canonical-digest deduplication and no inferred procedures. The strong profile
+  MUST be authored by an identified independent skilled human from the same eligible corpus within
+  90 minutes, without held-out access or permission to score results.
+- A `TrialResult` MUST identify one blinded task/condition/repetition cell and exact frozen
+  registration, material, environment, rubric, test, and trial-record digests. Corrections MUST be
+  signed `AdjudicationRecord` entries; they MUST NOT alter the original result.
 
 ## 4. Local workflow
 
@@ -129,27 +150,37 @@ automatic activation, target execution, or general-purpose data ingestion.
 
 ## 5. Benchmark foundation
 
-`benchmark validate` checks a deterministic registration with blind condition identifiers,
-construction/held-out partitions, cluster assignments, custody metadata, equal-information/budget
-requirements for source-derived conditions, frozen bundle hashes, and no held-out references in
-construction materials. It validates the protocol; it does not unseal tasks, invoke a model, or
-calculate an effect size.
+The frozen `codex-to-claude-feasibility-v1` design contains four held-out task families—direct
+transfer, failure recurrence, compositional, and neutral control—four conditions, and two
+repetitions per condition, for 32 planned target runs. It is descriptive feasibility work, not a
+powered comparison. Its exact machine-readable preregistration and raw-file SHA-256 sidecar live in
+`preregistration/`; tests reject semantic or byte-level drift.
 
-Every condition bundle, selector (if any), model/runtime setting, tool policy, token budget,
+The signed registry binds that design to an external AES-256-GCM bundle, four payload-free blinded
+task descriptors, four opaque condition IDs, a construction cutoff, a construction start boundary,
+a reveal boundary, and a committed randomization seed. The registry atomically freezes exactly one
+signed material receipt per condition and appends a signed, hash-linked access history. Successful
+seal verification returns only authenticated metadata. Reveal authorization records a decision but
+does not retrieve plaintext.
+
+Every condition bundle, selector (if any), model/runtime setting, tool policy, budget,
 randomization plan, and scoring procedure MUST be frozen before held-out reveal. A held-out prompt,
 fixture, rubric, answer, trace, score, or derivative MUST NOT affect extraction, baseline authoring,
 routing, approval, release selection, or rendering. Any later adaptation requires a new release and
-fresh holdout.
+fresh holdout. The older `benchmark validate` command remains a synthetic declarative validator;
+Milestone 3 intentionally adds no custody/reveal CLI and no execution path.
 
 ## 6. Acceptance scope completed here
 
-The completed Milestone 2 foundation adds signed impact/invalidation/tombstone/report contracts,
-complete dependency preflight, exact destructive confirmation, consent revocation, evidence
-restriction/purge, artifact revocation, release retirement, pack invalidation, atomic active-pointer
-deactivation, deterministic conflict precedence, immutable migration compatibility, CLI commands,
-and security/property tests. It uses synthetic records only.
+The completed Milestone 3 foundation adds the six signed benchmark object types, typed exact
+references, JSON Schema snapshots, checksummed migration 0005, external AES custody, signed chained
+access decisions, atomic four-material freeze, blinded cell validation, immutable result storage,
+digest-only adjudication, the frozen feasibility preregistration, and synthetic security/property
+tests for substitution, early reveal, unequal information, label leakage, budgets, tampering, and
+result rewriting. Earlier compiler, privacy, governance, and recall controls remain in force.
 
-It does not yet provide authenticated source capture, real consent selection, benchmark custody or
-registry objects, connector conformance, real-agent invocation, an execution harness, human-rater
-workflow, benchmark scoring/statistics, remote research-data coordination, a UI, or any model
-adaptation. Each belongs to a later gated milestone and requires explicit approval.
+It does not provide authenticated source capture, real consent selection, live connector
+conformance, real-agent invocation, a held-out plaintext retrieval API, an execution harness,
+human-rater operations, benchmark scoring/statistics, remote research-data coordination, a UI, or
+any model adaptation. Milestone 4 is separately gated and limited to version-pinned connectors and
+synthetic conformance; all later work still requires explicit approval.

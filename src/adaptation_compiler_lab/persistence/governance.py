@@ -6,8 +6,13 @@ import sqlite3
 from pathlib import Path
 
 from adaptation_compiler_lab.governance import (
+    AdjudicationRecord,
+    BenchmarkRegistration,
     CaptureReceipt,
+    ConditionMaterialReceipt,
     ConsentReceipt,
+    CustodyAccessEvent,
+    CustodyManifest,
     DependencyImpact,
     GovernanceEvent,
     GovernanceObjectKind,
@@ -16,6 +21,7 @@ from adaptation_compiler_lab.governance import (
     SignedGovernanceObject,
     SignerIdentity,
     TombstoneReceipt,
+    TrialResult,
 )
 from adaptation_compiler_lab.governance.signing import verify_signed_governance
 from adaptation_compiler_lab.persistence.errors import IntegrityError, RecordConflictError
@@ -31,6 +37,12 @@ _MODELS: dict[GovernanceObjectKind, type[SignedGovernanceObject]] = {
     GovernanceObjectKind.INVALIDATION_EVENT: InvalidationEvent,
     GovernanceObjectKind.TOMBSTONE_RECEIPT: TombstoneReceipt,
     GovernanceObjectKind.RECALL_REPORT: RecallReport,
+    GovernanceObjectKind.CUSTODY_MANIFEST: CustodyManifest,
+    GovernanceObjectKind.BENCHMARK_REGISTRATION: BenchmarkRegistration,
+    GovernanceObjectKind.CONDITION_MATERIAL_RECEIPT: ConditionMaterialReceipt,
+    GovernanceObjectKind.TRIAL_RESULT: TrialResult,
+    GovernanceObjectKind.ADJUDICATION_RECORD: AdjudicationRecord,
+    GovernanceObjectKind.CUSTODY_ACCESS_EVENT: CustodyAccessEvent,
 }
 
 
@@ -45,6 +57,16 @@ def _object_id(value: SignedGovernanceObject) -> str:
         return value.event_id
     if isinstance(value, RecallReport):
         return value.report_id
+    if isinstance(value, CustodyManifest):
+        return value.manifest_id
+    if isinstance(value, BenchmarkRegistration):
+        return value.registration_id
+    if isinstance(value, TrialResult):
+        return value.result_id
+    if isinstance(value, AdjudicationRecord):
+        return value.adjudication_id
+    if isinstance(value, CustodyAccessEvent):
+        return value.event_id
     return value.receipt_id
 
 
@@ -63,7 +85,19 @@ def _created_at(value: SignedGovernanceObject) -> str:
         return value.effective_at.isoformat()
     if isinstance(value, TombstoneReceipt):
         return value.purged_at.isoformat()
-    return value.completed_at.isoformat()
+    if isinstance(value, RecallReport):
+        return value.completed_at.isoformat()
+    if isinstance(value, CustodyManifest):
+        return value.sealed_at.isoformat()
+    if isinstance(value, BenchmarkRegistration):
+        return value.registered_at.isoformat()
+    if isinstance(value, ConditionMaterialReceipt):
+        return value.frozen_at.isoformat()
+    if isinstance(value, TrialResult):
+        return value.scored_at.isoformat()
+    if isinstance(value, AdjudicationRecord):
+        return value.adjudicated_at.isoformat()
+    return value.occurred_at.isoformat()
 
 
 class GovernanceLedger:
