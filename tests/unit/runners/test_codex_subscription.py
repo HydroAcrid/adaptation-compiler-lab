@@ -43,6 +43,8 @@ if sys.argv[1:] == ["login", "status"]:
     assert pathlib.Path(os.environ["CODEX_HOME"], "auth.json").is_file()
     print("Logged in using ChatGPT")
     raise SystemExit(0)
+assert "--ask-for-approval" not in sys.argv
+assert 'approval_policy="never"' in sys.argv
 workspace = pathlib.Path(sys.argv[sys.argv.index("--cd") + 1])
 (workspace / "solution.txt").write_text("done\\n", encoding="utf-8")
 events = [
