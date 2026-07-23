@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -88,6 +89,33 @@ def test_committed_v2_gate_preregistration_binds_exact_task_trees() -> None:
         }
         for task in preregistration["tasks"]
     ]
+
+
+def test_committed_v2_gate_blind_packet_matches_manifest_without_identity() -> None:
+    manifest = cast(
+        dict[str, Any],
+        json.loads(
+            (_root() / "codex-development-v2-remaining-blind-manifest.json").read_text(
+                encoding="utf-8"
+            )
+        ),
+    )
+    packet = (_root() / "codex-development-v2-remaining-blind-rating-packet.md").read_bytes()
+    packet_text = packet.decode("utf-8")
+
+    assert manifest["presentation_sha256"] == f"sha256:{hashlib.sha256(packet).hexdigest()}"
+    assert manifest["runs"] == 6
+    assert manifest["all_runs_valid"] is True
+    assert manifest["condition_mapping_withheld"] is True
+    assert manifest["scores_withheld_from_preference_scorer"] is True
+    assert manifest["milestone_6_custody_accessed"] is False
+    assert "/tmp/acl-codex-v2-gate-workspace-" not in packet_text
+    assert "strong_static_profile" not in packet_text
+    assert "compiled_adaptation" not in packet_text
+    for pair in manifest["task_pairs"]:
+        assert pair["task_id"] in packet_text
+        first, second = pair["ordered_output_ids"]
+        assert packet_text.index(first) < packet_text.index(second)
 
 
 def test_v2_gate_rating_requires_three_sorted_pairs_and_six_outputs() -> None:

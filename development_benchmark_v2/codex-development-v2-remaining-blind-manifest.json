@@ -1,0 +1,36 @@
+{
+  "manifest_version": "2.1.0",
+  "benchmark_id": "codex-development-v2-remaining-gate",
+  "source_commit": "30149a4b2648dca462a1be560ba59e95544f9694",
+  "public_plan_digest": "sha256:886b0b1e6f9c8251505ed4f1272b5084e1f43993a7a96f5b3e84fffc4bcd2cd9",
+  "blind_report_digest": "sha256:f522f679b94b20a8e1bda501284611dcc0fcd319dbf6f056f356fd8ba65e7ba3",
+  "presentation_sha256": "sha256:b09ac6202b1b5c90c5a4dbb471713fdca6d9c3eb4342717faead9bec1d0b8adc",
+  "runs": 6,
+  "all_runs_valid": true,
+  "condition_mapping_withheld": true,
+  "scores_withheld_from_preference_scorer": true,
+  "milestone_6_custody_accessed": false,
+  "task_pairs": [
+    {
+      "task_id": "development-v2-communication",
+      "ordered_output_ids": [
+        "output-d02b51744e92dfc9643d83b9",
+        "output-005b64577cd4d7c96784b43d"
+      ]
+    },
+    {
+      "task_id": "development-v2-debugging-verification",
+      "ordered_output_ids": [
+        "output-8d435fd73f7d4a3e3b7e4384",
+        "output-50f8de142ac484eba13575ca"
+      ]
+    },
+    {
+      "task_id": "development-v2-environment-safety",
+      "ordered_output_ids": [
+        "output-2a412b152c9ce5a11c7a98a3",
+        "output-250b4ac462cf19c90d4f3ff5"
+      ]
+    }
+  ]
+}

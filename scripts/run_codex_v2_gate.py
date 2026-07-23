@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
@@ -56,6 +57,7 @@ from adaptation_compiler_lab.runners.codex_subscription import (
 from adaptation_compiler_lab.serialization import canonical_json
 
 _FORBIDDEN_COORDINATOR_ENV = frozenset({"CODEX_API_KEY", "OPENAI_API_KEY"})
+_EPHEMERAL_WORKSPACE_PATH = re.compile(r"/tmp/acl-codex-v2-gate-workspace-[^/\s)]+/task/")
 
 
 def _digest(payload: bytes) -> str:
@@ -65,6 +67,11 @@ def _digest(payload: bytes) -> str:
 def _assert_no_api_key_environment() -> None:
     if any(os.environ.get(name) for name in _FORBIDDEN_COORDINATOR_ENV):
         raise RuntimeError("Codex/OpenAI API-key environment is forbidden for subscription runs")
+
+
+def _sanitize_visible_text(value: str) -> str:
+    sanitized = _EPHEMERAL_WORKSPACE_PATH.sub("./", value)
+    return "\n".join(line.rstrip() for line in sanitized.splitlines())
 
 
 def _validate_preregistration(
@@ -422,10 +429,10 @@ def main() -> None:
                 media_type="application/vnd.adaptation-compiler-lab.codex-v2-gate-run+json",
             )
             safe_outputs[cell.blind_output_id] = (
-                result.final_response
+                _sanitize_visible_text(result.final_response)
                 if not leakage
                 else "[withheld: condition-leakage scan failed]",
-                diff_completed.stdout
+                _sanitize_visible_text(diff_completed.stdout)
                 if not leakage
                 else "[withheld: condition-leakage scan failed]",
             )

@@ -16,8 +16,10 @@ ambiguous, brittlely scored task. A two-cell GPT-5.6 Luna follow-up replaced lex
 structural scoring; both anonymous conditions tied at 4/4 objective, 3/4 diagnostic, and 4/4
 neutral checks. Kevin slightly preferred the first anonymous output, which unblinding identified
 as compiled adaptation rather than the strong static profile. This is one positive same-agent
-development signal, not a reason to change the compiler or claim transfer. Paid cross-agent
-execution remains closed.
+development signal, not a reason to change the compiler or claim transfer. The other three public
+replacement task families then completed six valid blinded Luna cells; their objective scores and
+identities remain sealed pending Kevin's three pairwise ratings. Paid cross-agent execution
+remains closed.
 
 ## What is here
 
@@ -132,7 +134,7 @@ after valid trials.
 - [`MILESTONE_5_5_DIAGNOSTIC_ANALYSIS.md`](MILESTONE_5_5_DIAGNOSTIC_ANALYSIS.md): task matrix,
   bytecode-state repair, causal analysis, and the GPT-5.6 Luna follow-up design.
 - [`MILESTONE_5_5_LUNA_CALIBRATION.md`](MILESTONE_5_5_LUNA_CALIBRATION.md): exact two-cell
-  execution contract, blinded structural result, shared task ambiguity, and pending blind rating.
+  execution contract, blinded structural result, shared task ambiguity, and frozen preference.
 - [`MILESTONE_5_5_LUNA_REMAINING_GATE.md`](MILESTONE_5_5_LUNA_REMAINING_GATE.md): preregistered
   six-cell comparison across the other three public replacement task families.
 - [`MILESTONE_6_AUTHORIZATION_GATE.md`](MILESTONE_6_AUTHORIZATION_GATE.md): exact frozen bindings,

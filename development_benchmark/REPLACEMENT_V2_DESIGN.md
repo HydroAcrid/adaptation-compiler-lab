@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-23
 
-Status: **V2-4 completed; V2-1 through V2-3 implemented, mutation-tested, and preregistered**
+Status: **all four tasks executed; V2-1 through V2-3 await blind preference ratings**
 
 ## Purpose and separation
 

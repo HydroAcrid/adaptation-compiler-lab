@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-24
 
-Status: **preregistered; six live cells not yet executed**
+Status: **six valid cells complete; three Kevin ratings pending before unblinding**
 
 ## Purpose and boundary
 
@@ -31,10 +31,29 @@ passes every objective, diagnostic, and neutral check. These mutation checks est
 tasks can detect their intended behavior without using either experimental condition output to
 construct the scorer.
 
+## Execution result
+
+The pinned source commit was `30149a4b2648dca462a1be560ba59e95544f9694`. Live preflight
+confirmed saved ChatGPT authentication, explicit GPT-5.6 Luna availability, medium reasoning,
+Standard service, and the absence of Codex/OpenAI API-key environment. All six planned cells
+completed without retry and passed the frozen isolation validity checks.
+
+The objective scores, token usage, and condition mapping remain sealed. The anonymous presentation
+is [`development_benchmark_v2/codex-development-v2-remaining-blind-rating-packet.md`](development_benchmark_v2/codex-development-v2-remaining-blind-rating-packet.md).
+Its exact bindings are recorded in
+[`codex-development-v2-remaining-blind-manifest.json`](development_benchmark_v2/codex-development-v2-remaining-blind-manifest.json):
+
+- public-plan digest:
+  `sha256:886b0b1e6f9c8251505ed4f1272b5084e1f43993a7a96f5b3e84fffc4bcd2cd9`;
+- blind-report digest:
+  `sha256:f522f679b94b20a8e1bda501284611dcc0fcd319dbf6f056f356fd8ba65e7ba3`; and
+- sanitized presentation digest:
+  `sha256:b09ac6202b1b5c90c5a4dbb471713fdca6d9c3eb4342717faead9bec1d0b8adc`.
+
 ## Blind scoring gate
 
-The development coordinator will encrypt the seed, condition mapping, structured traces, raw
-outputs, tests, and scores outside Git. Kevin receives only three anonymous output/diff pairs.
+The development coordinator encrypted the seed, condition mapping, structured traces, raw outputs,
+tests, and scores outside Git. Kevin receives only three anonymous output/diff pairs.
 Condition identities, objective scores, token usage, and run order remain hidden until all three
 preferences are checksum-bound.
 
