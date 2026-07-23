@@ -1,7 +1,7 @@
 # Benchmark Protocol
 
-Status: **Milestone 3 normative feasibility design frozen; synthetic custody/registry implemented;
-no held-out reveal or trial execution**
+Status: **Normative feasibility design frozen; Milestone 4 synthetic runtime conformance passed;
+live smoke, source construction, held-out reveal, and trials pending**
 
 ## 1. Claim and study class
 
@@ -27,8 +27,9 @@ The pilot has one held-out task in each of four task families:
 
 Each task is run under four conditions with two repetitions per condition: 4 tasks × 4 conditions ×
 2 repetitions = **32 planned target runs**. Task, family, and condition identities are opaque in
-construction and scoring views. The target-model selection rule—not the model itself—is frozen:
-Milestone 4 must resolve and pin the stable Sonnet full model ID before source construction.
+construction and scoring views. The preregistered selection rule has now resolved to the fixed full
+model ID `claude-sonnet-5`, pinned with Claude Code `2.1.218` before source construction. Aliases,
+automatic fallback, and later model remapping are not permitted for this registration.
 
 ## 3. Conditions and equal-information rule
 
@@ -115,16 +116,20 @@ five percentage points, and no high-severity adverse case remains unresolved.
 
 ## 7. Later execution boundary
 
-Milestone 6, if separately approved, must randomize the 32 trials in the committed seeded order and
+Milestone 6, after all prior objective gates pass, must randomize the 32 trials in the committed seeded order and
 use a fresh disposable worktree and empty target configuration/session per run. Each trial is
 limited to 30 minutes, 40 turns, and USD $5; the pilot is capped at USD $200. Only a transient
 provider failure before any tool call or file change may receive one retry. These limits are frozen
-now but are not implemented or exercised in Milestone 3.
+but have not been exercised against a target API.
 
-Milestone 3 does not install or call Claude Code, implement Codex/Claude connectors, read real source
-tasks, author real condition materials, retrieve a holdout, create trial records from real runs,
-score work, or calculate an empirical comparison. Its tests establish that the experimental
-paperwork and custody machinery fail closed under synthetic substitution, tampering, premature
-reveal, unequal information, budget violations, blind-label leakage, access-log manipulation, and
-result rewriting. Operational custodian independence, connector/runtime isolation, human-profile
-authorship, scorer operations, and live execution remain later gates.
+Milestone 4 implements the version-pinned source/runner/scorer ports, Codex generated-schema
+verification, and a clean Claude Code command/sandbox/trace contract. Fake fixtures pass
+conformance, and a pinned Codex app server initialized against an empty source home. The required
+authenticated no-user-data Claude smoke is blocked on a dedicated Console API key; no API call has
+occurred.
+
+The project still has not read real source tasks, authored real condition materials, retrieved a
+holdout, created trial records from real runs, scored work, or calculated an empirical comparison.
+Operational custodian independence, exact per-task consent, human-profile authorship, randomization
+secret custody, scorer assignment, frozen materials, and live execution remain mandatory gates
+even though continuation between fully passed milestones no longer requires a ceremonial stop.

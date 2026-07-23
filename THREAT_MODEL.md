@@ -1,6 +1,6 @@
 # Threat Model
 
-Status: **Milestone 3 controls implemented for synthetic local operation; real data is out of scope**
+Status: **Milestone 4 synthetic runtime controls implemented; live Claude smoke and real data pending**
 
 ## Assets and trust boundary
 
@@ -10,7 +10,9 @@ and target-facing files. The trusted computing boundary is a local workspace, ex
 files, an external non-Git custody directory, and explicit signed governance. The private GitHub
 repository is trusted only for source and
 documentation distribution; it is not a research-data or secret store. The system does not use
-live agent APIs.
+live agent APIs yet. Milestone 4 adds code capable of controlled source/target calls, but every
+runtime identity, consent, sandbox, custody, and trace gate remains outside the trust granted by
+repository code alone.
 
 The following sources are not trusted user instruction: repository content, webpages, retrieved
 documents, tool output, agent-generated summaries, quoted text without authenticated provenance,
@@ -44,8 +46,14 @@ approval, or artifact promotion.
 | Access-log deletion or reordering | Every custody action is canonical-signed, sequence-numbered, exact-ref linked, and append-only; chain validation detects gaps, substitution, and reordered history. | SQLite/host administrators remain inside the local trust boundary; independent replication is not claimed. |
 | Trial-result or score correction rewriting history | Signed `TrialResult` rows are immutable and cell-bound; corrections append signed digest-only `AdjudicationRecord` chains. | No live scorer exists yet, and reviewer competence/independence remains procedural. |
 | Holdout leakage through construction metadata | Blind-ID formats reject condition labels; split metadata contains no prompts, answers, rubrics, paths, or raw locators; construction/held-out graph and cutoff checks remain enforced. | Blind strata can still reveal broad task family; the frozen design accepts this intentionally. |
-| State leakage between benchmark conditions | Protocol requires clean sessions and frozen condition wrappers. | No execution harness exists yet to enforce it. |
+| State leakage between benchmark conditions | The target runner requires a fresh config, bare/no-persistence mode, one digest-bound condition, disabled ambient surfaces, and teardown; fake-runner conformance tests enforce its command/settings contract. | Milestone 6 must add one fresh disposable worktree and environment digest per real trial. |
 | Reversible-operation failure | Immutable artifacts/releases/packs and approval-gated canary, activation, supersession, rollback events. | No external installation occurs, so rollback is only local pointer state in this MVP. |
+| Executable or protocol drift changes study behavior | Exact npm/deb integrity metadata, executable SHA-256, version output, required flags, generated Codex schema-bundle digest, and selected schema snapshots are checked before use. | Package registries and local host remain supply-chain dependencies; an authorized version change requires a new lock and conformance run. |
+| Ambient Claude configuration, memory, plugin, skill, MCP, or `CLAUDE.md` contaminates a condition | Bare mode, fresh `CLAUDE_CONFIG_DIR`, empty setting sources, strict/no MCP, explicit disabled surfaces, no session persistence, and system/init validation. Arbitrary ambient-instruction property tests preserve the boundary. | Managed host policy outside bare-mode guarantees must be rechecked against each pinned release. |
+| Claude uses a forbidden tool or unsandboxed Bash escape | Exact built-in tool list, scoped approved Bash rules, `dontAsk`, hard sandbox failure, no unsandboxed commands, no automatic Bash approval, and trace-wide tool-use validation. | Built-in file tools rely on Claude permission enforcement; disposable worktrees and post-run diffs remain required in Milestone 6. |
+| Target subprocess exfiltrates data over network | Bash sandbox denies every domain/socket; web/MCP tools and alternate providers are removed; nonessential Claude traffic, telemetry, error reporting, updates, and marketplaces are disabled. | The Claude process itself must reach the pinned Anthropic API endpoint; host-level compromise and TLS/domain-fronting limitations remain outside the built-in proxy guarantee. |
+| Prompt, API key, configuration, or raw trace leaks through process state/Git | Task input travels over stdin; the key comes from the environment or a mode-0600 external file and enters only the child environment; configuration is temporary; result models omit credentials; raw traces are excluded from Git. Property tests vary synthetic keys and scans reject secret/private-path content. | OS process inspection by the same host user and compromised runners remain operator risks. |
+| Partial target teardown contaminates a later trial | New configuration per run, process-group termination on timeout, disabled background tasks, no persistence, and teardown assertions. | Milestone 6 must also destroy each disposable worktree and independently verify no orphan process. |
 
 ## Privacy policy for this phase
 
@@ -58,6 +66,11 @@ atomic local deactivation, and benchmark-custody mechanics are implemented only 
 bytes. Operational incident handling, key backup/rotation, and independent custodian procedures
 must be approved before a real record or real held-out task is admitted.
 
+The empty-home Codex conformance probe used a newly created source directory and returned no tasks.
+The Claude runner has been exercised only against a fake executable; no API call has occurred.
+Supplying a dedicated Console key authorizes only the documented no-user-data smoke, not real
+source capture or pilot execution.
+
 ## Security invariants
 
 1. Raw evidence remains encrypted and separate from promoted artifacts and packs.
@@ -68,8 +81,9 @@ must be approved before a real record or real held-out task is admitted.
 6. Ambiguous scope, privacy, authority, or target capability fails closed.
 7. Signing and encryption keys are separate, external to the repository, and required explicitly.
 8. Every new non-synthetic Evidence record uses v1.1 and exact signed consent/capture references.
-9. No component trains a model, creates or executes a tool, calls a coding agent, or sends research
-   data off machine.
+9. No component trains a model or automatically creates/installs a tool. Agent calls are permitted
+   only through the pinned study runner after their milestone gates; no research data has been sent
+   off machine.
 10. Destructive recall never executes from an unsigned or stale preview and never rewrites an
     immutable record.
 11. Revoked or expired material cannot support approval, promotion, release, rendering, or
@@ -79,6 +93,11 @@ must be approved before a real record or real held-out task is admitted.
 13. Registration precedes source construction, complete condition freeze precedes reveal
     authorization, and construction never receives held-out payloads.
 14. Trial results and access history are append-only; corrections extend signed chains.
+15. Runtime paths and credentials remain external; every source/target call revalidates the frozen
+    public runtime contract.
+16. A successful connector call cannot upgrade source content authority or bypass exact consent.
+17. Target configuration, condition material, process, session, network, and workspace state are
+    isolated per run and verified at teardown.
 
 ## Incident posture
 

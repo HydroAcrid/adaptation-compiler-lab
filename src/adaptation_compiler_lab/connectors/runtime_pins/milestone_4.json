@@ -1,0 +1,94 @@
+{
+  "lock_version": "1.0.0",
+  "codex": {
+    "executable": {
+      "package": "@openai/codex",
+      "package_version": "0.145.0",
+      "package_integrity": "sha512-/PSPSFujjjmiyVFvG2yu/grOFhsWdokTH8t2KGWhXSo/M5n/dIDsnbsnO82/7bLtIoDuzQf7ATBUMWqPWQINlQ==",
+      "executable_sha256": "sha256:a2a05dafaa1acb002a45eaec0a462de5b13694fcfcd7bc43305f14781ce7be14",
+      "version_args": [
+        "--version"
+      ],
+      "version_stdout": "codex-cli 0.145.0",
+      "required_help_flags": [
+        "app-server"
+      ]
+    },
+    "schema_generation_args": [
+      "app-server",
+      "generate-json-schema",
+      "--out",
+      "{output}",
+      "--experimental"
+    ],
+    "schema_bundle_sha256": "sha256:e2d36bf67743ea6d89f93b598efaaffd873a1be0668a775401ab8817b808a851",
+    "schema_file_sha256": {
+      "v1/InitializeParams.json": "sha256:4f576f99e285beb28f71f48a72b887c1f517dada86fee348fe2af0a35511de23",
+      "v1/InitializeResponse.json": "sha256:86dcd236d0576a82c85b933586dc45731260eab1b6edb3447b03f790277322b1",
+      "v2/ThreadListParams.json": "sha256:8834bb710751df3747107f04a3d9b97a02a13835459e34849574e0f4338dec53",
+      "v2/ThreadListResponse.json": "sha256:38bc322eb4b71ba50cbfb9807f8e969ffe99db12c96d58f388c98825f7e2cb21",
+      "v2/ThreadReadParams.json": "sha256:db97080f82facc3259dbb9404e9f0df81e360619f4cd73983a9d99d25f5089ee",
+      "v2/ThreadReadResponse.json": "sha256:1a07effb4f1c2e921bd0404681bc6febd332a71e18b2ccadfecfdd4e46d20a75"
+    }
+  },
+  "claude_code": {
+    "executable": {
+      "package": "@anthropic-ai/claude-code",
+      "package_version": "2.1.218",
+      "package_integrity": "sha512-BHV951ruIa6QXaZFDF1wRhwxAOkAiafB2AOWG6wGRUJ4apaJ9mlzp1BFLAhGfG0SknwAyqBenqeT6nit6at4uQ==",
+      "executable_sha256": "sha256:e12071751a9336b8af1012c103358ff04ac18f9aaff4a738cff7ba5cdfaf63f2",
+      "version_args": [
+        "--version"
+      ],
+      "version_stdout": "2.1.218 (Claude Code)",
+      "required_help_flags": [
+        "--allowedTools",
+        "--bare",
+        "--disable-slash-commands",
+        "--disallowedTools",
+        "--max-budget-usd",
+        "--model",
+        "--no-chrome",
+        "--no-session-persistence",
+        "--output-format",
+        "--permission-mode",
+        "--setting-sources",
+        "--settings",
+        "--strict-mcp-config",
+        "--tools",
+        "--verbose"
+      ]
+    },
+    "model_id": "claude-sonnet-5",
+    "api_base_url": "https://api.anthropic.com"
+  },
+  "sandbox": {
+    "bubblewrap": {
+      "package": "ubuntu-jammy/bubblewrap",
+      "package_version": "0.6.1-1ubuntu0.1",
+      "package_integrity": "sha256:f75c835d6871d1b36370e12ee82940334b2a9f94efc7b959b5b236447e89743d",
+      "executable_sha256": "sha256:d78807229d616606e339c5988392b9e0ab4a6a6998fa51e4590837f426a12fca",
+      "version_args": [
+        "--version"
+      ],
+      "version_stdout": "bubblewrap 0.6.1",
+      "required_help_flags": []
+    },
+    "socat": {
+      "package": "ubuntu-jammy/socat",
+      "package_version": "1.7.4.1-3ubuntu4",
+      "package_integrity": "sha256:aec6c231f65564cb75c9c2e5c3ce0739482688f373f141471ecf9276fc03df67",
+      "executable_sha256": "sha256:ac1a7165c0ade4dfdab602895cc56ff21d61f8443a80fb676946e4a624c52f68",
+      "version_args": [
+        "-V"
+      ],
+      "version_stdout": "socat by Gerhard Rieger and contributors - see www.dest-unreach.org",
+      "required_help_flags": []
+    }
+  },
+  "node": {
+    "version": "24.18.0",
+    "distribution_sha256": "sha256:55aa7153f9d88f28d765fcdad5ae6945b5c0f98a36881703817e4c450fa76742",
+    "distribution_url": "https://nodejs.org/download/release/v24.18.0/node-v24.18.0-linux-x64.tar.xz"
+  }
+}

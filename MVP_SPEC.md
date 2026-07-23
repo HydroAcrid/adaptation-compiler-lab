@@ -1,7 +1,7 @@
 # MVP Specification
 
-Status: **Milestone 3 implemented; local, synthetic-only benchmark custody foundation**
-Implementation status: **no live agents, real data, or benchmark execution**
+Status: **Milestone 4 synthetic connector conformance implemented; authenticated target smoke pending**
+Implementation status: **no real source data, Claude API call, held-out reveal, or benchmark execution**
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** describe the
 implemented MVP contract unless explicitly marked as future work.
@@ -11,8 +11,9 @@ implemented MVP contract unless explicitly marked as future work.
 The MVP is a local compiler and experiment-preparation instrument. It models a completed task,
 its outcome and evidence, makes a reviewable evaluation candidate before promoting a correction or
 failure, produces typed artifacts, freezes a release, and renders a target-specific external pack.
-It persists a signed four-condition benchmark registration and custody ledger, but does not reveal
-held-out work, execute target agents, or perform scoring.
+It persists a signed four-condition benchmark registration and custody ledger. It now also defines
+narrow version-pinned source, target-runner, and scorer ports, but does not reveal held-out work,
+capture real source data, execute a pilot trial, or perform scoring.
 
 The intended first study compares the following conditions on held-out tasks:
 
@@ -123,6 +124,15 @@ that binds non-synthetic observations to exact signed consent and capture receip
 - A `TrialResult` MUST identify one blinded task/condition/repetition cell and exact frozen
   registration, material, environment, rubric, test, and trial-record digests. Corrections MUST be
   signed `AdjudicationRecord` entries; they MUST NOT alter the original result.
+- A source connector MUST verify the exact Codex executable version/digest and regenerate the
+  complete app-server schema bundle before use. It MUST call only `thread/list` and `thread/read`
+  for source access and MUST NOT parse rollout/session files directly.
+- A target runner MUST verify the exact Claude Code executable, fixed full model ID, sandbox helper
+  binaries, clean configuration, single condition digest, explicit tool list, and structured trace.
+  Missing credentials, alternate providers, version drift, sandbox failure, unexpected tools,
+  ambient agent state, or incomplete teardown MUST fail closed.
+- The scorer port MUST receive blinded diffs, independent tests, rubric, and allowed metadata only.
+  It MUST NOT expose a condition label or accept extension keys that encode one.
 
 ## 4. Local workflow
 
@@ -148,6 +158,11 @@ The `adaptation-compiler-lab` CLI provides the following bounded workflow:
 All complex input is explicit JSON. The CLI does not provide arbitrary unreviewed record writes,
 automatic activation, target execution, or general-purpose data ingestion.
 
+Milestone 4 connector/runner APIs are intentionally separate from the CLI. They are exercised by
+fake app-server/Claude fixtures and runtime probes. This prevents a general operator command from
+enumerating source history or spending against a target account before the consent and study
+coordinator gates exist.
+
 ## 5. Benchmark foundation
 
 The frozen `codex-to-claude-feasibility-v1` design contains four held-out task families—direct
@@ -172,15 +187,19 @@ Milestone 3 intentionally adds no custody/reveal CLI and no execution path.
 
 ## 6. Acceptance scope completed here
 
-The completed Milestone 3 foundation adds the six signed benchmark object types, typed exact
+The Milestone 3 foundation adds the six signed benchmark object types, typed exact
 references, JSON Schema snapshots, checksummed migration 0005, external AES custody, signed chained
 access decisions, atomic four-material freeze, blinded cell validation, immutable result storage,
 digest-only adjudication, the frozen feasibility preregistration, and synthetic security/property
-tests for substitution, early reveal, unequal information, label leakage, budgets, tampering, and
-result rewriting. Earlier compiler, privacy, governance, and recall controls remain in force.
+tests. Milestone 4 adds the three explicit ports, exact binary/schema/model pins, generated Codex
+schemas, a read-only app-server connector, a clean sandboxed Claude Code runner, and synthetic
+property/conformance tests for drift, ambient state, credential exposure, tool denial, timeouts,
+and teardown. The pinned Codex binary also passed an empty-home app-server handshake.
 
-It does not provide authenticated source capture, real consent selection, live connector
-conformance, real-agent invocation, a held-out plaintext retrieval API, an execution harness,
+The authenticated no-user-data Claude smoke has not run because the dedicated Console API key is
+absent. Therefore Milestone 4 is not complete and this scope does not provide authenticated source
+capture, real consent selection, a held-out plaintext retrieval API, live pilot execution,
 human-rater operations, benchmark scoring/statistics, remote research-data coordination, a UI, or
-any model adaptation. Milestone 4 is separately gated and limited to version-pinned connectors and
-synthetic conformance; all later work still requires explicit approval.
+model adaptation. Later milestones may continue automatically only after their objective
+prerequisites pass; consent, independent-human, custody, credential, and holdout gates cannot be
+waived by automation.

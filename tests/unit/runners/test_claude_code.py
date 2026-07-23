@@ -1,0 +1,399 @@
+from __future__ import annotations
+
+import os
+import tempfile
+from pathlib import Path
+
+import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
+from adaptation_compiler_lab.connectors.models import JsonObject, TargetRunRequest
+from adaptation_compiler_lab.connectors.pins import (
+    ClaudeCodePin,
+    ExecutablePin,
+    RuntimePinSet,
+    SandboxPin,
+    load_runtime_pins,
+    sha256_file,
+)
+from adaptation_compiler_lab.runners import (
+    ClaudeCodeTargetRunner,
+    ClaudeRuntimePaths,
+    TargetExecutionError,
+    run_live_no_user_data_smoke,
+)
+
+_FAKE_CLAUDE = """#!/usr/bin/env python3
+import hashlib
+import json
+import os
+import pathlib
+import sys
+import time
+
+args = sys.argv[1:]
+if args == ["--version"]:
+    print("9.9.9 (Synthetic Claude Code)")
+    raise SystemExit(0)
+if args == ["--help"]:
+    print("--bare")
+    raise SystemExit(0)
+
+def argument_after(flag):
+    return args[args.index(flag) + 1]
+
+prompt = sys.stdin.read()
+if "TIMEOUT_MARKER" in prompt:
+    time.sleep(30)
+
+condition_path = pathlib.Path(argument_after("--append-system-prompt-file"))
+settings_path = pathlib.Path(argument_after("--settings"))
+model = argument_after("--model")
+tools = argument_after("--tools").split(",")
+settings = json.loads(settings_path.read_text(encoding="utf-8"))
+
+print(json.dumps({
+    "type": "system",
+    "subtype": "init",
+    "model": model,
+    "tools": tools,
+    "mcp_servers": [],
+    "plugins": [],
+}), flush=True)
+
+if "M4_LIVE_SMOKE_TASK" in prompt:
+    pathlib.Path("smoke-output.txt").write_text("synthetic-smoke-ok\\n", encoding="utf-8")
+    print(json.dumps({
+        "type": "assistant",
+        "message": {
+            "content": [{"type": "tool_use", "name": "Write", "input": {}}]
+        },
+    }), flush=True)
+
+if "FORBIDDEN_TOOL_MARKER" in prompt:
+    print(json.dumps({
+        "type": "assistant",
+        "message": {
+            "content": [{"type": "tool_use", "name": "WebFetch", "input": {}}]
+        },
+    }), flush=True)
+
+print(json.dumps({
+    "type": "result",
+    "subtype": "success",
+    "argv": args,
+    "stdin_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
+    "condition_sha256": hashlib.sha256(condition_path.read_bytes()).hexdigest(),
+    "settings": settings,
+    "ambient_loaded": False if "--bare" in args else pathlib.Path("CLAUDE.md").exists(),
+    "session_persisted": "--no-session-persistence" not in args,
+    "has_api_key": bool(os.environ.get("ANTHROPIC_API_KEY")),
+    "total_cost_usd": 0.01,
+}), flush=True)
+"""
+
+
+def _write_executable(path: Path, content: str) -> None:
+    path.write_text(content, encoding="utf-8")
+    path.chmod(0o700)
+
+
+def _executable_pin(
+    path: Path,
+    *,
+    package: str,
+    version: str,
+    version_stdout: str,
+    version_args: tuple[str, ...],
+    help_flags: tuple[str, ...] = (),
+) -> ExecutablePin:
+    return ExecutablePin(
+        package=package,
+        package_version=version,
+        package_integrity="synthetic-only",
+        executable_sha256=sha256_file(path),
+        version_args=version_args,
+        version_stdout=version_stdout,
+        required_help_flags=help_flags,
+    )
+
+
+def _runner(
+    tmp_path: Path,
+    *,
+    environment: dict[str, str] | None = None,
+    api_key_file: Path | None = None,
+) -> ClaudeCodeTargetRunner:
+    executable = tmp_path / "fake-claude"
+    bubblewrap = tmp_path / "bwrap"
+    socat = tmp_path / "socat"
+    library_path = tmp_path / "lib"
+    library_path.mkdir(exist_ok=True)
+    _write_executable(executable, _FAKE_CLAUDE)
+    _write_executable(
+        bubblewrap,
+        """#!/bin/sh
+if [ "$1" = "--version" ]; then
+  echo "bubblewrap synthetic"
+  exit 0
+fi
+exit 0
+""",
+    )
+    _write_executable(
+        socat,
+        """#!/bin/sh
+echo "socat synthetic"
+""",
+    )
+    checked_in = load_runtime_pins()
+    claude_pin = ClaudeCodePin(
+        executable=_executable_pin(
+            executable,
+            package="synthetic-claude-code",
+            version="9.9.9",
+            version_stdout="9.9.9 (Synthetic Claude Code)",
+            version_args=("--version",),
+            help_flags=("--bare",),
+        ),
+        model_id="claude-sonnet-5",
+        api_base_url="https://api.anthropic.com",
+    )
+    sandbox_pin = SandboxPin(
+        bubblewrap=_executable_pin(
+            bubblewrap,
+            package="synthetic-bubblewrap",
+            version="1.0",
+            version_stdout="bubblewrap synthetic",
+            version_args=("--version",),
+        ),
+        socat=_executable_pin(
+            socat,
+            package="synthetic-socat",
+            version="1.0",
+            version_stdout="socat synthetic",
+            version_args=("-V",),
+        ),
+    )
+    pins = RuntimePinSet(
+        lock_version=checked_in.lock_version,
+        codex=checked_in.codex,
+        claude_code=claude_pin,
+        sandbox=sandbox_pin,
+        node=checked_in.node,
+    )
+    selected_environment = {
+        "ANTHROPIC_API_KEY": "synthetic-api-key-placeholder",
+        "HOME": str(tmp_path / "home"),
+        "PATH": os.environ.get("PATH", ""),
+    }
+    if environment is not None:
+        selected_environment = environment
+    return ClaudeCodeTargetRunner(
+        paths=ClaudeRuntimePaths(
+            executable=executable,
+            bubblewrap=bubblewrap,
+            socat=socat,
+            sandbox_library_path=library_path,
+        ),
+        pins=pins,
+        environment=selected_environment,
+        api_key_file=api_key_file,
+    )
+
+
+def _request(tmp_path: Path, *, prompt: str = "Perform the synthetic task.") -> TargetRunRequest:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir(exist_ok=True)
+    (workspace / "CLAUDE.md").write_text(
+        "AMBIENT_SENTINEL_MUST_NOT_LOAD",
+        encoding="utf-8",
+    )
+    condition = workspace / "condition.md"
+    condition.write_text("BLINDED_CONDITION_SENTINEL", encoding="utf-8")
+    return TargetRunRequest(
+        run_id="run-000000000001",
+        workspace_root=workspace,
+        prompt=prompt,
+        condition_file=condition,
+        condition_digest=sha256_file(condition),
+        allowed_bash_commands=("uv run pytest",),
+        max_seconds=5,
+        max_turns=3,
+        max_usd=0.25,
+    )
+
+
+def _result_event(events: tuple[JsonObject, ...]) -> JsonObject:
+    return next(event for event in events if event.get("type") == "result")
+
+
+def test_synthetic_runner_has_clean_state_tools_and_network(tmp_path: Path) -> None:
+    request = _request(tmp_path, prompt="PRIVATE_PROMPT_SENTINEL")
+    result = _runner(tmp_path).run(request)
+    result_event = _result_event(result.events)
+    argv = result_event["argv"]
+    assert isinstance(argv, list)
+    assert "PRIVATE_PROMPT_SENTINEL" not in argv
+    assert "--bare" in argv
+    assert "--no-session-persistence" in argv
+    assert "--append-system-prompt-file" in argv
+    assert "--permission-mode" in argv
+    assert argv[argv.index("--permission-mode") + 1] == "dontAsk"
+    assert "--strict-mcp-config" in argv
+    assert "--setting-sources" in argv
+    assert argv[argv.index("--setting-sources") + 1] == ""
+    assert "Bash(uv run pytest)" in argv
+    assert result_event["ambient_loaded"] is False
+    assert result_event["session_persisted"] is False
+    assert result_event["condition_sha256"] == request.condition_digest.removeprefix("sha256:")
+    settings = result_event["settings"]
+    assert isinstance(settings, dict)
+    sandbox = settings["sandbox"]
+    assert isinstance(sandbox, dict)
+    assert sandbox["enabled"] is True
+    assert sandbox["failIfUnavailable"] is True
+    assert sandbox["allowUnsandboxedCommands"] is False
+    assert sandbox["autoAllowBashIfSandboxed"] is False
+    network = sandbox["network"]
+    assert isinstance(network, dict)
+    assert network["deniedDomains"] == ["*"]
+    assert result.exit_code == 0
+    assert result.timed_out is False
+    assert result.config_destroyed is True
+    assert not (request.workspace_root / ".claude").exists()
+
+
+@settings(max_examples=20)
+@given(secret_bytes=st.binary(min_size=1, max_size=32))
+def test_api_key_never_appears_in_command_or_trace(secret_bytes: bytes) -> None:
+    secret = f"generated-key-{secret_bytes.hex()}"
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        runner = _runner(
+            root,
+            environment={
+                "ANTHROPIC_API_KEY": secret,
+                "HOME": str(root / "home"),
+                "PATH": os.environ.get("PATH", ""),
+            },
+        )
+
+        result = runner.run(_request(root))
+
+        assert secret not in result.model_dump_json()
+
+
+@settings(max_examples=20)
+@given(ambient=st.text(min_size=1, max_size=128))
+def test_arbitrary_ambient_instructions_are_not_loaded(ambient: str) -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        request = _request(root)
+        (request.workspace_root / "CLAUDE.md").write_text(ambient, encoding="utf-8")
+
+        result = _runner(root).run(request)
+
+        assert _result_event(result.events)["ambient_loaded"] is False
+
+
+def test_missing_key_fails_closed_and_cleans_temporary_config(tmp_path: Path) -> None:
+    temporary_root = Path(tempfile.gettempdir())
+    before = set(temporary_root.glob("acl-claude-config-*"))
+    runner = _runner(
+        tmp_path,
+        environment={"HOME": str(tmp_path / "home"), "PATH": os.environ.get("PATH", "")},
+    )
+
+    with pytest.raises(TargetExecutionError, match="dedicated Anthropic Console API key"):
+        runner.run(_request(tmp_path))
+
+    assert set(temporary_root.glob("acl-claude-config-*")) == before
+
+
+def test_alternate_provider_endpoint_fails_closed(tmp_path: Path) -> None:
+    runner = _runner(
+        tmp_path,
+        environment={
+            "ANTHROPIC_API_KEY": "synthetic-placeholder",
+            "ANTHROPIC_BASE_URL": "https://proxy.invalid",
+            "HOME": str(tmp_path / "home"),
+            "PATH": os.environ.get("PATH", ""),
+        },
+    )
+
+    with pytest.raises(TargetExecutionError, match="alternate Anthropic base"):
+        runner.run(_request(tmp_path))
+
+
+def test_external_private_key_file_is_supported_without_ambient_secret(tmp_path: Path) -> None:
+    key_file = tmp_path / "external-console-key"
+    key_file.write_text("synthetic-file-key-placeholder\n", encoding="utf-8")
+    key_file.chmod(0o600)
+    runner = _runner(
+        tmp_path,
+        environment={"HOME": str(tmp_path / "home"), "PATH": os.environ.get("PATH", "")},
+        api_key_file=key_file,
+    )
+
+    result = runner.run(_request(tmp_path))
+
+    assert result.exit_code == 0
+    assert "synthetic-file-key-placeholder" not in result.model_dump_json()
+
+
+def test_external_key_file_permissions_fail_closed(tmp_path: Path) -> None:
+    key_file = tmp_path / "external-console-key"
+    key_file.write_text("synthetic-file-key-placeholder", encoding="utf-8")
+    key_file.chmod(0o644)
+    runner = _runner(
+        tmp_path,
+        environment={"HOME": str(tmp_path / "home"), "PATH": os.environ.get("PATH", "")},
+        api_key_file=key_file,
+    )
+
+    with pytest.raises(TargetExecutionError, match="permissions are too broad"):
+        runner.run(_request(tmp_path))
+
+
+def test_forbidden_tool_in_trace_invalidates_run(tmp_path: Path) -> None:
+    before = set(Path(tempfile.gettempdir()).glob("acl-claude-config-*"))
+
+    with pytest.raises(TargetExecutionError, match="forbidden tool use"):
+        _runner(tmp_path).run(_request(tmp_path, prompt="FORBIDDEN_TOOL_MARKER"))
+
+    assert set(Path(tempfile.gettempdir()).glob("acl-claude-config-*")) == before
+
+
+def test_timeout_terminates_process_and_tears_down(tmp_path: Path) -> None:
+    request = _request(tmp_path, prompt="TIMEOUT_MARKER")
+    request = request.model_copy(update={"max_seconds": 1})
+
+    result = _runner(tmp_path).run(request)
+
+    assert result.timed_out is True
+    assert result.exit_code is None
+    assert result.config_destroyed is True
+
+
+def test_condition_must_remain_inside_workspace_and_match_digest(tmp_path: Path) -> None:
+    request = _request(tmp_path)
+    request.condition_file.write_text("changed", encoding="utf-8")
+
+    with pytest.raises(TargetExecutionError, match="digest changed"):
+        _runner(tmp_path).run(request)
+
+
+def test_live_smoke_wrapper_returns_only_sanitized_receipt(tmp_path: Path) -> None:
+    receipt = run_live_no_user_data_smoke(_runner(tmp_path))
+
+    assert receipt.milestone == 4
+    assert receipt.total_cost_usd == 0.01
+    assert receipt.workspace_destroyed is True
+    assert receipt.raw_trace_persisted is False
+    assert receipt.user_data_used is False
+    assert "Write" in receipt.tools
+    serialized = receipt.model_dump_json()
+    assert "synthetic-smoke-ok" not in serialized
+    assert "synthetic-api-key-placeholder" not in serialized

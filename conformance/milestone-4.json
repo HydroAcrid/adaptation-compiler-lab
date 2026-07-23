@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0.0",
+  "milestone": 4,
+  "recorded_at": "2026-07-23T03:20:22Z",
+  "runtime_lock_sha256": "sha256:ea6df99fb922f0cce0219f2cc39c7ea3c1481347fd9ef2e1edcfa93f043139d5",
+  "codex_version": "0.145.0",
+  "codex_schema_bundle_sha256": "sha256:e2d36bf67743ea6d89f93b598efaaffd873a1be0668a775401ab8817b808a851",
+  "claude_code_version": "2.1.218",
+  "target_model_id": "claude-sonnet-5",
+  "synthetic_conformance": "passed",
+  "live_no_user_data_smoke": "blocked_missing_dedicated_console_api_key",
+  "real_source_inventory_accessed": false,
+  "real_source_payload_accessed": false,
+  "held_out_payload_accessed": false,
+  "target_api_called": false,
+  "performance_claim_allowed": false
+}

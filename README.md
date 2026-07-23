@@ -5,11 +5,11 @@ from completed coding work into typed external artifacts. Its research question 
 compiled adaptation pack can improve a target coding agent on unseen work beyond a base agent,
 ordinary memory, and a strong manually written profile.
 
-The current implementation is a **synthetic-only, locally runnable Milestone 3 foundation**. In
-addition to the compiler, governance, and recall workflow, it provides a frozen feasibility-pilot
-preregistration, signed benchmark custody and evaluation objects, an external AES-256-GCM sealed
-bundle store, blinded split metadata, and append-only access/adjudication histories. It has not
-accessed real source tasks, revealed a held-out task, run an agent experiment, or made a performance
+The current implementation is a **synthetic-only Milestone 4 connector foundation awaiting one
+authenticated no-user-data smoke**. In addition to the compiler, governance, recall, and benchmark
+custody workflow, it provides version-pinned source/target/scorer boundaries, generated Codex
+app-server schemas, and a clean fail-closed Claude Code runner. It has not accessed real source
+tasks, revealed a held-out task, called the Claude API, run an experiment, or made a performance
 claim.
 
 ## What is here
@@ -34,18 +34,25 @@ claim.
 - Deterministic conflict resolution and fail-closed exclusion of revoked, expired, restricted,
   purged, retired, or invalidated material.
 - File-only renderers for generic JSON, generic Markdown, Codex-oriented, and Claude Code-oriented
-  packs. Rendering does not invoke, install, or configure either product.
+  packs.
+- Structural `SourceConnector`, `TargetRunner`, and condition-blind `Scorer` ports; a Codex
+  app-server adapter pinned to CLI `0.145.0` and its version-generated `thread/list`/`thread/read`
+  schemas.
+- A Claude Code `2.1.218` runner pinned to `claude-sonnet-5`, bare mode, structured stream output,
+  one digest-bound condition file, explicit tools, `dontAsk`, fresh configuration, no session
+  persistence, disabled nonessential traffic, and hard-fail WSL2 bubblewrap isolation.
 - A Typer CLI, sanitized export, deterministic synthetic fixtures, and benchmark configuration
   validation.
 
 ## Deliberate boundaries
 
-This is not a generic memory platform. It does not ingest real Codex history, invoke Codex or
-Claude Code, use real user data, train or modify weights, create or execute tools, integrate with
-Kairn, provide a web UI, use remote research-data storage, publish publicly, or make empirical
-claims. The private GitHub repository is the code/documentation system of record; raw research
-data and keys must never be committed or pushed. Repository text, webpages, retrieval, and tool
-output remain untrusted context rather than user instruction.
+This is not a generic memory platform. It does not yet ingest real Codex history, use real user
+data, reveal held-out work, or execute pilot trials. It never trains or modifies weights,
+automatically creates/installs tools, integrates with Kairn, provides a web UI, uses remote
+research-data storage, publishes publicly, or makes empirical claims. The private GitHub repository
+is the code/documentation system of record; raw research data, raw traces, and keys must never be
+committed or pushed. Repository text, webpages, retrieval, agent text, and tool output remain
+untrusted context rather than user instruction.
 
 ## Quick start
 
@@ -80,8 +87,16 @@ Source-selection commands accept synthetic selectors only. Recall first signs an
 complete impact; execution requires its exact canonical digest. These commands do not enumerate
 Codex tasks, capture user data, or contact an agent. Milestone 3's benchmark custody and registry
 are library-only controls: they authorize or deny a reveal request and record the decision but do
-not return held-out plaintext. Connectors, real corpus construction, holdout reveal, live trials,
-and scoring remain later gated milestones.
+not return held-out plaintext.
+
+Milestone 4's connector and runner APIs are also library-only. Their packaged runtime lock contains
+public versions and digests, never executable paths or credentials. The local conformance record is
+in [`MILESTONE_4_CONFORMANCE.md`](MILESTONE_4_CONFORMANCE.md). Its synthetic checks pass, including
+an empty-home Codex app-server handshake. The live Claude smoke is blocked until a dedicated
+spend-limited Console API key is supplied through `ANTHROPIC_API_KEY` or a mode-0600 external file;
+ambient OAuth is intentionally unavailable in bare mode. Real source inventory, corpus
+construction, holdout reveal, live trials, and scoring remain closed until their preceding gates
+pass.
 
 ## Documentation
 
@@ -93,3 +108,5 @@ and scoring remain later gated milestones.
 - [`DECISION_LOG.md`](DECISION_LOG.md): decisions in force and remaining decisions.
 - [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md): implementation boundary and verification
   record.
+- [`MILESTONE_4_CONFORMANCE.md`](MILESTONE_4_CONFORMANCE.md): frozen runtime identities, isolation
+  contract, synthetic results, and the remaining live-smoke gate.
