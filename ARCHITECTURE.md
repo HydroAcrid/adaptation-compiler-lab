@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **Milestone 2 implemented; local, file-only, and synthetic-only**
+Status: **Milestone 3 implemented; local, file-only, encrypted custody, and synthetic-only**
 
 ## 1. System shape
 
@@ -25,16 +25,24 @@ flowchart LR
     C --> F
     C --> P
     C --> X
-    B["Sealed benchmark registration"] -. isolates .-> I
-    P -. frozen input .-> B
+    H["External encrypted held-out bundle"] --> B["Signed custody manifest"]
+    B --> Q["Signed benchmark registration"]
+    P -. frozen condition input .-> M["Atomic four-material freeze"]
+    Q --> M
+    M --> D["Signed allow / deny access chain"]
+    D -. later milestone only .-> T["Blinded immutable trial results"]
+    T --> J["Digest-only adjudication chain"]
+    B -. blind IDs, strata, digest only .-> I
 ```
 
-The dotted edge means that a release/pack may be registered for a future experiment only after the
-four condition bundles are frozen. Benchmark results never alter that release.
+The dotted edges mark deliberately constrained information flow. Construction receives only
+payload-free blinded split metadata, and the dormant trial-result path cannot retrieve held-out
+plaintext. Benchmark results and adjudications never alter the release they evaluate.
 
-Milestone 2 does not connect this graph to Codex or Claude Code. The governance CLI signs only
+Milestone 3 does not connect this graph to Codex or Claude Code. The governance CLI signs only
 synthetic selectors, capture previews, and local recall operations; no source enumeration or raw
-user capture is reachable.
+user capture is reachable. Custody and benchmark registration are library APIs covered by
+synthetic tests, not operator commands for revealing or executing a study.
 
 ## 2. Records and relationships
 
@@ -55,7 +63,8 @@ Evidence may support, contradict, or limit a claim. An `Artifact` retains direct
 even when it also references a lesson. A `Release` holds exact approved artifact versions, while a
 `TargetPack` is a derived rendering and never the canonical learned asset.
 
-Eight signed governance objects sit beside, rather than inside, the eight-record portable contract:
+Fourteen signed governance objects sit beside, rather than inside, the eight-record portable
+contract. The first eight govern identity, evidence admission, lifecycle, and recall:
 
 | Object | Responsibility | Binding |
 | --- | --- | --- |
@@ -67,6 +76,17 @@ Eight signed governance objects sit beside, rather than inside, the eight-record
 | `InvalidationEvent` | Append-only declaration that an exact target is no longer eligible. | Exact target/digest, action, impact reference, reason, effective time, policy, signer/signature. |
 | `TombstoneReceipt` | Minimal proof that selected encrypted payload bytes were unlinked. | Payload digest/size/media type, exact Evidence and invalidation refs, deletion method/time, signer/signature; never payload content. |
 | `RecallReport` | Idempotent completion record for one confirmed impact. | Exact impact, invalidations, tombstones, deactivated environments, purged digests, policy, signer/signature. |
+
+Milestone 3 adds six benchmark-specific objects:
+
+| Object | Responsibility | Binding |
+| --- | --- | --- |
+| `CustodyManifest` | Proves which encrypted external bundle contains the held-out split without recording its path. | Four blinded task descriptors, split digest, ciphertext digest, authenticated plaintext digest/length, algorithm, policy, signer/signature. |
+| `BenchmarkRegistration` | Freezes the feasibility design before source construction. | Exact custody ref, design digest, opaque condition IDs, cutoff/start/reveal boundaries, committed randomization seed, signer/signature. |
+| `ConditionMaterialReceipt` | Freezes one condition's actual target-visible material and construction method. | Exact registration, blind condition ID, wrapper/material/bundle/corpus digests, sources, actual token/byte counts, author constraints, signer/signature. |
+| `TrialResult` | Stores one immutable blinded evaluation row. | Exact registration/material refs, blind task/condition/repetition, trial/environment/rubric/test digests, 60/25/15 component scores, validity and guardrails, signer/signature. |
+| `AdjudicationRecord` | Corrects or excludes a stored result without rewriting it. | Exact result ref, sequence and prior adjudication, decision, digest-only field changes, reviewer, signer/signature. |
+| `CustodyAccessEvent` | Makes seal verification and reveal authorization auditable. | Exact custody/registration refs, chained sequence/prior ref, action, allowed/denied outcome, actor, reason, signer/signature. |
 
 Evidence v1.0 remains immutable and readable. Evidence v1.1 adds exact consent and capture refs.
 For non-synthetic evidence the admission policy resolves both signed objects and checks subject,
@@ -94,7 +114,7 @@ Promotion and release validation enforce:
 - closed artifact routing with reviewable escalation rationale; and
 - secret-like-content/path scanning during import, rendering, and sanitized export.
 
-Raw payload bytes reside in a separate AES-256-GCM content-addressed raw store. The address is the
+Source raw payload bytes reside in a separate AES-256-GCM content-addressed raw store. The address is the
 plaintext SHA-256; ciphertext uses a fresh 96-bit nonce and authenticates digest, media type, and
 plaintext size. The 32-byte AES key and encrypted Ed25519 private key are separate and external to
 the workspace/repository. Missing key, wrong fingerprint, malformed envelope, or failed tag
@@ -104,10 +124,17 @@ marks every transitive dependency unusable, revokes artifacts, retires releases,
 and deactivates affected active pointers. Purge additionally deletes selected encrypted bytes and
 retains only signed minimal tombstones and immutable metadata.
 
+Held-out benchmark bytes use a third, separately selected 32-byte key and a distinct custody store
+that refuses any location inside the compiler workspace or any Git repository. Its randomized
+AES-256-GCM envelope authenticates the benchmark ID, blinded split digest, plaintext digest/length,
+and key fingerprint. The signed custody manifest intentionally contains no filesystem locator.
+Verification authenticates the seal but returns metadata only; every verification or reveal request
+extends a signed hash-linked access chain.
+
 ## 4. Storage and lifecycle
 
 SQLite is a local metadata ledger with checksummed migrations, append-only record/link/lifecycle,
-activation, and signed-governance journals, rollback-by-default units of work, and subject
+activation, benchmark, and signed-governance journals, rollback-by-default units of work, and subject
 isolation. The governance store verifies canonical bytes, digest, signature, signer role, and
 subject on both write and read. A domain-store adapter reconstructs and validates typed records
 from the ledger. The encrypted raw-evidence store remains a separate namespace.
@@ -169,23 +196,28 @@ src/adaptation_compiler_lab/
   application/      import, review, lifecycle, export, targeting adapters
   release/          candidates, gates, freeze and activation services
   targets/          capability profiles and four file renderers
-  benchmark/        registration models, manifest, validation
+  benchmark/        design, external custody, signed registry, manifest, validation
   serialization/    canonical JSON and schema export
   cli.py            Typer command surface
 schemas/v1/         immutable schemas for the eight v1.0 records
 schemas/v1_1/       additive Evidence v1.1 schema snapshot
 schemas/governance/v1/ signed governance schema snapshots
+preregistration/    frozen machine-readable feasibility design and byte-digest sidecar
 tests/              unit and synthetic end-to-end coverage
 ```
 
 ## 7. Implementation sequence and next boundary
 
-Completed sequence through Milestone 2: contracts and canonical serialization; provenance/routing
-policies; review/evaluation/release lifecycle; target rendering; benchmark registration; Ed25519
-governance; AES raw isolation; v1.1 evidence lineage; signed withdrawal objects; dependency
-preflight; recall/purge cascades; deterministic conflict resolution; CLI and synthetic tests.
+Completed sequence through Milestone 3: contracts and canonical serialization; provenance/routing
+policies; review/evaluation/release lifecycle; target rendering; Ed25519 governance; AES raw
+isolation; v1.1 evidence lineage; signed withdrawal objects; dependency preflight; recall/purge
+cascades; deterministic conflict resolution; signed benchmark custody/registration/material/result
+objects; encrypted external bundle binding; append-only access/adjudication; preregistration freeze;
+and synthetic security tests.
 
-The next gated milestone, only after explicit approval, is benchmark custody and the signed
-evaluation registry. Milestone 2 intentionally does not freeze a preregistration, seal or reveal a
-holdout, install/call Claude Code, implement connectors, capture real Codex tasks, execute trials,
-or score results. Those remain later gates.
+The next gated milestone, only after explicit approval, is **Milestone 4: version-pinned connectors
+and synthetic conformance**. It may add explicit source/target/scorer ports, fake fixtures, pinned
+Codex app-server schema/version checks, a clean sandboxed Claude Code runner, and one live
+no-user-data smoke test. Milestone 3 intentionally does not install/call agents, capture real Codex
+tasks, reveal a held-out bundle, construct condition material from real data, execute trials, or
+score results.

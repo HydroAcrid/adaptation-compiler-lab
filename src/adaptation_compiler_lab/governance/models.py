@@ -9,6 +9,14 @@ from typing import Annotated, Literal
 
 from pydantic import Field, field_validator, model_validator
 
+from adaptation_compiler_lab.benchmark.models import (
+    BenchmarkCondition,
+    BlindConditionId,
+    BlindFamilyId,
+    BlindTaskId,
+    FeasibilityDesign,
+    TaskStratum,
+)
 from adaptation_compiler_lab.domain.base import (
     FrozenModel,
     Identifier,
@@ -19,12 +27,19 @@ from adaptation_compiler_lab.domain.base import (
 )
 from adaptation_compiler_lab.domain.enums import PermittedUse
 from adaptation_compiler_lab.domain.references import (
+    AdjudicationRecordRef,
+    BenchmarkRegistrationRef,
+    ConditionMaterialReceiptRef,
     ConsentReceiptRef,
+    CustodyAccessEventRef,
+    CustodyManifestRef,
     DependencyImpactRef,
     InvalidationEventRef,
     TombstoneReceiptRef,
+    TrialResultRef,
 )
 from adaptation_compiler_lab.domain.values import Scope, strings_are_sorted_unique
+from adaptation_compiler_lab.serialization.canonical import canonical_digest
 
 GovernanceSchemaVersion = Literal["1.0"]
 CanonicalizationVersion = Literal["1.0.0"]
@@ -39,6 +54,12 @@ class GovernanceObjectKind(StrEnum):
     INVALIDATION_EVENT = "invalidation_event"
     TOMBSTONE_RECEIPT = "tombstone_receipt"
     RECALL_REPORT = "recall_report"
+    CUSTODY_MANIFEST = "custody_manifest"
+    BENCHMARK_REGISTRATION = "benchmark_registration"
+    CONDITION_MATERIAL_RECEIPT = "condition_material_receipt"
+    TRIAL_RESULT = "trial_result"
+    ADJUDICATION_RECORD = "adjudication_record"
+    CUSTODY_ACCESS_EVENT = "custody_access_event"
 
 
 class SignerRole(StrEnum):
@@ -79,6 +100,51 @@ class InvalidationAction(StrEnum):
     INVALIDATE_TARGET_PACK = "invalidate_target_pack"
     EXCLUDE_DEPENDENCY = "exclude_dependency"
     DEACTIVATE_ACTIVATION = "deactivate_activation"
+
+
+class ConditionConstructionMethod(StrEnum):
+    NONE = "none"
+    DETERMINISTIC_APPROVED_FEEDBACK = "deterministic_approved_feedback"
+    INDEPENDENT_HUMAN_PROFILE = "independent_human_profile"
+    COMPILED_RELEASE_PACK = "compiled_release_pack"
+
+
+class ConditionAuthorRole(StrEnum):
+    NONE = "none"
+    DETERMINISTIC_RENDERER = "deterministic_renderer"
+    INDEPENDENT_HUMAN = "independent_human"
+    COMPILER = "compiler"
+
+
+class CustodyAccessAction(StrEnum):
+    SEAL = "seal"
+    VERIFY = "verify"
+    REQUEST_REVEAL = "request_reveal"
+
+
+class CustodyAccessOutcome(StrEnum):
+    ALLOWED = "allowed"
+    DENIED = "denied"
+
+
+class TrialValidity(StrEnum):
+    VALID = "valid"
+    INVALID = "invalid"
+
+
+class AdjudicationDecision(StrEnum):
+    UPHOLD = "uphold"
+    ANNOTATE = "annotate"
+    EXCLUDE_FROM_ANALYSIS = "exclude_from_analysis"
+    CORRECT_DERIVED_VALUE = "correct_derived_value"
+
+
+class AdjudicatedField(StrEnum):
+    VALIDITY = "validity"
+    AUTOMATED_CORRECTNESS = "automated_correctness"
+    REQUIREMENT_COVERAGE = "requirement_coverage"
+    CHANGE_DISCIPLINE = "change_discipline"
+    GUARDRAILS = "guardrails"
 
 
 class SignatureEnvelope(FrozenModel):
@@ -533,6 +599,394 @@ class RecallReport(FrozenModel):
         return self
 
 
+class BlindedTaskDescriptor(FrozenModel):
+    """Payload-free held-out task metadata visible to construction components."""
+
+    blind_task_id: BlindTaskId
+    blind_family_id: BlindFamilyId
+    stratum: TaskStratum
+
+
+class BlindedSplitManifest(FrozenModel):
+    """The complete construction-visible view of the held-out split."""
+
+    manifest_version: Literal["1.0"] = "1.0"
+    benchmark_id: Identifier
+    held_out_tasks: Annotated[tuple[BlindedTaskDescriptor, ...], Field(min_length=4, max_length=4)]
+
+    @field_validator("held_out_tasks")
+    @classmethod
+    def tasks_are_sorted_and_blinded(
+        cls, value: tuple[BlindedTaskDescriptor, ...]
+    ) -> tuple[BlindedTaskDescriptor, ...]:
+        keys = tuple(item.blind_task_id for item in value)
+        if list(keys) != sorted(set(keys)):
+            raise ValueError("blinded held-out tasks must be sorted and unique")
+        family_ids = tuple(item.blind_family_id for item in value)
+        if len(set(family_ids)) != 4:
+            raise ValueError("feasibility pilot requires four distinct blinded task families")
+        expected_strata = {
+            TaskStratum.DIRECT_TRANSFER,
+            TaskStratum.FAILURE_RECURRENCE,
+            TaskStratum.COMPOSITIONAL,
+            TaskStratum.NEUTRAL_CONTROL,
+        }
+        if {item.stratum for item in value} != expected_strata:
+            raise ValueError("blinded split must contain the four frozen task strata")
+        return value
+
+
+class CustodyManifest(FrozenModel):
+    """Signed binding between a blinded split and one external encrypted bundle."""
+
+    governance_type: Literal[GovernanceObjectKind.CUSTODY_MANIFEST] = (
+        GovernanceObjectKind.CUSTODY_MANIFEST
+    )
+    manifest_id: Identifier
+    schema_version: GovernanceSchemaVersion = "1.0"
+    subject_id: Identifier
+    benchmark_id: Identifier
+    blinded_split: BlindedSplitManifest
+    split_manifest_digest: Sha256Digest
+    sealed_bundle_digest: Sha256Digest
+    sealed_plaintext_digest: Sha256Digest
+    sealed_plaintext_bytes: int = Field(gt=0)
+    encryption_algorithm: Literal["AES-256-GCM"] = "AES-256-GCM"
+    storage_boundary: Literal["outside_compiler_workspace"] = "outside_compiler_workspace"
+    policy_version: SemVer
+    sealed_at: UtcDateTime
+    signature: SignatureEnvelope
+
+    @model_validator(mode="after")
+    def custody_binding_is_complete_and_signed(self) -> CustodyManifest:
+        if self.blinded_split.benchmark_id != self.benchmark_id:
+            raise ValueError("custody manifest benchmark does not match its blinded split")
+        if canonical_digest(self.blinded_split) != self.split_manifest_digest:
+            raise ValueError("split-manifest digest does not match its blinded manifest")
+        if self.signature.purpose != "custody_manifest":
+            raise ValueError("custody-manifest signature has the wrong purpose")
+        if self.signature.signed_at != self.sealed_at:
+            raise ValueError("custody-manifest signature time must equal seal time")
+        return self
+
+
+class ConstructionSplitView(FrozenModel):
+    """The only custody metadata made available to construction components."""
+
+    blinded_split: BlindedSplitManifest
+    split_manifest_digest: Sha256Digest
+    custody_manifest_ref: CustodyManifestRef
+
+    @model_validator(mode="after")
+    def view_contains_only_an_exact_blinded_binding(self) -> ConstructionSplitView:
+        if canonical_digest(self.blinded_split) != self.split_manifest_digest:
+            raise ValueError("construction view split digest does not match blinded metadata")
+        return self
+
+
+class BenchmarkRegistration(FrozenModel):
+    """Signed preregistration binding the frozen design to held-out custody."""
+
+    governance_type: Literal[GovernanceObjectKind.BENCHMARK_REGISTRATION] = (
+        GovernanceObjectKind.BENCHMARK_REGISTRATION
+    )
+    registration_id: Identifier
+    schema_version: GovernanceSchemaVersion = "1.0"
+    subject_id: Identifier
+    benchmark_id: Identifier
+    design: FeasibilityDesign
+    design_digest: Sha256Digest
+    custody_manifest_ref: CustodyManifestRef
+    condition_blind_ids: Annotated[tuple[BlindConditionId, ...], Field(min_length=4, max_length=4)]
+    construction_cutoff: UtcDateTime
+    source_construction_not_before: UtcDateTime
+    reveal_not_before: UtcDateTime
+    randomization_seed_commitment: Sha256Digest
+    randomization_algorithm: Literal["sha256_counter_shuffle_v1"] = "sha256_counter_shuffle_v1"
+    policy_version: SemVer
+    registered_at: UtcDateTime
+    signature: SignatureEnvelope
+
+    @field_validator("condition_blind_ids")
+    @classmethod
+    def condition_ids_are_sorted_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if not strings_are_sorted_unique(value):
+            raise ValueError("condition blind IDs must be sorted and unique")
+        return value
+
+    @model_validator(mode="after")
+    def registration_is_frozen_before_construction(self) -> BenchmarkRegistration:
+        if canonical_digest(self.design) != self.design_digest:
+            raise ValueError("benchmark design digest does not match the embedded design")
+        if self.construction_cutoff > self.registered_at:
+            raise ValueError("construction cutoff must be fixed by registration")
+        if self.source_construction_not_before < self.registered_at:
+            raise ValueError("source construction cannot precede preregistration")
+        if self.reveal_not_before <= self.source_construction_not_before:
+            raise ValueError("held-out reveal must follow source construction start boundary")
+        if self.signature.purpose != "benchmark_registration":
+            raise ValueError("benchmark-registration signature has the wrong purpose")
+        if self.signature.signed_at != self.registered_at:
+            raise ValueError("benchmark-registration signature time must equal registration time")
+        return self
+
+
+class ConditionMaterialReceipt(FrozenModel):
+    """Signed frozen material metadata for exactly one benchmark condition."""
+
+    governance_type: Literal[GovernanceObjectKind.CONDITION_MATERIAL_RECEIPT] = (
+        GovernanceObjectKind.CONDITION_MATERIAL_RECEIPT
+    )
+    receipt_id: Identifier
+    schema_version: GovernanceSchemaVersion = "1.0"
+    subject_id: Identifier
+    benchmark_id: Identifier
+    registration_ref: BenchmarkRegistrationRef
+    condition: BenchmarkCondition
+    blind_condition_id: BlindConditionId
+    wrapper_digest: Sha256Digest
+    material_digest: Sha256Digest
+    bundle_digest: Sha256Digest
+    eligible_corpus_digest: Sha256Digest | None = None
+    source_task_ids: tuple[Identifier, ...] = ()
+    source_evaluation_case_ids: tuple[Identifier, ...] = ()
+    target_visible_tokens: int = Field(ge=0, le=3000)
+    target_visible_utf8_bytes: int = Field(ge=0, le=12000)
+    padded: Literal[False] = False
+    construction_method: ConditionConstructionMethod
+    author_role: ConditionAuthorRole
+    author_identity: NonEmptyStr | None = None
+    authoring_minutes: int = Field(ge=0, le=90)
+    held_out_accessed: Literal[False] = False
+    author_may_score_results: Literal[False] = False
+    construction_started_at: UtcDateTime
+    frozen_at: UtcDateTime
+    policy_version: SemVer
+    signature: SignatureEnvelope
+
+    @field_validator("source_task_ids", "source_evaluation_case_ids")
+    @classmethod
+    def condition_sources_are_sorted_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if not strings_are_sorted_unique(value):
+            raise ValueError("condition source IDs must be sorted and unique")
+        return value
+
+    @model_validator(mode="after")
+    def material_matches_registered_condition_rule(self) -> ConditionMaterialReceipt:
+        if self.frozen_at < self.construction_started_at:
+            raise ValueError("condition material cannot freeze before construction starts")
+        if self.condition is BenchmarkCondition.BASE:
+            if self.target_visible_tokens or self.target_visible_utf8_bytes:
+                raise ValueError("base condition cannot contain adaptation material")
+            if self.source_task_ids or self.source_evaluation_case_ids:
+                raise ValueError("base condition cannot use the construction corpus")
+            if self.eligible_corpus_digest is not None:
+                raise ValueError("base condition cannot bind a source corpus")
+            if (
+                self.construction_method is not ConditionConstructionMethod.NONE
+                or self.author_role is not ConditionAuthorRole.NONE
+                or self.author_identity is not None
+                or self.authoring_minutes != 0
+            ):
+                raise ValueError("base condition must use the empty construction rule")
+        else:
+            if self.target_visible_tokens == 0 or self.target_visible_utf8_bytes == 0:
+                raise ValueError("source-derived condition material must be non-empty")
+            if self.eligible_corpus_digest is None or not self.source_task_ids:
+                raise ValueError("source-derived condition must bind its eligible corpus")
+        expected = {
+            BenchmarkCondition.ORDINARY_MEMORY: (
+                ConditionConstructionMethod.DETERMINISTIC_APPROVED_FEEDBACK,
+                ConditionAuthorRole.DETERMINISTIC_RENDERER,
+            ),
+            BenchmarkCondition.STRONG_STATIC_PROFILE: (
+                ConditionConstructionMethod.INDEPENDENT_HUMAN_PROFILE,
+                ConditionAuthorRole.INDEPENDENT_HUMAN,
+            ),
+            BenchmarkCondition.COMPILED_ADAPTATION: (
+                ConditionConstructionMethod.COMPILED_RELEASE_PACK,
+                ConditionAuthorRole.COMPILER,
+            ),
+        }
+        if self.condition in expected:
+            method, role = expected[self.condition]
+            if self.construction_method is not method or self.author_role is not role:
+                raise ValueError("condition construction method or author role is incorrect")
+        if self.condition is BenchmarkCondition.STRONG_STATIC_PROFILE:
+            if self.author_identity is None or not 1 <= self.authoring_minutes <= 90:
+                raise ValueError("strong profile requires an identified human within 90 minutes")
+        elif self.authoring_minutes != 0:
+            raise ValueError("only strong-profile human authoring records elapsed minutes")
+        if self.signature.purpose != "condition_material_receipt":
+            raise ValueError("condition-material signature has the wrong purpose")
+        if self.signature.signed_at != self.frozen_at:
+            raise ValueError("condition-material signature time must equal freeze time")
+        return self
+
+
+class TrialResult(FrozenModel):
+    """Immutable blinded scoring result; later corrections require adjudication."""
+
+    governance_type: Literal[GovernanceObjectKind.TRIAL_RESULT] = GovernanceObjectKind.TRIAL_RESULT
+    result_id: Identifier
+    schema_version: GovernanceSchemaVersion = "1.0"
+    subject_id: Identifier
+    benchmark_id: Identifier
+    registration_ref: BenchmarkRegistrationRef
+    condition_material_ref: ConditionMaterialReceiptRef
+    blind_task_id: BlindTaskId
+    blind_condition_id: BlindConditionId
+    repetition: int = Field(ge=1, le=2)
+    trial_record_digest: Sha256Digest
+    environment_digest: Sha256Digest
+    task_rubric_digest: Sha256Digest
+    automated_test_digest: Sha256Digest
+    automated_correctness: float = Field(ge=0.0, le=1.0, allow_inf_nan=False)
+    requirement_coverage: float = Field(ge=0.0, le=1.0, allow_inf_nan=False)
+    change_discipline: float = Field(ge=0.0, le=1.0, allow_inf_nan=False)
+    validity: TrialValidity
+    invalid_reason: NonEmptyStr | None = None
+    guardrail_codes: tuple[NonEmptyStr, ...] = ()
+    scorer_identity: NonEmptyStr
+    scored_at: UtcDateTime
+    policy_version: SemVer
+    signature: SignatureEnvelope
+
+    @field_validator("guardrail_codes")
+    @classmethod
+    def guardrails_are_sorted_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if not strings_are_sorted_unique(value):
+            raise ValueError("trial-result guardrails must be sorted and unique")
+        return value
+
+    @model_validator(mode="after")
+    def result_is_validated_and_signed(self) -> TrialResult:
+        if (self.validity is TrialValidity.INVALID) != (self.invalid_reason is not None):
+            raise ValueError("only invalid trials require an invalid reason")
+        if self.signature.purpose != "trial_result":
+            raise ValueError("trial-result signature has the wrong purpose")
+        if self.signature.signed_at != self.scored_at:
+            raise ValueError("trial-result signature time must equal scoring time")
+        return self
+
+    @property
+    def weighted_score(self) -> float | None:
+        if self.validity is TrialValidity.INVALID:
+            return None
+        return (
+            0.60 * self.automated_correctness
+            + 0.25 * self.requirement_coverage
+            + 0.15 * self.change_discipline
+        )
+
+
+class AdjudicatedValue(FrozenModel):
+    """Digest-only correction; original and corrected private values stay outside metadata."""
+
+    field_name: AdjudicatedField
+    original_value_digest: Sha256Digest
+    corrected_value_digest: Sha256Digest
+
+    @model_validator(mode="after")
+    def correction_changes_the_derived_value(self) -> AdjudicatedValue:
+        if self.original_value_digest == self.corrected_value_digest:
+            raise ValueError("adjudicated correction digests must differ")
+        return self
+
+
+class AdjudicationRecord(FrozenModel):
+    """Append-only correction linked to an immutable TrialResult."""
+
+    governance_type: Literal[GovernanceObjectKind.ADJUDICATION_RECORD] = (
+        GovernanceObjectKind.ADJUDICATION_RECORD
+    )
+    adjudication_id: Identifier
+    schema_version: GovernanceSchemaVersion = "1.0"
+    subject_id: Identifier
+    benchmark_id: Identifier
+    trial_result_ref: TrialResultRef
+    sequence: int = Field(gt=0)
+    previous_adjudication_ref: AdjudicationRecordRef | None = None
+    decision: AdjudicationDecision
+    changes: tuple[AdjudicatedValue, ...] = ()
+    reason: NonEmptyStr
+    reviewer_identity: NonEmptyStr
+    adjudicated_at: UtcDateTime
+    policy_version: SemVer
+    signature: SignatureEnvelope
+
+    @field_validator("changes")
+    @classmethod
+    def adjudicated_fields_are_unique(
+        cls, value: tuple[AdjudicatedValue, ...]
+    ) -> tuple[AdjudicatedValue, ...]:
+        fields = tuple(item.field_name.value for item in value)
+        if list(fields) != sorted(set(fields)):
+            raise ValueError("adjudicated fields must be sorted and unique")
+        return value
+
+    @model_validator(mode="after")
+    def adjudication_extends_history_and_is_signed(self) -> AdjudicationRecord:
+        if (self.sequence == 1) != (self.previous_adjudication_ref is None):
+            raise ValueError("only the first adjudication omits a previous reference")
+        if self.decision is AdjudicationDecision.CORRECT_DERIVED_VALUE and not self.changes:
+            raise ValueError("derived-value correction requires digest-only changes")
+        if self.decision is not AdjudicationDecision.CORRECT_DERIVED_VALUE and self.changes:
+            raise ValueError("only derived-value correction may contain changed fields")
+        if self.signature.purpose != "adjudication_record":
+            raise ValueError("adjudication signature has the wrong purpose")
+        if self.signature.signed_at != self.adjudicated_at:
+            raise ValueError("adjudication signature time must equal adjudication time")
+        return self
+
+
+class CustodyAccessEvent(FrozenModel):
+    """Signed append-only access decision chained within one custody manifest."""
+
+    governance_type: Literal[GovernanceObjectKind.CUSTODY_ACCESS_EVENT] = (
+        GovernanceObjectKind.CUSTODY_ACCESS_EVENT
+    )
+    event_id: Identifier
+    schema_version: GovernanceSchemaVersion = "1.0"
+    subject_id: Identifier
+    benchmark_id: Identifier
+    custody_manifest_ref: CustodyManifestRef
+    registration_ref: BenchmarkRegistrationRef | None = None
+    sequence: int = Field(gt=0)
+    previous_access_event_ref: CustodyAccessEventRef | None = None
+    action: CustodyAccessAction
+    outcome: CustodyAccessOutcome
+    actor_identity: NonEmptyStr
+    reason: NonEmptyStr
+    occurred_at: UtcDateTime
+    policy_version: SemVer
+    signature: SignatureEnvelope
+
+    @model_validator(mode="after")
+    def access_event_is_chained_and_signed(self) -> CustodyAccessEvent:
+        if (self.sequence == 1) != (self.previous_access_event_ref is None):
+            raise ValueError("only the first custody access event omits a previous reference")
+        if self.action is CustodyAccessAction.SEAL:
+            if (
+                self.sequence != 1
+                or self.outcome is not CustodyAccessOutcome.ALLOWED
+                or self.registration_ref is not None
+            ):
+                raise ValueError("seal must be the first allowed event without a registration")
+        elif self.sequence == 1:
+            raise ValueError("custody access history must begin with a seal event")
+        if self.action is CustodyAccessAction.REQUEST_REVEAL:
+            if self.registration_ref is None:
+                raise ValueError("reveal request must bind an exact benchmark registration")
+        elif self.registration_ref is not None:
+            raise ValueError("only reveal requests may bind a benchmark registration")
+        if self.signature.purpose != "custody_access_event":
+            raise ValueError("custody-access signature has the wrong purpose")
+        if self.signature.signed_at != self.occurred_at:
+            raise ValueError("custody-access signature time must equal occurrence time")
+        return self
+
+
 def _recall_target_key(value: RecallTarget) -> tuple[str, str, str, str]:
     return (
         value.target_kind.value,
@@ -566,6 +1020,19 @@ _ACTIONS_BY_TARGET_KIND: dict[RecallTargetKind, frozenset[InvalidationAction]] =
 
 
 type SignedRecallObject = DependencyImpact | InvalidationEvent | TombstoneReceipt | RecallReport
+type SignedBenchmarkObject = (
+    CustodyManifest
+    | BenchmarkRegistration
+    | ConditionMaterialReceipt
+    | TrialResult
+    | AdjudicationRecord
+    | CustodyAccessEvent
+)
 type SignedGovernanceObject = (
-    SignerIdentity | ConsentReceipt | CaptureReceipt | GovernanceEvent | SignedRecallObject
+    SignerIdentity
+    | ConsentReceipt
+    | CaptureReceipt
+    | GovernanceEvent
+    | SignedRecallObject
+    | SignedBenchmarkObject
 )
