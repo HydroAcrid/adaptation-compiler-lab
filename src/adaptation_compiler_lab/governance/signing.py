@@ -18,16 +18,27 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
 from adaptation_compiler_lab.domain.base import UtcDateTime
-from adaptation_compiler_lab.domain.references import CaptureReceiptRef, ConsentReceiptRef
+from adaptation_compiler_lab.domain.references import (
+    CaptureReceiptRef,
+    ConsentReceiptRef,
+    DependencyImpactRef,
+    InvalidationEventRef,
+    RecallReportRef,
+    TombstoneReceiptRef,
+)
 from adaptation_compiler_lab.governance.models import (
     CaptureReceipt,
     ConsentReceipt,
+    DependencyImpact,
     GovernanceEvent,
     GovernanceEventType,
+    InvalidationEvent,
+    RecallReport,
     SignatureEnvelope,
     SignedGovernanceObject,
     SignerIdentity,
     SignerRole,
+    TombstoneReceipt,
 )
 from adaptation_compiler_lab.serialization.canonical import canonical_bytes, canonical_digest
 
@@ -262,6 +273,56 @@ def sign_governance_event(
     return draft.model_copy(update={"signature": envelope})
 
 
+def sign_dependency_impact(
+    unsigned: Mapping[str, object], signer: GovernanceSigner
+) -> DependencyImpact:
+    generated_at = _timestamp(unsigned, "generated_at")
+    placeholder = signer.envelope(unsigned, purpose="dependency_impact", signed_at=generated_at)
+    draft = DependencyImpact.model_validate_json(
+        json.dumps({**unsigned, "signature": placeholder.model_dump(mode="json")})
+    )
+    normalized = _unsigned_payload(draft)
+    envelope = signer.envelope(normalized, purpose="dependency_impact", signed_at=generated_at)
+    return draft.model_copy(update={"signature": envelope})
+
+
+def sign_invalidation_event(
+    unsigned: Mapping[str, object], signer: GovernanceSigner
+) -> InvalidationEvent:
+    effective_at = _timestamp(unsigned, "effective_at")
+    placeholder = signer.envelope(unsigned, purpose="invalidation_event", signed_at=effective_at)
+    draft = InvalidationEvent.model_validate_json(
+        json.dumps({**unsigned, "signature": placeholder.model_dump(mode="json")})
+    )
+    normalized = _unsigned_payload(draft)
+    envelope = signer.envelope(normalized, purpose="invalidation_event", signed_at=effective_at)
+    return draft.model_copy(update={"signature": envelope})
+
+
+def sign_tombstone_receipt(
+    unsigned: Mapping[str, object], signer: GovernanceSigner
+) -> TombstoneReceipt:
+    purged_at = _timestamp(unsigned, "purged_at")
+    placeholder = signer.envelope(unsigned, purpose="tombstone_receipt", signed_at=purged_at)
+    draft = TombstoneReceipt.model_validate_json(
+        json.dumps({**unsigned, "signature": placeholder.model_dump(mode="json")})
+    )
+    normalized = _unsigned_payload(draft)
+    envelope = signer.envelope(normalized, purpose="tombstone_receipt", signed_at=purged_at)
+    return draft.model_copy(update={"signature": envelope})
+
+
+def sign_recall_report(unsigned: Mapping[str, object], signer: GovernanceSigner) -> RecallReport:
+    completed_at = _timestamp(unsigned, "completed_at")
+    placeholder = signer.envelope(unsigned, purpose="recall_report", signed_at=completed_at)
+    draft = RecallReport.model_validate_json(
+        json.dumps({**unsigned, "signature": placeholder.model_dump(mode="json")})
+    )
+    normalized = _unsigned_payload(draft)
+    envelope = signer.envelope(normalized, purpose="recall_report", signed_at=completed_at)
+    return draft.model_copy(update={"signature": envelope})
+
+
 def _timestamp(payload: Mapping[str, object], field: str) -> datetime:
     value = payload.get(field)
     if isinstance(value, datetime):
@@ -320,6 +381,8 @@ def _required_role(value: SignedGovernanceObject) -> SignerRole | None:
             GovernanceEventType.ACTIVATION_DECISION: SignerRole.ACTIVATION,
             GovernanceEventType.CUSTODY_ACTION: SignerRole.CUSTODY,
         }[value.event_type]
+    if isinstance(value, (DependencyImpact, InvalidationEvent, TombstoneReceipt, RecallReport)):
+        return SignerRole.CUSTODY
     return None
 
 
@@ -331,10 +394,48 @@ def governance_ref(value: ConsentReceipt) -> ConsentReceiptRef: ...
 def governance_ref(value: CaptureReceipt) -> CaptureReceiptRef: ...
 
 
-def governance_ref(value: ConsentReceipt | CaptureReceipt) -> ConsentReceiptRef | CaptureReceiptRef:
+@overload
+def governance_ref(value: DependencyImpact) -> DependencyImpactRef: ...
+
+
+@overload
+def governance_ref(value: InvalidationEvent) -> InvalidationEventRef: ...
+
+
+@overload
+def governance_ref(value: TombstoneReceipt) -> TombstoneReceiptRef: ...
+
+
+@overload
+def governance_ref(value: RecallReport) -> RecallReportRef: ...
+
+
+def governance_ref(
+    value: ConsentReceipt
+    | CaptureReceipt
+    | DependencyImpact
+    | InvalidationEvent
+    | TombstoneReceipt
+    | RecallReport,
+) -> (
+    ConsentReceiptRef
+    | CaptureReceiptRef
+    | DependencyImpactRef
+    | InvalidationEventRef
+    | TombstoneReceiptRef
+    | RecallReportRef
+):
     """Return an exact typed reference without exposing signed contents."""
 
     digest = canonical_digest(value)
     if isinstance(value, ConsentReceipt):
         return ConsentReceiptRef(object_id=value.receipt_id, content_digest=digest)
-    return CaptureReceiptRef(object_id=value.receipt_id, content_digest=digest)
+    if isinstance(value, CaptureReceipt):
+        return CaptureReceiptRef(object_id=value.receipt_id, content_digest=digest)
+    if isinstance(value, DependencyImpact):
+        return DependencyImpactRef(object_id=value.impact_id, content_digest=digest)
+    if isinstance(value, InvalidationEvent):
+        return InvalidationEventRef(object_id=value.event_id, content_digest=digest)
+    if isinstance(value, TombstoneReceipt):
+        return TombstoneReceiptRef(object_id=value.receipt_id, content_digest=digest)
+    return RecallReportRef(object_id=value.report_id, content_digest=digest)

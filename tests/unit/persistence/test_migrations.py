@@ -6,13 +6,16 @@ from pathlib import Path
 
 import pytest
 
+from adaptation_compiler_lab.governance import GovernanceObjectKind
 from adaptation_compiler_lab.persistence.errors import (
     MigrationDriftError,
     MigrationError,
     MigrationSequenceError,
 )
+from adaptation_compiler_lab.persistence.governance import GovernanceLedger
 from adaptation_compiler_lab.persistence.migrations import Migration, MigrationRunner
 from adaptation_compiler_lab.persistence.sqlite import SqliteUnitOfWorkFactory
+from tests.unit.test_governance import _identity
 
 
 def test_bundled_migrations_are_idempotent(tmp_path: Path) -> None:
@@ -22,10 +25,10 @@ def test_bundled_migrations_are_idempotent(tmp_path: Path) -> None:
     first = factory.initialize()
     second = factory.initialize()
 
-    assert first == second == 3
+    assert first == second == 4
     with sqlite3.connect(path) as connection:
         count = connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0]
-        assert count == 3
+        assert count == 4
 
 
 def test_governance_ledger_is_append_only(tmp_path: Path) -> None:
@@ -70,12 +73,37 @@ def test_existing_v2_ledger_upgrades_without_rewriting_records(tmp_path: Path) -
         )
         connection.commit()
 
-    assert factory.initialize() == 3
+    assert factory.initialize() == 4
     with sqlite3.connect(path) as connection:
         row = connection.execute(
             "SELECT record_id, schema_version FROM records WHERE record_id = 'legacy-synthetic'"
         ).fetchone()
     assert row == ("legacy-synthetic", "1.0")
+
+
+def test_existing_v3_governance_objects_survive_recall_migration(tmp_path: Path) -> None:
+    root = resources.files("adaptation_compiler_lab.persistence.sql")
+    legacy = tuple(
+        Migration.from_sql(
+            version,
+            name,
+            (root / filename).read_text(encoding="utf-8"),
+        )
+        for version, filename, name in (
+            (1, "0001_record_ledger.sql", "record_ledger"),
+            (2, "0002_append_only_guards.sql", "append_only_guards"),
+            (3, "0003_governance_ledger.sql", "governance_ledger"),
+        )
+    )
+    path = tmp_path / "v3-governance.sqlite3"
+    factory = SqliteUnitOfWorkFactory(path)
+    assert factory.initialize(MigrationRunner(legacy)) == 3
+    _, identity = _identity()
+    ledger = GovernanceLedger(path, subject_id="kevin")
+    assert ledger.add(identity)
+
+    assert factory.initialize() == 4
+    assert ledger.get(GovernanceObjectKind.SIGNER_IDENTITY, identity.identity_id) == identity
 
 
 def test_applied_migration_checksum_drift_is_rejected(tmp_path: Path) -> None:

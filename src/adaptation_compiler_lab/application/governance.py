@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+from datetime import datetime
+
 from adaptation_compiler_lab.domain import Evidence, PermittedUse, SourceClass, scope_is_within
 from adaptation_compiler_lab.governance import (
     CaptureReceipt,
     ConsentReceipt,
+    InvalidationAction,
+    InvalidationEvent,
+    RecallTargetKind,
     SignerIdentity,
 )
 from adaptation_compiler_lab.governance.signing import governance_ref, verify_signed_governance
@@ -21,6 +27,8 @@ def validate_evidence_governance(
     consent: ConsentReceipt | None,
     capture: CaptureReceipt | None,
     identity: SignerIdentity | None,
+    invalidation_events: Iterable[InvalidationEvent] = (),
+    effective_at: datetime | None = None,
 ) -> None:
     """Validate exact references, signatures, source, scope, use, expiry, and retention."""
 
@@ -47,6 +55,20 @@ def validate_evidence_governance(
         raise EvidenceGovernanceError("Evidence capture reference does not match signed content")
     if capture.consent_ref != governance_ref(consent):
         raise EvidenceGovernanceError("capture does not bind the exact consent receipt")
+    for event in invalidation_events:
+        verify_signed_governance(event, identity)
+        if (
+            event.action is InvalidationAction.REVOKE_CONSENT
+            and event.target.target_kind is RecallTargetKind.CONSENT_RECEIPT
+            and event.target.object_id == consent.receipt_id
+            and event.target.content_digest == governance_ref(consent).content_digest
+        ):
+            raise EvidenceGovernanceError("Evidence consent has been revoked")
+    if effective_at is not None:
+        if effective_at.tzinfo is None or effective_at.utcoffset() is None:
+            raise EvidenceGovernanceError("governance evaluation time must be timezone-aware")
+        if effective_at >= consent.expires_at:
+            raise EvidenceGovernanceError("expired consent cannot admit Evidence")
     if evidence.scope.subject_ids != (consent.subject_id,):
         raise EvidenceGovernanceError("Evidence subject does not match consent subject")
     if not scope_is_within(evidence.scope, consent.scope):

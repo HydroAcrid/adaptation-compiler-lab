@@ -8,15 +8,23 @@ from pydantic import BaseModel
 from adaptation_compiler_lab.governance.models import (
     CaptureReceipt,
     ConsentReceipt,
+    DependencyImpact,
     GovernanceEvent,
+    InvalidationEvent,
+    RecallReport,
     SignerIdentity,
+    TombstoneReceipt,
 )
 
 GOVERNANCE_MODELS: dict[str, type[BaseModel]] = {
     "capture_receipt": CaptureReceipt,
     "consent_receipt": ConsentReceipt,
+    "dependency_impact": DependencyImpact,
     "governance_event": GovernanceEvent,
+    "invalidation_event": InvalidationEvent,
+    "recall_report": RecallReport,
     "signer_identity": SignerIdentity,
+    "tombstone_receipt": TombstoneReceipt,
 }
 
 

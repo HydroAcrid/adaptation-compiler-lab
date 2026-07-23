@@ -4,8 +4,8 @@ Last updated: 2026-07-22
 
 ## Current milestone
 
-**Milestone 1 — Governance, Identity, and Privacy Foundation is implemented.** Work stops at this
-gate until explicit approval for Milestone 2. The existing private GitHub repository is the
+**Milestone 2 — Withdrawal, Recall, and Conflict Semantics is implemented.** Work stops at this
+gate until explicit approval for Milestone 3. The existing private GitHub repository is the
 code/documentation system of record. Public publication and remote research-data/key storage remain
 excluded. No real data, source-task access, Codex/Claude Code use, holdout reveal, model
 modification, executable tools, Kairn, or web UI occurred.
@@ -27,6 +27,20 @@ modification, executable tools, Kairn, or web UI occurred.
   and fail-closed missing/wrong/tampered-key behavior.
 - Append-only signed-governance migration/table and read/write verification. The CLI adds
   `identity`, `consent`, and `capture-preview` groups and rejects non-synthetic selectors.
+- Signed `DependencyImpact`, `InvalidationEvent`, `TombstoneReceipt`, and `RecallReport` contracts,
+  schema snapshots, custody-role authorization, expanded append-only governance migration, and signature
+  verification on write/read.
+- Two-step `recall preflight|execute`: complete subject-scoped dependency closure, lifecycle and
+  activation-head snapshot, exact canonical confirmation digest, stale-graph rejection, immutable
+  report identity, and repeat-call idempotency.
+- Consent revocation, Evidence restriction/purge, dependent-record exclusion, Artifact revocation,
+  Release retirement, TargetPack invalidation, and atomic deactivation of affected active pointers.
+- Authenticated encrypted-payload unlink, fail-closed missing-key behavior, transaction-failure
+  restoration, and signed minimal tombstones that retain no raw content or locator.
+- Deterministic conflict precedence: revoked/expired exclusion, narrower scope, later explicit user
+  correction, claim-specific authority, and release-blocking unresolved equal-authority ties.
+- Review/release/render/activation gates reject restricted, purged, excluded, revoked, retired,
+  invalidated, or expired inputs.
 - Evaluation-first candidate extraction and review workflow; evidence, scope, partition, privacy,
   and least-invasive-routing validation; non-self human approval requirements.
 - Checksummed SQLite migrations, append-only local record/link/lifecycle/activation journals,
@@ -58,17 +72,17 @@ uv run pytest
 uv build
 ```
 
-The Milestone 1 final verification reports locked dependency sync, Ruff format/lint success, mypy
-success across 101 source files, 212 passing tests, 10 explicit schema/migration checks, successful
-source/wheel builds, and clean credential/private-path/raw-payload scans. These checks confirm local
-implementation and synthetic workflow behavior; they do not verify target-agent compatibility,
-human-review quality, operational holdout custody, real-data privacy compliance, or the research
-hypothesis.
+The Milestone 2 final verification completed with 108 source files formatted and type checked, 228
+tests passing, and both the source distribution and wheel building successfully. A focused set of
+26 governance-ledger, migration, signature, tamper, revocation, and expiry tests also passed. Wheel
+inspection confirmed that the recall service, conflict policy, and migration 0004 are packaged.
+Credential, private-path, raw-payload, and key-file scans found no repository leaks. These checks
+confirm local implementation and synthetic workflow behavior; they do not verify target-agent
+compatibility, human-review quality, operational holdout custody, real-data privacy compliance, or
+the research hypothesis.
 
 ## Explicitly not implemented
 
-- Withdrawal, revocation, dependency-impact computation, purge/tombstone, recall cascade, release
-  retirement, pack invalidation, or atomic active-release deactivation (Milestone 2).
 - Signed benchmark custody/registration/result objects, sealed bundles, access logs, budget freeze,
   or complete feasibility preregistration (Milestone 3).
 - Authenticated ingestion of Codex work, real user consent selection, or processing of real source
@@ -84,9 +98,10 @@ hypothesis.
 
 ## Exact next gate
 
-Milestone 2, if explicitly approved, is limited to withdrawal, recall, and conflict semantics:
-`InvalidationEvent`, `TombstoneReceipt`, `DependencyImpact`, `RecallReport`, dependency preflight,
-explicit destructive confirmation, append-only tombstones, deterministic conflict precedence, and
-active-release deactivation. It must stop after its own checks, merged PR, and Obsidian update.
-Benchmark custody, connectors, real task access, Claude installation/calls, and live data remain
-forbidden during that milestone.
+Milestone 3, only if explicitly approved, is limited to benchmark custody and the evaluation
+registry: signed custody/registration/material/result/adjudication objects, sealed split-manifest
+binding and access log, blind IDs, the frozen 4×4×2 feasibility design, equal 3,000-token/12,000-byte
+ceilings, deterministic ordinary-memory construction, independent strong-profile authorship, and
+immutable adjudication. It must freeze the full preregistration before source construction and stop
+after its checks, merged PR, and Obsidian update. Connectors, real task access, Claude installation
+or calls, holdout reveal, and live data remain forbidden during Milestone 3.

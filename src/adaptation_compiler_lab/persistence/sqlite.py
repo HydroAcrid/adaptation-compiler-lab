@@ -490,6 +490,21 @@ class _SqliteActivationRepository:
         ).fetchone()
         return None if row is None else _activation_from_row(row)
 
+    def list_current(self) -> tuple[ActivationEvent, ...]:
+        rows = self._connection.execute(
+            """
+            SELECT current.*
+            FROM activation_events AS current
+            WHERE current.sequence = (
+                SELECT MAX(candidate.sequence)
+                FROM activation_events AS candidate
+                WHERE candidate.environment_id = current.environment_id
+            )
+            ORDER BY current.environment_id
+            """
+        ).fetchall()
+        return tuple(_activation_from_row(row) for row in rows)
+
     def history(self, environment_id: str) -> tuple[ActivationEvent, ...]:
         rows = self._connection.execute(
             """

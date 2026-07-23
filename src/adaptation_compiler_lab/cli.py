@@ -85,6 +85,8 @@ from adaptation_compiler_lab.governance import (
     CaptureReceipt,
     ConsentReceipt,
     GovernanceObjectKind,
+    InvalidationAction,
+    RecallTarget,
     SignerIdentity,
     SignerRole,
     SourceSelector,
@@ -105,6 +107,7 @@ from adaptation_compiler_lab.persistence.governance import GovernanceLedger
 from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore
 from adaptation_compiler_lab.persistence.records import RecordKey
 from adaptation_compiler_lab.persistence.sqlite import SqliteUnitOfWorkFactory
+from adaptation_compiler_lab.recall import RecallService
 from adaptation_compiler_lab.release.activation import ActivationPointer, ActivationService
 from adaptation_compiler_lab.release.proposals import ReleaseCandidate, propose_release_candidate
 from adaptation_compiler_lab.release.service import CandidateEvaluation, ReleaseService
@@ -151,6 +154,9 @@ consent_app = typer.Typer(help="Issue and verify exact signed consent receipts."
 capture_preview_app = typer.Typer(
     help="Create synthetic signed capture previews without accessing source tasks."
 )
+recall_app = typer.Typer(
+    help="Preview and explicitly confirm signed withdrawal and recall cascades."
+)
 
 app.add_typer(workspace_app, name="workspace")
 app.add_typer(record_app, name="record")
@@ -168,6 +174,7 @@ app.add_typer(schema_app, name="schema")
 app.add_typer(identity_app, name="identity")
 app.add_typer(consent_app, name="consent")
 app.add_typer(capture_preview_app, name="capture-preview")
+app.add_typer(recall_app, name="recall")
 
 WorkspaceOption = Annotated[
     Path,
@@ -256,6 +263,23 @@ class CapturePreviewRequest(FrozenModel):
     payload_digest: Sha256Digest
     captured_at: UtcDateTime
     synthetic: bool = True
+
+
+class RecallImpactRequest(FrozenModel):
+    impact_id: Identifier
+    signer_identity_id: Identifier
+    root_target: RecallTarget
+    requested_action: InvalidationAction
+    generated_at: UtcDateTime
+    policy_version: SemVer
+
+
+class RecallExecuteRequest(FrozenModel):
+    impact_id: Identifier
+    signer_identity_id: Identifier
+    confirmation_digest: Sha256Digest
+    completed_at: UtcDateTime
+    reason: NonEmptyStr
 
 
 def _validation_message(error: ValidationError) -> str:
@@ -614,6 +638,76 @@ def capture_preview_verify(
         if receipt.consent_ref != governance_ref(consent):
             raise ValueError("capture receipt does not bind the supplied consent receipt")
         _emit({"content_digest": canonical_digest(receipt), "valid": True})
+
+
+@recall_app.command("preflight")
+def recall_preflight(
+    request_file: Annotated[
+        Path, typer.Argument(help="Signed-impact request with one exact root target.")
+    ],
+    workspace: WorkspaceOption,
+    output: Annotated[Path | None, typer.Option("--output")] = None,
+) -> None:
+    """Compute and sign the full dependency impact without changing lifecycle state."""
+
+    with _handled():
+        paths, subject_id, factory = _services(workspace)
+        request = _load_model(request_file, RecallImpactRequest)
+        _preflight_optional_output(output)
+        ledger = GovernanceLedger(paths.database, subject_id=subject_id)
+        identity = ledger.require_identity(request.signer_identity_id)
+        signer = _governance_signer(paths, identity)
+        impact = RecallService(factory, subject_id=subject_id).preflight(
+            impact_id=request.impact_id,
+            root_target=request.root_target,
+            requested_action=request.requested_action,
+            generated_at=request.generated_at,
+            policy_version=request.policy_version,
+            signer=signer,
+        )
+        payload = impact.model_dump(mode="json", round_trip=True)
+        payload["confirmation_digest"] = canonical_digest(impact)
+        _emit_or_write(payload, output)
+
+
+@recall_app.command("execute")
+def recall_execute(
+    request_file: Annotated[
+        Path, typer.Argument(help="Execution request containing the exact impact digest.")
+    ],
+    workspace: WorkspaceOption,
+    output: Annotated[Path | None, typer.Option("--output")] = None,
+) -> None:
+    """Execute an unchanged signed impact and fail closed without exact confirmation."""
+
+    with _handled():
+        paths, subject_id, factory = _services(workspace)
+        request = _load_model(request_file, RecallExecuteRequest)
+        _preflight_optional_output(output)
+        ledger = GovernanceLedger(paths.database, subject_id=subject_id)
+        identity = ledger.require_identity(request.signer_identity_id)
+        signer = _governance_signer(paths, identity)
+        impact = ledger.get(GovernanceObjectKind.DEPENDENCY_IMPACT, request.impact_id)
+        if impact is None:
+            raise ValueError("signed dependency impact is unavailable")
+        raw_store = None
+        if getattr(impact, "payloads", ()):
+            raw_store = LocalRawPayloadStore.from_environment(
+                paths.raw_evidence,
+                workspace_root=paths.root,
+            )
+        report = RecallService(
+            factory,
+            subject_id=subject_id,
+            raw_store=raw_store,
+        ).execute(
+            impact_id=request.impact_id,
+            confirmation_digest=request.confirmation_digest,
+            completed_at=request.completed_at,
+            reason=request.reason,
+            signer=signer,
+        )
+        _emit_or_write(report, output)
 
 
 @record_app.command("validate")
@@ -1466,6 +1560,13 @@ def pack_compile(
         release_record = store.require(_key(RecordKind.RELEASE, release_id, release_version)).record
         if not isinstance(release_record, Release):
             raise ValueError("selected record is not a Release")
+        release_state = store.current_lifecycle_state(
+            _key(RecordKind.RELEASE, release_id, release_version)
+        )
+        if release_state != "released":
+            raise ValueError(
+                f"only an active released lifecycle can be rendered; found {release_state!r}"
+            )
         context = _load_model(context_file, TargetPackBuildContext)
         projection = build_release_render_projection(
             release_record,

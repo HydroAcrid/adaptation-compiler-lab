@@ -215,6 +215,7 @@ class HumanReviewWorkflow:
         graph = _exact_provenance_graph(decided, records)
         _require_allowed("lesson decision lineage", validate_lineage(graph))
         if requested is LessonCandidateState.APPROVED:
+            self._require_available_graph(graph, operation="lesson approval")
             _require_allowed(
                 "lesson approval provenance",
                 validate_lesson_candidate(
@@ -483,6 +484,7 @@ class HumanReviewWorkflow:
         _require_allowed("artifact decision lineage", validate_lineage(graph))
         if requested is ArtifactState.APPROVED:
             _assert_artifact_text_safe(decided)
+            self._require_available_graph(graph, operation="artifact promotion")
             graph_index = _record_index(graph)
             for reference in decided.source_candidate_refs:
                 source = _resolve_exact(reference, graph_index)
@@ -515,6 +517,37 @@ class HumanReviewWorkflow:
 
     def _records(self) -> tuple[VersionedRecord, ...]:
         return tuple(item.record for item in self._store.list())
+
+    def _require_available_graph(
+        self,
+        graph: tuple[VersionedRecord, ...],
+        *,
+        operation: str,
+    ) -> None:
+        unavailable: list[str] = []
+        for item in graph:
+            state = self._store.current_lifecycle_state(
+                RecordKey(
+                    item.record_type.value,
+                    item.record_id,
+                    item.record_version,
+                )
+            )
+            if state in {
+                "excluded",
+                "purged",
+                "restricted",
+                "revoked",
+                "retired",
+                "invalidated",
+            }:
+                unavailable.append(
+                    f"{item.record_type.value}:{item.record_id}@{item.record_version}"
+                )
+        if unavailable:
+            raise ReviewProvenanceError(
+                f"{operation} depends on revoked material: " + ", ".join(sorted(unavailable))
+            )
 
     def _persist_artifact_state(
         self,

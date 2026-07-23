@@ -9,6 +9,7 @@ from typing import cast
 
 from pydantic import BaseModel, model_validator
 
+from adaptation_compiler_lab.conflicts import resolve_artifact_conflict
 from adaptation_compiler_lab.domain import (
     AnyRecordRef,
     Artifact,
@@ -17,6 +18,7 @@ from adaptation_compiler_lab.domain import (
     EvaluationCase,
     EvaluationCaseState,
     EvaluationResult,
+    Evidence,
     ExactRecordRef,
     FrozenModel,
     Partition,
@@ -50,6 +52,7 @@ class ReleaseGateCode(StrEnum):
     CONFLICT = "conflict"
     HELD_OUT = "held_out"
     ARTIFACT_EXPIRED = "artifact_expired"
+    REVOKED_OR_EXPIRED = "revoked_or_expired"
     MISSING_RELEASE_REFERENCE = "missing_release_reference"
     CONSTRUCTION_BOUNDARY = "construction_boundary"
 
@@ -113,6 +116,7 @@ def evaluate_release_gates(
     records: Iterable[VersionedRecord],
     *,
     evaluated_at: datetime,
+    record_states: Mapping[tuple[str, str, str], str] | None = None,
 ) -> ReleaseGateReport:
     """Evaluate exact membership, provenance, privacy, conflict, and holdout gates."""
 
@@ -120,6 +124,13 @@ def evaluate_release_gates(
     index = index_records(materialized)
     violations: list[ReleaseGateViolation] = []
     artifacts: list[Artifact] = []
+    lifecycle_states = {} if record_states is None else dict(record_states)
+    unavailable_artifacts = {
+        key
+        for key, state in lifecycle_states.items()
+        if state in {"excluded", "purged", "restricted", "revoked", "retired", "invalidated"}
+    }
+    evidence_records = tuple(item for item in materialized if isinstance(item, Evidence))
 
     if candidate.policy_version not in candidate.policy_versions:
         violations.append(
@@ -173,6 +184,20 @@ def evaluate_release_gates(
                 ReleaseGateViolation(
                     code=ReleaseGateCode.ARTIFACT_NOT_APPROVED,
                     message="release membership requires an exact approved artifact version",
+                    record_ids=(artifact.record_id,),
+                )
+            )
+        artifact_key = (
+            artifact.record_type.value,
+            artifact.record_id,
+            artifact.record_version,
+        )
+        artifact_lifecycle = lifecycle_states.get(artifact_key)
+        if artifact_lifecycle in {"excluded", "revoked"}:
+            violations.append(
+                ReleaseGateViolation(
+                    code=ReleaseGateCode.REVOKED_OR_EXPIRED,
+                    message="revoked or excluded artifact cannot enter a release",
                     record_ids=(artifact.record_id,),
                 )
             )
@@ -252,14 +277,49 @@ def evaluate_release_gates(
                         record_ids=(artifact.record_id, conflict.artifact_ref.record_id),
                     )
                 )
-            if conflict.resolution is ConflictResolution.UNRESOLVED:
+                continue
+            shared_claim_types = sorted(
+                {entry.claim_type for entry in artifact.claim_authorities.entries}
+                & {entry.claim_type for entry in conflict_record.claim_authorities.entries},
+                key=lambda item: item.value,
+            )
+            if not shared_claim_types:
                 violations.append(
                     ReleaseGateViolation(
                         code=ReleaseGateCode.CONFLICT,
-                        message="release contains an unresolved artifact conflict",
+                        message="declared conflict has no shared claim-specific authority",
                         record_ids=(artifact.record_id, conflict.artifact_ref.record_id),
                     )
                 )
+                continue
+            for claim_type in shared_claim_types:
+                conflict_decision = resolve_artifact_conflict(
+                    artifact,
+                    conflict_record,
+                    claim_type=claim_type,
+                    evidence=evidence_records,
+                    evaluated_at=evaluated_at,
+                    unavailable=unavailable_artifacts,
+                )
+                if conflict_decision.resolution is ConflictResolution.UNRESOLVED:
+                    violations.append(
+                        ReleaseGateViolation(
+                            code=ReleaseGateCode.CONFLICT,
+                            message=conflict_decision.rationale,
+                            record_ids=(artifact.record_id, conflict_record.record_id),
+                        )
+                    )
+                elif conflict.resolution is not conflict_decision.resolution:
+                    violations.append(
+                        ReleaseGateViolation(
+                            code=ReleaseGateCode.CONFLICT,
+                            message=(
+                                "declared conflict resolution does not match deterministic "
+                                f"{conflict_decision.resolution.value} precedence"
+                            ),
+                            record_ids=(artifact.record_id, conflict_record.record_id),
+                        )
+                    )
 
     covered_artifact_keys: set[tuple[object, str, str]] = set()
     if candidate.artifact_refs and not candidate.development_evaluations:
@@ -352,6 +412,30 @@ def evaluate_release_gates(
     cutoff = candidate.construction_boundary.construction_cutoff
     construction_records = _reachable_construction_records(artifacts, index)
     for record in construction_records:
+        state = lifecycle_states.get(
+            (record.record_type.value, record.record_id, record.record_version)
+        )
+        if state in {"excluded", "purged", "restricted", "revoked", "retired", "invalidated"}:
+            violations.append(
+                ReleaseGateViolation(
+                    code=ReleaseGateCode.REVOKED_OR_EXPIRED,
+                    message="revoked dependency cannot contribute to a release",
+                    record_ids=(record.record_id,),
+                )
+            )
+        scope = getattr(record, "scope", None)
+        if (
+            scope is not None
+            and scope.valid_until is not None
+            and scope.valid_until <= evaluated_at
+        ):
+            violations.append(
+                ReleaseGateViolation(
+                    code=ReleaseGateCode.REVOKED_OR_EXPIRED,
+                    message="expired scoped dependency cannot contribute to a release",
+                    record_ids=(record.record_id,),
+                )
+            )
         if record.created_at > cutoff:
             violations.append(
                 ReleaseGateViolation(

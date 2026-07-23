@@ -1,6 +1,6 @@
 # Project Charter
 
-Status: **Milestone 1 complete in implementation branch; synthetic-only governance foundation**
+Status: **Milestone 2 complete in implementation branch; synthetic-only recall foundation**
 Project: **adaptation-compiler-lab**
 Intended first source / target: **Codex / Claude Code**
 
@@ -19,16 +19,17 @@ instrument and synthetic fixtures; no live source or target agent experiment has
 
 The implemented foundation accepts explicit synthetic records, preserves provenance, produces
 review-gated artifacts and immutable releases, renders external files, and validates benchmark
-registrations. Milestone 1 adds dedicated signing identity, consent/capture receipts, signed action
-events, Evidence v1.1 governance lineage, encrypted raw payloads, and append-only governance
-storage. Its portable asset is a behavioral specification plus evidence lineage. A rendered target
-pack is a scoped, reversible projection of that asset, not a model modification.
+registrations. Milestones 1–2 add dedicated signing identity, consent/capture receipts, signed
+action and recall objects, Evidence v1.1 governance lineage, encrypted raw payloads, deterministic
+conflict precedence, complete dependency impact, and append-only revocation lifecycles. Its
+portable asset is a behavioral specification plus evidence lineage. A rendered target pack is a
+scoped, reversible projection of that asset, not a model modification.
 
-The exact completed Milestone 1 scope is limited to local contracts, signature/encryption
-primitives, synthetic governance CLI exercises, backward-compatible schema/migrations, and the
-previous synthetic compiler foundation. It is not authorization to enumerate or capture Codex
-tasks, collect real data, reveal a holdout, install Claude Code, call agents, run a benchmark, or
-claim transfer improvement.
+The exact completed Milestone 2 scope is limited to local contracts, signature/encryption
+primitives, synthetic governance and recall CLI exercises, dependency cascades, purge/tombstone,
+conflict policy, backward-compatible schema/migrations, and the previous synthetic compiler
+foundation. It is not authorization to enumerate or capture Codex tasks, collect real data, reveal
+a holdout, install Claude Code, call agents, run a benchmark, or claim transfer improvement.
 
 ## Governing principles
 
@@ -48,12 +49,18 @@ claim transfer improvement.
     capture references; unconsented source expansion is invalid.
 12. Raw payload confidentiality depends on a separate AES-256-GCM key outside the repository;
     absence, mismatch, or tampering fails closed.
+13. Withdrawal is append-only at the metadata layer: exact records remain auditable while revoked
+    content is excluded, encrypted bytes may be purged, and signed minimal tombstones remain.
+14. Destructive actions require a signed complete dependency preview and exact digest
+    confirmation; changed graphs require a new preview.
+15. Conflict precedence is deterministic and claim-specific; unresolved equal-authority conflicts
+    block release.
 
 ## Fixed exclusions
 
 The project must not become a generic memory platform; train, fine-tune, or otherwise modify
 weights; automatically create, install, authorize, or execute tools; integrate with Kairn; expose
-a web UI; implement live Codex or Claude Code integration in Milestone 1; or process real user data
+a web UI; implement live Codex or Claude Code integration in Milestone 2; or process real user data
 in this phase. Private GitHub source hosting is explicitly allowed as the code/documentation system
 of record. Public release, deployment, remote research-data storage, raw-payload commits, and key
 commits remain excluded. Tool output, webpages, repository content, and retrieved documents cannot
