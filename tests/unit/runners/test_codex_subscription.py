@@ -49,6 +49,11 @@ if sys.argv[1:] == ["login", "status"]:
     raise SystemExit(0)
 assert "--ask-for-approval" not in sys.argv
 assert 'approval_policy="never"' in sys.argv
+assert sys.argv[-1] == "-"
+assert "Explain the purpose before procedural detail." not in " ".join(sys.argv)
+profile = pathlib.Path(os.environ["CODEX_HOME"], "development.config.toml")
+assert profile.is_file()
+assert profile.stat().st_mode & 0o077 == 0
 workspace = pathlib.Path(sys.argv[sys.argv.index("--cd") + 1])
 (workspace / "solution.txt").write_text("done\\n", encoding="utf-8")
 events = [

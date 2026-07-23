@@ -219,6 +219,20 @@ class CodexSubscriptionRunner:
         target.chmod(0o600)
 
     @staticmethod
+    def _write_profile(destination: Path, developer_instructions: str) -> str:
+        profile = destination / "development.config.toml"
+        payload = (
+            f"developer_instructions = {json.dumps(developer_instructions, ensure_ascii=False)}\n"
+        ).encode()
+        descriptor = os.open(profile, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        profile.chmod(0o600)
+        return sha256_bytes(payload)
+
+    @staticmethod
     def _environment(codex_home: Path) -> dict[str, str]:
         environment = {
             "CODEX_HOME": str(codex_home),
@@ -256,9 +270,7 @@ class CodexSubscriptionRunner:
                 if line.strip()
             )
             status = "Logged in using ChatGPT"
-            allowed_warning = (
-                "WARNING: proceeding, even though we could not create PATH aliases:"
-            )
+            allowed_warning = "WARNING: proceeding, even though we could not create PATH aliases:"
             unexpected = tuple(
                 line for line in lines if line != status and not line.startswith(allowed_warning)
             )
@@ -305,6 +317,8 @@ class CodexSubscriptionRunner:
             "--ignore-user-config",
             "--ignore-rules",
             "--strict-config",
+            "--profile",
+            "development",
             "--json",
             "--color",
             "never",
@@ -328,13 +342,26 @@ class CodexSubscriptionRunner:
             'shell_environment_policy.inherit="none"',
             "--config",
             f"shell_environment_policy.set={shell_environment_set}",
-            "--config",
-            f"developer_instructions={json.dumps(developer_instructions)}",
             *feature_args,
-            request.task.prompt,
+            "-",
         ]
+        developer_profile_digest = sha256_bytes(
+            (
+                f"developer_instructions = "
+                f"{json.dumps(developer_instructions, ensure_ascii=False)}\n"
+            ).encode()
+        )
         command_digest = sha256_bytes(
-            json.dumps(command, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+            json.dumps(
+                {
+                    "argv": command,
+                    "developer_profile_digest": developer_profile_digest,
+                    "prompt_digest": sha256_bytes(request.task.prompt.encode("utf-8")),
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ).encode("utf-8")
         )
         environment_descriptor = {
             "api_key_environment_present": False,
@@ -372,6 +399,12 @@ class CodexSubscriptionRunner:
             codex_home = Path(temporary)
             temporary_path = codex_home
             self._copy_auth(codex_home)
+            observed_profile_digest = self._write_profile(
+                codex_home,
+                developer_instructions,
+            )
+            if observed_profile_digest != developer_profile_digest:
+                raise CodexSubscriptionError("isolated Codex profile digest changed")
             environment = self._environment(codex_home)
             if any(name in environment for name in _FORBIDDEN_ENV_NAMES):
                 raise CodexSubscriptionError("API credential environment reached Codex")
@@ -380,7 +413,7 @@ class CodexSubscriptionRunner:
                     command,
                     cwd=resolved_workspace,
                     env=environment,
-                    stdin=subprocess.DEVNULL,
+                    stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     start_new_session=True,
@@ -388,7 +421,10 @@ class CodexSubscriptionRunner:
             except OSError as error:
                 raise CodexSubscriptionError("unable to start pinned Codex CLI") from error
             try:
-                stdout_bytes, stderr_bytes = process.communicate(timeout=self._max_seconds)
+                stdout_bytes, stderr_bytes = process.communicate(
+                    input=request.task.prompt.encode("utf-8"),
+                    timeout=self._max_seconds,
+                )
                 trace = stdout_bytes
                 stderr = stderr_bytes.decode("utf-8", errors="replace")
                 exit_code = process.returncode

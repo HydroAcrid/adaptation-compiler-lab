@@ -43,6 +43,8 @@ variables are never set or inherited.
 Each run also requires:
 
 - `--ephemeral`, `--ignore-user-config`, `--ignore-rules`, `--strict-config`, and JSONL output;
+- a mode-0600 explicit temporary profile for developer-level condition injection and stdin delivery
+  for the task prompt, so neither condition nor task text enters process arguments;
 - a fresh task-only Git repository with one frozen baseline commit;
 - no `AGENTS.md`, `.codex`, global config, memories, skills, plugins, MCP servers, agents, prior
   transcripts, browser, web search, computer use, or workspace dependencies;
