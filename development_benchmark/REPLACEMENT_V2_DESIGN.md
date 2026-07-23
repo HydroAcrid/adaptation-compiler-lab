@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-23
 
-Status: **design only; not frozen; no task executed**
+Status: **V2-4 implemented and executed as a two-cell calibration; V2-1 through V2-3 remain design-only**
 
 ## Purpose and separation
 
@@ -162,16 +162,18 @@ If later authorized, both conditions in the first paired run must use:
 Before execution, the installed CLI must prove that the explicit Luna model ID is available. Any
 model fallback or reroute invalidates the cell.
 
-## Smallest next run
+## Completed smallest run
 
-Run only V2-4 once under:
+V2-4 ran once under:
 
 1. strong static profile; and
 2. compiled adaptation.
 
-This is two Codex calls. It directly retests the sole prior separator with repaired, structured
-semantics before spending subscription capacity across the other six behaviors. Results remain
-blinded by output ID and are not sufficient to revise the pack.
+The two valid Codex calls directly retested the sole prior separator with repaired, structural
+semantics. Both anonymous conditions scored 4/4 objective, 3/4 diagnostic, and 4/4 neutral checks.
+They shared the same classification miss because the task did not define precedence between a
+current `blocked` source state and an insufficient valid-run rate. The result remains blinded by
+output ID and does not justify revising the pack.
 
 Using the prior strong/compiled research runs as a conservative token-volume reference
 (105,451 total input, 84,992 cached input, and 3,294 output tokens), the current GPT-5.6 Luna rate
@@ -180,4 +182,5 @@ card corresponds to approximately **1.22 ChatGPT credits** for both calls combin
 reasoning may reduce output usage, but that is not guaranteed. Plan for **1–3 credits total**, two
 local messages, and at most 10 minutes per cell. Stop after the two cells regardless of outcome.
 
-No command in this document authorizes those calls.
+Exact results and the blind-rating gate are recorded in
+[`../MILESTONE_5_5_LUNA_CALIBRATION.md`](../MILESTONE_5_5_LUNA_CALIBRATION.md).

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import selectors
 import shutil
 import signal
 import stat
@@ -80,6 +81,34 @@ class CodexSubscriptionError(ValueError):
 
 
 @dataclass(frozen=True, slots=True)
+class CodexExecutionContract:
+    """Versioned execution settings; defaults preserve the completed v1 development gate."""
+
+    cli_version: str
+    cli_digest: str
+    model: str
+    reasoning_effort: str
+    service_mode: str
+    max_seconds: int
+
+    def __post_init__(self) -> None:
+        if not self.cli_version or not self.cli_digest.startswith("sha256:"):
+            raise ValueError("Codex execution contract requires an exact CLI identity")
+        if not self.model or self.reasoning_effort not in {
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+        }:
+            raise ValueError("Codex execution contract contains unsupported model settings")
+        if self.service_mode != "standard":
+            raise ValueError("subscription development runs require Standard service mode")
+        if self.max_seconds < 1 or self.max_seconds > 1200:
+            raise ValueError("Codex execution timeout must be between 1 and 1200 seconds")
+
+
+@dataclass(frozen=True, slots=True)
 class CodexSubscriptionRawResult:
     """Raw result returned only to the encrypted development coordinator."""
 
@@ -105,6 +134,10 @@ class CodexSubscriptionRawResult:
     session_files_persisted: bool
     api_key_environment_present: bool
     forbidden_ambient_surface_observed: bool
+    model_reroute_observed: bool
+    model: str
+    reasoning_effort: str
+    service_mode: str
 
 
 def _strict_json_events(trace: bytes) -> tuple[JsonObject, ...]:
@@ -134,7 +167,7 @@ def _strict_json_events(trace: bytes) -> tuple[JsonObject, ...]:
 
 def _trace_summary(
     events: tuple[JsonObject, ...],
-) -> tuple[str, tuple[int, int, int, int], bool]:
+) -> tuple[str, tuple[int, int, int, int], bool, bool]:
     starts = sum(event.get("type") == "thread.started" for event in events)
     turn_starts = sum(event.get("type") == "turn.started" for event in events)
     terminal = tuple(
@@ -145,7 +178,13 @@ def _trace_summary(
 
     final_messages: list[str] = []
     forbidden = False
+    rerouted = False
     for event in events:
+        event_type = event.get("type")
+        if isinstance(event_type, str) and "rerout" in event_type.casefold():
+            rerouted = True
+        if "fromModel" in event or "toModel" in event:
+            rerouted = True
         item = event.get("item")
         if not isinstance(item, dict):
             continue
@@ -176,6 +215,7 @@ def _trace_summary(
             token("reasoning_output_tokens"),
         ),
         forbidden,
+        rerouted,
     )
 
 
@@ -188,15 +228,23 @@ class CodexSubscriptionRunner:
         executable: Path,
         saved_auth_file: Path,
         max_seconds: int = 1200,
+        contract: CodexExecutionContract | None = None,
     ) -> None:
         self._executable = executable.expanduser().resolve()
         self._saved_auth_file = saved_auth_file.expanduser().resolve()
-        self._max_seconds = max_seconds
+        self._contract = contract or CodexExecutionContract(
+            cli_version=_EXPECTED_CLI_VERSION,
+            cli_digest=_EXPECTED_CLI_DIGEST,
+            model=_MODEL,
+            reasoning_effort=_REASONING_EFFORT,
+            service_mode="standard",
+            max_seconds=max_seconds,
+        )
 
     def _verify_binary(self) -> None:
         if not self._executable.is_file():
             raise CodexSubscriptionError("pinned Codex CLI is unavailable")
-        if sha256_file(self._executable) != _EXPECTED_CLI_DIGEST:
+        if sha256_file(self._executable) != self._contract.cli_digest:
             raise CodexSubscriptionError("pinned Codex CLI digest drifted")
         completed = subprocess.run(
             [str(self._executable), "--version"],
@@ -206,7 +254,7 @@ class CodexSubscriptionRunner:
             encoding="utf-8",
             timeout=10,
         )
-        if completed.returncode != 0 or completed.stdout.strip() != _EXPECTED_CLI_VERSION:
+        if completed.returncode != 0 or completed.stdout.strip() != self._contract.cli_version:
             raise CodexSubscriptionError("pinned Codex CLI version drifted")
 
     def _copy_auth(self, destination: Path) -> None:
@@ -278,6 +326,165 @@ class CodexSubscriptionRunner:
                 raise CodexSubscriptionError("Codex authentication is not saved ChatGPT login")
             return status
 
+    @staticmethod
+    def _rpc_response(
+        process: subprocess.Popen[str],
+        *,
+        request_id: int,
+        timeout_seconds: float,
+    ) -> JsonObject:
+        if process.stdout is None:
+            raise CodexSubscriptionError("Codex model-catalog probe has no output stream")
+        selector = selectors.DefaultSelector()
+        selector.register(process.stdout, selectors.EVENT_READ)
+        deadline = time.monotonic() + timeout_seconds
+        try:
+            while time.monotonic() < deadline:
+                ready = selector.select(timeout=max(0.0, deadline - time.monotonic()))
+                if not ready:
+                    break
+                line = process.stdout.readline()
+                if not line:
+                    break
+                try:
+                    value = json.loads(line)
+                except ValueError as error:
+                    raise CodexSubscriptionError(
+                        "Codex model-catalog probe returned invalid JSON"
+                    ) from error
+                if not isinstance(value, dict):
+                    raise CodexSubscriptionError("Codex model-catalog response is not an object")
+                if value.get("id") != request_id:
+                    continue
+                if "error" in value:
+                    raise CodexSubscriptionError("Codex model-catalog request failed")
+                result = value.get("result")
+                if not isinstance(result, dict):
+                    raise CodexSubscriptionError("Codex model-catalog result is not an object")
+                return cast(JsonObject, result)
+        finally:
+            selector.close()
+        raise CodexSubscriptionError("Codex model-catalog request timed out")
+
+    @staticmethod
+    def _rpc_write(process: subprocess.Popen[str], payload: JsonObject) -> None:
+        if process.stdin is None:
+            raise CodexSubscriptionError("Codex model-catalog probe has no input stream")
+        process.stdin.write(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n")
+        process.stdin.flush()
+
+    def verify_model_availability(self) -> JsonObject:
+        """Fail closed unless the isolated live catalog exposes the exact model and effort."""
+
+        self._verify_binary()
+        with tempfile.TemporaryDirectory(prefix="acl-codex-model-check-") as temporary:
+            codex_home = Path(temporary)
+            self._copy_auth(codex_home)
+            try:
+                process = subprocess.Popen(
+                    [
+                        str(self._executable),
+                        "app-server",
+                        "--stdio",
+                        "--strict-config",
+                        "--disable",
+                        "plugins",
+                        "--disable",
+                        "memories",
+                        "--disable",
+                        "multi_agent",
+                        "--disable",
+                        "fast_mode",
+                    ],
+                    env=self._environment(codex_home),
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    text=True,
+                    encoding="utf-8",
+                    start_new_session=True,
+                )
+            except OSError as error:
+                raise CodexSubscriptionError("unable to start Codex model-catalog probe") from error
+            try:
+                self._rpc_write(
+                    process,
+                    {
+                        "id": 1,
+                        "method": "initialize",
+                        "params": {
+                            "clientInfo": {
+                                "name": "adaptation-compiler-lab",
+                                "title": "Adaptation Compiler Lab",
+                                "version": "0.1.0",
+                            },
+                            "capabilities": {"experimentalApi": False},
+                        },
+                    },
+                )
+                self._rpc_response(process, request_id=1, timeout_seconds=30)
+                self._rpc_write(process, {"method": "initialized", "params": {}})
+                cursor: str | None = None
+                request_id = 2
+                matching: JsonObject | None = None
+                while True:
+                    self._rpc_write(
+                        process,
+                        {
+                            "id": request_id,
+                            "method": "model/list",
+                            "params": {
+                                "cursor": cursor,
+                                "includeHidden": False,
+                                "limit": 100,
+                            },
+                        },
+                    )
+                    response = self._rpc_response(
+                        process,
+                        request_id=request_id,
+                        timeout_seconds=30,
+                    )
+                    data = response.get("data")
+                    if not isinstance(data, list):
+                        raise CodexSubscriptionError("Codex model catalog has invalid data")
+                    for value in data:
+                        if (
+                            isinstance(value, dict)
+                            and value.get("model") == self._contract.model
+                            and value.get("id") == self._contract.model
+                            and value.get("hidden") is False
+                        ):
+                            matching = value
+                    next_cursor = response.get("nextCursor")
+                    if next_cursor is None:
+                        break
+                    if not isinstance(next_cursor, str) or not next_cursor:
+                        raise CodexSubscriptionError("Codex model catalog has invalid pagination")
+                    cursor = next_cursor
+                    request_id += 1
+                if matching is None:
+                    raise CodexSubscriptionError("explicit Codex model is unavailable")
+                efforts = matching.get("supportedReasoningEfforts")
+                if not isinstance(efforts, list) or self._contract.reasoning_effort not in {
+                    value.get("reasoningEffort") for value in efforts if isinstance(value, dict)
+                }:
+                    raise CodexSubscriptionError("explicit Codex reasoning effort is unavailable")
+                return {
+                    "hidden": False,
+                    "model": self._contract.model,
+                    "reasoning_effort": self._contract.reasoning_effort,
+                    "service_mode": self._contract.service_mode,
+                }
+            finally:
+                if process.poll() is None:
+                    process.terminate()
+                    try:
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.wait(timeout=5)
+
     def run(
         self,
         request: CodexDevelopmentRunRequest,
@@ -326,11 +533,11 @@ class CodexSubscriptionRunner:
             "--cd",
             str(resolved_workspace),
             "--model",
-            _MODEL,
+            self._contract.model,
             "--sandbox",
             "workspace-write",
             "--config",
-            f"model_reasoning_effort={json.dumps(_REASONING_EFFORT)}",
+            f"model_reasoning_effort={json.dumps(self._contract.reasoning_effort)}",
             "--config",
             'approval_policy="never"',
             "--config",
@@ -367,16 +574,17 @@ class CodexSubscriptionRunner:
         environment_descriptor = {
             "api_key_environment_present": False,
             "approval_policy": "never",
-            "cli_digest": _EXPECTED_CLI_DIGEST,
-            "cli_version": _EXPECTED_CLI_VERSION,
+            "cli_digest": self._contract.cli_digest,
+            "cli_version": self._contract.cli_version,
             "disabled_features": list(_DISABLED_FEATURES),
             "ephemeral": True,
             "ignore_rules": True,
             "ignore_user_config": True,
             "isolated_codex_home": True,
-            "model": _MODEL,
-            "reasoning_effort": _REASONING_EFFORT,
+            "model": self._contract.model,
+            "reasoning_effort": self._contract.reasoning_effort,
             "sandbox": "workspace-write",
+            "service_mode": self._contract.service_mode,
             "shell_environment_inherit": "none",
             "shell_python_bytecode": "disabled",
             "web_search": "disabled",
@@ -425,7 +633,7 @@ class CodexSubscriptionRunner:
             try:
                 stdout_bytes, stderr_bytes = process.communicate(
                     input=request.task.prompt.encode("utf-8"),
-                    timeout=self._max_seconds,
+                    timeout=self._contract.max_seconds,
                 )
                 trace = stdout_bytes
                 stderr = stderr_bytes.decode("utf-8", errors="replace")
@@ -450,15 +658,20 @@ class CodexSubscriptionRunner:
         trace_validation_error = None
         try:
             events = _strict_json_events(trace)
-            final_response, usage, forbidden = _trace_summary(events)
+            final_response, usage, forbidden, rerouted = _trace_summary(events)
         except CodexSubscriptionError as error:
             events = ()
             final_response = ""
             usage = (0, 0, 0, 0)
             forbidden = False
+            rerouted = False
             trace_validation_error = str(error)
         trace_conformant = (
-            not timed_out and exit_code == 0 and not forbidden and trace_validation_error is None
+            not timed_out
+            and exit_code == 0
+            and not forbidden
+            and not rerouted
+            and trace_validation_error is None
         )
         return CodexSubscriptionRawResult(
             run_id=request.run_id,
@@ -483,4 +696,8 @@ class CodexSubscriptionRunner:
             session_files_persisted=session_files_persisted,
             api_key_environment_present=False,
             forbidden_ambient_surface_observed=forbidden,
+            model_reroute_observed=rerouted,
+            model=self._contract.model,
+            reasoning_effort=self._contract.reasoning_effort,
+            service_mode=self._contract.service_mode,
         )

@@ -4,7 +4,7 @@ Last updated: 2026-07-23
 
 ## Current milestone
 
-**Milestone 5.5 — Codex Subscription Development Gate and diagnostic follow-up are complete.**
+**Milestone 5.5 — Codex Subscription Development Gate and Luna calibration are complete.**
 The separate non-held-out grid produced 16/16 valid planned Codex records under four blinded
 conditions. Every condition tied at 17/18 objective checks; only one of four tasks separated
 diagnostic behavior. The sealed comparison says compiled adaptation did not beat or tie the strong
@@ -20,8 +20,10 @@ available, but the condition mapping remains withheld.
 The follow-up repaired future neutral repository-state checks so Python bytecode cannot count as
 a material change, produced the task-level matrix, and traced the two apparent strong-profile
 advantages to brittle research-task scoring. It did not rescore the frozen grid or modify the
-compiler, release, TargetPack, or condition materials. A four-task replacement benchmark and a
-two-cell GPT-5.6 Luna/medium proposal are designed but unexecuted.
+compiler, release, TargetPack, or condition materials. A four-task replacement benchmark remains
+mostly design-only. Its research-integrity task completed a two-cell GPT-5.6 Luna/medium
+calibration; both anonymous conditions tied at 4/4 objective, 3/4 diagnostic, and 4/4 neutral
+checks. Kevin's blind preference rating is the next required input.
 
 No held-out content or condition mapping was exposed to construction or printed during custody.
 The only Claude API calls used synthetic smoke and token-count content; no held-out trial, Claude
@@ -119,8 +121,14 @@ release, or remote research-data storage occurred.
   `descriptive` lexical proxy. The result cannot distinguish pack-expression weakness from normal
   implementation variance and does not justify a compiler or pack change.
 - Designed four natural, non-leading replacement tasks covering all eight approved behaviors.
-  The smallest proposed next run is two blinded GPT-5.6 Luna/medium cells comparing only strong
-  profile and compiled adaptation on the repaired research-integrity task.
+  Implemented the research-integrity task with structural hidden cases and deterministic neutral
+  state, leaving the other three tasks as design-only.
+- Added a versioned Codex execution contract so the historical Terra/high gate remains immutable
+  while new runs can pin explicit Luna/medium/Standard settings. Added live `model/list`
+  verification and trace-level reroute invalidation.
+- Completed two blinded Luna cells comparing only strong profile and compiled adaptation. Both
+  were valid, tied on every check count, preserved every negative outcome and frozen input, and
+  shared one ambiguous `blocked` versus `inconclusive` classification miss.
 
 ## Verification performed
 
@@ -135,7 +143,7 @@ uv run pytest
 uv build
 ```
 
-The current full suite formats 167 files, passes strict typing on 154 source files, passes 336
+The current full suite formats 179 files, passes strict typing, passes 344
 tests, and builds both
 the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
@@ -162,8 +170,8 @@ establishes instrument and protocol readiness only, not transfer quality.
 - No valid result about base versus ordinary memory and no cross-agent result. The development-only
   sealed comparison found compiled adaptation below the strong profile, but three anonymous
   conditions tied and the task set was not sufficiently diagnostic.
-- No replacement-development execution. GPT-5.6 Luna is selected only for a future authorized
-  Codex comparison; no new Codex or Claude call occurred during the diagnostic follow-up.
+- No execution of the other three replacement tasks. The completed Luna calibration used only the
+  public research-integrity task and did not access Milestone 6 custody.
 - No weight training/fine-tuning/LoRA, automatic tool creation/installation, Kairn, web UI, public
   publication, powered study, or remote research-data storage.
 
@@ -175,9 +183,9 @@ persisted in traces. The runner continues to reject ambiguous sources, broad key
 workspace-local keys, alternate providers, and missing sandbox support.
 
 Do not begin the Claude development canary or preregistered 32-run paid Claude Code feasibility
-pilot. The next experimental work, if authorized, is the two-cell GPT-5.6 Luna/medium comparison
-in `development_benchmark/REPLACEMENT_V2_DESIGN.md`. The present evidence does not justify
-changing the compiler or pack.
+pilot. Kevin should first freeze a blind preference rating for the two anonymous outputs in
+`development_benchmark_v2/codex-development-v2-blind-rating-packet.md`. The present evidence does
+not justify changing the compiler or pack.
 
 The previously proposed Claude development canary is explicitly prohibited. It remains
 unexecuted. No replacement benchmark or paid target call may access Milestone 6 custody or support

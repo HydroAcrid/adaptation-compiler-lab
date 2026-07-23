@@ -99,6 +99,8 @@ The original summary and encrypted observations remain immutable and contaminate
 - Preserve the complete Milestone 6 seal and authorization gate.
 - Replace the development benchmark before drawing a pack/profile conclusion.
 - Use GPT-5.6 Luna at medium reasoning and Standard speed for the next Codex development run.
-- Start with the two-cell paired proposal in
-  [`development_benchmark/REPLACEMENT_V2_DESIGN.md`](development_benchmark/REPLACEMENT_V2_DESIGN.md);
-  do not execute it without a new instruction.
+- The project owner subsequently authorized the two-cell paired proposal in
+  [`development_benchmark/REPLACEMENT_V2_DESIGN.md`](development_benchmark/REPLACEMENT_V2_DESIGN.md).
+  Its completed blinded result is recorded in
+  [`MILESTONE_5_5_LUNA_CALIBRATION.md`](MILESTONE_5_5_LUNA_CALIBRATION.md). Both conditions tied on
+  all structural check counts, so it still does not justify modifying the compiler or pack.

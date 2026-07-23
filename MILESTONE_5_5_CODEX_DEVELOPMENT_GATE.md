@@ -130,7 +130,8 @@ under each of the four frozen conditions: four Claude runs, at most 10 minutes a
 USD $1 per run, and USD $4 total. It must use the existing isolated Claude runner, a new
 development-only seed, no Milestone 6 custody access, no retry, and no cross-agent claim.
 
-The project owner subsequently prohibited that Claude canary. The next proposed execution is
-instead a two-cell Codex-only comparison using GPT-5.6 Luna, described in
-[`development_benchmark/REPLACEMENT_V2_DESIGN.md`](development_benchmark/REPLACEMENT_V2_DESIGN.md).
-It remains unauthorized and unexecuted.
+The project owner subsequently prohibited that Claude canary and authorized the two-cell
+Codex-only comparison using GPT-5.6 Luna. It completed with two valid anonymous results tied on
+objective, diagnostic, and neutral check counts. See
+[`MILESTONE_5_5_LUNA_CALIBRATION.md`](MILESTONE_5_5_LUNA_CALIBRATION.md). Claude remains
+unauthorized and unexecuted.
