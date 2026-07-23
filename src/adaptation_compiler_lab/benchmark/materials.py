@@ -20,7 +20,10 @@ from adaptation_compiler_lab.domain.base import (
 from adaptation_compiler_lab.domain.enums import ActorKind, SourceClass
 from adaptation_compiler_lab.domain.references import EvidenceRef
 from adaptation_compiler_lab.domain.values import refs_are_sorted_unique, strings_are_sorted_unique
-from adaptation_compiler_lab.sanitization import assert_condition_material_safe, assert_export_safe
+from adaptation_compiler_lab.sanitization import (
+    ConditionSafetyError,
+    assert_condition_material_safe,
+)
 from adaptation_compiler_lab.serialization import canonical_digest
 
 TOKEN_CEILING = 3_000
@@ -59,6 +62,7 @@ class OrdinaryMemoryMaterial(FrozenModel):
     text: NonEmptyStr
     source_evidence_refs: Annotated[tuple[EvidenceRef, ...], Field(min_length=1)]
     exact_item_digests: Annotated[tuple[Sha256Digest, ...], Field(min_length=1)]
+    excluded_item_digests: tuple[Sha256Digest, ...] = ()
 
     @field_validator("source_evidence_refs")
     @classmethod
@@ -70,37 +74,59 @@ class OrdinaryMemoryMaterial(FrozenModel):
             raise ValueError("ordinary-memory evidence references must be sorted and unique")
         return value
 
-    @field_validator("exact_item_digests")
+    @field_validator("exact_item_digests", "excluded_item_digests")
     @classmethod
     def item_digests_are_unique(
         cls,
         value: tuple[str, ...],
     ) -> tuple[str, ...]:
         if len(value) != len(set(value)):
-            raise ValueError("ordinary-memory item digests must be unique")
+            raise ValueError("ordinary-memory item digest sets must be unique")
         return value
 
 
 class StrongProfileSubmission(FrozenModel):
-    """Independent-human comparator submission and separation attestation."""
+    """Two-pass isolated-AI comparator submission and separation attestation."""
 
     profile_id: Identifier
     author: ActorRef
+    author_context_id: Identifier
+    author_packet_digest: Sha256Digest
+    draft_digest: Sha256Digest
+    reviewer: ActorRef
+    reviewer_context_id: Identifier
+    review_packet_digest: Sha256Digest
     corpus_digest: Sha256Digest
     started_at: UtcDateTime
     completed_at: UtcDateTime
+    review_started_at: UtcDateTime
+    review_completed_at: UtcDateTime
     held_out_access: Literal[False] = False
+    compiled_adaptation_access: Literal[False] = False
+    condition_assignment_access: Literal[False] = False
+    result_access: Literal[False] = False
     author_may_score_results: Literal[False] = False
+    reviewer_may_score_results: Literal[False] = False
+    review_approved: Literal[True] = True
     text: NonEmptyStr
 
     @model_validator(mode="after")
     def author_and_window_match_protocol(self) -> StrongProfileSubmission:
-        if self.author.kind is not ActorKind.HUMAN_REVIEWER:
-            raise ValueError("strong profile author must be an independent human reviewer")
+        if self.author.kind is not ActorKind.AGENT or self.reviewer.kind is not ActorKind.AGENT:
+            raise ValueError("strong profile author and reviewer must be isolated AI agents")
+        if (
+            self.author.actor_id == self.reviewer.actor_id
+            or self.author_context_id == self.reviewer_context_id
+        ):
+            raise ValueError("strong profile author and reviewer contexts must be distinct")
         if self.completed_at < self.started_at:
             raise ValueError("strong profile completion cannot precede its start")
-        if self.completed_at - self.started_at > timedelta(minutes=90):
-            raise ValueError("strong profile authoring exceeded 90 minutes")
+        if self.review_started_at < self.completed_at:
+            raise ValueError("strong profile review cannot begin before the draft is complete")
+        if self.review_completed_at < self.review_started_at:
+            raise ValueError("strong profile review completion cannot precede its start")
+        if self.review_completed_at - self.started_at > timedelta(minutes=90):
+            raise ValueError("strong profile two-pass construction exceeded 90 minutes")
         return self
 
 
@@ -177,11 +203,16 @@ class FrozenConditionSet(FrozenModel):
 
 def render_ordinary_memory(
     items: tuple[ApprovedFeedbackItem, ...],
+    *,
+    utf8_byte_ceiling: int = UTF8_BYTE_CEILING,
 ) -> OrdinaryMemoryMaterial:
-    """Render approved feedback chronologically with exact digest deduplication."""
+    """Render the newest whole deduplicated items chronologically within the byte ceiling."""
 
     if not items:
         raise ConditionMaterialError("ordinary memory requires approved explicit feedback")
+    header = "# Approved user feedback\n\n"
+    if utf8_byte_ceiling <= len(header.encode("utf-8")):
+        raise ConditionMaterialError("ordinary-memory byte ceiling cannot hold its header")
     ordered = sorted(
         items,
         key=lambda item: (
@@ -192,6 +223,7 @@ def render_ordinary_memory(
     )
     selected: list[ApprovedFeedbackItem] = []
     item_digests: list[Sha256Digest] = []
+    excluded_item_digests: list[Sha256Digest] = []
     seen: set[Sha256Digest] = set()
     for item in ordered:
         digest = canonical_digest(
@@ -203,10 +235,34 @@ def render_ordinary_memory(
         if digest in seen:
             continue
         seen.add(digest)
+        try:
+            assert_condition_material_safe(f"- {item.text}")
+        except ConditionSafetyError:
+            excluded_item_digests.append(digest)
+            continue
         selected.append(item)
         item_digests.append(digest)
-    text = "# Approved user feedback\n\n" + "\n".join(f"- {item.text}" for item in selected)
-    assert_export_safe(text, label="ordinary memory")
+    retained_reversed: list[tuple[ApprovedFeedbackItem, Sha256Digest]] = []
+    used_bytes = len(header.encode("utf-8"))
+    for item, digest in reversed(tuple(zip(selected, item_digests, strict=True))):
+        line = f"- {item.text}"
+        separator_bytes = 1 if retained_reversed else 0
+        line_bytes = len(line.encode("utf-8"))
+        if used_bytes + separator_bytes + line_bytes <= utf8_byte_ceiling:
+            retained_reversed.append((item, digest))
+            used_bytes += separator_bytes + line_bytes
+    if not retained_reversed:
+        raise ConditionMaterialError(
+            "ordinary-memory byte ceiling cannot hold one complete approved feedback item"
+        )
+    retained = tuple(reversed(retained_reversed))
+    selected = [item for item, _ in retained]
+    retained_digests = [digest for _, digest in retained]
+    retained_set = set(retained_digests)
+    excluded_item_digests.extend(digest for digest in item_digests if digest not in retained_set)
+    item_digests = retained_digests
+    text = header + "\n".join(f"- {item.text}" for item in selected)
+    assert_condition_material_safe(text)
     evidence_refs = tuple(
         sorted(
             {item.evidence_ref for item in selected},
@@ -222,6 +278,7 @@ def render_ordinary_memory(
         text=text,
         source_evidence_refs=evidence_refs,
         exact_item_digests=tuple(item_digests),
+        excluded_item_digests=tuple(excluded_item_digests),
     )
 
 

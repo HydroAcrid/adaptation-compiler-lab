@@ -6,10 +6,15 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from adaptation_compiler_lab.benchmark.models import BenchmarkCondition
+from adaptation_compiler_lab.benchmark.models import (
+    BenchmarkCondition,
+    InternalFeasibilityDesign,
+)
 from adaptation_compiler_lab.governance import (
     AdjudicationRecord,
     BenchmarkRegistration,
+    ConditionAuthorRole,
+    ConditionConstructionMethod,
     ConditionMaterialReceipt,
     ConstructionSplitView,
     CustodyAccessAction,
@@ -566,6 +571,27 @@ class BenchmarkRegistry:
                 "source-derived conditions used unequal evaluation-case access"
             )
         design = registration.design
+        strong_profile = next(
+            item for item in receipts if item.condition is BenchmarkCondition.STRONG_STATIC_PROFILE
+        )
+        expected_profile_construction = (
+            (
+                ConditionConstructionMethod.ISOLATED_AI_TWO_PASS_PROFILE,
+                ConditionAuthorRole.ISOLATED_AI,
+            )
+            if isinstance(design, InternalFeasibilityDesign)
+            else (
+                ConditionConstructionMethod.INDEPENDENT_HUMAN_PROFILE,
+                ConditionAuthorRole.INDEPENDENT_HUMAN,
+            )
+        )
+        if (
+            strong_profile.construction_method,
+            strong_profile.author_role,
+        ) != expected_profile_construction:
+            raise BenchmarkRegistryError(
+                "strong-profile construction does not match the registered design"
+            )
         if any(
             item.target_visible_tokens > design.adaptation_budget.token_ceiling
             or item.target_visible_utf8_bytes > design.adaptation_budget.utf8_byte_ceiling

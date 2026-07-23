@@ -1,5 +1,6 @@
 """Reusable immutable value objects shared by top-level records."""
 
+import hashlib
 from typing import Annotated, Literal
 
 from pydantic import Field, field_validator, model_validator
@@ -145,6 +146,10 @@ def scope_is_within(child: Scope, parent: Scope) -> bool:
 class PrivacyContext(FrozenModel):
     sensitivity: SensitivityClass
     consent_basis: Identifier
+    consent_basis_refs: tuple[Identifier, ...] = Field(
+        default=(),
+        exclude_if=lambda value: not value,
+    )
     permitted_uses: Annotated[tuple[PermittedUse, ...], Field(min_length=1)]
     review_state: PrivacyReviewState = PrivacyReviewState.PENDING
     reviewed_by: ActorRef | None = None
@@ -159,8 +164,20 @@ class PrivacyContext(FrozenModel):
             raise ValueError("permitted uses must be sorted and unique")
         return value
 
+    @field_validator("consent_basis_refs")
+    @classmethod
+    def consent_refs_are_sorted_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if not strings_are_sorted_unique(value):
+            raise ValueError("consent basis references must be sorted and unique")
+        return value
+
     @model_validator(mode="after")
     def review_is_attributable(self) -> "PrivacyContext":
+        if self.consent_basis_refs:
+            if len(self.consent_basis_refs) < 2:
+                raise ValueError("a consent set must contain at least two exact bases")
+            if self.consent_basis != consent_set_identifier(self.consent_basis_refs):
+                raise ValueError("aggregate consent basis does not match its exact basis set")
         has_review = self.reviewed_by is not None or self.reviewed_at is not None
         if self.review_state is PrivacyReviewState.PENDING and has_review:
             raise ValueError("pending privacy review cannot have reviewer metadata")
@@ -170,6 +187,21 @@ class PrivacyContext(FrozenModel):
             if self.reviewed_by.kind not in {ActorKind.USER, ActorKind.HUMAN_REVIEWER}:
                 raise ValueError("privacy review must be attributable to a human")
         return self
+
+    @property
+    def effective_consent_bases(self) -> frozenset[str]:
+        """Return the exact single basis or explicit aggregate basis members."""
+
+        return frozenset(self.consent_basis_refs or (self.consent_basis,))
+
+
+def consent_set_identifier(consent_bases: tuple[str, ...]) -> str:
+    """Return a stable non-secret identifier for a sorted exact consent set."""
+
+    encoded = b"adaptation-compiler-lab/consent-set/v1\x00" + b"\x00".join(
+        item.encode("utf-8") for item in consent_bases
+    )
+    return f"consent-set-{hashlib.sha256(encoded).hexdigest()[:24]}"
 
 
 class PayloadSpan(FrozenModel):

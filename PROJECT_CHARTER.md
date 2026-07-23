@@ -1,6 +1,6 @@
 # Project Charter
 
-Status: **Milestone 4 complete; Milestone 5 consented-corpus work in progress**
+Status: **Milestone 5 complete; paid Milestone 6 execution awaiting authorization**
 Project: **adaptation-compiler-lab**
 Intended first source / target: **Codex / Claude Code**
 
@@ -10,10 +10,11 @@ The project tests one hypothesis:
 
 > Verified learning extracted from one user's completed work with Coding Agent A can be converted
 > into typed, versioned external artifacts and transferred to Coding Agent B, improving B on unseen
-> tasks beyond ordinary memory and a strong manually written profile.
+> tasks beyond ordinary memory and a strong static profile.
 
 This is a testable claim, not a result. The implementation currently supplies a controlled local
-instrument and synthetic fixtures; no live source or target agent experiment has been run.
+instrument, a consented encrypted source corpus, and a sealed internally blinded benchmark; no
+target-agent experiment has been run.
 
 ## Current deliverable
 
@@ -31,10 +32,11 @@ Milestone 4 adds three narrow ports, a binary/version/schema-pinned Codex app-se
 binary/model-pinned bare Claude Code runner with clean configuration, explicit tools,
 fail-if-unavailable WSL2 sandboxing, structured traces, time/cost/turn ceilings, and teardown.
 Synthetic conformance, an empty-home Codex handshake, and the authenticated no-user-data Claude
-smoke pass. Milestone 5 adds a separately pinned Desktop source runtime, minimized real inventory,
-and synthetic exact-consent/encrypted-capture/corpus/material gates. This is not authorization to
-read an unconsented task, reveal a holdout, run the pilot, score results, or claim transfer
-improvement.
+smoke pass. Milestone 5 adds a separately pinned Desktop source runtime, eight exact-consent
+encrypted captures, eight reviewed behavioral artifacts, two-pass isolated-AI static-profile
+construction, a separately seeded deterministic software custodian, four frozen condition
+materials, and a sealed 32-cell internal benchmark. This is not authorization to read an
+unconsented task, run the paid pilot, unblind conditions, or claim transfer improvement.
 
 ## Governing principles
 
@@ -61,15 +63,17 @@ improvement.
 15. Conflict precedence is deterministic and claim-specific; unresolved equal-authority conflicts
     block release.
 16. Held-out bytes stay encrypted outside the compiler workspace; construction sees only blinded
-    task/family IDs, strata, and a signed split digest.
+    task/family/condition IDs, strata, cutoffs, and signed commitments—never content, mapping,
+    seed, or order.
 17. Preregistration precedes source construction, all four condition materials freeze before any
     reveal authorization, and unequal construction information fails atomically.
 18. Trial results are immutable. Corrections are signed, digest-only adjudications that extend an
     append-only chain rather than rewriting the scored record.
 19. Source and target calls require exact binary, version, generated-schema/model, configuration,
     tool, sandbox, and trace conformance; drift or missing isolation fails closed.
-20. Runtime capability does not grant data authority. Exact per-task consent, independent custody,
-    human profile authorship, and held-out separation remain mandatory operational gates.
+20. Runtime capability does not grant data authority. Exact per-task consent, digest-bound
+    functional role separation, sealed custody, paid-run authorization, and held-out separation
+    remain mandatory operational gates.
 
 ## Fixed exclusions
 

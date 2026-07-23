@@ -4,21 +4,21 @@ Last updated: 2026-07-23
 
 ## Current milestone
 
-**Milestone 4 is merged. Milestone 5 — Consented Codex Corpus and Frozen Condition Materials is in
-progress.** A separately pinned Codex Desktop runtime passed full binary/schema verification and a
-real metadata-only inventory. Exact-consent encrypted capture, eight-task corpus, review-channel,
-ordinary-memory, strong-profile, condition-budget, and leakage gates pass synthetically.
+**Milestone 5 — Consented Codex Corpus and Frozen Condition Materials is complete locally.**
+A separately pinned Codex Desktop runtime passed full binary/schema verification. Eight exact
+task consents produced eight encrypted full-thread captures, 63 explicit-user Evidence v1.1
+records, eight Kevin-approved behavioral artifacts, and four confirmed source families.
 
 The project owner has authorized automatic continuation after complete milestone exit gates. This
-removes the handoff pause, not objective research/privacy prerequisites. Exact per-task consent,
-independent-human profile authorship, independent custody/scoring roles, credentials, frozen
-materials, and held-out isolation still fail closed.
+removes the handoff pause, not objective research/privacy prerequisites. Two digest-bound fresh AI
+contexts completed the strong static profile. A separate deterministic software-custody context
+sealed the hidden tasks, condition mapping, randomization order, and all four exact condition
+materials. Paid target execution and Kevin's later blind ratings still require explicit input.
 
-Eleven real completed-task metadata records were listed without previews or raw paths. No task body
-was read or captured. The only target API calls used synthetic smoke content; no held-out reveal,
-real condition construction, target trial, scoring operation, model modification,
-executable-tool creation, Kairn integration, web UI, public release, or remote research-data
-storage occurred.
+No held-out content or condition mapping was exposed to construction or printed during custody.
+The only target API calls used synthetic smoke and token-count content; no held-out trial, scoring
+operation, model modification, executable-tool creation, Kairn integration, web UI, public
+release, or remote research-data storage occurred.
 
 ## Completed scope
 
@@ -77,6 +77,20 @@ storage occurred.
 - Passed the accepted authenticated Claude smoke against the pinned model for USD $0.01566765. It
   independently verified exact synthetic output, captured only allowed `Read` and `Edit` uses,
   destroyed the workspace/configuration, and persisted only a minimized digest receipt.
+- Captured exactly eight owner-consented Codex tasks into the external AES-256-GCM raw boundary
+  with separate signed consent/capture receipts and a 30-day maximum retention deadline.
+- Admitted 63 explicit user messages as Evidence v1.1 while agent, tool, web, repository, and
+  system content remained untrusted; Kevin confirmed eight behavioral evaluations and four source
+  families.
+- Promoted eight reviewed artifacts, froze a release and Claude TargetPack, and added a narrow
+  exact-consent-set union rule only for target-pack aggregation.
+- Added the internal feasibility v1.1 preregistration, isolated author/reviewer role packets and
+  receipts, deterministic software custody, secret-seed commitment and 32-cell shuffle, sealed
+  held-out schemas, Kevin-blind presentation/rating models, and optional secondary AI scoring.
+- Froze all conditions with equal source access: base 0/0; ordinary memory 2,849 tokens/7,772
+  bytes; strong static profile 2,563/8,080; compiled adaptation 936/2,892.
+- Sealed and verified the complete AES-256-GCM pilot bundle outside Git/workspace, then removed
+  temporary clear packets, drafts, profiles, comparator material, and condition staging files.
 
 ## Verification performed
 
@@ -91,7 +105,8 @@ uv run pytest
 uv build
 ```
 
-The current full suite formats and type-checks 137 Python files, passes 290 tests, and builds both
+The current full suite formats 149 files, passes strict typing on 149 source files, passes 324
+tests, and builds both
 the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
 verifier matched its pinned binary and canonical generated-schema digest
@@ -103,30 +118,30 @@ The real Claude/sandbox verifier matched all local binary/version/helper pins an
 started a bubblewrap user namespace. The accepted authenticated smoke then exercised the API under
 the frozen model/tool/sandbox contract.
 
-Repository credential/private-path/raw-payload scans and exact final test counts must be rerun
-before the PR merges. Passing synthetic/runtime/live-smoke checks establishes instrument integrity
-only, not transfer quality.
+Passing source capture, profile, condition, custody, synthetic/runtime, and live-smoke checks
+establishes instrument and protocol readiness only, not transfer quality.
 
 ## Explicitly not implemented or exercised
 
-- No real source capture, signed consent selection for actual task IDs, eight-task corpus,
-  source outcome attestation, lesson review, real artifact release, or frozen condition bundle.
 - No real target trial, independent post-run test evidence, disposable pilot worktree coordinator,
-  randomization-secret reveal, or condition-bearing target trace.
-- No independent skilled-human profile author, independent custodian, independent scorer, blinded
-  adjudication operation, statistical report, or retention purge of real payloads.
+  condition-bearing target trace, or paid provider spend for the pilot.
+- No Kevin blind rating, secondary isolated-AI judging result, blinded adjudication, comparative
+  analysis, statistical report, or retention purge of the real payloads.
+- No claim of independent human authorship, third-party custody, or independently conducted study;
+  the active design is internally blinded with automated functional separation.
 - No result about whether the compiled pack beats base, ordinary memory, or a strong profile.
 - No weight training/fine-tuning/LoRA, automatic tool creation/installation, Kairn, web UI, public
   publication, powered study, or remote research-data storage.
 
 ## Gate result and next action
 
-The dedicated Console credential now resides outside the workspaces in an owner-readable-only WSL
-file. It is never committed, printed, or persisted in a trace. The runner continues to reject
-ambiguous sources, broad key-file permissions, workspace-local keys, alternate providers, and
-missing sandbox support.
+The dedicated Console credential, signing keys, raw key, custody key, and randomization seed reside
+outside the workspace in owner-readable-only files. They are never committed, printed, or
+persisted in traces. The runner continues to reject ambiguous sources, broad key permissions,
+workspace-local keys, alternate providers, and missing sandbox support.
 
-Await explicit user consent to the proposed eight exact task IDs. Then create eight signed
-per-task receipts and capture only those tasks into the external encrypted store. Human
-source/lesson review, independent strong-profile authorship, signed custody/registration, exact
-token counting, and condition freeze remain objective gates; no held-out reveal can occur first.
+The next action is the preregistered 32-run paid Claude Code feasibility pilot. Before the first
+trial, report and reverify the pinned runtime/model, frozen registration/environment/condition/
+custody digests, 30-minute/40-turn/USD $5 per-trial ceilings, and USD $200 total ceiling, then
+obtain Kevin's explicit paid-run authorization. After valid execution, stop for Kevin's anonymous
+blind ratings before unblinding or comparison.

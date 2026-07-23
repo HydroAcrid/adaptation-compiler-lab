@@ -70,6 +70,7 @@ from adaptation_compiler_lab.domain import (
     Transformation,
     scope_is_within,
 )
+from adaptation_compiler_lab.domain.values import consent_set_identifier
 from adaptation_compiler_lab.evaluation import (
     CandidateGenerationContext,
     DeterministicEvaluationCandidateGenerator,
@@ -653,6 +654,26 @@ def test_lesson_cannot_replace_exact_source_consent_with_combined_basis() -> Non
 
     assert not decision.allowed
     assert ViolationCode.PRIVACY_BROADENING in {item.code for item in decision.violations}
+
+
+def test_privacy_context_requires_a_canonical_exact_consent_set() -> None:
+    bases = ("consent-a", "consent-b")
+
+    aggregate = privacy().model_copy(
+        update={
+            "consent_basis": consent_set_identifier(bases),
+            "consent_basis_refs": bases,
+        }
+    )
+
+    assert aggregate.effective_consent_bases == frozenset(bases)
+    with pytest.raises(ValidationError, match="aggregate consent basis"):
+        PrivacyContext(
+            sensitivity=aggregate.sensitivity,
+            consent_basis="consent-set-wrong",
+            consent_basis_refs=bases,
+            permitted_uses=aggregate.permitted_uses,
+        )
 
 
 def test_promotion_rechecks_least_invasive_route_for_directly_persisted_artifact() -> None:

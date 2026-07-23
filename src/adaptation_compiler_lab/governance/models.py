@@ -15,6 +15,7 @@ from adaptation_compiler_lab.benchmark.models import (
     BlindFamilyId,
     BlindTaskId,
     FeasibilityDesign,
+    InternalFeasibilityDesign,
     TaskStratum,
 )
 from adaptation_compiler_lab.domain.base import (
@@ -106,6 +107,7 @@ class ConditionConstructionMethod(StrEnum):
     NONE = "none"
     DETERMINISTIC_APPROVED_FEEDBACK = "deterministic_approved_feedback"
     INDEPENDENT_HUMAN_PROFILE = "independent_human_profile"
+    ISOLATED_AI_TWO_PASS_PROFILE = "isolated_ai_two_pass_profile"
     COMPILED_RELEASE_PACK = "compiled_release_pack"
 
 
@@ -113,6 +115,7 @@ class ConditionAuthorRole(StrEnum):
     NONE = "none"
     DETERMINISTIC_RENDERER = "deterministic_renderer"
     INDEPENDENT_HUMAN = "independent_human"
+    ISOLATED_AI = "isolated_ai"
     COMPILER = "compiler"
 
 
@@ -694,7 +697,7 @@ class BenchmarkRegistration(FrozenModel):
     schema_version: GovernanceSchemaVersion = "1.0"
     subject_id: Identifier
     benchmark_id: Identifier
-    design: FeasibilityDesign
+    design: FeasibilityDesign | InternalFeasibilityDesign
     design_digest: Sha256Digest
     custody_manifest_ref: CustodyManifestRef
     condition_blind_ids: Annotated[tuple[BlindConditionId, ...], Field(min_length=4, max_length=4)]
@@ -756,6 +759,12 @@ class ConditionMaterialReceipt(FrozenModel):
     construction_method: ConditionConstructionMethod
     author_role: ConditionAuthorRole
     author_identity: NonEmptyStr | None = None
+    author_context_id: Identifier | None = None
+    author_packet_digest: Sha256Digest | None = None
+    profile_draft_digest: Sha256Digest | None = None
+    reviewer_identity: NonEmptyStr | None = None
+    reviewer_context_id: Identifier | None = None
+    review_packet_digest: Sha256Digest | None = None
     authoring_minutes: int = Field(ge=0, le=90)
     held_out_accessed: Literal[False] = False
     author_may_score_results: Literal[False] = False
@@ -786,6 +795,12 @@ class ConditionMaterialReceipt(FrozenModel):
                 self.construction_method is not ConditionConstructionMethod.NONE
                 or self.author_role is not ConditionAuthorRole.NONE
                 or self.author_identity is not None
+                or self.author_context_id is not None
+                or self.author_packet_digest is not None
+                or self.profile_draft_digest is not None
+                or self.reviewer_identity is not None
+                or self.reviewer_context_id is not None
+                or self.review_packet_digest is not None
                 or self.authoring_minutes != 0
             ):
                 raise ValueError("base condition must use the empty construction rule")
@@ -799,10 +814,6 @@ class ConditionMaterialReceipt(FrozenModel):
                 ConditionConstructionMethod.DETERMINISTIC_APPROVED_FEEDBACK,
                 ConditionAuthorRole.DETERMINISTIC_RENDERER,
             ),
-            BenchmarkCondition.STRONG_STATIC_PROFILE: (
-                ConditionConstructionMethod.INDEPENDENT_HUMAN_PROFILE,
-                ConditionAuthorRole.INDEPENDENT_HUMAN,
-            ),
             BenchmarkCondition.COMPILED_ADAPTATION: (
                 ConditionConstructionMethod.COMPILED_RELEASE_PACK,
                 ConditionAuthorRole.COMPILER,
@@ -813,10 +824,65 @@ class ConditionMaterialReceipt(FrozenModel):
             if self.construction_method is not method or self.author_role is not role:
                 raise ValueError("condition construction method or author role is incorrect")
         if self.condition is BenchmarkCondition.STRONG_STATIC_PROFILE:
-            if self.author_identity is None or not 1 <= self.authoring_minutes <= 90:
-                raise ValueError("strong profile requires an identified human within 90 minutes")
+            construction_pair = (self.construction_method, self.author_role)
+            if construction_pair == (
+                ConditionConstructionMethod.INDEPENDENT_HUMAN_PROFILE,
+                ConditionAuthorRole.INDEPENDENT_HUMAN,
+            ):
+                if self.author_identity is None:
+                    raise ValueError("legacy strong profile requires an identified human")
+                if any(
+                    value is not None
+                    for value in (
+                        self.author_context_id,
+                        self.author_packet_digest,
+                        self.profile_draft_digest,
+                        self.reviewer_identity,
+                        self.reviewer_context_id,
+                        self.review_packet_digest,
+                    )
+                ):
+                    raise ValueError("legacy human profile cannot claim AI isolation receipts")
+            elif construction_pair == (
+                ConditionConstructionMethod.ISOLATED_AI_TWO_PASS_PROFILE,
+                ConditionAuthorRole.ISOLATED_AI,
+            ):
+                required_isolation_fields = (
+                    self.author_identity,
+                    self.author_context_id,
+                    self.author_packet_digest,
+                    self.profile_draft_digest,
+                    self.reviewer_identity,
+                    self.reviewer_context_id,
+                    self.review_packet_digest,
+                )
+                if any(value is None for value in required_isolation_fields):
+                    raise ValueError(
+                        "strong profile requires complete two-pass AI isolation receipts"
+                    )
+                if (
+                    self.author_identity == self.reviewer_identity
+                    or self.author_context_id == self.reviewer_context_id
+                ):
+                    raise ValueError("strong profile AI author and reviewer must be distinct")
+            else:
+                raise ValueError("strong profile construction method or author role is incorrect")
+            if not 1 <= self.authoring_minutes <= 90:
+                raise ValueError("strong profile construction must finish within 90 minutes")
         elif self.authoring_minutes != 0:
-            raise ValueError("only strong-profile human authoring records elapsed minutes")
+            raise ValueError("only strong-profile construction records elapsed minutes")
+        elif any(
+            value is not None
+            for value in (
+                self.author_context_id,
+                self.author_packet_digest,
+                self.profile_draft_digest,
+                self.reviewer_identity,
+                self.reviewer_context_id,
+                self.review_packet_digest,
+            )
+        ):
+            raise ValueError("only strong profile may carry AI isolation receipt fields")
         if self.signature.purpose != "condition_material_receipt":
             raise ValueError("condition-material signature has the wrong purpose")
         if self.signature.signed_at != self.frozen_at:

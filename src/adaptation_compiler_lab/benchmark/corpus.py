@@ -22,7 +22,6 @@ class CorpusTask(FrozenModel):
     """One consented completed task represented without payload text or paths."""
 
     task_id: Identifier
-    source_family: Identifier
     created_at: UtcDateTime
     updated_at: UtcDateTime
     consent_ref: ConsentReceiptRef
@@ -36,6 +35,20 @@ class CorpusTask(FrozenModel):
         return self
 
 
+class SourceFamilyAssignment(FrozenModel):
+    """Owner-confirmed behavioral family linked to reviewed evaluation cases."""
+
+    family_id: Identifier
+    evaluation_case_ids: Annotated[tuple[Identifier, ...], Field(min_length=1)]
+
+    @field_validator("evaluation_case_ids")
+    @classmethod
+    def evaluation_ids_are_sorted_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if not strings_are_sorted_unique(value):
+            raise ValueError("source-family evaluation IDs must be sorted and unique")
+        return value
+
+
 class ConsentedCorpusManifest(FrozenModel):
     """Frozen, digestible source-corpus identity with no raw source content."""
 
@@ -47,6 +60,10 @@ class ConsentedCorpusManifest(FrozenModel):
     construction_cutoff: UtcDateTime
     frozen_at: UtcDateTime
     tasks: Annotated[tuple[CorpusTask, ...], Field(min_length=8, max_length=8)]
+    source_family_assignments: Annotated[
+        tuple[SourceFamilyAssignment, ...],
+        Field(min_length=4, max_length=4),
+    ]
     raw_payload_location: Literal["encrypted_external_local_store"] = (
         "encrypted_external_local_store"
     )
@@ -76,8 +93,16 @@ class ConsentedCorpusManifest(FrozenModel):
             raise ValueError("corpus freeze must follow the construction cutoff")
         if any(task.created_at > self.construction_cutoff for task in self.tasks):
             raise ValueError("corpus contains a task created after the construction cutoff")
-        if len({task.source_family for task in self.tasks}) < 4:
-            raise ValueError("source corpus must span at least four task families")
+        family_ids = tuple(item.family_id for item in self.source_family_assignments)
+        if not strings_are_sorted_unique(family_ids):
+            raise ValueError("source-family assignments must be sorted and unique")
+        evaluation_ids = tuple(
+            evaluation_id
+            for item in self.source_family_assignments
+            for evaluation_id in item.evaluation_case_ids
+        )
+        if len(evaluation_ids) != len(set(evaluation_ids)):
+            raise ValueError("an evaluation case cannot belong to multiple source families")
         return self
 
     @property

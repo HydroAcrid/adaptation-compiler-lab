@@ -3,13 +3,14 @@
 `adaptation-compiler-lab` is a local research prototype for compiling verified, scoped learning
 from completed coding work into typed external artifacts. Its research question is whether a
 compiled adaptation pack can improve a target coding agent on unseen work beyond a base agent,
-ordinary memory, and a strong manually written profile.
+ordinary memory, and a strong static profile.
 
-Milestone 4 is complete and merged. Its authenticated no-user-data Claude smoke passed. Milestone
-5 is now in progress: a Desktop-specific Codex runtime/schema pin has passed a real metadata-only
-inventory, and exact-consent encrypted capture, corpus, review-channel, comparator, budget, and
-condition-safety gates are implemented synthetically. No real task body has been read or captured,
-no held-out task has been revealed, and no benchmark trial or performance comparison has run.
+Milestone 5 is complete. Eight exact-consent Codex tasks were captured only into the external
+encrypted raw boundary; eight Kevin-confirmed behaviors became approved artifacts. Two fresh AI
+contexts authored/reviewed the strong static profile, four conditions passed the common budgets,
+and deterministic software custody sealed the hidden tasks, mapping, 32-cell order, and exact
+condition materials. No held-out task has been exposed to construction, and no paid benchmark
+trial or performance comparison has run.
 
 ## What is here
 
@@ -23,6 +24,9 @@ no held-out task has been revealed, and no benchmark trial or performance compar
   `AdjudicationRecord`, and chained `CustodyAccessEvent` contracts with append-only persistence.
 - An external encrypted custody store that binds a sealed bundle to a four-task blinded split while
   exposing only blind task/family IDs, strata, and signed digests to construction components.
+- Digest-bound isolated author/reviewer packets for the strong static profile, deterministic
+  secret-seed randomization, anonymous Kevin-scoring packets, and optional secondary AI judging
+  that cannot replace Kevin's preference ratings.
 - A frozen descriptive 4-task × 4-condition × 2-repetition feasibility design, exact comparator
   construction rules, common 3,000-token/12,000-byte ceilings, and immutable result correction.
 - A local SQLite metadata/governance ledger, AES-256-GCM content-addressed raw-evidence store,
@@ -48,9 +52,10 @@ no held-out task has been revealed, and no benchmark trial or performance compar
 
 ## Deliberate boundaries
 
-This is not a generic memory platform. It has listed minimized local Codex task metadata for
-consent selection, but it has not ingested a real task body, revealed held-out work, or executed
-pilot trials. It never trains or modifies weights,
+This is not a generic memory platform. Consented source payloads and sealed benchmark payloads
+remain encrypted outside Git and synchronized storage; only minimized signed metadata and
+behavioral artifacts enter the compiler ledger. It has not exposed held-out work to construction
+or executed pilot trials. It never trains or modifies weights,
 automatically creates/installs tools, integrates with Kairn, provides a web UI, uses remote
 research-data storage, publishes publicly, or makes empirical claims. The private GitHub repository
 is the code/documentation system of record; raw research data, raw traces, and keys must never be
@@ -94,9 +99,10 @@ benchmark custody and registry remain library-only and never return held-out pla
 
 The packaged runtime locks contain public versions and digests, never executable paths or
 credentials. [`MILESTONE_4_CONFORMANCE.md`](MILESTONE_4_CONFORMANCE.md) records the accepted Claude
-smoke. [`MILESTONE_5_CONFORMANCE.md`](MILESTONE_5_CONFORMANCE.md) records the current metadata-only
-source result and objective gates. Real source capture, corpus construction, holdout reveal, live
-trials, and scoring remain closed until those gates pass.
+smoke. [`MILESTONE_5_CONFORMANCE.md`](MILESTONE_5_CONFORMANCE.md) records the completed consented
+corpus, isolated roles, condition freeze, and sealed custody result. Paid live trials remain closed
+until Kevin explicitly authorizes the preregistered maximum spend; blind scoring follows only
+after valid trials.
 
 ## Documentation
 
@@ -108,9 +114,11 @@ trials, and scoring remain closed until those gates pass.
 - [`DECISION_LOG.md`](DECISION_LOG.md): decisions in force and remaining decisions.
 - [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md): implementation boundary and verification
   record.
-- [`OPERATIONS.md`](OPERATIONS.md): local key recovery, data location, independent-role, retention,
+- [`OPERATIONS.md`](OPERATIONS.md): local key recovery, data location, isolated-role, retention,
   and purge procedure.
 - [`MILESTONE_4_CONFORMANCE.md`](MILESTONE_4_CONFORMANCE.md): frozen runtime identities, isolation
   contract, synthetic results, and accepted live smoke.
 - [`MILESTONE_5_CONFORMANCE.md`](MILESTONE_5_CONFORMANCE.md): source pin, consent/capture boundary,
-  synthetic corpus/material checks, and remaining human/operational gates.
+  real corpus/material freeze, software custody, and paid-run gate.
+- [`MILESTONE_6_AUTHORIZATION_GATE.md`](MILESTONE_6_AUTHORIZATION_GATE.md): exact frozen bindings,
+  runtime/spend ceilings, and the explicit authorization required before paid execution.

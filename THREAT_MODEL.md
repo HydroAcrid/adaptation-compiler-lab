@@ -1,6 +1,7 @@
 # Threat Model
 
-Status: **Milestone 4 complete; Milestone 5 real metadata listed, payloads still blocked**
+Status: **Milestone 5 internal-role separation and sealed software custody complete; paid trials
+not authorized**
 
 ## Assets and trust boundary
 
@@ -40,11 +41,11 @@ approval, or artifact promotion.
 | Key or raw data committed to GitHub | Keys are required to resolve outside the workspace; scans reject credential-like and private-path material; documentation forbids raw research data in Git. | A compromised operator can bypass local policy, so branch review and repository scanning remain necessary. |
 | Invasive artifact or implicit tool execution | Closed routes, evaluation-only option, heightened skill/tool recommendation rationale, file-only rendering. | A downstream human may choose to use a recommendation; this project never executes it. |
 | Unsupported/lossy target mapping | Explicit target profile, rendering trace, capability negotiation, validation failure rather than broad fallback. | Current target profiles are prototype assumptions, not a live compatibility guarantee. |
-| Held-out bundle or split substitution | External AES-256-GCM envelope authenticates benchmark/split/plaintext metadata; signed `CustodyManifest` binds the blinded split and ciphertext digest; substitution and signature-tamper property tests fail closed. | Host compromise and truly independent physical/operator custody remain operational risks. |
+| Held-out bundle, mapping, seed, or split substitution | External AES-256-GCM envelope authenticates benchmark/split/plaintext metadata; signed `CustodyManifest` binds the blinded split and ciphertext digest; a separate seed commitment and deterministic plan digest bind mapping/order; substitution and signature-tamper tests fail closed. | All custody remains on one owner-controlled host. This is functional automation, not independent physical or organizational custody. |
 | Premature holdout reveal | Construction sees only blind task/family IDs, strata, and signed digest; reveal requests are signed allow/deny events and fail before the registered boundary or complete four-condition freeze; no plaintext-returning API exists. | Milestone 6's sealed runner must implement the eventual authorized handoff without widening this API. |
-| Unequal comparator information or covert padding | Atomic material-set validation requires identical eligible corpus, source tasks/evaluations, and wrapper across source-derived conditions; exact actual tokens/bytes are recorded under common ceilings; padding is forbidden. | Human profile quality and tokenizer reproducibility require controlled operations in later milestones. |
+| Unequal comparator information or covert padding | Atomic material-set validation requires identical eligible corpus, source tasks/evaluations, and wrapper across source-derived conditions; exact actual tokens/bytes are recorded under common ceilings; padding is forbidden. Two digest-bound isolated AI passes strengthen the static profile without access to the compiled pack or holdout. | AI-context isolation is policy- and receipt-enforced rather than a separate organization; host compromise can defeat it. |
 | Access-log deletion or reordering | Every custody action is canonical-signed, sequence-numbered, exact-ref linked, and append-only; chain validation detects gaps, substitution, and reordered history. | SQLite/host administrators remain inside the local trust boundary; independent replication is not claimed. |
-| Trial-result or score correction rewriting history | Signed `TrialResult` rows are immutable and cell-bound; corrections append signed digest-only `AdjudicationRecord` chains. | No live scorer exists yet, and reviewer competence/independence remains procedural. |
+| Trial-result or score correction rewriting history | Signed `TrialResult` rows are immutable and cell-bound; corrections append signed digest-only `AdjudicationRecord` chains. Kevin receives randomized anonymous outputs; AI quality annotations are secondary and cannot override his ratings. | Kevin is the source subject and scorer, so the pilot measures his own blinded preference and cannot claim third-party scoring independence. |
 | Holdout leakage through construction metadata | Blind-ID formats reject condition labels; split metadata contains no prompts, answers, rubrics, paths, or raw locators; construction/held-out graph and cutoff checks remain enforced. | Blind strata can still reveal broad task family; the frozen design accepts this intentionally. |
 | State leakage between benchmark conditions | The target runner requires a fresh config, bare/no-persistence mode, one digest-bound condition, disabled ambient surfaces, and teardown; fake-runner conformance tests enforce its command/settings contract. | Milestone 6 must add one fresh disposable worktree and environment digest per real trial. |
 | Reversible-operation failure | Immutable artifacts/releases/packs and approval-gated canary, activation, supersession, rollback events. | No external installation occurs, so rollback is only local pointer state in this MVP. |
@@ -62,9 +63,10 @@ digests, and optional user-assigned name. The subject authorized eight exact tas
 frozen pilot use set and at most 30 days' retention. Their canonical persisted threads are now held
 only as AES-GCM ciphertext with exact source/schema/payload digests and signed capture receipts.
 Explicit user messages produced Evidence v1.1 records; agent, tool, web, attachment, repository,
-and system channels remained untrusted. A synthetic recovery/purge drill passed, while benchmark
-custody, independent profile authorship, and blinded scoring remain operational gates before a
-condition set can freeze.
+and system channels remained untrusted. A synthetic recovery/purge drill passed. The owner approved
+functional separation through two fresh profile contexts, a separate software-custody context and
+registry, sealed seed/mapping/task payloads, and Kevin-blinded scoring. These controls do not create
+third-party independence.
 
 The empty-home Codex conformance probe used a newly created source directory and returned no tasks.
 The Claude runner has also passed the documented authenticated no-user-data smoke against the
@@ -82,9 +84,9 @@ unscheduled pilot execution.
 6. Ambiguous scope, privacy, authority, or target capability fails closed.
 7. Signing and encryption keys are separate, external to the repository, and required explicitly.
 8. Every new non-synthetic Evidence record uses v1.1 and exact signed consent/capture references.
-9. No component trains a model or automatically creates/installs a tool. Agent calls are permitted
-   only through the pinned study runner after their milestone gates; no research data has been sent
-   off machine.
+9. No component trains a model or automatically creates/installs a tool. Isolated profile and
+   review contexts may receive only their explicitly authorized approved-corpus packets; target
+   calls remain behind the paid-run gate.
 10. Destructive recall never executes from an unsigned or stale preview and never rewrites an
     immutable record.
 11. Revoked or expired material cannot support approval, promotion, release, rendering, or
@@ -99,6 +101,10 @@ unscheduled pilot execution.
 16. A successful connector call cannot upgrade source content authority or bypass exact consent.
 17. Target configuration, condition material, process, session, network, and workspace state are
     isolated per run and verified at teardown.
+18. Construction cannot read the custody registry, seed, held-out payload, condition mapping, or
+    randomized order; it receives only signed/digest-bound public commitments.
+19. Internally blinded results cannot be described as independently conducted or third-party
+    validated.
 
 ## Incident posture
 

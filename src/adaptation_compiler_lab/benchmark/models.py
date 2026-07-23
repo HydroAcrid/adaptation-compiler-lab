@@ -173,6 +173,94 @@ class FeasibilityDesign(FrozenModel):
         return self
 
 
+class IsolatedStrongProfileProtocol(FrozenModel):
+    """Two-pass isolated-AI profile rule for the internal feasibility design."""
+
+    author_role: Literal["isolated_ai_two_pass"] = "isolated_ai_two_pass"
+    time_limit_minutes: Literal[90] = 90
+    same_eligible_corpus: Literal[True] = True
+    held_out_access_allowed: Literal[False] = False
+    author_may_score_results: Literal[False] = False
+    compiled_adaptation_access_allowed: Literal[False] = False
+    condition_assignment_access_allowed: Literal[False] = False
+    result_access_allowed: Literal[False] = False
+    separate_review_context_required: Literal[True] = True
+
+
+class InternalFeasibilityScoringPlan(FeasibilityScoringPlan):
+    """Primary Kevin-blinded scoring plus non-authoritative isolated-AI annotations."""
+
+    subjective_scorer: Literal["kevin_blinded_preference_scorer"] = (
+        "kevin_blinded_preference_scorer"
+    )
+    isolated_ai_quality_judge_is_secondary_only: Literal[True] = True
+    isolated_ai_quality_judge_may_override_kevin: Literal[False] = False
+
+
+class InternalFeasibilityDesign(FrozenModel):
+    """Versioned replacement using automated separation rather than third-party conduct."""
+
+    design_id: Literal["codex-to-claude-internal-feasibility-v1"] = (
+        "codex-to-claude-internal-feasibility-v1"
+    )
+    protocol_version: Literal["1.1.0"] = "1.1.0"
+    target_agent: Literal["Claude Code"] = "Claude Code"
+    target_model_selection_rule: Literal[
+        "stable_sonnet_full_id_pinned_in_milestone_4_before_source_construction"
+    ] = "stable_sonnet_full_id_pinned_in_milestone_4_before_source_construction"
+    task_families: Annotated[tuple[TaskStratum, ...], Field(min_length=4, max_length=4)] = (
+        TaskStratum.DIRECT_TRANSFER,
+        TaskStratum.FAILURE_RECURRENCE,
+        TaskStratum.COMPOSITIONAL,
+        TaskStratum.NEUTRAL_CONTROL,
+    )
+    held_out_task_count: Literal[4] = 4
+    conditions: Annotated[tuple[BenchmarkCondition, ...], Field(min_length=4, max_length=4)] = (
+        BenchmarkCondition.BASE,
+        BenchmarkCondition.ORDINARY_MEMORY,
+        BenchmarkCondition.STRONG_STATIC_PROFILE,
+        BenchmarkCondition.COMPILED_ADAPTATION,
+    )
+    repetitions_per_condition: Literal[2] = 2
+    planned_target_runs: Literal[32] = 32
+    adaptation_budget: AdaptationMaterialBudget = Field(default_factory=AdaptationMaterialBudget)
+    ordinary_memory: OrdinaryMemoryProtocol = Field(default_factory=OrdinaryMemoryProtocol)
+    strong_profile: IsolatedStrongProfileProtocol = Field(
+        default_factory=IsolatedStrongProfileProtocol
+    )
+    trial_limits: FeasibilityTrialLimits = Field(default_factory=FeasibilityTrialLimits)
+    scoring: InternalFeasibilityScoringPlan = Field(default_factory=InternalFeasibilityScoringPlan)
+    held_out_payload_location: Literal["encrypted_external_custody_store"] = (
+        "encrypted_external_custody_store"
+    )
+    construction_view: Literal["blind_ids_strata_and_signed_digest_only"] = (
+        "blind_ids_strata_and_signed_digest_only"
+    )
+    study_classification: Literal["internally_blinded_automated_separation_feasibility"] = (
+        "internally_blinded_automated_separation_feasibility"
+    )
+    third_party_independence_claimed: Literal[False] = False
+
+    @model_validator(mode="after")
+    def design_is_the_frozen_internal_pilot(self) -> Self:
+        expected_families = (
+            TaskStratum.DIRECT_TRANSFER,
+            TaskStratum.FAILURE_RECURRENCE,
+            TaskStratum.COMPOSITIONAL,
+            TaskStratum.NEUTRAL_CONTROL,
+        )
+        if self.task_families != expected_families:
+            raise ValueError("internal pilot task families are frozen and ordered")
+        if self.conditions != tuple(BenchmarkCondition):
+            raise ValueError("internal pilot conditions are frozen and ordered")
+        if (
+            self.held_out_task_count * len(self.conditions) * self.repetitions_per_condition
+            != self.planned_target_runs
+        ):
+            raise ValueError("planned target runs must equal tasks x conditions x repetitions")
+        return self
+
+
 class BenchmarkTask(FrozenModel):
     """Opaque task registration; prompts and answers remain outside construction."""
 

@@ -13,6 +13,7 @@ from adaptation_compiler_lab.sanitization.scanner import (
 
 _DYNAMIC_COMMAND = re.compile(r"(?m)^\s*!\s*`")
 _IMPORT_DIRECTIVE = re.compile(r"(?<!`)@[A-Za-z0-9_~./\\-]+")
+_INLINE_CODE = re.compile(r"`[^`\r\n]*`")
 _MIN_LEAKAGE_FRAGMENT = 24
 
 
@@ -35,7 +36,8 @@ def assert_condition_material_safe(
     assert_export_safe(text, label="condition material")
     if _DYNAMIC_COMMAND.search(text):
         raise ConditionSafetyError("condition material contains dynamic-command control syntax")
-    if _IMPORT_DIRECTIVE.search(text):
+    control_view = _INLINE_CODE.sub("", text)
+    if _IMPORT_DIRECTIVE.search(control_view):
         raise ConditionSafetyError("condition material contains external-import control syntax")
     approved = {
         fragment

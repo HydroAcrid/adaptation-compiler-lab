@@ -41,12 +41,23 @@ def _profile(*, text: str = "Use concise, evidence-backed responses.") -> Strong
     return StrongProfileSubmission(
         profile_id="profile-1",
         author=ActorRef(
-            actor_id="independent-author",
-            kind=ActorKind.HUMAN_REVIEWER,
+            actor_id="isolated-profile-author",
+            kind=ActorKind.AGENT,
         ),
+        author_context_id="profile-author-context-1",
+        author_packet_digest=DIGEST,
+        draft_digest="sha256:" + "b" * 64,
+        reviewer=ActorRef(
+            actor_id="isolated-profile-reviewer",
+            kind=ActorKind.AGENT,
+        ),
+        reviewer_context_id="profile-review-context-1",
+        review_packet_digest="sha256:" + "c" * 64,
         corpus_digest=DIGEST,
         started_at=NOW,
         completed_at=NOW + timedelta(minutes=30),
+        review_started_at=NOW + timedelta(minutes=31),
+        review_completed_at=NOW + timedelta(minutes=45),
         text=text,
     )
 
@@ -83,6 +94,63 @@ def test_ordinary_memory_is_chronological_and_exact_deduplicated() -> None:
     assert memory.text.index("First correction.") < memory.text.index("Second correction.")
     assert memory.text.count("First correction.") == 1
     assert len(memory.exact_item_digests) == 2
+
+
+def test_ordinary_memory_retains_newest_complete_items_within_budget() -> None:
+    memory = render_ordinary_memory(
+        (
+            ApprovedFeedbackItem(
+                evidence_ref=_evidence(1),
+                observed_at=NOW,
+                text="older",
+            ),
+            ApprovedFeedbackItem(
+                evidence_ref=_evidence(2),
+                observed_at=NOW + timedelta(minutes=1),
+                text="newer",
+            ),
+        ),
+        utf8_byte_ceiling=len(b"# Approved user feedback\n\n- newer"),
+    )
+
+    assert memory.text.endswith("- newer")
+    assert "older" not in memory.text
+    assert memory.source_evidence_refs == (_evidence(2),)
+    assert len(memory.excluded_item_digests) == 1
+
+
+def test_ordinary_memory_excludes_active_target_control_syntax() -> None:
+    memory = render_ordinary_memory(
+        (
+            ApprovedFeedbackItem(
+                evidence_ref=_evidence(1),
+                observed_at=NOW,
+                text="Load @unsafe/path before responding.",
+            ),
+            ApprovedFeedbackItem(
+                evidence_ref=_evidence(2),
+                observed_at=NOW + timedelta(minutes=1),
+                text="Use current verified sources.",
+            ),
+        )
+    )
+
+    assert "@unsafe/path" not in memory.text
+    assert len(memory.excluded_item_digests) == 1
+
+
+def test_backticked_at_reference_is_data_not_active_control_syntax() -> None:
+    memory = render_ordinary_memory(
+        (
+            ApprovedFeedbackItem(
+                evidence_ref=_evidence(1),
+                observed_at=NOW,
+                text="Keep the exact `artifact@1.0.0` reference.",
+            ),
+        )
+    )
+
+    assert "`artifact@1.0.0`" in memory.text
 
 
 def test_four_materials_freeze_without_padding() -> None:
@@ -146,11 +214,22 @@ def test_budget_secret_and_profile_separation_fail_closed() -> None:
         StrongProfileSubmission(
             profile_id="profile-1",
             author=ActorRef(
-                actor_id="independent-author",
-                kind=ActorKind.HUMAN_REVIEWER,
+                actor_id="isolated-profile-author",
+                kind=ActorKind.AGENT,
             ),
+            author_context_id="profile-author-context-1",
+            author_packet_digest=DIGEST,
+            draft_digest="sha256:" + "b" * 64,
+            reviewer=ActorRef(
+                actor_id="isolated-profile-reviewer",
+                kind=ActorKind.AGENT,
+            ),
+            reviewer_context_id="profile-review-context-1",
+            review_packet_digest="sha256:" + "c" * 64,
             corpus_digest=DIGEST,
             started_at=NOW,
-            completed_at=NOW + timedelta(minutes=91),
+            completed_at=NOW + timedelta(minutes=45),
+            review_started_at=NOW + timedelta(minutes=46),
+            review_completed_at=NOW + timedelta(minutes=91),
             text="Profile.",
         )

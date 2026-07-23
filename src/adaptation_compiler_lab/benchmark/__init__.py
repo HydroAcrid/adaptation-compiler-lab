@@ -3,6 +3,7 @@
 from adaptation_compiler_lab.benchmark.corpus import (
     ConsentedCorpusManifest,
     CorpusTask,
+    SourceFamilyAssignment,
 )
 from adaptation_compiler_lab.benchmark.manifest import (
     benchmark_manifest_digest,
@@ -24,11 +25,13 @@ from adaptation_compiler_lab.benchmark.models import (
     BenchmarkConfig,
     BenchmarkOutcomeRecord,
     FeasibilityDesign,
+    InternalFeasibilityDesign,
 )
 from adaptation_compiler_lab.benchmark.validation import (
     validate_benchmark_config,
     validate_benchmark_outcomes,
     validate_feasibility_design,
+    validate_internal_feasibility_design,
 )
 
 __all__ = [
@@ -43,7 +46,9 @@ __all__ = [
     "FeasibilityDesign",
     "FrozenConditionMaterial",
     "FrozenConditionSet",
+    "InternalFeasibilityDesign",
     "OrdinaryMemoryMaterial",
+    "SourceFamilyAssignment",
     "StrongProfileSubmission",
     "benchmark_manifest_digest",
     "canonical_benchmark_manifest",
@@ -52,4 +57,5 @@ __all__ = [
     "validate_benchmark_config",
     "validate_benchmark_outcomes",
     "validate_feasibility_design",
+    "validate_internal_feasibility_design",
 ]

@@ -1,6 +1,6 @@
 # Pilot Operations and Recovery
 
-Status: **local source operation active; condition-custody roles remain unassigned**
+Status: **local source operation active; internal isolated-role workflow approved**
 
 This procedure applies only to the single local feasibility pilot. It does not define a general
 multi-user key-management or research-data platform.
@@ -46,10 +46,11 @@ Evidence lifecycle at `purged`.
 
 ## Encryption keys
 
-Use three independent canonical 32-byte keys:
+Use four independent secrets:
 
 - raw Codex/Claude payload AES-256-GCM key;
 - held-out custody AES-256-GCM key; and
+- a separate canonical 32-byte randomization seed; and
 - any provider credential, which is not an encryption key and remains scoped/spend-limited.
 
 Do not reuse signing material as encryption material. Key files and passphrases must never be
@@ -73,16 +74,33 @@ withdrawal/incident. The purge operator must:
 The closeout report states the host-backup/storage-remanence limitation and never claims stronger
 deletion assurance than was actually performed.
 
-## Independent roles
+## Internal functional roles
 
-Before condition construction or held-out admission, record the following real people and signed
-role attestations:
+This pilot does not recruit third-party operators. It uses the following explicitly limited roles
+and must be reported as internally blinded:
 
-- source/lesson human reviewer (**assigned to the source subject for the first eight extracted
-  behaviors; signed review decisions exist**);
-- strong-profile author, who sees the same eligible construction corpus, has 90 minutes, has no
-  held-out access, and cannot score results;
-- held-out custodian/randomization-secret holder; and
-- blinded scorer, who cannot author the strong profile.
+- Kevin is the source/lesson reviewer and confirmed the eight behavioral evaluations plus four
+  source-family assignments.
+- A fresh profile-author AI context receives only the approved corpus and author packet. It receives
+  no compiled pack, held-out material, condition mapping, results, ambient memory, or network tools.
+- A second fresh profile-review AI context receives only the same corpus, author draft, and review
+  packet. It may strengthen the baseline but has the same prohibitions and cannot score results.
+- A deterministic software-custody context owns the separate custody registry, held-out plaintext,
+  condition mapping, external seed, and randomized order. It never receives the compiled pack.
+- Kevin is the primary blinded preference scorer. He receives eight randomly labeled outputs per
+  task without condition labels. Independent tests supply objective correctness.
+- A fresh isolated AI judge may produce secondary general-quality annotations from the same blind
+  presentation. Its values cannot replace or override Kevin's ratings.
 
-Unassigned roles are a hard gate. Codex or Claude cannot impersonate any of these humans.
+Every AI role writes a minimized `IsolatedContextReceipt` binding its role packet, consumed input
+digests, output digest, context identity, times, and prohibited-access flags. Role packets and
+receipts contain no raw payload. Construction receives only the software custody commitments and
+cannot open its external registry or sealed store.
+
+## Paid-run and rating gates
+
+Preparing role packets, condition files, commitments, fixtures, and a run manifest does not
+authorize paid target execution. Immediately before the first of 32 target calls, report the exact
+model/runtime, maximum per-trial and total spend, frozen bundle/environment digests, and expected
+run order count, then require Kevin's explicit authorization. After execution, present only blind
+scoring packets and stop for Kevin's ratings before unblinding or comparative analysis.

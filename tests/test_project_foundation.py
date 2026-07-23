@@ -4,7 +4,10 @@ import json
 from hashlib import sha256
 from pathlib import Path
 
-from adaptation_compiler_lab.benchmark.models import FeasibilityDesign
+from adaptation_compiler_lab.benchmark.models import (
+    FeasibilityDesign,
+    InternalFeasibilityDesign,
+)
 from adaptation_compiler_lab.domain import RecordKind
 from adaptation_compiler_lab.governance.schema_export import governance_schema_bundle
 from adaptation_compiler_lab.serialization import schema_bundle
@@ -59,4 +62,15 @@ def test_feasibility_preregistration_is_typed_and_digest_frozen() -> None:
     expected = (root / "feasibility-pilot-v1.sha256").read_text(encoding="ascii").strip()
 
     assert design == FeasibilityDesign()
+    assert expected == f"{sha256(encoded).hexdigest()}  {path.name}"
+
+
+def test_internal_feasibility_preregistration_is_typed_and_digest_frozen() -> None:
+    root = Path(__file__).parents[1] / "preregistration"
+    path = root / "internal-feasibility-pilot-v1.1.json"
+    encoded = path.read_bytes()
+    design = InternalFeasibilityDesign.model_validate_json(encoded)
+    expected = (root / "internal-feasibility-pilot-v1.1.sha256").read_text(encoding="ascii").strip()
+
+    assert design == InternalFeasibilityDesign()
     assert expected == f"{sha256(encoded).hexdigest()}  {path.name}"
