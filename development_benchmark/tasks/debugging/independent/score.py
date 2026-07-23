@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import subprocess
 import sys
 from pathlib import Path
+
+from scorer_support import repository_changed_paths
 
 
 def load(workspace: Path, name: str):
@@ -41,17 +42,7 @@ def main() -> None:
         ),
         "actual_cross_environment_state_bug_removed": forward[0] != forward[1],
     }
-    changed = {
-        line[3:].strip()
-        for line in subprocess.run(
-            ["git", "status", "--porcelain"],
-            cwd=workspace,
-            check=True,
-            capture_output=True,
-            text=True,
-        ).stdout.splitlines()
-        if line.strip()
-    }
+    changed = repository_changed_paths(workspace)
     neutral = {
         "only_allowed_source_changed": changed <= {"settings.py"},
         "visible_tests_unchanged": "test_settings.py" not in changed,

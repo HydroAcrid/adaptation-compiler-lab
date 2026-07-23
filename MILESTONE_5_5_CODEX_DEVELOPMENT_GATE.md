@@ -103,6 +103,13 @@ The minimized machine-readable result is
 Raw traces, the condition mapping, and named-condition aggregates remain encrypted outside Git.
 This result justifies improving the development benchmark before changing the compiler or pack.
 
+The post-run task matrix, scorer-defect analysis, deterministic bytecode-state repair, and
+unexecuted replacement design are documented in
+[`MILESTONE_5_5_DIAGNOSTIC_ANALYSIS.md`](MILESTONE_5_5_DIAGNOSTIC_ANALYSIS.md). That analysis
+does not rewrite this frozen result. It finds that the two apparent profile-only diagnostic
+passes were confounded by brittle lexical scoring and do not justify changing the compiler or
+condition materials.
+
 The 16 valid runs reported 1,185,273 input tokens, including 986,880 cached input tokens, plus
 43,622 output and 22,222 reasoning-output tokens. Their summed duration was 1,037.56 seconds
 (50.816-second median; 149.713-second maximum). Immediately after the gate, the signed-in Codex
@@ -122,3 +129,8 @@ If later authorized, the proposed canary is one newly authored non-held-out task
 under each of the four frozen conditions: four Claude runs, at most 10 minutes and 15 turns each,
 USD $1 per run, and USD $4 total. It must use the existing isolated Claude runner, a new
 development-only seed, no Milestone 6 custody access, no retry, and no cross-agent claim.
+
+The project owner subsequently prohibited that Claude canary. The next proposed execution is
+instead a two-cell Codex-only comparison using GPT-5.6 Luna, described in
+[`development_benchmark/REPLACEMENT_V2_DESIGN.md`](development_benchmark/REPLACEMENT_V2_DESIGN.md).
+It remains unauthorized and unexecuted.

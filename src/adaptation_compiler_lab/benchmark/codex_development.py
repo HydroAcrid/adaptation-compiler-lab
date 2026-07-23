@@ -401,8 +401,7 @@ def load_codex_development_design(
     tasks = []
     for task_root in sorted(path for path in tasks_root.iterdir() if path.is_dir()):
         value = json.loads((task_root / "task.json").read_text(encoding="utf-8"))
-        scorer = task_root / "independent" / "score.py"
-        scorer_digest = "sha256:" + hashlib.sha256(scorer.read_bytes()).hexdigest()
+        scorer_root = task_root / "independent"
         value["family"] = ApprovedSourceFamily(value["family"])
         for field in (
             "visible_test_command",
@@ -414,7 +413,7 @@ def load_codex_development_design(
             CodexDevelopmentTask(
                 **value,
                 fixture_digest=development_tree_digest(task_root / "fixture"),
-                independent_scorer_digest=scorer_digest,
+                independent_scorer_digest=development_tree_digest(scorer_root),
             )
         )
     return CodexDevelopmentDesign(
