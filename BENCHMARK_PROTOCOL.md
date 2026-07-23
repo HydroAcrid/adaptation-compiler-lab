@@ -139,7 +139,26 @@ A separately powered study may be recommended only if the feasibility pilot is v
 pack point estimate is at least as high as every comparator, no guardrail regresses by more than
 five percentage points, and no high-severity adverse case remains unresolved.
 
-## 7. Later execution boundary
+## 7. Milestone 5.5 non-held-out development gate
+
+Before paid Claude execution, run a separate 16-cell Codex subscription diagnostic on four newly
+authored public development tasks covering the four approved source families. Use the exact frozen
+condition materials but a different external seed, mapping, run order, task corpus, encrypted
+result store, and report. The development process must not access the held-out bundle, custody
+mapping, or Milestone 6 randomization.
+
+All cells use a pinned Codex executable, model, reasoning effort, one `codex exec --ephemeral`
+turn, fresh task-only Git repository, fresh configuration home containing only copied saved
+ChatGPT authentication, identical permission/time limits, and a non-inherited shell environment.
+API keys, `AGENTS.md`, user configuration/rules, memories, skills, plugins, MCP, agents, web,
+browser, computer use, prior transcripts, and ambient project files are excluded.
+
+Store raw traces, diffs, tests, and outputs encrypted outside Git. Expose only random blind
+condition/output IDs, minimized observations, and an anonymous preference packet. This development
+gate may justify improving the compiler or pack on non-held-out data, but it cannot support a
+cross-agent-transfer claim and cannot modify the frozen Milestone 6 registration or materials.
+
+## 8. Later execution boundary
 
 Milestone 6, after all prior objective gates pass and Kevin explicitly authorizes paid execution,
 must run the 32 trials in the committed seeded order and use a fresh disposable worktree and empty
@@ -160,6 +179,8 @@ behaviors into typed external artifacts, completed the two-pass isolated profile
 conditions under their common budgets, and sealed the complete hidden task/mapping/order/material
 bundle. The complete bundle contains 32 preregistered cells and remains inaccessible to
 construction. It has not created target trial records, obtained blind ratings, or calculated an
-empirical comparison. Explicit paid-run authorization is the next gate; Kevin's blind ratings are
-the gate after valid execution. No result from this design may be described as independently
+empirical comparison. The separate Milestone 5.5 Codex development gate must complete first. A
+later, separately authorized Claude development canary may use only new non-held-out tasks; it
+cannot reveal the Milestone 6 holdout or authorize the full pilot. Kevin's blind ratings remain the
+gate after valid held-out execution. No result from this design may be described as independently
 conducted.

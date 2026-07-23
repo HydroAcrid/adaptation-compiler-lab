@@ -5,6 +5,11 @@ from adaptation_compiler_lab.runners.claude_code import (
     ClaudeRuntimePaths,
     TargetExecutionError,
 )
+from adaptation_compiler_lab.runners.codex_subscription import (
+    CodexSubscriptionError,
+    CodexSubscriptionRawResult,
+    CodexSubscriptionRunner,
+)
 from adaptation_compiler_lab.runners.smoke import (
     LiveSmokeError,
     LiveSmokeReceipt,
@@ -14,6 +19,9 @@ from adaptation_compiler_lab.runners.smoke import (
 __all__ = [
     "ClaudeCodeTargetRunner",
     "ClaudeRuntimePaths",
+    "CodexSubscriptionError",
+    "CodexSubscriptionRawResult",
+    "CodexSubscriptionRunner",
     "LiveSmokeError",
     "LiveSmokeReceipt",
     "TargetExecutionError",

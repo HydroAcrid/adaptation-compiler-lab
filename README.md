@@ -10,7 +10,8 @@ encrypted raw boundary; eight Kevin-confirmed behaviors became approved artifact
 contexts authored/reviewed the strong static profile, four conditions passed the common budgets,
 and deterministic software custody sealed the hidden tasks, mapping, 32-cell order, and exact
 condition materials. No held-out task has been exposed to construction, and no paid benchmark
-trial or performance comparison has run.
+trial or performance comparison has run. Milestone 5.5 adds a separate 16-cell subscription-backed
+Codex development diagnostic on public non-held-out tasks before any paid cross-agent execution.
 
 ## What is here
 
@@ -120,5 +121,7 @@ after valid trials.
   contract, synthetic results, and accepted live smoke.
 - [`MILESTONE_5_CONFORMANCE.md`](MILESTONE_5_CONFORMANCE.md): source pin, consent/capture boundary,
   real corpus/material freeze, software custody, and paid-run gate.
+- [`MILESTONE_5_5_CODEX_DEVELOPMENT_GATE.md`](MILESTONE_5_5_CODEX_DEVELOPMENT_GATE.md): separate
+  non-held-out Codex subscription design, isolation contract, blinding, and stop boundary.
 - [`MILESTONE_6_AUTHORIZATION_GATE.md`](MILESTONE_6_AUTHORIZATION_GATE.md): exact frozen bindings,
   runtime/spend ceilings, and the explicit authorization required before paid execution.
