@@ -636,6 +636,25 @@ def test_candidate_and_artifact_cannot_understate_source_privacy() -> None:
     assert ViolationCode.PRIVACY_BROADENING in {item.code for item in decision.violations}
 
 
+def test_lesson_cannot_replace_exact_source_consent_with_combined_basis() -> None:
+    graph = synthetic_graph()
+    combined_privacy = graph.candidate.privacy.model_copy(
+        update={"consent_basis": "combined-consent"}
+    )
+    candidate = graph.candidate.model_copy(update={"privacy": combined_privacy})
+    records = (graph.evidence, graph.task, graph.outcome, graph.evaluation_case)
+
+    decision = validate_lesson_candidate(
+        candidate,
+        records,
+        required_use=PermittedUse.PROMOTION,
+        require_approved=True,
+    )
+
+    assert not decision.allowed
+    assert ViolationCode.PRIVACY_BROADENING in {item.code for item in decision.violations}
+
+
 def test_promotion_rechecks_least_invasive_route_for_directly_persisted_artifact() -> None:
     graph = synthetic_graph()
     escalated = graph.artifact.model_copy(

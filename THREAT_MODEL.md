@@ -58,13 +58,13 @@ approval, or artifact promotion.
 ## Privacy policy for this phase
 
 Real source inventory is limited to task ID, timestamps, status/version, one-way source/CWD
-digests, and optional user-assigned name. No real transcript, repository, credential, or private
-project payload is yet authorized. Real capture requires one exact selector per signed consent,
-the frozen pilot use set, at most 30 days' retention, signer/fingerprint/validity checks,
-source/schema and payload digests, and AES-GCM storage before the read result can persist.
-Withdrawal, recall, purge/tombstone, and benchmark-custody mechanics remain synthetically tested.
-Operational key recovery/deletion assurance and independent-human/custodian procedures remain
-gates before a real corpus can freeze.
+digests, and optional user-assigned name. The subject authorized eight exact task selectors for the
+frozen pilot use set and at most 30 days' retention. Their canonical persisted threads are now held
+only as AES-GCM ciphertext with exact source/schema/payload digests and signed capture receipts.
+Explicit user messages produced Evidence v1.1 records; agent, tool, web, attachment, repository,
+and system channels remained untrusted. A synthetic recovery/purge drill passed, while benchmark
+custody, independent profile authorship, and blinded scoring remain operational gates before a
+condition set can freeze.
 
 The empty-home Codex conformance probe used a newly created source directory and returned no tasks.
 The Claude runner has also passed the documented authenticated no-user-data smoke against the

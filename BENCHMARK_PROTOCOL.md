@@ -1,7 +1,7 @@
 # Benchmark Protocol
 
-Status: **Normative feasibility design frozen; Milestone 4 complete; Milestone 5 payload access
-awaiting exact consent**
+Status: **Normative feasibility design frozen; Milestone 5 source capture/review complete;
+condition custody and independent-profile authorship pending**
 
 ## 1. Claim and study class
 
@@ -50,6 +50,11 @@ Each source-derived condition has the same ceiling: **3,000 target-visible adapt
 12,000 UTF-8 bytes**. Actual tokens and bytes are signed. Shorter materials stay shorter; padding
 and hidden stored material are prohibited. Equality is an information-access and ceiling rule, not
 a requirement to make the three artifacts the same length.
+
+Target-token measurements use Anthropic's pinned `POST /v1/messages/count_tokens` endpoint, API
+version `2023-06-01`, the frozen full target model ID, and a versioned request envelope that places
+the exact condition text in the top-level system field. The returned total input-token estimate is
+used without substituting a local tokenizer.
 
 ## 4. Custody and information flow
 
@@ -128,9 +133,11 @@ conformance, a pinned Codex app server initialized against an empty source home,
 authenticated no-user-data Claude smoke passed with only synthetic content. This proves target
 connectivity and instrumentation, not adaptation performance.
 
-The project has listed minimized source metadata through the Desktop-pinned app server but has not
-read a real task body, authored real condition materials, retrieved a holdout, created trial
-records from real runs, scored work, or calculated an empirical comparison.
+The project has captured eight exactly consented source tasks into the encrypted local raw boundary,
+admitted only explicit user messages as user-authority Evidence, and promoted eight human-confirmed
+behaviors through construction-side evaluations into typed external artifacts. It has not frozen
+the four real condition materials, retrieved a holdout, created trial records from real runs,
+scored work, or calculated an empirical comparison.
 Operational custodian independence, exact per-task consent, human-profile authorship, randomization
 secret custody, scorer assignment, frozen materials, and live execution remain mandatory gates
 even though continuation between fully passed milestones no longer requires a ceremonial stop.

@@ -1,6 +1,6 @@
 # Pilot Operations and Recovery
 
-Status: **procedure frozen; real operator assignments and keys not yet created**
+Status: **local source operation active; condition-custody roles remain unassigned**
 
 This procedure applies only to the single local feasibility pilot. It does not define a general
 multi-user key-management or research-data platform.
@@ -20,14 +20,16 @@ multi-user key-management or research-data platform.
 
 ## Signing identities
 
-Create two Ed25519 identities before capture:
+The pilot uses two registered Ed25519 identities:
 
 1. An online operational identity for consent, review, release, activation, and custody actions.
    Its encrypted private key and passphrase are separate mode-0600 files outside synchronized
    storage.
-2. A recovery identity with only the custody role. Its encrypted private key/passphrase backup is
-   kept offline from routine work and is used only for recall/purge when the operational key is
-   lost or suspected compromised.
+2. A recovery identity with only the custody role. Its encrypted private key and separate
+   passphrase remain in the external, non-synchronized local configuration boundary and are used
+   only for recall/purge when the operational key is lost or suspected compromised. An additional
+   offline copy is recommended disaster recovery, not a gate for this single-machine feasibility
+   pilot.
 
 Both public identities are self-signed and registered in the local append-only ledger. They expire
 after the pilot/retention window. The feasibility pilot does not rotate a key in place. Any
@@ -38,7 +40,9 @@ remain historical audit facts and are not silently rebound to a replacement key.
 
 Before first capture, perform and record a recovery drill with synthetic data: make the online key
 unavailable, load only the recovery identity, execute a complete signed recall/purge, and verify
-that ciphertext is absent and tombstones/ledger history remain.
+that ciphertext is absent and tombstones/ledger history remain. The 2026-07-23 drill passed with
+the operational key absent, one encrypted payload removed, one signed tombstone retained, and the
+Evidence lifecycle at `purged`.
 
 ## Encryption keys
 
@@ -74,7 +78,8 @@ deletion assurance than was actually performed.
 Before condition construction or held-out admission, record the following real people and signed
 role attestations:
 
-- source/lesson human reviewer;
+- source/lesson human reviewer (**assigned to the source subject for the first eight extracted
+  behaviors; signed review decisions exist**);
 - strong-profile author, who sees the same eligible construction corpus, has 90 minutes, has no
   held-out access, and cannot score results;
 - held-out custodian/randomization-secret holder; and

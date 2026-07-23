@@ -1,6 +1,7 @@
 # Milestone 5 Conformance Record
 
-Status: **in progress; metadata-only source conformance passed, payload access blocked**
+Status: **in progress; source capture and reviewed artifact construction passed; condition freeze
+blocked on independent profile/custody roles**
 
 Milestone 5 constructs the first consented Codex corpus and four frozen target condition
 materials. The project may continue automatically through technical work, but it cannot
@@ -35,7 +36,12 @@ one capture time. Before `thread/read`, it verifies:
 Only then may the connector return canonical full-thread bytes. The service binds their exact
 source version/schema/payload digests into a signed receipt, stores ciphertext, and returns only
 digests, byte count, encrypted locator, and turn descriptors. A failed receipt append removes a
-newly created ciphertext entry. No task body has crossed this boundary yet.
+newly created ciphertext entry.
+
+On 2026-07-23 the subject supplied exact consent for eight task IDs. Eight separately signed
+consent receipts and eight capture receipts were issued, and all eight full persisted threads were
+stored as AES-256-GCM ciphertext in the external local raw boundary. No raw source bytes, private
+paths, task IDs, or credentials entered Git, GitHub, or synchronized storage.
 
 ## Corpus, review, and condition controls
 
@@ -43,25 +49,30 @@ Synthetic tests require exactly eight sorted, separately consented/captured sour
 by the construction cutoff and spanning at least four human-assigned source families. Review
 projection is channel-based only: explicit user messages are eligible user authority;
 agent messages, plans, reasoning, tools, webpages, hooks, and unknown/system items stay untrusted.
-It never infers an outcome, correction, failure, or lesson.
+The real projection produced 63 consent/capture-bound Evidence v1.1 records from explicit user
+messages. The subject confirmed eight extracted behavioral evaluations as accurate. Those
+decisions were signed, converted into consent-narrowed Outcomes and independently checked
+LessonCandidates, and routed through the least-invasive policy into four prompt rules, three
+procedures, and one preference. One attempted cross-consent derivative failed closed on scope and
+privacy broadening before any lesson or artifact was persisted; the accepted records retain one
+exact task consent per promoted behavior.
 
 Ordinary memory is chronological approved user feedback with exact canonical-digest deduplication
 and no procedure inference. The strong profile requires an independent human-reviewer identity,
 the same corpus digest, no held-out/scoring role, and at most 90 minutes. All non-base conditions
 bind the same eight task IDs and evaluation-case IDs. Freeze rejects secrets, unsupported Claude
 control syntax, unapproved raw fragments, padding, more than 3,000 target tokens, or more than
-12,000 UTF-8 bytes.
+12,000 UTF-8 bytes. Target tokens are measured through Anthropic's pinned Messages token-count
+endpoint using the frozen Claude model ID and a versioned system-prompt request envelope; local
+tokenizer estimates are not accepted.
 
 ## Remaining objective gates
 
-No real task body may be read until the user explicitly confirms the proposed eight task IDs and
-terms and eight signed per-task consent receipts exist. Corpus freeze then additionally requires:
+The exact-consent, capture, recovery-drill, channel-classification, human semantic review, and
+construction-side promotion gates have passed. Corpus and condition freeze still require:
 
-- external signing/raw keys with documented recovery and 30-day purge limitations;
-- human review of the local source packet and attributable structured outcomes/lessons;
 - an identified independent skilled strong-profile author with no holdout or scoring access;
 - a real signed benchmark registration and independent custody procedure before condition freeze;
-- an exact target token-counting identity; and
 - all four secret/leakage/cutoff/budget scans passing before any held-out reveal.
 
 The metadata inventory proves source connectivity and minimization only. It is not evidence that a
