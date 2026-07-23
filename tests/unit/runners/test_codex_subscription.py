@@ -41,6 +41,10 @@ if sys.argv[1:] == ["login", "status"]:
     assert "CODEX_API_KEY" not in os.environ
     assert "OPENAI_API_KEY" not in os.environ
     assert pathlib.Path(os.environ["CODEX_HOME"], "auth.json").is_file()
+    print(
+        "WARNING: proceeding, even though we could not create PATH aliases: isolated home",
+        file=sys.stderr,
+    )
     print("Logged in using ChatGPT")
     raise SystemExit(0)
 assert "--ask-for-approval" not in sys.argv

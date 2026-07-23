@@ -249,10 +249,22 @@ class CodexSubscriptionRunner:
                 env=self._environment(codex_home),
                 timeout=30,
             )
-            combined = "\n".join((completed.stdout.strip(), completed.stderr.strip())).strip()
-            if completed.returncode != 0 or combined != "Logged in using ChatGPT":
+            lines = tuple(
+                line.strip()
+                for stream in (completed.stdout, completed.stderr)
+                for line in stream.splitlines()
+                if line.strip()
+            )
+            status = "Logged in using ChatGPT"
+            allowed_warning = (
+                "WARNING: proceeding, even though we could not create PATH aliases:"
+            )
+            unexpected = tuple(
+                line for line in lines if line != status and not line.startswith(allowed_warning)
+            )
+            if completed.returncode != 0 or lines.count(status) != 1 or unexpected:
                 raise CodexSubscriptionError("Codex authentication is not saved ChatGPT login")
-            return combined
+            return status
 
     def run(
         self,
