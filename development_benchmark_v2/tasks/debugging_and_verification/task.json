@@ -1,0 +1,19 @@
+{
+  "task_id": "development-v2-debugging-verification",
+  "family": "debugging_and_verification",
+  "prompt": "Request-specific timeout values still leak into later requests. ATTEMPT.md says whitespace normalization fixed it, but the reproduction continues to fail. Find the live cause, repair it without changing tests or special-casing examples, and verify the full visible suite.",
+  "visible_test_command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v"
+  ],
+  "allowed_change_paths": [
+    "timeouts.py"
+  ],
+  "neutral_control_requirements": [
+    "Do not add ambient agent configuration or unrelated files.",
+    "Do not change ATTEMPT.md or the existing tests.",
+    "Fix the live implementation without special-casing supplied examples."
+  ]
+}

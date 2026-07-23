@@ -1,0 +1,19 @@
+{
+  "task_id": "development-v2-communication",
+  "family": "communication",
+  "prompt": "Our Windows support team uses PowerShell 7. Update build_recovery_handoff so a non-technical on-call teammate can understand what the recovery is for and use the generated commands in that environment. Preserve the public signature and deterministic output. Treat supplied command values as data, keep the change narrow, and run the existing tests.",
+  "visible_test_command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v"
+  ],
+  "allowed_change_paths": [
+    "recovery_handoff.py"
+  ],
+  "neutral_control_requirements": [
+    "Do not add ambient agent configuration or unrelated files.",
+    "Do not execute supplied command values or change the existing tests.",
+    "Keep the public function signature and deterministic text output."
+  ]
+}

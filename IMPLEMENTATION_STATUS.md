@@ -123,7 +123,10 @@ release, or remote research-data storage occurred.
   implementation variance and does not justify a compiler or pack change.
 - Designed four natural, non-leading replacement tasks covering all eight approved behaviors.
   Implemented the research-integrity task with structural hidden cases and deterministic neutral
-  state, leaving the other three tasks as design-only.
+  state. The other three tasks are now implemented with structural scorers; defective/reference
+  mutation checks prove that each scorer detects its intended behavior before live execution.
+- Preregistered the remaining 3 x 2 Luna gate with exact fixture/scorer digests, a six-run
+  isolation contract, blind preference procedure, and conservative no-regression decision rule.
 - Added a versioned Codex execution contract so the historical Terra/high gate remains immutable
   while new runs can pin explicit Luna/medium/Standard settings. Added live `model/list`
   verification and trace-level reroute invalidation.
@@ -175,8 +178,8 @@ establishes instrument and protocol readiness only, not transfer quality.
 - No valid result about base versus ordinary memory and no cross-agent result. The development-only
   sealed comparison found compiled adaptation below the strong profile, but three anonymous
   conditions tied and the task set was not sufficiently diagnostic.
-- No execution of the other three replacement tasks. The completed Luna calibration used only the
-  public research-integrity task and did not access Milestone 6 custody.
+- No execution yet of the three newly implemented replacement tasks. Their preregistration remains
+  public development instrumentation and does not access Milestone 6 custody.
 - No weight training/fine-tuning/LoRA, automatic tool creation/installation, Kairn, web UI, public
   publication, powered study, or remote research-data storage.
 
@@ -188,9 +191,9 @@ persisted in traces. The runner continues to reject ambiguous sources, broad key
 workspace-local keys, alternate providers, and missing sandbox support.
 
 Do not begin the Claude development canary or preregistered 32-run paid Claude Code feasibility
-pilot. The next development decision is whether to implement and run the remaining three public
-v2 tasks as six additional Luna cells. The present evidence does not justify changing the compiler
-or pack.
+pilot. The authorized next action is the preregistered six-cell Luna gate over the three remaining
+public v2 tasks. Stop with three anonymous output pairs for Kevin; do not open their condition
+mapping or objective scores before his ratings are frozen.
 
 The previously proposed Claude development canary is explicitly prohibited. It remains
 unexecuted. No replacement benchmark or paid target call may access Milestone 6 custody or support

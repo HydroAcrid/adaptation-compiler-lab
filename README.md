@@ -133,5 +133,7 @@ after valid trials.
   bytecode-state repair, causal analysis, and the GPT-5.6 Luna follow-up design.
 - [`MILESTONE_5_5_LUNA_CALIBRATION.md`](MILESTONE_5_5_LUNA_CALIBRATION.md): exact two-cell
   execution contract, blinded structural result, shared task ambiguity, and pending blind rating.
+- [`MILESTONE_5_5_LUNA_REMAINING_GATE.md`](MILESTONE_5_5_LUNA_REMAINING_GATE.md): preregistered
+  six-cell comparison across the other three public replacement task families.
 - [`MILESTONE_6_AUTHORIZATION_GATE.md`](MILESTONE_6_AUTHORIZATION_GATE.md): exact frozen bindings,
   runtime/spend ceilings, and the explicit authorization required before paid execution.

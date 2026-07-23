@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-23
 
-Status: **V2-4 implemented and executed as a two-cell calibration; V2-1 through V2-3 remain design-only**
+Status: **V2-4 completed; V2-1 through V2-3 implemented, mutation-tested, and preregistered**
 
 ## Purpose and separation
 

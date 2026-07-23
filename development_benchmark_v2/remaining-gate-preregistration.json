@@ -1,0 +1,65 @@
+{
+  "preregistration_version": "1.0.0",
+  "benchmark_id": "codex-development-v2-remaining-gate",
+  "frozen_at": "2026-07-24T00:00:00Z",
+  "held_out": false,
+  "milestone_6_custody_accessed": false,
+  "cross_agent_claim_allowed": false,
+  "condition_set_digest": "sha256:d4bca1e5d4d30271b37585522793a2f164d473203d2ddad4583ab61223f7ea43",
+  "conditions": [
+    "strong_static_profile",
+    "compiled_adaptation"
+  ],
+  "execution": {
+    "authentication": "saved_chatgpt",
+    "cli_digest": "sha256:a2a05dafaa1acb002a45eaec0a462de5b13694fcfcd7bc43305f14781ce7be14",
+    "cli_version": "codex-cli 0.145.0",
+    "ephemeral_session": true,
+    "model": "gpt-5.6-luna",
+    "planned_runs": 6,
+    "reasoning_effort": "medium",
+    "retry_allowed": false,
+    "service_mode": "standard",
+    "turns_per_run": 1,
+    "timeout_seconds": 600
+  },
+  "scoring_policy": {
+    "diagnostic_sufficiency": "Before execution, each defective fixture must fail at least one diagnostic check and a general reference solution must pass every objective, diagnostic, and neutral check.",
+    "eligibility": "All six runs must satisfy the frozen isolation contract. Invalid cells are reported and are never silently retried.",
+    "preference": "Kevin rates each anonymous pair before the condition mapping or objective scores are revealed.",
+    "tie_or_better": "Compiled adaptation ties or beats the strong profile only if it has no per-task objective or neutral regression, its aggregate diagnostic count is at least as high, and Kevin records at least as many compiled wins as compiled losses.",
+    "strict_win": "A strict win additionally requires at least one compiled diagnostic or Kevin-preference gain with no countervailing regression under the tie-or-better rule."
+  },
+  "tasks": [
+    {
+      "approved_behavior_ids": [
+        1,
+        2
+      ],
+      "family": "communication",
+      "fixture_digest": "sha256:fa55ff8da238305908eff94e0528d440b1203c59613321fe860d16a9a54689cf",
+      "independent_scorer_digest": "sha256:0f3200a867c617aee25e3ce26df10a7dde8281cdc56c70a3741ca6f4f626e7cc",
+      "task_id": "development-v2-communication"
+    },
+    {
+      "approved_behavior_ids": [
+        3,
+        6
+      ],
+      "family": "debugging_and_verification",
+      "fixture_digest": "sha256:4839e650f4088f3e2fec0d6bfbb86347d1d3ed8f5f28b9e5798661381404506b",
+      "independent_scorer_digest": "sha256:e67e6a7de224243bc890d1a04048cf99bd54b628d0bae5dae44d562fe7b9b4d6",
+      "task_id": "development-v2-debugging-verification"
+    },
+    {
+      "approved_behavior_ids": [
+        5,
+        8
+      ],
+      "family": "environment_safety",
+      "fixture_digest": "sha256:3cb57e3d772c1127fc781e7eedbd943cb08712d8eadb2444a47b884da8944ace",
+      "independent_scorer_digest": "sha256:9b233b0a054944e72faae8dab56f90290bd0bd350fdc47a5b9e3e788d92139b7",
+      "task_id": "development-v2-environment-safety"
+    }
+  ]
+}
