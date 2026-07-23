@@ -420,3 +420,20 @@ def test_construction_boundary_rejects_post_cutoff_provenance() -> None:
 
     assert not report.passed
     assert ReleaseGateCode.CONSTRUCTION_BOUNDARY in {item.code for item in report.violations}
+
+
+def test_restricted_evidence_cannot_support_a_release() -> None:
+    candidate, records = _valid_graph()
+    evidence = next(record for record in records if isinstance(record, Evidence))
+
+    report = evaluate_release_gates(
+        candidate,
+        records,
+        evaluated_at=NOW,
+        record_states={
+            (evidence.record_type.value, evidence.record_id, evidence.record_version): "restricted"
+        },
+    )
+
+    assert not report.passed
+    assert ReleaseGateCode.REVOKED_OR_EXPIRED in {item.code for item in report.violations}

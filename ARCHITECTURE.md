@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **Milestone 1 implemented; local, file-only, and synthetic-only**
+Status: **Milestone 2 implemented; local, file-only, and synthetic-only**
 
 ## 1. System shape
 
@@ -20,6 +20,11 @@ flowchart LR
     A --> F["Frozen Release"]
     F --> P["Validated TargetPack files"]
     F --> X["Activation pointer / rollback journal"]
+    G --> C["Signed impact preview and recall"]
+    C --> R
+    C --> F
+    C --> P
+    C --> X
     B["Sealed benchmark registration"] -. isolates .-> I
     P -. frozen input .-> B
 ```
@@ -27,8 +32,9 @@ flowchart LR
 The dotted edge means that a release/pack may be registered for a future experiment only after the
 four condition bundles are frozen. Benchmark results never alter that release.
 
-Milestone 1 does not connect this graph to Codex or Claude Code. The governance CLI signs only
-synthetic selectors and capture previews; no source enumeration or raw user capture is reachable.
+Milestone 2 does not connect this graph to Codex or Claude Code. The governance CLI signs only
+synthetic selectors, capture previews, and local recall operations; no source enumeration or raw
+user capture is reachable.
 
 ## 2. Records and relationships
 
@@ -49,7 +55,7 @@ Evidence may support, contradict, or limit a claim. An `Artifact` retains direct
 even when it also references a lesson. A `Release` holds exact approved artifact versions, while a
 `TargetPack` is a derived rendering and never the canonical learned asset.
 
-Four signed governance objects sit beside, rather than inside, the eight-record portable contract:
+Eight signed governance objects sit beside, rather than inside, the eight-record portable contract:
 
 | Object | Responsibility | Binding |
 | --- | --- | --- |
@@ -57,6 +63,10 @@ Four signed governance objects sit beside, rather than inside, the eight-record 
 | `ConsentReceipt` | Permission boundary for a selected source. | Subject, exact selector, scope, uses, expiry, retention, policy, signer/signature. |
 | `CaptureReceipt` | Capture or synthetic-preview attestation. | Exact consent digest, selector, source/schema digest, payload digest, time, signer/signature. |
 | `GovernanceEvent` | Uniform signed review, release, activation, or custody action. | Exact target reference/digest, decision, reason, policy, time, role, signature. |
+| `DependencyImpact` | Confirmation-bound snapshot computed before invalidation. | Exact root, requested action, complete affected set, lifecycle/activation heads, payload metadata, graph digest, policy, signer/signature. |
+| `InvalidationEvent` | Append-only declaration that an exact target is no longer eligible. | Exact target/digest, action, impact reference, reason, effective time, policy, signer/signature. |
+| `TombstoneReceipt` | Minimal proof that selected encrypted payload bytes were unlinked. | Payload digest/size/media type, exact Evidence and invalidation refs, deletion method/time, signer/signature; never payload content. |
+| `RecallReport` | Idempotent completion record for one confirmed impact. | Exact impact, invalidations, tombstones, deactivated environments, purged digests, policy, signer/signature. |
 
 Evidence v1.0 remains immutable and readable. Evidence v1.1 adds exact consent and capture refs.
 For non-synthetic evidence the admission policy resolves both signed objects and checks subject,
@@ -89,8 +99,10 @@ plaintext SHA-256; ciphertext uses a fresh 96-bit nonce and authenticates digest
 plaintext size. The 32-byte AES key and encrypted Ed25519 private key are separate and external to
 the workspace/repository. Missing key, wrong fingerprint, malformed envelope, or failed tag
 verification stops access. The metadata ledger and all pack renderers use minimized promoted
-records; raw data is neither an artifact body nor target instruction. Privacy removal/restriction
-must invalidate dependents for review rather than silently preserving their verified status.
+records; raw data is neither an artifact body nor target instruction. Restriction or withdrawal
+marks every transitive dependency unusable, revokes artifacts, retires releases, invalidates packs,
+and deactivates affected active pointers. Purge additionally deletes selected encrypted bytes and
+retains only signed minimal tombstones and immutable metadata.
 
 ## 4. Storage and lifecycle
 
@@ -104,14 +116,30 @@ Content lifecycle and activation are deliberately separate:
 
 | Object | Content lifecycle | Separate operational state |
 | --- | --- | --- |
-| Evaluation / lesson / artifact | proposed, evaluated, approved or rejected; later superseded/revoked as applicable | none |
-| Release candidate / release | draft, evaluated, approved, frozen/released or rejected | immutable membership |
-| Target pack | built, validated or rejected | immutable file projection |
+| Evidence / evaluation / lesson | raw/derived or proposed/reviewed; later restricted, purged, or excluded by lifecycle overlay | raw bytes remain separate and may be deleted only by confirmed purge |
+| Artifact | proposed, evaluated, approved or rejected; later superseded/revoked | none |
+| Release candidate / release | draft, evaluated, approved, frozen/released or rejected; later retired | immutable membership |
+| Target pack | built, validated or rejected; later invalidated | immutable file projection |
 | Environment pointer | none | canary, active, superseded, rollback/deactivated events |
 
 Activation validates an approved release/pack relationship and requires a human approval record.
 Rollback changes a pointer to an earlier compatible release; it never edits a release, pack, or
 artifact.
+
+Recall is a two-step operation. `recall preflight` computes the transitive incoming-reference
+closure, captures lifecycle and activation heads, signs it, and returns its canonical digest.
+`recall execute` requires that exact digest, recomputes the graph inside a write transaction, and
+refuses stale previews. Lifecycle invalidations and every affected active-pointer deactivation
+commit atomically. For purge, ciphertext is authenticated before deletion; if the SQLite
+transaction fails, bytes are restored under the same content address before the error is returned.
+An exact completed impact is idempotent, while reusing an impact ID for different content fails.
+
+Conflict resolution is a pure closed policy: exclude revoked/expired material; prefer a strictly
+narrower applicable scope; at equal scope prefer a later explicit user correction; then compare
+claim-specific authority using `user_normative > authorized_evaluator > project_policy >
+observational > proposal_only > untrusted_context > synthetic_only`; otherwise return unresolved
+and block release. The resolver returns the winner, loser, resolution class, and rationale, and
+release gates compare declared resolutions to that computed result.
 
 ## 5. Rendering and routing
 
@@ -132,6 +160,8 @@ user configuration, or assert compatibility with a particular agent/model versio
 src/adaptation_compiler_lab/
   domain/           strict records, values, references, enums
   governance/       signed identity/receipt/event contracts and Ed25519 custody
+  conflicts/        deterministic scoped conflict precedence
+  recall/           dependency impact analysis and confirmed recall execution
   provenance/       lineage, authority, scope/privacy policy
   evaluation/       evaluation-candidate extraction and policy
   routing/          least-invasive route policy
@@ -150,12 +180,12 @@ tests/              unit and synthetic end-to-end coverage
 
 ## 7. Implementation sequence and next boundary
 
-Completed sequence through Milestone 1: contracts and canonical serialization; provenance/routing
+Completed sequence through Milestone 2: contracts and canonical serialization; provenance/routing
 policies; review/evaluation/release lifecycle; target rendering; benchmark registration; Ed25519
-governance; AES raw isolation; v1.1 evidence lineage; CLI and synthetic integration tests.
+governance; AES raw isolation; v1.1 evidence lineage; signed withdrawal objects; dependency
+preflight; recall/purge cascades; deterministic conflict resolution; CLI and synthetic tests.
 
-The next gated milestone, only after explicit approval, is withdrawal, recall, and deterministic
-conflict semantics. It will add invalidation/tombstone/impact/recall records and complete dependency
-cascades. Milestone 1 intentionally does not implement destructive purge, revocation, release
-retirement, pack invalidation, or automatic activation deactivation. Benchmark custody, connectors,
-real corpus capture, live execution, and scoring remain later gates.
+The next gated milestone, only after explicit approval, is benchmark custody and the signed
+evaluation registry. Milestone 2 intentionally does not freeze a preregistration, seal or reveal a
+holdout, install/call Claude Code, implement connectors, capture real Codex tasks, execute trials,
+or score results. Those remain later gates.

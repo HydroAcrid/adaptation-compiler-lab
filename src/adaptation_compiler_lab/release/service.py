@@ -45,6 +45,7 @@ class ReleaseService:
 
     def __init__(self, factory: UnitOfWorkFactory, *, subject_id: str) -> None:
         self._factory = factory
+        self._subject_id = subject_id
         self._records = DomainRecordStore(factory, subject_id=subject_id)
 
     def evaluate(
@@ -59,7 +60,12 @@ class ReleaseService:
         if candidate.state is not ReleaseCandidateState.PROPOSED:
             raise ReleaseServiceError("only a proposed release candidate can be evaluated")
         records = tuple(item.record for item in self._records.list())
-        report = evaluate_release_gates(candidate, records, evaluated_at=evaluated_at)
+        report = evaluate_release_gates(
+            candidate,
+            records,
+            evaluated_at=evaluated_at,
+            record_states=self._record_states(),
+        )
         evaluated = transition_release_candidate(
             candidate,
             requested=ReleaseCandidateState.EVALUATED,
@@ -163,7 +169,12 @@ class ReleaseService:
         if approval is None or approval.decision is not ApprovalDecision.APPROVED:
             raise ReleaseServiceError("frozen candidate lacks attributable human approval")
         records = tuple(item.record for item in self._records.list())
-        report = evaluate_release_gates(candidate, records, evaluated_at=released_at)
+        report = evaluate_release_gates(
+            candidate,
+            records,
+            evaluated_at=released_at,
+            record_states=self._record_states(),
+        )
         if not report.passed:
             raise ReleaseServiceError("release gates failed during freeze revalidation")
         frozen_candidate = transition_release_candidate(
@@ -217,3 +228,12 @@ class ReleaseService:
         )
         self._records.add_with_lifecycle(release, (event,))
         return FreezeResult(candidate=frozen_candidate, report=report, release=release)
+
+    def _record_states(self) -> dict[tuple[str, str, str], str]:
+        with self._factory(write=False) as unit_of_work:
+            records = unit_of_work.records.list_records(subject_id=self._subject_id)
+            return {
+                (item.key.kind, item.key.record_id, item.key.version): state
+                for item in records
+                if (state := unit_of_work.lifecycle.current_state(item.key)) is not None
+            }

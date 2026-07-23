@@ -1,6 +1,6 @@
 # MVP Specification
 
-Status: **Milestone 1 implemented; local, synthetic-only governance foundation**
+Status: **Milestone 2 implemented; local, synthetic-only recall foundation**
 Implementation status: **no live agents, real data, or benchmark execution**
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** describe the
@@ -54,6 +54,9 @@ that binds non-synthetic observations to exact signed consent and capture receip
 - `GovernanceEvent` supplies one signed envelope for review, release, activation, and custody
   actions. Existing synthetic v1.0 approval records remain readable; a future live workflow MUST
   use the signed event rather than treating legacy approval text as identity assurance.
+- `DependencyImpact`, `InvalidationEvent`, `TombstoneReceipt`, and `RecallReport` MUST be
+  canonical, Ed25519-signed, subject-bound governance objects. Recall signing requires the
+  existing governance `custody` role so the v1 `SignerIdentity` schema remains immutable.
 - Ed25519 private keys and AES keys MUST remain outside the workspace/repository. The two key types
   MUST be distinct. Missing, wrong, expired, cross-subject, or tampered key/signature state MUST
   fail closed.
@@ -61,8 +64,13 @@ that binds non-synthetic observations to exact signed consent and capture receip
   The storage address remains the plaintext SHA-256 digest. Immutable pre-Milestone-1 v1.0
   synthetic plaintext fixtures MAY be read only through the explicit compatibility adapter.
 - New non-synthetic evidence MUST use Evidence v1.1 and pass exact receipt, scope, use, expiry,
-  retention, selector, signer, signature, and payload-digest validation. Milestone 1 nevertheless
+  retention, selector, signer, signature, and payload-digest validation. Revoked or expired
+  consent MUST fail admission. Milestone 2 nevertheless
   disables real capture at the CLI/import boundary.
+- A destructive purge MUST follow a persisted complete dependency impact and exact confirmation of
+  its canonical digest. It MUST authenticate the ciphertext before unlink, retain no raw content in
+  the tombstone, restore bytes if the metadata transaction fails, and fail closed without the AES
+  key.
 
 ### Compiler safeguards
 
@@ -85,6 +93,15 @@ that binds non-synthetic observations to exact signed consent and capture receip
   cannot self-approve. Releases and packs are immutable; activation is a separate pointer journal.
 - Packs are file outputs only. Codex- and Claude Code-oriented files are not integrations and are
   never installed or loaded by this project.
+- Revoked, expired, restricted, purged, retired, invalidated, or transitively excluded material
+  MUST NOT support lesson approval, artifact promotion, release freeze, pack compilation, or
+  activation.
+- Conflict resolution MUST apply this order: exclude revoked/expired material; prefer narrower
+  applicable scope; at equal scope prefer a later explicit user correction; then prefer greater
+  claim-specific authority; otherwise block release as unresolved.
+- Recall MUST preserve immutable record content and append lifecycle overlays. When a recalled
+  dependency reaches an active release or pack, its deactivation MUST commit atomically with the
+  record invalidations.
 
 ## 4. Local workflow
 
@@ -92,7 +109,7 @@ The `adaptation-compiler-lab` CLI provides the following bounded workflow:
 
 1. `workspace init` creates a local, subject-scoped workspace.
 2. `identity create|verify`, `consent issue|verify`, and `capture-preview create|verify` exercise
-   signed synthetic governance. Non-synthetic selectors are rejected in Milestone 1.
+   signed synthetic governance. Non-synthetic selectors remain rejected in Milestone 2.
 3. `record import-bundle` admits only TaskRecord/Outcome/Evidence bundles and stores new raw
    payloads encrypted; `record`, `evidence`, and `evaluation` inspect validated records.
 4. `evaluation derive` creates reviewable cases; `evaluation approve|reject` resolves them.
@@ -102,7 +119,9 @@ The `adaptation-compiler-lab` CLI provides the following bounded workflow:
    inspects immutable manifests.
 8. `pack compile` creates generic JSON, generic Markdown, Codex, or Claude Code file-only packs.
 9. `activation canary|activate|rollback|status` records approval-gated reversible pointers.
-10. `export sanitized`, `benchmark validate`, and `schema export --version 1.0|1.1` produce bounded
+10. `recall preflight` produces a signed complete impact plus confirmation digest; `recall execute`
+    accepts only that unchanged digest and emits signed invalidations, tombstones, and a report.
+11. `export sanitized`, `benchmark validate`, and `schema export --version 1.0|1.1` produce bounded
     local outputs.
 
 All complex input is explicit JSON. The CLI does not provide arbitrary unreviewed record writes,
@@ -124,12 +143,13 @@ fresh holdout.
 
 ## 6. Acceptance scope completed here
 
-The completed Milestone 1 foundation adds signed governance contracts and storage, external-key
-custody rules, encrypted raw storage, Evidence v1.1, immutable v1.0 compatibility, schema snapshots,
-synthetic governance CLI commands, and security tests to the existing compiler foundation. It uses
-synthetic records only.
+The completed Milestone 2 foundation adds signed impact/invalidation/tombstone/report contracts,
+complete dependency preflight, exact destructive confirmation, consent revocation, evidence
+restriction/purge, artifact revocation, release retirement, pack invalidation, atomic active-pointer
+deactivation, deterministic conflict precedence, immutable migration compatibility, CLI commands,
+and security/property tests. It uses synthetic records only.
 
-It does not yet provide withdrawal/recall execution, authenticated source capture, real consent
-selection, custody sealing, connector conformance, real-agent invocation, an execution harness,
-human-rater workflow, benchmark scoring/statistics, remote research-data coordination, a UI, or any
-model adaptation. Each belongs to a later gated milestone and requires explicit approval.
+It does not yet provide authenticated source capture, real consent selection, benchmark custody or
+registry objects, connector conformance, real-agent invocation, an execution harness, human-rater
+workflow, benchmark scoring/statistics, remote research-data coordination, a UI, or any model
+adaptation. Each belongs to a later gated milestone and requires explicit approval.

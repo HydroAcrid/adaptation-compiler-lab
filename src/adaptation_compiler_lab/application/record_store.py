@@ -125,6 +125,14 @@ class DomainRecordStore:
             raise DomainStoreError(f"domain record not found: {key}")
         return result
 
+    def current_lifecycle_state(self, key: RecordKey) -> str | None:
+        """Return the append-only lifecycle overlay for an exact subject-owned record."""
+
+        if self.get(key) is None:
+            return None
+        with self._factory(write=False) as unit_of_work:
+            return unit_of_work.lifecycle.current_state(key)
+
     def list(
         self, *, record_kind: str | None = None, benchmark_role: str | None = None
     ) -> tuple[StoredDomainRecord, ...]:

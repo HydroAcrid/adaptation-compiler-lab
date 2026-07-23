@@ -1,0 +1,317 @@
+{
+  "$defs": {
+    "ImpactEntry": {
+      "additionalProperties": false,
+      "description": "One exact node affected by a requested invalidation cascade.",
+      "properties": {
+        "current_state": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Current State"
+        },
+        "distance": {
+          "minimum": 0,
+          "title": "Distance",
+          "type": "integer"
+        },
+        "head_event_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Head Event Id"
+        },
+        "planned_action": {
+          "$ref": "#/$defs/InvalidationAction"
+        },
+        "relations": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Relations",
+          "type": "array"
+        },
+        "target": {
+          "$ref": "#/$defs/RecallTarget"
+        }
+      },
+      "required": [
+        "target",
+        "planned_action",
+        "distance"
+      ],
+      "title": "ImpactEntry",
+      "type": "object"
+    },
+    "InvalidationAction": {
+      "enum": [
+        "revoke_consent",
+        "restrict_evidence",
+        "purge_evidence",
+        "revoke_artifact",
+        "retire_release",
+        "invalidate_target_pack",
+        "exclude_dependency",
+        "deactivate_activation"
+      ],
+      "title": "InvalidationAction",
+      "type": "string"
+    },
+    "PayloadImpact": {
+      "additionalProperties": false,
+      "description": "Minimal metadata for encrypted payload bytes selected for deletion.",
+      "properties": {
+        "byte_length": {
+          "minimum": 0,
+          "title": "Byte Length",
+          "type": "integer"
+        },
+        "evidence_targets": {
+          "items": {
+            "$ref": "#/$defs/RecallTarget"
+          },
+          "minItems": 1,
+          "title": "Evidence Targets",
+          "type": "array"
+        },
+        "locator_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Locator Digest",
+          "type": "string"
+        },
+        "media_type": {
+          "minLength": 1,
+          "title": "Media Type",
+          "type": "string"
+        },
+        "payload_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Payload Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "payload_digest",
+        "byte_length",
+        "media_type",
+        "locator_digest",
+        "evidence_targets"
+      ],
+      "title": "PayloadImpact",
+      "type": "object"
+    },
+    "RecallTarget": {
+      "additionalProperties": false,
+      "description": "Exact governance, record-version, or activation-head target.",
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "object_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "record_version": {
+          "anyOf": [
+            {
+              "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Record Version"
+        },
+        "target_kind": {
+          "$ref": "#/$defs/RecallTargetKind"
+        }
+      },
+      "required": [
+        "target_kind",
+        "object_id",
+        "content_digest"
+      ],
+      "title": "RecallTarget",
+      "type": "object"
+    },
+    "RecallTargetKind": {
+      "enum": [
+        "consent_receipt",
+        "capture_receipt",
+        "task_record",
+        "outcome",
+        "evidence",
+        "evaluation_case",
+        "lesson_candidate",
+        "artifact",
+        "release",
+        "target_pack",
+        "activation"
+      ],
+      "title": "RecallTargetKind",
+      "type": "string"
+    },
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Signed, confirmation-bound snapshot of every affected dependency.",
+  "properties": {
+    "affected": {
+      "items": {
+        "$ref": "#/$defs/ImpactEntry"
+      },
+      "minItems": 1,
+      "title": "Affected",
+      "type": "array"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "governance_type": {
+      "const": "dependency_impact",
+      "default": "dependency_impact",
+      "title": "Governance Type",
+      "type": "string"
+    },
+    "graph_snapshot_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Graph Snapshot Digest",
+      "type": "string"
+    },
+    "impact_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Impact Id",
+      "type": "string"
+    },
+    "payloads": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/PayloadImpact"
+      },
+      "title": "Payloads",
+      "type": "array"
+    },
+    "policy_version": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "requested_action": {
+      "$ref": "#/$defs/InvalidationAction"
+    },
+    "root_target": {
+      "$ref": "#/$defs/RecallTarget"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signature": {
+      "$ref": "#/$defs/SignatureEnvelope"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "impact_id",
+    "subject_id",
+    "root_target",
+    "requested_action",
+    "affected",
+    "graph_snapshot_digest",
+    "generated_at",
+    "policy_version",
+    "signature"
+  ],
+  "title": "DependencyImpact",
+  "type": "object"
+}

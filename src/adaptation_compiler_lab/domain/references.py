@@ -9,7 +9,14 @@ from adaptation_compiler_lab.domain.enums import RecordKind
 class GovernanceRef(FrozenModel):
     """Exact content-addressed reference to one signed governance object."""
 
-    governance_type: Literal["consent_receipt", "capture_receipt"]
+    governance_type: Literal[
+        "consent_receipt",
+        "capture_receipt",
+        "dependency_impact",
+        "invalidation_event",
+        "tombstone_receipt",
+        "recall_report",
+    ]
     object_id: Identifier
     schema_version: Literal["1.0"] = "1.0"
     content_digest: Sha256Digest
@@ -21,6 +28,22 @@ class ConsentReceiptRef(GovernanceRef):
 
 class CaptureReceiptRef(GovernanceRef):
     governance_type: Literal["capture_receipt"] = "capture_receipt"
+
+
+class DependencyImpactRef(GovernanceRef):
+    governance_type: Literal["dependency_impact"] = "dependency_impact"
+
+
+class InvalidationEventRef(GovernanceRef):
+    governance_type: Literal["invalidation_event"] = "invalidation_event"
+
+
+class TombstoneReceiptRef(GovernanceRef):
+    governance_type: Literal["tombstone_receipt"] = "tombstone_receipt"
+
+
+class RecallReportRef(GovernanceRef):
+    governance_type: Literal["recall_report"] = "recall_report"
 
 
 class ExactRecordRef(FrozenModel):

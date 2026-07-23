@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 from pydantic import ValidationError
 
@@ -37,7 +37,12 @@ from adaptation_compiler_lab.domain import (
 from adaptation_compiler_lab.governance import (
     CaptureReceipt,
     ConsentReceipt,
+    DependencyImpact,
     GovernanceEventType,
+    InvalidationAction,
+    InvalidationEvent,
+    RecallTarget,
+    RecallTargetKind,
     SignerIdentity,
     SignerRole,
 )
@@ -48,7 +53,9 @@ from adaptation_compiler_lab.governance.signing import (
     governance_ref,
     sign_capture,
     sign_consent,
+    sign_dependency_impact,
     sign_governance_event,
+    sign_invalidation_event,
     verify_signed_governance,
     write_new_private_key,
 )
@@ -153,6 +160,60 @@ def _evidence(consent: ConsentReceipt, capture: CaptureReceipt) -> Evidence:
     )
 
 
+def _recall_event(
+    signer: GovernanceSigner,
+    consent: ConsentReceipt,
+    *,
+    seconds: int = 0,
+) -> tuple[DependencyImpact, InvalidationEvent]:
+    root = RecallTarget(
+        target_kind=RecallTargetKind.CONSENT_RECEIPT,
+        object_id=consent.receipt_id,
+        content_digest=governance_ref(consent).content_digest,
+    )
+    impact = sign_dependency_impact(
+        {
+            "governance_type": "dependency_impact",
+            "impact_id": "impact-consent-1",
+            "schema_version": "1.0",
+            "subject_id": "kevin",
+            "root_target": root.model_dump(mode="json"),
+            "requested_action": InvalidationAction.REVOKE_CONSENT.value,
+            "affected": [
+                {
+                    "target": root.model_dump(mode="json"),
+                    "planned_action": InvalidationAction.REVOKE_CONSENT.value,
+                    "distance": 0,
+                    "relations": [],
+                    "current_state": None,
+                    "head_event_id": None,
+                }
+            ],
+            "payloads": [],
+            "graph_snapshot_digest": DIGEST,
+            "generated_at": NOW.isoformat(),
+            "policy_version": "1.0.0",
+        },
+        signer,
+    )
+    event = sign_invalidation_event(
+        {
+            "governance_type": "invalidation_event",
+            "event_id": "invalidate-consent-1",
+            "schema_version": "1.0",
+            "subject_id": "kevin",
+            "action": InvalidationAction.REVOKE_CONSENT.value,
+            "target": root.model_dump(mode="json"),
+            "dependency_impact_ref": governance_ref(impact).model_dump(mode="json"),
+            "reason": "Synthetic property test consent revocation.",
+            "policy_version": "1.0.0",
+            "effective_at": (NOW + timedelta(seconds=seconds)).isoformat(),
+        },
+        signer,
+    )
+    return impact, event
+
+
 def test_identity_consent_capture_and_evidence_lineage_verify() -> None:
     signer, identity = _identity()
     consent = _consent(signer)
@@ -209,6 +270,42 @@ def test_any_single_signature_bit_tamper_fails(index: int, bit: int) -> None:
 
     with pytest.raises(SignatureVerificationError):
         verify_signed_governance(tampered, identity)
+
+
+@settings(max_examples=32)
+@given(index=st.integers(min_value=0, max_value=63), bit=st.integers(min_value=0, max_value=7))
+def test_any_single_dependency_impact_signature_bit_tamper_fails(index: int, bit: int) -> None:
+    signer, identity = _identity()
+    consent = _consent(signer)
+    impact, _ = _recall_event(signer, consent)
+    signature = bytearray(base64.b64decode(impact.signature.signature_base64))
+    signature[index] ^= 1 << bit
+    envelope = impact.signature.model_copy(
+        update={"signature_base64": base64.b64encode(signature).decode("ascii")}
+    )
+    tampered = impact.model_copy(update={"signature": envelope})
+
+    with pytest.raises(SignatureVerificationError):
+        verify_signed_governance(tampered, identity)
+
+
+@settings(max_examples=32)
+@given(seconds=st.integers(min_value=0, max_value=86_400))
+def test_exactly_revoked_consent_never_admits_evidence(seconds: int) -> None:
+    signer, identity = _identity()
+    consent = _consent(signer)
+    capture = _capture(signer, consent)
+    evidence = _evidence(consent, capture)
+    _, event = _recall_event(signer, consent, seconds=seconds)
+
+    with pytest.raises(EvidenceGovernanceError, match="revoked"):
+        validate_evidence_governance(
+            evidence,
+            consent=consent,
+            capture=capture,
+            identity=identity,
+            invalidation_events=(event,),
+        )
 
 
 @given(other_subject=st.text(alphabet="abcdefghijklmnopqrstuvwxyz", min_size=1, max_size=12))
@@ -331,4 +428,23 @@ def test_evidence_governance_rejects_capture_after_consent_expiry() -> None:
             consent=consent,
             capture=late_capture,
             identity=identity,
+        )
+
+
+@pytest.mark.parametrize("seconds_after_expiry", [0, 1])
+def test_expired_consent_is_excluded_from_new_evidence_admission(
+    seconds_after_expiry: int,
+) -> None:
+    signer, identity = _identity()
+    consent = _consent(signer)
+    capture = _capture(signer, consent)
+    evidence = _evidence(consent, capture)
+
+    with pytest.raises(EvidenceGovernanceError, match="expired consent"):
+        validate_evidence_governance(
+            evidence,
+            consent=consent,
+            capture=capture,
+            identity=identity,
+            effective_at=consent.expires_at + timedelta(seconds=seconds_after_expiry),
         )

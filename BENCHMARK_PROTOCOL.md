@@ -72,7 +72,7 @@ cryptographically bind the declared split-manifest digest to an independently cu
 control file permissions, operate a sealed evaluator, launch an agent, calculate statistics, or
 substitute for preregistration and independent custody.
 
-Milestone 1 does not freeze the feasibility registration, create custody objects, bind a sealed
+Milestone 2 does not freeze the feasibility registration, create custody objects, bind a sealed
 bundle, reveal tasks, or write results. The planned Milestone 3 design is four held-out tasks,
 four conditions, and two repetitions (32 target runs), but it becomes normative only when its
 signed custody/registration artifacts and tests are merged before source construction.

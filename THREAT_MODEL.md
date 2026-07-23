@@ -1,6 +1,6 @@
 # Threat Model
 
-Status: **Milestone 1 controls implemented for synthetic local operation; real data is out of scope**
+Status: **Milestone 2 controls implemented for synthetic local operation; real data is out of scope**
 
 ## Assets and trust boundary
 
@@ -27,7 +27,11 @@ approval, or artifact promotion.
 | Secrets or raw content appear in a pack/export | Separate raw store; content/path scanner at import, renderer, and sanitized export; fail closed. | Pattern scanning is not a complete secret/PII detector; real data requires an approved redaction/retention program. |
 | Raw payload disclosure at rest | AES-256-GCM with a 32-byte external key, random 96-bit nonce, authenticated metadata, ciphertext-only files, and fail-closed missing/wrong-key behavior. | Local key-file access and host compromise remain operator risks; no HSM or remote KMS is claimed. |
 | Signing-key substitution or receipt tampering | Encrypted external Ed25519 private key, self-signed public identity, key fingerprint, canonical domain-separated signature bytes, role/subject/validity checks, and verification on ledger write/read. | Local identity is not an enterprise identity proof; key recovery/rotation/revocation is deferred. |
-| Consent widening or source-selector substitution | Signed subject, exact source IDs, scope, permitted uses, expiry, retention, and policy; Evidence v1.1 and CaptureReceipt bind exact receipt digests and payload digest. | Real consent selection and withdrawal are disabled until later gated milestones. |
+| Consent widening or source-selector substitution | Signed subject, exact source IDs, scope, permitted uses, expiry, retention, and policy; Evidence v1.1 and CaptureReceipt bind exact receipt digests and payload digest. Signed revocation excludes exact consent. | Real source selection remains disabled; operational consent UX is future work. |
+| Stale or incomplete destructive preview | Signed complete incoming-dependency closure includes exact digests and lifecycle/activation heads; execution recomputes inside the write transaction and requires the exact impact digest. | Multi-device and network-filesystem concurrency are not claimed. |
+| Revoked learning remains active | Cascade marks Evidence restricted/purged, excludes intermediates, revokes Artifacts, retires Releases, invalidates TargetPacks, and deactivates affected pointers in one metadata transaction. | External installations do not exist yet; future connectors need their own deactivation proof. |
+| Purge deletes audit evidence or leaves readable payload | Immutable metadata remains, ciphertext is authenticated then unlinked, a signed minimal tombstone is retained, and failed metadata commit restores the content address. | Filesystem snapshots, backups, SSD remanence, and a compromised host are outside application-level deletion assurance. |
+| Conflict resolved by arbitrary order | Closed precedence excludes revoked/expired inputs, then compares scope, later explicit correction, and claim-specific authority; equal ties block release. | Detecting semantic contradiction still depends on an explicit reviewed conflict declaration. |
 | Tampered record, cross-subject read, or release substitution | Canonical JSON/digest checks, exact references, subject-scoped workspace/ledger, append-only journal, immutable release membership. | Local filesystem and SQLite access remain within the operator's security boundary. |
 | Unauthorized promotion/activation | Attribution, non-self approval, policy/time checks, separate lifecycle and activation pointer events, and signed governance event types for review/release/activation/custody. | Legacy v1.0 synthetic approvals remain readable; real flows must require signed events. |
 | Key or raw data committed to GitHub | Keys are required to resolve outside the workspace; scans reject credential-like and private-path material; documentation forbids raw research data in Git. | A compromised operator can bypass local policy, so branch review and repository scanning remain necessary. |
@@ -44,8 +48,9 @@ credential, or private project data is authorized. Synthetic consent/capture rec
 mechanism without authorizing collection. The intended real-data contract already requires exact
 selector, scope, uses, expiry, retention, signer, signature, source/schema digest, and payload
 digest, but the capture boundary remains disabled. Withdrawal, dependency recall, purge/tombstone,
-incident handling, and independent holdout custody must be implemented and approved before a real
-record is ingested.
+and atomic local deactivation are implemented only against synthetic records. Operational incident
+handling and independent holdout custody must be implemented and approved before a real record is
+ingested.
 
 ## Security invariants
 
@@ -59,6 +64,10 @@ record is ingested.
 8. Every new non-synthetic Evidence record uses v1.1 and exact signed consent/capture references.
 9. No component trains a model, creates or executes a tool, calls a coding agent, or sends research
    data off machine.
+10. Destructive recall never executes from an unsigned or stale preview and never rewrites an
+    immutable record.
+11. Revoked or expired material cannot support approval, promotion, release, rendering, or
+    activation.
 
 ## Incident posture
 
