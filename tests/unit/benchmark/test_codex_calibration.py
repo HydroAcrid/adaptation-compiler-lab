@@ -8,6 +8,7 @@ import pytest
 from adaptation_compiler_lab.benchmark.codex_calibration import (
     CALIBRATION_CONDITIONS,
     CodexCalibrationPreferenceRating,
+    CodexCalibrationUnblindedResult,
     build_codex_calibration_plan,
     load_codex_calibration_design,
     unblind_codex_calibration_preference,
@@ -110,3 +111,18 @@ def test_pairwise_rating_rejects_preference_that_disagrees_with_order() -> None:
             rationale="Mismatch.",
             rated_at=NOW,
         )
+
+
+def test_committed_rating_precedes_and_binds_unblinded_result() -> None:
+    rating = CodexCalibrationPreferenceRating.model_validate_json(
+        (_root() / "codex-development-v2-kevin-rating.json").read_text(encoding="utf-8")
+    )
+    result = CodexCalibrationUnblindedResult.model_validate_json(
+        (_root() / "codex-development-v2-unblinded-result.json").read_text(encoding="utf-8")
+    )
+
+    assert not rating.condition_mapping_seen
+    assert rating.rated_at < result.created_at
+    assert result.preference_rating_digest == rating.content_digest
+    assert result.preferred_condition is CALIBRATION_CONDITIONS[1]
+    assert result.other_condition is CALIBRATION_CONDITIONS[0]

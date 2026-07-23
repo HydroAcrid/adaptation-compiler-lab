@@ -14,8 +14,10 @@ trial has run. Milestone 5.5 completed a separate 16-cell subscription-backed Co
 diagnostic on public non-held-out tasks. Its apparent strong-profile advantage came from one
 ambiguous, brittlely scored task. A two-cell GPT-5.6 Luna follow-up replaced lexical proxies with
 structural scoring; both anonymous conditions tied at 4/4 objective, 3/4 diagnostic, and 4/4
-neutral checks. Neither result justifies a compiler or pack change. Paid cross-agent execution
-remains closed.
+neutral checks. Kevin slightly preferred the first anonymous output, which unblinding identified
+as compiled adaptation rather than the strong static profile. This is one positive same-agent
+development signal, not a reason to change the compiler or claim transfer. Paid cross-agent
+execution remains closed.
 
 ## What is here
 
