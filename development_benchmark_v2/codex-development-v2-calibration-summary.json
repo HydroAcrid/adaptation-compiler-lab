@@ -1,0 +1,66 @@
+{
+  "blind_report_digest": "sha256:8fccb0edca60a03c885462328691122bd39f4557e376913b2da99ef0f3c69f3b",
+  "condition_mapping_withheld": true,
+  "conditions_tied_on_check_counts": true,
+  "design_digest": "sha256:22c0c62d66defdb00ae3e560e2e37a0325f1323fc959b05054f907e6f8fc026c",
+  "milestone_6_custody_accessed": false,
+  "model": "gpt-5.6-luna",
+  "reasoning_effort": "medium",
+  "results": [
+    {
+      "blind_condition_id": "cond-88748cf917653a3b7cc15782",
+      "cached_input_tokens": 75776,
+      "diagnostic_checks": [
+        3,
+        4
+      ],
+      "duration_seconds": 71.27235837599983,
+      "input_tokens": 106357,
+      "neutral_checks": [
+        4,
+        4
+      ],
+      "objective_checks": [
+        4,
+        4
+      ],
+      "output_tokens": 3127,
+      "reasoning_output_tokens": 1075,
+      "valid": true
+    },
+    {
+      "blind_condition_id": "cond-ae7db58ff5284918156d0716",
+      "cached_input_tokens": 82688,
+      "diagnostic_checks": [
+        3,
+        4
+      ],
+      "duration_seconds": 62.9000236109996,
+      "input_tokens": 100166,
+      "neutral_checks": [
+        4,
+        4
+      ],
+      "objective_checks": [
+        4,
+        4
+      ],
+      "output_tokens": 2940,
+      "reasoning_output_tokens": 1125,
+      "valid": true
+    }
+  ],
+  "service_mode": "standard",
+  "shared_diagnostic_miss": "mixed_evidence_is_inconclusive",
+  "source_commit": "22b4d4cece027e9d38d9b5ee2f7dc1ce6d584c6e",
+  "summary_version": "2.0.0",
+  "totals": {
+    "cached_input_tokens": 158464,
+    "duration_seconds": 134.17238198699943,
+    "input_tokens": 206523,
+    "output_tokens": 6067,
+    "reasoning_output_tokens": 2200,
+    "runs": 2,
+    "valid_runs": 2
+  }
+}
