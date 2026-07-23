@@ -1,7 +1,8 @@
 # MVP Specification
 
-Status: **Milestone 4 version-pinned connector conformance and authenticated target smoke complete**
-Implementation status: **no real source data, held-out reveal, or benchmark execution**
+Status: **Milestone 5 complete; paid Milestone 6 execution awaiting authorization**
+Implementation status: **eight consented captures, eight approved artifacts, four frozen
+conditions, and sealed 32-cell custody bundle; no target trial**
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** describe the
 implemented MVP contract unless explicitly marked as future work.
@@ -11,15 +12,16 @@ implemented MVP contract unless explicitly marked as future work.
 The MVP is a local compiler and experiment-preparation instrument. It models a completed task,
 its outcome and evidence, makes a reviewable evaluation candidate before promoting a correction or
 failure, produces typed artifacts, freezes a release, and renders a target-specific external pack.
-It persists a signed four-condition benchmark registration and custody ledger. It now also defines
-narrow version-pinned source, target-runner, and scorer ports, but does not reveal held-out work,
-capture real source data, execute a pilot trial, or perform scoring.
+It persists signed four-condition benchmark registration and custody ledgers. It also defines
+narrow version-pinned source, target-runner, and scorer ports. Eight consented Codex tasks have
+been captured and reviewed, but no held-out task has been revealed to construction, no paid pilot
+trial has run, and no comparative scoring has occurred.
 
 The intended first study compares the following conditions on held-out tasks:
 
 1. Base target agent.
 2. Ordinary memory.
-3. Strong manually written profile.
+3. Strong two-pass isolated-AI static profile.
 4. Compiled adaptation pack.
 
 No performance result follows from constructing these materials.
@@ -67,7 +69,7 @@ that binds non-synthetic observations to exact signed consent and capture receip
 - New non-synthetic evidence MUST use Evidence v1.1 and pass exact receipt, scope, use, expiry,
   retention, selector, signer, signature, and payload-digest validation. Revoked or expired
   consent MUST fail admission. Milestone 2 nevertheless
-  disables real capture at the CLI/import boundary.
+  requires the Milestone 5 exact-consent capture service before any real payload read.
 - A destructive purge MUST follow a persisted complete dependency impact and exact confirmation of
   its canonical digest. It MUST authenticate the ciphertext before unlink, retain no raw content in
   the tombstone, restore bytes if the metadata transaction fails, and fail closed without the AES
@@ -78,8 +80,10 @@ that binds non-synthetic observations to exact signed consent and capture receip
 - The encrypted held-out bundle MUST reside outside the compiler workspace and any Git repository,
   use a custody key distinct from raw-evidence and signing keys, and bind its ciphertext digest,
   authenticated plaintext digest/length, benchmark ID, and blinded split digest.
-- Construction code MUST receive only four blind task IDs, four blind family IDs, the four frozen
-  strata, and the signed split digest. The custody API MUST NOT expose held-out plaintext.
+- Construction code MUST receive only four blind task IDs/family IDs, four frozen strata, sorted
+  blind condition IDs, construction cutoff, split/plan digests, and the randomization-seed
+  commitment. The separate custody registry/API MUST NOT expose held-out plaintext, mapping, seed,
+  or trial order.
 - A reveal request MUST create a signed allowed/denied access event. It MUST be denied before the
   registered reveal boundary or before all four condition receipts have frozen successfully.
 
@@ -118,9 +122,11 @@ that binds non-synthetic observations to exact signed consent and capture receip
   access, held-out access, label-revealing blind IDs, padding, and material above 3,000 target
   tokens or 12,000 UTF-8 bytes.
 - Ordinary memory MUST be a deterministic chronological rendering of explicit approved user
-  feedback with exact canonical-digest deduplication and no inferred procedures. The strong profile
-  MUST be authored by an identified independent skilled human from the same eligible corpus within
-  90 minutes, without held-out access or permission to score results.
+  feedback with exact canonical-digest deduplication and no inferred procedures. Under active
+  internal design v1.1, the strong profile MUST be authored and strengthened by two distinct fresh
+  AI contexts from the same eligible corpus within 90 minutes. Both contexts MUST bind role/input/
+  output digests and MUST NOT access the compiled pack, holdout, condition mapping, results,
+  ambient memory, or scoring.
 - A `TrialResult` MUST identify one blinded task/condition/repetition cell and exact frozen
   registration, material, environment, rubric, test, and trial-record digests. Corrections MUST be
   signed `AdjudicationRecord` entries; they MUST NOT alter the original result.
@@ -131,8 +137,10 @@ that binds non-synthetic observations to exact signed consent and capture receip
   binaries, clean configuration, single condition digest, explicit tool list, and structured trace.
   Missing credentials, alternate providers, version drift, sandbox failure, unexpected tools,
   ambient agent state, or incomplete teardown MUST fail closed.
-- The scorer port MUST receive blinded diffs, independent tests, rubric, and allowed metadata only.
-  It MUST NOT expose a condition label or accept extension keys that encode one.
+- Kevin's scorer presentation MUST receive randomized anonymous diffs, independent tests, rubric,
+  and allowed metadata only. It MUST NOT expose a condition label or accept extension keys that
+  encode one. An isolated AI judge MAY add secondary quality annotations but MUST NOT replace or
+  override Kevin's ratings.
 
 ## 4. Local workflow
 
@@ -140,36 +148,38 @@ The `adaptation-compiler-lab` CLI provides the following bounded workflow:
 
 1. `workspace init` creates a local, subject-scoped workspace.
 2. `identity create|verify`, `consent issue|verify`, and `capture-preview create|verify` exercise
-   signed synthetic governance. Non-synthetic selectors remain rejected in Milestone 2.
-3. `record import-bundle` admits only TaskRecord/Outcome/Evidence bundles and stores new raw
+   signed governance. Real consent names exactly one Codex task, the frozen use set, and at most
+   30 days' retention.
+3. `source inventory` lists minimized metadata; `source capture` re-verifies the Desktop runtime,
+   signer, consent, validity, receipt identity, and AES key before reading one task.
+4. `record import-bundle` admits only TaskRecord/Outcome/Evidence bundles and stores new raw
    payloads encrypted; `record`, `evidence`, and `evaluation` inspect validated records.
-4. `evaluation derive` creates reviewable cases; `evaluation approve|reject` resolves them.
-5. `lesson propose|approve|reject|route` manages candidates and records policy routing.
-6. `artifact propose|evaluate|approve|reject` manages portable adaptations.
-7. `candidate create|evaluate|approve|freeze` constructs and freezes releases; `release list|show`
+5. `evaluation derive` creates reviewable cases; `evaluation approve|reject` resolves them.
+6. `lesson propose|approve|reject|route` manages candidates and records policy routing.
+7. `artifact propose|evaluate|approve|reject` manages portable adaptations.
+8. `candidate create|evaluate|approve|freeze` constructs and freezes releases; `release list|show`
    inspects immutable manifests.
-8. `pack compile` creates generic JSON, generic Markdown, Codex, or Claude Code file-only packs.
-9. `activation canary|activate|rollback|status` records approval-gated reversible pointers.
-10. `recall preflight` produces a signed complete impact plus confirmation digest; `recall execute`
+9. `pack compile` creates generic JSON, generic Markdown, Codex, or Claude Code file-only packs.
+10. `activation canary|activate|rollback|status` records approval-gated reversible pointers.
+11. `recall preflight` produces a signed complete impact plus confirmation digest; `recall execute`
     accepts only that unchanged digest and emits signed invalidations, tombstones, and a report.
-11. `export sanitized`, `benchmark validate`, and `schema export --version 1.0|1.1` produce bounded
+12. `export sanitized`, `benchmark validate`, and `schema export --version 1.0|1.1` produce bounded
     local outputs.
 
 All complex input is explicit JSON. The CLI does not provide arbitrary unreviewed record writes,
 automatic activation, target execution, or general-purpose data ingestion.
 
-Milestone 4 connector/runner APIs are intentionally separate from the CLI. They are exercised by
-fake app-server/Claude fixtures and runtime probes. This prevents a general operator command from
-enumerating source history or spending against a target account before the consent and study
-coordinator gates exist.
+The Claude runner remains library-only. The source CLI is deliberately narrow: inventory cannot
+return previews/paths, and capture cannot accept a selector wider than one signed task ID.
 
 ## 5. Benchmark foundation
 
-The frozen `codex-to-claude-feasibility-v1` design contains four held-out task families—direct
-transfer, failure recurrence, compositional, and neutral control—four conditions, and two
-repetitions per condition, for 32 planned target runs. It is descriptive feasibility work, not a
-powered comparison. Its exact machine-readable preregistration and raw-file SHA-256 sidecar live in
-`preregistration/`; tests reject semantic or byte-level drift.
+The active `codex-to-claude-internal-feasibility-v1` design contains four held-out task
+families—direct transfer, failure recurrence, compositional, and neutral control—four conditions,
+and two repetitions per condition, for 32 planned target runs. It is internally blinded
+descriptive feasibility work, not an independently conducted or powered comparison. The original
+v1.0 design and superseding v1.1 machine-readable preregistrations plus raw-file SHA-256 sidecars
+live in `preregistration/`; tests reject semantic or byte-level drift.
 
 The signed registry binds that design to an external AES-256-GCM bundle, four payload-free blinded
 task descriptors, four opaque condition IDs, a construction cutoff, a construction start boundary,
@@ -196,10 +206,11 @@ schemas, a read-only app-server connector, a clean sandboxed Claude Code runner,
 property/conformance tests for drift, ambient state, credential exposure, tool denial, timeouts,
 and teardown. The pinned Codex binary also passed an empty-home app-server handshake.
 
-The authenticated no-user-data Claude smoke has not run because the dedicated Console API key is
-absent. Therefore Milestone 4 is not complete and this scope does not provide authenticated source
-capture, real consent selection, a held-out plaintext retrieval API, live pilot execution,
-human-rater operations, benchmark scoring/statistics, remote research-data coordination, a UI, or
-model adaptation. Later milestones may continue automatically only after their objective
-prerequisites pass; consent, independent-human, custody, credential, and holdout gates cannot be
-waived by automation.
+The authenticated no-user-data Claude smoke passed. The Desktop source runtime is separately pinned
+and its metadata-only inventory passed. Milestone 5 completed exact-consent capture, review-channel
+classification, exactly-eight/four-family corpus validation, deterministic ordinary memory,
+two-pass isolated-profile timing, equal-information condition freeze, leakage scanning, common
+budgets, and complete software custody. It still does not provide an unconsented payload read,
+construction-facing held-out plaintext retrieval, paid live-pilot execution, human-rater
+substitution, benchmark scoring/statistics, a UI, or model adaptation. Consent, functional role
+separation, custody, paid-run authorization, and holdout gates cannot be waived by automation.

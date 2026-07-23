@@ -280,6 +280,7 @@ def _privacy_monotonicity_violations(
     child: PrivacyContext,
     parent_id: str,
     parent: PrivacyContext,
+    allow_consent_aggregation: bool = False,
 ) -> tuple[PolicyViolation, ...]:
     """Prevent a derivative from lowering sensitivity or widening permitted uses."""
 
@@ -306,11 +307,14 @@ def _privacy_monotonicity_violations(
                 field_path=("privacy", "permitted_uses"),
             )
         )
-    if child.consent_basis != parent.consent_basis:
+    consent_is_preserved = child.consent_basis == parent.consent_basis
+    if allow_consent_aggregation:
+        consent_is_preserved = parent.effective_consent_bases <= child.effective_consent_bases
+    if not consent_is_preserved:
         violations.append(
             PolicyViolation(
                 code=ViolationCode.PRIVACY_BROADENING,
-                message="derived record changed the source consent basis",
+                message="derived record changed or omitted the source consent basis",
                 record_ids=(owner_id, parent_id),
                 field_path=("privacy", "consent_basis"),
             )
@@ -909,6 +913,27 @@ def validate_target_pack(pack: TargetPack, records: Iterable[VersionedRecord]) -
     release_refs = set(release.artifact_refs)
     entry_refs = {entry.artifact_ref for entry in pack.entries}
     omitted_refs = set(pack.omitted_artifact_refs)
+    release_artifacts = tuple(
+        artifact
+        for reference in release.artifact_refs
+        if isinstance((artifact := resolve_reference(index, reference)), Artifact)
+    )
+    expected_consent_bases = frozenset(
+        basis
+        for artifact in release_artifacts
+        for basis in artifact.privacy.effective_consent_bases
+    )
+    # An explicitly empty synthetic release has no source-derived privacy union to preserve.
+    # Non-empty releases must match the exact union; callers cannot omit or invent a basis.
+    if release_artifacts and pack.privacy.effective_consent_bases != expected_consent_bases:
+        violations.append(
+            PolicyViolation(
+                code=ViolationCode.PRIVACY_BROADENING,
+                message="target pack must preserve the exact release consent-basis union",
+                record_ids=(pack.record_id, release.record_id),
+                field_path=("privacy", "consent_basis_refs"),
+            )
+        )
     if pack.state is TargetPackState.VALIDATED and (
         entry_refs & omitted_refs or entry_refs | omitted_refs != release_refs
     ):
@@ -944,6 +969,7 @@ def validate_target_pack(pack: TargetPack, records: Iterable[VersionedRecord]) -
                 child=pack.privacy,
                 parent_id=artifact.record_id,
                 parent=artifact.privacy,
+                allow_consent_aggregation=True,
             )
         )
         if artifact.artifact_kind not in pack.target_profile.supported_artifact_kinds:

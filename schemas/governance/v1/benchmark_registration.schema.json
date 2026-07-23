@@ -297,6 +297,273 @@
       "title": "FeasibilityTrialLimits",
       "type": "object"
     },
+    "InternalFeasibilityDesign": {
+      "additionalProperties": false,
+      "description": "Versioned replacement using automated separation rather than third-party conduct.",
+      "properties": {
+        "adaptation_budget": {
+          "$ref": "#/$defs/AdaptationMaterialBudget"
+        },
+        "conditions": {
+          "default": [
+            "base",
+            "ordinary_memory",
+            "strong_static_profile",
+            "compiled_adaptation"
+          ],
+          "items": {
+            "$ref": "#/$defs/BenchmarkCondition"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Conditions",
+          "type": "array"
+        },
+        "construction_view": {
+          "const": "blind_ids_strata_and_signed_digest_only",
+          "default": "blind_ids_strata_and_signed_digest_only",
+          "title": "Construction View",
+          "type": "string"
+        },
+        "design_id": {
+          "const": "codex-to-claude-internal-feasibility-v1",
+          "default": "codex-to-claude-internal-feasibility-v1",
+          "title": "Design Id",
+          "type": "string"
+        },
+        "held_out_payload_location": {
+          "const": "encrypted_external_custody_store",
+          "default": "encrypted_external_custody_store",
+          "title": "Held Out Payload Location",
+          "type": "string"
+        },
+        "held_out_task_count": {
+          "const": 4,
+          "default": 4,
+          "title": "Held Out Task Count",
+          "type": "integer"
+        },
+        "ordinary_memory": {
+          "$ref": "#/$defs/OrdinaryMemoryProtocol"
+        },
+        "planned_target_runs": {
+          "const": 32,
+          "default": 32,
+          "title": "Planned Target Runs",
+          "type": "integer"
+        },
+        "protocol_version": {
+          "const": "1.1.0",
+          "default": "1.1.0",
+          "title": "Protocol Version",
+          "type": "string"
+        },
+        "repetitions_per_condition": {
+          "const": 2,
+          "default": 2,
+          "title": "Repetitions Per Condition",
+          "type": "integer"
+        },
+        "scoring": {
+          "$ref": "#/$defs/InternalFeasibilityScoringPlan"
+        },
+        "strong_profile": {
+          "$ref": "#/$defs/IsolatedStrongProfileProtocol"
+        },
+        "study_classification": {
+          "const": "internally_blinded_automated_separation_feasibility",
+          "default": "internally_blinded_automated_separation_feasibility",
+          "title": "Study Classification",
+          "type": "string"
+        },
+        "target_agent": {
+          "const": "Claude Code",
+          "default": "Claude Code",
+          "title": "Target Agent",
+          "type": "string"
+        },
+        "target_model_selection_rule": {
+          "const": "stable_sonnet_full_id_pinned_in_milestone_4_before_source_construction",
+          "default": "stable_sonnet_full_id_pinned_in_milestone_4_before_source_construction",
+          "title": "Target Model Selection Rule",
+          "type": "string"
+        },
+        "task_families": {
+          "default": [
+            "direct_transfer",
+            "failure_recurrence",
+            "compositional",
+            "neutral_control"
+          ],
+          "items": {
+            "$ref": "#/$defs/TaskStratum"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Task Families",
+          "type": "array"
+        },
+        "third_party_independence_claimed": {
+          "const": false,
+          "default": false,
+          "title": "Third Party Independence Claimed",
+          "type": "boolean"
+        },
+        "trial_limits": {
+          "$ref": "#/$defs/FeasibilityTrialLimits"
+        }
+      },
+      "title": "InternalFeasibilityDesign",
+      "type": "object"
+    },
+    "InternalFeasibilityScoringPlan": {
+      "additionalProperties": false,
+      "description": "Primary Kevin-blinded scoring plus non-authoritative isolated-AI annotations.",
+      "properties": {
+        "automated_correctness_percent": {
+          "const": 60,
+          "default": 60,
+          "title": "Automated Correctness Percent",
+          "type": "integer"
+        },
+        "bootstrap_intervals_exploratory_only": {
+          "const": true,
+          "default": true,
+          "title": "Bootstrap Intervals Exploratory Only",
+          "type": "boolean"
+        },
+        "change_discipline_percent": {
+          "const": 15,
+          "default": 15,
+          "title": "Change Discipline Percent",
+          "type": "integer"
+        },
+        "compiled_must_match_or_exceed_every_comparator": {
+          "const": true,
+          "default": true,
+          "title": "Compiled Must Match Or Exceed Every Comparator",
+          "type": "boolean"
+        },
+        "isolated_ai_quality_judge_is_secondary_only": {
+          "const": true,
+          "default": true,
+          "title": "Isolated Ai Quality Judge Is Secondary Only",
+          "type": "boolean"
+        },
+        "isolated_ai_quality_judge_may_override_kevin": {
+          "const": false,
+          "default": false,
+          "title": "Isolated Ai Quality Judge May Override Kevin",
+          "type": "boolean"
+        },
+        "maximum_guardrail_regression_percentage_points": {
+          "const": 5,
+          "default": 5,
+          "title": "Maximum Guardrail Regression Percentage Points",
+          "type": "integer"
+        },
+        "minimum_valid_trial_percent": {
+          "const": 90,
+          "default": 90,
+          "title": "Minimum Valid Trial Percent",
+          "type": "integer"
+        },
+        "p_values_allowed": {
+          "const": false,
+          "default": false,
+          "title": "P Values Allowed",
+          "type": "boolean"
+        },
+        "paired_by_task_and_repetition": {
+          "const": true,
+          "default": true,
+          "title": "Paired By Task And Repetition",
+          "type": "boolean"
+        },
+        "requirement_coverage_percent": {
+          "const": 25,
+          "default": 25,
+          "title": "Requirement Coverage Percent",
+          "type": "integer"
+        },
+        "subjective_scorer": {
+          "const": "kevin_blinded_preference_scorer",
+          "default": "kevin_blinded_preference_scorer",
+          "title": "Subjective Scorer",
+          "type": "string"
+        },
+        "unresolved_high_severity_adverse_cases_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Unresolved High Severity Adverse Cases Allowed",
+          "type": "boolean"
+        }
+      },
+      "title": "InternalFeasibilityScoringPlan",
+      "type": "object"
+    },
+    "IsolatedStrongProfileProtocol": {
+      "additionalProperties": false,
+      "description": "Two-pass isolated-AI profile rule for the internal feasibility design.",
+      "properties": {
+        "author_may_score_results": {
+          "const": false,
+          "default": false,
+          "title": "Author May Score Results",
+          "type": "boolean"
+        },
+        "author_role": {
+          "const": "isolated_ai_two_pass",
+          "default": "isolated_ai_two_pass",
+          "title": "Author Role",
+          "type": "string"
+        },
+        "compiled_adaptation_access_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Compiled Adaptation Access Allowed",
+          "type": "boolean"
+        },
+        "condition_assignment_access_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Condition Assignment Access Allowed",
+          "type": "boolean"
+        },
+        "held_out_access_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Held Out Access Allowed",
+          "type": "boolean"
+        },
+        "result_access_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Result Access Allowed",
+          "type": "boolean"
+        },
+        "same_eligible_corpus": {
+          "const": true,
+          "default": true,
+          "title": "Same Eligible Corpus",
+          "type": "boolean"
+        },
+        "separate_review_context_required": {
+          "const": true,
+          "default": true,
+          "title": "Separate Review Context Required",
+          "type": "boolean"
+        },
+        "time_limit_minutes": {
+          "const": 90,
+          "default": 90,
+          "title": "Time Limit Minutes",
+          "type": "integer"
+        }
+      },
+      "title": "IsolatedStrongProfileProtocol",
+      "type": "object"
+    },
     "OrdinaryMemoryProtocol": {
       "additionalProperties": false,
       "description": "Frozen comparator rule that does not infer new procedures.",
@@ -463,7 +730,15 @@
       "$ref": "#/$defs/CustodyManifestRef"
     },
     "design": {
-      "$ref": "#/$defs/FeasibilityDesign"
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FeasibilityDesign"
+        },
+        {
+          "$ref": "#/$defs/InternalFeasibilityDesign"
+        }
+      ],
+      "title": "Design"
     },
     "design_digest": {
       "pattern": "^sha256:[0-9a-f]{64}$",

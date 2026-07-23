@@ -22,6 +22,9 @@ from adaptation_compiler_lab.domain.base import (
 from adaptation_compiler_lab.domain.values import strings_are_sorted_unique
 
 DEFAULT_RUNTIME_LOCK: Final = Path(__file__).resolve().parent / "runtime_pins" / "milestone_4.json"
+DEFAULT_SOURCE_RUNTIME_LOCK: Final = (
+    Path(__file__).resolve().parent / "runtime_pins" / "milestone_5_source.json"
+)
 
 
 class RuntimeConformanceError(RuntimeError):
@@ -101,6 +104,13 @@ class RuntimePinSet(FrozenModel):
     node: NodeRuntimePin
 
 
+class SourceRuntimePinSet(FrozenModel):
+    """Machine-readable source-runtime lock added for real Desktop capture."""
+
+    lock_version: SemVer
+    codex_desktop: CodexAppServerPin
+
+
 @dataclass(frozen=True)
 class VerifiedCodexRuntime:
     """Verified Codex executable ready for an app-server connection."""
@@ -108,6 +118,7 @@ class VerifiedCodexRuntime:
     executable: Path
     version: str
     schema_bundle_digest: Sha256Digest
+    windows_interop: bool = False
 
 
 @dataclass(frozen=True)
@@ -187,6 +198,20 @@ def load_runtime_pins(path: Path = DEFAULT_RUNTIME_LOCK) -> RuntimePinSet:
         raise RuntimeConformanceError(f"invalid runtime pin file: {path}") from exc
 
 
+def load_source_runtime_pins(
+    path: Path = DEFAULT_SOURCE_RUNTIME_LOCK,
+) -> SourceRuntimePinSet:
+    """Load the separately frozen Desktop source-runtime lock."""
+
+    try:
+        return SourceRuntimePinSet.model_validate_json(
+            path.read_text(encoding="utf-8"),
+            strict=True,
+        )
+    except (OSError, ValueError) as exc:
+        raise RuntimeConformanceError(f"invalid source runtime pin file: {path}") from exc
+
+
 def _run_checked(
     command: list[str],
     *,
@@ -240,17 +265,51 @@ def verify_executable(path: Path, pin: ExecutablePin) -> None:
             )
 
 
-def verify_codex_runtime(path: Path, pin: CodexAppServerPin) -> VerifiedCodexRuntime:
+def _as_windows_interop_path(path: Path) -> str:
+    """Convert a resolved WSL DrvFS path without invoking an unpinned helper."""
+
+    resolved = path.expanduser().resolve()
+    parts = resolved.parts
+    if (
+        len(parts) < 4
+        or parts[0] != "/"
+        or parts[1] != "mnt"
+        or len(parts[2]) != 1
+        or not parts[2].isalpha()
+    ):
+        raise RuntimeConformanceError(
+            "Windows-interoperable Codex paths must resolve below /mnt/<drive>"
+        )
+    drive = parts[2].upper()
+    remainder = "\\".join(parts[3:])
+    return f"{drive}:\\{remainder}"
+
+
+def verify_codex_runtime(
+    path: Path,
+    pin: CodexAppServerPin,
+    *,
+    windows_interop: bool = False,
+) -> VerifiedCodexRuntime:
     """Regenerate and verify Codex's complete app-server schema bundle."""
 
     resolved = path.expanduser().resolve()
+    if windows_interop and resolved.suffix.casefold() != ".exe":
+        raise RuntimeConformanceError("Windows-interoperable Codex must be an .exe")
     verify_executable(resolved, pin.executable)
-    with tempfile.TemporaryDirectory(prefix="acl-codex-schema-") as temporary:
+    temporary_parent = resolved.parent if windows_interop else None
+    with tempfile.TemporaryDirectory(
+        prefix="acl-codex-schema-",
+        dir=temporary_parent,
+    ) as temporary:
         schema_root = Path(temporary) / "schemas"
+        output_argument = (
+            _as_windows_interop_path(schema_root) if windows_interop else str(schema_root)
+        )
         command = [
             str(resolved),
             *[
-                str(schema_root) if argument == "{output}" else argument
+                output_argument if argument == "{output}" else argument
                 for argument in pin.schema_generation_args
             ],
         ]
@@ -272,6 +331,7 @@ def verify_codex_runtime(path: Path, pin: CodexAppServerPin) -> VerifiedCodexRun
         executable=resolved,
         version=pin.executable.package_version,
         schema_bundle_digest=pin.schema_bundle_sha256,
+        windows_interop=windows_interop,
     )
 
 

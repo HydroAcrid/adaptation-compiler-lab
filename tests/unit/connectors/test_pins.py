@@ -8,13 +8,19 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from adaptation_compiler_lab.connectors.codex_app_server import DEFAULT_CODEX_SCHEMA_ROOT
+from adaptation_compiler_lab.connectors.codex_app_server import (
+    DEFAULT_CODEX_DESKTOP_SCHEMA_ROOT,
+    DEFAULT_CODEX_SCHEMA_ROOT,
+)
 from adaptation_compiler_lab.connectors.pins import (
     DEFAULT_RUNTIME_LOCK,
+    DEFAULT_SOURCE_RUNTIME_LOCK,
     ExecutablePin,
     RuntimeConformanceError,
+    _as_windows_interop_path,
     digest_tree,
     load_runtime_pins,
+    load_source_runtime_pins,
     sha256_file,
     verify_executable,
 )
@@ -60,6 +66,32 @@ def test_checked_in_runtime_lock_is_strict_and_complete() -> None:
         (repository_root / "conformance" / "milestone-4.json").read_text(encoding="utf-8")
     )
     assert conformance["runtime_lock_sha256"] == sha256_file(DEFAULT_RUNTIME_LOCK)
+
+
+def test_checked_in_desktop_source_runtime_lock_is_strict_and_complete() -> None:
+    pins = load_source_runtime_pins()
+
+    assert pins.codex_desktop.executable.version_stdout == "codex-cli 0.145.0-alpha.30"
+    assert pins.codex_desktop.schema_file_sha256.keys() == {
+        "v1/InitializeParams.json",
+        "v1/InitializeResponse.json",
+        "v2/ThreadListParams.json",
+        "v2/ThreadListResponse.json",
+        "v2/ThreadReadParams.json",
+        "v2/ThreadReadResponse.json",
+    }
+    for relative, expected in pins.codex_desktop.schema_file_sha256.items():
+        assert sha256_file(DEFAULT_CODEX_DESKTOP_SCHEMA_ROOT / relative) == expected
+    assert sha256_file(DEFAULT_SOURCE_RUNTIME_LOCK).startswith("sha256:")
+
+
+def test_windows_interop_path_conversion_is_narrow() -> None:
+    assert (
+        _as_windows_interop_path(Path("/mnt/c/Users/example/codex.exe"))
+        == "C:\\Users\\example\\codex.exe"
+    )
+    with pytest.raises(RuntimeConformanceError, match="below /mnt"):
+        _as_windows_interop_path(Path("/home/example/codex.exe"))
 
 
 def test_executable_version_and_help_contract(tmp_path: Path) -> None:
@@ -112,3 +144,6 @@ def test_semantically_identical_schema_trees_have_one_digest(tmp_path: Path) -> 
 def test_missing_runtime_lock_fails_closed(tmp_path: Path) -> None:
     with pytest.raises(RuntimeConformanceError, match="invalid runtime pin file"):
         load_runtime_pins(tmp_path / "missing.json")
+
+    with pytest.raises(RuntimeConformanceError, match="invalid source runtime pin file"):
+        load_source_runtime_pins(tmp_path / "missing-source.json")

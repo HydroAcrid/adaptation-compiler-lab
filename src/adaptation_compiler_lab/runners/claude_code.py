@@ -415,7 +415,10 @@ class ClaudeCodeTargetRunner:
                 model_id=runtime.model_id,
                 timed_out=timed_out,
             )
-            finished_at = datetime.now(UTC)
+            # Wall clocks can move backwards while a process is running (for example, an NTP
+            # correction). Preserve the result contract without pretending elapsed-time
+            # measurement comes from wall-clock ordering.
+            finished_at = max(datetime.now(UTC), started_at)
         return TargetRunResult(
             run_id=request.run_id,
             runner_version=runtime.version,

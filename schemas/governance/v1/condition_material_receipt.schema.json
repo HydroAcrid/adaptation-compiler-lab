@@ -51,6 +51,7 @@
         "none",
         "deterministic_renderer",
         "independent_human",
+        "isolated_ai",
         "compiler"
       ],
       "title": "ConditionAuthorRole",
@@ -61,6 +62,7 @@
         "none",
         "deterministic_approved_feedback",
         "independent_human_profile",
+        "isolated_ai_two_pass_profile",
         "compiled_release_pack"
       ],
       "title": "ConditionConstructionMethod",
@@ -124,6 +126,21 @@
   "additionalProperties": false,
   "description": "Signed frozen material metadata for exactly one benchmark condition.",
   "properties": {
+    "author_context_id": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Author Context Id"
+    },
     "author_identity": {
       "anyOf": [
         {
@@ -142,6 +159,19 @@
       "default": false,
       "title": "Author May Score Results",
       "type": "boolean"
+    },
+    "author_packet_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Author Packet Digest"
     },
     "author_role": {
       "$ref": "#/$defs/ConditionAuthorRole"
@@ -226,6 +256,19 @@
       "title": "Policy Version",
       "type": "string"
     },
+    "profile_draft_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Profile Draft Digest"
+    },
     "receipt_id": {
       "maxLength": 200,
       "minLength": 1,
@@ -235,6 +278,47 @@
     },
     "registration_ref": {
       "$ref": "#/$defs/BenchmarkRegistrationRef"
+    },
+    "review_packet_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Review Packet Digest"
+    },
+    "reviewer_context_id": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reviewer Context Id"
+    },
+    "reviewer_identity": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reviewer Identity"
     },
     "schema_version": {
       "const": "1.0",

@@ -10,6 +10,7 @@ from adaptation_compiler_lab.benchmark.models import (
     BenchmarkConfig,
     BenchmarkOutcomeRecord,
     FeasibilityDesign,
+    InternalFeasibilityDesign,
 )
 from adaptation_compiler_lab.domain.enums import Partition
 
@@ -44,6 +45,20 @@ def validate_feasibility_design(
     payload = value.model_dump(mode="python") if isinstance(value, FeasibilityDesign) else value
     try:
         return FeasibilityDesign.model_validate(payload)
+    except ValidationError as error:
+        raise BenchmarkConfigurationError(error) from error
+
+
+def validate_internal_feasibility_design(
+    value: InternalFeasibilityDesign | dict[str, Any],
+) -> InternalFeasibilityDesign:
+    """Validate the exact machine-readable internal v1.1 preregistration."""
+
+    payload = (
+        value.model_dump(mode="python") if isinstance(value, InternalFeasibilityDesign) else value
+    )
+    try:
+        return InternalFeasibilityDesign.model_validate(payload)
     except ValidationError as error:
         raise BenchmarkConfigurationError(error) from error
 

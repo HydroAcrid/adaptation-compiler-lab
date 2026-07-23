@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **Milestone 4 version-pinned connectors and authenticated synthetic smoke complete**
+Status: **Milestone 5 complete; paid Milestone 6 execution not authorized**
 
 ## 1. System shape
 
@@ -52,11 +52,13 @@ flowchart LR
     Q -. later signed result .-> L["TrialResult ledger"]
 ```
 
-The Codex connector is implemented and has been exercised only against fake fixtures and a newly
-created empty source home. The Claude runner passed one accepted authenticated synthetic smoke
-against the pinned model and sandbox. Neither adapter is exposed through a general CLI command.
-Real source capture, held-out retrieval, trial execution, and scoring remain unreachable until
-their coordinator and governance gates exist.
+The Codex connector has also passed a metadata-only real inventory through a separately pinned
+Desktop runtime; previews and raw paths were omitted. The Claude runner passed one accepted
+authenticated synthetic smoke against the pinned model and sandbox. `source inventory|capture` is
+the only source CLI surface. Capture cannot reach `thread/read` before exact signed consent,
+signer/time/use checks, and an external AES key pass. The complete held-out/condition bundle is
+sealed and verified; its first retrieval into a disposable trial coordinator remains unreachable
+until an allowed custody reveal and explicit paid-run authorization.
 
 ## 2. Records and relationships
 
@@ -107,6 +109,11 @@ For non-synthetic evidence the admission policy resolves both signed objects and
 scope, permitted uses, expiry, retention, selector, and payload digest. Synthetic v1.1 evidence
 cannot borrow real receipts.
 
+Single-evidence and single-artifact derivatives retain one exact consent basis. A `TargetPack` is
+the one permitted multi-consent aggregation boundary: its privacy context must equal the canonical
+sorted union of the exact consent bases carried by every release artifact. It cannot invent,
+collapse, omit, or broaden a basis, and ordinary derivative validation remains strict.
+
 ## 3. Trust, provenance, and privacy controls
 
 The provenance policy treats origin, authority, integrity, verification, partition, scope, and
@@ -122,8 +129,10 @@ Promotion and release validation enforce:
 - evidence authority and permitted-use checks for the claim type;
 - scope, partition, and privacy monotonicity through derivations;
 - no construction dependency on held-out records;
-- transitive construction timestamps and evaluation attestations no later than the registered
-  construction cutoff;
+- transitive source timestamps and evaluation attestations no later than the registered
+  source-eligibility cutoff;
+- release and condition construction no earlier than their separately registered construction
+  boundary—the historical eligibility cutoff is never reused as a release-freeze timestamp;
 - attributable, non-self approval and policy-version checks;
 - closed artifact routing with reviewable escalation rationale; and
 - secret-like-content/path scanning during import, rendering, and sanitized export.
@@ -141,9 +150,12 @@ retains only signed minimal tombstones and immutable metadata.
 Held-out benchmark bytes use a third, separately selected 32-byte key and a distinct custody store
 that refuses any location inside the compiler workspace or any Git repository. Its randomized
 AES-256-GCM envelope authenticates the benchmark ID, blinded split digest, plaintext digest/length,
-and key fingerprint. The signed custody manifest intentionally contains no filesystem locator.
-Verification authenticates the seal but returns metadata only; every verification or reveal request
-extends a signed hash-linked access chain.
+and key fingerprint. A separate mode-0600 seed deterministically derives opaque task/family/
+condition IDs and the 32-cell order; construction receives only its commitment. The final sealed
+bundle contains hidden tasks, mapping, order, and exact frozen materials, while the signed custody
+manifest intentionally contains no filesystem locator. Verification authenticates the seal but
+returns metadata only; every seal, verification, or reveal request extends a signed hash-linked
+access chain.
 
 Runtime identity is a fourth, public-integrity boundary. The packaged lock contains package
 integrity values, executable SHA-256 digests, exact version output, a canonical digest of Codex's
@@ -212,6 +224,11 @@ All four remain deterministic local file emitters. They do not launch either pro
 files into user configuration. The separate Claude runner may inject a rendered, frozen condition
 file for a controlled study run only; that does not make a renderer an integration.
 
+For the pilot, the provenance-rich `TargetPack` remains the portable audit projection. The compiled
+benchmark condition is a deterministic budgeted behavioral projection of all eight approved
+contracts. It omits target-irrelevant provenance prose but stays bound to the exact release,
+TargetPack, artifact set, corpus, wrapper, and frozen condition digests.
+
 ## 6. Repository structure
 
 ```text
@@ -227,7 +244,7 @@ src/adaptation_compiler_lab/
   application/      import, review, lifecycle, export, targeting adapters
   release/          candidates, gates, freeze and activation services
   targets/          capability profiles and four file renderers
-  benchmark/        design, external custody, signed registry, manifest, validation
+  benchmark/        designs, isolated role packets, software custody, scoring, validation
   connectors/       ports, runtime pins, Codex schema snapshots and source adapter
   runners/          isolated pinned Claude Code execution
   serialization/    canonical JSON and schema export
@@ -256,9 +273,22 @@ Codex empty-home handshake and the authenticated no-user-data Claude smoke pass.
 cost USD $0.01566765, captured only allowed `Read` and `Edit` uses, persisted no raw trace, and
 destroyed its synthetic workspace.
 
-After the Milestone 4 branch merges, work may continue automatically to Milestone 5.
-Automatic continuation does not weaken objective gates: eight exact task IDs still require signed
-per-task consent; the strong profile requires an independent skilled human; held-out custody and
-randomization secrets require assigned operators; and real target trials require frozen materials
-and credentials. No source inventory call, corpus construction, holdout reveal, scoring, or
-performance claim occurs before those prerequisites.
+Milestone 5 uses a separate immutable lock for the Desktop-bundled Codex
+`0.145.0-alpha.30` executable because its state and generated response schemas differ from the npm
+CLI despite sharing the 0.145 line. The adapter converts only resolved `/mnt/<drive>` paths,
+regenerates and hashes the complete schema tree, and then performs app-server calls. The first
+real call listed 11 completed task metadata records with no next page.
+
+`SourceCaptureService` checks one exact selector, the frozen pilot use set, validity/retention,
+identity role/fingerprint, unused receipt ID, and AES-GCM availability before `thread/read`. It
+stores only ciphertext and appends a signed capture receipt. A review projection labels user
+messages as eligible user authority and agent/tool/system channels as untrusted; it does not infer
+outcomes or lessons.
+
+Automatic continuation still does not weaken objective gates. The internal v1.1 design replaces
+external staffing with functional separation: two fresh AI contexts construct/review the strong
+profile from digest-bound packets; a separate software-custody context owns held-out plaintext,
+condition mapping, and the committed randomization seed; construction sees commitments only; and
+Kevin receives randomized, condition-free scoring packets. The custody registry and keys remain
+outside the compiler workspace. The four materials and complete custody bundle are now frozen;
+real target trials require explicit paid-run authorization.

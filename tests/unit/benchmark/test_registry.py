@@ -19,7 +19,11 @@ from adaptation_compiler_lab.benchmark.custody_service import (
     CustodyCoordinator,
     CustodyCoordinatorError,
 )
-from adaptation_compiler_lab.benchmark.models import BenchmarkCondition, FeasibilityDesign
+from adaptation_compiler_lab.benchmark.models import (
+    BenchmarkCondition,
+    FeasibilityDesign,
+    InternalFeasibilityDesign,
+)
 from adaptation_compiler_lab.benchmark.registry import BenchmarkRegistry, BenchmarkRegistryError
 from adaptation_compiler_lab.governance import (
     AdjudicationDecision,
@@ -83,7 +87,11 @@ def _split() -> BlindedSplitManifest:
     )
 
 
-def _fixture(tmp_path: Path) -> RegistryFixture:
+def _fixture(
+    tmp_path: Path,
+    *,
+    design: FeasibilityDesign | InternalFeasibilityDesign | None = None,
+) -> RegistryFixture:
     compiler_workspace = tmp_path / "compiler-workspace"
     compiler_workspace.mkdir()
     database = compiler_workspace / "ledger.sqlite3"
@@ -120,7 +128,7 @@ def _fixture(tmp_path: Path) -> RegistryFixture:
         reason="Seal the synthetic held-out fixture outside the compiler workspace.",
         signer=signer,
     )
-    registration = _registration(signer, manifest)
+    registration = _registration(signer, manifest, design=design)
     assert registry.register_benchmark(registration)
     return RegistryFixture(
         registry=registry,
@@ -139,8 +147,9 @@ def _registration(
     manifest: CustodyManifest,
     *,
     custody_digest: str | None = None,
+    design: FeasibilityDesign | InternalFeasibilityDesign | None = None,
 ) -> BenchmarkRegistration:
-    design = FeasibilityDesign()
+    selected_design = FeasibilityDesign() if design is None else design
     manifest_ref = governance_ref(manifest).model_dump(mode="json")
     if custody_digest is not None:
         manifest_ref["content_digest"] = custody_digest
@@ -151,8 +160,8 @@ def _registration(
             "schema_version": "1.0",
             "subject_id": "user-kevin",
             "benchmark_id": manifest.benchmark_id,
-            "design": design.model_dump(mode="json"),
-            "design_digest": canonical_digest(design),
+            "design": selected_design.model_dump(mode="json"),
+            "design_digest": canonical_digest(selected_design),
             "custody_manifest_ref": manifest_ref,
             "condition_blind_ids": CONDITION_IDS,
             "construction_cutoff": (NOW - timedelta(days=2)).isoformat(),
@@ -177,6 +186,9 @@ def _condition_receipt(
     utf8_bytes: int | None = None,
 ) -> ConditionMaterialReceipt:
     base = condition is BenchmarkCondition.BASE
+    isolated_profile = condition is BenchmarkCondition.STRONG_STATIC_PROFILE and isinstance(
+        fixture.registration.design, InternalFeasibilityDesign
+    )
     method, role = {
         BenchmarkCondition.BASE: (
             ConditionConstructionMethod.NONE,
@@ -187,8 +199,16 @@ def _condition_receipt(
             ConditionAuthorRole.DETERMINISTIC_RENDERER,
         ),
         BenchmarkCondition.STRONG_STATIC_PROFILE: (
-            ConditionConstructionMethod.INDEPENDENT_HUMAN_PROFILE,
-            ConditionAuthorRole.INDEPENDENT_HUMAN,
+            (
+                ConditionConstructionMethod.ISOLATED_AI_TWO_PASS_PROFILE
+                if isolated_profile
+                else ConditionConstructionMethod.INDEPENDENT_HUMAN_PROFILE
+            ),
+            (
+                ConditionAuthorRole.ISOLATED_AI
+                if isolated_profile
+                else ConditionAuthorRole.INDEPENDENT_HUMAN
+            ),
         ),
         BenchmarkCondition.COMPILED_ADAPTATION: (
             ConditionConstructionMethod.COMPILED_RELEASE_PACK,
@@ -227,10 +247,16 @@ def _condition_receipt(
             "author_identity": (
                 None
                 if base
-                else "independent-profile-author"
+                else "isolated-profile-author"
                 if condition is BenchmarkCondition.STRONG_STATIC_PROFILE
                 else role.value
             ),
+            "author_context_id": ("profile-author-context-1" if isolated_profile else None),
+            "author_packet_digest": (DIGESTS[11] if isolated_profile else None),
+            "profile_draft_digest": (DIGESTS[12] if isolated_profile else None),
+            "reviewer_identity": ("isolated-profile-reviewer" if isolated_profile else None),
+            "reviewer_context_id": ("profile-review-context-1" if isolated_profile else None),
+            "review_packet_digest": (DIGESTS[13] if isolated_profile else None),
             "authoring_minutes": (
                 90 if condition is BenchmarkCondition.STRONG_STATIC_PROFILE else 0
             ),
@@ -288,6 +314,19 @@ def test_sealed_bundle_substitution_fails_and_every_access_is_signed(tmp_path: P
     assert all(
         item.previous_access_event_ref == governance_ref(history[index - 1])
         for index, item in enumerate(history[1:], start=1)
+    )
+
+
+def test_internal_design_requires_and_accepts_two_pass_ai_profile_receipt(
+    tmp_path: Path,
+) -> None:
+    fixture = _fixture(tmp_path, design=InternalFeasibilityDesign())
+
+    receipts = _condition_set(fixture)
+
+    assert fixture.registry.freeze_condition_materials(
+        fixture.registration.registration_id,
+        receipts,
     )
 
 

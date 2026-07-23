@@ -1,0 +1,34 @@
+{
+  "lock_version": "1.0.0",
+  "codex_desktop": {
+    "executable": {
+      "package": "OpenAI Codex Desktop bundled codex",
+      "package_version": "0.145.0-alpha.30",
+      "package_integrity": "msix:OpenAI.Codex_26.715.10079.0_x64__2p2nqsd0c76g0",
+      "executable_sha256": "sha256:adf966822b9a04fb3a6e41d7d6a44b60e5c87beac6aebef5c0b0a2205c8cdf62",
+      "version_args": [
+        "--version"
+      ],
+      "version_stdout": "codex-cli 0.145.0-alpha.30",
+      "required_help_flags": [
+        "app-server"
+      ]
+    },
+    "schema_generation_args": [
+      "app-server",
+      "generate-json-schema",
+      "--out",
+      "{output}",
+      "--experimental"
+    ],
+    "schema_bundle_sha256": "sha256:dbe5fd79870a16e9d2c3ebddb6e71c3c766aa1849af5efc09003c1f97b09ca2b",
+    "schema_file_sha256": {
+      "v1/InitializeParams.json": "sha256:4f576f99e285beb28f71f48a72b887c1f517dada86fee348fe2af0a35511de23",
+      "v1/InitializeResponse.json": "sha256:86dcd236d0576a82c85b933586dc45731260eab1b6edb3447b03f790277322b1",
+      "v2/ThreadListParams.json": "sha256:8834bb710751df3747107f04a3d9b97a02a13835459e34849574e0f4338dec53",
+      "v2/ThreadListResponse.json": "sha256:a33e12128468aaa51b52f63113bf8d81bb6679374b6e1fb89908238d357eba58",
+      "v2/ThreadReadParams.json": "sha256:db97080f82facc3259dbb9404e9f0df81e360619f4cd73983a9d99d25f5089ee",
+      "v2/ThreadReadResponse.json": "sha256:5bc24557ba44bb6469828c85af13b83f2934121219994931a8147eb6b008c279"
+    }
+  }
+}
