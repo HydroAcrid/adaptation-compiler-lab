@@ -1,6 +1,6 @@
 # Threat Model
 
-Status: **Milestone 4 runtime controls and authenticated synthetic smoke complete; real data pending**
+Status: **Milestone 4 complete; Milestone 5 real metadata listed, payloads still blocked**
 
 ## Assets and trust boundary
 
@@ -57,14 +57,14 @@ approval, or artifact promotion.
 
 ## Privacy policy for this phase
 
-Only synthetic fixtures belong in the current workspace. No real user transcript, repository,
-credential, or private project data is authorized. Synthetic consent/capture receipts test the
-mechanism without authorizing collection. The intended real-data contract already requires exact
-selector, scope, uses, expiry, retention, signer, signature, source/schema digest, and payload
-digest, but the capture boundary remains disabled. Withdrawal, dependency recall, purge/tombstone,
-atomic local deactivation, and benchmark-custody mechanics are implemented only with synthetic
-bytes. Operational incident handling, key backup/rotation, and independent custodian procedures
-must be approved before a real record or real held-out task is admitted.
+Real source inventory is limited to task ID, timestamps, status/version, one-way source/CWD
+digests, and optional user-assigned name. No real transcript, repository, credential, or private
+project payload is yet authorized. Real capture requires one exact selector per signed consent,
+the frozen pilot use set, at most 30 days' retention, signer/fingerprint/validity checks,
+source/schema and payload digests, and AES-GCM storage before the read result can persist.
+Withdrawal, recall, purge/tombstone, and benchmark-custody mechanics remain synthetically tested.
+Operational key recovery/deletion assurance and independent-human/custodian procedures remain
+gates before a real corpus can freeze.
 
 The empty-home Codex conformance probe used a newly created source directory and returned no tasks.
 The Claude runner has also passed the documented authenticated no-user-data smoke against the

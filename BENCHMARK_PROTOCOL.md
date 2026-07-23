@@ -1,7 +1,7 @@
 # Benchmark Protocol
 
-Status: **Normative feasibility design frozen; Milestone 4 synthetic runtime conformance passed;
-live smoke, source construction, held-out reveal, and trials pending**
+Status: **Normative feasibility design frozen; Milestone 4 complete; Milestone 5 payload access
+awaiting exact consent**
 
 ## 1. Claim and study class
 
@@ -128,8 +128,9 @@ conformance, a pinned Codex app server initialized against an empty source home,
 authenticated no-user-data Claude smoke passed with only synthetic content. This proves target
 connectivity and instrumentation, not adaptation performance.
 
-The project still has not read real source tasks, authored real condition materials, retrieved a
-holdout, created trial records from real runs, scored work, or calculated an empirical comparison.
+The project has listed minimized source metadata through the Desktop-pinned app server but has not
+read a real task body, authored real condition materials, retrieved a holdout, created trial
+records from real runs, scored work, or calculated an empirical comparison.
 Operational custodian independence, exact per-task consent, human-profile authorship, randomization
 secret custody, scorer assignment, frozen materials, and live execution remain mandatory gates
 even though continuation between fully passed milestones no longer requires a ceremonial stop.

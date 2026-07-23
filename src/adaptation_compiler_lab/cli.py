@@ -15,6 +15,7 @@ from collections import Counter
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import asdict, is_dataclass
+from datetime import timedelta
 from pathlib import Path
 from typing import Annotated, Literal, NoReturn, cast
 
@@ -33,6 +34,11 @@ from adaptation_compiler_lab.application.release_candidate_store import (
     ReleaseCandidateSnapshotStore,
 )
 from adaptation_compiler_lab.application.review import HumanReviewWorkflow
+from adaptation_compiler_lab.application.source_capture import (
+    PILOT_PERMITTED_USES,
+    SourceCaptureRequest,
+    SourceCaptureService,
+)
 from adaptation_compiler_lab.application.targeting import (
     TargetPackBuildContext,
     build_release_render_projection,
@@ -46,6 +52,11 @@ from adaptation_compiler_lab.benchmark import (
     validate_benchmark_config,
     validate_benchmark_outcomes,
 )
+from adaptation_compiler_lab.connectors.codex_app_server import (
+    DEFAULT_CODEX_DESKTOP_SCHEMA_ROOT,
+    open_codex_source_connector,
+)
+from adaptation_compiler_lab.connectors.pins import load_source_runtime_pins
 from adaptation_compiler_lab.domain import (
     ActorRef,
     Approval,
@@ -154,6 +165,9 @@ consent_app = typer.Typer(help="Issue and verify exact signed consent receipts."
 capture_preview_app = typer.Typer(
     help="Create synthetic signed capture previews without accessing source tasks."
 )
+source_app = typer.Typer(
+    help="List minimized Codex metadata and capture only exactly consented completed tasks."
+)
 recall_app = typer.Typer(
     help="Preview and explicitly confirm signed withdrawal and recall cascades."
 )
@@ -174,6 +188,7 @@ app.add_typer(schema_app, name="schema")
 app.add_typer(identity_app, name="identity")
 app.add_typer(consent_app, name="consent")
 app.add_typer(capture_preview_app, name="capture-preview")
+app.add_typer(source_app, name="source")
 app.add_typer(recall_app, name="recall")
 
 WorkspaceOption = Annotated[
@@ -550,12 +565,12 @@ def identity_verify(
 
 @consent_app.command("issue")
 def consent_issue(
-    request_file: Annotated[Path, typer.Argument(help="Unsigned synthetic consent request JSON.")],
+    request_file: Annotated[Path, typer.Argument(help="Unsigned exact consent request JSON.")],
     identity_id: Annotated[str, typer.Option("--identity-id")],
     workspace: WorkspaceOption,
     output: Annotated[Path | None, typer.Option("--output")] = None,
 ) -> None:
-    """Issue a signed synthetic consent receipt; real task consent is deferred to Milestone 5."""
+    """Issue signed consent without reading any source payload."""
 
     with _handled():
         paths, subject_id, ledger = _governance_ledger(workspace)
@@ -564,8 +579,13 @@ def consent_issue(
         identity = ledger.require_identity(identity_id)
         if request.subject_id != subject_id:
             raise ValueError("consent subject does not match the workspace subject")
-        if request.source_selector.source_system != "synthetic_fixture":
-            raise ValueError("Milestone 1 consent commands accept synthetic selectors only")
+        if request.source_selector.source_system == "codex_app_server":
+            if len(request.source_selector.source_ids) != 1:
+                raise ValueError("real Codex consent must name exactly one task ID")
+            if request.permitted_uses != PILOT_PERMITTED_USES:
+                raise ValueError("real Codex consent must use the frozen pilot use set")
+            if request.retention_until - request.issued_at > timedelta(days=30):
+                raise ValueError("real Codex retention cannot exceed 30 days")
         signer = _governance_signer(paths, identity)
         receipt = sign_consent(request.model_dump(mode="json", round_trip=True), signer)
         ledger.add(receipt)
@@ -638,6 +658,100 @@ def capture_preview_verify(
         if receipt.consent_ref != governance_ref(consent):
             raise ValueError("capture receipt does not bind the supplied consent receipt")
         _emit({"content_digest": canonical_digest(receipt), "valid": True})
+
+
+@source_app.command("inventory")
+def source_inventory(
+    codex_executable: Annotated[
+        Path,
+        typer.Option(
+            "--codex-executable",
+            help="External pinned Codex Desktop executable copied to a user-owned toolchain.",
+            dir_okay=False,
+            resolve_path=True,
+        ),
+    ],
+    codex_home: Annotated[
+        Path,
+        typer.Option(
+            "--codex-home",
+            help="Explicit Codex Desktop state root.",
+            file_okay=False,
+            resolve_path=True,
+        ),
+    ],
+    limit: Annotated[int, typer.Option(min=1, max=1000)] = 100,
+) -> None:
+    """List privacy-minimized completed-task metadata without persisting it."""
+
+    with _handled():
+        pins = load_source_runtime_pins()
+        with open_codex_source_connector(
+            executable=codex_executable,
+            codex_home=codex_home,
+            pin=pins.codex_desktop,
+            schema_root=DEFAULT_CODEX_DESKTOP_SCHEMA_ROOT,
+            windows_interop=True,
+        ) as connector:
+            _emit(connector.list_completed_tasks(limit=limit))
+
+
+@source_app.command("capture")
+def source_capture(
+    request_file: Annotated[
+        Path,
+        typer.Argument(help="Exact task, consent, capture identity, and timestamp JSON."),
+    ],
+    identity_id: Annotated[str, typer.Option("--identity-id")],
+    codex_executable: Annotated[
+        Path,
+        typer.Option(
+            "--codex-executable",
+            dir_okay=False,
+            resolve_path=True,
+        ),
+    ],
+    codex_home: Annotated[
+        Path,
+        typer.Option(
+            "--codex-home",
+            file_okay=False,
+            resolve_path=True,
+        ),
+    ],
+    workspace: WorkspaceOption,
+    output: Annotated[Path | None, typer.Option("--output")] = None,
+) -> None:
+    """Read and encrypt one task only after its exact signed consent exists."""
+
+    with _handled():
+        paths, subject_id, ledger = _governance_ledger(workspace)
+        request = _load_model(request_file, SourceCaptureRequest)
+        _preflight_optional_output(output)
+        identity = ledger.require_identity(identity_id)
+        signer = _governance_signer(paths, identity)
+        raw_store = LocalRawPayloadStore.from_environment(
+            paths.raw_evidence,
+            workspace_root=paths.root,
+            allow_legacy_plaintext=False,
+        )
+        pins = load_source_runtime_pins()
+        with open_codex_source_connector(
+            executable=codex_executable,
+            codex_home=codex_home,
+            pin=pins.codex_desktop,
+            schema_root=DEFAULT_CODEX_DESKTOP_SCHEMA_ROOT,
+            windows_interop=True,
+        ) as connector:
+            result = SourceCaptureService(
+                connector=connector,
+                raw_store=raw_store,
+                governance_ledger=ledger,
+                signer=signer,
+                identity=identity,
+                subject_id=subject_id,
+            ).capture(request)
+        _emit_or_write(result, output)
 
 
 @recall_app.command("preflight")

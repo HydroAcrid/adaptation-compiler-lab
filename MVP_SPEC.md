@@ -1,7 +1,7 @@
 # MVP Specification
 
-Status: **Milestone 4 version-pinned connector conformance and authenticated target smoke complete**
-Implementation status: **no real source data, held-out reveal, or benchmark execution**
+Status: **Milestone 4 complete; Milestone 5 consented-corpus foundation in progress**
+Implementation status: **real minimized metadata only; no source payload, holdout, or trial**
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** describe the
 implemented MVP contract unless explicitly marked as future work.
@@ -67,7 +67,7 @@ that binds non-synthetic observations to exact signed consent and capture receip
 - New non-synthetic evidence MUST use Evidence v1.1 and pass exact receipt, scope, use, expiry,
   retention, selector, signer, signature, and payload-digest validation. Revoked or expired
   consent MUST fail admission. Milestone 2 nevertheless
-  disables real capture at the CLI/import boundary.
+  requires the Milestone 5 exact-consent capture service before any real payload read.
 - A destructive purge MUST follow a persisted complete dependency impact and exact confirmation of
   its canonical digest. It MUST authenticate the ciphertext before unlink, retain no raw content in
   the tombstone, restore bytes if the metadata transaction fails, and fail closed without the AES
@@ -140,28 +140,29 @@ The `adaptation-compiler-lab` CLI provides the following bounded workflow:
 
 1. `workspace init` creates a local, subject-scoped workspace.
 2. `identity create|verify`, `consent issue|verify`, and `capture-preview create|verify` exercise
-   signed synthetic governance. Non-synthetic selectors remain rejected in Milestone 2.
-3. `record import-bundle` admits only TaskRecord/Outcome/Evidence bundles and stores new raw
+   signed governance. Real consent names exactly one Codex task, the frozen use set, and at most
+   30 days' retention.
+3. `source inventory` lists minimized metadata; `source capture` re-verifies the Desktop runtime,
+   signer, consent, validity, receipt identity, and AES key before reading one task.
+4. `record import-bundle` admits only TaskRecord/Outcome/Evidence bundles and stores new raw
    payloads encrypted; `record`, `evidence`, and `evaluation` inspect validated records.
-4. `evaluation derive` creates reviewable cases; `evaluation approve|reject` resolves them.
-5. `lesson propose|approve|reject|route` manages candidates and records policy routing.
-6. `artifact propose|evaluate|approve|reject` manages portable adaptations.
-7. `candidate create|evaluate|approve|freeze` constructs and freezes releases; `release list|show`
+5. `evaluation derive` creates reviewable cases; `evaluation approve|reject` resolves them.
+6. `lesson propose|approve|reject|route` manages candidates and records policy routing.
+7. `artifact propose|evaluate|approve|reject` manages portable adaptations.
+8. `candidate create|evaluate|approve|freeze` constructs and freezes releases; `release list|show`
    inspects immutable manifests.
-8. `pack compile` creates generic JSON, generic Markdown, Codex, or Claude Code file-only packs.
-9. `activation canary|activate|rollback|status` records approval-gated reversible pointers.
-10. `recall preflight` produces a signed complete impact plus confirmation digest; `recall execute`
+9. `pack compile` creates generic JSON, generic Markdown, Codex, or Claude Code file-only packs.
+10. `activation canary|activate|rollback|status` records approval-gated reversible pointers.
+11. `recall preflight` produces a signed complete impact plus confirmation digest; `recall execute`
     accepts only that unchanged digest and emits signed invalidations, tombstones, and a report.
-11. `export sanitized`, `benchmark validate`, and `schema export --version 1.0|1.1` produce bounded
+12. `export sanitized`, `benchmark validate`, and `schema export --version 1.0|1.1` produce bounded
     local outputs.
 
 All complex input is explicit JSON. The CLI does not provide arbitrary unreviewed record writes,
 automatic activation, target execution, or general-purpose data ingestion.
 
-Milestone 4 connector/runner APIs are intentionally separate from the CLI. They are exercised by
-fake app-server/Claude fixtures and runtime probes. This prevents a general operator command from
-enumerating source history or spending against a target account before the consent and study
-coordinator gates exist.
+The Claude runner remains library-only. The source CLI is deliberately narrow: inventory cannot
+return previews/paths, and capture cannot accept a selector wider than one signed task ID.
 
 ## 5. Benchmark foundation
 
@@ -196,10 +197,10 @@ schemas, a read-only app-server connector, a clean sandboxed Claude Code runner,
 property/conformance tests for drift, ambient state, credential exposure, tool denial, timeouts,
 and teardown. The pinned Codex binary also passed an empty-home app-server handshake.
 
-The authenticated no-user-data Claude smoke has not run because the dedicated Console API key is
-absent. Therefore Milestone 4 is not complete and this scope does not provide authenticated source
-capture, real consent selection, a held-out plaintext retrieval API, live pilot execution,
-human-rater operations, benchmark scoring/statistics, remote research-data coordination, a UI, or
-model adaptation. Later milestones may continue automatically only after their objective
-prerequisites pass; consent, independent-human, custody, credential, and holdout gates cannot be
-waived by automation.
+The authenticated no-user-data Claude smoke passed. The Desktop source runtime is separately pinned
+and its metadata-only inventory passed. Milestone 5 adds exact-consent capture, review-channel
+classification, exactly-eight/four-family corpus validation, deterministic ordinary memory,
+independent-profile timing, equal-information condition freeze, leakage scanning, and common
+budgets. It still does not provide an unconsented payload read, held-out plaintext retrieval, live
+pilot execution, human-rater substitution, benchmark scoring/statistics, a UI, or model
+adaptation. Consent, independent-human, custody, and holdout gates cannot be waived by automation.

@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **Milestone 4 version-pinned connectors and authenticated synthetic smoke complete**
+Status: **Milestone 4 complete; Milestone 5 source/corpus gates in progress**
 
 ## 1. System shape
 
@@ -52,11 +52,12 @@ flowchart LR
     Q -. later signed result .-> L["TrialResult ledger"]
 ```
 
-The Codex connector is implemented and has been exercised only against fake fixtures and a newly
-created empty source home. The Claude runner passed one accepted authenticated synthetic smoke
-against the pinned model and sandbox. Neither adapter is exposed through a general CLI command.
-Real source capture, held-out retrieval, trial execution, and scoring remain unreachable until
-their coordinator and governance gates exist.
+The Codex connector has also passed a metadata-only real inventory through a separately pinned
+Desktop runtime; previews and raw paths were omitted. The Claude runner passed one accepted
+authenticated synthetic smoke against the pinned model and sandbox. `source inventory|capture` is
+the only source CLI surface. Capture cannot reach `thread/read` before exact signed consent,
+signer/time/use checks, and an external AES key pass. Held-out retrieval, trial execution, and
+scoring remain unreachable until their coordinator and governance gates exist.
 
 ## 2. Records and relationships
 
@@ -256,9 +257,18 @@ Codex empty-home handshake and the authenticated no-user-data Claude smoke pass.
 cost USD $0.01566765, captured only allowed `Read` and `Edit` uses, persisted no raw trace, and
 destroyed its synthetic workspace.
 
-After the Milestone 4 branch merges, work may continue automatically to Milestone 5.
-Automatic continuation does not weaken objective gates: eight exact task IDs still require signed
+Milestone 5 uses a separate immutable lock for the Desktop-bundled Codex
+`0.145.0-alpha.30` executable because its state and generated response schemas differ from the npm
+CLI despite sharing the 0.145 line. The adapter converts only resolved `/mnt/<drive>` paths,
+regenerates and hashes the complete schema tree, and then performs app-server calls. The first
+real call listed 11 completed task metadata records with no next page.
+
+`SourceCaptureService` checks one exact selector, the frozen pilot use set, validity/retention,
+identity role/fingerprint, unused receipt ID, and AES-GCM availability before `thread/read`. It
+stores only ciphertext and appends a signed capture receipt. A review projection labels user
+messages as eligible user authority and agent/tool/system channels as untrusted; it does not infer
+outcomes or lessons.
+
+Automatic continuation still does not weaken objective gates: eight exact task IDs require signed
 per-task consent; the strong profile requires an independent skilled human; held-out custody and
-randomization secrets require assigned operators; and real target trials require frozen materials
-and credentials. No source inventory call, corpus construction, holdout reveal, scoring, or
-performance claim occurs before those prerequisites.
+randomization secrets require assigned operators; and real target trials require frozen materials.

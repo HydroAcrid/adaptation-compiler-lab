@@ -1,6 +1,6 @@
 # Project Charter
 
-Status: **Milestone 4 version-pinned connectors and authenticated synthetic smoke complete**
+Status: **Milestone 4 complete; Milestone 5 consented-corpus work in progress**
 Project: **adaptation-compiler-lab**
 Intended first source / target: **Codex / Claude Code**
 
@@ -30,10 +30,11 @@ reversible projection of that asset, not a model modification.
 Milestone 4 adds three narrow ports, a binary/version/schema-pinned Codex app-server adapter, and a
 binary/model-pinned bare Claude Code runner with clean configuration, explicit tools,
 fail-if-unavailable WSL2 sandboxing, structured traces, time/cost/turn ceilings, and teardown.
-Synthetic conformance and an empty-home Codex handshake pass. The required authenticated
-no-user-data Claude smoke is still pending, so this is not authorization to enumerate or capture
-real Codex tasks, collect real data, reveal a holdout, construct conditions, run the pilot, score
-results, or claim transfer improvement.
+Synthetic conformance, an empty-home Codex handshake, and the authenticated no-user-data Claude
+smoke pass. Milestone 5 adds a separately pinned Desktop source runtime, minimized real inventory,
+and synthetic exact-consent/encrypted-capture/corpus/material gates. This is not authorization to
+read an unconsented task, reveal a holdout, run the pilot, score results, or claim transfer
+improvement.
 
 ## Governing principles
 

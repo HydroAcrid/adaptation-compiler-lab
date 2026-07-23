@@ -33,6 +33,7 @@ from adaptation_compiler_lab.connectors.pins import (
     CodexAppServerPin,
     RuntimeConformanceError,
     VerifiedCodexRuntime,
+    _as_windows_interop_path,
     sha256_bytes,
     verify_codex_runtime,
 )
@@ -41,6 +42,9 @@ from adaptation_compiler_lab.serialization.canonical import canonical_bytes, can
 
 DEFAULT_CODEX_SCHEMA_ROOT: Final = (
     Path(__file__).resolve().parent / "schema_snapshots" / "codex" / "0.145.0"
+)
+DEFAULT_CODEX_DESKTOP_SCHEMA_ROOT: Final = (
+    Path(__file__).resolve().parent / "schema_snapshots" / "codex" / "0.145.0-alpha.30"
 )
 _TERMINAL_TURN_STATUSES: Final = frozenset(item.value for item in TerminalTurnStatus)
 _EOF: Final = object()
@@ -124,7 +128,11 @@ class CodexAppServerProcess:
 
     def __enter__(self) -> CodexAppServerProcess:
         environment = os.environ.copy()
-        environment["CODEX_HOME"] = str(self._codex_home)
+        environment["CODEX_HOME"] = (
+            _as_windows_interop_path(self._codex_home)
+            if self._runtime.windows_interop
+            else str(self._codex_home)
+        )
         environment["CODEX_ANALYTICS_ENABLED"] = "false"
         try:
             process = subprocess.Popen(
@@ -424,10 +432,15 @@ def open_codex_source_connector(
     codex_home: Path,
     pin: CodexAppServerPin,
     schema_root: Path = DEFAULT_CODEX_SCHEMA_ROOT,
+    windows_interop: bool = False,
 ) -> Iterator[CodexSourceConnector]:
     """Verify, start, initialize, and tear down one pinned source connection."""
 
-    runtime = verify_codex_runtime(executable, pin)
+    runtime = verify_codex_runtime(
+        executable,
+        pin,
+        windows_interop=windows_interop,
+    )
     schemas = CodexSchemaSet(schema_root)
     with CodexAppServerProcess(
         runtime,

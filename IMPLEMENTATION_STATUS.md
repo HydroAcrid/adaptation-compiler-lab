@@ -4,18 +4,19 @@ Last updated: 2026-07-23
 
 ## Current milestone
 
-**Milestone 4 — Version-Pinned Connectors and Synthetic Conformance has passed its technical exit
-gate.** Synthetic conformance, pinned local runtime verification, the empty-home Codex handshake,
-and the authenticated live no-user-data Claude smoke all pass. The branch is ready for final
-verification and merge; Milestone 5 has not begun.
+**Milestone 4 is merged. Milestone 5 — Consented Codex Corpus and Frozen Condition Materials is in
+progress.** A separately pinned Codex Desktop runtime passed full binary/schema verification and a
+real metadata-only inventory. Exact-consent encrypted capture, eight-task corpus, review-channel,
+ordinary-memory, strong-profile, condition-budget, and leakage gates pass synthetically.
 
 The project owner has authorized automatic continuation after complete milestone exit gates. This
 removes the handoff pause, not objective research/privacy prerequisites. Exact per-task consent,
 independent-human profile authorship, independent custody/scoring roles, credentials, frozen
 materials, and held-out isolation still fail closed.
 
-No real Codex task was listed or read. The only target API calls used synthetic smoke content; no
-held-out reveal, condition construction, target trial, scoring operation, model modification,
+Eleven real completed-task metadata records were listed without previews or raw paths. No task body
+was read or captured. The only target API calls used synthetic smoke content; no held-out reveal,
+real condition construction, target trial, scoring operation, model modification,
 executable-tool creation, Kairn integration, web UI, public release, or remote research-data
 storage occurred.
 
@@ -24,6 +25,16 @@ storage occurred.
 - All compiler, provenance, review, release, target-rendering, governance, encrypted evidence,
   withdrawal, recall, conflict, activation, benchmark custody, registry, preregistration, and
   immutable-result controls from Milestones 1–3 remain intact and backward compatible.
+- Added an immutable Desktop source lock for `codex-cli 0.145.0-alpha.30`, its exact executable,
+  full 341-file generated schema digest, and six request/response snapshots. The real verifier and
+  minimized inventory pass through the same app-server adapter.
+- Added `source inventory|capture`. Capture checks one exact signed selector, frozen uses,
+  subject/signer/fingerprint, validity/retention, unused receipt identity, and external AES storage
+  before `thread/read`; only ciphertext and signed digest metadata persist.
+- Added exactly-eight/four-family payload-free corpus validation, non-escalating source-channel
+  review projection, deterministic approved-feedback memory, independent-profile separation,
+  equal-information four-condition freeze, budget/no-padding rules, and condition leakage/control
+  syntax scans.
 - Added explicit structural `SourceConnector`, `TargetRunner`, and `Scorer` ports with strict
   transient request/result values. Scorer input has no condition-label field and rejects metadata
   keys that could smuggle condition identity.
@@ -80,11 +91,14 @@ uv run pytest
 uv build
 ```
 
-The current full suite formats and type-checks 127 Python files, passes 274 tests, and builds both
-the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, runtime
-lock, and six generated Codex schema snapshots are packaged. The real Codex runtime verifier
-matched the pinned binary and canonical generated-schema digest
+The current full suite formats and type-checks 137 Python files, passes 290 tests, and builds both
+the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, both
+runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
+verifier matched its pinned binary and canonical generated-schema digest
 `sha256:e2d36bf67743ea6d89f93b598efaaffd873a1be0668a775401ab8817b808a851`.
+The Desktop source verifier matched
+`sha256:dbe5fd79870a16e9d2c3ebddb6e71c3c766aa1849af5efc09003c1f97b09ca2b`
+and returned 11 minimized completed-task records.
 The real Claude/sandbox verifier matched all local binary/version/helper pins and successfully
 started a bubblewrap user namespace. The accepted authenticated smoke then exercised the API under
 the frozen model/tool/sandbox contract.
@@ -95,7 +109,7 @@ only, not transfer quality.
 
 ## Explicitly not implemented or exercised
 
-- No real source inventory/capture, signed consent selection for actual task IDs, eight-task corpus,
+- No real source capture, signed consent selection for actual task IDs, eight-task corpus,
   source outcome attestation, lesson review, real artifact release, or frozen condition bundle.
 - No real target trial, independent post-run test evidence, disposable pilot worktree coordinator,
   randomization-secret reveal, or condition-bearing target trace.
@@ -112,7 +126,7 @@ file. It is never committed, printed, or persisted in a trace. The runner contin
 ambiguous sources, broad key-file permissions, workspace-local keys, alternate providers, and
 missing sandbox support.
 
-Seal the final verification results, merge the Milestone 4 PR, update Obsidian, and continue
-automatically to Milestone 5. Milestone 5 may list only minimized eligible source metadata before
-requiring signed consent for each exact selected task ID; it may not capture a payload, construct
-condition material, or reveal held-out work without its remaining objective gates.
+Await explicit user consent to the proposed eight exact task IDs. Then create eight signed
+per-task receipts and capture only those tasks into the external encrypted store. Human
+source/lesson review, independent strong-profile authorship, signed custody/registration, exact
+token counting, and condition freeze remain objective gates; no held-out reveal can occur first.
