@@ -13,4 +13,7 @@ into a target workspace. Runtime bytecode is excluded from material-change check
 traces, the private condition mapping, and encrypted run bundles remain outside Git.
 
 The committed blind packet contains only sanitized anonymous final responses and diffs that passed
-the condition-leakage scan. It contains neither condition identity nor objective scores.
+the condition-leakage scan. It contains neither condition identity nor objective scores. Kevin's
+pairwise rating was checksum-bound and committed before the development seed was opened. The
+separate unblinded result records that compiled adaptation produced the preferred output while all
+automated check counts tied.

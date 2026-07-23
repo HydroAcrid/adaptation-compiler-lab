@@ -1,0 +1,13 @@
+{
+  "check_counts_tied": true,
+  "created_at": "2026-07-23T22:32:08Z",
+  "cross_agent_claim_allowed": false,
+  "design_digest": "sha256:22c0c62d66defdb00ae3e560e2e37a0325f1323fc959b05054f907e6f8fc026c",
+  "milestone_6_custody_accessed": false,
+  "other_condition": "strong_static_profile",
+  "preference_rating_digest": "sha256:7f6cb2af52e6cf70caf599a198135d4f88d87f310b91acab519b7f1561330b5b",
+  "preferred_condition": "compiled_adaptation",
+  "private_plan_digest": "sha256:aa745ada09eb01594ac5904d60ff36d7035b8e59b8147ae7670acff7d597c9e2",
+  "public_plan_digest": "sha256:72415bc8cf71f0215557d093145c68e317f8f6d38088b151a0e2217d07a44768",
+  "result_version": "2.0.0"
+}

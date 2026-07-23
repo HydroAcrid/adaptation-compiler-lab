@@ -23,7 +23,8 @@ advantages to brittle research-task scoring. It did not rescore the frozen grid 
 compiler, release, TargetPack, or condition materials. A four-task replacement benchmark remains
 mostly design-only. Its research-integrity task completed a two-cell GPT-5.6 Luna/medium
 calibration; both anonymous conditions tied at 4/4 objective, 3/4 diagnostic, and 4/4 neutral
-checks. Kevin's blind preference rating is the next required input.
+checks. Kevin then rated the first anonymous output slightly better. The rating was frozen before
+unblinding, which identified compiled adaptation as preferred over the strong static profile.
 
 No held-out content or condition mapping was exposed to construction or printed during custody.
 The only Claude API calls used synthetic smoke and token-count content; no held-out trial, Claude
@@ -129,6 +130,9 @@ release, or remote research-data storage occurred.
 - Completed two blinded Luna cells comparing only strong profile and compiled adaptation. Both
   were valid, tied on every check count, preserved every negative outcome and frozen input, and
   shared one ambiguous `blocked` versus `inconclusive` classification miss.
+- Froze Kevin's first-output preference and rationale before opening the development mapping.
+  Unblinding showed that compiled adaptation produced the preferred output while the strong static
+  profile produced the other. This remains same-agent development evidence only.
 
 ## Verification performed
 
@@ -143,7 +147,7 @@ uv run pytest
 uv build
 ```
 
-The current full suite formats 179 files, passes strict typing, passes 344
+The current full suite formats 179 files, passes strict typing, passes 347
 tests, and builds both
 the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
@@ -163,8 +167,9 @@ establishes instrument and protocol readiness only, not transfer quality.
 
 - No Claude target trial, held-out task reveal, condition-bearing Claude trace, or paid provider
   spend for the pilot.
-- No Kevin blind rating, secondary isolated-AI judging result, blinded adjudication, comparative
-  analysis, statistical report, or retention purge of the real payloads.
+- No Kevin rating for the held-out pilot, secondary isolated-AI judging result, held-out blinded
+  adjudication, comparative pilot analysis, statistical report, or retention purge of the real
+  payloads. The completed Kevin rating applies only to the public v2 development calibration.
 - No claim of independent human authorship, third-party custody, or independently conducted study;
   the active design is internally blinded with automated functional separation.
 - No valid result about base versus ordinary memory and no cross-agent result. The development-only
@@ -183,9 +188,9 @@ persisted in traces. The runner continues to reject ambiguous sources, broad key
 workspace-local keys, alternate providers, and missing sandbox support.
 
 Do not begin the Claude development canary or preregistered 32-run paid Claude Code feasibility
-pilot. Kevin should first freeze a blind preference rating for the two anonymous outputs in
-`development_benchmark_v2/codex-development-v2-blind-rating-packet.md`. The present evidence does
-not justify changing the compiler or pack.
+pilot. The next development decision is whether to implement and run the remaining three public
+v2 tasks as six additional Luna cells. The present evidence does not justify changing the compiler
+or pack.
 
 The previously proposed Claude development canary is explicitly prohibited. It remains
 unexecuted. No replacement benchmark or paid target call may access Milestone 6 custody or support

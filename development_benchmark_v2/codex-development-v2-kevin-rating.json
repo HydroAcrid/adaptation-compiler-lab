@@ -1,0 +1,17 @@
+{
+  "blind_report_digest": "sha256:8fccb0edca60a03c885462328691122bd39f4557e376913b2da99ef0f3c69f3b",
+  "condition_mapping_seen": false,
+  "ordered_output_ids": [
+    "output-e9f0e686ccd6c701457993aa",
+    "output-38b851eba4522c6025881185"
+  ],
+  "preference": "first_better",
+  "preferred_output_id": "output-e9f0e686ccd6c701457993aa",
+  "presentation_sha256": "sha256:493ef4e33611dfaaf608f49e477c19e0b9e9efe4890c0abe9a96bfc8ef4816cd",
+  "public_plan_digest": "sha256:72415bc8cf71f0215557d093145c68e317f8f6d38088b151a0e2217d07a44768",
+  "rated_at": "2026-07-23T22:29:56Z",
+  "rating_id": "codex-development-v2-kevin-rating-0001",
+  "rating_version": "2.0.0",
+  "rationale": "First better. Both correctly implement the supplied case, but the first is slightly more robust and maintainable because it explicitly validates that an applicable snapshot exists, provides a useful failure message, and documents the signed-source precedence clearly.",
+  "scorer_identity": "kevin"
+}

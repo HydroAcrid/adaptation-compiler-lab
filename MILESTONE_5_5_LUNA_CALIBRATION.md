@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-23
 
-Status: **two valid cells complete; condition mapping withheld; Kevin blind rating pending**
+Status: **two valid cells complete; Kevin rating frozen before mapping reveal; result unblinded**
 
 ## Purpose and boundary
 
@@ -42,7 +42,7 @@ Both anonymous conditions produced valid results:
 | `cond-88748cf917653a3b7cc15782` | 4/4 | 3/4 | 4/4 | Yes |
 | `cond-ae7db58ff5284918156d0716` | 4/4 | 3/4 | 4/4 | Yes |
 
-The conditions therefore tie on every check count. Both:
+The conditions tied on every check count. Both:
 
 - selected the current signed applicable source independently of file order;
 - preserved failure and timeout as distinct trial outcomes;
@@ -57,8 +57,31 @@ insufficient valid-run rate. Both implementations made the same reasonable choic
 instrumentation ambiguity shared by both conditions, not evidence of a condition difference.
 
 The redesigned task was materially more diagnostic than v1 because seven structural checks passed
-without lexical proxies. It did not separate the two conditions and cannot support a compiler or
-pack change.
+without lexical proxies. Its automated evidence did not separate the two conditions.
+
+## Kevin preference and unblinding
+
+Before the mapping was opened, Kevin rated the first anonymous output better:
+
+> Both correctly implement the supplied case, but the first is slightly more robust and
+> maintainable because it explicitly validates that an applicable snapshot exists, provides a
+> useful failure message, and documents the signed-source precedence clearly.
+
+The checksum-bound rating record states `condition_mapping_seen: false` and binds the exact public
+plan, blind report, presentation bytes, output order, preferred output, rationale, and timestamp.
+Only after commit `200fe2c79ebc8ac3194c44560d78c93ce83199f9` froze that record was the separate
+development seed opened.
+
+Unblinding showed:
+
+- preferred first output: **compiled adaptation**;
+- other output: **strong static profile**; and
+- automated objective, diagnostic, and neutral check counts: tied.
+
+This is a small positive development signal for the compiled pack: on one public task it used
+substantially fewer target-visible tokens than the strong profile and produced the output Kevin
+slightly preferred. It is still one same-agent development comparison with a shared task
+ambiguity. It neither proves general superiority nor establishes Codex-to-Claude transfer.
 
 ## Resource use
 
@@ -73,9 +96,8 @@ The Milestone 6 ciphertext remains at digest
 `edc9af42c1ce56ada6f61564e3dca176c9da5d7ac9d5f51fd36d83a476ffe1ea`.
 No held-out task, condition mapping, or Milestone 6 randomization was opened.
 
-Kevin should next rate the two anonymous outputs in
-[`development_benchmark_v2/codex-development-v2-blind-rating-packet.md`](development_benchmark_v2/codex-development-v2-blind-rating-packet.md)
-as first better, second better, or tie, with optional rationale. Do not reveal the condition
-mapping before that rating is frozen. Afterward, unblind the mapping, record the objective and
-preference comparison, and decide whether the remaining three v2 tasks are worth implementing.
-Claude remains prohibited unless separately authorized.
+The preference rating and unblinded result are frozen in
+[`development_benchmark_v2`](development_benchmark_v2). The next decision is whether the signal is
+worth testing across the other three public v2 task families—six additional Luna calls comparing
+compiled adaptation with the strong profile. Those tasks require implementation and local
+validation before execution. Claude remains prohibited unless separately authorized.

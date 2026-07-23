@@ -22,6 +22,7 @@ from adaptation_compiler_lab.benchmark.role_packets import ApprovedSourceFamily
 from adaptation_compiler_lab.domain.base import (
     FrozenModel,
     Identifier,
+    NonEmptyStr,
     Sha256Digest,
     UtcDateTime,
 )
@@ -176,6 +177,120 @@ class CodexCalibrationBlindReport(FrozenModel):
     @property
     def content_digest(self) -> Sha256Digest:
         return canonical_digest(self)
+
+
+class CodexCalibrationPreferenceRating(FrozenModel):
+    """Kevin's pairwise judgment frozen before the two-cell mapping is opened."""
+
+    rating_version: Literal["2.0.0"] = "2.0.0"
+    rating_id: Identifier
+    public_plan_digest: Sha256Digest
+    blind_report_digest: Sha256Digest
+    presentation_sha256: Sha256Digest
+    ordered_output_ids: tuple[Identifier, Identifier]
+    preference: Literal["first_better", "second_better", "tie"]
+    preferred_output_id: Identifier | None
+    rationale: NonEmptyStr
+    scorer_identity: Literal["kevin"] = "kevin"
+    condition_mapping_seen: Literal[False] = False
+    rated_at: UtcDateTime
+
+    @model_validator(mode="after")
+    def preference_matches_order(self) -> Self:
+        if len(set(self.ordered_output_ids)) != 2:
+            raise ValueError("calibration rating requires two unique output IDs")
+        expected = {
+            "first_better": self.ordered_output_ids[0],
+            "second_better": self.ordered_output_ids[1],
+            "tie": None,
+        }[self.preference]
+        if self.preferred_output_id != expected:
+            raise ValueError("calibration preference does not match the frozen output order")
+        return self
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class CodexCalibrationUnblindedResult(FrozenModel):
+    """Post-rating mapping result; never included in the anonymous rating packet."""
+
+    result_version: Literal["2.0.0"] = "2.0.0"
+    design_digest: Sha256Digest
+    public_plan_digest: Sha256Digest
+    private_plan_digest: Sha256Digest
+    preference_rating_digest: Sha256Digest
+    preferred_condition: BenchmarkCondition | None
+    other_condition: BenchmarkCondition | None
+    check_counts_tied: Literal[True] = True
+    cross_agent_claim_allowed: Literal[False] = False
+    milestone_6_custody_accessed: Literal[False] = False
+    created_at: UtcDateTime
+
+    @model_validator(mode="after")
+    def condition_result_is_coherent(self) -> Self:
+        if (self.preferred_condition is None) != (self.other_condition is None):
+            raise ValueError("tie results must omit both condition identities")
+        if (
+            self.preferred_condition is not None
+            and self.preferred_condition == self.other_condition
+        ):
+            raise ValueError("unblinded preference conditions must differ")
+        return self
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+def unblind_codex_calibration_preference(
+    *,
+    design: CodexCalibrationDesign,
+    public_plan: CodexCalibrationPublicPlan,
+    private_plan: CodexCalibrationPrivatePlan,
+    rating: CodexCalibrationPreferenceRating,
+    created_at: UtcDateTime,
+) -> CodexCalibrationUnblindedResult:
+    """Resolve a frozen pairwise rating only after all public/private bindings match."""
+
+    if public_plan.design_digest != design.content_digest:
+        raise ValueError("calibration public plan substituted its design")
+    if private_plan.design_digest != design.content_digest:
+        raise ValueError("calibration private plan substituted its design")
+    if public_plan.private_plan_digest != private_plan.content_digest:
+        raise ValueError("calibration private mapping failed its public commitment")
+    if rating.public_plan_digest != public_plan.content_digest:
+        raise ValueError("calibration rating substituted its public plan")
+    ordered_output_ids = tuple(item.blind_output_id for item in public_plan.run_order)
+    if rating.ordered_output_ids != ordered_output_ids:
+        raise ValueError("calibration rating substituted the presentation order")
+
+    if rating.preferred_output_id is None:
+        preferred_condition = None
+        other_condition = None
+    else:
+        condition_by_blind_id = {
+            item.blind_condition_id: item.condition for item in private_plan.condition_assignments
+        }
+        condition_by_output_id = {
+            item.blind_output_id: condition_by_blind_id[item.blind_condition_id]
+            for item in private_plan.run_order
+        }
+        preferred_condition = condition_by_output_id[rating.preferred_output_id]
+        other_output_id = next(
+            item for item in rating.ordered_output_ids if item != rating.preferred_output_id
+        )
+        other_condition = condition_by_output_id[other_output_id]
+    return CodexCalibrationUnblindedResult(
+        design_digest=design.content_digest,
+        public_plan_digest=public_plan.content_digest,
+        private_plan_digest=private_plan.content_digest,
+        preference_rating_digest=rating.content_digest,
+        preferred_condition=preferred_condition,
+        other_condition=other_condition,
+        created_at=created_at,
+    )
 
 
 def load_codex_calibration_design(
