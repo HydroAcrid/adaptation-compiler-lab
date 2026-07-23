@@ -77,6 +77,39 @@ Kevin remains blind to the condition mapping. Named-condition aggregates and the
 encrypted; the handoff may report only the anonymous condition table and the sealed boolean answer
 to whether compiled adaptation beats or ties the strong static profile.
 
+## Observed result
+
+The frozen grid completed 16/16 valid planned runs. All conditions scored 17/18 objective checks.
+Three anonymous conditions scored 7/10 diagnostic checks; one scored 9/10. Only the research
+integrity task separated conditions, so the four-task set was not sufficiently diagnostic. The
+sealed named comparison says compiled adaptation did **not** beat or tie the strong static profile;
+objective scores tied, while the strong profile passed two more diagnostic checks.
+
+All anonymous conditions recorded the same 6/10 neutral checks and no condition-specific neutral
+regression. That is not valid evidence of neutral safety: one check per task was contaminated by
+Python bytecode present in the task workspace and rewritten during tests. The implementation now
+excludes runtime caches from fixture digests/copies and disables bytecode creation, but the frozen
+result remains unchanged and is reported as contaminated.
+
+Two setup attempts are excluded from the 16 planned records. The first failed during
+authentication preflight before a model call because a known temporary-home warning was parsed too
+strictly. The second began one setup execution and was terminated before a trial record when
+condition text was found in local process arguments. The valid grid delivered developer
+instructions through a mode-0600 temporary profile and the task through stdin; a live process
+audit confirmed neither text appeared in argv. These deviations are retained rather than hidden.
+
+The minimized machine-readable result is
+[`development_benchmark/codex-development-v1-summary.json`](development_benchmark/codex-development-v1-summary.json).
+Raw traces, the condition mapping, and named-condition aggregates remain encrypted outside Git.
+This result justifies improving the development benchmark before changing the compiler or pack.
+
+The 16 valid runs reported 1,185,273 input tokens, including 986,880 cached input tokens, plus
+43,622 output and 22,222 reasoning-output tokens. Their summed duration was 1,037.56 seconds
+(50.816-second median; 149.713-second maximum). Immediately after the gate, the signed-in Codex
+Usage Dashboard showed 23% of the weekly allowance remaining, resetting July 29, 2026 at 1:13 PM
+America/New_York; add-on credits were 0 and the separate Spark allowance was 100%. These account values are a
+point-in-time snapshot, not a reproducible benchmark metric.
+
 ## Stop boundary
 
 After exactly 16 attempted cells, stop. Do not open the Milestone 6 held-out bundle, execute a
@@ -84,3 +117,8 @@ Claude development canary, authorize the 32-run pilot, revise frozen experimenta
 claim cross-agent transfer. Report development diagnosticity, neutral regressions, the sealed
 compiled-versus-profile comparison, subscription usage visible in structured traces, and a
 separately proposed maximum scope/cost for one Claude development canary.
+
+If later authorized, the proposed canary is one newly authored non-held-out task executed once
+under each of the four frozen conditions: four Claude runs, at most 10 minutes and 15 turns each,
+USD $1 per run, and USD $4 total. It must use the existing isolated Claude runner, a new
+development-only seed, no Milestone 6 custody access, no retry, and no cross-agent claim.

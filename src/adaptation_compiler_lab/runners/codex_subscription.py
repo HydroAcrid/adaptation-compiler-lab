@@ -308,7 +308,8 @@ class CodexSubscriptionRunner:
         ).rstrip()
         feature_args = [value for name in _DISABLED_FEATURES for value in ("--disable", name)]
         shell_environment_set = (
-            f'{{ PATH = "/usr/bin:/bin", HOME = {json.dumps(str(resolved_workspace))} }}'
+            f'{{ PATH = "/usr/bin:/bin", HOME = {json.dumps(str(resolved_workspace))}, '
+            'PYTHONDONTWRITEBYTECODE = "1" }'
         )
         command = [
             str(self._executable),
@@ -377,6 +378,7 @@ class CodexSubscriptionRunner:
             "reasoning_effort": _REASONING_EFFORT,
             "sandbox": "workspace-write",
             "shell_environment_inherit": "none",
+            "shell_python_bytecode": "disabled",
             "web_search": "disabled",
         }
         environment_digest = sha256_bytes(

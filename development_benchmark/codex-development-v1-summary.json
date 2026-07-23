@@ -1,0 +1,123 @@
+{
+  "blind_condition_results": [
+    {
+      "blind_condition_id": "cond-56f6311d7ada562ed8687bf3",
+      "diagnostic": {
+        "passed": 7,
+        "total": 10
+      },
+      "neutral": {
+        "passed": 6,
+        "total": 10
+      },
+      "objective": {
+        "passed": 17,
+        "total": 18
+      },
+      "valid_runs": 4
+    },
+    {
+      "blind_condition_id": "cond-c48d900aab44b47b30a6611d",
+      "diagnostic": {
+        "passed": 7,
+        "total": 10
+      },
+      "neutral": {
+        "passed": 6,
+        "total": 10
+      },
+      "objective": {
+        "passed": 17,
+        "total": 18
+      },
+      "valid_runs": 4
+    },
+    {
+      "blind_condition_id": "cond-ecb89c16e694e66c8decfc79",
+      "diagnostic": {
+        "passed": 9,
+        "total": 10
+      },
+      "neutral": {
+        "passed": 6,
+        "total": 10
+      },
+      "objective": {
+        "passed": 17,
+        "total": 18
+      },
+      "valid_runs": 4
+    },
+    {
+      "blind_condition_id": "cond-f0b4d7ce77384c4b9bdae764",
+      "diagnostic": {
+        "passed": 7,
+        "total": 10
+      },
+      "neutral": {
+        "passed": 6,
+        "total": 10
+      },
+      "objective": {
+        "passed": 17,
+        "total": 18
+      },
+      "valid_runs": 4
+    }
+  ],
+  "blind_report_digest": "sha256:6749b147223f977bf1c40f21a67f8d3e1f3bdfbfbe97ebed7deb500de179fbb9",
+  "compiled_adaptation_beats_or_ties_strong_static_profile": false,
+  "compiled_adaptation_neutral_regression_vs_strong_static_profile": false,
+  "condition_mapping_withheld": true,
+  "condition_set_digest": "sha256:d4bca1e5d4d30271b37585522793a2f164d473203d2ddad4583ab61223f7ea43",
+  "design_digest": "sha256:c677fdcff50edf76df00a9c3e52bc62e15755bd3178fff05200488b0e00f5986",
+  "development_benchmark_iteration_justified": true,
+  "development_tasks_sufficiently_diagnostic": false,
+  "guardrails": {
+    "ambient_surface_observations": 0,
+    "configuration_teardown_failures": 0,
+    "nonzero_exits": 0,
+    "timeouts": 0,
+    "trace_conformance_failures": 0,
+    "workspace_teardown_failures": 0
+  },
+  "instrumentation_protocol_deviations": [
+    {
+      "counted_as_planned_run": false,
+      "disposition": "failed before a model call",
+      "reason": "The first authentication preflight treated a documented temporary-home warning as an authentication failure."
+    },
+    {
+      "counted_as_planned_run": false,
+      "disposition": "terminated before a trial record; excluded",
+      "reason": "One setup execution exposed condition text in local process arguments. Condition delivery was moved to a mode-0600 temporary profile and task delivery to stdin before the valid grid."
+    }
+  ],
+  "milestone_6_custody_accessed": false,
+  "named_condition_results_encrypted_only": true,
+  "neutral_control_assessment": {
+    "condition_differential_observed": false,
+    "raw_checks_passed_per_condition": 6,
+    "raw_checks_total_per_condition": 10,
+    "valid_absence_of_regression_claim": false,
+    "warning": "Every task workspace contained Python bytecode drift, contaminating one neutral check per task uniformly."
+  },
+  "pack_or_compiler_iteration_justified_before_benchmark_repair": false,
+  "planned_runs": 16,
+  "run_commit": "3ddc1d1adc7753a737ad27862c678cb642fbdad4",
+  "task_diagnostic_separation": {
+    "tasks_showing_any_separation": 1,
+    "tasks_total": 4
+  },
+  "usage": {
+    "cached_input_tokens": 986880,
+    "duration_seconds_max": 149.713,
+    "duration_seconds_median": 50.816,
+    "duration_seconds_total": 1037.56,
+    "input_tokens": 1185273,
+    "output_tokens": 43622,
+    "reasoning_output_tokens": 22222
+  },
+  "valid_runs": 16,
+  "version": "1.0.0"
+}

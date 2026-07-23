@@ -4,20 +4,22 @@ Last updated: 2026-07-23
 
 ## Current milestone
 
-**Milestone 5 — Consented Codex Corpus and Frozen Condition Materials is complete locally.**
-A separately pinned Codex Desktop runtime passed full binary/schema verification. Eight exact
-task consents produced eight encrypted full-thread captures, 63 explicit-user Evidence v1.1
-records, eight Kevin-approved behavioral artifacts, and four confirmed source families.
+**Milestone 5.5 — Codex Subscription Development Gate is complete.**
+The separate non-held-out grid produced 16/16 valid planned Codex records under four blinded
+conditions. Every condition tied at 17/18 objective checks; only one of four tasks separated
+diagnostic behavior. The sealed comparison says compiled adaptation did not beat or tie the strong
+static profile. This is negative/inconclusive development evidence, not cross-agent transfer.
 
 The project owner has authorized automatic continuation after complete milestone exit gates. This
 removes the handoff pause, not objective research/privacy prerequisites. Two digest-bound fresh AI
 contexts completed the strong static profile. A separate deterministic software-custody context
 sealed the hidden tasks, condition mapping, randomization order, and all four exact condition
-materials. Paid target execution and Kevin's later blind ratings still require explicit input.
+materials. Paid target execution remains suspended. Kevin's development blind-rating packet is
+available, but the condition mapping remains withheld.
 
 No held-out content or condition mapping was exposed to construction or printed during custody.
-The only target API calls used synthetic smoke and token-count content; no held-out trial, scoring
-operation, model modification, executable-tool creation, Kairn integration, web UI, public
+The only Claude API calls used synthetic smoke and token-count content; no held-out trial, Claude
+scoring operation, model modification, executable-tool creation, Kairn integration, web UI, public
 release, or remote research-data storage occurred.
 
 ## Completed scope
@@ -91,6 +93,19 @@ release, or remote research-data storage occurred.
   bytes; strong static profile 2,563/8,080; compiled adaptation 936/2,892.
 - Sealed and verified the complete AES-256-GCM pilot bundle outside Git/workspace, then removed
   temporary clear packets, drafts, profiles, comparator material, and condition staging files.
+- Added four public non-held-out development tasks, a pinned ChatGPT-authenticated Codex runner,
+  a separate blind seed/mapping, AES-256-GCM trace bundles, anonymous output presentation, and
+  objective/diagnostic/neutral scorers.
+- Completed 16 sequential `codex exec --ephemeral` cells with the same CLI/model/reasoning/
+  sandbox/one-turn/timeout contract. All traces conformed, all workspaces/configurations were
+  destroyed, and no timeout, nonzero exit, API-key environment, or forbidden ambient surface was
+  observed.
+- Recorded the negative/inconclusive result without post-hoc repair: objective scores ceilinged,
+  one task separated conditions, compiled adaptation trailed the strong profile on diagnostics,
+  and Python-bytecode drift contaminated the neutral-control evidence uniformly.
+- Moved condition material to a mode-0600 temporary Codex profile and task text to stdin after an
+  excluded setup attempt revealed that command-line delivery was process-inspectable. Future
+  fixture digests/copies exclude runtime caches and Python bytecode creation is disabled.
 
 ## Verification performed
 
@@ -105,7 +120,7 @@ uv run pytest
 uv build
 ```
 
-The current full suite formats 149 files, passes strict typing on 149 source files, passes 324
+The current full suite formats 167 files, passes strict typing on 154 source files, passes 336
 tests, and builds both
 the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
@@ -123,13 +138,15 @@ establishes instrument and protocol readiness only, not transfer quality.
 
 ## Explicitly not implemented or exercised
 
-- No real target trial, independent post-run test evidence, disposable pilot worktree coordinator,
-  condition-bearing target trace, or paid provider spend for the pilot.
+- No Claude target trial, held-out task reveal, condition-bearing Claude trace, or paid provider
+  spend for the pilot.
 - No Kevin blind rating, secondary isolated-AI judging result, blinded adjudication, comparative
   analysis, statistical report, or retention purge of the real payloads.
 - No claim of independent human authorship, third-party custody, or independently conducted study;
   the active design is internally blinded with automated functional separation.
-- No result about whether the compiled pack beats base, ordinary memory, or a strong profile.
+- No valid result about base versus ordinary memory and no cross-agent result. The development-only
+  sealed comparison found compiled adaptation below the strong profile, but three anonymous
+  conditions tied and the task set was not sufficiently diagnostic.
 - No weight training/fine-tuning/LoRA, automatic tool creation/installation, Kairn, web UI, public
   publication, powered study, or remote research-data storage.
 
@@ -140,8 +157,12 @@ outside the workspace in owner-readable-only files. They are never committed, pr
 persisted in traces. The runner continues to reject ambiguous sources, broad key permissions,
 workspace-local keys, alternate providers, and missing sandbox support.
 
-The next action is the preregistered 32-run paid Claude Code feasibility pilot. Before the first
-trial, report and reverify the pinned runtime/model, frozen registration/environment/condition/
-custody digests, 30-minute/40-turn/USD $5 per-trial ceilings, and USD $200 total ceiling, then
-obtain Kevin's explicit paid-run authorization. After valid execution, stop for Kevin's anonymous
-blind ratings before unblinding or comparison.
+Do not begin the preregistered 32-run paid Claude Code feasibility pilot. The next experimental
+work, if authorized, should first replace the ceilinged/contaminated development tasks and repeat a
+bounded non-held-out diagnostic; the present evidence does not justify changing the compiler or
+pack yet.
+
+The exact optional Claude development canary proposal is one new non-held-out task crossed with
+the four frozen conditions: four runs, no repetitions or retries, at most 10 minutes/15 turns/USD
+$1 per run, and USD $4 total. It remains unexecuted and requires separate authorization. It cannot
+access Milestone 6 custody or support a cross-agent claim.

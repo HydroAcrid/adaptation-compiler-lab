@@ -60,6 +60,16 @@ def test_fixture_tree_digest_changes_with_content(tmp_path: Path) -> None:
     assert development_tree_digest(tmp_path) != before
 
 
+def test_fixture_tree_digest_ignores_runtime_cache_files(tmp_path: Path) -> None:
+    (tmp_path / "value.py").write_text("VALUE = 1\n", encoding="utf-8")
+    before = development_tree_digest(tmp_path)
+    cache = tmp_path / "__pycache__"
+    cache.mkdir()
+    (cache / "value.cpython-312.pyc").write_bytes(b"runtime-only")
+
+    assert development_tree_digest(tmp_path) == before
+
+
 def _observation(task: str, condition: str, index: int) -> CodexDevelopmentRunObservation:
     return CodexDevelopmentRunObservation(
         run_id=f"run-{index:02d}",

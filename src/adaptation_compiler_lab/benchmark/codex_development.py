@@ -308,7 +308,16 @@ def development_tree_digest(root: Path) -> Sha256Digest:
     """Digest an exact task fixture tree by canonical relative path and file bytes."""
 
     resolved = root.resolve()
-    files = tuple(sorted(path for path in resolved.rglob("*") if path.is_file()))
+    transient_names = {".mypy_cache", ".pytest_cache", ".ruff_cache", "__pycache__"}
+    files = tuple(
+        sorted(
+            path
+            for path in resolved.rglob("*")
+            if path.is_file()
+            and not transient_names.intersection(path.relative_to(resolved).parts)
+            and path.suffix not in {".pyc", ".pyo"}
+        )
+    )
     if not files:
         raise ValueError("development fixture tree must not be empty")
     digest = hashlib.sha256(b"adaptation-compiler-lab/development-tree/v1\x00")

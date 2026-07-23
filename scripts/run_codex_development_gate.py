@@ -92,6 +92,7 @@ def _run(
             "LANG": "C.UTF-8",
             "LC_ALL": "C.UTF-8",
             "PATH": "/usr/bin:/bin",
+            "PYTHONDONTWRITEBYTECODE": "1",
         },
     )
 
@@ -101,7 +102,18 @@ def _git(command: list[str], *, cwd: Path, timeout: int = 30) -> subprocess.Comp
 
 
 def _initialize_workspace(fixture: Path, workspace: Path) -> None:
-    shutil.copytree(fixture, workspace)
+    shutil.copytree(
+        fixture,
+        workspace,
+        ignore=shutil.ignore_patterns(
+            ".mypy_cache",
+            ".pytest_cache",
+            ".ruff_cache",
+            "__pycache__",
+            "*.pyc",
+            "*.pyo",
+        ),
+    )
     commands = (
         ["init", "--quiet"],
         ["config", "user.name", "Adaptation Compiler Lab"],

@@ -49,6 +49,7 @@ if sys.argv[1:] == ["login", "status"]:
     raise SystemExit(0)
 assert "--ask-for-approval" not in sys.argv
 assert 'approval_policy="never"' in sys.argv
+assert any("PYTHONDONTWRITEBYTECODE" in value for value in sys.argv)
 assert sys.argv[-1] == "-"
 assert "Explain the purpose before procedural detail." not in " ".join(sys.argv)
 profile = pathlib.Path(os.environ["CODEX_HOME"], "development.config.toml")
