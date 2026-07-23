@@ -1,13 +1,14 @@
 # Architecture
 
-Status: **Milestone 3 implemented; local, file-only, encrypted custody, and synthetic-only**
+Status: **Milestone 4 version-pinned connectors and authenticated synthetic smoke complete**
 
 ## 1. System shape
 
-The system is an offline, subject-scoped adaptation compiler. It turns explicitly imported,
-typed records into review-gated portable artifacts, immutable releases, and inspected target files.
-It does not invoke a source or target agent. The Codex and Claude Code renderers only write
-external files according to a declared capability profile.
+The core system is a subject-scoped adaptation compiler. It turns explicitly imported typed
+records into review-gated portable artifacts, immutable releases, and inspected target files.
+Milestone 4 adds narrow source/runner ports around that core; it does not turn the compiler into a
+general agent host. Codex and Claude Code renderers still only write external files, while the new
+runtime adapters are separately pinned and fail closed.
 
 ```mermaid
 flowchart LR
@@ -39,10 +40,23 @@ The dotted edges mark deliberately constrained information flow. Construction re
 payload-free blinded split metadata, and the dormant trial-result path cannot retrieve held-out
 plaintext. Benchmark results and adjudications never alter the release they evaluate.
 
-Milestone 3 does not connect this graph to Codex or Claude Code. The governance CLI signs only
-synthetic selectors, capture previews, and local recall operations; no source enumeration or raw
-user capture is reachable. Custody and benchmark registration are library APIs covered by
-synthetic tests, not operator commands for revealing or executing a study.
+The runtime boundary is deliberately outside promotion and custody:
+
+```mermaid
+flowchart LR
+    C["Pinned Codex app-server"] --> S["SourceConnector"]
+    S -. exact consent required .-> R["Encrypted raw capture (Milestone 5)"]
+    B["One frozen blinded condition file"] --> T["Pinned TargetRunner"]
+    T --> X["Structured trace and independent test evidence"]
+    X --> Q["Condition-blind Scorer port"]
+    Q -. later signed result .-> L["TrialResult ledger"]
+```
+
+The Codex connector is implemented and has been exercised only against fake fixtures and a newly
+created empty source home. The Claude runner passed one accepted authenticated synthetic smoke
+against the pinned model and sandbox. Neither adapter is exposed through a general CLI command.
+Real source capture, held-out retrieval, trial execution, and scoring remain unreachable until
+their coordinator and governance gates exist.
 
 ## 2. Records and relationships
 
@@ -131,6 +145,22 @@ and key fingerprint. The signed custody manifest intentionally contains no files
 Verification authenticates the seal but returns metadata only; every verification or reveal request
 extends a signed hash-linked access chain.
 
+Runtime identity is a fourth, public-integrity boundary. The packaged lock contains package
+integrity values, executable SHA-256 digests, exact version output, a canonical digest of Codex's
+complete generated schema bundle, selected schema snapshots, Claude's fixed full model ID, and
+sandbox-helper identities. It contains no executable path or credential. Every source connection
+regenerates and rechecks Codex schemas; every target run rechecks Claude and sandbox binaries.
+
+Claude execution uses a fresh configuration directory, bare mode, no session persistence, no
+ambient setting sources, one digest-verified condition file, stdin task delivery, and a fixed
+structured-output command. Only `Read`, `Glob`, `Grep`, `Edit`, `Write`, and Bash are visible as
+data/action tools, and only manifest-approved Bash patterns are preapproved. The documented
+non-removable `EndConversation` control may terminate a run. `dontAsk` denies everything else.
+MCP, Agent, web, plugin, skill, workflow, memory, background tasks, updates, telemetry, and
+alternate providers are disabled. Bubblewrap must start successfully; unsandboxed fallback and
+Bash network access are disabled. The trace's model/tool/MCP/plugin inventory and every tool use
+are checked before a result is accepted.
+
 ## 4. Storage and lifecycle
 
 SQLite is a local metadata ledger with checksummed migrations, append-only record/link/lifecycle,
@@ -178,8 +208,9 @@ format cannot preserve a required constraint. Current renderers are:
 - `codex` for a Codex-oriented external instruction file layout; and
 - `claude-code` for a Claude Code-oriented external file layout.
 
-All are deterministic local file emitters. They do not launch either product, install files into a
-user configuration, or assert compatibility with a particular agent/model version.
+All four remain deterministic local file emitters. They do not launch either product or install
+files into user configuration. The separate Claude runner may inject a rendered, frozen condition
+file for a controlled study run only; that does not make a renderer an integration.
 
 ## 6. Repository structure
 
@@ -197,12 +228,15 @@ src/adaptation_compiler_lab/
   release/          candidates, gates, freeze and activation services
   targets/          capability profiles and four file renderers
   benchmark/        design, external custody, signed registry, manifest, validation
+  connectors/       ports, runtime pins, Codex schema snapshots and source adapter
+  runners/          isolated pinned Claude Code execution
   serialization/    canonical JSON and schema export
   cli.py            Typer command surface
 schemas/v1/         immutable schemas for the eight v1.0 records
 schemas/v1_1/       additive Evidence v1.1 schema snapshot
 schemas/governance/v1/ signed governance schema snapshots
 preregistration/    frozen machine-readable feasibility design and byte-digest sidecar
+conformance/        sanitized runtime-conformance status; never raw traces
 tests/              unit and synthetic end-to-end coverage
 ```
 
@@ -215,9 +249,16 @@ cascades; deterministic conflict resolution; signed benchmark custody/registrati
 objects; encrypted external bundle binding; append-only access/adjudication; preregistration freeze;
 and synthetic security tests.
 
-The next gated milestone, only after explicit approval, is **Milestone 4: version-pinned connectors
-and synthetic conformance**. It may add explicit source/target/scorer ports, fake fixtures, pinned
-Codex app-server schema/version checks, a clean sandboxed Claude Code runner, and one live
-no-user-data smoke test. Milestone 3 intentionally does not install/call agents, capture real Codex
-tasks, reveal a held-out bundle, construct condition material from real data, execute trials, or
-score results.
+Milestone 4 adds the explicit ports, fake fixtures, binary and generated-schema
+drift checks, read-only Codex app-server adapter, fixed-model Claude runner, clean configuration,
+hard sandbox, tool/network denials, structured trace validation, timeout, and teardown. The pinned
+Codex empty-home handshake and the authenticated no-user-data Claude smoke pass. The accepted smoke
+cost USD $0.01566765, captured only allowed `Read` and `Edit` uses, persisted no raw trace, and
+destroyed its synthetic workspace.
+
+After the Milestone 4 branch merges, work may continue automatically to Milestone 5.
+Automatic continuation does not weaken objective gates: eight exact task IDs still require signed
+per-task consent; the strong profile requires an independent skilled human; held-out custody and
+randomization secrets require assigned operators; and real target trials require frozen materials
+and credentials. No source inventory call, corpus construction, holdout reveal, scoring, or
+performance claim occurs before those prerequisites.

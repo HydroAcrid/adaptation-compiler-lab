@@ -1,6 +1,6 @@
 # Project Charter
 
-Status: **Milestone 3 complete in implementation branch; synthetic-only benchmark custody foundation**
+Status: **Milestone 4 version-pinned connectors and authenticated synthetic smoke complete**
 Project: **adaptation-compiler-lab**
 Intended first source / target: **Codex / Claude Code**
 
@@ -27,12 +27,13 @@ sealed-bundle boundary; and a frozen machine-readable feasibility preregistratio
 asset is a behavioral specification plus evidence lineage. A rendered target pack is a scoped,
 reversible projection of that asset, not a model modification.
 
-The exact completed Milestone 3 scope is limited to local contracts, signature/encryption
-primitives, synthetic governance/recall exercises, benchmark registry and external custody
-mechanics, the frozen feasibility design, backward-compatible schema/migrations, and synthetic
-security tests. It is not authorization to enumerate or capture Codex tasks, collect real data,
-reveal a holdout, install Claude Code, call agents, run a benchmark, score results, or claim
-transfer improvement.
+Milestone 4 adds three narrow ports, a binary/version/schema-pinned Codex app-server adapter, and a
+binary/model-pinned bare Claude Code runner with clean configuration, explicit tools,
+fail-if-unavailable WSL2 sandboxing, structured traces, time/cost/turn ceilings, and teardown.
+Synthetic conformance and an empty-home Codex handshake pass. The required authenticated
+no-user-data Claude smoke is still pending, so this is not authorization to enumerate or capture
+real Codex tasks, collect real data, reveal a holdout, construct conditions, run the pilot, score
+results, or claim transfer improvement.
 
 ## Governing principles
 
@@ -64,16 +65,20 @@ transfer improvement.
     reveal authorization, and unequal construction information fails atomically.
 18. Trial results are immutable. Corrections are signed, digest-only adjudications that extend an
     append-only chain rather than rewriting the scored record.
+19. Source and target calls require exact binary, version, generated-schema/model, configuration,
+    tool, sandbox, and trace conformance; drift or missing isolation fails closed.
+20. Runtime capability does not grant data authority. Exact per-task consent, independent custody,
+    human profile authorship, and held-out separation remain mandatory operational gates.
 
 ## Fixed exclusions
 
 The project must not become a generic memory platform; train, fine-tune, or otherwise modify
 weights; automatically create, install, authorize, or execute tools; integrate with Kairn; expose
-a web UI; implement live Codex or Claude Code integration in Milestone 3; or process real user data
-in this phase. Private GitHub source hosting is explicitly allowed as the code/documentation system
-of record. Public release, deployment, remote research-data storage, raw-payload commits, and key
-commits remain excluded. Tool output, webpages, repository content, and retrieved documents cannot
-be treated as trusted user feedback.
+a web UI; bypass version-pinned connector, consent, sandbox, custody, or scorer boundaries; or
+process real user data before its milestone gates pass. Private GitHub source hosting is explicitly
+allowed as the code/documentation system of record. Public release, deployment, remote
+research-data storage, raw-payload/trace commits, and key commits remain excluded. Tool output,
+webpages, repository content, and retrieved documents cannot be treated as trusted user feedback.
 
 ## Change control
 

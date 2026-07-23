@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0.0",
+  "milestone": 4,
+  "run_id": "run-444444444444",
+  "executed_at": "2026-07-23T12:45:14.232472Z",
+  "runtime_lock_digest": "sha256:ea6df99fb922f0cce0219f2cc39c7ea3c1481347fd9ef2e1edcfa93f043139d5",
+  "runner_version": "2.1.218",
+  "model_id": "claude-sonnet-5",
+  "condition_digest": "sha256:71aaa38ac2233fd7347d14110fb4fcbc0cef40ec49efbc040428a527b58db7da",
+  "command_digest": "sha256:9998c9280c8586fee85e512ae8b980b317e2b20180a502e838f2557575cb5476",
+  "trace_digest": "sha256:4e1f75dafe621bc1587d8898a2cc9275d92858508bc5e792cb4fb2d2e6eae1b0",
+  "output_digest": "sha256:a0e76b4de7b6598519d42ecab4e16bf0bed0a4b69e33c259195c29974998fec2",
+  "total_cost_usd": 0.01566765,
+  "tools": [
+    "Bash",
+    "Edit",
+    "Read"
+  ],
+  "workspace_destroyed": true,
+  "raw_trace_persisted": false,
+  "user_data_used": false,
+  "source_data_used": false,
+  "held_out_data_used": false
+}
