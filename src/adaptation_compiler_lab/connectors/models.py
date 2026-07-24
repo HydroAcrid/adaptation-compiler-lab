@@ -120,6 +120,12 @@ class TargetRunRequest(FrozenModel):
     condition_file: Path
     condition_digest: Sha256Digest
     allowed_bash_commands: tuple[NonEmptyStr, ...] = ()
+    command_timeout_seconds: int = Field(default=60, ge=1, le=300)
+    command_cpu_seconds: int = Field(default=30, ge=1, le=120)
+    command_memory_mb: int = Field(default=512, ge=64, le=1024)
+    command_file_size_mb: int = Field(default=16, ge=1, le=64)
+    command_process_limit: int = Field(default=128, ge=16, le=256)
+    command_open_files_limit: int = Field(default=64, ge=16, le=256)
     max_seconds: int = Field(gt=0, le=1800)
     max_turns: int = Field(gt=0, le=40)
     max_usd: float = Field(gt=0.0, le=5.0, allow_inf_nan=False)
@@ -132,7 +138,19 @@ class TargetRunRequest(FrozenModel):
             raise ValueError("approved Bash commands must be sorted and unique")
         if any("\n" in item or "\r" in item or "\x00" in item for item in value):
             raise ValueError("approved Bash commands cannot contain control-line separators")
+        if any(any(character in item for character in ";&|><`$") for item in value):
+            raise ValueError("approved Bash commands must be single exact argv commands")
         return value
+
+
+class TargetCommandAuditEntry(FrozenModel):
+    """One accepted invocation of a host-generated bounded command alias."""
+
+    sequence: int = Field(ge=1)
+    alias: Identifier
+    approved_command_digest: Sha256Digest
+    requested_timeout_ms: int | None = Field(default=None, ge=1, le=300_000)
+    accepted: Literal[True] = True
 
 
 class TargetRunResult(FrozenModel):
@@ -149,6 +167,8 @@ class TargetRunResult(FrozenModel):
     timed_out: bool
     events: tuple[JsonObject, ...]
     stderr: str
+    command_manifest_digest: Sha256Digest
+    command_audit: tuple[TargetCommandAuditEntry, ...]
     config_destroyed: bool
 
     @model_validator(mode="after")

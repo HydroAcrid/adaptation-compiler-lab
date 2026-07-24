@@ -4,6 +4,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
+from typing import cast
 
 import pytest
 from hypothesis import given, settings
@@ -32,6 +33,7 @@ import hashlib
 import json
 import os
 import pathlib
+import subprocess
 import sys
 import time
 
@@ -47,7 +49,7 @@ def argument_after(flag):
     return args[args.index(flag) + 1]
 
 prompt = sys.stdin.read()
-if "TIMEOUT_MARKER" in prompt:
+if "PROCESS_TIMEOUT_MARKER" in prompt:
     time.sleep(30)
 if "LEAK_KEY_MARKER" in prompt:
     print(os.environ["ANTHROPIC_API_KEY"], flush=True)
@@ -76,6 +78,96 @@ if "M4_LIVE_SMOKE_TASK" in prompt:
                 {"type": "tool_use", "name": "Read", "input": {}},
                 {"type": "tool_use", "name": "Write", "input": {}},
             ]
+        },
+    }), flush=True)
+
+if "BOUNDED_COMMAND_SMOKE" in prompt:
+    pathlib.Path("solution.py").write_text(
+        "def add(left, right):\\n    return left + right\\n",
+        encoding="utf-8",
+    )
+    completed = subprocess.run(
+        ["acl-run-01"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    print(json.dumps({
+        "type": "assistant",
+        "message": {
+            "content": [
+                {
+                    "type": "tool_use",
+                    "id": "edit-1",
+                    "name": "Edit",
+                    "input": {"file_path": str(pathlib.Path("solution.py").resolve())},
+                },
+                {
+                    "type": "tool_use",
+                    "id": "bash-1",
+                    "name": "Bash",
+                    "input": {"command": "acl-run-01", "timeout": 5000},
+                },
+            ]
+        },
+    }), flush=True)
+    print(json.dumps({
+        "type": "user",
+        "message": {
+            "content": [{
+                "type": "tool_result",
+                "tool_use_id": "bash-1",
+                "content": completed.stdout + completed.stderr,
+                "is_error": completed.returncode != 0,
+            }]
+        },
+    }), flush=True)
+
+if "UNBOUNDED_COMMAND_MARKER" in prompt:
+    print(json.dumps({
+        "type": "assistant",
+        "message": {
+            "content": [{
+                "type": "tool_use",
+                "name": "Bash",
+                "input": {"command": "python3 -m unittest -v"},
+            }]
+        },
+    }), flush=True)
+
+if "OVERSIZED_TIMEOUT_MARKER" in prompt:
+    print(json.dumps({
+        "type": "assistant",
+        "message": {
+            "content": [{
+                "type": "tool_use",
+                "name": "Bash",
+                "input": {"command": "acl-run-01", "timeout": 60001},
+            }]
+        },
+    }), flush=True)
+
+if "HOST_FILE_MARKER" in prompt:
+    print(json.dumps({
+        "type": "assistant",
+        "message": {
+            "content": [{
+                "type": "tool_use",
+                "name": "Read",
+                "input": {"file_path": "/home/private-material"},
+            }]
+        },
+    }), flush=True)
+
+if "RESERVED_READ_MARKER" in prompt:
+    print(json.dumps({
+        "type": "assistant",
+        "message": {
+            "content": [{
+                "type": "tool_use",
+                "name": "Read",
+                "input": {"file_path": str(pathlib.Path("CLAUDE.md").resolve())},
+            }]
         },
     }), flush=True)
 
@@ -238,7 +330,7 @@ def _request(tmp_path: Path, *, prompt: str = "Perform the synthetic task.") -> 
         prompt=prompt,
         condition_file=condition,
         condition_digest=sha256_file(condition),
-        allowed_bash_commands=("uv run pytest",),
+        allowed_bash_commands=("python3 -m unittest -v",),
         max_seconds=5,
         max_turns=3,
         max_usd=0.25,
@@ -264,7 +356,8 @@ def test_synthetic_runner_has_clean_state_tools_and_network(tmp_path: Path) -> N
     assert "--strict-mcp-config" in argv
     assert "--setting-sources" in argv
     assert argv[argv.index("--setting-sources") + 1] == ""
-    assert "Bash(uv run pytest)" in argv
+    assert "Bash(acl-run-01)" in argv
+    assert "Bash(python3 -m unittest -v)" not in argv
     assert result_event["ambient_loaded"] is False
     assert result_event["session_persisted"] is False
     assert result_event["condition_sha256"] == request.condition_digest.removeprefix("sha256:")
@@ -279,10 +372,119 @@ def test_synthetic_runner_has_clean_state_tools_and_network(tmp_path: Path) -> N
     network = sandbox["network"]
     assert isinstance(network, dict)
     assert network["deniedDomains"] == ["*"]
+    filesystem = sandbox["filesystem"]
+    assert isinstance(filesystem, dict)
+    deny_read = cast(list[object], filesystem["denyRead"])
+    assert "/" in deny_read
+    assert str(request.workspace_root.resolve() / ".env") in deny_read
+    assert str(request.workspace_root.resolve()) in cast(list[object], filesystem["allowRead"])
+    credentials = sandbox["credentials"]
+    assert isinstance(credentials, dict)
+    assert {"name": "ANTHROPIC_API_KEY", "mode": "deny"} in cast(
+        list[object], credentials["envVars"]
+    )
     assert result.exit_code == 0
     assert result.timed_out is False
     assert result.config_destroyed is True
     assert not (request.workspace_root / ".claude").exists()
+
+
+def test_bounded_alias_edits_runs_tests_strips_secret_and_applies_limits(
+    tmp_path: Path,
+) -> None:
+    request = _request(tmp_path, prompt="BOUNDED_COMMAND_SMOKE")
+    (request.workspace_root / "test_solution.py").write_text(
+        """import os
+import resource
+import unittest
+
+from solution import add
+
+
+class SolutionTest(unittest.TestCase):
+    def test_solution_and_boundary(self):
+        self.assertEqual(add(2, 3), 5)
+        self.assertIsNone(os.environ.get("ANTHROPIC_API_KEY"))
+        self.assertLessEqual(resource.getrlimit(resource.RLIMIT_CPU)[0], 30)
+        self.assertLessEqual(resource.getrlimit(resource.RLIMIT_AS)[0], 512 * 1024 * 1024)
+        self.assertLessEqual(resource.getrlimit(resource.RLIMIT_FSIZE)[0], 16 * 1024 * 1024)
+        self.assertLessEqual(resource.getrlimit(resource.RLIMIT_NPROC)[0], 128)
+        self.assertLessEqual(resource.getrlimit(resource.RLIMIT_NOFILE)[0], 64)
+""",
+        encoding="utf-8",
+    )
+
+    result = _runner(tmp_path).run(request)
+
+    assert (
+        (request.workspace_root / "solution.py")
+        .read_text(encoding="utf-8")
+        .endswith("return left + right\n")
+    )
+    assert len(result.command_audit) == 1
+    audit = result.command_audit[0]
+    assert audit.alias == "acl-run-01"
+    assert audit.requested_timeout_ms == 5000
+    assert audit.approved_command_digest.startswith("sha256:")
+    assert result.command_manifest_digest.startswith("sha256:")
+    trace = json.dumps(result.events)
+    assert '"is_error": false' in trace, trace
+    assert "Ran 1 test" in trace
+    assert not (request.workspace_root / ".acl-runtime").exists()
+
+
+def test_unbounded_command_attempt_invalidates_run(tmp_path: Path) -> None:
+    with pytest.raises(TargetExecutionError, match="outside the bounded manifest"):
+        _runner(tmp_path).run(_request(tmp_path, prompt="UNBOUNDED_COMMAND_MARKER"))
+
+
+def test_oversized_command_timeout_invalidates_run(tmp_path: Path) -> None:
+    with pytest.raises(TargetExecutionError, match="invalid command timeout"):
+        _runner(tmp_path).run(_request(tmp_path, prompt="OVERSIZED_TIMEOUT_MARKER"))
+
+
+def test_host_file_tool_attempt_invalidates_run(tmp_path: Path) -> None:
+    with pytest.raises(TargetExecutionError, match="host-file access"):
+        _runner(tmp_path).run(_request(tmp_path, prompt="HOST_FILE_MARKER"))
+
+
+def test_ambient_configuration_read_attempt_invalidates_run(tmp_path: Path) -> None:
+    with pytest.raises(TargetExecutionError, match="read a reserved runner path"):
+        _runner(tmp_path).run(_request(tmp_path, prompt="RESERVED_READ_MARKER"))
+
+
+def test_reserved_runtime_artifact_fails_closed_without_deletion(tmp_path: Path) -> None:
+    request = _request(tmp_path)
+    reserved = request.workspace_root / ".claude"
+    reserved.mkdir()
+    sentinel = reserved / "settings.json"
+    sentinel.write_text("preserve me", encoding="utf-8")
+
+    with pytest.raises(TargetExecutionError, match="reserved runner artifacts"):
+        _runner(tmp_path).run(request)
+
+    assert sentinel.read_text(encoding="utf-8") == "preserve me"
+
+
+def test_shell_syntax_is_rejected_before_execution(tmp_path: Path) -> None:
+    request = _request(tmp_path)
+
+    with pytest.raises(ValueError, match="single exact argv"):
+        request.model_copy(
+            update={"allowed_bash_commands": ("python3 -m unittest -v; id",)}
+        ).model_validate(
+            {
+                **request.model_dump(),
+                "allowed_bash_commands": ("python3 -m unittest -v; id",),
+            }
+        )
+
+
+def test_non_unittest_python_is_rejected_before_target_start(tmp_path: Path) -> None:
+    request = _request(tmp_path).model_copy(update={"allowed_bash_commands": ("python3 -c pass",)})
+
+    with pytest.raises(TargetExecutionError, match="only Python unittest"):
+        _runner(tmp_path).run(request)
 
 
 @settings(max_examples=20)
@@ -392,7 +594,7 @@ def test_credential_in_process_output_invalidates_run(tmp_path: Path) -> None:
 
 
 def test_timeout_terminates_process_and_tears_down(tmp_path: Path) -> None:
-    request = _request(tmp_path, prompt="TIMEOUT_MARKER")
+    request = _request(tmp_path, prompt="PROCESS_TIMEOUT_MARKER")
     request = request.model_copy(update={"max_seconds": 1})
 
     result = _runner(tmp_path).run(request)

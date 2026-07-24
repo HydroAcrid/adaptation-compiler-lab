@@ -19,5 +19,13 @@ beats or ties the profile on behavior and preference, does not regress neutral c
 its smaller material footprint. This is descriptive cross-agent development evidence, not the
 frozen Milestone 6 study and not proof of a universal thesis.
 
-See `PREREGISTRATION.json` for the exact frozen design, material digests, budgets, and decision
-rule.
+The completed v1.2 run has now been blind-rated and unblinded. Kevin preferred compiled adaptation
+in five pairs, the strong profile in two, and tied one. The result is nevertheless
+instrument-limited: every run encountered a Bash permission denial, so the agents could not
+reliably perform the required verification. No compiler-v2 success or failure conclusion is
+allowed from this run.
+
+See `PREREGISTRATION-v1.2.json` for the executed design,
+`results/kevin-blind-rating-v1.2.json` for the pre-unblinding rating,
+`results/unblinded-result-v1.2.json` for the mapping and aggregate result, and
+`UNBLINDED_ANALYSIS-v1.2.md` for the condition-level analysis and runner repair.

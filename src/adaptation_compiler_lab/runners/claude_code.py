@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
+import shutil
 import signal
 import stat
 import subprocess
@@ -17,6 +19,7 @@ from typing import Final, cast
 from adaptation_compiler_lab.connectors.models import (
     JsonObject,
     JsonValue,
+    TargetCommandAuditEntry,
     TargetRunRequest,
     TargetRunResult,
 )
@@ -31,7 +34,6 @@ from adaptation_compiler_lab.connectors.pins import (
 
 _BUILTIN_TOOLS: Final = ("Bash", "Edit", "Glob", "Grep", "Read", "Write")
 _TRACE_ALLOWED_TOOLS: Final = frozenset({*_BUILTIN_TOOLS, "EndConversation"})
-_NON_BASH_ALLOWED_TOOLS: Final = ("Edit", "Glob", "Grep", "Read", "Write")
 _REMOVED_TOOLS: Final = (
     "Agent",
     "Artifact",
@@ -62,6 +64,7 @@ _FIXED_ENV: Final = {
     "CLAUDE_CODE_DISABLE_TERMINAL_TITLE": "1",
     "CLAUDE_CODE_DISABLE_WORKFLOWS": "1",
     "CLAUDE_CODE_SKIP_PROMPT_HISTORY": "1",
+    "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1",
     "DISABLE_ERROR_REPORTING": "1",
     "DISABLE_TELEMETRY": "1",
     "DISABLE_UPDATES": "1",
@@ -72,6 +75,23 @@ _FIXED_ENV: Final = {
 _GENERIC_STDIN_PROMPT: Final = (
     "Complete the coding task supplied on standard input. Follow only the injected condition "
     "material and the task itself."
+)
+_COMMAND_EXECUTABLES: Final = frozenset({"python", "python3"})
+_RUNTIME_ARTIFACTS: Final = (
+    ".acl-runtime",
+    ".bash_profile",
+    ".bashrc",
+    ".claude",
+    ".idea",
+    ".mcp.json",
+)
+_AMBIENT_READ_NAMES: Final = (
+    ".claude",
+    ".env",
+    ".idea",
+    ".mcp.json",
+    "AGENTS.md",
+    "CLAUDE.md",
 )
 
 
@@ -89,20 +109,70 @@ class ClaudeRuntimePaths:
     sandbox_library_path: Path
 
 
+@dataclass(frozen=True)
+class _PreparedCommand:
+    alias: str
+    argv: tuple[str, ...]
+    command_digest: str
+    wrapper_path: Path
+
+
+def _absolute_permission_rule(tool: str, path: Path, *, descendants: bool = False) -> str:
+    suffix = "/**" if descendants else ""
+    return f"{tool}(/{path.as_posix()}{suffix})"
+
+
+def _tool_rules(workspace: Path, condition_file: Path) -> tuple[list[JsonValue], list[JsonValue]]:
+    allow: list[JsonValue] = [
+        _absolute_permission_rule("Read", workspace, descendants=True),
+        _absolute_permission_rule("Edit", workspace, descendants=True),
+    ]
+    deny: list[JsonValue] = list(_REMOVED_TOOLS)
+    deny.append(_absolute_permission_rule("Edit", condition_file))
+    for name in _AMBIENT_READ_NAMES:
+        path = workspace / name
+        deny.append(_absolute_permission_rule("Read", path, descendants=path.suffix == ""))
+        deny.append(_absolute_permission_rule("Edit", path, descendants=path.suffix == ""))
+    runtime_path = workspace / ".acl-runtime"
+    deny.append(_absolute_permission_rule("Read", runtime_path, descendants=True))
+    deny.append(_absolute_permission_rule("Edit", runtime_path, descendants=True))
+    return allow, deny
+
+
 def _settings(
     workspace: Path,
-    allowed_bash_commands: tuple[str, ...],
+    condition_file: Path,
+    commands_dir: Path,
+    prepared_commands: tuple[_PreparedCommand, ...],
 ) -> JsonObject:
-    allow_rules: list[JsonValue] = list(_NON_BASH_ALLOWED_TOOLS)
-    allow_rules.extend(f"Bash({command})" for command in allowed_bash_commands)
-    sensitive_roots: list[JsonValue] = [
-        "/home",
-        "/mnt",
-        "/root",
-        "/proc",
-        "/sys",
-        "/dev",
-        "/etc/ssh",
+    allow_rules, deny_rules = _tool_rules(workspace, condition_file)
+    allow_rules.extend(f"Bash({command.alias})" for command in prepared_commands)
+    runtime_root = workspace / ".acl-runtime"
+    ambient_paths = [str(workspace / name) for name in _AMBIENT_READ_NAMES]
+    system_read_paths: list[JsonValue] = [
+        "/bin",
+        "/dev/null",
+        "/dev/urandom",
+        "/etc/ld.so.cache",
+        "/lib",
+        "/lib64",
+        "/usr",
+        str(commands_dir),
+        str(workspace),
+    ]
+    denied_credentials: list[JsonValue] = [
+        {"name": name, "mode": "deny"}
+        for name in (
+            "ANTHROPIC_API_KEY",
+            "ANTHROPIC_AUTH_TOKEN",
+            "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY",
+            "GITHUB_TOKEN",
+            "GH_TOKEN",
+            "GOOGLE_APPLICATION_CREDENTIALS",
+            "NPM_TOKEN",
+            "OPENAI_API_KEY",
+        )
     ]
     return {
         "autoMemoryEnabled": False,
@@ -111,7 +181,7 @@ def _settings(
             "defaultMode": "dontAsk",
             "allow": allow_rules,
             "ask": [],
-            "deny": list(_REMOVED_TOOLS),
+            "deny": deny_rules,
             "additionalDirectories": [],
         },
         "sandbox": {
@@ -121,10 +191,30 @@ def _settings(
             "allowUnsandboxedCommands": False,
             "excludedCommands": [],
             "filesystem": {
-                "denyRead": sensitive_roots,
-                "allowRead": [str(workspace)],
-                "denyWrite": sensitive_roots,
-                "allowWrite": [str(workspace)],
+                "denyRead": ["/", *ambient_paths],
+                "allowRead": system_read_paths,
+                "denyWrite": [
+                    "/",
+                    *ambient_paths,
+                    str(condition_file),
+                    str(commands_dir),
+                    str(runtime_root),
+                ],
+                "allowWrite": [
+                    "/dev/null",
+                    "/dev/urandom",
+                    str(runtime_root / "home"),
+                    str(runtime_root / "tmp"),
+                    str(workspace),
+                ],
+            },
+            "credentials": {
+                "files": [
+                    {"path": "/home", "mode": "deny"},
+                    {"path": "/mnt", "mode": "deny"},
+                    {"path": "/root", "mode": "deny"},
+                ],
+                "envVars": denied_credentials,
             },
             "network": {
                 "allowedDomains": [],
@@ -143,6 +233,145 @@ def _iter_objects(value: JsonValue) -> Iterator[JsonObject]:
     elif isinstance(value, list):
         for nested in value:
             yield from _iter_objects(nested)
+
+
+def _approved_argv(command: str) -> tuple[str, ...]:
+    try:
+        argv = tuple(shlex.split(command, posix=True))
+    except ValueError as exc:
+        raise TargetExecutionError("approved command has invalid shell quoting") from exc
+    if not argv:
+        raise TargetExecutionError("approved command cannot be empty")
+    if argv[0] not in _COMMAND_EXECUTABLES:
+        raise TargetExecutionError("approved command executable is not supported")
+    if len(argv) < 3 or argv[1:3] != ("-m", "unittest"):
+        raise TargetExecutionError("only Python unittest commands may be approved")
+    if any(item in {"-c", "--locals"} for item in argv[3:]):
+        raise TargetExecutionError("approved unittest command includes a forbidden option")
+    return argv
+
+
+def _wrapper_payload(
+    *,
+    executable: Path,
+    arguments: tuple[str, ...],
+    runtime_root: Path,
+    request: TargetRunRequest,
+) -> str:
+    memory_kb = request.command_memory_mb * 1024
+    file_blocks = request.command_file_size_mb * 1024
+    exact_command = shlex.join((str(executable), *arguments))
+    env_assignments = shlex.join(
+        (
+            f"HOME={runtime_root / 'home'}",
+            f"TMPDIR={runtime_root / 'tmp'}",
+            "PATH=/usr/bin:/bin",
+            "LANG=C.UTF-8",
+            "LC_ALL=C.UTF-8",
+            "PYTHONDONTWRITEBYTECODE=1",
+        )
+    )
+    return (
+        "#!/usr/bin/bash\n"
+        "set -euo pipefail\n"
+        f"ulimit -t {request.command_cpu_seconds}\n"
+        f"ulimit -v {memory_kb}\n"
+        f"ulimit -f {file_blocks}\n"
+        f"ulimit -u {request.command_process_limit}\n"
+        f"ulimit -n {request.command_open_files_limit}\n"
+        "exec /usr/bin/timeout --signal=TERM --kill-after=5 "
+        f"{request.command_timeout_seconds} /usr/bin/env -i {env_assignments} {exact_command}\n"
+    )
+
+
+def _prepare_commands(
+    *,
+    config_dir: Path,
+    workspace: Path,
+    request: TargetRunRequest,
+) -> tuple[Path, tuple[_PreparedCommand, ...], str]:
+    commands_dir = config_dir / "bounded-commands"
+    commands_dir.mkdir(mode=0o700)
+    runtime_root = workspace / ".acl-runtime"
+    (runtime_root / "home").mkdir(parents=True, mode=0o700)
+    (runtime_root / "tmp").mkdir(mode=0o700)
+    prepared: list[_PreparedCommand] = []
+    manifest: list[JsonObject] = []
+    system_path = "/usr/bin:/bin"
+    for index, command in enumerate(request.allowed_bash_commands, start=1):
+        argv = _approved_argv(command)
+        resolved = shutil.which(argv[0], path=system_path)
+        if resolved is None:
+            raise TargetExecutionError("approved command executable is unavailable")
+        executable = Path(resolved).resolve()
+        if not executable.is_relative_to(Path("/usr")) and not executable.is_relative_to(
+            Path("/bin")
+        ):
+            raise TargetExecutionError("approved command executable resolved outside system paths")
+        alias = f"acl-run-{index:02d}"
+        command_digest = sha256_bytes(
+            json.dumps(argv, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        )
+        wrapper_path = commands_dir / alias
+        wrapper_path.write_text(
+            _wrapper_payload(
+                executable=executable,
+                arguments=argv[1:],
+                runtime_root=runtime_root,
+                request=request,
+            ),
+            encoding="utf-8",
+        )
+        wrapper_path.chmod(0o500)
+        prepared.append(
+            _PreparedCommand(
+                alias=alias,
+                argv=argv,
+                command_digest=command_digest,
+                wrapper_path=wrapper_path,
+            )
+        )
+        manifest.append(
+            {
+                "alias": alias,
+                "approved_command_digest": command_digest,
+                "command_timeout_seconds": request.command_timeout_seconds,
+                "command_cpu_seconds": request.command_cpu_seconds,
+                "command_memory_mb": request.command_memory_mb,
+                "command_file_size_mb": request.command_file_size_mb,
+                "command_process_limit": request.command_process_limit,
+                "command_open_files_limit": request.command_open_files_limit,
+            }
+        )
+    manifest_digest = sha256_bytes(
+        json.dumps(
+            manifest,
+            ensure_ascii=False,
+            allow_nan=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    )
+    return commands_dir, tuple(prepared), manifest_digest
+
+
+def _command_instructions(prepared_commands: tuple[_PreparedCommand, ...]) -> str:
+    if not prepared_commands:
+        return (
+            "\n\nExecution boundary: no shell command is approved. Use Read, Glob, and Grep for "
+            "inspection and Edit or Write for file changes."
+        )
+    lines = [
+        "",
+        "",
+        "Execution boundary: use Read, Glob, and Grep for inspection and Edit or Write for file "
+        "changes. The only approved shell commands are the exact bounded aliases below. Invoke an "
+        "alias exactly as shown, without arguments, chaining, redirection, or substitution:",
+    ]
+    for command in prepared_commands:
+        lines.append(f"- {command.alias}: {shlex.join(command.argv)}")
+    lines.append("A command alias has a fixed timeout and resource ceiling and is audit logged.")
+    return "\n".join(lines)
 
 
 def _parse_stream(stdout: str) -> tuple[JsonObject, ...]:
@@ -183,39 +412,108 @@ def _assert_trace_conformance(
     *,
     model_id: str,
     timed_out: bool,
-) -> None:
-    if timed_out:
-        return
-    init_events = [
-        event
-        for event in events
-        if event.get("type") == "system" and event.get("subtype") == "init"
-    ]
-    if len(init_events) != 1:
-        raise TargetExecutionError("Claude trace must contain exactly one system/init event")
-    init = init_events[0]
-    if init.get("model") != model_id:
-        raise TargetExecutionError("Claude initialized a model other than the frozen full ID")
-    tools = init.get("tools")
-    if not isinstance(tools, list) or any(not isinstance(item, str) for item in tools):
-        raise TargetExecutionError("Claude system/init omitted its tool inventory")
-    unknown_tools = set(cast(list[str], tools)) - _TRACE_ALLOWED_TOOLS
-    if unknown_tools:
-        raise TargetExecutionError(
-            "Claude initialized forbidden tools: " + ", ".join(sorted(unknown_tools))
-        )
-    mcp_servers = init.get("mcp_servers", [])
-    if mcp_servers not in ([], {}):
-        raise TargetExecutionError("Claude initialized an MCP server")
-    plugins = init.get("plugins", [])
-    if plugins not in ([], {}):
-        raise TargetExecutionError("Claude initialized a plugin")
+    workspace: Path,
+    condition_file: Path,
+    prepared_commands: tuple[_PreparedCommand, ...],
+    command_timeout_seconds: int,
+) -> tuple[TargetCommandAuditEntry, ...]:
+    if not timed_out:
+        init_events = [
+            event
+            for event in events
+            if event.get("type") == "system" and event.get("subtype") == "init"
+        ]
+        if len(init_events) != 1:
+            raise TargetExecutionError("Claude trace must contain exactly one system/init event")
+        init = init_events[0]
+        if init.get("model") != model_id:
+            raise TargetExecutionError("Claude initialized a model other than the frozen full ID")
+        tools = init.get("tools")
+        if not isinstance(tools, list) or any(not isinstance(item, str) for item in tools):
+            raise TargetExecutionError("Claude system/init omitted its tool inventory")
+        unknown_tools = set(cast(list[str], tools)) - _TRACE_ALLOWED_TOOLS
+        if unknown_tools:
+            raise TargetExecutionError(
+                "Claude initialized forbidden tools: " + ", ".join(sorted(unknown_tools))
+            )
+        mcp_servers = init.get("mcp_servers", [])
+        if mcp_servers not in ([], {}):
+            raise TargetExecutionError("Claude initialized an MCP server")
+        plugins = init.get("plugins", [])
+        if plugins not in ([], {}):
+            raise TargetExecutionError("Claude initialized a plugin")
+    prepared_by_alias = {command.alias: command for command in prepared_commands}
+    audit: list[TargetCommandAuditEntry] = []
+    reserved_paths = {
+        (workspace / name).resolve() for name in (*_RUNTIME_ARTIFACTS, *_AMBIENT_READ_NAMES)
+    }
+    reserved_paths.add(condition_file)
+
+    def assert_workspace_path(value: object, *, write: bool) -> None:
+        if value is None:
+            return
+        if not isinstance(value, str) or not value:
+            raise TargetExecutionError("Claude file tool supplied a malformed path")
+        candidate = Path(value)
+        if not candidate.is_absolute():
+            candidate = workspace / candidate
+        resolved = candidate.resolve()
+        if not resolved.is_relative_to(workspace):
+            raise TargetExecutionError("Claude file tool attempted host-file access")
+        if any(
+            resolved == reserved or resolved.is_relative_to(reserved) for reserved in reserved_paths
+        ):
+            operation = "modify" if write else "read"
+            raise TargetExecutionError(f"Claude attempted to {operation} a reserved runner path")
+
     for event in events:
         for nested in _iter_objects(event):
             if nested.get("type") == "tool_use":
                 name = nested.get("name")
                 if not isinstance(name, str) or name not in _TRACE_ALLOWED_TOOLS:
                     raise TargetExecutionError("Claude trace contains a forbidden tool use")
+                tool_input = nested.get("input", {})
+                if not isinstance(tool_input, dict):
+                    raise TargetExecutionError("Claude tool use has malformed input")
+                if name == "Bash":
+                    raw_command = tool_input.get("command")
+                    if not isinstance(raw_command, str):
+                        raise TargetExecutionError("Claude Bash tool omitted its command")
+                    prepared = prepared_by_alias.get(raw_command)
+                    if prepared is None:
+                        raise TargetExecutionError(
+                            "Claude attempted a Bash command outside the bounded manifest"
+                        )
+                    disable_sandbox = tool_input.get("dangerouslyDisableSandbox")
+                    if disable_sandbox not in (None, False):
+                        raise TargetExecutionError("Claude attempted to disable the Bash sandbox")
+                    timeout_value = tool_input.get("timeout")
+                    if timeout_value is not None and (
+                        not isinstance(timeout_value, int)
+                        or isinstance(timeout_value, bool)
+                        or timeout_value < 1
+                        or timeout_value > command_timeout_seconds * 1000
+                    ):
+                        raise TargetExecutionError("Claude requested an invalid command timeout")
+                    audit.append(
+                        TargetCommandAuditEntry(
+                            sequence=len(audit) + 1,
+                            alias=prepared.alias,
+                            approved_command_digest=prepared.command_digest,
+                            requested_timeout_ms=timeout_value,
+                        )
+                    )
+                elif name in {"Read", "Glob", "Grep"}:
+                    assert_workspace_path(
+                        tool_input.get("file_path", tool_input.get("path")),
+                        write=False,
+                    )
+                elif name in {"Edit", "Write"}:
+                    assert_workspace_path(
+                        tool_input.get("file_path", tool_input.get("path")),
+                        write=True,
+                    )
+    return tuple(audit)
 
 
 class ClaudeCodeTargetRunner:
@@ -271,6 +569,7 @@ class ClaudeCodeTargetRunner:
         runtime: VerifiedClaudeRuntime,
         *,
         config_dir: Path,
+        commands_dir: Path,
     ) -> dict[str, str]:
         api_key = self._api_key()
         configured_base = self._environment.get("ANTHROPIC_BASE_URL")
@@ -297,7 +596,11 @@ class ClaudeCodeTargetRunner:
                 "USER",
             }
         }
-        path_parts = [str(runtime.bubblewrap.parent), str(runtime.socat.parent)]
+        path_parts = [
+            str(commands_dir),
+            str(runtime.bubblewrap.parent),
+            str(runtime.socat.parent),
+        ]
         inherited_path = environment.get("PATH")
         if inherited_path:
             path_parts.append(inherited_path)
@@ -327,111 +630,147 @@ class ClaudeCodeTargetRunner:
             raise TargetExecutionError("Claude API key file cannot be inside the target workspace")
         if sha256_file(condition_file) != request.condition_digest:
             raise TargetExecutionError("condition file digest changed before execution")
+        existing_runtime_artifacts = [
+            name for name in _RUNTIME_ARTIFACTS if (workspace / name).exists()
+        ]
+        if existing_runtime_artifacts:
+            raise TargetExecutionError(
+                "target workspace contains reserved runner artifacts: "
+                + ", ".join(existing_runtime_artifacts)
+            )
 
-        with tempfile.TemporaryDirectory(prefix="acl-claude-config-") as temporary:
-            config_dir = Path(temporary)
-            settings_path = config_dir / "settings.json"
-            settings_payload = _settings(workspace, request.allowed_bash_commands)
-            settings_path.write_text(
-                json.dumps(
-                    settings_payload,
-                    ensure_ascii=False,
-                    allow_nan=False,
-                    sort_keys=True,
-                    separators=(",", ":"),
-                ),
-                encoding="utf-8",
-            )
-            settings_path.chmod(0o600)
-            environment = self._environment_for_run(runtime, config_dir=config_dir)
-            allowed_tools = [*_NON_BASH_ALLOWED_TOOLS]
-            allowed_tools.extend(f"Bash({command})" for command in request.allowed_bash_commands)
-            command = [
-                str(runtime.executable),
-                "--bare",
-                "--print",
-                "--no-session-persistence",
-                "--output-format",
-                "stream-json",
-                "--verbose",
-                "--append-system-prompt-file",
-                str(condition_file),
-                "--tools",
-                ",".join(_BUILTIN_TOOLS),
-                "--allowedTools",
-                *allowed_tools,
-                "--disallowedTools",
-                *_REMOVED_TOOLS,
-                "--permission-mode",
-                "dontAsk",
-                "--strict-mcp-config",
-                "--setting-sources",
-                "",
-                "--settings",
-                str(settings_path),
-                "--no-chrome",
-                "--disable-slash-commands",
-                "--model",
-                runtime.model_id,
-                "--max-turns",
-                str(request.max_turns),
-                "--max-budget-usd",
-                f"{request.max_usd:.2f}",
-                _GENERIC_STDIN_PROMPT,
-            ]
-            command_digest = sha256_bytes(
-                json.dumps(command, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-            )
-            started_at = datetime.now(UTC)
-            timed_out = False
-            exit_code: int | None
-            stdout = ""
-            stderr = ""
-            try:
-                process = subprocess.Popen(
-                    command,
-                    cwd=workspace,
-                    env=environment,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
+        try:
+            with tempfile.TemporaryDirectory(prefix="acl-claude-config-") as temporary:
+                config_dir = Path(temporary)
+                commands_dir, prepared_commands, command_manifest_digest = _prepare_commands(
+                    config_dir=config_dir,
+                    workspace=workspace,
+                    request=request,
+                )
+                settings_path = config_dir / "settings.json"
+                settings_payload = _settings(
+                    workspace,
+                    condition_file,
+                    commands_dir,
+                    prepared_commands,
+                )
+                settings_path.write_text(
+                    json.dumps(
+                        settings_payload,
+                        ensure_ascii=False,
+                        allow_nan=False,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ),
                     encoding="utf-8",
-                    errors="strict",
-                    start_new_session=True,
                 )
-            except OSError as exc:
-                raise TargetExecutionError("unable to start pinned Claude Code") from exc
-            try:
-                stdout, stderr = process.communicate(
-                    input=request.prompt,
-                    timeout=request.max_seconds,
+                settings_path.chmod(0o600)
+                environment = self._environment_for_run(
+                    runtime,
+                    config_dir=config_dir,
+                    commands_dir=commands_dir,
                 )
-                exit_code = process.returncode
-            except subprocess.TimeoutExpired:
-                timed_out = True
-                os.killpg(process.pid, signal.SIGTERM)
+                allow_rules, _ = _tool_rules(workspace, condition_file)
+                allowed_tools = [cast(str, rule) for rule in allow_rules]
+                allowed_tools.extend(f"Bash({prepared.alias})" for prepared in prepared_commands)
+                command = [
+                    str(runtime.executable),
+                    "--bare",
+                    "--print",
+                    "--no-session-persistence",
+                    "--output-format",
+                    "stream-json",
+                    "--verbose",
+                    "--append-system-prompt-file",
+                    str(condition_file),
+                    "--tools",
+                    ",".join(_BUILTIN_TOOLS),
+                    "--allowedTools",
+                    *allowed_tools,
+                    "--disallowedTools",
+                    *_REMOVED_TOOLS,
+                    "--permission-mode",
+                    "dontAsk",
+                    "--strict-mcp-config",
+                    "--setting-sources",
+                    "",
+                    "--settings",
+                    str(settings_path),
+                    "--no-chrome",
+                    "--disable-slash-commands",
+                    "--model",
+                    runtime.model_id,
+                    "--max-turns",
+                    str(request.max_turns),
+                    "--max-budget-usd",
+                    f"{request.max_usd:.2f}",
+                    _GENERIC_STDIN_PROMPT,
+                ]
+                command_digest = sha256_bytes(
+                    json.dumps(command, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+                )
+                started_at = datetime.now(UTC)
+                timed_out = False
+                exit_code: int | None
+                stdout = ""
+                stderr = ""
                 try:
-                    timeout_stdout, timeout_stderr = process.communicate(timeout=5.0)
+                    process = subprocess.Popen(
+                        command,
+                        cwd=workspace,
+                        env=environment,
+                        stdin=subprocess.PIPE,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        encoding="utf-8",
+                        errors="strict",
+                        start_new_session=True,
+                    )
+                except OSError as exc:
+                    raise TargetExecutionError("unable to start pinned Claude Code") from exc
+                target_prompt = request.prompt + _command_instructions(prepared_commands)
+                try:
+                    stdout, stderr = process.communicate(
+                        input=target_prompt,
+                        timeout=request.max_seconds,
+                    )
+                    exit_code = process.returncode
                 except subprocess.TimeoutExpired:
-                    os.killpg(process.pid, signal.SIGKILL)
-                    timeout_stdout, timeout_stderr = process.communicate(timeout=5.0)
-                stdout += timeout_stdout
-                stderr += timeout_stderr
-                exit_code = None
-            api_key = environment["ANTHROPIC_API_KEY"]
-            if api_key in stdout or api_key in stderr:
-                raise TargetExecutionError("Claude output exposed the API credential")
-            events = _parse_stream(stdout)
-            _assert_trace_conformance(
-                events,
-                model_id=runtime.model_id,
-                timed_out=timed_out,
-            )
-            # Wall clocks can move backwards while a process is running (for example, an NTP
-            # correction). Preserve the result contract without pretending elapsed-time
-            # measurement comes from wall-clock ordering.
-            finished_at = max(datetime.now(UTC), started_at)
+                    timed_out = True
+                    os.killpg(process.pid, signal.SIGTERM)
+                    try:
+                        timeout_stdout, timeout_stderr = process.communicate(timeout=5.0)
+                    except subprocess.TimeoutExpired:
+                        os.killpg(process.pid, signal.SIGKILL)
+                        timeout_stdout, timeout_stderr = process.communicate(timeout=5.0)
+                    stdout += timeout_stdout
+                    stderr += timeout_stderr
+                    exit_code = None
+                api_key = environment["ANTHROPIC_API_KEY"]
+                if api_key in stdout or api_key in stderr:
+                    raise TargetExecutionError("Claude output exposed the API credential")
+                events = _parse_stream(stdout)
+                command_audit = _assert_trace_conformance(
+                    events,
+                    model_id=runtime.model_id,
+                    timed_out=timed_out,
+                    workspace=workspace,
+                    condition_file=condition_file,
+                    prepared_commands=prepared_commands,
+                    command_timeout_seconds=request.command_timeout_seconds,
+                )
+                # Wall clocks can move backwards while a process is running (for example, an NTP
+                # correction). Preserve the result contract without pretending elapsed-time
+                # measurement comes from wall-clock ordering.
+                finished_at = max(datetime.now(UTC), started_at)
+        finally:
+            for name in _RUNTIME_ARTIFACTS:
+                path = workspace / name
+                if path.is_dir() and not path.is_symlink():
+                    shutil.rmtree(path)
+                elif path.exists() or path.is_symlink():
+                    path.unlink()
         return TargetRunResult(
             run_id=request.run_id,
             runner_version=runtime.version,
@@ -444,5 +783,7 @@ class ClaudeCodeTargetRunner:
             timed_out=timed_out,
             events=events,
             stderr=stderr,
+            command_manifest_digest=command_manifest_digest,
+            command_audit=command_audit,
             config_destroyed=not config_dir.exists(),
         )
