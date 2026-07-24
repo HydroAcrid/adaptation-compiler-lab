@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-24
 
-Status: **six valid cells complete; three Kevin ratings pending before unblinding**
+Status: **complete; Kevin preferred the strong static profile on all three tasks**
 
 ## Purpose and boundary
 
@@ -31,16 +31,16 @@ passes every objective, diagnostic, and neutral check. These mutation checks est
 tasks can detect their intended behavior without using either experimental condition output to
 construct the scorer.
 
-## Execution result
+## Execution and blinded-rating result
 
 The pinned source commit was `30149a4b2648dca462a1be560ba59e95544f9694`. Live preflight
 confirmed saved ChatGPT authentication, explicit GPT-5.6 Luna availability, medium reasoning,
 Standard service, and the absence of Codex/OpenAI API-key environment. All six planned cells
 completed without retry and passed the frozen isolation validity checks.
 
-The objective scores, token usage, and condition mapping remain sealed. The anonymous presentation
-is [`development_benchmark_v2/codex-development-v2-remaining-blind-rating-packet.md`](development_benchmark_v2/codex-development-v2-remaining-blind-rating-packet.md).
-Its exact bindings are recorded in
+The anonymous presentation was
+[`development_benchmark_v2/codex-development-v2-remaining-blind-rating-packet.md`](development_benchmark_v2/codex-development-v2-remaining-blind-rating-packet.md).
+Its exact bindings remain recorded in
 [`codex-development-v2-remaining-blind-manifest.json`](development_benchmark_v2/codex-development-v2-remaining-blind-manifest.json):
 
 - public-plan digest:
@@ -50,11 +50,27 @@ Its exact bindings are recorded in
 - sanitized presentation digest:
   `sha256:b09ac6202b1b5c90c5a4dbb471713fdca6d9c3eb4342717faead9bec1d0b8adc`.
 
-## Blind scoring gate
+Kevin supplied all three pairwise preferences while condition identities, scores, token usage, and
+run order remained hidden. The exact rating was checksum-bound and committed before the private
+mapping was opened. Unblinding then showed:
 
-The development coordinator encrypted the seed, condition mapping, structured traces, raw outputs,
-tests, and scores outside Git. Kevin receives only three anonymous output/diff pairs.
-Condition identities, objective scores, token usage, and run order remain hidden until all three
-preferences are checksum-bound.
+- communication: strong static profile preferred;
+- debugging and verification: strong static profile preferred; and
+- environment safety: strong static profile preferred.
 
-The result will stop at that preference gate. No Claude call or Milestone 6 action is authorized.
+Both conditions tied at 12/12 objective, 11/12 diagnostic, and 12/12 neutral checks. The only
+automated miss was shared by both environment-safety outputs:
+`diagnostic:preflight_exposes_risk_and_recovery_path`. The strong profile used 195,380 input,
+131,840 cached-input, 6,634 output, and 2,049 reasoning-output tokens. Compiled adaptation used
+247,259 input, 189,696 cached-input, 8,264 output, and 2,807 reasoning-output tokens.
+
+The typed result is
+[`development_benchmark_v2/codex-development-v2-remaining-unblinded-result.json`](development_benchmark_v2/codex-development-v2-remaining-unblinded-result.json).
+Under the preregistered rule, compiled adaptation is **below the strong static profile** because
+Kevin preferred it on 0/3 tasks even though the automated aggregates tied. This is useful negative
+same-agent development evidence: the compiled material preserved measurable correctness and
+neutral controls, but did not reproduce the profile's preferred communication, verification, and
+safety details in these runs.
+
+No compiler or frozen-pack change follows automatically from this result. No Claude call,
+Milestone 6 access, or cross-agent-transfer claim is authorized.

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated, Literal, Self
 
@@ -259,6 +260,350 @@ class CodexV2GatePreferenceRating(FrozenModel):
     @property
     def content_digest(self) -> Sha256Digest:
         return canonical_digest(self)
+
+
+class CodexV2GateCheckCounts(FrozenModel):
+    """Passed and available checks for one score group."""
+
+    passed: int = Field(ge=0)
+    total: int = Field(ge=1)
+
+    @model_validator(mode="after")
+    def passed_does_not_exceed_total(self) -> Self:
+        if self.passed > self.total:
+            raise ValueError("v2 gate passed checks cannot exceed total checks")
+        return self
+
+
+class CodexV2GateConditionResult(FrozenModel):
+    """One unblinded task/condition result."""
+
+    condition: BenchmarkCondition
+    blind_output_id: Identifier
+    valid: bool
+    objective: CodexV2GateCheckCounts
+    diagnostic: CodexV2GateCheckCounts
+    neutral: CodexV2GateCheckCounts
+    failed_checks: tuple[NonEmptyStr, ...]
+    input_tokens: int = Field(ge=0)
+    cached_input_tokens: int = Field(ge=0)
+    output_tokens: int = Field(ge=0)
+    reasoning_output_tokens: int = Field(ge=0)
+
+    @field_validator("failed_checks")
+    @classmethod
+    def failed_checks_are_sorted_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if not strings_are_sorted_unique(value):
+            raise ValueError("v2 gate failed checks must be sorted and unique")
+        return value
+
+
+class CodexV2GateTaskResult(FrozenModel):
+    """One post-rating task comparison."""
+
+    task_id: Identifier
+    preference: Literal["first_better", "second_better", "tie"]
+    preferred_condition: BenchmarkCondition | None
+    other_condition: BenchmarkCondition | None
+    condition_results: tuple[CodexV2GateConditionResult, CodexV2GateConditionResult]
+
+    @model_validator(mode="after")
+    def task_result_is_coherent(self) -> Self:
+        if tuple(item.condition for item in self.condition_results) != V2_GATE_CONDITIONS:
+            raise ValueError("v2 task results must use the frozen condition order")
+        if self.preference == "tie":
+            if self.preferred_condition is not None or self.other_condition is not None:
+                raise ValueError("v2 tied preference must omit both condition identities")
+        elif (
+            self.preferred_condition is None
+            or self.other_condition is None
+            or self.preferred_condition == self.other_condition
+        ):
+            raise ValueError("v2 non-tied preference must identify two different conditions")
+        return self
+
+
+class CodexV2GateConditionAggregate(FrozenModel):
+    """Aggregate descriptive result for one condition."""
+
+    condition: BenchmarkCondition
+    preference_wins: int = Field(ge=0, le=3)
+    objective: CodexV2GateCheckCounts
+    diagnostic: CodexV2GateCheckCounts
+    neutral: CodexV2GateCheckCounts
+    input_tokens: int = Field(ge=0)
+    cached_input_tokens: int = Field(ge=0)
+    output_tokens: int = Field(ge=0)
+    reasoning_output_tokens: int = Field(ge=0)
+
+
+class CodexV2GateUnblindedResult(FrozenModel):
+    """Post-rating result under the preregistered development-only decision rule."""
+
+    result_version: Literal["2.1.0"] = "2.1.0"
+    benchmark_id: Literal["codex-development-v2-remaining-gate"] = (
+        "codex-development-v2-remaining-gate"
+    )
+    design_digest: Sha256Digest
+    public_plan_digest: Sha256Digest
+    private_plan_digest: Sha256Digest
+    blind_report_digest: Sha256Digest
+    preference_rating_digest: Sha256Digest
+    task_results: Annotated[
+        tuple[CodexV2GateTaskResult, ...],
+        Field(min_length=3, max_length=3),
+    ]
+    condition_aggregates: tuple[
+        CodexV2GateConditionAggregate,
+        CodexV2GateConditionAggregate,
+    ]
+    decision: Literal[
+        "compiled_strict_win",
+        "compiled_tie_or_better",
+        "compiled_below_strong",
+    ]
+    tie_or_better_rule_passed: bool
+    strict_win_rule_passed: bool
+    decision_reason: NonEmptyStr
+    cross_agent_claim_allowed: Literal[False] = False
+    milestone_6_custody_accessed: Literal[False] = False
+    created_at: UtcDateTime
+
+    @model_validator(mode="after")
+    def result_is_coherent(self) -> Self:
+        task_ids = tuple(item.task_id for item in self.task_results)
+        if not strings_are_sorted_unique(task_ids):
+            raise ValueError("v2 unblinded task results must be sorted and unique")
+        if tuple(item.condition for item in self.condition_aggregates) != V2_GATE_CONDITIONS:
+            raise ValueError("v2 aggregates must use the frozen condition order")
+        expected_decision = (
+            "compiled_strict_win"
+            if self.strict_win_rule_passed
+            else (
+                "compiled_tie_or_better"
+                if self.tie_or_better_rule_passed
+                else "compiled_below_strong"
+            )
+        )
+        if self.decision != expected_decision:
+            raise ValueError("v2 decision does not match its preregistered rule flags")
+        if self.strict_win_rule_passed and not self.tie_or_better_rule_passed:
+            raise ValueError("v2 strict win requires the tie-or-better rule")
+        return self
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+def unblind_codex_v2_gate(
+    *,
+    design: CodexV2GateDesign,
+    public_plan: CodexV2GatePublicPlan,
+    private_plan: CodexV2GatePrivatePlan,
+    blind_report: CodexV2GateBlindReport,
+    rating: CodexV2GatePreferenceRating,
+    failed_checks_by_output: Mapping[str, tuple[str, ...]],
+    created_at: UtcDateTime,
+) -> CodexV2GateUnblindedResult:
+    """Unblind only after the rating and all public/private commitments match."""
+
+    if public_plan.design_digest != design.content_digest:
+        raise ValueError("v2 public plan substituted its design")
+    if private_plan.design_digest != design.content_digest:
+        raise ValueError("v2 private plan substituted its design")
+    if blind_report.design_digest != design.content_digest:
+        raise ValueError("v2 blind report substituted its design")
+    if public_plan.private_plan_digest != private_plan.content_digest:
+        raise ValueError("v2 private mapping failed its public commitment")
+    if rating.public_plan_digest != public_plan.content_digest:
+        raise ValueError("v2 rating substituted its public plan")
+    if rating.blind_report_digest != blind_report.content_digest:
+        raise ValueError("v2 rating substituted its blind report")
+    if rating.rated_at < blind_report.created_at:
+        raise ValueError("v2 rating predates its blind report")
+    if created_at < rating.rated_at:
+        raise ValueError("v2 unblinding predates the frozen rating")
+
+    public_by_output = {item.blind_output_id: item for item in public_plan.run_order}
+    observations_by_output = {item.blind_output_id: item for item in blind_report.observations}
+    if set(public_by_output) != set(observations_by_output):
+        raise ValueError("v2 report outputs differ from the public plan")
+    for output_id, observation in observations_by_output.items():
+        cell = public_by_output[output_id]
+        if (
+            observation.run_id != cell.run_id
+            or observation.task_id != cell.task_id
+            or observation.blind_condition_id != cell.blind_condition_id
+        ):
+            raise ValueError("v2 observation differs from its public run cell")
+    if set(failed_checks_by_output) != set(observations_by_output):
+        raise ValueError("v2 failed-check details do not cover every output")
+
+    condition_by_blind = {
+        item.blind_condition_id: item.condition for item in private_plan.condition_assignments
+    }
+    task_results = []
+    for preference in rating.task_preferences:
+        expected_output_order = tuple(
+            item.blind_output_id
+            for item in sorted(
+                (cell for cell in public_plan.run_order if cell.task_id == preference.task_id),
+                key=lambda item: item.sequence,
+            )
+        )
+        if preference.ordered_output_ids != expected_output_order:
+            raise ValueError("v2 task rating substituted its output order")
+        condition_results = []
+        for condition in V2_GATE_CONDITIONS:
+            observation = next(
+                item
+                for item in blind_report.observations
+                if item.task_id == preference.task_id
+                and condition_by_blind[item.blind_condition_id] is condition
+            )
+            condition_results.append(
+                CodexV2GateConditionResult(
+                    condition=condition,
+                    blind_output_id=observation.blind_output_id,
+                    valid=observation.valid,
+                    objective=CodexV2GateCheckCounts(
+                        passed=observation.objective_checks_passed,
+                        total=observation.objective_checks_total,
+                    ),
+                    diagnostic=CodexV2GateCheckCounts(
+                        passed=observation.diagnostic_checks_passed,
+                        total=observation.diagnostic_checks_total,
+                    ),
+                    neutral=CodexV2GateCheckCounts(
+                        passed=observation.neutral_checks_passed,
+                        total=observation.neutral_checks_total,
+                    ),
+                    failed_checks=tuple(
+                        sorted(failed_checks_by_output[observation.blind_output_id])
+                    ),
+                    input_tokens=observation.input_tokens,
+                    cached_input_tokens=observation.cached_input_tokens,
+                    output_tokens=observation.output_tokens,
+                    reasoning_output_tokens=observation.reasoning_output_tokens,
+                )
+            )
+        if preference.preferred_output_id is None:
+            preferred_condition = None
+            other_condition = None
+        else:
+            preferred_observation = observations_by_output[preference.preferred_output_id]
+            preferred_condition = condition_by_blind[preferred_observation.blind_condition_id]
+            other_condition = next(
+                condition
+                for condition in V2_GATE_CONDITIONS
+                if condition is not preferred_condition
+            )
+        task_results.append(
+            CodexV2GateTaskResult(
+                task_id=preference.task_id,
+                preference=preference.preference,
+                preferred_condition=preferred_condition,
+                other_condition=other_condition,
+                condition_results=(condition_results[0], condition_results[1]),
+            )
+        )
+
+    aggregates = []
+    for condition in V2_GATE_CONDITIONS:
+        condition_rows = [
+            result
+            for task in task_results
+            for result in task.condition_results
+            if result.condition is condition
+        ]
+        aggregates.append(
+            CodexV2GateConditionAggregate(
+                condition=condition,
+                preference_wins=sum(task.preferred_condition is condition for task in task_results),
+                objective=CodexV2GateCheckCounts(
+                    passed=sum(item.objective.passed for item in condition_rows),
+                    total=sum(item.objective.total for item in condition_rows),
+                ),
+                diagnostic=CodexV2GateCheckCounts(
+                    passed=sum(item.diagnostic.passed for item in condition_rows),
+                    total=sum(item.diagnostic.total for item in condition_rows),
+                ),
+                neutral=CodexV2GateCheckCounts(
+                    passed=sum(item.neutral.passed for item in condition_rows),
+                    total=sum(item.neutral.total for item in condition_rows),
+                ),
+                input_tokens=sum(item.input_tokens for item in condition_rows),
+                cached_input_tokens=sum(item.cached_input_tokens for item in condition_rows),
+                output_tokens=sum(item.output_tokens for item in condition_rows),
+                reasoning_output_tokens=sum(
+                    item.reasoning_output_tokens for item in condition_rows
+                ),
+            )
+        )
+    aggregate_by_condition = {item.condition: item for item in aggregates}
+    strong = aggregate_by_condition[BenchmarkCondition.STRONG_STATIC_PROFILE]
+    compiled = aggregate_by_condition[BenchmarkCondition.COMPILED_ADAPTATION]
+    all_valid = all(result.valid for task in task_results for result in task.condition_results)
+    no_objective_regression = all(
+        task.condition_results[1].objective.passed >= task.condition_results[0].objective.passed
+        and task.condition_results[1].objective.total == task.condition_results[0].objective.total
+        for task in task_results
+    )
+    no_neutral_regression = all(
+        task.condition_results[1].neutral.passed >= task.condition_results[0].neutral.passed
+        and task.condition_results[1].neutral.total == task.condition_results[0].neutral.total
+        for task in task_results
+    )
+    diagnostic_not_lower = compiled.diagnostic.passed >= strong.diagnostic.passed
+    preference_not_lower = compiled.preference_wins >= strong.preference_wins
+    tie_or_better = (
+        all_valid
+        and no_objective_regression
+        and no_neutral_regression
+        and diagnostic_not_lower
+        and preference_not_lower
+    )
+    strict_win = tie_or_better and (
+        compiled.diagnostic.passed > strong.diagnostic.passed
+        or compiled.preference_wins > strong.preference_wins
+    )
+    if not all_valid:
+        reason = "At least one development cell was invalid."
+    elif not no_objective_regression:
+        reason = "Compiled adaptation had a per-task objective regression."
+    elif not no_neutral_regression:
+        reason = "Compiled adaptation had a per-task neutral-control regression."
+    elif not diagnostic_not_lower:
+        reason = "Compiled adaptation had fewer aggregate diagnostic passes."
+    elif not preference_not_lower:
+        reason = (
+            f"Kevin preferred compiled adaptation on {compiled.preference_wins} task(s) "
+            f"and the strong static profile on {strong.preference_wins} task(s)."
+        )
+    elif strict_win:
+        reason = "Compiled adaptation met the strict preregistered development rule."
+    else:
+        reason = "Compiled adaptation met, but did not strictly exceed, the tie-or-better rule."
+
+    return CodexV2GateUnblindedResult(
+        design_digest=design.content_digest,
+        public_plan_digest=public_plan.content_digest,
+        private_plan_digest=private_plan.content_digest,
+        blind_report_digest=blind_report.content_digest,
+        preference_rating_digest=rating.content_digest,
+        task_results=tuple(sorted(task_results, key=lambda item: item.task_id)),
+        condition_aggregates=(aggregates[0], aggregates[1]),
+        decision=(
+            "compiled_strict_win"
+            if strict_win
+            else ("compiled_tie_or_better" if tie_or_better else "compiled_below_strong")
+        ),
+        tie_or_better_rule_passed=tie_or_better,
+        strict_win_rule_passed=strict_win,
+        decision_reason=reason,
+        created_at=created_at,
+    )
 
 
 def load_codex_v2_gate_design(

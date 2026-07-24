@@ -6,7 +6,8 @@ sealed Milestone 6 benchmark and cannot establish cross-agent transfer.
 The research-integrity task has been implemented and executed as a two-cell calibration. The
 remaining communication, debugging-and-verification, and environment-safety tasks are implemented,
 mutation-tested, and bound into a separate six-cell preregistration. All six cells completed
-validly; their three anonymous preference ratings remain pending. The exact contract is
+validly; their three anonymous preference ratings were frozen before unblinding. The exact
+contract is
 [`remaining-gate-preregistration.json`](remaining-gate-preregistration.json).
 
 The target sees only `tasks/research_integrity/fixture`; the independent scorer is never copied
@@ -19,5 +20,9 @@ pairwise rating was checksum-bound and committed before the development seed was
 separate unblinded result records that compiled adaptation produced the preferred output while all
 automated check counts tied.
 
-The remaining-task coordinator follows the same encrypted, development-only custody pattern and
-has stopped with three anonymous pairwise rating prompts before any mapping is opened.
+The remaining-task coordinator followed the same encrypted, development-only custody pattern.
+Unblinding showed that Kevin preferred the strong static profile on all three tasks. Both
+conditions nevertheless tied at 12/12 objective, 11/12 diagnostic, and 12/12 neutral checks; both
+missed the same environment-safety preflight diagnostic. The preregistered result therefore
+classifies compiled adaptation below the strong profile. This is same-agent development evidence
+only, and neither Milestone 6 custody nor Claude was accessed.
