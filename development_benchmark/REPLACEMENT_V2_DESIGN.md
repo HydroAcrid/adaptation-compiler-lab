@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-23
 
-Status: **all four tasks executed; V2-1 through V2-3 await blind preference ratings**
+Status: **all four tasks executed and preference-rated**
 
 ## Purpose and separation
 
@@ -184,3 +184,12 @@ local messages, and at most 10 minutes per cell. Stop after the two cells regard
 
 Exact results and the blind-rating gate are recorded in
 [`../MILESTONE_5_5_LUNA_CALIBRATION.md`](../MILESTONE_5_5_LUNA_CALIBRATION.md).
+
+## Completed remaining-task gate
+
+V2-1 through V2-3 each ran once under the strong static profile and compiled adaptation. All six
+cells were valid. Kevin rated the anonymous pairs before the mapping opened and preferred the
+strong static profile on all three tasks. Both conditions tied at 12/12 objective, 11/12
+diagnostic, and 12/12 neutral checks; the environment-safety pair shared the only diagnostic miss.
+Under the frozen decision rule, compiled adaptation is below the strong profile. See
+[`../MILESTONE_5_5_LUNA_REMAINING_GATE.md`](../MILESTONE_5_5_LUNA_REMAINING_GATE.md).

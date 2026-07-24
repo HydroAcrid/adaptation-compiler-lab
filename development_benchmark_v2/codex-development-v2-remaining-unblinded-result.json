@@ -1,0 +1,220 @@
+{
+  "result_version": "2.1.0",
+  "benchmark_id": "codex-development-v2-remaining-gate",
+  "design_digest": "sha256:b359c9f0412afee9df1a898a916cc3545b0a41f6ba2532bfd4ef008dc017880a",
+  "public_plan_digest": "sha256:886b0b1e6f9c8251505ed4f1272b5084e1f43993a7a96f5b3e84fffc4bcd2cd9",
+  "private_plan_digest": "sha256:aae49e340c88ed97759a11b856c71b7cd6266f890aa435922d05fd4d80032f1b",
+  "blind_report_digest": "sha256:f522f679b94b20a8e1bda501284611dcc0fcd319dbf6f056f356fd8ba65e7ba3",
+  "preference_rating_digest": "sha256:a5aa9d334c5a804aef04fd7a8ac1755ca3e3a49e44f3aaf108505161798483f7",
+  "task_results": [
+    {
+      "task_id": "development-v2-communication",
+      "preference": "first_better",
+      "preferred_condition": "strong_static_profile",
+      "other_condition": "compiled_adaptation",
+      "condition_results": [
+        {
+          "condition": "strong_static_profile",
+          "blind_output_id": "output-d02b51744e92dfc9643d83b9",
+          "valid": true,
+          "objective": {
+            "passed": 4,
+            "total": 4
+          },
+          "diagnostic": {
+            "passed": 4,
+            "total": 4
+          },
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "failed_checks": [],
+          "input_tokens": 57781,
+          "cached_input_tokens": 36608,
+          "output_tokens": 2028,
+          "reasoning_output_tokens": 697
+        },
+        {
+          "condition": "compiled_adaptation",
+          "blind_output_id": "output-005b64577cd4d7c96784b43d",
+          "valid": true,
+          "objective": {
+            "passed": 4,
+            "total": 4
+          },
+          "diagnostic": {
+            "passed": 4,
+            "total": 4
+          },
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "failed_checks": [],
+          "input_tokens": 49742,
+          "cached_input_tokens": 39424,
+          "output_tokens": 2233,
+          "reasoning_output_tokens": 990
+        }
+      ]
+    },
+    {
+      "task_id": "development-v2-debugging-verification",
+      "preference": "second_better",
+      "preferred_condition": "strong_static_profile",
+      "other_condition": "compiled_adaptation",
+      "condition_results": [
+        {
+          "condition": "strong_static_profile",
+          "blind_output_id": "output-50f8de142ac484eba13575ca",
+          "valid": true,
+          "objective": {
+            "passed": 4,
+            "total": 4
+          },
+          "diagnostic": {
+            "passed": 4,
+            "total": 4
+          },
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "failed_checks": [],
+          "input_tokens": 47096,
+          "cached_input_tokens": 34560,
+          "output_tokens": 1145,
+          "reasoning_output_tokens": 111
+        },
+        {
+          "condition": "compiled_adaptation",
+          "blind_output_id": "output-8d435fd73f7d4a3e3b7e4384",
+          "valid": true,
+          "objective": {
+            "passed": 4,
+            "total": 4
+          },
+          "diagnostic": {
+            "passed": 4,
+            "total": 4
+          },
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "failed_checks": [],
+          "input_tokens": 82952,
+          "cached_input_tokens": 59392,
+          "output_tokens": 1778,
+          "reasoning_output_tokens": 429
+        }
+      ]
+    },
+    {
+      "task_id": "development-v2-environment-safety",
+      "preference": "first_better",
+      "preferred_condition": "strong_static_profile",
+      "other_condition": "compiled_adaptation",
+      "condition_results": [
+        {
+          "condition": "strong_static_profile",
+          "blind_output_id": "output-2a412b152c9ce5a11c7a98a3",
+          "valid": true,
+          "objective": {
+            "passed": 4,
+            "total": 4
+          },
+          "diagnostic": {
+            "passed": 3,
+            "total": 4
+          },
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "failed_checks": [
+            "diagnostic:preflight_exposes_risk_and_recovery_path"
+          ],
+          "input_tokens": 90503,
+          "cached_input_tokens": 60672,
+          "output_tokens": 3461,
+          "reasoning_output_tokens": 1241
+        },
+        {
+          "condition": "compiled_adaptation",
+          "blind_output_id": "output-250b4ac462cf19c90d4f3ff5",
+          "valid": true,
+          "objective": {
+            "passed": 4,
+            "total": 4
+          },
+          "diagnostic": {
+            "passed": 3,
+            "total": 4
+          },
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "failed_checks": [
+            "diagnostic:preflight_exposes_risk_and_recovery_path"
+          ],
+          "input_tokens": 114565,
+          "cached_input_tokens": 90880,
+          "output_tokens": 4253,
+          "reasoning_output_tokens": 1388
+        }
+      ]
+    }
+  ],
+  "condition_aggregates": [
+    {
+      "condition": "strong_static_profile",
+      "preference_wins": 3,
+      "objective": {
+        "passed": 12,
+        "total": 12
+      },
+      "diagnostic": {
+        "passed": 11,
+        "total": 12
+      },
+      "neutral": {
+        "passed": 12,
+        "total": 12
+      },
+      "input_tokens": 195380,
+      "cached_input_tokens": 131840,
+      "output_tokens": 6634,
+      "reasoning_output_tokens": 2049
+    },
+    {
+      "condition": "compiled_adaptation",
+      "preference_wins": 0,
+      "objective": {
+        "passed": 12,
+        "total": 12
+      },
+      "diagnostic": {
+        "passed": 11,
+        "total": 12
+      },
+      "neutral": {
+        "passed": 12,
+        "total": 12
+      },
+      "input_tokens": 247259,
+      "cached_input_tokens": 189696,
+      "output_tokens": 8264,
+      "reasoning_output_tokens": 2807
+    }
+  ],
+  "decision": "compiled_below_strong",
+  "tie_or_better_rule_passed": false,
+  "strict_win_rule_passed": false,
+  "decision_reason": "Kevin preferred compiled adaptation on 0 task(s) and the strong static profile on 3 task(s).",
+  "cross_agent_claim_allowed": false,
+  "milestone_6_custody_accessed": false,
+  "created_at": "2026-07-24T18:53:46Z"
+}

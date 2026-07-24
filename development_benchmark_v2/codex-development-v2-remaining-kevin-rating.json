@@ -1,0 +1,42 @@
+{
+  "rating_version": "2.1.0",
+  "rating_id": "codex-development-v2-remaining-kevin-rating-0001",
+  "public_plan_digest": "sha256:886b0b1e6f9c8251505ed4f1272b5084e1f43993a7a96f5b3e84fffc4bcd2cd9",
+  "blind_report_digest": "sha256:f522f679b94b20a8e1bda501284611dcc0fcd319dbf6f056f356fd8ba65e7ba3",
+  "presentation_sha256": "sha256:b09ac6202b1b5c90c5a4dbb471713fdca6d9c3eb4342717faead9bec1d0b8adc",
+  "task_preferences": [
+    {
+      "task_id": "development-v2-communication",
+      "ordered_output_ids": [
+        "output-d02b51744e92dfc9643d83b9",
+        "output-005b64577cd4d7c96784b43d"
+      ],
+      "preference": "first_better",
+      "preferred_output_id": "output-d02b51744e92dfc9643d83b9",
+      "rationale": "First better. Both correctly generate escaped PowerShell 7 commands, but the first provides clearer visual separation between the purpose and commands and keeps the literal-escaping logic as a focused helper."
+    },
+    {
+      "task_id": "development-v2-debugging-verification",
+      "ordered_output_ids": [
+        "output-8d435fd73f7d4a3e3b7e4384",
+        "output-50f8de142ac484eba13575ca"
+      ],
+      "preference": "second_better",
+      "preferred_output_id": "output-50f8de142ac484eba13575ca",
+      "rationale": "Second better. Both correctly remove the shared request state, but the second more directly verifies the reported reproduction in addition to the full visible suite."
+    },
+    {
+      "task_id": "development-v2-environment-safety",
+      "ordered_output_ids": [
+        "output-2a412b152c9ce5a11c7a98a3",
+        "output-250b4ac462cf19c90d4f3ff5"
+      ],
+      "preference": "first_better",
+      "preferred_output_id": "output-2a412b152c9ce5a11c7a98a3",
+      "rationale": "First better. Both protect differing destinations and create recoverable backups, but the first additionally rejects identical or nested source and destination paths, preventing unsafe recursive synchronization."
+    }
+  ],
+  "scorer_identity": "kevin",
+  "condition_mapping_seen": false,
+  "rated_at": "2026-07-24T18:49:37Z"
+}

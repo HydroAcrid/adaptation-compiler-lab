@@ -2,20 +2,27 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
 
 import pytest
 
+from adaptation_compiler_lab.benchmark.codex_development import (
+    CodexDevelopmentRunObservation,
+)
 from adaptation_compiler_lab.benchmark.codex_v2_gate import (
     V2_GATE_CONDITIONS,
     V2_GATE_FAMILIES,
+    CodexV2GateBlindReport,
     CodexV2GatePreferenceRating,
     CodexV2GateTaskPreference,
+    CodexV2GateUnblindedResult,
     build_codex_v2_gate_plan,
     load_codex_v2_gate_design,
+    unblind_codex_v2_gate,
 )
+from adaptation_compiler_lab.benchmark.models import BenchmarkCondition
 from adaptation_compiler_lab.benchmark.randomization import RandomizationSeed
 
 NOW = datetime(2026, 7, 24, tzinfo=UTC)
@@ -118,6 +125,33 @@ def test_committed_v2_gate_blind_packet_matches_manifest_without_identity() -> N
         assert packet_text.index(first) < packet_text.index(second)
 
 
+def test_committed_v2_gate_rating_binds_blind_packet_before_mapping() -> None:
+    manifest = cast(
+        dict[str, Any],
+        json.loads(
+            (_root() / "codex-development-v2-remaining-blind-manifest.json").read_text(
+                encoding="utf-8"
+            )
+        ),
+    )
+    rating = CodexV2GatePreferenceRating.model_validate_json(
+        (_root() / "codex-development-v2-remaining-kevin-rating.json").read_text(encoding="utf-8")
+    )
+
+    assert rating.public_plan_digest == manifest["public_plan_digest"]
+    assert rating.blind_report_digest == manifest["blind_report_digest"]
+    assert rating.presentation_sha256 == manifest["presentation_sha256"]
+    assert not rating.condition_mapping_seen
+    assert [item.preference for item in rating.task_preferences] == [
+        "first_better",
+        "second_better",
+        "first_better",
+    ]
+    assert [list(item.ordered_output_ids) for item in rating.task_preferences] == [
+        pair["ordered_output_ids"] for pair in manifest["task_pairs"]
+    ]
+
+
 def test_v2_gate_rating_requires_three_sorted_pairs_and_six_outputs() -> None:
     rating = CodexV2GatePreferenceRating(
         rating_id="v2-gate-rating-kevin-0001",
@@ -150,3 +184,148 @@ def test_v2_gate_rating_rejects_incoherent_pairwise_preference() -> None:
             preferred_output_id="output-second",
             rationale="Mismatch.",
         )
+
+
+def test_v2_gate_unblinding_applies_the_frozen_preference_rule() -> None:
+    design = load_codex_v2_gate_design(_root(), frozen_at=NOW)
+    private, public = build_codex_v2_gate_plan(
+        design=design,
+        seed=RandomizationSeed(b"u" * 32),
+        created_at=NOW,
+    )
+    digest = "sha256:" + "d" * 64
+    observations = tuple(
+        CodexDevelopmentRunObservation(
+            run_id=cell.run_id,
+            task_id=cell.task_id,
+            blind_condition_id=cell.blind_condition_id,
+            blind_output_id=cell.blind_output_id,
+            condition_digest=digest,
+            trace_digest=digest,
+            diff_digest=digest,
+            final_response_digest=digest,
+            scorer_output_digest=digest,
+            command_digest=digest,
+            environment_digest=digest,
+            started_at=NOW,
+            finished_at=NOW,
+            duration_seconds=1.0,
+            input_tokens=10,
+            cached_input_tokens=5,
+            output_tokens=2,
+            reasoning_output_tokens=1,
+            objective_checks_passed=4,
+            objective_checks_total=4,
+            diagnostic_checks_passed=4,
+            diagnostic_checks_total=4,
+            neutral_checks_passed=4,
+            neutral_checks_total=4,
+            timed_out=False,
+            exit_code=0,
+            trace_conformant=True,
+            config_destroyed=True,
+            workspace_destroyed=True,
+            valid=True,
+        )
+        for cell in public.run_order
+    )
+    report = CodexV2GateBlindReport(
+        design_digest=design.content_digest,
+        observations=observations,
+        created_at=NOW,
+    )
+    condition_by_blind = {
+        assignment.blind_condition_id: assignment.condition
+        for assignment in private.condition_assignments
+    }
+    task_preferences = []
+    for task in design.tasks:
+        ordered_cells = tuple(
+            sorted(
+                (cell for cell in public.run_order if cell.task_id == task.task_id),
+                key=lambda cell: cell.sequence,
+            )
+        )
+        strong_index = next(
+            index
+            for index, cell in enumerate(ordered_cells)
+            if condition_by_blind[cell.blind_condition_id]
+            is BenchmarkCondition.STRONG_STATIC_PROFILE
+        )
+        task_preferences.append(
+            CodexV2GateTaskPreference(
+                task_id=task.task_id,
+                ordered_output_ids=(
+                    ordered_cells[0].blind_output_id,
+                    ordered_cells[1].blind_output_id,
+                ),
+                preference="first_better" if strong_index == 0 else "second_better",
+                preferred_output_id=ordered_cells[strong_index].blind_output_id,
+                rationale="The strong static profile output is preferred.",
+            )
+        )
+    rating = CodexV2GatePreferenceRating(
+        rating_id="v2-gate-rating-kevin-test",
+        public_plan_digest=public.content_digest,
+        blind_report_digest=report.content_digest,
+        presentation_sha256="sha256:" + "e" * 64,
+        task_preferences=tuple(task_preferences),
+        rated_at=NOW,
+    )
+
+    result = unblind_codex_v2_gate(
+        design=design,
+        public_plan=public,
+        private_plan=private,
+        blind_report=report,
+        rating=rating,
+        failed_checks_by_output={observation.blind_output_id: () for observation in observations},
+        created_at=NOW,
+    )
+
+    aggregates = {item.condition: item for item in result.condition_aggregates}
+    assert result.decision == "compiled_below_strong"
+    assert not result.tie_or_better_rule_passed
+    assert aggregates[BenchmarkCondition.STRONG_STATIC_PROFILE].preference_wins == 3
+    assert aggregates[BenchmarkCondition.COMPILED_ADAPTATION].preference_wins == 0
+    assert not result.cross_agent_claim_allowed
+    assert not result.milestone_6_custody_accessed
+
+    with pytest.raises(ValueError, match="predates the frozen rating"):
+        unblind_codex_v2_gate(
+            design=design,
+            public_plan=public,
+            private_plan=private,
+            blind_report=report,
+            rating=rating,
+            failed_checks_by_output={
+                observation.blind_output_id: () for observation in observations
+            },
+            created_at=NOW - timedelta(seconds=1),
+        )
+
+
+def test_committed_v2_gate_result_binds_rating_and_records_strong_preference() -> None:
+    rating = CodexV2GatePreferenceRating.model_validate_json(
+        (_root() / "codex-development-v2-remaining-kevin-rating.json").read_text(encoding="utf-8")
+    )
+    result = CodexV2GateUnblindedResult.model_validate_json(
+        (_root() / "codex-development-v2-remaining-unblinded-result.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    aggregates = {item.condition: item for item in result.condition_aggregates}
+    strong = aggregates[BenchmarkCondition.STRONG_STATIC_PROFILE]
+    compiled = aggregates[BenchmarkCondition.COMPILED_ADAPTATION]
+    assert rating.rated_at < result.created_at
+    assert result.preference_rating_digest == rating.content_digest
+    assert result.decision == "compiled_below_strong"
+    assert not result.tie_or_better_rule_passed
+    assert strong.preference_wins == 3
+    assert compiled.preference_wins == 0
+    assert strong.objective == compiled.objective
+    assert strong.diagnostic == compiled.diagnostic
+    assert strong.neutral == compiled.neutral
+    assert not result.cross_agent_claim_allowed
+    assert not result.milestone_6_custody_accessed

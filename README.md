@@ -17,9 +17,11 @@ structural scoring; both anonymous conditions tied at 4/4 objective, 3/4 diagnos
 neutral checks. Kevin slightly preferred the first anonymous output, which unblinding identified
 as compiled adaptation rather than the strong static profile. This is one positive same-agent
 development signal, not a reason to change the compiler or claim transfer. The other three public
-replacement task families then completed six valid blinded Luna cells; their objective scores and
-identities remain sealed pending Kevin's three pairwise ratings. Paid cross-agent execution
-remains closed.
+replacement task families then completed six valid blinded Luna cells. Kevin's three preferences
+were committed before unblinding and all favored the strong static profile. Automated scores tied
+at 12/12 objective, 11/12 diagnostic, and 12/12 neutral checks for each condition, but compiled
+adaptation failed the preregistered tie-or-better rule on preference. Paid cross-agent execution
+remains closed; this is negative same-agent development evidence, not a transfer result.
 
 ## What is here
 
