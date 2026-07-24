@@ -118,6 +118,33 @@ def test_committed_v2_gate_blind_packet_matches_manifest_without_identity() -> N
         assert packet_text.index(first) < packet_text.index(second)
 
 
+def test_committed_v2_gate_rating_binds_blind_packet_before_mapping() -> None:
+    manifest = cast(
+        dict[str, Any],
+        json.loads(
+            (_root() / "codex-development-v2-remaining-blind-manifest.json").read_text(
+                encoding="utf-8"
+            )
+        ),
+    )
+    rating = CodexV2GatePreferenceRating.model_validate_json(
+        (_root() / "codex-development-v2-remaining-kevin-rating.json").read_text(encoding="utf-8")
+    )
+
+    assert rating.public_plan_digest == manifest["public_plan_digest"]
+    assert rating.blind_report_digest == manifest["blind_report_digest"]
+    assert rating.presentation_sha256 == manifest["presentation_sha256"]
+    assert not rating.condition_mapping_seen
+    assert [item.preference for item in rating.task_preferences] == [
+        "first_better",
+        "second_better",
+        "first_better",
+    ]
+    assert [list(item.ordered_output_ids) for item in rating.task_preferences] == [
+        pair["ordered_output_ids"] for pair in manifest["task_pairs"]
+    ]
+
+
 def test_v2_gate_rating_requires_three_sorted_pairs_and_six_outputs() -> None:
     rating = CodexV2GatePreferenceRating(
         rating_id="v2-gate-rating-kevin-0001",
