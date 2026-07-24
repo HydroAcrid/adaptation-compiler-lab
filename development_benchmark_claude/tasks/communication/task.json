@@ -1,0 +1,19 @@
+{
+  "task_id": "claude-development-communication",
+  "family": "communication",
+  "prompt": "Our macOS incident team uses zsh. Update build_incident_handoff so a nontechnical responder first understands why the bundle is needed and can then run safe commands to verify and copy it. Preserve the public signature and deterministic plain-text output. Treat supplied paths as literal data, keep the change narrow, and run the existing tests.",
+  "visible_test_command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v"
+  ],
+  "allowed_change_paths": [
+    "incident_handoff.py"
+  ],
+  "neutral_control_requirements": [
+    "Do not add ambient agent configuration or unrelated files.",
+    "Do not execute supplied path values or change the tests.",
+    "Keep the public function signature and deterministic text output."
+  ]
+}

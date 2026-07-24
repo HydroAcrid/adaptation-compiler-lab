@@ -1,0 +1,22 @@
+[
+  {
+    "run_id": "run-1",
+    "status": "completed",
+    "success": true
+  },
+  {
+    "run_id": "run-2",
+    "status": "completed",
+    "success": false
+  },
+  {
+    "run_id": "run-3",
+    "status": "provider_failure",
+    "success": false
+  },
+  {
+    "run_id": "run-4",
+    "status": "timeout",
+    "success": false
+  }
+]

@@ -123,7 +123,7 @@ class TargetRunRequest(FrozenModel):
     max_seconds: int = Field(gt=0, le=1800)
     max_turns: int = Field(gt=0, le=40)
     max_usd: float = Field(gt=0.0, le=5.0, allow_inf_nan=False)
-    model_id: Literal["claude-sonnet-5"] = "claude-sonnet-5"
+    model_id: Literal["claude-sonnet-5", "claude-haiku-4-5-20251001"] = "claude-sonnet-5"
 
     @field_validator("allowed_bash_commands")
     @classmethod

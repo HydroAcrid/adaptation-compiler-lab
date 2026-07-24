@@ -48,7 +48,7 @@ class LiveSmokeReceipt(FrozenModel):
     executed_at: UtcDateTime
     runtime_lock_digest: Sha256Digest
     runner_version: NonEmptyStr
-    model_id: Literal["claude-sonnet-5"]
+    model_id: Literal["claude-sonnet-5", "claude-haiku-4-5-20251001"]
     condition_digest: Sha256Digest
     command_digest: Sha256Digest
     trace_digest: Sha256Digest
@@ -78,6 +78,7 @@ def run_live_no_user_data_smoke(
     runner: TargetRunner,
     *,
     runtime_lock: Path = DEFAULT_RUNTIME_LOCK,
+    model_id: Literal["claude-sonnet-5", "claude-haiku-4-5-20251001"] = "claude-sonnet-5",
 ) -> LiveSmokeReceipt:
     """Run one USD $0.25 synthetic task and return only a minimized receipt."""
 
@@ -99,6 +100,7 @@ def run_live_no_user_data_smoke(
                 max_seconds=300,
                 max_turns=4,
                 max_usd=0.25,
+                model_id=model_id,
             )
         )
         if result.timed_out or result.exit_code != 0:

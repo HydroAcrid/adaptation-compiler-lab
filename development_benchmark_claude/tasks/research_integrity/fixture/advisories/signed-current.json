@@ -1,0 +1,7 @@
+{
+  "advisory_id": "signed-release-2026-07-20",
+  "applicable": true,
+  "authority": "signed_release",
+  "observed_at": "2026-07-20T15:30:00Z",
+  "source_state": "blocked"
+}

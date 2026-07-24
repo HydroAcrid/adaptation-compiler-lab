@@ -67,6 +67,7 @@ _FIXED_ENV: Final = {
     "DISABLE_UPDATES": "1",
     "DO_NOT_TRACK": "1",
     "ENABLE_CLAUDEAI_MCP_SERVERS": "false",
+    "PYTHONDONTWRITEBYTECODE": "1",
 }
 _GENERIC_STDIN_PROMPT: Final = (
     "Complete the coding task supplied on standard input. Follow only the injected condition "

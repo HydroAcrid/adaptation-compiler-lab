@@ -1,0 +1,10 @@
+{
+  "decision_order": [
+    "insufficient_valid_runs",
+    "source_state",
+    "success_rate"
+  ],
+  "minimum_success_rate": 0.75,
+  "minimum_valid_runs": 3,
+  "policy_version": "deployment-readiness-v1"
+}

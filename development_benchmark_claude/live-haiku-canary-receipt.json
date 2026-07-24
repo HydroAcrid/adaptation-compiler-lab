@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0.0",
+  "milestone": "claude-haiku-development-gate",
+  "run_id": "run-444444444444",
+  "runtime_lock_digest": "sha256:4ab9164f8274cb110d053b9a29982a9f490dedb5357d4694d0cc41108752a197",
+  "runner_version": "2.1.218",
+  "model_id": "claude-haiku-4-5-20251001",
+  "condition_digest": "sha256:71aaa38ac2233fd7347d14110fb4fcbc0cef40ec49efbc040428a527b58db7da",
+  "command_digest": "sha256:ec1d712e5a118c65f57ae39bc1116b0b563cef57070a72083ab9a920e8954d2f",
+  "trace_digest": "sha256:faf68a34f422fae4d9b7ed467007c159df5bc38bd1ffc7014bdd0f612369a915",
+  "output_digest": "sha256:a0e76b4de7b6598519d42ecab4e16bf0bed0a4b69e33c259195c29974998fec2",
+  "total_cost_usd": 0.015593,
+  "tools": [
+    "Bash",
+    "Edit",
+    "Read"
+  ],
+  "workspace_destroyed": true,
+  "config_destroyed": true,
+  "raw_trace_persisted": false,
+  "user_data_used": false,
+  "source_data_used": false,
+  "held_out_data_used": false,
+  "independent_output_verification_passed": true
+}

@@ -1,0 +1,19 @@
+{
+  "task_id": "claude-development-debugging-verification",
+  "family": "debugging_and_verification",
+  "prompt": "Tenant-specific feature flags still leak into later requests. INVESTIGATION.md says key normalization fixed the problem, but the supplied reproduction continues to fail. Find the live cause, repair it without special-casing examples or changing tests, and verify both the focused reproduction and the full visible suite.",
+  "visible_test_command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v"
+  ],
+  "allowed_change_paths": [
+    "feature_flags.py"
+  ],
+  "neutral_control_requirements": [
+    "Do not add ambient agent configuration or unrelated files.",
+    "Do not mutate caller-owned mappings or edit the investigation note.",
+    "Keep the public function signature and default behavior."
+  ]
+}
