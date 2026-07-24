@@ -244,6 +244,56 @@ class ClaudeDevelopmentRunObservation(FrozenModel):
         return self
 
 
+class ClaudeDevelopmentEncryptedPayloadRef(FrozenModel):
+    """JSON-safe minimized reference to one encrypted external payload."""
+
+    sha256: NonEmptyStr
+    size_bytes: int = Field(gt=0)
+    media_type: NonEmptyStr
+    relative_path: NonEmptyStr
+
+    @field_validator("sha256")
+    @classmethod
+    def digest_is_raw_sha256_hex(cls, value: str) -> str:
+        if len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+            raise ValueError("encrypted payload reference requires lowercase SHA-256 hex")
+        return value
+
+
+class ClaudeDevelopmentProgressReceipt(FrozenModel):
+    """Append-only public progress marker without target output or condition mapping."""
+
+    run_id: Identifier
+    task_id: Identifier
+    blind_condition_id: Identifier
+    blind_output_id: Identifier
+    bundle_ref: ClaudeDevelopmentEncryptedPayloadRef
+    completed: int = Field(ge=1, le=16)
+    valid: bool
+
+
+class ClaudeDevelopmentCompletionReceipt(FrozenModel):
+    """Sanitized terminal receipt created before any result is unblinded."""
+
+    blind_packet_digest: Sha256Digest
+    blind_report_digest: Sha256Digest
+    blind_report_ref: ClaudeDevelopmentEncryptedPayloadRef
+    completed_at: UtcDateTime
+    condition_mapping_withheld: Literal[True] = True
+    milestone_6_custody_accessed: Literal[False] = False
+    private_plan_ref: ClaudeDevelopmentEncryptedPayloadRef
+    raw_retention_deadline: UtcDateTime
+    runs: Literal[16] = 16
+    scores_withheld: Literal[True] = True
+    total_cost_usd: float = Field(ge=0.0, le=18.0, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def retention_follows_completion(self) -> Self:
+        if self.raw_retention_deadline <= self.completed_at:
+            raise ValueError("raw retention deadline must follow completion")
+        return self
+
+
 class ClaudeDevelopmentBlindReport(FrozenModel):
     report_version: Literal["1.0.0"] = "1.0.0"
     design_digest: Sha256Digest

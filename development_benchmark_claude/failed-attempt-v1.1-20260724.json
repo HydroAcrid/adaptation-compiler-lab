@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0.0",
+  "benchmark_id": "claude-haiku-compiler-v2-development-gate-restart",
+  "attempt": 2,
+  "source_commit": "96d9088",
+  "status": "instrumentation_failure",
+  "failure_stage": "post_target_pre_progress_receipt",
+  "failure_reason": "The coordinator attempted to call Pydantic model_dump on a frozen RawPayloadRef dataclass.",
+  "runs_started": 1,
+  "valid_trial_records": 0,
+  "retry_under_same_preregistration": false,
+  "condition_mapping_inspected": false,
+  "target_output_inspected": false,
+  "objective_score_inspected": false,
+  "raw_trace_persisted": true,
+  "raw_trace_accessed_after_failure": false,
+  "failed_attempt_roots_preserved": true,
+  "maximum_possible_cost_usd": 1.0,
+  "milestone_6_custody_accessed": false,
+  "disposition": "Preregistration v1.1 is invalidated. Typed progress/completion receipts and an encrypted fake-trace persistence test are required before a v1.2 restart."
+}

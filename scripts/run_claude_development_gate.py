@@ -23,6 +23,9 @@ from typing import Any, cast
 from adaptation_compiler_lab.application.record_store import DomainRecordStore
 from adaptation_compiler_lab.benchmark.claude_development import (
     ClaudeDevelopmentBlindReport,
+    ClaudeDevelopmentCompletionReceipt,
+    ClaudeDevelopmentEncryptedPayloadRef,
+    ClaudeDevelopmentProgressReceipt,
     ClaudeDevelopmentRunObservation,
     build_claude_development_plan,
     load_claude_development_design,
@@ -101,6 +104,15 @@ def _canonical_bytes(value: Any) -> bytes:
 
 def _create_secret(path: Path) -> None:
     _exclusive_write(path, base64.b64encode(os.urandom(32)) + b"\n")
+
+
+def _encrypted_ref(value: RawPayloadRef) -> ClaudeDevelopmentEncryptedPayloadRef:
+    return ClaudeDevelopmentEncryptedPayloadRef(
+        sha256=value.sha256,
+        size_bytes=value.size_bytes,
+        media_type=value.media_type,
+        relative_path=value.relative_path,
+    )
 
 
 def _run(
@@ -796,15 +808,15 @@ def main() -> None:
         with (output_root / "progress.jsonl").open("ab") as stream:
             stream.write(
                 _canonical_bytes(
-                    {
-                        "blind_condition_id": cell.blind_condition_id,
-                        "blind_output_id": cell.blind_output_id,
-                        "bundle_ref": bundle_ref.model_dump(mode="json"),
-                        "completed": len(observations),
-                        "run_id": cell.run_id,
-                        "task_id": cell.task_id,
-                        "valid": observation.valid,
-                    }
+                    ClaudeDevelopmentProgressReceipt(
+                        blind_condition_id=cell.blind_condition_id,
+                        blind_output_id=cell.blind_output_id,
+                        bundle_ref=_encrypted_ref(bundle_ref),
+                        completed=len(observations),
+                        run_id=cell.run_id,
+                        task_id=cell.task_id,
+                        valid=observation.valid,
+                    )
                 )
             )
             stream.flush()
@@ -830,19 +842,15 @@ def main() -> None:
     _exclusive_write(
         output_root / "completion.json",
         _canonical_bytes(
-            {
-                "blind_packet_digest": sha256_file(output_root / "blind-rating-packet.md"),
-                "blind_report_digest": blind_report.content_digest,
-                "blind_report_ref": blind_report_ref.model_dump(mode="json"),
-                "completed_at": completed_at.isoformat(),
-                "condition_mapping_withheld": True,
-                "milestone_6_custody_accessed": False,
-                "private_plan_ref": private_plan_ref.model_dump(mode="json"),
-                "raw_retention_deadline": (completed_at + timedelta(days=30)).isoformat(),
-                "runs": len(observations),
-                "scores_withheld": True,
-                "total_cost_usd": total_cost,
-            }
+            ClaudeDevelopmentCompletionReceipt(
+                blind_packet_digest=sha256_file(output_root / "blind-rating-packet.md"),
+                blind_report_digest=blind_report.content_digest,
+                blind_report_ref=_encrypted_ref(blind_report_ref),
+                completed_at=completed_at,
+                private_plan_ref=_encrypted_ref(private_plan_ref),
+                raw_retention_deadline=completed_at + timedelta(days=30),
+                total_cost_usd=total_cost,
+            )
         ),
         mode=0o644,
     )
