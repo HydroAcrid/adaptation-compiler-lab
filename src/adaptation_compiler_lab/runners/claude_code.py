@@ -166,6 +166,18 @@ def _parse_stream(stdout: str) -> tuple[JsonObject, ...]:
     return tuple(events)
 
 
+def serialize_target_trace(events: tuple[JsonObject, ...]) -> bytes:
+    """Serialize an ordered target-event sequence without treating it as a mapping."""
+
+    return json.dumps(
+        events,
+        ensure_ascii=False,
+        allow_nan=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+
+
 def _assert_trace_conformance(
     events: tuple[JsonObject, ...],
     *,

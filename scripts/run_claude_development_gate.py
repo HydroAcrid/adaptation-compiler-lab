@@ -59,6 +59,7 @@ from adaptation_compiler_lab.persistence.sqlite import SqliteUnitOfWorkFactory
 from adaptation_compiler_lab.runners.claude_code import (
     ClaudeCodeTargetRunner,
     ClaudeRuntimePaths,
+    serialize_target_trace,
 )
 from adaptation_compiler_lab.serialization import canonical_digest, canonical_json
 
@@ -731,7 +732,7 @@ def main() -> None:
                     if observed
                 ),
             ]
-            trace_bytes = _canonical_bytes(result.events)
+            trace_bytes = serialize_target_trace(result.events)
             bundle_ref = encrypted_store.put(
                 _encrypted_bundle(
                     events=result.events,

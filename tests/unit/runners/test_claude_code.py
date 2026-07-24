@@ -25,6 +25,7 @@ from adaptation_compiler_lab.runners import (
     TargetExecutionError,
     run_live_no_user_data_smoke,
 )
+from adaptation_compiler_lab.runners.claude_code import serialize_target_trace
 
 _FAKE_CLAUDE = """#!/usr/bin/env python3
 import hashlib
@@ -99,6 +100,18 @@ print(json.dumps({
     "total_cost_usd": 0.01,
 }), flush=True)
 """
+
+
+def test_target_trace_serializer_accepts_an_ordered_event_tuple() -> None:
+    events: tuple[JsonObject, ...] = (
+        {"type": "system", "subtype": "init"},
+        {"type": "result", "result": "done", "total_cost_usd": 0.01},
+    )
+
+    payload = serialize_target_trace(events)
+
+    assert json.loads(payload) == list(events)
+    assert payload.startswith(b'[{"subtype":"init","type":"system"}')
 
 
 def _write_executable(path: Path, content: str) -> None:

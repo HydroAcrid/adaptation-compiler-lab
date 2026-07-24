@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0.0",
+  "benchmark_id": "claude-haiku-compiler-v2-development-gate",
+  "attempt": 1,
+  "source_commit": "26e64aa",
+  "status": "instrumentation_failure",
+  "failure_stage": "post_target_pre_persistence",
+  "failure_reason": "The coordinator passed the ordered tuple of target events to a serializer whose top-level contract accepts only a model or mapping.",
+  "runs_started": 1,
+  "valid_trial_records": 0,
+  "retry_under_same_preregistration": false,
+  "condition_mapping_inspected": false,
+  "target_output_inspected": false,
+  "objective_score_inspected": false,
+  "raw_trace_persisted": false,
+  "failed_attempt_roots_preserved": true,
+  "maximum_possible_cost_usd": 1.0,
+  "milestone_6_custody_accessed": false,
+  "disposition": "Preregistration v1.0 is invalidated. A serializer regression test and a separately frozen v1.1 restart are required."
+}
