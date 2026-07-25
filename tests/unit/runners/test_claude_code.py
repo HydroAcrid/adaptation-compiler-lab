@@ -261,6 +261,32 @@ if args[-1:] == ["/bin/true"] and {
     "--die-with-parent",
 }.issubset(args):
     raise SystemExit(0)
+if args[:3] == ["--bind", "/", "/"] and "--tmpfs" in args:
+    if args[args.index("--tmpfs") + 1] != "/mnt":
+        print("synthetic bwrap: Windows mount was not masked", file=sys.stderr)
+        raise SystemExit(81)
+    expected_directories = {
+        "/mnt/c",
+        "/mnt/c/Program Files",
+        "/mnt/c/Program Files/ClaudeCode",
+    }
+    directories = {
+        args[index + 1] for index, value in enumerate(args) if value == "--dir"
+    }
+    if directories != expected_directories:
+        print("synthetic bwrap: compatibility directories drifted", file=sys.stderr)
+        raise SystemExit(82)
+    if "--unshare-net" in args or "--unshare-all" in args:
+        print("synthetic bwrap: provider network was disabled", file=sys.stderr)
+        raise SystemExit(83)
+    command_index = args.index("--")
+    command = args[command_index + 1:]
+    working_directory = args[args.index("--chdir") + 1]
+    if not command or "--die-with-parent" not in args or "--new-session" not in args:
+        print("synthetic bwrap: compatibility process controls missing", file=sys.stderr)
+        raise SystemExit(84)
+    os.chdir(working_directory)
+    os.execve(command[0], command, os.environ)
 
 required_flags = {
     "--unshare-all",

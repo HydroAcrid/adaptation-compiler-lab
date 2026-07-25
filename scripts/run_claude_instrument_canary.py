@@ -56,7 +56,7 @@ from adaptation_compiler_lab.runners.claude_code import (
 )
 from adaptation_compiler_lab.serialization import canonical_json
 
-CANARY_ID = "claude-haiku-instrument-canary-v8"
+CANARY_ID = "claude-haiku-instrument-canary-v9"
 HOST_PROBE = Path("/tmp/acl-claude-instrument-canary-host-probe")
 CONDITIONS = (
     BenchmarkCondition.STRONG_STATIC_PROFILE,
@@ -145,11 +145,11 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
     exact = {
         "schema_version": "1.0.0",
         "canary_id": CANARY_ID,
-        "purpose": "managed_settings_directory_restart_of_bounded_command_instrument",
+        "purpose": "wsl_compatibility_namespace_restart_of_bounded_command_instrument",
         "restart_of": {
-            "canary_id": "claude-haiku-instrument-canary-v7",
+            "canary_id": "claude-haiku-instrument-canary-v8",
             "failure_receipt_digest": (
-                "sha256:d2c31346531a9eb32c3acd9807ea18e318de80096787af7dc0ca285f18a970a7"
+                "sha256:cdd3e42a3d554d9423b96330fbf8cd98ed211f54a8d438bc9975c2332b748575"
             ),
         },
         "source_commit": "TO_BE_FROZEN",
@@ -221,6 +221,10 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
             "alias_sandbox_network": "unshared",
             "alias_sandbox_host_filesystem": "not_mounted",
             "alias_sandbox_workspace": "disposable_workspace_only",
+            "outer_compatibility_namespace": "pinned_bubblewrap_mnt_mask",
+            "windows_mount_visible_to_target": False,
+            "provider_network_retained_outside_command_sandbox": True,
+            "inner_claude_sandbox_retained": True,
         },
         "success_gate": {
             "both_runs_edit_workspace": True,

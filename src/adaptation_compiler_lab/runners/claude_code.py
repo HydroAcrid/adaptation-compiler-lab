@@ -498,6 +498,36 @@ def _command_instructions(prepared_commands: tuple[_PreparedCommand, ...]) -> st
     return "\n".join(lines)
 
 
+def _compatibility_command(
+    *,
+    bubblewrap: Path,
+    claude_command: list[str],
+    workspace: Path,
+) -> list[str]:
+    """Mask WSL's Windows mount while retaining Claude's inner security sandbox."""
+
+    return [
+        str(bubblewrap),
+        "--bind",
+        "/",
+        "/",
+        "--tmpfs",
+        "/mnt",
+        "--dir",
+        "/mnt/c",
+        "--dir",
+        "/mnt/c/Program Files",
+        "--dir",
+        "/mnt/c/Program Files/ClaudeCode",
+        "--die-with-parent",
+        "--new-session",
+        "--chdir",
+        str(workspace),
+        "--",
+        *claude_command,
+    ]
+
+
 def _parse_stream(stdout: str) -> tuple[JsonObject, ...]:
     events: list[JsonObject] = []
 
@@ -827,7 +857,7 @@ class ClaudeCodeTargetRunner:
                 allow_rules, _ = _tool_rules(workspace, condition_file)
                 allowed_tools = [cast(str, rule) for rule in allow_rules]
                 allowed_tools.extend(f"Bash({prepared.alias})" for prepared in prepared_commands)
-                command = [
+                claude_command = [
                     str(runtime.executable),
                     "--bare",
                     "--print",
@@ -860,6 +890,11 @@ class ClaudeCodeTargetRunner:
                     f"{request.max_usd:.2f}",
                     _GENERIC_STDIN_PROMPT,
                 ]
+                command = _compatibility_command(
+                    bubblewrap=runtime.bubblewrap,
+                    claude_command=claude_command,
+                    workspace=workspace,
+                )
                 command_digest = sha256_bytes(
                     json.dumps(command, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
                 )

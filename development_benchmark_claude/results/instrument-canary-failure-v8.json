@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0.0",
+  "canary_id": "claude-haiku-instrument-canary-v8",
+  "preregistration": "INSTRUMENT_CANARY_PREREGISTRATION-v8.json",
+  "preregistration_digest": "sha256:fc00e7deaf3099d6de5a6ea4a235101892d86477c1bac98d2400f9b57d7b299d",
+  "source_commit": "89f4b76645e2fb44f1639f027c7e514f2c717cb9",
+  "model": "claude-haiku-4-5-20251001",
+  "claude_code_version": "2.1.218",
+  "status": "instrument_canary_failed_closed",
+  "attempted_at": "2026-07-25T06:23:32Z",
+  "planned_runs": 2,
+  "attempted_runs": 1,
+  "completed_valid_trial_records": 0,
+  "second_run_executed": false,
+  "retries": 0,
+  "failure_stage": "target_bash_sandbox_startup_then_trace_conformance",
+  "failure_reasons": [
+    "Claude Code received a correctly structured isolated managed-settings directory and pinned bwrapPath but still attempted to protect the absent Windows policy directory on WSL.",
+    "Every approved alias therefore failed before entering its fixed unittest implementation.",
+    "The target later attempted an unapproved command; trace conformance rejected it and retained exact failure evidence."
+  ],
+  "failed_run": {
+    "condition": "compiled_adaptation",
+    "provider_cost_usd": 0.05549135,
+    "accepted_aliases": [
+      "acl-test-focused",
+      "acl-test-full"
+    ],
+    "failure_code": "out_of_manifest_bash_command",
+    "failure_subject_digest": "sha256:fd7ceb67a3b20e032ac959f199c7e1a7062eba15559f3dc2b9ce523661ca58c7",
+    "raw_failure_bundle_digest": "sha256:ff5e31c7d9a2ea3134e0aec307bfbabb2523c50946bdad3218de88f0fbd5203d"
+  },
+  "exact_provider_cost_available": true,
+  "total_provider_cost_usd": 0.05549135,
+  "public_plan_digest": "sha256:d221e5537649d1cecb21c210aed38cf1f441db00c5db39687beeb7dccca42a34",
+  "private_plan_digest": "sha256:330b5be23c090628d7e230029c9792159d95ca1eb01f42813b594ad5794849b0",
+  "completion_digest": "sha256:7fffe7b031e37e764a9b94a62f8eeed520cd6fb4e315ff32a735f056db6ee36c",
+  "seed_commitment": "sha256:7ae599e8bc041d8078f811ca2da50dd5bacf418e32eceabf3de44935a084674b",
+  "encrypted_run_evidence_preserved_outside_git": true,
+  "disposable_workspaces_removed": true,
+  "ephemeral_configurations_removed": true,
+  "host_probe_removed": true,
+  "milestone_6_custody_accessed": false,
+  "milestone_6_materials_modified": false,
+  "full_paid_milestone_6_pilot_executed": false,
+  "claim_boundary": "No adaptation-quality conclusion or cross-agent-transfer claim is permitted.",
+  "disposition": "Do not reuse v8. Mask the WSL Windows mount inside a pinned outer compatibility namespace while retaining the inner command sandbox."
+}
