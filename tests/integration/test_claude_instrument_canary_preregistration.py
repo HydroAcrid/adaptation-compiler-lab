@@ -11,14 +11,14 @@ import pytest
 from adaptation_compiler_lab.connectors.models import TargetCommandAuditEntry
 
 
-def test_canary_v10_preregistration_matches_coordinator(
+def test_canary_v11_preregistration_matches_coordinator(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     repository = Path(__file__).parents[2]
     monkeypatch.syspath_prepend(str(repository / "scripts"))
     coordinator: Any = importlib.import_module("run_claude_instrument_canary")
     preregistration = (
-        repository / "development_benchmark_claude" / "INSTRUMENT_CANARY_PREREGISTRATION-v10.json"
+        repository / "development_benchmark_claude" / "INSTRUMENT_CANARY_PREREGISTRATION-v11.json"
     )
 
     loaded = coordinator._load_preregistration(
@@ -27,7 +27,7 @@ def test_canary_v10_preregistration_matches_coordinator(
         source_commit="synthetic-clean-commit",
     )
 
-    assert loaded["canary_id"] == "claude-haiku-instrument-canary-v10"
+    assert loaded["canary_id"] == "claude-haiku-instrument-canary-v11"
     assert loaded["command_interface"] == {
         "full_test_alias": "acl-test-full",
         "focused_test_alias": "acl-test-focused",
@@ -52,12 +52,14 @@ def test_canary_v10_preregistration_matches_coordinator(
             "pinned_bubblewrap",
             "pinned_socat",
             "pinned_sandbox_library",
+            "wsl_resolver_target",
         ],
         "outer_writable_mounts": [
             "disposable_workspace",
             "ephemeral_config",
         ],
         "windows_mount_visible_to_target": False,
+        "wsl_resolver_target_mounted_read_only": True,
         "provider_network_retained_outside_command_sandbox": True,
         "inner_claude_sandbox_retained": True,
     }

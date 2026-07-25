@@ -65,7 +65,6 @@ _FIXED_ENV: Final = {
     "CLAUDE_CODE_DISABLE_WORKFLOWS": "1",
     "CLAUDE_CODE_HOST_PLATFORM": "linux",
     "CLAUDE_CODE_SKIP_PROMPT_HISTORY": "1",
-    "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1",
     "DISABLE_ERROR_REPORTING": "1",
     "DISABLE_TELEMETRY": "1",
     "DISABLE_UPDATES": "1",
@@ -99,6 +98,7 @@ _OUTER_CLAUDE: Final = _OUTER_RUNTIME_ROOT / "claude"
 _OUTER_BWRAP: Final = _OUTER_RUNTIME_ROOT / "bwrap"
 _OUTER_SOCAT: Final = _OUTER_RUNTIME_ROOT / "socat"
 _OUTER_SANDBOX_LIB: Final = _OUTER_RUNTIME_ROOT / "lib"
+_WSL_RESOLV_CONF: Final = Path("/mnt/wsl/resolv.conf")
 
 
 @dataclass(frozen=True)
@@ -484,6 +484,11 @@ def _isolated_target_command(
         "--dir",
         "/mnt/c/Program Files/ClaudeCode",
         "--dir",
+        str(_WSL_RESOLV_CONF.parent),
+        "--ro-bind",
+        str(_WSL_RESOLV_CONF),
+        str(_WSL_RESOLV_CONF),
+        "--dir",
         str(_OUTER_RUNTIME_ROOT),
         "--ro-bind",
         str(runtime.executable),
@@ -565,6 +570,8 @@ def _assert_trace_conformance(
         init = init_events[0]
         if init.get("model") != model_id:
             raise TargetExecutionError("Claude initialized a model other than the frozen full ID")
+        if init.get("permissionMode") != "dontAsk":
+            raise TargetExecutionError("Claude did not initialize in the frozen permission mode")
         tools = init.get("tools")
         if not isinstance(tools, list) or any(not isinstance(item, str) for item in tools):
             raise TargetExecutionError("Claude system/init omitted its tool inventory")

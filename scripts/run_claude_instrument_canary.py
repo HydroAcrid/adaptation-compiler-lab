@@ -56,7 +56,7 @@ from adaptation_compiler_lab.runners.claude_code import (
 )
 from adaptation_compiler_lab.serialization import canonical_json
 
-CANARY_ID = "claude-haiku-instrument-canary-v10"
+CANARY_ID = "claude-haiku-instrument-canary-v11"
 HOST_PROBE = Path("/tmp/acl-claude-instrument-canary-host-probe")
 CONDITIONS = (
     BenchmarkCondition.STRONG_STATIC_PROFILE,
@@ -145,11 +145,11 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
     exact = {
         "schema_version": "1.0.0",
         "canary_id": CANARY_ID,
-        "purpose": "minimal_whole_process_sandbox_restart_of_bounded_command_instrument",
+        "purpose": "wsl_resolver_and_permission_mode_restart_of_bounded_command_instrument",
         "restart_of": {
-            "canary_id": "claude-haiku-instrument-canary-v9",
+            "canary_id": "claude-haiku-instrument-canary-v10",
             "failure_receipt_digest": (
-                "sha256:60a5976c274af38c6836f1f1d8045a96a97aa082da61646d4585f852ee149ecf"
+                "sha256:0e16f792bd65fb2b1abfa3e5c94866c13e238ec00e4837d661395c5e4e264d93"
             ),
         },
         "source_commit": "TO_BE_FROZEN",
@@ -226,12 +226,14 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
                 "pinned_bubblewrap",
                 "pinned_socat",
                 "pinned_sandbox_library",
+                "wsl_resolver_target",
             ],
             "outer_writable_mounts": [
                 "disposable_workspace",
                 "ephemeral_config",
             ],
             "windows_mount_visible_to_target": False,
+            "wsl_resolver_target_mounted_read_only": True,
             "provider_network_retained_outside_command_sandbox": True,
             "inner_claude_sandbox_retained": True,
         },

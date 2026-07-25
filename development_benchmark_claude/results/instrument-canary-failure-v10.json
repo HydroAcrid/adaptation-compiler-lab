@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0.0",
+  "canary_id": "claude-haiku-instrument-canary-v10",
+  "preregistration": "INSTRUMENT_CANARY_PREREGISTRATION-v10.json",
+  "preregistration_digest": "sha256:8039f1b859ecafc018849eaa90e5b6adb8f096b809eb31e51f9baa6443512f97",
+  "source_commit": "a18e72d65e19887e40599252e6decb09f8bc09b9",
+  "model": "claude-haiku-4-5-20251001",
+  "claude_code_version": "2.1.218",
+  "status": "instrument_canary_failed_closed",
+  "attempted_at": "2026-07-25T06:49:52.402508Z",
+  "planned_runs": 2,
+  "attempted_runs": 2,
+  "completed_valid_trial_records": 0,
+  "retries": 0,
+  "failure_stage": "provider_dns_resolution",
+  "failure_reasons": [
+    "The minimal outer filesystem preserved /etc/resolv.conf as a WSL symlink but did not mount its exact /mnt/wsl/resolv.conf target.",
+    "Both target processes initialized with the frozen model and no ambient agents, plugins, skills, or MCP servers, then exhausted API retries with ENOTIMP before any provider token or target tool call.",
+    "The subprocess-scrub hardening variable also forced the target permission mode from dontAsk to default and must be removed because credential stripping is already enforced by managed sandbox policy and bounded wrappers."
+  ],
+  "failed_runs": [
+    {
+      "condition": "strong_static_profile",
+      "provider_cost_usd": 0.0,
+      "accepted_aliases": [],
+      "exit_code": 1,
+      "timed_out": false,
+      "raw_bundle_digest": "sha256:bc4fcf4253e34fbef506883b9c6e36feaf089d1163782c13a64687e25558ace8"
+    },
+    {
+      "condition": "compiled_adaptation",
+      "provider_cost_usd": 0.0,
+      "accepted_aliases": [],
+      "exit_code": 1,
+      "timed_out": false,
+      "raw_bundle_digest": "sha256:ae62884effa89656a1fed29f764c7b6ef3964b28cde94b2ff53e8a40ad0b679c"
+    }
+  ],
+  "exact_provider_cost_available": true,
+  "total_provider_cost_usd": 0.0,
+  "public_plan_digest": "sha256:ffba459148a7c74f81d6788c4be7be7416bb48e455d11a0f172ecaa7fe46c18b",
+  "private_plan_digest": "sha256:866e8ca1d49be82f5208d1a195022763adaa7de52746399ce7d559d0a2b4bc11",
+  "completion_digest": "sha256:3d27716b33d8a7c1e97bac10d2ef0157b1a90a1235eb5464588085c60629f6c2",
+  "seed_commitment": "sha256:a11e8b5cef27a8f369ce08508a17a7f92107c2b63c36d2c88acb8bc5c966e1a0",
+  "encrypted_run_evidence_preserved_outside_git": true,
+  "disposable_workspaces_removed": true,
+  "ephemeral_configurations_removed": true,
+  "host_probe_removed": true,
+  "milestone_6_custody_accessed": false,
+  "milestone_6_materials_modified": false,
+  "full_paid_milestone_6_pilot_executed": false,
+  "claim_boundary": "No adaptation-quality conclusion or cross-agent-transfer claim is permitted.",
+  "disposition": "Do not reuse v10. Mount only the WSL resolver target into the minimal namespace, retain the rest of /mnt as absent, and enforce the frozen permission mode in trace conformance."
+}

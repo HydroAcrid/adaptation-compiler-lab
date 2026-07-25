@@ -68,6 +68,7 @@ print(json.dumps({
     "type": "system",
     "subtype": "init",
     "model": model,
+    "permissionMode": "dontAsk",
     "tools": tools,
     "mcp_servers": [],
     "plugins": [],
@@ -269,7 +270,7 @@ if not required_flags.issubset(args):
 if "--unshare-net" in args or "--clearenv" in args:
     print("synthetic bwrap: target environment or provider network drifted", file=sys.stderr)
     raise SystemExit(92)
-if args.count("--bind") != 2 or args.count("--ro-bind") != 6:
+if args.count("--bind") != 2 or args.count("--ro-bind") != 7:
     print("synthetic bwrap: unexpected host mount count", file=sys.stderr)
     raise SystemExit(93)
 
@@ -311,6 +312,7 @@ while index < len(args):
 expected_fixed = {
     "/usr": "/usr",
     "/etc": "/etc",
+    "/mnt/wsl/resolv.conf": "/mnt/wsl/resolv.conf",
     "/opt/acl-runtime/claude": str(pathlib.Path(sys.argv[0]).parent / "fake-claude"),
     "/opt/acl-runtime/bwrap": str(pathlib.Path(sys.argv[0]).resolve()),
     "/opt/acl-runtime/socat": str(pathlib.Path(sys.argv[0]).parent / "socat"),
@@ -336,6 +338,7 @@ if any(
 if (
     "/tmp" not in tmpfs_paths
     or "/opt/acl-runtime" not in directories
+    or "/mnt/wsl" not in directories
     or "/mnt/c/Program Files/ClaudeCode" not in directories
 ):
     print("synthetic bwrap: masked compatibility or runtime directory missing", file=sys.stderr)
