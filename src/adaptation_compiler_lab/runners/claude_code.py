@@ -705,7 +705,7 @@ class ClaudeCodeTargetRunner:
         *,
         config_dir: Path,
         commands_dir: Path,
-        managed_settings_path: Path,
+        managed_settings_dir: Path,
     ) -> dict[str, str]:
         api_key = self._api_key()
         configured_base = self._environment.get("ANTHROPIC_BASE_URL")
@@ -745,7 +745,7 @@ class ClaudeCodeTargetRunner:
         environment["ANTHROPIC_BASE_URL"] = runtime.api_base_url
         environment["ANTHROPIC_MODEL"] = runtime.model_id
         environment["CLAUDE_CONFIG_DIR"] = str(config_dir)
-        environment["CLAUDE_CODE_MANAGED_SETTINGS_PATH"] = str(managed_settings_path)
+        environment["CLAUDE_CODE_MANAGED_SETTINGS_PATH"] = str(managed_settings_dir)
         environment.update(_FIXED_ENV)
         return environment
 
@@ -803,13 +803,26 @@ class ClaudeCodeTargetRunner:
                 )
                 settings_path.chmod(0o600)
                 managed_settings_path = config_dir / "managed-settings.json"
-                managed_settings_path.write_text("{}\n", encoding="utf-8")
+                managed_settings_payload = {
+                    **settings_payload,
+                    "bwrapPath": str(runtime.bubblewrap),
+                }
+                managed_settings_path.write_text(
+                    json.dumps(
+                        managed_settings_payload,
+                        ensure_ascii=False,
+                        allow_nan=False,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ),
+                    encoding="utf-8",
+                )
                 managed_settings_path.chmod(0o600)
                 environment = self._environment_for_run(
                     runtime,
                     config_dir=config_dir,
                     commands_dir=commands_dir,
-                    managed_settings_path=managed_settings_path,
+                    managed_settings_dir=config_dir,
                 )
                 allow_rules, _ = _tool_rules(workspace, condition_file)
                 allowed_tools = [cast(str, rule) for rule in allow_rules]

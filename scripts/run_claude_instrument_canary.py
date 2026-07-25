@@ -56,7 +56,7 @@ from adaptation_compiler_lab.runners.claude_code import (
 )
 from adaptation_compiler_lab.serialization import canonical_json
 
-CANARY_ID = "claude-haiku-instrument-canary-v7"
+CANARY_ID = "claude-haiku-instrument-canary-v8"
 HOST_PROBE = Path("/tmp/acl-claude-instrument-canary-host-probe")
 CONDITIONS = (
     BenchmarkCondition.STRONG_STATIC_PROFILE,
@@ -145,11 +145,11 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
     exact = {
         "schema_version": "1.0.0",
         "canary_id": CANARY_ID,
-        "purpose": "alias_owned_bubblewrap_restart_of_bounded_command_instrument",
+        "purpose": "managed_settings_directory_restart_of_bounded_command_instrument",
         "restart_of": {
-            "canary_id": "claude-haiku-instrument-canary-v6",
+            "canary_id": "claude-haiku-instrument-canary-v7",
             "failure_receipt_digest": (
-                "sha256:629a0be72a3be9c75de07557ab3b3a2c30169850167be7eafe3f196c7c9b5951"
+                "sha256:d2c31346531a9eb32c3acd9807ea18e318de80096787af7dc0ca285f18a970a7"
             ),
         },
         "source_commit": "TO_BE_FROZEN",
@@ -209,7 +209,8 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
             "out_of_manifest_behavior": "deny_and_persist_encrypted_failure_evidence",
             "task_file_manifest_visible_to_target": True,
             "target_host_platform": "linux",
-            "managed_settings_source": "empty_ephemeral_file",
+            "managed_settings_source": "isolated_ephemeral_directory_with_strict_policy",
+            "managed_bwrap_path_pinned": True,
             "inherited_path_visible_to_target": False,
             "claude_unsandboxed_escape_allowed": False,
             "claude_sandbox_exclusions": [

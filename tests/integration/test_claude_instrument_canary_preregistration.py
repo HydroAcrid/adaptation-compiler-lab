@@ -11,14 +11,14 @@ import pytest
 from adaptation_compiler_lab.connectors.models import TargetCommandAuditEntry
 
 
-def test_canary_v7_preregistration_matches_coordinator(
+def test_canary_v8_preregistration_matches_coordinator(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     repository = Path(__file__).parents[2]
     monkeypatch.syspath_prepend(str(repository / "scripts"))
     coordinator: Any = importlib.import_module("run_claude_instrument_canary")
     preregistration = (
-        repository / "development_benchmark_claude" / "INSTRUMENT_CANARY_PREREGISTRATION-v7.json"
+        repository / "development_benchmark_claude" / "INSTRUMENT_CANARY_PREREGISTRATION-v8.json"
     )
 
     loaded = coordinator._load_preregistration(
@@ -27,7 +27,7 @@ def test_canary_v7_preregistration_matches_coordinator(
         source_commit="synthetic-clean-commit",
     )
 
-    assert loaded["canary_id"] == "claude-haiku-instrument-canary-v7"
+    assert loaded["canary_id"] == "claude-haiku-instrument-canary-v8"
     assert loaded["command_interface"] == {
         "full_test_alias": "acl-test-full",
         "focused_test_alias": "acl-test-focused",
@@ -35,7 +35,8 @@ def test_canary_v7_preregistration_matches_coordinator(
         "out_of_manifest_behavior": "deny_and_persist_encrypted_failure_evidence",
         "task_file_manifest_visible_to_target": True,
         "target_host_platform": "linux",
-        "managed_settings_source": "empty_ephemeral_file",
+        "managed_settings_source": "isolated_ephemeral_directory_with_strict_policy",
+        "managed_bwrap_path_pinned": True,
         "inherited_path_visible_to_target": False,
         "claude_unsandboxed_escape_allowed": False,
         "claude_sandbox_exclusions": [

@@ -59,6 +59,10 @@ settings_path = pathlib.Path(argument_after("--settings"))
 model = argument_after("--model")
 tools = argument_after("--tools").split(",")
 settings = json.loads(settings_path.read_text(encoding="utf-8"))
+managed_settings_dir = pathlib.Path(os.environ["CLAUDE_CODE_MANAGED_SETTINGS_PATH"])
+managed_settings = json.loads(
+    (managed_settings_dir / "managed-settings.json").read_text(encoding="utf-8")
+)
 
 print(json.dumps({
     "type": "system",
@@ -229,9 +233,7 @@ print(json.dumps({
     "has_api_key": bool(os.environ.get("ANTHROPIC_API_KEY")),
     "host_platform": os.environ.get("CLAUDE_CODE_HOST_PLATFORM"),
     "managed_settings_path": os.environ.get("CLAUDE_CODE_MANAGED_SETTINGS_PATH"),
-    "managed_settings": pathlib.Path(
-        os.environ["CLAUDE_CODE_MANAGED_SETTINGS_PATH"]
-    ).read_text(encoding="utf-8"),
+    "managed_settings": managed_settings,
     "path": os.environ.get("PATH"),
     "prompt_has_full_alias": "acl-test-full" in prompt,
     "prompt_has_focused_alias": "acl-test-focused" in prompt,
@@ -487,12 +489,16 @@ def test_synthetic_runner_has_clean_state_tools_and_network(tmp_path: Path) -> N
     assert "/bin" in target_path.split(os.pathsep)
     assert "/mnt/c" not in target_path
     assert result_event["host_platform"] == "linux"
-    managed_settings_path = cast(str, result_event["managed_settings_path"])
-    assert managed_settings_path.endswith("/managed-settings.json")
-    assert result_event["managed_settings"] == "{}\n"
-    assert result_event["condition_sha256"] == request.condition_digest.removeprefix("sha256:")
     settings = result_event["settings"]
     assert isinstance(settings, dict)
+    managed_settings_path = cast(str, result_event["managed_settings_path"])
+    assert managed_settings_path.startswith("/tmp/acl-claude-config-")
+    managed_settings = result_event["managed_settings"]
+    assert isinstance(managed_settings, dict)
+    assert managed_settings["permissions"] == settings["permissions"]
+    assert managed_settings["sandbox"] == settings["sandbox"]
+    assert managed_settings["bwrapPath"] == str((tmp_path / "bwrap").resolve())
+    assert result_event["condition_sha256"] == request.condition_digest.removeprefix("sha256:")
     sandbox = settings["sandbox"]
     assert isinstance(sandbox, dict)
     assert sandbox["enabled"] is True
