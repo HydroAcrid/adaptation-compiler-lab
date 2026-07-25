@@ -11,14 +11,14 @@ import pytest
 from adaptation_compiler_lab.connectors.models import TargetCommandAuditEntry
 
 
-def test_canary_v5_preregistration_matches_coordinator(
+def test_canary_v6_preregistration_matches_coordinator(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     repository = Path(__file__).parents[2]
     monkeypatch.syspath_prepend(str(repository / "scripts"))
     coordinator: Any = importlib.import_module("run_claude_instrument_canary")
     preregistration = (
-        repository / "development_benchmark_claude" / "INSTRUMENT_CANARY_PREREGISTRATION-v5.json"
+        repository / "development_benchmark_claude" / "INSTRUMENT_CANARY_PREREGISTRATION-v6.json"
     )
 
     loaded = coordinator._load_preregistration(
@@ -27,13 +27,16 @@ def test_canary_v5_preregistration_matches_coordinator(
         source_commit="synthetic-clean-commit",
     )
 
-    assert loaded["canary_id"] == "claude-haiku-instrument-canary-v5"
+    assert loaded["canary_id"] == "claude-haiku-instrument-canary-v6"
     assert loaded["command_interface"] == {
         "full_test_alias": "acl-test-full",
         "focused_test_alias": "acl-test-focused",
         "command_implementations_visible_to_target": False,
         "out_of_manifest_behavior": "deny_and_persist_encrypted_failure_evidence",
         "task_file_manifest_visible_to_target": True,
+        "target_host_platform": "linux",
+        "managed_settings_source": "empty_ephemeral_file",
+        "inherited_path_visible_to_target": False,
     }
     assert loaded["success_gate"]["post_execution_rejections_preserve_usage_and_command_digest"]
 

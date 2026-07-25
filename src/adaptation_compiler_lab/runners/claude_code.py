@@ -63,6 +63,7 @@ _FIXED_ENV: Final = {
     "CLAUDE_CODE_DISABLE_POLICY_SKILLS": "1",
     "CLAUDE_CODE_DISABLE_TERMINAL_TITLE": "1",
     "CLAUDE_CODE_DISABLE_WORKFLOWS": "1",
+    "CLAUDE_CODE_HOST_PLATFORM": "linux",
     "CLAUDE_CODE_SKIP_PROMPT_HISTORY": "1",
     "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1",
     "DISABLE_ERROR_REPORTING": "1",
@@ -638,6 +639,7 @@ class ClaudeCodeTargetRunner:
         *,
         config_dir: Path,
         commands_dir: Path,
+        managed_settings_path: Path,
     ) -> dict[str, str]:
         api_key = self._api_key()
         configured_base = self._environment.get("ANTHROPIC_BASE_URL")
@@ -677,6 +679,7 @@ class ClaudeCodeTargetRunner:
         environment["ANTHROPIC_BASE_URL"] = runtime.api_base_url
         environment["ANTHROPIC_MODEL"] = runtime.model_id
         environment["CLAUDE_CONFIG_DIR"] = str(config_dir)
+        environment["CLAUDE_CODE_MANAGED_SETTINGS_PATH"] = str(managed_settings_path)
         environment.update(_FIXED_ENV)
         return environment
 
@@ -732,10 +735,14 @@ class ClaudeCodeTargetRunner:
                     encoding="utf-8",
                 )
                 settings_path.chmod(0o600)
+                managed_settings_path = config_dir / "managed-settings.json"
+                managed_settings_path.write_text("{}\n", encoding="utf-8")
+                managed_settings_path.chmod(0o600)
                 environment = self._environment_for_run(
                     runtime,
                     config_dir=config_dir,
                     commands_dir=commands_dir,
+                    managed_settings_path=managed_settings_path,
                 )
                 allow_rules, _ = _tool_rules(workspace, condition_file)
                 allowed_tools = [cast(str, rule) for rule in allow_rules]

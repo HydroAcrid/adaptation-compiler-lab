@@ -56,7 +56,7 @@ from adaptation_compiler_lab.runners.claude_code import (
 )
 from adaptation_compiler_lab.serialization import canonical_json
 
-CANARY_ID = "claude-haiku-instrument-canary-v5"
+CANARY_ID = "claude-haiku-instrument-canary-v6"
 HOST_PROBE = Path("/tmp/acl-claude-instrument-canary-host-probe")
 CONDITIONS = (
     BenchmarkCondition.STRONG_STATIC_PROFILE,
@@ -145,11 +145,11 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
     exact = {
         "schema_version": "1.0.0",
         "canary_id": CANARY_ID,
-        "purpose": "ambient_path_and_probe_corrected_restart_of_bounded_command_instrument",
+        "purpose": "native_linux_managed_settings_restart_of_bounded_command_instrument",
         "restart_of": {
-            "canary_id": "claude-haiku-instrument-canary-v4",
+            "canary_id": "claude-haiku-instrument-canary-v5",
             "failure_receipt_digest": (
-                "sha256:20d2612f24bb2bf5ee4354ba6760bc073f7c7a96273c643710449ed6bf3255d9"
+                "sha256:5b2875c2d6aa3d3438d41f9a8e007cd7053e00b5cc9f84618e3c8af1ab871fc0"
             ),
         },
         "source_commit": "TO_BE_FROZEN",
@@ -208,6 +208,9 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
             "command_implementations_visible_to_target": False,
             "out_of_manifest_behavior": "deny_and_persist_encrypted_failure_evidence",
             "task_file_manifest_visible_to_target": True,
+            "target_host_platform": "linux",
+            "managed_settings_source": "empty_ephemeral_file",
+            "inherited_path_visible_to_target": False,
         },
         "success_gate": {
             "both_runs_edit_workspace": True,
@@ -683,7 +686,7 @@ def main() -> None:
             "private_plan_digest": sha256_bytes(_canonical_bytes(private_plan)),
             "private_plan_raw_digest": f"sha256:{private_plan_ref.sha256}",
             "planned_runs": 2,
-            "completed_valid_runs": len(results),
+            "completed_valid_runs": sum(item["valid"] is True for item in results),
             "completed_runs": results,
             "failed_run": failure_values,
             "total_known_cost_usd": total_cost,
