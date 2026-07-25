@@ -18,7 +18,7 @@
     "corrected_comparison_v2_1_failure_digest": "sha256:0c28cbff16cea2d4f899253b97c0afb6da350c1a6a313d3cf3b499c27e838ca7",
     "instrument_success_receipt_digest": "sha256:6417f5c070448b6e2c6c2e07757f4abcfb7cc97d1b0bfe292130288fba79f8f0",
     "v1_2_blind_rating_digest": "sha256:3e15445db52749209130e07b8e18fe9f0978fa13e8e1df60ddaadcb42211179f",
-    "v1_2_unblinded_result_digest": "sha256:4dc594339a21ab6410272826cc14ef6b227972c7df8688f9df2ecb3f1cbf07",
+    "v1_2_unblinded_result_digest": "sha256:4dc594339a21ab6410272826cc14ef6b227972c7df8688f9df2ecb3f1cb9bda0",
     "v1_2_analysis_digest": "sha256:3797248756947e2e9393e1010af917d14e091c151a7f58826060a9ebca3d82b1"
   },
   "conditions": [
