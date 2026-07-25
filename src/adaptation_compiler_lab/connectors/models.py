@@ -177,6 +177,7 @@ class TargetRunResult(FrozenModel):
     events: tuple[JsonObject, ...]
     stderr: str
     command_manifest_digest: Sha256Digest
+    bash_policy_audit_digest: Sha256Digest | None = None
     command_audit: tuple[TargetCommandAuditEntry, ...]
     denied_command_audit: tuple[TargetDeniedCommandAuditEntry, ...] = ()
     config_destroyed: bool

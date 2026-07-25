@@ -29,7 +29,7 @@ from adaptation_compiler_lab.runners import (
 )
 from adaptation_compiler_lab.runners.claude_code import (
     _PreparedCommand,
-    _write_bash_policy_hook,
+    _write_bash_policy_shell,
     serialize_target_trace,
 )
 
@@ -69,6 +69,14 @@ managed_settings = json.loads(
     (managed_settings_dir / "managed-settings.json").read_text(encoding="utf-8")
 )
 
+def invoke_bash(command):
+    return subprocess.run(
+        [os.environ["SHELL"], "-c", command],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
 print(json.dumps({
     "type": "system",
     "subtype": "init",
@@ -96,12 +104,7 @@ if "BOUNDED_COMMAND_SMOKE" in prompt:
         "def add(left, right):\\n    return left + right\\n",
         encoding="utf-8",
     )
-    completed = subprocess.run(
-        ["acl-test-full"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    completed = invoke_bash("acl-test-full")
     print(json.dumps({
         "type": "assistant",
         "message": {
@@ -139,12 +142,7 @@ if "TWO_COMMAND_SMOKE" in prompt:
         encoding="utf-8",
     )
     for sequence, alias in enumerate(("acl-test-focused", "acl-test-full"), start=1):
-        completed = subprocess.run(
-            [alias],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
+        completed = invoke_bash(alias)
         use_id = f"bash-two-{sequence}"
         print(json.dumps({
             "type": "assistant",
@@ -185,6 +183,7 @@ if "UNBOUNDED_COMMAND_MARKER" in prompt:
     }), flush=True)
 
 if "BLOCKED_COMMAND_MARKER" in prompt:
+    completed = invoke_bash("find / -type f")
     print(json.dumps({
         "type": "assistant",
         "message": {
@@ -202,13 +201,14 @@ if "BLOCKED_COMMAND_MARKER" in prompt:
             "content": [{
                 "type": "tool_result",
                 "tool_use_id": "blocked-bash-1",
-                "content": "Blocked by the bounded Bash policy.",
-                "is_error": True,
+                "content": completed.stdout + completed.stderr,
+                "is_error": completed.returncode != 0,
             }]
         },
     }), flush=True)
 
 if "OVERSIZED_TIMEOUT_MARKER" in prompt:
+    completed = invoke_bash("acl-test-full")
     print(json.dumps({
         "type": "assistant",
         "message": {
@@ -217,6 +217,17 @@ if "OVERSIZED_TIMEOUT_MARKER" in prompt:
                 "id": "oversized-timeout-1",
                 "name": "Bash",
                 "input": {"command": "acl-test-full", "timeout": 60001},
+            }]
+        },
+    }), flush=True)
+    print(json.dumps({
+        "type": "user",
+        "message": {
+            "content": [{
+                "type": "tool_result",
+                "tool_use_id": "oversized-timeout-1",
+                "content": completed.stdout + completed.stderr,
+                "is_error": completed.returncode != 0,
             }]
         },
     }), flush=True)
@@ -301,7 +312,7 @@ if not required_flags.issubset(args):
 if "--unshare-net" in args or "--clearenv" in args:
     print("synthetic bwrap: target environment or provider network drifted", file=sys.stderr)
     raise SystemExit(92)
-if args.count("--bind") != 2 or args.count("--ro-bind") != 7:
+if args.count("--bind") != 2 or args.count("--ro-bind") != 9:
     print("synthetic bwrap: unexpected host mount count", file=sys.stderr)
     raise SystemExit(93)
 
@@ -348,7 +359,16 @@ expected_fixed = {
     "/opt/acl-runtime/bwrap": str(pathlib.Path(sys.argv[0]).resolve()),
     "/opt/acl-runtime/socat": str(pathlib.Path(sys.argv[0]).parent / "socat"),
     "/opt/acl-runtime/lib": str(pathlib.Path(sys.argv[0]).parent / "lib"),
+    "/usr/bin/bash": binds.get("/usr/bin/bash"),
+    "/usr/bin/sh": binds.get("/usr/bin/sh"),
 }
+if (
+    not isinstance(expected_fixed["/usr/bin/bash"], str)
+    or expected_fixed["/usr/bin/bash"] != expected_fixed["/usr/bin/sh"]
+    or not expected_fixed["/usr/bin/bash"].startswith("/tmp/acl-claude-config-")
+):
+    print("synthetic bwrap: Bash policy shell mount drifted", file=sys.stderr)
+    raise SystemExit(95)
 if any(binds.get(destination) != source for destination, source in expected_fixed.items()):
     print("synthetic bwrap: fixed runtime mount drifted", file=sys.stderr)
     raise SystemExit(95)
@@ -382,6 +402,7 @@ if command[0] != "/opt/acl-runtime/claude":
     raise SystemExit(100)
 
 command[0] = expected_fixed["/opt/acl-runtime/claude"]
+os.environ["SHELL"] = expected_fixed["/usr/bin/bash"]
 os.chdir(working_directory)
 os.execve(command[0], command, os.environ)
 """
@@ -669,11 +690,11 @@ def test_two_commands_use_semantic_aliases_without_exposing_implementation(
 
 
 def test_unbounded_command_attempt_invalidates_run(tmp_path: Path) -> None:
-    with pytest.raises(TargetExecutionError, match="not proven blocked") as caught:
+    with pytest.raises(TargetExecutionError, match="policy evidence") as caught:
         _runner(tmp_path).run(_request(tmp_path, prompt="UNBOUNDED_COMMAND_MARKER"))
 
     error = caught.value
-    assert error.failure_code == "unblocked_out_of_manifest_bash_command"
+    assert error.failure_code == "bash_policy_evidence_missing"
     assert error.failure_subject_digest == (
         "sha256:dbfc5804c380dc96ce100c67f3d38bc50e0bc971839d354a241a4cc436c9fe92"
     )
@@ -693,32 +714,32 @@ def test_oversized_command_timeout_invalidates_run(tmp_path: Path) -> None:
         _runner(tmp_path).run(_request(tmp_path, prompt="OVERSIZED_TIMEOUT_MARKER"))
 
 
-def test_bash_policy_hook_allows_only_exact_foreground_alias(tmp_path: Path) -> None:
-    hook = tmp_path / "bounded-bash-policy.py"
-    _write_bash_policy_hook(
-        hook,
+def test_bash_policy_shell_allows_only_exact_alias(tmp_path: Path) -> None:
+    policy_shell = tmp_path / "bounded-bash-policy-shell"
+    audit_path = tmp_path / "bounded-bash-policy-audit.jsonl"
+    wrapper = tmp_path / "acl-test-full"
+    _write_executable(
+        wrapper,
+        """#!/usr/bin/python3
+raise SystemExit(0)
+""",
+    )
+    _write_bash_policy_shell(
+        policy_shell,
         prepared_commands=(
             _PreparedCommand(
                 alias="acl-test-full",
                 argv=("python3", "-m", "unittest", "-v"),
                 command_digest="sha256:" + "0" * 64,
-                wrapper_path=tmp_path / "acl-test-full",
+                wrapper_path=wrapper,
             ),
         ),
+        audit_path=audit_path,
     )
 
-    def invoke(command: str, *, background: bool = False) -> subprocess.CompletedProcess[str]:
+    def invoke(command: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [str(hook)],
-            input=json.dumps(
-                {
-                    "tool_name": "Bash",
-                    "tool_input": {
-                        "command": command,
-                        "run_in_background": background,
-                    },
-                }
-            ),
+            [str(policy_shell), "-c", command],
             check=False,
             capture_output=True,
             text=True,
@@ -726,8 +747,9 @@ def test_bash_policy_hook_allows_only_exact_foreground_alias(tmp_path: Path) -> 
         )
 
     assert invoke("acl-test-full").returncode == 0
-    assert invoke("python3 -m unittest -v").returncode == 2
-    assert invoke("acl-test-full", background=True).returncode == 2
+    assert invoke("python3 -m unittest -v").returncode == 126
+    audit = [json.loads(line) for line in audit_path.read_text(encoding="utf-8").splitlines()]
+    assert [entry["decision"] for entry in audit] == ["allow", "deny"]
 
 
 def test_proven_blocked_command_is_audited_without_invalidating_run(tmp_path: Path) -> None:

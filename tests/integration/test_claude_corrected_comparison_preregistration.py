@@ -12,6 +12,8 @@ from adaptation_compiler_lab.benchmark.claude_development import (
     load_claude_development_design,
 )
 from adaptation_compiler_lab.connectors.pins import sha256_file
+from adaptation_compiler_lab.persistence.raw import RawPayloadRef
+from adaptation_compiler_lab.serialization import canonical_json
 
 
 def test_corrected_comparison_is_frozen_to_public_tasks_and_passing_instrument(
@@ -20,7 +22,7 @@ def test_corrected_comparison_is_frozen_to_public_tasks_and_passing_instrument(
     repository = Path(__file__).parents[2]
     monkeypatch.syspath_prepend(str(repository / "scripts"))
     coordinator: Any = importlib.import_module("run_claude_development_gate")
-    path = repository / "development_benchmark_claude" / "PREREGISTRATION-v2.1.json"
+    path = repository / "development_benchmark_claude" / "PREREGISTRATION-v2.2.json"
     preregistration = json.loads(path.read_text(encoding="utf-8"))
     design = load_claude_development_design(
         repository / "development_benchmark_claude",
@@ -123,3 +125,21 @@ def test_successful_alias_receipt_excludes_out_of_manifest_trace_commands(
         events,
         accepted_aliases={"acl-test-full"},
     ) == {"acl-test-full"}
+
+
+def test_failure_receipt_serializes_encrypted_reference_as_json(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = Path(__file__).parents[2]
+    monkeypatch.syspath_prepend(str(repository / "scripts"))
+    coordinator: Any = importlib.import_module("run_claude_development_gate")
+    reference = RawPayloadRef(
+        sha256="0" * 64,
+        size_bytes=1,
+        media_type="application/json",
+        relative_path="sha256/00/" + "0" * 64,
+    )
+
+    value = {"private_plan_ref": coordinator._encrypted_ref(reference).model_dump(mode="json")}
+
+    assert json.loads(canonical_json(value)) == value

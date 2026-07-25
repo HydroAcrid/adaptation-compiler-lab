@@ -205,6 +205,7 @@ class ClaudeDevelopmentRunObservation(FrozenModel):
     scorer_output_digest: Sha256Digest
     command_digest: Sha256Digest
     command_manifest_digest: Sha256Digest | None = None
+    bash_policy_audit_digest: Sha256Digest | None = None
     command_audit_digest: Sha256Digest | None = None
     denied_command_audit_digest: Sha256Digest | None = None
     accepted_aliases: tuple[NonEmptyStr, ...] = ()

@@ -10,6 +10,7 @@ import signal
 import stat
 import subprocess
 import tempfile
+from collections import Counter
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -121,6 +122,12 @@ class _PreparedCommand:
 
 
 @dataclass(frozen=True)
+class _BashPolicyAuditEntry:
+    requested_command_digest: str
+    decision: str
+
+
+@dataclass(frozen=True)
 class TargetFailureEvidence:
     """Raw post-execution evidence retained only for encrypted failure handling."""
 
@@ -137,6 +144,7 @@ class TargetFailureEvidence:
     events: tuple[JsonObject, ...]
     stderr: str
     command_manifest_digest: str
+    bash_policy_audit_digest: str
     command_audit: tuple[TargetCommandAuditEntry, ...]
     denied_command_audit: tuple[TargetDeniedCommandAuditEntry, ...]
     config_destroyed: bool
@@ -190,7 +198,6 @@ def _settings(
     condition_file: Path,
     commands_dir: Path,
     prepared_commands: tuple[_PreparedCommand, ...],
-    bash_policy_hook: Path,
 ) -> JsonObject:
     allow_rules, deny_rules = _tool_rules(workspace, condition_file)
     allow_rules.extend(f"Bash({command.alias})" for command in prepared_commands)
@@ -225,20 +232,6 @@ def _settings(
     return {
         "autoMemoryEnabled": False,
         "disableClaudeAiConnectors": True,
-        "hooks": {
-            "PreToolUse": [
-                {
-                    "matcher": "Bash",
-                    "hooks": [
-                        {
-                            "type": "command",
-                            "command": str(bash_policy_hook),
-                            "timeout": 5,
-                        }
-                    ],
-                }
-            ]
-        },
         "permissions": {
             "defaultMode": "dontAsk",
             "allow": allow_rules,
@@ -287,41 +280,87 @@ def _settings(
     }
 
 
-def _write_bash_policy_hook(
+def _write_bash_policy_shell(
     path: Path,
     *,
     prepared_commands: tuple[_PreparedCommand, ...],
+    audit_path: Path,
 ) -> None:
-    """Create a fail-closed PreToolUse policy for the exact generated aliases."""
+    """Create the shell boundary that can execute only exact generated aliases."""
 
     allowed = json.dumps(
-        sorted(command.alias for command in prepared_commands),
+        {
+            command.alias: str(command.wrapper_path)
+            for command in sorted(prepared_commands, key=lambda item: item.alias)
+        },
         ensure_ascii=False,
+        sort_keys=True,
         separators=(",", ":"),
     )
     payload = (
         "#!/usr/bin/python3\n"
+        "import hashlib\n"
         "import json\n"
+        "import os\n"
         "import sys\n"
-        f"ALLOWED = frozenset({allowed})\n"
-        "try:\n"
-        "    value = json.load(sys.stdin)\n"
-        "    tool_input = value.get('tool_input', {})\n"
-        "    command = tool_input.get('command')\n"
-        "    background = tool_input.get('run_in_background', False)\n"
-        "except Exception:\n"
+        f"ALLOWED = {allowed}\n"
+        f"AUDIT_PATH = {str(audit_path)!r}\n"
+        "arguments = sys.argv[1:]\n"
+        "command = arguments[1] if len(arguments) == 2 and arguments[0] in {'-c', '-lc'} else ''\n"
+        "decision = 'allow' if command in ALLOWED else 'deny'\n"
+        "entry = json.dumps({\n"
+        "    'decision': decision,\n"
+        "    'requested_command_digest': (\n"
+        "        'sha256:' + hashlib.sha256(command.encode()).hexdigest()\n"
+        "    ),\n"
+        "}, sort_keys=True, separators=(',', ':')) + '\\n'\n"
+        "descriptor = os.open(AUDIT_PATH, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)\n"
+        "with os.fdopen(descriptor, 'w', encoding='utf-8') as stream:\n"
+        "    stream.write(entry)\n"
+        "    stream.flush()\n"
+        "    os.fsync(stream.fileno())\n"
+        "if decision == 'deny':\n"
         "    sys.stderr.write('Blocked by the bounded Bash policy.\\n')\n"
-        "    raise SystemExit(2)\n"
-        "if (\n"
-        "    value.get('tool_name') != 'Bash'\n"
-        "    or command not in ALLOWED\n"
-        "    or background is not False\n"
-        "):\n"
-        "    sys.stderr.write('Blocked by the bounded Bash policy.\\n')\n"
-        "    raise SystemExit(2)\n"
+        "    raise SystemExit(126)\n"
+        "wrapper = ALLOWED[command]\n"
+        "os.execve(wrapper, [command], os.environ)\n"
     )
     path.write_text(payload, encoding="utf-8")
     path.chmod(0o500)
+
+
+def _read_bash_policy_audit(path: Path) -> tuple[tuple[_BashPolicyAuditEntry, ...], str]:
+    try:
+        payload = path.read_bytes()
+    except FileNotFoundError:
+        payload = b""
+    entries: list[_BashPolicyAuditEntry] = []
+    for line_number, line in enumerate(payload.splitlines(), start=1):
+        try:
+            value = json.loads(line)
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise TargetExecutionError(f"Bash policy audit line {line_number} is invalid") from exc
+        if (
+            not isinstance(value, dict)
+            or set(value) != {"decision", "requested_command_digest"}
+            or value.get("decision") not in {"allow", "deny"}
+            or not isinstance(value.get("requested_command_digest"), str)
+        ):
+            raise TargetExecutionError("Bash policy audit entry is malformed")
+        digest = cast(str, value["requested_command_digest"])
+        if (
+            not digest.startswith("sha256:")
+            or len(digest) != 71
+            or any(character not in "0123456789abcdef" for character in digest[7:])
+        ):
+            raise TargetExecutionError("Bash policy audit command digest is malformed")
+        entries.append(
+            _BashPolicyAuditEntry(
+                requested_command_digest=digest,
+                decision=cast(str, value["decision"]),
+            )
+        )
+    return tuple(entries), sha256_bytes(payload)
 
 
 def _iter_objects(value: JsonValue) -> Iterator[JsonObject]:
@@ -357,35 +396,56 @@ def _wrapper_payload(
     runtime_root: Path,
     request: TargetRunRequest,
 ) -> str:
-    memory_kb = request.command_memory_mb * 1024
-    file_blocks = request.command_file_size_mb * 1024
-    exact_command = shlex.join((str(executable), *arguments))
-    env_assignments = shlex.join(
+    environment_json = json.dumps(
+        {
+            "ACL_BOUNDED_TEST": "1",
+            "HOME": str(runtime_root / "home"),
+            "LANG": "C.UTF-8",
+            "LC_ALL": "C.UTF-8",
+            "PATH": "/usr/bin:/bin",
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "TMPDIR": str(runtime_root / "tmp"),
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    command_json = json.dumps(
         (
-            f"HOME={runtime_root / 'home'}",
-            f"TMPDIR={runtime_root / 'tmp'}",
-            "PATH=/usr/bin:/bin",
-            "LANG=C.UTF-8",
-            "LC_ALL=C.UTF-8",
-            "PYTHONDONTWRITEBYTECODE=1",
-            "ACL_BOUNDED_TEST=1",
-        )
+            "/usr/bin/timeout",
+            "--signal=TERM",
+            "--kill-after=5",
+            str(request.command_timeout_seconds),
+            str(executable),
+            *arguments,
+        ),
+        ensure_ascii=False,
+        separators=(",", ":"),
     )
     return (
-        "#!/usr/bin/bash\n"
-        "set -euo pipefail\n"
-        f"ulimit -t {request.command_cpu_seconds}\n"
-        f"ulimit -v {memory_kb}\n"
-        f"ulimit -f {file_blocks}\n"
-        "ambient_uid_tasks=$("
-        "/usr/bin/ps -eL -o uid= | "
-        '/usr/bin/awk -v uid="$(/usr/bin/id -u)" '
-        "'$1 == uid { count += 1 } END { print count + 0 }'"
-        ")\n"
-        f'ulimit -u "$((ambient_uid_tasks + {request.command_process_limit}))"\n'
-        f"ulimit -n {request.command_open_files_limit}\n"
-        "exec /usr/bin/timeout --signal=TERM --kill-after=5 "
-        f"{request.command_timeout_seconds} /usr/bin/env -i {env_assignments} {exact_command}\n"
+        "#!/usr/bin/python3\n"
+        "import glob\n"
+        "import json\n"
+        "import os\n"
+        "import resource\n"
+        f"environment = json.loads({environment_json!r})\n"
+        f"command = json.loads({command_json!r})\n"
+        f"resource.setrlimit(resource.RLIMIT_CPU, ({request.command_cpu_seconds}, "
+        "resource.getrlimit(resource.RLIMIT_CPU)[1]))\n"
+        f"resource.setrlimit(resource.RLIMIT_AS, ({request.command_memory_mb * 1024 * 1024}, "
+        "resource.getrlimit(resource.RLIMIT_AS)[1]))\n"
+        f"resource.setrlimit(resource.RLIMIT_FSIZE, "
+        f"({request.command_file_size_mb * 1024 * 1024}, "
+        "resource.getrlimit(resource.RLIMIT_FSIZE)[1]))\n"
+        "ambient_tasks = len(glob.glob('/proc/[0-9]*/task/[0-9]*'))\n"
+        f"process_limit = ambient_tasks + {request.command_process_limit}\n"
+        "process_hard_limit = resource.getrlimit(resource.RLIMIT_NPROC)[1]\n"
+        "if process_hard_limit != resource.RLIM_INFINITY:\n"
+        "    process_limit = min(process_limit, process_hard_limit)\n"
+        "resource.setrlimit(resource.RLIMIT_NPROC, (process_limit, process_hard_limit))\n"
+        f"resource.setrlimit(resource.RLIMIT_NOFILE, ({request.command_open_files_limit}, "
+        "resource.getrlimit(resource.RLIMIT_NOFILE)[1]))\n"
+        "os.execve(command[0], command, environment)\n"
     )
 
 
@@ -508,6 +568,7 @@ def _isolated_target_command(
     claude_command: list[str],
     config_dir: Path,
     workspace: Path,
+    bash_policy_shell: Path,
 ) -> list[str]:
     """Place the whole target inside a minimal filesystem while retaining provider network."""
 
@@ -520,6 +581,12 @@ def _isolated_target_command(
         "--ro-bind",
         "/usr",
         "/usr",
+        "--ro-bind",
+        str(bash_policy_shell),
+        "/usr/bin/bash",
+        "--ro-bind",
+        str(bash_policy_shell),
+        "/usr/bin/sh",
         "--symlink",
         "usr/bin",
         "/bin",
@@ -618,6 +685,7 @@ def _assert_trace_conformance(
     condition_file: Path,
     prepared_commands: tuple[_PreparedCommand, ...],
     command_timeout_seconds: int,
+    bash_policy_audit: tuple[_BashPolicyAuditEntry, ...],
 ) -> tuple[
     tuple[TargetCommandAuditEntry, ...],
     tuple[TargetDeniedCommandAuditEntry, ...],
@@ -652,6 +720,9 @@ def _assert_trace_conformance(
     prepared_by_alias = {command.alias: command for command in prepared_commands}
     audit: list[TargetCommandAuditEntry] = []
     denied_audit: list[TargetDeniedCommandAuditEntry] = []
+    policy_decisions = Counter(
+        (entry.requested_command_digest, entry.decision) for entry in bash_policy_audit
+    )
     denied_tool_use_ids = {
         nested.get("tool_use_id")
         for event in events
@@ -707,14 +778,26 @@ def _assert_trace_conformance(
                     if not isinstance(raw_command, str):
                         raise TargetExecutionError("Claude Bash tool omitted its command")
                     prepared = prepared_by_alias.get(raw_command)
+                    run_in_background = tool_input.get("run_in_background", False)
+                    expected_policy_decision = (
+                        "allow" if prepared is not None and run_in_background is False else "deny"
+                    )
+                    raw_command_digest = sha256_bytes(raw_command.encode("utf-8"))
+                    policy_key = (raw_command_digest, expected_policy_decision)
+                    if policy_decisions[policy_key] < 1:
+                        raise TargetExecutionError(
+                            "Bash tool use lacks matching pre-execution policy evidence",
+                            failure_code="bash_policy_evidence_missing",
+                            failure_subject_digest=raw_command_digest,
+                            partial_command_audit=tuple(audit),
+                        )
+                    policy_decisions[policy_key] -= 1
                     if prepared is None:
                         if tool_use_id in denied_tool_use_ids:
                             denied_audit.append(
                                 TargetDeniedCommandAuditEntry(
                                     sequence=len(denied_audit) + 1,
-                                    requested_command_digest=sha256_bytes(
-                                        raw_command.encode("utf-8")
-                                    ),
+                                    requested_command_digest=raw_command_digest,
                                     reason="out_of_manifest_bash_command",
                                 )
                             )
@@ -722,18 +805,15 @@ def _assert_trace_conformance(
                         raise TargetExecutionError(
                             "an out-of-manifest Bash command was not proven blocked",
                             failure_code="unblocked_out_of_manifest_bash_command",
-                            failure_subject_digest=sha256_bytes(raw_command.encode("utf-8")),
+                            failure_subject_digest=raw_command_digest,
                             partial_command_audit=tuple(audit),
                         )
-                    run_in_background = tool_input.get("run_in_background", False)
                     if run_in_background is not False:
                         if tool_use_id in denied_tool_use_ids:
                             denied_audit.append(
                                 TargetDeniedCommandAuditEntry(
                                     sequence=len(denied_audit) + 1,
-                                    requested_command_digest=sha256_bytes(
-                                        raw_command.encode("utf-8")
-                                    ),
+                                    requested_command_digest=raw_command_digest,
                                     reason="background_bash_forbidden",
                                 )
                             )
@@ -741,7 +821,7 @@ def _assert_trace_conformance(
                         raise TargetExecutionError(
                             "a background Bash command was not proven blocked",
                             failure_code="unblocked_background_bash_command",
-                            failure_subject_digest=sha256_bytes(raw_command.encode("utf-8")),
+                            failure_subject_digest=raw_command_digest,
                             partial_command_audit=tuple(audit),
                         )
                     disable_sandbox = tool_input.get("dangerouslyDisableSandbox")
@@ -773,6 +853,8 @@ def _assert_trace_conformance(
                         tool_input.get("file_path", tool_input.get("path")),
                         write=True,
                     )
+    if any(count for count in policy_decisions.values()):
+        raise TargetExecutionError("Bash policy audit contains an unmatched execution")
     return tuple(audit), tuple(denied_audit)
 
 
@@ -855,6 +937,7 @@ class ClaudeCodeTargetRunner:
         ]
         environment["PATH"] = os.pathsep.join(dict.fromkeys(path_parts))
         environment["LD_LIBRARY_PATH"] = str(_OUTER_SANDBOX_LIB)
+        environment["SHELL"] = "/bin/bash"
         environment["HOME"] = str(runtime_root / "home")
         environment["TMPDIR"] = str(runtime_root / "tmp")
         environment["ANTHROPIC_API_KEY"] = api_key
@@ -900,10 +983,12 @@ class ClaudeCodeTargetRunner:
                     workspace=workspace,
                     request=request,
                 )
-                bash_policy_hook = config_dir / "bounded-bash-policy.py"
-                _write_bash_policy_hook(
-                    bash_policy_hook,
+                bash_policy_audit_path = config_dir / "bounded-bash-policy-audit.jsonl"
+                bash_policy_shell = config_dir / "bounded-bash-policy-shell"
+                _write_bash_policy_shell(
+                    bash_policy_shell,
                     prepared_commands=prepared_commands,
+                    audit_path=bash_policy_audit_path,
                 )
                 settings_path = config_dir / "settings.json"
                 settings_payload = _settings(
@@ -911,7 +996,6 @@ class ClaudeCodeTargetRunner:
                     condition_file,
                     commands_dir,
                     prepared_commands,
-                    bash_policy_hook,
                 )
                 settings_path.write_text(
                     json.dumps(
@@ -988,6 +1072,7 @@ class ClaudeCodeTargetRunner:
                     claude_command=claude_command,
                     config_dir=config_dir,
                     workspace=workspace,
+                    bash_policy_shell=bash_policy_shell,
                 )
                 command_digest = sha256_bytes(
                     json.dumps(command, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
@@ -1000,6 +1085,7 @@ class ClaudeCodeTargetRunner:
                 events: tuple[JsonObject, ...] = ()
                 command_audit: tuple[TargetCommandAuditEntry, ...] = ()
                 denied_command_audit: tuple[TargetDeniedCommandAuditEntry, ...] = ()
+                bash_policy_audit_digest = sha256_bytes(b"")
                 trace_error: TargetExecutionError | None = None
                 try:
                     process = subprocess.Popen(
@@ -1043,6 +1129,9 @@ class ClaudeCodeTargetRunner:
                 # measurement comes from wall-clock ordering.
                 finished_at = max(datetime.now(UTC), started_at)
                 try:
+                    bash_policy_audit, bash_policy_audit_digest = _read_bash_policy_audit(
+                        bash_policy_audit_path
+                    )
                     command_audit, denied_command_audit = _assert_trace_conformance(
                         events,
                         model_id=runtime.model_id,
@@ -1051,6 +1140,7 @@ class ClaudeCodeTargetRunner:
                         condition_file=condition_file,
                         prepared_commands=prepared_commands,
                         command_timeout_seconds=request.command_timeout_seconds,
+                        bash_policy_audit=bash_policy_audit,
                     )
                 except TargetExecutionError as exc:
                     trace_error = exc
@@ -1077,6 +1167,7 @@ class ClaudeCodeTargetRunner:
                 events=events,
                 stderr=stderr,
                 command_manifest_digest=command_manifest_digest,
+                bash_policy_audit_digest=bash_policy_audit_digest,
                 command_audit=command_audit,
                 denied_command_audit=denied_command_audit,
                 config_destroyed=not config_dir.exists(),
@@ -1103,6 +1194,7 @@ class ClaudeCodeTargetRunner:
             events=events,
             stderr=stderr,
             command_manifest_digest=command_manifest_digest,
+            bash_policy_audit_digest=bash_policy_audit_digest,
             command_audit=command_audit,
             denied_command_audit=denied_command_audit,
             config_destroyed=not config_dir.exists(),

@@ -273,8 +273,8 @@ def _corrected_execution_contract(
     *,
     task_ids: set[str],
 ) -> tuple[dict[str, Any], dict[str, tuple[str, ...]]]:
-    if preregistration.get("schema_version") != "2.1.0":
-        raise RuntimeError("corrected comparison requires preregistration schema 2.1.0")
+    if preregistration.get("schema_version") != "2.2.0":
+        raise RuntimeError("corrected comparison requires preregistration schema 2.2.0")
     execution = preregistration.get("execution")
     expected_execution = {
         "planned_runs": 16,
@@ -695,6 +695,7 @@ def main() -> None:
         "quality_scores_are_outcomes_not_validity_requirements": True,
         "test_alias_use_is_instruction_adherence_not_validity": True,
         "proven_policy_denials_are_instruction_adherence_not_instrument_failure": True,
+        "every_bash_trace_requires_digest_matched_os_policy_audit": True,
         "unblocked_out_of_manifest_command_invalidates_and_stops_grid": True,
     }:
         raise RuntimeError("corrected comparison validity policy drifted")
@@ -755,6 +756,12 @@ def main() -> None:
             / "development_benchmark_claude"
             / "results"
             / "corrected-comparison-instrument-failure-v2.0.json"
+        ),
+        "corrected_comparison_v2_1_failure_digest": sha256_file(
+            repo
+            / "development_benchmark_claude"
+            / "results"
+            / "corrected-comparison-instrument-failure-v2.1.json"
         ),
         "instrument_success_receipt_digest": sha256_file(
             repo / "development_benchmark_claude" / "results" / "instrument-canary-success-v12.json"
@@ -828,7 +835,7 @@ def main() -> None:
         "claude_code_version": design.cli_version,
         "model_id": design.model,
         "runtime_lock_digest": runtime_lock_digest,
-        "runner_boundary": "instrument-canary-success-v12-plus-pretooluse-policy-v1",
+        "runner_boundary": "instrument-canary-success-v12-plus-outer-policy-shell-v1",
     }:
         raise RuntimeError("corrected comparison runtime binding drifted")
     runner = ClaudeCodeTargetRunner(
@@ -1014,6 +1021,7 @@ def main() -> None:
                 "scorer_output_digest": sha256_bytes(scorer_output),
                 "command_digest": result.command_digest,
                 "command_manifest_digest": result.command_manifest_digest,
+                "bash_policy_audit_digest": result.bash_policy_audit_digest,
                 "command_audit_digest": _command_audit_digest(result.command_audit),
                 "denied_command_audit_digest": _command_audit_digest(result.denied_command_audit),
                 "accepted_aliases": tuple(sorted(accepted_aliases)),
@@ -1101,7 +1109,7 @@ def main() -> None:
                     ],
                     "milestone_6_custody_accessed": False,
                     "preregistration_digest": preregistration_digest,
-                    "private_plan_ref": _encrypted_ref(private_plan_ref),
+                    "private_plan_ref": _encrypted_ref(private_plan_ref).model_dump(mode="json"),
                     "raw_retention_deadline": datetime.now(UTC) + timedelta(days=30),
                     "scores_released": False,
                     "source_commit": source_commit_value,

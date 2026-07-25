@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0.0",
+  "attempt_id": "claude-haiku-compiler-v2-corrected-comparison-attempt-2",
+  "status": "instrument_failure_no_comparison",
+  "recorded_at": "2026-07-25T21:16:03Z",
+  "raw_retention_deadline": "2026-08-24T21:16:03Z",
+  "source_commit": "9241c9f90ea568d09e7596d45da27d0504d429dc",
+  "preregistration_digest": "sha256:86ad6b2bf61d63789789c7799ceeda3533b501e21d26dcd05529191fec1b3733",
+  "public_plan_digest": "sha256:f7588524dbff9cc28be6146c8bd2d6fe821c0b1174d59f64568cd36cae52a40b",
+  "frozen_input_manifest_digest": "sha256:c6e19bb84214aa85ebbfac96b49ef04d37c11665157680a5e134d737f2cb688a",
+  "private_plan_payload_digest": "sha256:b0c1599a0b6fc45630f50d7c3bacc6fb77619a91d273c02876aa20eba7958fb5",
+  "run_payload_digest": "sha256:71edf9e739c7bd7840f1fd23c925a4bd29347756e47409a74dead594ac452472",
+  "planned_runs": 16,
+  "completed_provider_runs": 1,
+  "valid_comparison_records": 0,
+  "retry_executed": false,
+  "exact_cost_usd": 0.10169455,
+  "failure": {
+    "stage": "pre_execution_command_policy_and_failure_receipt",
+    "code": "managed_pretooluse_policy_not_applied_under_bare_execution",
+    "summary": "Claude executed non-manifest inspection commands inside the outer minimal-filesystem boundary. Trace validation marked the cell invalid and the coordinator stopped the grid after one provider run, but the managed PreToolUse hook did not provide a pre-execution command boundary.",
+    "receipt_bug": "The sanitized failure writer passed a typed encrypted-reference object to the canonical JSON encoder instead of its JSON representation."
+  },
+  "repair": {
+    "compiler_or_material_changed": false,
+    "required": [
+      "replace hook-based Bash enforcement with an operating-system shell boundary",
+      "mount the generated policy shell over the target shell inside outer bubblewrap",
+      "execute approved aliases through Python wrappers that apply time and resource ceilings",
+      "persist a digest-only policy audit and reconcile every Bash trace item to it",
+      "serialize failure references through their typed JSON representation"
+    ]
+  },
+  "raw_payloads_encrypted_outside_git": true,
+  "condition_mapping_exposed": false,
+  "objective_scores_exposed": false,
+  "blind_output_packet_created": false,
+  "adaptation_quality_comparison_allowed": false,
+  "cross_agent_transfer_claim_allowed": false,
+  "milestone_6_custody_accessed": false,
+  "milestone_6_materials_modified": false
+}
