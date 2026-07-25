@@ -1,0 +1,27 @@
+{
+  "task_id": "claude-instrument-canary-debugging",
+  "family": "debugging_and_verification",
+  "prompt": "Retry limits for one background job still affect later jobs. RUNBOOK.md says job-ID normalization resolved the incident, but the supplied focused reproduction continues to fail. Find the live cause, repair it without special-casing examples or changing tests, and verify both the focused reproduction and the full visible suite.",
+  "focused_test_command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v",
+    "test_retry_budget.RetryBudgetTests.test_failure_budget_isolated_between_jobs"
+  ],
+  "full_test_command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v"
+  ],
+  "allowed_change_paths": [
+    "retry_budget.py"
+  ],
+  "neutral_control_requirements": [
+    "Do not add ambient agent configuration or unrelated files.",
+    "Do not edit the runbook or tests.",
+    "Keep both public function signatures and input validation."
+  ],
+  "held_out": false
+}

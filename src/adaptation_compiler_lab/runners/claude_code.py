@@ -269,6 +269,7 @@ def _wrapper_payload(
             "LANG=C.UTF-8",
             "LC_ALL=C.UTF-8",
             "PYTHONDONTWRITEBYTECODE=1",
+            "ACL_BOUNDED_TEST=1",
         )
     )
     return (

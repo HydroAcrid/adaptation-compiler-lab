@@ -405,6 +405,7 @@ class SolutionTest(unittest.TestCase):
     def test_solution_and_boundary(self):
         self.assertEqual(add(2, 3), 5)
         self.assertIsNone(os.environ.get("ANTHROPIC_API_KEY"))
+        self.assertEqual(os.environ.get("ACL_BOUNDED_TEST"), "1")
         self.assertLessEqual(resource.getrlimit(resource.RLIMIT_CPU)[0], 30)
         self.assertLessEqual(resource.getrlimit(resource.RLIMIT_AS)[0], 512 * 1024 * 1024)
         self.assertLessEqual(resource.getrlimit(resource.RLIMIT_FSIZE)[0], 16 * 1024 * 1024)
