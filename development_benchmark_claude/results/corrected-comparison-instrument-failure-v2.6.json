@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0.0",
+  "attempt_id": "claude-haiku-compiler-v2-corrected-comparison-attempt-7",
+  "status": "instrument_failure_no_comparison",
+  "recorded_at": "2026-07-25T21:58:03.204790Z",
+  "raw_retention_deadline": "2026-08-24T21:58:03.204790Z",
+  "source_commit": "edf89c1c220c4fbd414c5bf6f9116a70e5e539a4",
+  "preregistration_digest": "sha256:2d22b53a9db14f18ec11d18ca78bcd03338d1c8c856d5b1328e7bea8fd68fe08",
+  "public_plan_digest": "sha256:c64f6d42150514c894b5c4922c3bd97730a0d28da96e44d44e29aaa9cbca2f0d",
+  "frozen_input_manifest_digest": "sha256:d12a1a045e35c85f263e7a8cd48063ea6ca926a7c79423fbf893e71c2b85d8c6",
+  "failure_receipt_digest": "sha256:c1378011b5c6fb8d339aa314e678fbbc559fab4b6d06661ac9605f3cd8e8ee67",
+  "private_plan_payload_digest": "sha256:d5249e68112504e3b2315043e55ae9bfa70cd7007376174d734c8668f812d724",
+  "run_payload_digest": "sha256:7ce72a49072b731428634283abdeef371746c1e11069dab8ce4dfa5aa8c77d0a",
+  "planned_runs": 16,
+  "completed_provider_runs": 1,
+  "valid_comparison_records": 0,
+  "retry_executed": false,
+  "exact_cost_usd": 0.05295489999999999,
+  "failure": {
+    "stage": "target_execution_and_policy_audit_reconciliation",
+    "code": "bare_mode_contract_mismatch",
+    "summary": "Pinned Claude Code --bare initialized only Bash, Edit, and Read despite the requested six-tool list. Approved and unapproved Bash requests reached the OS policy, but its exact shlex-token matcher did not recognize the CLI bootstrap representation; every request was safely denied and no comparison record was accepted."
+  },
+  "repair": {
+    "compiler_or_material_changed": false,
+    "required": [
+      "pin the empirically observed --bare inventory of Bash, Edit, and Read",
+      "supply a deterministic visible-fixture filename manifest equally to every condition",
+      "recognize generated aliases through a delimiter-bounded bootstrap match",
+      "continue executing only the generated wrapper, never the model-supplied command string",
+      "retain host-path, condition, credential, network, and Milestone 6 isolation"
+    ]
+  },
+  "raw_payloads_encrypted_outside_git": true,
+  "condition_mapping_exposed": false,
+  "objective_scores_exposed": false,
+  "blind_output_packet_created": false,
+  "adaptation_quality_comparison_allowed": false,
+  "cross_agent_transfer_claim_allowed": false,
+  "milestone_6_custody_accessed": false,
+  "milestone_6_materials_modified": false
+}

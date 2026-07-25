@@ -21,7 +21,7 @@ def test_corrected_comparison_is_frozen_to_public_tasks_and_passing_instrument(
     repository = Path(__file__).parents[2]
     monkeypatch.syspath_prepend(str(repository / "scripts"))
     coordinator: Any = importlib.import_module("run_claude_development_gate")
-    path = repository / "development_benchmark_claude" / "PREREGISTRATION-v2.6.json"
+    path = repository / "development_benchmark_claude" / "PREREGISTRATION-v2.7.json"
     preregistration = json.loads(path.read_text(encoding="utf-8"))
     design = load_claude_development_design(
         repository / "development_benchmark_claude",
@@ -73,6 +73,9 @@ def test_corrected_comparison_is_frozen_to_public_tasks_and_passing_instrument(
         ),
         "corrected_comparison_v2_5_failure_digest": (
             "results/corrected-comparison-instrument-failure-v2.5.json"
+        ),
+        "corrected_comparison_v2_6_failure_digest": (
+            "results/corrected-comparison-instrument-failure-v2.6.json"
         ),
         "instrument_success_receipt_digest": "results/instrument-canary-success-v12.json",
         "v1_2_blind_rating_digest": "results/kevin-blind-rating-v1.2.json",
@@ -177,3 +180,27 @@ def test_failure_receipt_serializes_encrypted_reference_as_json(
         "private_plan_ref": coordinator._encrypted_ref(reference).model_dump(mode="json"),
         "raw_retention_deadline": "2026-08-24T00:00:00Z",
     }
+
+
+def test_visible_fixture_manifest_excludes_runner_and_repository_metadata(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = Path(__file__).parents[2]
+    monkeypatch.syspath_prepend(str(repository / "scripts"))
+    coordinator: Any = importlib.import_module("run_claude_development_gate")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "feature.py").write_text("VALUE = 1\n", encoding="utf-8")
+    (tmp_path / "test_feature.py").write_text("pass\n", encoding="utf-8")
+    (tmp_path / ".git").mkdir()
+    (tmp_path / ".git" / "config").write_text("private metadata", encoding="utf-8")
+    (tmp_path / ".acl-condition.md").write_text("condition", encoding="utf-8")
+    (tmp_path / "CLAUDE.md").write_text("ambient", encoding="utf-8")
+
+    manifest = coordinator._visible_fixture_manifest(tmp_path)
+
+    assert "- src/feature.py" in manifest
+    assert "- test_feature.py" in manifest
+    assert ".git" not in manifest
+    assert ".acl-condition.md" not in manifest
+    assert "CLAUDE.md" not in manifest

@@ -306,18 +306,20 @@ def _write_bash_policy_shell(
         "#!/usr/bin/python3\n"
         "import json\n"
         "import os\n"
-        "import shlex\n"
+        "import re\n"
         "import sys\n"
         f"ALLOWED = {allowed}\n"
         f"AUDIT_PATH = {str(audit_path)!r}\n"
         "arguments = sys.argv[1:]\n"
-        "tokens = []\n"
-        "for argument in arguments:\n"
-        "    try:\n"
-        "        tokens.extend(shlex.split(argument, posix=True))\n"
-        "    except ValueError:\n"
-        "        pass\n"
-        "matched_aliases = sorted({token for token in tokens if token in ALLOWED})\n"
+        "joined = '\\n'.join(arguments)\n"
+        "matched_aliases = sorted(\n"
+        "    alias for alias in ALLOWED\n"
+        "    if re.search(\n"
+        "        r'(?<![A-Za-z0-9_.-])' + re.escape(alias) + "
+        "r'(?![A-Za-z0-9_.-])',\n"
+        "        joined,\n"
+        "    )\n"
+        ")\n"
         "decision = 'allow' if len(matched_aliases) == 1 else 'deny'\n"
         "entry = json.dumps({\n"
         "    'arguments': arguments,\n"
@@ -542,18 +544,18 @@ def _prepare_commands(
 def _command_instructions(prepared_commands: tuple[_PreparedCommand, ...]) -> str:
     if not prepared_commands:
         return (
-            "\n\nExecution boundary: no shell command is approved. Use Read, Glob, and Grep for "
-            "inspection and Edit or Write for file changes."
+            "\n\nExecution boundary: no shell command is approved. Use the supplied visible-file "
+            "manifest and Read for inspection, and Edit for file changes."
         )
     lines = [
         "",
         "",
-        "Execution boundary: use Read, Glob, and Grep for inspection and Edit or Write for file "
-        "changes. The only approved shell commands are the exact bounded aliases below. Invoke an "
-        "alias exactly as shown, without arguments, chaining, redirection, substitution, a path "
-        "prefix, or a replacement Python command. Do not use Bash for file discovery, navigation, "
-        "or inspection. Do not inspect .acl-condition.md or .acl-runtime; the condition is already "
-        "injected and runner state is not task input:",
+        "Execution boundary: use the supplied visible-file manifest and Read for inspection, and "
+        "Edit for file changes. The only approved shell commands are the exact bounded aliases "
+        "below. Invoke an alias exactly as shown, without arguments, chaining, redirection, "
+        "substitution, a path prefix, or a replacement Python command. Do not use Bash for file "
+        "discovery, navigation, or inspection. Do not inspect .acl-condition.md or .acl-runtime; "
+        "the condition is already injected and runner state is not task input:",
     ]
     for command in prepared_commands:
         purpose = (

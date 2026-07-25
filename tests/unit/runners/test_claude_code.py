@@ -770,6 +770,7 @@ raise SystemExit(0)
     assert invoke("-c", "python3 -m unittest -v").returncode == 126
     assert invoke("-c", "source /ignored && acl-test-full", "--").returncode == 0
     assert invoke("-c", "source /ignored && find / -type f", "--").returncode == 126
+    assert invoke("-c", "acl-test-full-unsafe").returncode == 126
     sentinel = tmp_path / "must-not-run"
     assert invoke("-c", "acl-test-full", f"touch {sentinel}").returncode == 0
     assert not sentinel.exists()
@@ -779,6 +780,7 @@ raise SystemExit(0)
         "allow",
         "deny",
         "allow",
+        "deny",
         "deny",
         "allow",
     ]
