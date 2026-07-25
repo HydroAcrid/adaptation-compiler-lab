@@ -122,7 +122,7 @@ class _PreparedCommand:
 
 @dataclass(frozen=True)
 class _BashPolicyAuditEntry:
-    argument_digests: tuple[str, ...]
+    arguments: tuple[str, ...]
     decision: str
 
 
@@ -298,20 +298,23 @@ def _write_bash_policy_shell(
     )
     payload = (
         "#!/usr/bin/python3\n"
-        "import hashlib\n"
         "import json\n"
         "import os\n"
+        "import shlex\n"
         "import sys\n"
         f"ALLOWED = {allowed}\n"
         f"AUDIT_PATH = {str(audit_path)!r}\n"
         "arguments = sys.argv[1:]\n"
-        "matched_aliases = sorted({argument for argument in arguments if argument in ALLOWED})\n"
+        "tokens = []\n"
+        "for argument in arguments:\n"
+        "    try:\n"
+        "        tokens.extend(shlex.split(argument, posix=True))\n"
+        "    except ValueError:\n"
+        "        pass\n"
+        "matched_aliases = sorted({token for token in tokens if token in ALLOWED})\n"
         "decision = 'allow' if len(matched_aliases) == 1 else 'deny'\n"
         "entry = json.dumps({\n"
-        "    'argument_digests': [\n"
-        "        'sha256:' + hashlib.sha256(argument.encode()).hexdigest()\n"
-        "        for argument in arguments\n"
-        "    ],\n"
+        "    'arguments': arguments,\n"
         "    'decision': decision,\n"
         "}, sort_keys=True, separators=(',', ':')) + '\\n'\n"
         "descriptor = os.open(AUDIT_PATH, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)\n"
@@ -343,23 +346,15 @@ def _read_bash_policy_audit(path: Path) -> tuple[tuple[_BashPolicyAuditEntry, ..
             raise TargetExecutionError(f"Bash policy audit line {line_number} is invalid") from exc
         if (
             not isinstance(value, dict)
-            or set(value) != {"argument_digests", "decision"}
+            or set(value) != {"arguments", "decision"}
             or value.get("decision") not in {"allow", "deny"}
-            or not isinstance(value.get("argument_digests"), list)
-            or not all(isinstance(item, str) for item in value["argument_digests"])
+            or not isinstance(value.get("arguments"), list)
+            or not all(isinstance(item, str) for item in value["arguments"])
         ):
             raise TargetExecutionError("Bash policy audit entry is malformed")
-        argument_digests = cast(list[str], value["argument_digests"])
-        for digest in argument_digests:
-            if (
-                not digest.startswith("sha256:")
-                or len(digest) != 71
-                or any(character not in "0123456789abcdef" for character in digest[7:])
-            ):
-                raise TargetExecutionError("Bash policy audit argument digest is malformed")
         entries.append(
             _BashPolicyAuditEntry(
-                argument_digests=tuple(argument_digests),
+                arguments=tuple(cast(list[str], value["arguments"])),
                 decision=cast(str, value["decision"]),
             )
         )
@@ -789,7 +784,7 @@ def _assert_trace_conformance(
                             index
                             for index, entry in enumerate(unmatched_policy_entries)
                             if entry.decision == expected_policy_decision
-                            and raw_command_digest in entry.argument_digests
+                            and any(raw_command in argument for argument in entry.arguments)
                         ),
                         None,
                     )

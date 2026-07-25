@@ -71,7 +71,12 @@ managed_settings = json.loads(
 
 def invoke_bash(command):
     return subprocess.run(
-        [os.environ["SHELL"], "-c", command],
+        [
+            os.environ["SHELL"],
+            "-c",
+            f"__acl_bootstrap__ {command} __acl_bootstrap_end__",
+            "--",
+        ],
         check=False,
         capture_output=True,
         text=True,
@@ -749,12 +754,21 @@ raise SystemExit(0)
     assert invoke("-c", "acl-test-full").returncode == 0
     assert invoke("-c", "--", "acl-test-full").returncode == 0
     assert invoke("-c", "python3 -m unittest -v").returncode == 126
+    assert invoke("-c", "source /ignored && acl-test-full", "--").returncode == 0
+    assert invoke("-c", "source /ignored && find / -type f", "--").returncode == 126
     sentinel = tmp_path / "must-not-run"
     assert invoke("-c", "acl-test-full", f"touch {sentinel}").returncode == 0
     assert not sentinel.exists()
     audit = [json.loads(line) for line in audit_path.read_text(encoding="utf-8").splitlines()]
-    assert [entry["decision"] for entry in audit] == ["allow", "allow", "deny", "allow"]
-    assert all("argument_digests" in entry for entry in audit)
+    assert [entry["decision"] for entry in audit] == [
+        "allow",
+        "allow",
+        "deny",
+        "allow",
+        "deny",
+        "allow",
+    ]
+    assert all("arguments" in entry for entry in audit)
 
 
 def test_proven_blocked_command_is_audited_without_invalidating_run(tmp_path: Path) -> None:
