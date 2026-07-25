@@ -89,6 +89,8 @@ def test_canary_task_is_public_bounded_and_digest_frozen() -> None:
 
     assert task["held_out"] is False
     assert task["family"] == "debugging_and_verification"
+    assert "RUNBOOK.md, retry_budget.py" in task["prompt"]
+    assert "do not use Bash for file discovery or navigation" in task["prompt"]
     assert task["focused_test_command"] == [
         "python3",
         "-m",

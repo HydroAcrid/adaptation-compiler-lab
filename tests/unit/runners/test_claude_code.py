@@ -537,8 +537,13 @@ def test_host_file_tool_attempt_invalidates_run(tmp_path: Path) -> None:
 
 
 def test_ambient_configuration_read_attempt_invalidates_run(tmp_path: Path) -> None:
-    with pytest.raises(TargetExecutionError, match="read a reserved runner path"):
+    with pytest.raises(TargetExecutionError, match="read a reserved runner path") as caught:
         _runner(tmp_path).run(_request(tmp_path, prompt="RESERVED_READ_MARKER"))
+
+    assert caught.value.failure_code == "reserved_runner_path_read"
+    assert caught.value.failure_subject_digest is not None
+    assert caught.value.evidence is not None
+    assert caught.value.evidence.failure_code == "reserved_runner_path_read"
 
 
 def test_reserved_runtime_artifact_fails_closed_without_deletion(tmp_path: Path) -> None:

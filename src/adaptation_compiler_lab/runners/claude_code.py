@@ -416,7 +416,9 @@ def _command_instructions(prepared_commands: tuple[_PreparedCommand, ...]) -> st
         "Execution boundary: use Read, Glob, and Grep for inspection and Edit or Write for file "
         "changes. The only approved shell commands are the exact bounded aliases below. Invoke an "
         "alias exactly as shown, without arguments, chaining, redirection, substitution, a path "
-        "prefix, or a replacement Python command:",
+        "prefix, or a replacement Python command. Do not use Bash for file discovery, navigation, "
+        "or inspection. Do not inspect .acl-condition.md or .acl-runtime; the condition is already "
+        "injected and runner state is not task input:",
     ]
     for command in prepared_commands:
         purpose = (
@@ -514,12 +516,20 @@ def _assert_trace_conformance(
             candidate = workspace / candidate
         resolved = candidate.resolve()
         if not resolved.is_relative_to(workspace):
-            raise TargetExecutionError("Claude file tool attempted host-file access")
+            raise TargetExecutionError(
+                "Claude file tool attempted host-file access",
+                failure_code="host_file_access",
+                failure_subject_digest=sha256_bytes(str(resolved).encode("utf-8")),
+            )
         if any(
             resolved == reserved or resolved.is_relative_to(reserved) for reserved in reserved_paths
         ):
             operation = "modify" if write else "read"
-            raise TargetExecutionError(f"Claude attempted to {operation} a reserved runner path")
+            raise TargetExecutionError(
+                f"Claude attempted to {operation} a reserved runner path",
+                failure_code=f"reserved_runner_path_{operation}",
+                failure_subject_digest=sha256_bytes(str(resolved).encode("utf-8")),
+            )
 
     for event in events:
         for nested in _iter_objects(event):

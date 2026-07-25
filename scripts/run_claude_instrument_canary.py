@@ -56,19 +56,23 @@ from adaptation_compiler_lab.runners.claude_code import (
 )
 from adaptation_compiler_lab.serialization import canonical_json
 
-CANARY_ID = "claude-haiku-instrument-canary-v2"
-HOST_PROBE = Path("/tmp/acl-claude-instrument-canary-host-probe-v2")
+CANARY_ID = "claude-haiku-instrument-canary-v3"
+HOST_PROBE = Path("/tmp/acl-claude-instrument-canary-host-probe-v3")
 CONDITIONS = (
     BenchmarkCondition.STRONG_STATIC_PROFILE,
     BenchmarkCondition.COMPILED_ADAPTATION,
 )
-EXPECTED_TASK_DIGEST = "sha256:e561ad53680c238b73ac4b4e47430f559483cead9dc5e3b620595082d7412364"
+EXPECTED_TASK_DIGEST = "sha256:9d4a2fba2360dfff9b283f9339eed08d467cd4912653c2391242df03e11be9dc"
 EXPECTED_FIXTURE_DIGEST = "sha256:5be1cf278d4927cdfc5665dcd1c91abe7764ab550aa19331533511befe5a3de4"
 EXPECTED_SCORER_DIGEST = "sha256:3b373c105d96b55252c08e70b18d63aa9f8a88244281f05ad7ff65946099b1b7"
 
 
 def _canonical_bytes(value: Any) -> bytes:
     return (canonical_json(value) + "\n").encode("utf-8")
+
+
+def _utc_text(value: datetime) -> str:
+    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _exclusive_write(path: Path, payload: bytes, *, mode: int = 0o600) -> None:
@@ -139,11 +143,11 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
     exact = {
         "schema_version": "1.0.0",
         "canary_id": CANARY_ID,
-        "purpose": "evidence_preserving_restart_of_bounded_command_instrument",
+        "purpose": "task_guided_restart_of_bounded_command_instrument",
         "restart_of": {
-            "canary_id": "claude-haiku-instrument-canary-v1",
+            "canary_id": "claude-haiku-instrument-canary-v2",
             "failure_receipt_digest": (
-                "sha256:941d6de3b7720e8c9adaef948c433511836daa8243bad3d56c360fba10043177"
+                "sha256:dfed20da30f8ebdb200c9cca76a7dabcec7394bfd781756486e77980eea2bcc8"
             ),
         },
         "source_commit": "TO_BE_FROZEN",
@@ -177,7 +181,7 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
         "limits": {
             "planned_runs": 2,
             "max_seconds_per_run": 300,
-            "max_turns_per_run": 12,
+            "max_turns_per_run": 20,
             "max_usd_per_run": 0.25,
             "max_usd_total": 0.5,
             "retry_allowed": False,
@@ -201,6 +205,7 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
             "focused_test_alias": "acl-test-focused",
             "command_implementations_visible_to_target": False,
             "out_of_manifest_behavior": "deny_and_persist_encrypted_failure_evidence",
+            "task_file_manifest_visible_to_target": True,
         },
         "success_gate": {
             "both_runs_edit_workspace": True,
@@ -450,6 +455,7 @@ def main() -> None:
                         "runner_stdout": evidence.stdout,
                         "runner_stderr": evidence.stderr,
                         "failure_code": evidence.failure_code,
+                        "failure_message": str(exc),
                         "failure_subject_digest": evidence.failure_subject_digest,
                         "terminal_reasons": terminal_reasons,
                     }
@@ -682,8 +688,8 @@ def main() -> None:
             "max_cost_usd": preregistration["limits"]["max_usd_total"],
             "second_run_executed": failure_values["sequence"] == 2,
             "retry_executed": False,
-            "completed_at": completed_at,
-            "raw_retention_deadline": completed_at + timedelta(days=30),
+            "completed_at": _utc_text(completed_at),
+            "raw_retention_deadline": _utc_text(completed_at + timedelta(days=30)),
             "raw_payloads_encrypted_outside_git": True,
             "condition_mapping_withheld_during_execution": True,
             "adaptation_quality_comparison_allowed": False,
@@ -722,8 +728,8 @@ def main() -> None:
         "total_cost_usd": total_cost,
         "max_cost_usd": preregistration["limits"]["max_usd_total"],
         "runs": results,
-        "completed_at": completed_at,
-        "raw_retention_deadline": completed_at + timedelta(days=30),
+        "completed_at": _utc_text(completed_at),
+        "raw_retention_deadline": _utc_text(completed_at + timedelta(days=30)),
         "raw_payloads_encrypted_outside_git": True,
         "condition_mapping_withheld_during_execution": True,
         "adaptation_quality_comparison_allowed": False,
