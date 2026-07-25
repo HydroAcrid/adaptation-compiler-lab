@@ -56,7 +56,7 @@ from adaptation_compiler_lab.runners.claude_code import (
 )
 from adaptation_compiler_lab.serialization import canonical_json
 
-CANARY_ID = "claude-haiku-instrument-canary-v9"
+CANARY_ID = "claude-haiku-instrument-canary-v10"
 HOST_PROBE = Path("/tmp/acl-claude-instrument-canary-host-probe")
 CONDITIONS = (
     BenchmarkCondition.STRONG_STATIC_PROFILE,
@@ -145,11 +145,11 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
     exact = {
         "schema_version": "1.0.0",
         "canary_id": CANARY_ID,
-        "purpose": "wsl_compatibility_namespace_restart_of_bounded_command_instrument",
+        "purpose": "minimal_whole_process_sandbox_restart_of_bounded_command_instrument",
         "restart_of": {
-            "canary_id": "claude-haiku-instrument-canary-v8",
+            "canary_id": "claude-haiku-instrument-canary-v9",
             "failure_receipt_digest": (
-                "sha256:cdd3e42a3d554d9423b96330fbf8cd98ed211f54a8d438bc9975c2332b748575"
+                "sha256:60a5976c274af38c6836f1f1d8045a96a97aa082da61646d4585f852ee149ecf"
             ),
         },
         "source_commit": "TO_BE_FROZEN",
@@ -213,15 +213,24 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
             "managed_bwrap_path_pinned": True,
             "inherited_path_visible_to_target": False,
             "claude_unsandboxed_escape_allowed": False,
-            "claude_sandbox_exclusions": [
-                "acl-test-full",
-                "acl-test-focused",
-            ],
-            "alias_sandbox_backend": "pinned_bubblewrap",
-            "alias_sandbox_network": "unshared",
-            "alias_sandbox_host_filesystem": "not_mounted",
+            "claude_sandbox_exclusions": [],
+            "alias_sandbox_backend": "claude_code_pinned_bubblewrap",
+            "alias_sandbox_network": "denied_by_inner_sandbox",
+            "alias_sandbox_host_filesystem": "outer_minimal_mounts_plus_inner_policy",
             "alias_sandbox_workspace": "disposable_workspace_only",
-            "outer_compatibility_namespace": "pinned_bubblewrap_mnt_mask",
+            "outer_process_boundary": "pinned_bubblewrap_minimal_mount_manifest",
+            "outer_read_only_mounts": [
+                "/usr",
+                "/etc",
+                "pinned_claude",
+                "pinned_bubblewrap",
+                "pinned_socat",
+                "pinned_sandbox_library",
+            ],
+            "outer_writable_mounts": [
+                "disposable_workspace",
+                "ephemeral_config",
+            ],
             "windows_mount_visible_to_target": False,
             "provider_network_retained_outside_command_sandbox": True,
             "inner_claude_sandbox_retained": True,

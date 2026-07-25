@@ -11,14 +11,14 @@ import pytest
 from adaptation_compiler_lab.connectors.models import TargetCommandAuditEntry
 
 
-def test_canary_v9_preregistration_matches_coordinator(
+def test_canary_v10_preregistration_matches_coordinator(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     repository = Path(__file__).parents[2]
     monkeypatch.syspath_prepend(str(repository / "scripts"))
     coordinator: Any = importlib.import_module("run_claude_instrument_canary")
     preregistration = (
-        repository / "development_benchmark_claude" / "INSTRUMENT_CANARY_PREREGISTRATION-v9.json"
+        repository / "development_benchmark_claude" / "INSTRUMENT_CANARY_PREREGISTRATION-v10.json"
     )
 
     loaded = coordinator._load_preregistration(
@@ -27,7 +27,7 @@ def test_canary_v9_preregistration_matches_coordinator(
         source_commit="synthetic-clean-commit",
     )
 
-    assert loaded["canary_id"] == "claude-haiku-instrument-canary-v9"
+    assert loaded["canary_id"] == "claude-haiku-instrument-canary-v10"
     assert loaded["command_interface"] == {
         "full_test_alias": "acl-test-full",
         "focused_test_alias": "acl-test-focused",
@@ -39,15 +39,24 @@ def test_canary_v9_preregistration_matches_coordinator(
         "managed_bwrap_path_pinned": True,
         "inherited_path_visible_to_target": False,
         "claude_unsandboxed_escape_allowed": False,
-        "claude_sandbox_exclusions": [
-            "acl-test-full",
-            "acl-test-focused",
-        ],
-        "alias_sandbox_backend": "pinned_bubblewrap",
-        "alias_sandbox_network": "unshared",
-        "alias_sandbox_host_filesystem": "not_mounted",
+        "claude_sandbox_exclusions": [],
+        "alias_sandbox_backend": "claude_code_pinned_bubblewrap",
+        "alias_sandbox_network": "denied_by_inner_sandbox",
+        "alias_sandbox_host_filesystem": "outer_minimal_mounts_plus_inner_policy",
         "alias_sandbox_workspace": "disposable_workspace_only",
-        "outer_compatibility_namespace": "pinned_bubblewrap_mnt_mask",
+        "outer_process_boundary": "pinned_bubblewrap_minimal_mount_manifest",
+        "outer_read_only_mounts": [
+            "/usr",
+            "/etc",
+            "pinned_claude",
+            "pinned_bubblewrap",
+            "pinned_socat",
+            "pinned_sandbox_library",
+        ],
+        "outer_writable_mounts": [
+            "disposable_workspace",
+            "ephemeral_config",
+        ],
         "windows_mount_visible_to_target": False,
         "provider_network_retained_outside_command_sandbox": True,
         "inner_claude_sandbox_retained": True,

@@ -94,6 +94,11 @@ _AMBIENT_READ_NAMES: Final = (
     "AGENTS.md",
     "CLAUDE.md",
 )
+_OUTER_RUNTIME_ROOT: Final = Path("/opt/acl-runtime")
+_OUTER_CLAUDE: Final = _OUTER_RUNTIME_ROOT / "claude"
+_OUTER_BWRAP: Final = _OUTER_RUNTIME_ROOT / "bwrap"
+_OUTER_SOCAT: Final = _OUTER_RUNTIME_ROOT / "socat"
+_OUTER_SANDBOX_LIB: Final = _OUTER_RUNTIME_ROOT / "lib"
 
 
 @dataclass(frozen=True)
@@ -195,6 +200,7 @@ def _settings(
         "/etc/ld.so.cache",
         "/lib",
         "/lib64",
+        str(_OUTER_RUNTIME_ROOT),
         "/usr",
         str(commands_dir),
         str(workspace),
@@ -228,10 +234,7 @@ def _settings(
             "failIfUnavailable": True,
             "autoAllowBashIfSandboxed": False,
             "allowUnsandboxedCommands": False,
-            # Claude Code's WSL sandbox derives an absent Windows managed-settings path on this
-            # pinned runtime. Only the generated aliases bypass that wrapper. Each alias
-            # immediately enters the separately pinned Bubblewrap boundary built below.
-            "excludedCommands": [command.alias for command in prepared_commands],
+            "excludedCommands": [],
             "filesystem": {
                 "denyRead": ["/", *ambient_paths],
                 "allowRead": system_read_paths,
@@ -295,80 +298,23 @@ def _approved_argv(command: str) -> tuple[str, ...]:
 
 def _wrapper_payload(
     *,
-    bubblewrap: Path,
     executable: Path,
     arguments: tuple[str, ...],
     runtime_root: Path,
-    workspace: Path,
     request: TargetRunRequest,
 ) -> str:
     memory_kb = request.command_memory_mb * 1024
     file_blocks = request.command_file_size_mb * 1024
-    sandbox_command = shlex.join(
+    exact_command = shlex.join((str(executable), *arguments))
+    env_assignments = shlex.join(
         (
-            str(bubblewrap),
-            "--unshare-all",
-            "--die-with-parent",
-            "--new-session",
-            "--ro-bind",
-            "/usr",
-            "/usr",
-            "--symlink",
-            "usr/bin",
-            "/bin",
-            "--symlink",
-            "usr/lib",
-            "/lib",
-            "--symlink",
-            "usr/lib64",
-            "/lib64",
-            "--symlink",
-            "usr/sbin",
-            "/sbin",
-            "--proc",
-            "/proc",
-            "--dev",
-            "/dev",
-            "--tmpfs",
-            "/tmp",
-            "--dir",
-            "/runtime",
-            "--bind",
-            str(runtime_root / "home"),
-            "/runtime/home",
-            "--bind",
-            str(runtime_root / "tmp"),
-            "/runtime/tmp",
-            "--bind",
-            str(workspace),
-            "/workspace",
-            "--chdir",
-            "/workspace",
-            "--clearenv",
-            "--setenv",
-            "HOME",
-            "/runtime/home",
-            "--setenv",
-            "TMPDIR",
-            "/runtime/tmp",
-            "--setenv",
-            "PATH",
-            "/usr/bin:/bin",
-            "--setenv",
-            "LANG",
-            "C.UTF-8",
-            "--setenv",
-            "LC_ALL",
-            "C.UTF-8",
-            "--setenv",
-            "PYTHONDONTWRITEBYTECODE",
-            "1",
-            "--setenv",
-            "ACL_BOUNDED_TEST",
-            "1",
-            "--",
-            str(executable),
-            *arguments,
+            f"HOME={runtime_root / 'home'}",
+            f"TMPDIR={runtime_root / 'tmp'}",
+            "PATH=/usr/bin:/bin",
+            "LANG=C.UTF-8",
+            "LC_ALL=C.UTF-8",
+            "PYTHONDONTWRITEBYTECODE=1",
+            "ACL_BOUNDED_TEST=1",
         )
     )
     return (
@@ -380,7 +326,7 @@ def _wrapper_payload(
         f"ulimit -u {request.command_process_limit}\n"
         f"ulimit -n {request.command_open_files_limit}\n"
         "exec /usr/bin/timeout --signal=TERM --kill-after=5 "
-        f"{request.command_timeout_seconds} {sandbox_command}\n"
+        f"{request.command_timeout_seconds} /usr/bin/env -i {env_assignments} {exact_command}\n"
     )
 
 
@@ -426,11 +372,9 @@ def _prepare_commands(
         wrapper_path = commands_dir / alias
         wrapper_path.write_text(
             _wrapper_payload(
-                bubblewrap=bubblewrap,
                 executable=executable,
                 arguments=argv[1:],
                 runtime_root=runtime_root,
-                workspace=workspace,
                 request=request,
             ),
             encoding="utf-8",
@@ -455,8 +399,8 @@ def _prepare_commands(
                 "command_process_limit": request.command_process_limit,
                 "command_open_files_limit": request.command_open_files_limit,
                 "sandbox_backend_digest": sha256_file(bubblewrap),
-                "sandbox_network": "unshared",
-                "sandbox_host_filesystem": "not_mounted",
+                "sandbox_backend": "claude_code_pinned_bubblewrap",
+                "outer_process_boundary": "minimal_mount_manifest",
             }
         )
     manifest_digest = sha256_bytes(
@@ -498,33 +442,72 @@ def _command_instructions(prepared_commands: tuple[_PreparedCommand, ...]) -> st
     return "\n".join(lines)
 
 
-def _compatibility_command(
+def _isolated_target_command(
     *,
-    bubblewrap: Path,
+    runtime: VerifiedClaudeRuntime,
     claude_command: list[str],
+    config_dir: Path,
     workspace: Path,
 ) -> list[str]:
-    """Mask WSL's Windows mount while retaining Claude's inner security sandbox."""
+    """Place the whole target inside a minimal filesystem while retaining provider network."""
 
     return [
-        str(bubblewrap),
-        "--bind",
-        "/",
-        "/",
-        "--tmpfs",
-        "/mnt",
-        "--dir",
-        "/mnt/c",
-        "--dir",
-        "/mnt/c/Program Files",
-        "--dir",
-        "/mnt/c/Program Files/ClaudeCode",
+        str(runtime.bubblewrap),
+        "--unshare-all",
+        "--share-net",
         "--die-with-parent",
         "--new-session",
+        "--ro-bind",
+        "/usr",
+        "/usr",
+        "--symlink",
+        "usr/bin",
+        "/bin",
+        "--symlink",
+        "usr/lib",
+        "/lib",
+        "--symlink",
+        "usr/lib64",
+        "/lib64",
+        "--symlink",
+        "usr/sbin",
+        "/sbin",
+        "--ro-bind",
+        "/etc",
+        "/etc",
+        "--proc",
+        "/proc",
+        "--dev",
+        "/dev",
+        "--tmpfs",
+        "/tmp",
+        "--dir",
+        "/mnt/c/Program Files/ClaudeCode",
+        "--dir",
+        str(_OUTER_RUNTIME_ROOT),
+        "--ro-bind",
+        str(runtime.executable),
+        str(_OUTER_CLAUDE),
+        "--ro-bind",
+        str(runtime.bubblewrap),
+        str(_OUTER_BWRAP),
+        "--ro-bind",
+        str(runtime.socat),
+        str(_OUTER_SOCAT),
+        "--ro-bind",
+        str(runtime.sandbox_library_path),
+        str(_OUTER_SANDBOX_LIB),
+        "--bind",
+        str(workspace),
+        str(workspace),
+        "--bind",
+        str(config_dir),
+        str(config_dir),
         "--chdir",
         str(workspace),
         "--",
-        *claude_command,
+        str(_OUTER_CLAUDE),
+        *claude_command[1:],
     ]
 
 
@@ -736,6 +719,7 @@ class ClaudeCodeTargetRunner:
         config_dir: Path,
         commands_dir: Path,
         managed_settings_dir: Path,
+        runtime_root: Path,
     ) -> dict[str, str]:
         api_key = self._api_key()
         configured_base = self._environment.get("ANTHROPIC_BASE_URL")
@@ -749,28 +733,18 @@ class ClaudeCodeTargetRunner:
         environment = {
             key: value
             for key, value in self._environment.items()
-            if key
-            in {
-                "HOME",
-                "LANG",
-                "LC_ALL",
-                "LOGNAME",
-                "PATH",
-                "SHELL",
-                "TERM",
-                "TMPDIR",
-                "USER",
-            }
+            if key in {"LANG", "LC_ALL", "LOGNAME", "SHELL", "TERM", "USER"}
         }
         path_parts = [
             str(commands_dir),
-            str(runtime.bubblewrap.parent),
-            str(runtime.socat.parent),
+            str(_OUTER_RUNTIME_ROOT),
             "/usr/bin",
             "/bin",
         ]
         environment["PATH"] = os.pathsep.join(dict.fromkeys(path_parts))
-        environment["LD_LIBRARY_PATH"] = str(runtime.sandbox_library_path)
+        environment["LD_LIBRARY_PATH"] = str(_OUTER_SANDBOX_LIB)
+        environment["HOME"] = str(runtime_root / "home")
+        environment["TMPDIR"] = str(runtime_root / "tmp")
         environment["ANTHROPIC_API_KEY"] = api_key
         environment["ANTHROPIC_BASE_URL"] = runtime.api_base_url
         environment["ANTHROPIC_MODEL"] = runtime.model_id
@@ -835,7 +809,7 @@ class ClaudeCodeTargetRunner:
                 managed_settings_path = config_dir / "managed-settings.json"
                 managed_settings_payload = {
                     **settings_payload,
-                    "bwrapPath": str(runtime.bubblewrap),
+                    "bwrapPath": str(_OUTER_BWRAP),
                 }
                 managed_settings_path.write_text(
                     json.dumps(
@@ -853,6 +827,7 @@ class ClaudeCodeTargetRunner:
                     config_dir=config_dir,
                     commands_dir=commands_dir,
                     managed_settings_dir=config_dir,
+                    runtime_root=workspace / ".acl-runtime",
                 )
                 allow_rules, _ = _tool_rules(workspace, condition_file)
                 allowed_tools = [cast(str, rule) for rule in allow_rules]
@@ -890,9 +865,10 @@ class ClaudeCodeTargetRunner:
                     f"{request.max_usd:.2f}",
                     _GENERIC_STDIN_PROMPT,
                 ]
-                command = _compatibility_command(
-                    bubblewrap=runtime.bubblewrap,
+                command = _isolated_target_command(
+                    runtime=runtime,
                     claude_command=claude_command,
+                    config_dir=config_dir,
                     workspace=workspace,
                 )
                 command_digest = sha256_bytes(

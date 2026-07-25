@@ -246,6 +246,7 @@ print(json.dumps({
 
 _FAKE_BWRAP = """#!/usr/bin/env python3
 import os
+import pathlib
 import sys
 
 args = sys.argv[1:]
@@ -261,54 +262,26 @@ if args[-1:] == ["/bin/true"] and {
     "--die-with-parent",
 }.issubset(args):
     raise SystemExit(0)
-if args[:3] == ["--bind", "/", "/"] and "--tmpfs" in args:
-    if args[args.index("--tmpfs") + 1] != "/mnt":
-        print("synthetic bwrap: Windows mount was not masked", file=sys.stderr)
-        raise SystemExit(81)
-    expected_directories = {
-        "/mnt/c",
-        "/mnt/c/Program Files",
-        "/mnt/c/Program Files/ClaudeCode",
-    }
-    directories = {
-        args[index + 1] for index, value in enumerate(args) if value == "--dir"
-    }
-    if directories != expected_directories:
-        print("synthetic bwrap: compatibility directories drifted", file=sys.stderr)
-        raise SystemExit(82)
-    if "--unshare-net" in args or "--unshare-all" in args:
-        print("synthetic bwrap: provider network was disabled", file=sys.stderr)
-        raise SystemExit(83)
-    command_index = args.index("--")
-    command = args[command_index + 1:]
-    working_directory = args[args.index("--chdir") + 1]
-    if not command or "--die-with-parent" not in args or "--new-session" not in args:
-        print("synthetic bwrap: compatibility process controls missing", file=sys.stderr)
-        raise SystemExit(84)
-    os.chdir(working_directory)
-    os.execve(command[0], command, os.environ)
-
-required_flags = {
-    "--unshare-all",
-    "--die-with-parent",
-    "--new-session",
-    "--clearenv",
-}
+required_flags = {"--unshare-all", "--share-net", "--die-with-parent", "--new-session"}
 if not required_flags.issubset(args):
     print("synthetic bwrap: required isolation flag missing", file=sys.stderr)
     raise SystemExit(91)
-if args.count("--bind") != 3 or args.count("--ro-bind") != 1:
-    print("synthetic bwrap: unexpected host mount count", file=sys.stderr)
+if "--unshare-net" in args or "--clearenv" in args:
+    print("synthetic bwrap: target environment or provider network drifted", file=sys.stderr)
     raise SystemExit(92)
+if args.count("--bind") != 2 or args.count("--ro-bind") != 6:
+    print("synthetic bwrap: unexpected host mount count", file=sys.stderr)
+    raise SystemExit(93)
 
 binds = {}
-environment = {}
 working_directory = None
 command = None
+directories = set()
+tmpfs_paths = set()
 index = 0
 two_values = {"--bind", "--ro-bind", "--setenv", "--symlink"}
 one_value = {"--chdir", "--dev", "--dir", "--proc", "--tmpfs"}
-no_values = {"--unshare-all", "--die-with-parent", "--new-session", "--clearenv"}
+no_values = {"--unshare-all", "--share-net", "--die-with-parent", "--new-session"}
 while index < len(args):
     item = args[index]
     if item == "--":
@@ -318,37 +291,65 @@ while index < len(args):
         left, right = args[index + 1:index + 3]
         if item in {"--bind", "--ro-bind"}:
             binds[right] = left
-        elif item == "--setenv":
-            environment[left] = right
         index += 3
         continue
     if item in one_value:
         if item == "--chdir":
             working_directory = args[index + 1]
+        elif item == "--dir":
+            directories.add(args[index + 1])
+        elif item == "--tmpfs":
+            tmpfs_paths.add(args[index + 1])
         index += 2
         continue
     if item in no_values:
         index += 1
         continue
     print(f"synthetic bwrap: unknown option {item}", file=sys.stderr)
-    raise SystemExit(93)
-
-if binds.get("/usr") != "/usr" or "/workspace" not in binds:
-    print("synthetic bwrap: system or workspace mount missing", file=sys.stderr)
     raise SystemExit(94)
-if set(binds) != {"/usr", "/runtime/home", "/runtime/tmp", "/workspace"}:
-    print("synthetic bwrap: forbidden host mount", file=sys.stderr)
-    raise SystemExit(95)
-if working_directory != "/workspace" or not command:
-    print("synthetic bwrap: workspace or command missing", file=sys.stderr)
-    raise SystemExit(96)
 
-for name in ("HOME", "TMPDIR"):
-    value = environment.get(name)
-    if value in binds:
-        environment[name] = binds[value]
-os.chdir(binds["/workspace"])
-os.execve(command[0], command, environment)
+expected_fixed = {
+    "/usr": "/usr",
+    "/etc": "/etc",
+    "/opt/acl-runtime/claude": str(pathlib.Path(sys.argv[0]).parent / "fake-claude"),
+    "/opt/acl-runtime/bwrap": str(pathlib.Path(sys.argv[0]).resolve()),
+    "/opt/acl-runtime/socat": str(pathlib.Path(sys.argv[0]).parent / "socat"),
+    "/opt/acl-runtime/lib": str(pathlib.Path(sys.argv[0]).parent / "lib"),
+}
+if any(binds.get(destination) != source for destination, source in expected_fixed.items()):
+    print("synthetic bwrap: fixed runtime mount drifted", file=sys.stderr)
+    raise SystemExit(95)
+rw_binds = {
+    destination: source
+    for destination, source in binds.items()
+    if destination not in expected_fixed
+}
+if len(rw_binds) != 2 or any(source != destination for destination, source in rw_binds.items()):
+    print("synthetic bwrap: disposable writable mounts drifted", file=sys.stderr)
+    raise SystemExit(96)
+if any(
+    source in {"/", "/home", "/mnt"} or not source.startswith("/tmp/")
+    for source in rw_binds.values()
+):
+    print("synthetic bwrap: forbidden host mount", file=sys.stderr)
+    raise SystemExit(97)
+if (
+    "/tmp" not in tmpfs_paths
+    or "/opt/acl-runtime" not in directories
+    or "/mnt/c/Program Files/ClaudeCode" not in directories
+):
+    print("synthetic bwrap: masked compatibility or runtime directory missing", file=sys.stderr)
+    raise SystemExit(98)
+if working_directory not in rw_binds or not command:
+    print("synthetic bwrap: workspace or command missing", file=sys.stderr)
+    raise SystemExit(99)
+if command[0] != "/opt/acl-runtime/claude":
+    print("synthetic bwrap: unexpected target executable", file=sys.stderr)
+    raise SystemExit(100)
+
+command[0] = expected_fixed["/opt/acl-runtime/claude"]
+os.chdir(working_directory)
+os.execve(command[0], command, os.environ)
 """
 
 
@@ -513,6 +514,7 @@ def test_synthetic_runner_has_clean_state_tools_and_network(tmp_path: Path) -> N
     target_path = cast(str, result_event["path"])
     assert "/usr/bin" in target_path.split(os.pathsep)
     assert "/bin" in target_path.split(os.pathsep)
+    assert "/opt/acl-runtime" in target_path.split(os.pathsep)
     assert "/mnt/c" not in target_path
     assert result_event["host_platform"] == "linux"
     settings = result_event["settings"]
@@ -523,7 +525,7 @@ def test_synthetic_runner_has_clean_state_tools_and_network(tmp_path: Path) -> N
     assert isinstance(managed_settings, dict)
     assert managed_settings["permissions"] == settings["permissions"]
     assert managed_settings["sandbox"] == settings["sandbox"]
-    assert managed_settings["bwrapPath"] == str((tmp_path / "bwrap").resolve())
+    assert managed_settings["bwrapPath"] == "/opt/acl-runtime/bwrap"
     assert result_event["condition_sha256"] == request.condition_digest.removeprefix("sha256:")
     sandbox = settings["sandbox"]
     assert isinstance(sandbox, dict)
@@ -531,7 +533,7 @@ def test_synthetic_runner_has_clean_state_tools_and_network(tmp_path: Path) -> N
     assert sandbox["failIfUnavailable"] is True
     assert sandbox["allowUnsandboxedCommands"] is False
     assert sandbox["autoAllowBashIfSandboxed"] is False
-    assert sandbox["excludedCommands"] == ["acl-test-full"]
+    assert sandbox["excludedCommands"] == []
     network = sandbox["network"]
     assert isinstance(network, dict)
     assert network["deniedDomains"] == ["*"]
@@ -623,10 +625,7 @@ def test_two_commands_use_semantic_aliases_without_exposing_implementation(
     sandbox_value = settings_value["sandbox"]
     assert isinstance(sandbox_value, dict)
     assert sandbox_value["allowUnsandboxedCommands"] is False
-    assert set(cast(list[str], sandbox_value["excludedCommands"])) == {
-        "acl-test-focused",
-        "acl-test-full",
-    }
+    assert cast(list[str], sandbox_value["excludedCommands"]) == []
     assert [entry.alias for entry in result.command_audit] == [
         "acl-test-focused",
         "acl-test-full",
