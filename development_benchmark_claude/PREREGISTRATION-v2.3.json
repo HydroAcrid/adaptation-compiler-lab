@@ -1,0 +1,147 @@
+{
+  "schema_version": "2.3.0",
+  "benchmark_id": "claude-haiku-compiler-v2-corrected-comparison",
+  "purpose": "Repeat the frozen strong-profile versus compiled-adaptation development comparison after exact Bash enforcement recognized Claude Code's final-argument alias dispatch.",
+  "frozen_at": "2026-07-25T21:27:00Z",
+  "source_commit": "TO_BE_FROZEN",
+  "design_digest": "sha256:36eabdea2a631a5e6d8e820d3a7f5462285a827869b6b2a7406ad080fe33f0ea",
+  "supersedes_for_future_execution": "PREREGISTRATION-v2.2.json",
+  "does_not_rewrite": [
+    "results/corrected-comparison-instrument-failure-v2.0.json",
+    "results/corrected-comparison-instrument-failure-v2.1.json",
+    "results/corrected-comparison-instrument-failure-v2.2.json",
+    "results/kevin-blind-rating-v1.2.json",
+    "results/unblinded-result-v1.2.json",
+    "UNBLINDED_ANALYSIS-v1.2.md"
+  ],
+  "prior_evidence": {
+    "corrected_comparison_v2_0_failure_digest": "sha256:a3cd2ac0d0b6d149f1ce40ac7c8de55c107259de76ea757256d665feae107e4e",
+    "corrected_comparison_v2_1_failure_digest": "sha256:0c28cbff16cea2d4f899253b97c0afb6da350c1a6a313d3cf3b499c27e838ca7",
+    "corrected_comparison_v2_2_failure_digest": "sha256:dcd342394a108f9eeafdf42998a47dcd11b8410aa6774fd6e6f7d4edadea6448",
+    "instrument_success_receipt_digest": "sha256:6417f5c070448b6e2c6c2e07757f4abcfb7cc97d1b0bfe292130288fba79f8f0",
+    "v1_2_blind_rating_digest": "sha256:3e15445db52749209130e07b8e18fe9f0978fa13e8e1df60ddaadcb42211179f",
+    "v1_2_unblinded_result_digest": "sha256:4dc594339a21ab6410272826cc14ef6b227972c7df8688f9df2ecb3f1cb9bda0",
+    "v1_2_analysis_digest": "sha256:3797248756947e2e9393e1010af917d14e091c151a7f58826060a9ebca3d82b1"
+  },
+  "conditions": [
+    "strong_static_profile",
+    "compiled_adaptation"
+  ],
+  "materials": {
+    "compiled_v2": "sha256:f0e9743b02ea733ac7dfe0149568bac66fbda567b4b127facbde5855f1fcbf07",
+    "compiled_lineage": "sha256:7cae2bdee2ea0cfee4e6f12c3493a89de3e4f3d83855fb223de995e98b3ffd18",
+    "strong_static_profile": "sha256:79ed4faafac49a003897c977f4d49998b6fe61a0022c449b8ad72d754baa1be4"
+  },
+  "material_measurements": {
+    "compiled_v2": {
+      "renderer_version": "2.0.0",
+      "target_tokens": 1170,
+      "utf8_bytes": 5637
+    },
+    "strong_static_profile": {
+      "authoring_method": "isolated_ai_author_plus_isolated_ai_review",
+      "target_tokens": 1684,
+      "utf8_bytes": 8080
+    }
+  },
+  "tasks": [
+    {
+      "task_id": "claude-development-communication",
+      "family": "communication",
+      "fixture_digest": "sha256:00b8370e41023c85a75c69075e534173ddfcdcab68c9bbe83ff6aace99843a0e",
+      "independent_scorer_digest": "sha256:fca48886de0c354f7e8ed82bae4a4df15ddf02d3a25a58bed06d769b10b44490"
+    },
+    {
+      "task_id": "claude-development-debugging-verification",
+      "family": "debugging_and_verification",
+      "fixture_digest": "sha256:e8fad46b3990f3180f70d1930bd1cb8bfbf05b4763fbcda262d2ed8e9b169537",
+      "independent_scorer_digest": "sha256:736d9646299a4dd61e86168088678c497050bf24eb3cbc8b2f69f89438ce24d2"
+    },
+    {
+      "task_id": "claude-development-environment-safety",
+      "family": "environment_safety",
+      "fixture_digest": "sha256:73a705d93ef685562cca61f32379c3f0a395043949848b0239c7aefa545d1452",
+      "independent_scorer_digest": "sha256:ff2e67905e74cdeeded3522950df1bbb6bfae4514c5e21ff9110c79cded2f11d"
+    },
+    {
+      "task_id": "claude-development-research-integrity",
+      "family": "research_integrity",
+      "fixture_digest": "sha256:617dc2f4872feefe197284fe71c6e9e6a651c11d272ad4163b12818f1075b489",
+      "independent_scorer_digest": "sha256:c51fa2a0c51172b5be8f9390403c0f43c72210f918075a894c9b36a5b6f7c990"
+    }
+  ],
+  "runtime": {
+    "claude_code_version": "2.1.218",
+    "model_id": "claude-haiku-4-5-20251001",
+    "runtime_lock_digest": "sha256:4ab9164f8274cb110d053b9a29982a9f490dedb5357d4694d0cc41108752a197",
+    "runner_boundary": "instrument-canary-success-v12-plus-outer-policy-shell-v2"
+  },
+  "execution": {
+    "planned_runs": 16,
+    "repetitions_per_condition": 2,
+    "max_seconds_per_run": 600,
+    "max_turns_per_run": 20,
+    "max_usd_per_run": 0.25,
+    "max_usd_total": 4.0,
+    "retry_allowed": false,
+    "command_timeout_seconds": 120,
+    "command_cpu_seconds": 30,
+    "command_memory_mb": 512,
+    "command_file_size_mb": 16,
+    "command_process_limit": 256,
+    "command_process_limit_scope": "additional_uid_tasks_within_outer_pid_boundary",
+    "command_open_files_limit": 64
+  },
+  "command_manifests": {
+    "claude-development-communication": [
+      "python3 -m unittest -v"
+    ],
+    "claude-development-debugging-verification": [
+      "python3 -m unittest -v",
+      "python3 -m unittest -v test_feature_flags.FeatureFlagTests.test_tenant_override_does_not_leak_to_next_request"
+    ],
+    "claude-development-environment-safety": [
+      "python3 -m unittest -v"
+    ],
+    "claude-development-research-integrity": [
+      "python3 -m unittest -v"
+    ]
+  },
+  "validity": {
+    "all_16_records_required": true,
+    "trace_conformance_required": true,
+    "terminal_success_required": true,
+    "condition_leakage_forbidden": true,
+    "workspace_and_config_teardown_required": true,
+    "quality_scores_are_outcomes_not_validity_requirements": true,
+    "test_alias_use_is_instruction_adherence_not_validity": true,
+    "proven_policy_denials_are_instruction_adherence_not_instrument_failure": true,
+    "every_bash_trace_requires_digest_matched_os_policy_audit": true,
+    "unblocked_out_of_manifest_command_invalidates_and_stops_grid": true
+  },
+  "blinding": {
+    "fresh_randomization_seed_outside_repository": true,
+    "fresh_condition_ids_and_run_order": true,
+    "condition_mapping_withheld_until_all_kevin_ratings": true,
+    "objective_scores_withheld_until_all_kevin_ratings": true,
+    "anonymous_outputs_and_diffs_only": true
+  },
+  "analysis": {
+    "primary_objective_evidence": "Paired objective and diagnostic checks by task and repetition.",
+    "primary_preference_evidence": "Kevin's blind First, Second, or Tie rating for each of eight pairs.",
+    "neutral_guardrail": "Compiled adaptation must not have a lower neutral-control rate.",
+    "product_advantage_supported_when": "Compiled adaptation beats or ties the strong profile on aggregate objective-plus-diagnostic checks and Kevin's paired preferences, has no lower neutral-control rate, and retains its measured size advantage.",
+    "instrument_failure_when": "Any planned record is invalid, any mapping or score is exposed before ratings, or any record cannot be tied to frozen environment, command, and material digests.",
+    "descriptive_only": true
+  },
+  "boundaries": {
+    "held_out": false,
+    "reuses_previously_executed_public_tasks": true,
+    "prior_outputs_and_scores_are_known_to_the_construction_context": true,
+    "condition_materials_unchanged_after_prior_results": true,
+    "milestone_6_custody_accessed": false,
+    "milestone_6_materials_modified": false,
+    "full_paid_milestone_6_pilot_authorized": false,
+    "general_thesis_claim_allowed": false
+  }
+}

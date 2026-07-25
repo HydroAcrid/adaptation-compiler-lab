@@ -20,6 +20,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
 
+from pydantic import TypeAdapter
+
 from adaptation_compiler_lab.application.record_store import DomainRecordStore
 from adaptation_compiler_lab.benchmark.claude_development import (
     ClaudeDevelopmentBlindReport,
@@ -89,6 +91,7 @@ experimental condition.
 
 Task:
 """
+_JSON_ADAPTER = TypeAdapter(Any)
 
 
 def _exclusive_write(path: Path, payload: bytes, *, mode: int = 0o600) -> None:
@@ -100,7 +103,10 @@ def _exclusive_write(path: Path, payload: bytes, *, mode: int = 0o600) -> None:
 
 
 def _canonical_bytes(value: Any) -> bytes:
-    return (canonical_json(value) + "\n").encode("utf-8")
+    payload = _JSON_ADAPTER.dump_python(value, mode="json")
+    if not isinstance(payload, dict):
+        raise TypeError("canonical benchmark payload must be a JSON object")
+    return (canonical_json(cast(dict[str, object], payload)) + "\n").encode("utf-8")
 
 
 def _create_secret(path: Path) -> None:
@@ -273,8 +279,8 @@ def _corrected_execution_contract(
     *,
     task_ids: set[str],
 ) -> tuple[dict[str, Any], dict[str, tuple[str, ...]]]:
-    if preregistration.get("schema_version") != "2.2.0":
-        raise RuntimeError("corrected comparison requires preregistration schema 2.2.0")
+    if preregistration.get("schema_version") != "2.3.0":
+        raise RuntimeError("corrected comparison requires preregistration schema 2.3.0")
     execution = preregistration.get("execution")
     expected_execution = {
         "planned_runs": 16,
@@ -763,6 +769,12 @@ def main() -> None:
             / "results"
             / "corrected-comparison-instrument-failure-v2.1.json"
         ),
+        "corrected_comparison_v2_2_failure_digest": sha256_file(
+            repo
+            / "development_benchmark_claude"
+            / "results"
+            / "corrected-comparison-instrument-failure-v2.2.json"
+        ),
         "instrument_success_receipt_digest": sha256_file(
             repo / "development_benchmark_claude" / "results" / "instrument-canary-success-v12.json"
         ),
@@ -835,7 +847,7 @@ def main() -> None:
         "claude_code_version": design.cli_version,
         "model_id": design.model,
         "runtime_lock_digest": runtime_lock_digest,
-        "runner_boundary": "instrument-canary-success-v12-plus-outer-policy-shell-v1",
+        "runner_boundary": "instrument-canary-success-v12-plus-outer-policy-shell-v2",
     }:
         raise RuntimeError("corrected comparison runtime binding drifted")
     runner = ClaudeCodeTargetRunner(
@@ -1109,7 +1121,7 @@ def main() -> None:
                     ],
                     "milestone_6_custody_accessed": False,
                     "preregistration_digest": preregistration_digest,
-                    "private_plan_ref": _encrypted_ref(private_plan_ref).model_dump(mode="json"),
+                    "private_plan_ref": _encrypted_ref(private_plan_ref),
                     "raw_retention_deadline": datetime.now(UTC) + timedelta(days=30),
                     "scores_released": False,
                     "source_commit": source_commit_value,

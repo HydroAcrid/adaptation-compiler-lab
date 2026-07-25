@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +13,6 @@ from adaptation_compiler_lab.benchmark.claude_development import (
 )
 from adaptation_compiler_lab.connectors.pins import sha256_file
 from adaptation_compiler_lab.persistence.raw import RawPayloadRef
-from adaptation_compiler_lab.serialization import canonical_json
 
 
 def test_corrected_comparison_is_frozen_to_public_tasks_and_passing_instrument(
@@ -22,7 +21,7 @@ def test_corrected_comparison_is_frozen_to_public_tasks_and_passing_instrument(
     repository = Path(__file__).parents[2]
     monkeypatch.syspath_prepend(str(repository / "scripts"))
     coordinator: Any = importlib.import_module("run_claude_development_gate")
-    path = repository / "development_benchmark_claude" / "PREREGISTRATION-v2.2.json"
+    path = repository / "development_benchmark_claude" / "PREREGISTRATION-v2.3.json"
     preregistration = json.loads(path.read_text(encoding="utf-8"))
     design = load_claude_development_design(
         repository / "development_benchmark_claude",
@@ -62,6 +61,9 @@ def test_corrected_comparison_is_frozen_to_public_tasks_and_passing_instrument(
         ),
         "corrected_comparison_v2_1_failure_digest": (
             "results/corrected-comparison-instrument-failure-v2.1.json"
+        ),
+        "corrected_comparison_v2_2_failure_digest": (
+            "results/corrected-comparison-instrument-failure-v2.2.json"
         ),
         "instrument_success_receipt_digest": "results/instrument-canary-success-v12.json",
         "v1_2_blind_rating_digest": "results/kevin-blind-rating-v1.2.json",
@@ -157,6 +159,12 @@ def test_failure_receipt_serializes_encrypted_reference_as_json(
         relative_path="sha256/00/" + "0" * 64,
     )
 
-    value = {"private_plan_ref": coordinator._encrypted_ref(reference).model_dump(mode="json")}
+    value = {
+        "private_plan_ref": coordinator._encrypted_ref(reference),
+        "raw_retention_deadline": datetime(2026, 8, 24, tzinfo=UTC),
+    }
 
-    assert json.loads(canonical_json(value)) == value
+    assert json.loads(coordinator._canonical_bytes(value)) == {
+        "private_plan_ref": coordinator._encrypted_ref(reference).model_dump(mode="json"),
+        "raw_retention_deadline": "2026-08-24T00:00:00Z",
+    }

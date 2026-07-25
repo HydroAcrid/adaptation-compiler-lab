@@ -306,7 +306,7 @@ def _write_bash_policy_shell(
         f"ALLOWED = {allowed}\n"
         f"AUDIT_PATH = {str(audit_path)!r}\n"
         "arguments = sys.argv[1:]\n"
-        "command = arguments[1] if len(arguments) == 2 and arguments[0] in {'-c', '-lc'} else ''\n"
+        "command = arguments[-1] if arguments else ''\n"
         "decision = 'allow' if command in ALLOWED else 'deny'\n"
         "entry = json.dumps({\n"
         "    'decision': decision,\n"

@@ -737,19 +737,21 @@ raise SystemExit(0)
         audit_path=audit_path,
     )
 
-    def invoke(command: str) -> subprocess.CompletedProcess[str]:
+    def invoke(*arguments: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [str(policy_shell), "-c", command],
+            [str(policy_shell), *arguments],
             check=False,
             capture_output=True,
             text=True,
             encoding="utf-8",
         )
 
-    assert invoke("acl-test-full").returncode == 0
-    assert invoke("python3 -m unittest -v").returncode == 126
+    assert invoke("-c", "acl-test-full").returncode == 0
+    assert invoke("-c", "--", "acl-test-full").returncode == 0
+    assert invoke("-c", "python3 -m unittest -v").returncode == 126
+    assert invoke("-c", "acl-test-full", "find / -type f").returncode == 126
     audit = [json.loads(line) for line in audit_path.read_text(encoding="utf-8").splitlines()]
-    assert [entry["decision"] for entry in audit] == ["allow", "deny"]
+    assert [entry["decision"] for entry in audit] == ["allow", "allow", "deny", "deny"]
 
 
 def test_proven_blocked_command_is_audited_without_invalidating_run(tmp_path: Path) -> None:
