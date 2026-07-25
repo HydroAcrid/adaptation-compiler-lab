@@ -5,7 +5,7 @@ import socket
 import unittest
 from pathlib import Path
 
-_HOST_PROBE = Path("/tmp/acl-claude-instrument-canary-host-probe-v1")
+_HOST_PROBE = Path("/tmp/acl-claude-instrument-canary-host-probe")
 
 
 @unittest.skipUnless(

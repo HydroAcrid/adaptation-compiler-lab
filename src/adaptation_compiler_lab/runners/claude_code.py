@@ -668,10 +668,9 @@ class ClaudeCodeTargetRunner:
             str(commands_dir),
             str(runtime.bubblewrap.parent),
             str(runtime.socat.parent),
+            "/usr/bin",
+            "/bin",
         ]
-        inherited_path = environment.get("PATH")
-        if inherited_path:
-            path_parts.append(inherited_path)
         environment["PATH"] = os.pathsep.join(dict.fromkeys(path_parts))
         environment["LD_LIBRARY_PATH"] = str(runtime.sandbox_library_path)
         environment["ANTHROPIC_API_KEY"] = api_key

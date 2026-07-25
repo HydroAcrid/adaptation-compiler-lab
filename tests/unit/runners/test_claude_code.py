@@ -227,6 +227,7 @@ print(json.dumps({
     "ambient_loaded": False if "--bare" in args else pathlib.Path("CLAUDE.md").exists(),
     "session_persisted": "--no-session-persistence" not in args,
     "has_api_key": bool(os.environ.get("ANTHROPIC_API_KEY")),
+    "path": os.environ.get("PATH"),
     "prompt_has_full_alias": "acl-test-full" in prompt,
     "prompt_has_focused_alias": "acl-test-focused" in prompt,
     "prompt_exposes_python_implementation": (
@@ -404,6 +405,10 @@ def test_synthetic_runner_has_clean_state_tools_and_network(tmp_path: Path) -> N
     assert "Bash(python3 -m unittest -v)" not in argv
     assert result_event["ambient_loaded"] is False
     assert result_event["session_persisted"] is False
+    target_path = cast(str, result_event["path"])
+    assert "/usr/bin" in target_path.split(os.pathsep)
+    assert "/bin" in target_path.split(os.pathsep)
+    assert "/mnt/c" not in target_path
     assert result_event["condition_sha256"] == request.condition_digest.removeprefix("sha256:")
     settings = result_event["settings"]
     assert isinstance(settings, dict)

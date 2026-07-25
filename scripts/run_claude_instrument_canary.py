@@ -56,14 +56,14 @@ from adaptation_compiler_lab.runners.claude_code import (
 )
 from adaptation_compiler_lab.serialization import canonical_json
 
-CANARY_ID = "claude-haiku-instrument-canary-v4"
-HOST_PROBE = Path("/tmp/acl-claude-instrument-canary-host-probe-v4")
+CANARY_ID = "claude-haiku-instrument-canary-v5"
+HOST_PROBE = Path("/tmp/acl-claude-instrument-canary-host-probe")
 CONDITIONS = (
     BenchmarkCondition.STRONG_STATIC_PROFILE,
     BenchmarkCondition.COMPILED_ADAPTATION,
 )
 EXPECTED_TASK_DIGEST = "sha256:9d4a2fba2360dfff9b283f9339eed08d467cd4912653c2391242df03e11be9dc"
-EXPECTED_FIXTURE_DIGEST = "sha256:5be1cf278d4927cdfc5665dcd1c91abe7764ab550aa19331533511befe5a3de4"
+EXPECTED_FIXTURE_DIGEST = "sha256:5904bc669a24bb390865277e0b2561658b8bd8c69198da866647607eebb95d73"
 EXPECTED_SCORER_DIGEST = "sha256:60aa448f294d4fa16344cbd930a2ea8284cc98a0d852940480e49777f0be0a20"
 
 
@@ -145,11 +145,11 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
     exact = {
         "schema_version": "1.0.0",
         "canary_id": CANARY_ID,
-        "purpose": "audit_and_scorer_corrected_restart_of_bounded_command_instrument",
+        "purpose": "ambient_path_and_probe_corrected_restart_of_bounded_command_instrument",
         "restart_of": {
-            "canary_id": "claude-haiku-instrument-canary-v3",
+            "canary_id": "claude-haiku-instrument-canary-v4",
             "failure_receipt_digest": (
-                "sha256:1e4f7bc3d55a25d9ea9779bc63acc6cbb901c438ae720d584d281a02fdb17bd1"
+                "sha256:20d2612f24bb2bf5ee4354ba6760bc073f7c7a96273c643710449ed6bf3255d9"
             ),
         },
         "source_commit": "TO_BE_FROZEN",

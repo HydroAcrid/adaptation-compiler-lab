@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.0.0",
+  "canary_id": "claude-haiku-instrument-canary-v4",
+  "preregistration": "INSTRUMENT_CANARY_PREREGISTRATION-v4.json",
+  "preregistration_digest": "sha256:27faa0964be62fda8584e433bec8d9dee6be2acab96d461e76d2d2f4653b6821",
+  "source_commit": "b5a3bda0bb8e4ebeef1dba50cf0a566ebac5eb24",
+  "model": "claude-haiku-4-5-20251001",
+  "claude_code_version": "2.1.218",
+  "status": "instrument_canary_failed",
+  "attempted_at": "2026-07-25T05:43:24Z",
+  "planned_runs": 2,
+  "attempted_runs": 2,
+  "completed_valid_trial_records": 0,
+  "second_run_executed": true,
+  "retries": 0,
+  "failure_stage": "target_bash_sandbox_startup",
+  "failure_reason": "The runner inherited a Windows Java path into the target PATH. Bubblewrap attempted to mount that ambient path and every bounded alias exited before running its test command.",
+  "runs": [
+    {
+      "condition": "compiled_adaptation",
+      "provider_cost_usd": 0.05398,
+      "accepted_aliases": [
+        "acl-test-focused",
+        "acl-test-full"
+      ],
+      "successful_aliases": [],
+      "independent_focused_test_returncode": 0,
+      "independent_full_test_returncode": 0,
+      "objective_checks": {
+        "passed": 4,
+        "total": 4
+      },
+      "diagnostic_checks": {
+        "passed": 4,
+        "total": 4
+      },
+      "neutral_checks": {
+        "passed": 4,
+        "total": 4
+      },
+      "raw_bundle_digest": "sha256:f17d18f318da60f2361c30f89b4ad87a02174b01b345a1251365705624dd6a57"
+    },
+    {
+      "condition": "strong_static_profile",
+      "provider_cost_usd": 0.03683265,
+      "accepted_aliases": [
+        "acl-test-focused",
+        "acl-test-full"
+      ],
+      "successful_aliases": [],
+      "independent_focused_test_returncode": 0,
+      "independent_full_test_returncode": 0,
+      "objective_checks": {
+        "passed": 4,
+        "total": 4
+      },
+      "diagnostic_checks": {
+        "passed": 4,
+        "total": 4
+      },
+      "neutral_checks": {
+        "passed": 4,
+        "total": 4
+      },
+      "raw_bundle_digest": "sha256:59c48f3f156da59e2961c69081862e3ae169e29eb057690ef020c03f1843fadb"
+    }
+  ],
+  "exact_provider_cost_available": true,
+  "total_provider_cost_usd": 0.09081265,
+  "public_plan_digest": "sha256:d5e5c06132b57c7b84704a0101ab44a0909480bf7bb23e00ca399b8d9d8cf27d",
+  "private_plan_digest": "sha256:7766e15a1a2a54a547a9a0bbdb972988ae6620c54d04cc3aa91e292d97f5da49",
+  "completion_digest": "sha256:9665f62c95c9092b9bf654cc280b45d291ecddb593a9f74ca06f996fd1b44a4b",
+  "seed_commitment": "sha256:b76427e86f69ad027d2e109ca2274cec302aa7dc320fca378edec9eece118da3",
+  "encrypted_run_evidence_preserved_outside_git": true,
+  "disposable_workspaces_removed": true,
+  "ephemeral_configurations_removed": true,
+  "host_probe_removed": true,
+  "milestone_6_custody_accessed": false,
+  "milestone_6_materials_modified": false,
+  "full_paid_milestone_6_pilot_executed": false,
+  "claim_boundary": "No adaptation-quality conclusion or cross-agent-transfer claim is permitted.",
+  "disposition": "Do not reuse v4. Remove inherited PATH state, bind the current boundary probe, test both behaviors synthetically, and freeze a separate restart."
+}

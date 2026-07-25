@@ -11,14 +11,14 @@ import pytest
 from adaptation_compiler_lab.connectors.models import TargetCommandAuditEntry
 
 
-def test_canary_v4_preregistration_matches_coordinator(
+def test_canary_v5_preregistration_matches_coordinator(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     repository = Path(__file__).parents[2]
     monkeypatch.syspath_prepend(str(repository / "scripts"))
     coordinator: Any = importlib.import_module("run_claude_instrument_canary")
     preregistration = (
-        repository / "development_benchmark_claude" / "INSTRUMENT_CANARY_PREREGISTRATION-v4.json"
+        repository / "development_benchmark_claude" / "INSTRUMENT_CANARY_PREREGISTRATION-v5.json"
     )
 
     loaded = coordinator._load_preregistration(
@@ -27,7 +27,7 @@ def test_canary_v4_preregistration_matches_coordinator(
         source_commit="synthetic-clean-commit",
     )
 
-    assert loaded["canary_id"] == "claude-haiku-instrument-canary-v4"
+    assert loaded["canary_id"] == "claude-haiku-instrument-canary-v5"
     assert loaded["command_interface"] == {
         "full_test_alias": "acl-test-full",
         "focused_test_alias": "acl-test-focused",
@@ -53,3 +53,12 @@ def test_canary_v4_preregistration_matches_coordinator(
     digest = coordinator._command_audit_digest(audit)
     assert digest.startswith("sha256:")
     assert digest == coordinator._command_audit_digest(audit)
+
+    boundary_source = (
+        repository
+        / "development_benchmark_claude"
+        / "instrument_canary"
+        / "fixture"
+        / "test_instrument_boundary.py"
+    ).read_text(encoding="utf-8")
+    assert str(coordinator.HOST_PROBE) in boundary_source

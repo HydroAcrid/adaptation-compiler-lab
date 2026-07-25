@@ -11,7 +11,7 @@ from typing import cast
 from adaptation_compiler_lab.benchmark.codex_development import development_tree_digest
 
 ROOT = Path(__file__).resolve().parents[2] / "development_benchmark_claude" / "instrument_canary"
-EXPECTED_FIXTURE_DIGEST = "sha256:5be1cf278d4927cdfc5665dcd1c91abe7764ab550aa19331533511befe5a3de4"
+EXPECTED_FIXTURE_DIGEST = "sha256:5904bc669a24bb390865277e0b2561658b8bd8c69198da866647607eebb95d73"
 EXPECTED_SCORER_DIGEST = "sha256:60aa448f294d4fa16344cbd930a2ea8284cc98a0d852940480e49777f0be0a20"
 REFERENCE_SOLUTION = '''"""Retry decisions for independent background jobs."""
 
