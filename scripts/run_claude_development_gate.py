@@ -62,6 +62,7 @@ from adaptation_compiler_lab.persistence.sqlite import SqliteUnitOfWorkFactory
 from adaptation_compiler_lab.runners.claude_code import (
     ClaudeCodeTargetRunner,
     ClaudeRuntimePaths,
+    TargetExecutionError,
     serialize_target_trace,
 )
 from adaptation_compiler_lab.serialization import canonical_digest, canonical_json
@@ -211,6 +212,12 @@ def _counts(group: dict[str, bool]) -> tuple[int, int]:
     return sum(group.values()), len(group)
 
 
+def _command_audit_digest(entries: tuple[Any, ...]) -> str:
+    return sha256_bytes(
+        _canonical_bytes({"entries": [entry.model_dump(mode="json") for entry in entries]})
+    )
+
+
 def _iter_objects(value: JsonValue) -> list[JsonObject]:
     found: list[JsonObject] = []
     if isinstance(value, dict):
@@ -221,6 +228,119 @@ def _iter_objects(value: JsonValue) -> list[JsonObject]:
         for nested in value:
             found.extend(_iter_objects(nested))
     return found
+
+
+def _successful_aliases(events: tuple[JsonObject, ...]) -> set[str]:
+    alias_by_use_id: dict[str, str] = {}
+    successful: set[str] = set()
+    for event in events:
+        for item in _iter_objects(event):
+            if item.get("type") == "tool_use" and item.get("name") == "Bash":
+                use_id = item.get("id")
+                tool_input = item.get("input")
+                if (
+                    isinstance(use_id, str)
+                    and isinstance(tool_input, dict)
+                    and isinstance(tool_input.get("command"), str)
+                ):
+                    alias_by_use_id[use_id] = tool_input["command"]
+            if item.get("type") != "tool_result":
+                continue
+            use_id = item.get("tool_use_id")
+            alias = alias_by_use_id.get(use_id) if isinstance(use_id, str) else None
+            if alias is not None and item.get("is_error") is not True:
+                successful.add(alias)
+    return successful
+
+
+def _corrected_execution_contract(
+    preregistration: dict[str, Any],
+    *,
+    task_ids: set[str],
+) -> tuple[dict[str, Any], dict[str, tuple[str, ...]]]:
+    if preregistration.get("schema_version") != "2.0.0":
+        raise RuntimeError("corrected comparison requires preregistration schema 2.0.0")
+    execution = preregistration.get("execution")
+    expected_execution = {
+        "planned_runs": 16,
+        "repetitions_per_condition": 2,
+        "max_seconds_per_run": 600,
+        "max_turns_per_run": 20,
+        "max_usd_per_run": 0.25,
+        "max_usd_total": 4.0,
+        "retry_allowed": False,
+        "command_timeout_seconds": 120,
+        "command_cpu_seconds": 30,
+        "command_memory_mb": 512,
+        "command_file_size_mb": 16,
+        "command_process_limit": 256,
+        "command_open_files_limit": 64,
+    }
+    if execution != expected_execution:
+        raise RuntimeError("corrected comparison execution contract drifted")
+    raw_manifests = preregistration.get("command_manifests")
+    if not isinstance(raw_manifests, dict) or set(raw_manifests) != task_ids:
+        raise RuntimeError("corrected comparison command manifests are incomplete")
+    manifests: dict[str, tuple[str, ...]] = {}
+    for task_id, raw_commands in raw_manifests.items():
+        if (
+            not isinstance(task_id, str)
+            or not isinstance(raw_commands, list)
+            or not raw_commands
+            or not all(isinstance(command, str) and command for command in raw_commands)
+        ):
+            raise RuntimeError("corrected comparison command manifest is invalid")
+        manifests[task_id] = tuple(raw_commands)
+    expected_full = "python3 -m unittest -v"
+    if any(commands[0] != expected_full for commands in manifests.values()):
+        raise RuntimeError("corrected comparison full-test command drifted")
+    expected_debugging = (
+        expected_full,
+        (
+            "python3 -m unittest -v "
+            "test_feature_flags.FeatureFlagTests."
+            "test_tenant_override_does_not_leak_to_next_request"
+        ),
+    )
+    if manifests["claude-development-debugging-verification"] != expected_debugging:
+        raise RuntimeError("corrected comparison focused-test command drifted")
+    if any(
+        commands != (expected_full,)
+        for task_id, commands in manifests.items()
+        if task_id != "claude-development-debugging-verification"
+    ):
+        raise RuntimeError("corrected comparison contains an unexpected task command")
+    return execution, manifests
+
+
+def _comparison_invalid_reasons(
+    *,
+    terminal_reasons: list[str],
+    runner_failure_reason: str | None,
+    timed_out: bool,
+    exit_code: int | None,
+    config_destroyed: bool,
+    condition_leakage_observed: bool,
+) -> list[str]:
+    """Classify instrument validity without converting task quality into missing data."""
+
+    return [
+        *terminal_reasons,
+        *([runner_failure_reason] if runner_failure_reason is not None else []),
+        *(
+            reason
+            for reason, observed in (
+                ("Claude run timed out", timed_out),
+                ("Claude run returned a nonzero exit", exit_code != 0),
+                (
+                    "ephemeral Claude configuration was not destroyed",
+                    not config_destroyed,
+                ),
+                ("condition material leaked into visible output", condition_leakage_observed),
+            )
+            if observed
+        ),
+    ]
 
 
 def _terminal_evidence(
@@ -548,6 +668,37 @@ def main() -> None:
         raise RuntimeError("unable to resolve development repository commit")
     source_commit_value = source_commit.stdout.strip()
     preregistration = json.loads(preregistration_path.read_text(encoding="utf-8"))
+    if preregistration.get("benchmark_id") != "claude-haiku-compiler-v2-corrected-comparison":
+        raise RuntimeError("corrected comparison benchmark identity drifted")
+    if preregistration.get("validity") != {
+        "all_16_records_required": True,
+        "trace_conformance_required": True,
+        "terminal_success_required": True,
+        "condition_leakage_forbidden": True,
+        "workspace_and_config_teardown_required": True,
+        "quality_scores_are_outcomes_not_validity_requirements": True,
+        "test_alias_use_is_instruction_adherence_not_validity": True,
+    }:
+        raise RuntimeError("corrected comparison validity policy drifted")
+    if preregistration.get("blinding") != {
+        "fresh_randomization_seed_outside_repository": True,
+        "fresh_condition_ids_and_run_order": True,
+        "condition_mapping_withheld_until_all_kevin_ratings": True,
+        "objective_scores_withheld_until_all_kevin_ratings": True,
+        "anonymous_outputs_and_diffs_only": True,
+    }:
+        raise RuntimeError("corrected comparison blinding policy drifted")
+    if preregistration.get("boundaries") != {
+        "held_out": False,
+        "reuses_previously_executed_public_tasks": True,
+        "prior_outputs_and_scores_are_known_to_the_construction_context": True,
+        "condition_materials_unchanged_after_prior_results": True,
+        "milestone_6_custody_accessed": False,
+        "milestone_6_materials_modified": False,
+        "full_paid_milestone_6_pilot_authorized": False,
+        "general_thesis_claim_allowed": False,
+    }:
+        raise RuntimeError("corrected comparison boundary declaration drifted")
     frozen_at = datetime.fromisoformat(preregistration["frozen_at"])
     design = load_claude_development_design(
         repo / "development_benchmark_claude",
@@ -559,9 +710,47 @@ def main() -> None:
         raise RuntimeError("preregistered source commit changed")
     if preregistration["materials"] != {
         "compiled_v2": EXPECTED_COMPILED_V2_TEXT_DIGEST,
+        "compiled_lineage": EXPECTED_COMPILED_V2_MATERIAL_DIGEST,
         "strong_static_profile": EXPECTED_STRONG_TEXT_DIGEST,
     }:
         raise RuntimeError("preregistered condition materials changed")
+    if preregistration.get("conditions") != [
+        BenchmarkCondition.STRONG_STATIC_PROFILE.value,
+        BenchmarkCondition.COMPILED_ADAPTATION.value,
+    ]:
+        raise RuntimeError("corrected comparison conditions drifted")
+    expected_tasks = [
+        {
+            "task_id": task.task_id,
+            "family": task.family.value,
+            "fixture_digest": task.fixture_digest,
+            "independent_scorer_digest": task.independent_scorer_digest,
+        }
+        for task in design.tasks
+    ]
+    if preregistration.get("tasks") != expected_tasks:
+        raise RuntimeError("corrected comparison task bindings drifted")
+    prior_evidence = preregistration.get("prior_evidence")
+    expected_prior_evidence = {
+        "instrument_success_receipt_digest": sha256_file(
+            repo / "development_benchmark_claude" / "results" / "instrument-canary-success-v12.json"
+        ),
+        "v1_2_blind_rating_digest": sha256_file(
+            repo / "development_benchmark_claude" / "results" / "kevin-blind-rating-v1.2.json"
+        ),
+        "v1_2_unblinded_result_digest": sha256_file(
+            repo / "development_benchmark_claude" / "results" / "unblinded-result-v1.2.json"
+        ),
+        "v1_2_analysis_digest": sha256_file(
+            repo / "development_benchmark_claude" / "UNBLINDED_ANALYSIS-v1.2.md"
+        ),
+    }
+    if prior_evidence != expected_prior_evidence:
+        raise RuntimeError("corrected comparison prior-evidence binding drifted")
+    execution, command_manifests = _corrected_execution_contract(
+        preregistration,
+        task_ids={task.task_id for task in design.tasks},
+    )
 
     output_root.mkdir(parents=True, mode=0o700)
     config_root.mkdir(parents=True, mode=0o700)
@@ -605,11 +794,19 @@ def main() -> None:
         blind_id: condition_texts[condition] for blind_id, condition in assignment_by_blind.items()
     }
     pins: RuntimePinSet = load_runtime_pins(arguments.runtime_lock)
+    runtime_lock_digest = sha256_file(arguments.runtime_lock)
     if (
         pins.claude_code.model_id != design.model
         or pins.claude_code.executable.package_version != design.cli_version
     ):
         raise RuntimeError("Claude runtime lock drifted from the frozen design")
+    if preregistration.get("runtime") != {
+        "claude_code_version": design.cli_version,
+        "model_id": design.model,
+        "runtime_lock_digest": runtime_lock_digest,
+        "runner_boundary": "instrument-canary-success-v12",
+    }:
+        raise RuntimeError("corrected comparison runtime binding drifted")
     runner = ClaudeCodeTargetRunner(
         paths=ClaudeRuntimePaths(
             executable=arguments.claude_executable,
@@ -620,11 +817,12 @@ def main() -> None:
         pins=pins,
         environment=_load_api_environment(arguments.api_env_file),
     )
-    runtime_lock_digest = sha256_file(arguments.runtime_lock)
+    preregistration_digest = sha256_file(preregistration_path)
     environment_digest = canonical_digest(
         {
             "design_digest": design.content_digest,
             "model": design.model,
+            "preregistration_digest": preregistration_digest,
             "runtime_lock_digest": runtime_lock_digest,
             "source_commit": source_commit_value,
         }
@@ -638,7 +836,7 @@ def main() -> None:
                 "environment_digest": environment_digest,
                 "materials": preregistration["materials"],
                 "milestone_6_custody_accessed": False,
-                "preregistration_digest": sha256_file(preregistration_path),
+                "preregistration_digest": preregistration_digest,
                 "runtime_lock_digest": runtime_lock_digest,
                 "source_commit": source_commit_value,
                 "tasks": [
@@ -662,12 +860,11 @@ def main() -> None:
     }
     if set(task_root_by_id) != set(task_by_id):
         raise RuntimeError("Claude development task roots do not match the frozen design")
-
     observations: list[ClaudeDevelopmentRunObservation] = []
     safe_outputs: dict[str, tuple[str, str]] = {}
     total_cost = 0.0
     for cell in private_plan.run_order:
-        if total_cost >= design.max_usd_total:
+        if total_cost >= execution["max_usd_total"]:
             raise RuntimeError("Claude development total budget was exhausted")
         task = task_by_id[cell.task_id]
         task_root = task_root_by_id[cell.task_id]
@@ -682,20 +879,34 @@ def main() -> None:
             condition_file = workspace / ".acl-condition.md"
             condition_file.write_text(condition_text, encoding="utf-8")
             condition_file.chmod(0o600)
-            result = runner.run(
-                TargetRunRequest(
-                    run_id=cell.run_id,
-                    workspace_root=workspace,
-                    prompt=COMMON_TASK_ENVELOPE + task.prompt,
-                    condition_file=condition_file,
-                    condition_digest=condition_digest,
-                    allowed_bash_commands=("python3 -m unittest -v",),
-                    max_seconds=design.max_seconds,
-                    max_turns=design.max_turns,
-                    max_usd=design.max_usd_per_run,
-                    model_id=design.model,
-                )
+            request = TargetRunRequest(
+                run_id=cell.run_id,
+                workspace_root=workspace,
+                prompt=COMMON_TASK_ENVELOPE + task.prompt,
+                condition_file=condition_file,
+                condition_digest=condition_digest,
+                allowed_bash_commands=command_manifests[cell.task_id],
+                command_timeout_seconds=execution["command_timeout_seconds"],
+                command_cpu_seconds=execution["command_cpu_seconds"],
+                command_memory_mb=execution["command_memory_mb"],
+                command_file_size_mb=execution["command_file_size_mb"],
+                command_process_limit=execution["command_process_limit"],
+                command_open_files_limit=execution["command_open_files_limit"],
+                max_seconds=execution["max_seconds_per_run"],
+                max_turns=execution["max_turns_per_run"],
+                max_usd=execution["max_usd_per_run"],
+                model_id=design.model,
             )
+            trace_conformant = True
+            runner_failure_reason: str | None = None
+            try:
+                result = runner.run(request)
+            except TargetExecutionError as exc:
+                if exc.evidence is None:
+                    raise
+                result = exc.evidence
+                trace_conformant = False
+                runner_failure_reason = str(exc)
             if condition_file.exists():
                 condition_file.unlink()
             _remove_interpreter_artifacts(workspace)
@@ -719,7 +930,7 @@ def main() -> None:
                 terminal_reasons,
             ) = _terminal_evidence(result.events)
             total_cost += cost
-            if total_cost > design.max_usd_total:
+            if total_cost > execution["max_usd_total"]:
                 raise RuntimeError("Claude development total budget exceeded its hard gate")
             leakage = _leakage_observed(
                 final_response + "\n" + diff_completed.stdout,
@@ -728,22 +939,16 @@ def main() -> None:
             objective_passed, objective_total = _counts(scorer_value["objective"])
             diagnostic_passed, diagnostic_total = _counts(scorer_value["diagnostic"])
             neutral_passed, neutral_total = _counts(scorer_value["neutral"])
-            invalid_reasons = [
-                *terminal_reasons,
-                *(
-                    reason
-                    for reason, observed in (
-                        ("Claude run timed out", result.timed_out),
-                        ("Claude run returned a nonzero exit", result.exit_code not in {0, None}),
-                        (
-                            "ephemeral Claude configuration was not destroyed",
-                            not result.config_destroyed,
-                        ),
-                        ("condition material leaked into visible output", leakage),
-                    )
-                    if observed
-                ),
-            ]
+            accepted_aliases = {entry.alias for entry in result.command_audit}
+            successful_aliases = _successful_aliases(result.events)
+            invalid_reasons = _comparison_invalid_reasons(
+                terminal_reasons=terminal_reasons,
+                runner_failure_reason=runner_failure_reason,
+                timed_out=result.timed_out,
+                exit_code=result.exit_code,
+                config_destroyed=result.config_destroyed,
+                condition_leakage_observed=leakage,
+            )
             trace_bytes = serialize_target_trace(result.events)
             bundle_ref = encrypted_store.put(
                 _encrypted_bundle(
@@ -777,6 +982,11 @@ def main() -> None:
                 "final_response_digest": sha256_bytes(final_response.encode("utf-8")),
                 "scorer_output_digest": sha256_bytes(scorer_output),
                 "command_digest": result.command_digest,
+                "command_manifest_digest": result.command_manifest_digest,
+                "command_audit_digest": _command_audit_digest(result.command_audit),
+                "accepted_aliases": tuple(sorted(accepted_aliases)),
+                "successful_aliases": tuple(sorted(successful_aliases)),
+                "visible_test_returncode": visible_test.returncode,
                 "environment_digest": environment_digest,
                 "started_at": result.started_at,
                 "finished_at": result.finished_at,
@@ -794,15 +1004,24 @@ def main() -> None:
                 "neutral_checks_total": neutral_total,
                 "timed_out": result.timed_out,
                 "exit_code": result.exit_code,
-                "trace_conformant": True,
+                "trace_conformant": trace_conformant,
                 "config_destroyed": result.config_destroyed,
                 "condition_leakage_observed": leakage,
                 "valid": not invalid_reasons,
                 "invalid_reason": "; ".join(invalid_reasons) or None,
             }
+        workspace_destroyed = workspace_path is not None and not workspace_path.exists()
+        if not workspace_destroyed:
+            existing_reason = cast(str | None, observation_values["invalid_reason"])
+            observation_values["invalid_reason"] = "; ".join(
+                item
+                for item in (existing_reason, "disposable task workspace was not destroyed")
+                if item
+            )
+            observation_values["valid"] = False
         observation = ClaudeDevelopmentRunObservation(
             **observation_values,
-            workspace_destroyed=workspace_path is not None and not workspace_path.exists(),
+            workspace_destroyed=workspace_destroyed,
         )
         observations.append(observation)
         with (output_root / "progress.jsonl").open("ab") as stream:
@@ -822,6 +1041,38 @@ def main() -> None:
             stream.flush()
             os.fsync(stream.fileno())
         (output_root / "progress.jsonl").chmod(0o600)
+
+    invalid_observations = [item for item in observations if not item.valid]
+    if invalid_observations:
+        _exclusive_write(
+            output_root / "failure.json",
+            _canonical_bytes(
+                {
+                    "benchmark_id": preregistration["benchmark_id"],
+                    "completed_runs": len(observations),
+                    "invalid_runs": [
+                        {
+                            "blind_condition_id": item.blind_condition_id,
+                            "blind_output_id": item.blind_output_id,
+                            "invalid_reason": item.invalid_reason,
+                            "run_id": item.run_id,
+                            "task_id": item.task_id,
+                        }
+                        for item in invalid_observations
+                    ],
+                    "milestone_6_custody_accessed": False,
+                    "preregistration_digest": preregistration_digest,
+                    "private_plan_ref": _encrypted_ref(private_plan_ref),
+                    "raw_retention_deadline": datetime.now(UTC) + timedelta(days=30),
+                    "scores_released": False,
+                    "source_commit": source_commit_value,
+                    "status": "instrument_failure_no_comparison",
+                    "total_cost_usd": total_cost,
+                }
+            ),
+            mode=0o644,
+        )
+        raise SystemExit(2)
 
     blind_report = ClaudeDevelopmentBlindReport(
         design_digest=design.content_digest,

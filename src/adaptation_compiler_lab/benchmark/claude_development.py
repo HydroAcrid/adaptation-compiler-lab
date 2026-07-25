@@ -204,6 +204,11 @@ class ClaudeDevelopmentRunObservation(FrozenModel):
     final_response_digest: Sha256Digest
     scorer_output_digest: Sha256Digest
     command_digest: Sha256Digest
+    command_manifest_digest: Sha256Digest | None = None
+    command_audit_digest: Sha256Digest | None = None
+    accepted_aliases: tuple[NonEmptyStr, ...] = ()
+    successful_aliases: tuple[NonEmptyStr, ...] = ()
+    visible_test_returncode: int | None = None
     environment_digest: Sha256Digest
     started_at: UtcDateTime
     finished_at: UtcDateTime
@@ -228,6 +233,13 @@ class ClaudeDevelopmentRunObservation(FrozenModel):
     valid: bool
     invalid_reason: NonEmptyStr | None = None
 
+    @field_validator("accepted_aliases", "successful_aliases")
+    @classmethod
+    def aliases_are_sorted_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if not strings_are_sorted_unique(value):
+            raise ValueError("Claude development command aliases must be sorted and unique")
+        return value
+
     @model_validator(mode="after")
     def terminal_state_is_coherent(self) -> Self:
         if self.finished_at < self.started_at:
@@ -241,6 +253,8 @@ class ClaudeDevelopmentRunObservation(FrozenModel):
                 raise ValueError("Claude development passed checks cannot exceed totals")
         if self.valid != (self.invalid_reason is None):
             raise ValueError("invalid Claude development run requires exactly one reason")
+        if not set(self.successful_aliases).issubset(self.accepted_aliases):
+            raise ValueError("successful aliases must be a subset of accepted aliases")
         return self
 
 
