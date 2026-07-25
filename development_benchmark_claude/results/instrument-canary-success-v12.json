@@ -1,0 +1,120 @@
+{
+  "schema_version": "1.0.0",
+  "canary_id": "claude-haiku-instrument-canary-v12",
+  "preregistration": "INSTRUMENT_CANARY_PREREGISTRATION-v12.json",
+  "preregistration_digest": "sha256:6c960f102aa200a7b86244dcbf1c0b0da942495c35ea7f0b60656052565c6b49",
+  "source_commit": "36f4cf64b4170b743e66bb087cfb42732f1902b9",
+  "model": "claude-haiku-4-5-20251001",
+  "claude_code_version": "2.1.218",
+  "status": "instrument_canary_passed",
+  "completed_at": "2026-07-25T07:01:57.362314Z",
+  "planned_runs": 2,
+  "completed_runs": 2,
+  "valid_trial_records": 2,
+  "retries": 0,
+  "runs": [
+    {
+      "condition": "strong_static_profile",
+      "provider_cost_usd": 0.03076705,
+      "accepted_aliases": [
+        "acl-test-focused",
+        "acl-test-full"
+      ],
+      "successful_aliases": [
+        "acl-test-focused",
+        "acl-test-full"
+      ],
+      "target_focused_test_success": true,
+      "target_full_test_success": true,
+      "target_boundary_checks_observed": true,
+      "independent_focused_test_returncode": 0,
+      "independent_full_test_returncode": 0,
+      "objective": {
+        "passed": 4,
+        "total": 4
+      },
+      "diagnostic": {
+        "passed": 4,
+        "total": 4
+      },
+      "neutral": {
+        "passed": 4,
+        "total": 4
+      },
+      "input_tokens": 3888,
+      "cache_creation_input_tokens": 8141,
+      "cache_read_input_tokens": 27928,
+      "output_tokens": 2782,
+      "trace_digest": "sha256:ac23148a8e59602802515365a490bef28ee7e54d267cc9f0ed14e4b259a650c6",
+      "diff_digest": "sha256:bcb5c7c32b824c977339bca3e564efaa626ea3565eb494779649f8c89fff7899",
+      "command_digest": "sha256:c279c8864bf0963558acab3736ce58b615af76cb6226f6654405f4626fcb8030",
+      "command_audit_digest": "sha256:69481864be6e9191e89305bbad7e5035e9e220d3ae85f1e1fa6e5bb7b30ba355",
+      "raw_bundle_digest": "sha256:984cdb589433f7b6c4c4e650d9e2e7205f2751372fb3474f6081c048bd9663db",
+      "workspace_destroyed": true,
+      "config_destroyed": true,
+      "valid": true
+    },
+    {
+      "condition": "compiled_adaptation",
+      "provider_cost_usd": 0.0282553,
+      "accepted_aliases": [
+        "acl-test-focused",
+        "acl-test-full"
+      ],
+      "successful_aliases": [
+        "acl-test-focused",
+        "acl-test-full"
+      ],
+      "target_focused_test_success": true,
+      "target_full_test_success": true,
+      "target_boundary_checks_observed": true,
+      "independent_focused_test_returncode": 0,
+      "independent_full_test_returncode": 0,
+      "objective": {
+        "passed": 4,
+        "total": 4
+      },
+      "diagnostic": {
+        "passed": 4,
+        "total": 4
+      },
+      "neutral": {
+        "passed": 4,
+        "total": 4
+      },
+      "input_tokens": 3365,
+      "cache_creation_input_tokens": 7256,
+      "cache_read_input_tokens": 18803,
+      "output_tokens": 2788,
+      "trace_digest": "sha256:c13b5f120855c3b2976fd29923c2ba2c98342d9738c49aee2fde1b3069c85f8c",
+      "diff_digest": "sha256:d7afb142fcfb0bcd3d29aef066716c12191049c2a367832600fc4a1c44be2b8f",
+      "command_digest": "sha256:ee9548de876e2bb66fd451dbe2c3e8f324eca18d3e4ae9d51a71b3aca4999ca6",
+      "command_audit_digest": "sha256:ba838ee2ba7d7f5f0df111e5f7a21c3873a4fc5f4c0c406b257eecf18276dc82",
+      "raw_bundle_digest": "sha256:94bac6bee520df17ab56f2b4abb8698d1819dffbfafb4e2680b34665c74985e6",
+      "workspace_destroyed": true,
+      "config_destroyed": true,
+      "valid": true
+    }
+  ],
+  "command_manifest_digest": "sha256:134e21c7d0bc63d7ec3202dc836024a13880df3896dd2529dc2e74636146a68d",
+  "exact_provider_cost_available": true,
+  "total_provider_cost_usd": 0.05902235,
+  "known_exact_instrument_cost_v2_through_v12_usd": 0.6250506,
+  "v1_exact_cost_available": false,
+  "v1_provider_cost_ceiling_usd": 0.25,
+  "cumulative_instrument_cost_ceiling_v1_through_v12_usd": 0.8750506,
+  "public_plan_digest": "sha256:e9e5f4b1c711f585bb792188fac5152d89966d0c141e019187245ae20e3b2d22",
+  "private_plan_digest": "sha256:69e54de286a97d1a90234e3c1d9718bf732c12d67516dcb1b6591a7d44480a51",
+  "completion_digest": "sha256:e965eb3a62d4eeb891e7305c2b690ecc99d40f8eb425480909d8f772e7494549",
+  "seed_commitment": "sha256:babf7c76784da0339915fee11dbdbdb78e2b3bdeb673d4dd77dc9cb4dec6370d",
+  "raw_retention_deadline": "2026-08-24T07:01:57.362314Z",
+  "raw_payloads_encrypted_outside_git": true,
+  "condition_mapping_withheld_during_execution": true,
+  "disposable_workspaces_removed": true,
+  "ephemeral_configurations_removed": true,
+  "host_probe_removed": true,
+  "milestone_6_custody_accessed": false,
+  "milestone_6_materials_modified": false,
+  "full_paid_milestone_6_pilot_executed": false,
+  "claim_boundary": "This establishes bounded Claude development-runner conformance only. It does not establish adaptation superiority or general cross-agent transfer."
+}

@@ -1,20 +1,21 @@
 # Implementation Status
 
-Last updated: 2026-07-24
+Last updated: 2026-07-25
 
 ## Current milestone
 
-**Milestone 5.5 development execution and blind rating are complete.**
-The separate non-held-out grid produced 16/16 valid planned Codex records under four blinded
-conditions. Every condition tied at 17/18 objective checks; only one of four tasks separated
-diagnostic behavior. The sealed comparison says compiled adaptation did not beat or tie the strong
-static profile. This is negative/inconclusive development evidence, not cross-agent transfer.
+**Milestone 5.5 development work and the bounded Claude instrument repair are complete.**
+The final v12 non-held-out Haiku canary produced two valid trial records: one strong static profile
+and one compiled adaptation. Both edited the disposable task, successfully ran the exact focused
+and full aliases, passed the independently executed tests, observed every credential/network/host
+boundary check, scored 4/4 objective, 4/4 diagnostic, and 4/4 neutral, and tore down cleanly. Exact
+v12 provider cost was USD $0.05902235.
 
 The project owner has authorized automatic continuation after complete milestone exit gates. This
 removes the handoff pause, not objective research/privacy prerequisites. Two digest-bound fresh AI
 contexts completed the strong static profile. A separate deterministic software-custody context
 sealed the hidden tasks, condition mapping, randomization order, and all four exact condition
-materials. Paid target execution remains suspended. Kevin's three-pair Luna rating was frozen
+materials. The full paid held-out pilot remains suspended. Kevin's three-pair Luna rating was frozen
 before the condition mapping and objective scores were opened.
 
 The follow-up repaired future neutral repository-state checks so Python bytecode cannot count as
@@ -27,10 +28,10 @@ completed six valid Luna cells. Kevin's ratings preferred the strong static prof
 Both conditions tied at 12/12 objective, 11/12 diagnostic, and 12/12 neutral checks, but compiled
 adaptation failed the preregistered preference rule.
 
-No held-out content or condition mapping was exposed to construction or printed during custody.
-The only Claude API calls used synthetic smoke and token-count content; no held-out trial, Claude
-scoring operation, model modification, executable-tool creation, Kairn integration, web UI, public
-release, or remote research-data storage occurred.
+No held-out content or Milestone 6 condition mapping was exposed to construction or the canary.
+The development canary used only its public non-held-out task and the already-frozen strong and
+compiled materials. No held-out trial, model modification, executable-tool creation, Kairn
+integration, web UI, public release, or remote research-data storage occurred.
 
 ## Completed scope
 
@@ -142,6 +143,14 @@ release, or remote research-data storage occurred.
   conditions tied on all aggregate automated counts; the only miss was the same environment-safety
   preflight check for each. The typed result classifies compiled adaptation below the strong
   profile under the preregistered rule.
+- Completed the bounded Claude Haiku instrument repair through immutable v9-v11 failure receipts
+  and a passing v12 receipt. The final runner puts the whole target in a minimal pinned Bubblewrap
+  filesystem, mounts only the exact WSL resolver target needed for provider access, retains
+  Claude's inner command sandbox, exposes only generated unittest aliases, validates `dontAsk`,
+  and records quality independently from execution validity.
+- The final v12 strong-profile and compiled-adaptation cells were both valid and perfect on this
+  one public instrument task. Exact cost was USD $0.05902235. This establishes a functioning
+  measurement path, not adaptation superiority or general cross-agent transfer.
 
 ## Verification performed
 
@@ -156,7 +165,7 @@ uv run pytest
 uv build
 ```
 
-The current full suite formats 195 files, passes strict typing, passes 362
+The current full suite formats 225 files, passes strict typing, passes 388
 tests, and builds both
 the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
@@ -174,8 +183,9 @@ establishes instrument and protocol readiness only, not transfer quality.
 
 ## Explicitly not implemented or exercised
 
-- No Claude target trial, held-out task reveal, condition-bearing Claude trace, or paid provider
-  spend for the pilot.
+- No held-out Claude target trial, held-out task reveal, held-out condition-bearing trace, or paid
+  provider spend for the Milestone 6 pilot. The completed paid calls were public non-held-out
+  development instrumentation only.
 - No Kevin rating for the held-out pilot, secondary isolated-AI judging result, held-out blinded
   adjudication, comparative pilot analysis, statistical report, or retention purge of the real
   payloads. The completed Kevin ratings apply only to the public v2 development tasks.
@@ -197,11 +207,8 @@ outside the workspace in owner-readable-only files. They are never committed, pr
 persisted in traces. The runner continues to reject ambiguous sources, broad key permissions,
 workspace-local keys, alternate providers, and missing sandbox support.
 
-Do not begin the Claude development canary or preregistered 32-run paid Claude Code feasibility
-pilot. The next decision is whether public development evidence justifies a new, explicitly
-versioned compiler/pack iteration. Do not modify the frozen pack, access Milestone 6 custody, or
-interpret this same-agent gate as a cross-agent result.
-
-The previously proposed Claude development canary is explicitly prohibited. It remains
-unexecuted. No replacement benchmark or paid target call may access Milestone 6 custody or support
-a cross-agent claim before the corresponding valid evidence exists.
+The bounded Claude development instrument canary is complete. Do not begin the preregistered
+32-run paid Claude Code feasibility pilot without a separate explicit authorization. The next
+research decision is whether to run a properly powered non-held-out Claude comparison or authorize
+the sealed Milestone 6 pilot. Do not modify the frozen pack from this single instrument task,
+access Milestone 6 custody, or interpret instrument conformance as a cross-agent result.
