@@ -228,7 +228,10 @@ def _settings(
             "failIfUnavailable": True,
             "autoAllowBashIfSandboxed": False,
             "allowUnsandboxedCommands": False,
-            "excludedCommands": [],
+            # Claude Code's WSL sandbox derives an absent Windows managed-settings path on this
+            # pinned runtime. Only the generated aliases bypass that wrapper. Each alias
+            # immediately enters the separately pinned Bubblewrap boundary built below.
+            "excludedCommands": [command.alias for command in prepared_commands],
             "filesystem": {
                 "denyRead": ["/", *ambient_paths],
                 "allowRead": system_read_paths,
@@ -292,23 +295,80 @@ def _approved_argv(command: str) -> tuple[str, ...]:
 
 def _wrapper_payload(
     *,
+    bubblewrap: Path,
     executable: Path,
     arguments: tuple[str, ...],
     runtime_root: Path,
+    workspace: Path,
     request: TargetRunRequest,
 ) -> str:
     memory_kb = request.command_memory_mb * 1024
     file_blocks = request.command_file_size_mb * 1024
-    exact_command = shlex.join((str(executable), *arguments))
-    env_assignments = shlex.join(
+    sandbox_command = shlex.join(
         (
-            f"HOME={runtime_root / 'home'}",
-            f"TMPDIR={runtime_root / 'tmp'}",
-            "PATH=/usr/bin:/bin",
-            "LANG=C.UTF-8",
-            "LC_ALL=C.UTF-8",
-            "PYTHONDONTWRITEBYTECODE=1",
-            "ACL_BOUNDED_TEST=1",
+            str(bubblewrap),
+            "--unshare-all",
+            "--die-with-parent",
+            "--new-session",
+            "--ro-bind",
+            "/usr",
+            "/usr",
+            "--symlink",
+            "usr/bin",
+            "/bin",
+            "--symlink",
+            "usr/lib",
+            "/lib",
+            "--symlink",
+            "usr/lib64",
+            "/lib64",
+            "--symlink",
+            "usr/sbin",
+            "/sbin",
+            "--proc",
+            "/proc",
+            "--dev",
+            "/dev",
+            "--tmpfs",
+            "/tmp",
+            "--dir",
+            "/runtime",
+            "--bind",
+            str(runtime_root / "home"),
+            "/runtime/home",
+            "--bind",
+            str(runtime_root / "tmp"),
+            "/runtime/tmp",
+            "--bind",
+            str(workspace),
+            "/workspace",
+            "--chdir",
+            "/workspace",
+            "--clearenv",
+            "--setenv",
+            "HOME",
+            "/runtime/home",
+            "--setenv",
+            "TMPDIR",
+            "/runtime/tmp",
+            "--setenv",
+            "PATH",
+            "/usr/bin:/bin",
+            "--setenv",
+            "LANG",
+            "C.UTF-8",
+            "--setenv",
+            "LC_ALL",
+            "C.UTF-8",
+            "--setenv",
+            "PYTHONDONTWRITEBYTECODE",
+            "1",
+            "--setenv",
+            "ACL_BOUNDED_TEST",
+            "1",
+            "--",
+            str(executable),
+            *arguments,
         )
     )
     return (
@@ -320,12 +380,13 @@ def _wrapper_payload(
         f"ulimit -u {request.command_process_limit}\n"
         f"ulimit -n {request.command_open_files_limit}\n"
         "exec /usr/bin/timeout --signal=TERM --kill-after=5 "
-        f"{request.command_timeout_seconds} /usr/bin/env -i {env_assignments} {exact_command}\n"
+        f"{request.command_timeout_seconds} {sandbox_command}\n"
     )
 
 
 def _prepare_commands(
     *,
+    bubblewrap: Path,
     config_dir: Path,
     workspace: Path,
     request: TargetRunRequest,
@@ -365,9 +426,11 @@ def _prepare_commands(
         wrapper_path = commands_dir / alias
         wrapper_path.write_text(
             _wrapper_payload(
+                bubblewrap=bubblewrap,
                 executable=executable,
                 arguments=argv[1:],
                 runtime_root=runtime_root,
+                workspace=workspace,
                 request=request,
             ),
             encoding="utf-8",
@@ -391,6 +454,9 @@ def _prepare_commands(
                 "command_file_size_mb": request.command_file_size_mb,
                 "command_process_limit": request.command_process_limit,
                 "command_open_files_limit": request.command_open_files_limit,
+                "sandbox_backend_digest": sha256_file(bubblewrap),
+                "sandbox_network": "unshared",
+                "sandbox_host_filesystem": "not_mounted",
             }
         )
     manifest_digest = sha256_bytes(
@@ -713,6 +779,7 @@ class ClaudeCodeTargetRunner:
             with tempfile.TemporaryDirectory(prefix="acl-claude-config-") as temporary:
                 config_dir = Path(temporary)
                 commands_dir, prepared_commands, command_manifest_digest = _prepare_commands(
+                    bubblewrap=runtime.bubblewrap,
                     config_dir=config_dir,
                     workspace=workspace,
                     request=request,

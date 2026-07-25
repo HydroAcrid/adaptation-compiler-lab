@@ -56,7 +56,7 @@ from adaptation_compiler_lab.runners.claude_code import (
 )
 from adaptation_compiler_lab.serialization import canonical_json
 
-CANARY_ID = "claude-haiku-instrument-canary-v6"
+CANARY_ID = "claude-haiku-instrument-canary-v7"
 HOST_PROBE = Path("/tmp/acl-claude-instrument-canary-host-probe")
 CONDITIONS = (
     BenchmarkCondition.STRONG_STATIC_PROFILE,
@@ -145,11 +145,11 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
     exact = {
         "schema_version": "1.0.0",
         "canary_id": CANARY_ID,
-        "purpose": "native_linux_managed_settings_restart_of_bounded_command_instrument",
+        "purpose": "alias_owned_bubblewrap_restart_of_bounded_command_instrument",
         "restart_of": {
-            "canary_id": "claude-haiku-instrument-canary-v5",
+            "canary_id": "claude-haiku-instrument-canary-v6",
             "failure_receipt_digest": (
-                "sha256:5b2875c2d6aa3d3438d41f9a8e007cd7053e00b5cc9f84618e3c8af1ab871fc0"
+                "sha256:629a0be72a3be9c75de07557ab3b3a2c30169850167be7eafe3f196c7c9b5951"
             ),
         },
         "source_commit": "TO_BE_FROZEN",
@@ -211,6 +211,15 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
             "target_host_platform": "linux",
             "managed_settings_source": "empty_ephemeral_file",
             "inherited_path_visible_to_target": False,
+            "claude_unsandboxed_escape_allowed": False,
+            "claude_sandbox_exclusions": [
+                "acl-test-full",
+                "acl-test-focused",
+            ],
+            "alias_sandbox_backend": "pinned_bubblewrap",
+            "alias_sandbox_network": "unshared",
+            "alias_sandbox_host_filesystem": "not_mounted",
+            "alias_sandbox_workspace": "disposable_workspace_only",
         },
         "success_gate": {
             "both_runs_edit_workspace": True,

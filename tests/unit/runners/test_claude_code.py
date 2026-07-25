@@ -242,6 +242,87 @@ print(json.dumps({
 }), flush=True)
 """
 
+_FAKE_BWRAP = """#!/usr/bin/env python3
+import os
+import sys
+
+args = sys.argv[1:]
+if args == ["--version"]:
+    print("bubblewrap synthetic")
+    raise SystemExit(0)
+if args[-1:] == ["/bin/true"] and {
+    "--ro-bind",
+    "--proc",
+    "--dev",
+    "--unshare-user",
+    "--unshare-pid",
+    "--die-with-parent",
+}.issubset(args):
+    raise SystemExit(0)
+
+required_flags = {
+    "--unshare-all",
+    "--die-with-parent",
+    "--new-session",
+    "--clearenv",
+}
+if not required_flags.issubset(args):
+    print("synthetic bwrap: required isolation flag missing", file=sys.stderr)
+    raise SystemExit(91)
+if args.count("--bind") != 3 or args.count("--ro-bind") != 1:
+    print("synthetic bwrap: unexpected host mount count", file=sys.stderr)
+    raise SystemExit(92)
+
+binds = {}
+environment = {}
+working_directory = None
+command = None
+index = 0
+two_values = {"--bind", "--ro-bind", "--setenv", "--symlink"}
+one_value = {"--chdir", "--dev", "--dir", "--proc", "--tmpfs"}
+no_values = {"--unshare-all", "--die-with-parent", "--new-session", "--clearenv"}
+while index < len(args):
+    item = args[index]
+    if item == "--":
+        command = args[index + 1:]
+        break
+    if item in two_values:
+        left, right = args[index + 1:index + 3]
+        if item in {"--bind", "--ro-bind"}:
+            binds[right] = left
+        elif item == "--setenv":
+            environment[left] = right
+        index += 3
+        continue
+    if item in one_value:
+        if item == "--chdir":
+            working_directory = args[index + 1]
+        index += 2
+        continue
+    if item in no_values:
+        index += 1
+        continue
+    print(f"synthetic bwrap: unknown option {item}", file=sys.stderr)
+    raise SystemExit(93)
+
+if binds.get("/usr") != "/usr" or "/workspace" not in binds:
+    print("synthetic bwrap: system or workspace mount missing", file=sys.stderr)
+    raise SystemExit(94)
+if set(binds) != {"/usr", "/runtime/home", "/runtime/tmp", "/workspace"}:
+    print("synthetic bwrap: forbidden host mount", file=sys.stderr)
+    raise SystemExit(95)
+if working_directory != "/workspace" or not command:
+    print("synthetic bwrap: workspace or command missing", file=sys.stderr)
+    raise SystemExit(96)
+
+for name in ("HOME", "TMPDIR"):
+    value = environment.get(name)
+    if value in binds:
+        environment[name] = binds[value]
+os.chdir(binds["/workspace"])
+os.execve(command[0], command, environment)
+"""
+
 
 def test_target_trace_serializer_accepts_an_ordered_event_tuple() -> None:
     events: tuple[JsonObject, ...] = (
@@ -292,16 +373,7 @@ def _runner(
     library_path = tmp_path / "lib"
     library_path.mkdir(exist_ok=True)
     _write_executable(executable, _FAKE_CLAUDE)
-    _write_executable(
-        bubblewrap,
-        """#!/bin/sh
-if [ "$1" = "--version" ]; then
-  echo "bubblewrap synthetic"
-  exit 0
-fi
-exit 0
-""",
-    )
+    _write_executable(bubblewrap, _FAKE_BWRAP)
     _write_executable(
         socat,
         """#!/bin/sh
@@ -427,6 +499,7 @@ def test_synthetic_runner_has_clean_state_tools_and_network(tmp_path: Path) -> N
     assert sandbox["failIfUnavailable"] is True
     assert sandbox["allowUnsandboxedCommands"] is False
     assert sandbox["autoAllowBashIfSandboxed"] is False
+    assert sandbox["excludedCommands"] == ["acl-test-full"]
     network = sandbox["network"]
     assert isinstance(network, dict)
     assert network["deniedDomains"] == ["*"]
@@ -513,6 +586,15 @@ def test_two_commands_use_semantic_aliases_without_exposing_implementation(
     assert result_event["prompt_has_full_alias"] is True
     assert result_event["prompt_has_focused_alias"] is True
     assert result_event["prompt_exposes_python_implementation"] is False
+    settings_value = result_event["settings"]
+    assert isinstance(settings_value, dict)
+    sandbox_value = settings_value["sandbox"]
+    assert isinstance(sandbox_value, dict)
+    assert sandbox_value["allowUnsandboxedCommands"] is False
+    assert set(cast(list[str], sandbox_value["excludedCommands"])) == {
+        "acl-test-focused",
+        "acl-test-full",
+    }
     assert [entry.alias for entry in result.command_audit] == [
         "acl-test-focused",
         "acl-test-full",
@@ -594,7 +676,7 @@ def test_non_unittest_python_is_rejected_before_target_start(tmp_path: Path) -> 
         _runner(tmp_path).run(request)
 
 
-@settings(max_examples=20)
+@settings(max_examples=20, deadline=None)
 @given(secret_bytes=st.binary(min_size=1, max_size=32))
 def test_api_key_never_appears_in_command_or_trace(secret_bytes: bytes) -> None:
     secret = f"generated-key-{secret_bytes.hex()}"
@@ -614,7 +696,7 @@ def test_api_key_never_appears_in_command_or_trace(secret_bytes: bytes) -> None:
         assert secret not in result.model_dump_json()
 
 
-@settings(max_examples=20)
+@settings(max_examples=20, deadline=None)
 @given(ambient=st.text(min_size=1, max_size=128))
 def test_arbitrary_ambient_instructions_are_not_loaded(ambient: str) -> None:
     with tempfile.TemporaryDirectory() as temporary:
