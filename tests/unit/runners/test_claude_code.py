@@ -87,7 +87,7 @@ if "BOUNDED_COMMAND_SMOKE" in prompt:
         encoding="utf-8",
     )
     completed = subprocess.run(
-        ["acl-run-01"],
+        ["acl-test-full"],
         check=False,
         capture_output=True,
         text=True,
@@ -106,7 +106,7 @@ if "BOUNDED_COMMAND_SMOKE" in prompt:
                     "type": "tool_use",
                     "id": "bash-1",
                     "name": "Bash",
-                    "input": {"command": "acl-run-01", "timeout": 5000},
+                    "input": {"command": "acl-test-full", "timeout": 5000},
                 },
             ]
         },
@@ -122,6 +122,44 @@ if "BOUNDED_COMMAND_SMOKE" in prompt:
             }]
         },
     }), flush=True)
+
+if "TWO_COMMAND_SMOKE" in prompt:
+    pathlib.Path("solution.py").write_text(
+        "def add(left, right):\\n    return left + right\\n",
+        encoding="utf-8",
+    )
+    for sequence, alias in enumerate(("acl-test-focused", "acl-test-full"), start=1):
+        completed = subprocess.run(
+            [alias],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        use_id = f"bash-two-{sequence}"
+        print(json.dumps({
+            "type": "assistant",
+            "message": {
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "id": use_id,
+                        "name": "Bash",
+                        "input": {"command": alias, "timeout": 5000},
+                    },
+                ]
+            },
+        }), flush=True)
+        print(json.dumps({
+            "type": "user",
+            "message": {
+                "content": [{
+                    "type": "tool_result",
+                    "tool_use_id": use_id,
+                    "content": completed.stdout + completed.stderr,
+                    "is_error": completed.returncode != 0,
+                }]
+            },
+        }), flush=True)
 
 if "UNBOUNDED_COMMAND_MARKER" in prompt:
     print(json.dumps({
@@ -142,7 +180,7 @@ if "OVERSIZED_TIMEOUT_MARKER" in prompt:
             "content": [{
                 "type": "tool_use",
                 "name": "Bash",
-                "input": {"command": "acl-run-01", "timeout": 60001},
+                "input": {"command": "acl-test-full", "timeout": 60001},
             }]
         },
     }), flush=True)
@@ -189,6 +227,11 @@ print(json.dumps({
     "ambient_loaded": False if "--bare" in args else pathlib.Path("CLAUDE.md").exists(),
     "session_persisted": "--no-session-persistence" not in args,
     "has_api_key": bool(os.environ.get("ANTHROPIC_API_KEY")),
+    "prompt_has_full_alias": "acl-test-full" in prompt,
+    "prompt_has_focused_alias": "acl-test-focused" in prompt,
+    "prompt_exposes_python_implementation": (
+        "python3 -m unittest" in prompt.split("Execution boundary:", 1)[-1]
+    ),
     "total_cost_usd": 0.01,
 }), flush=True)
 """
@@ -331,6 +374,7 @@ def _request(tmp_path: Path, *, prompt: str = "Perform the synthetic task.") -> 
         condition_file=condition,
         condition_digest=sha256_file(condition),
         allowed_bash_commands=("python3 -m unittest -v",),
+        command_process_limit=256,
         max_seconds=5,
         max_turns=3,
         max_usd=0.25,
@@ -356,7 +400,7 @@ def test_synthetic_runner_has_clean_state_tools_and_network(tmp_path: Path) -> N
     assert "--strict-mcp-config" in argv
     assert "--setting-sources" in argv
     assert argv[argv.index("--setting-sources") + 1] == ""
-    assert "Bash(acl-run-01)" in argv
+    assert "Bash(acl-test-full)" in argv
     assert "Bash(python3 -m unittest -v)" not in argv
     assert result_event["ambient_loaded"] is False
     assert result_event["session_persisted"] is False
@@ -409,7 +453,7 @@ class SolutionTest(unittest.TestCase):
         self.assertLessEqual(resource.getrlimit(resource.RLIMIT_CPU)[0], 30)
         self.assertLessEqual(resource.getrlimit(resource.RLIMIT_AS)[0], 512 * 1024 * 1024)
         self.assertLessEqual(resource.getrlimit(resource.RLIMIT_FSIZE)[0], 16 * 1024 * 1024)
-        self.assertLessEqual(resource.getrlimit(resource.RLIMIT_NPROC)[0], 128)
+        self.assertLessEqual(resource.getrlimit(resource.RLIMIT_NPROC)[0], 256)
         self.assertLessEqual(resource.getrlimit(resource.RLIMIT_NOFILE)[0], 64)
 """,
         encoding="utf-8",
@@ -424,7 +468,7 @@ class SolutionTest(unittest.TestCase):
     )
     assert len(result.command_audit) == 1
     audit = result.command_audit[0]
-    assert audit.alias == "acl-run-01"
+    assert audit.alias == "acl-test-full"
     assert audit.requested_timeout_ms == 5000
     assert audit.approved_command_digest.startswith("sha256:")
     assert result.command_manifest_digest.startswith("sha256:")
@@ -434,9 +478,52 @@ class SolutionTest(unittest.TestCase):
     assert not (request.workspace_root / ".acl-runtime").exists()
 
 
+def test_two_commands_use_semantic_aliases_without_exposing_implementation(
+    tmp_path: Path,
+) -> None:
+    request = _request(tmp_path, prompt="TWO_COMMAND_SMOKE").model_copy(
+        update={
+            "allowed_bash_commands": (
+                "python3 -m unittest -v",
+                "python3 -m unittest -v test_solution.SolutionTest.test_solution",
+            )
+        }
+    )
+
+    result = _runner(tmp_path).run(request)
+    result_event = _result_event(result.events)
+    argv = cast(list[str], result_event["argv"])
+
+    assert "Bash(acl-test-full)" in argv
+    assert "Bash(acl-test-focused)" in argv
+    assert result_event["prompt_has_full_alias"] is True
+    assert result_event["prompt_has_focused_alias"] is True
+    assert result_event["prompt_exposes_python_implementation"] is False
+    assert [entry.alias for entry in result.command_audit] == [
+        "acl-test-focused",
+        "acl-test-full",
+    ]
+    assert all(entry.accepted for entry in result.command_audit)
+
+
 def test_unbounded_command_attempt_invalidates_run(tmp_path: Path) -> None:
-    with pytest.raises(TargetExecutionError, match="outside the bounded manifest"):
+    with pytest.raises(TargetExecutionError, match="outside the bounded manifest") as caught:
         _runner(tmp_path).run(_request(tmp_path, prompt="UNBOUNDED_COMMAND_MARKER"))
+
+    error = caught.value
+    assert error.failure_code == "out_of_manifest_bash_command"
+    assert error.failure_subject_digest == (
+        "sha256:dbfc5804c380dc96ce100c67f3d38bc50e0bc971839d354a241a4cc436c9fe92"
+    )
+    assert error.evidence is not None
+    assert error.evidence.failure_code == error.failure_code
+    assert error.evidence.failure_subject_digest == error.failure_subject_digest
+    assert error.evidence.stdout
+    assert error.evidence.events
+    assert error.evidence.config_destroyed is True
+    assert error.evidence.command_audit == ()
+    assert "synthetic-api-key-placeholder" not in repr(error.evidence)
+    assert not (tmp_path / "workspace" / ".acl-runtime").exists()
 
 
 def test_oversized_command_timeout_invalidates_run(tmp_path: Path) -> None:

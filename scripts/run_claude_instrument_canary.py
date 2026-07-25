@@ -51,12 +51,13 @@ from adaptation_compiler_lab.persistence.raw import (
 from adaptation_compiler_lab.runners.claude_code import (
     ClaudeCodeTargetRunner,
     ClaudeRuntimePaths,
+    TargetExecutionError,
     serialize_target_trace,
 )
-from adaptation_compiler_lab.serialization import canonical_digest, canonical_json
+from adaptation_compiler_lab.serialization import canonical_json
 
-CANARY_ID = "claude-haiku-instrument-canary-v1"
-HOST_PROBE = Path("/tmp/acl-claude-instrument-canary-host-probe-v1")
+CANARY_ID = "claude-haiku-instrument-canary-v2"
+HOST_PROBE = Path("/tmp/acl-claude-instrument-canary-host-probe-v2")
 CONDITIONS = (
     BenchmarkCondition.STRONG_STATIC_PROFILE,
     BenchmarkCondition.COMPILED_ADAPTATION,
@@ -127,6 +128,10 @@ def _counts(value: dict[str, bool]) -> dict[str, int]:
     return {"passed": sum(value.values()), "total": len(value)}
 
 
+def _command_audit_digest(entries: tuple[Any, ...]) -> str:
+    return sha256_bytes(_canonical_bytes([entry.model_dump(mode="json") for entry in entries]))
+
+
 def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict[str, Any]:
     if not path.is_file() or not path.is_relative_to(repo):
         raise RuntimeError("canary preregistration must be a committed repository file")
@@ -134,7 +139,13 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
     exact = {
         "schema_version": "1.0.0",
         "canary_id": CANARY_ID,
-        "purpose": "live_validation_of_corrected_bounded_command_instrument",
+        "purpose": "evidence_preserving_restart_of_bounded_command_instrument",
+        "restart_of": {
+            "canary_id": "claude-haiku-instrument-canary-v1",
+            "failure_receipt_digest": (
+                "sha256:941d6de3b7720e8c9adaef948c433511836daa8243bad3d56c360fba10043177"
+            ),
+        },
         "source_commit": "TO_BE_FROZEN",
         "task": {
             "task_digest": EXPECTED_TASK_DIGEST,
@@ -174,7 +185,7 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
             "command_cpu_seconds": 30,
             "command_memory_mb": 512,
             "command_file_size_mb": 16,
-            "command_process_limit": 128,
+            "command_process_limit": 256,
             "command_open_files_limit": 64,
         },
         "required_commands": [
@@ -185,6 +196,12 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
                 "test_failure_budget_isolated_between_jobs"
             ),
         ],
+        "command_interface": {
+            "full_test_alias": "acl-test-full",
+            "focused_test_alias": "acl-test-focused",
+            "command_implementations_visible_to_target": False,
+            "out_of_manifest_behavior": "deny_and_persist_encrypted_failure_evidence",
+        },
         "success_gate": {
             "both_runs_edit_workspace": True,
             "both_runs_attempt_focused_and_full_tests": True,
@@ -195,6 +212,7 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
             "network_unavailable": True,
             "independent_focused_and_full_tests_pass": True,
             "trace_and_command_audit_conformant": True,
+            "post_execution_rejections_preserve_usage_and_command_digest": True,
             "workspace_and_config_destroyed": True,
         },
         "claims": {
@@ -362,12 +380,13 @@ def main() -> None:
 
     results: list[dict[str, Any]] = []
     total_cost = 0.0
+    failure_values: dict[str, Any] | None = None
+    workspace_path: Path | None = None
     for cell, condition in zip(
         private_plan["run_order"],
         randomized_conditions,
         strict=True,
     ):
-        workspace_path: Path | None = None
         run_values: dict[str, Any]
         with tempfile.TemporaryDirectory(prefix="acl-claude-instrument-canary-") as temporary:
             workspace = Path(temporary) / "task"
@@ -379,33 +398,108 @@ def main() -> None:
             condition_file.chmod(0o600)
             _exclusive_write(HOST_PROBE, b"host-boundary-sentinel\n", mode=0o600)
             try:
-                target_result = runner.run(
-                    TargetRunRequest(
-                        run_id=cell["run_id"],
-                        workspace_root=workspace,
-                        prompt=COMMON_TASK_ENVELOPE + task["prompt"],
-                        condition_file=condition_file,
-                        condition_digest=sha256_bytes(condition_text.encode("utf-8")),
-                        allowed_bash_commands=allowed_commands,
-                        command_timeout_seconds=preregistration["limits"][
-                            "command_timeout_seconds"
-                        ],
-                        command_cpu_seconds=preregistration["limits"]["command_cpu_seconds"],
-                        command_memory_mb=preregistration["limits"]["command_memory_mb"],
-                        command_file_size_mb=preregistration["limits"]["command_file_size_mb"],
-                        command_process_limit=preregistration["limits"]["command_process_limit"],
-                        command_open_files_limit=preregistration["limits"][
-                            "command_open_files_limit"
-                        ],
-                        max_seconds=preregistration["limits"]["max_seconds_per_run"],
-                        max_turns=preregistration["limits"]["max_turns_per_run"],
-                        max_usd=preregistration["limits"]["max_usd_per_run"],
-                        model_id=preregistration["runtime"]["model_id"],
+                try:
+                    target_result = runner.run(
+                        TargetRunRequest(
+                            run_id=cell["run_id"],
+                            workspace_root=workspace,
+                            prompt=COMMON_TASK_ENVELOPE + task["prompt"],
+                            condition_file=condition_file,
+                            condition_digest=sha256_bytes(condition_text.encode("utf-8")),
+                            allowed_bash_commands=allowed_commands,
+                            command_timeout_seconds=preregistration["limits"][
+                                "command_timeout_seconds"
+                            ],
+                            command_cpu_seconds=preregistration["limits"]["command_cpu_seconds"],
+                            command_memory_mb=preregistration["limits"]["command_memory_mb"],
+                            command_file_size_mb=preregistration["limits"]["command_file_size_mb"],
+                            command_process_limit=preregistration["limits"][
+                                "command_process_limit"
+                            ],
+                            command_open_files_limit=preregistration["limits"][
+                                "command_open_files_limit"
+                            ],
+                            max_seconds=preregistration["limits"]["max_seconds_per_run"],
+                            max_turns=preregistration["limits"]["max_turns_per_run"],
+                            max_usd=preregistration["limits"]["max_usd_per_run"],
+                            model_id=preregistration["runtime"]["model_id"],
+                        )
                     )
-                )
+                except TargetExecutionError as exc:
+                    evidence = exc.evidence
+                    if evidence is None:
+                        raise
+                    (
+                        final_response,
+                        cost,
+                        input_tokens,
+                        cache_creation_input_tokens,
+                        cache_read_input_tokens,
+                        output_tokens,
+                        terminal_reasons,
+                    ) = _terminal_evidence(evidence.events)
+                    total_cost += cost
+                    if total_cost > preregistration["limits"]["max_usd_total"]:
+                        raise RuntimeError(
+                            "instrument-canary total provider budget exceeded"
+                        ) from exc
+                    raw_failure = {
+                        "condition": condition.value,
+                        "events": evidence.events,
+                        "final_response": final_response,
+                        "runner_stdout": evidence.stdout,
+                        "runner_stderr": evidence.stderr,
+                        "failure_code": evidence.failure_code,
+                        "failure_subject_digest": evidence.failure_subject_digest,
+                        "terminal_reasons": terminal_reasons,
+                    }
+                    raw_failure_ref = raw_store.put(
+                        _canonical_bytes(raw_failure),
+                        media_type=(
+                            "application/vnd.adaptation-compiler-lab.instrument-canary-failure+json"
+                        ),
+                    )
+                    failure_values = {
+                        "sequence": cell["sequence"],
+                        "run_id": cell["run_id"],
+                        "blind_condition_id": cell["blind_condition_id"],
+                        "condition": condition.value,
+                        "condition_digest": evidence.condition_digest,
+                        "trace_digest": sha256_bytes(serialize_target_trace(evidence.events)),
+                        "command_digest": evidence.command_digest,
+                        "command_manifest_digest": evidence.command_manifest_digest,
+                        "command_audit_digest": _command_audit_digest(evidence.command_audit),
+                        "accepted_aliases": sorted(
+                            {entry.alias for entry in evidence.command_audit}
+                        ),
+                        "failure_code": evidence.failure_code,
+                        "failure_subject_digest": evidence.failure_subject_digest,
+                        "exit_code": evidence.exit_code,
+                        "timed_out": evidence.timed_out,
+                        "config_destroyed": evidence.config_destroyed,
+                        "input_tokens": input_tokens,
+                        "cache_creation_input_tokens": cache_creation_input_tokens,
+                        "cache_read_input_tokens": cache_read_input_tokens,
+                        "output_tokens": output_tokens,
+                        "cost_usd": cost,
+                        "cost_available": any(
+                            event.get("type") == "result"
+                            and isinstance(event.get("total_cost_usd"), (int, float))
+                            and not isinstance(event.get("total_cost_usd"), bool)
+                            for event in evidence.events
+                        ),
+                        "duration_seconds": (
+                            evidence.finished_at - evidence.started_at
+                        ).total_seconds(),
+                        "raw_failure_bundle_digest": f"sha256:{raw_failure_ref.sha256}",
+                    }
             finally:
                 if HOST_PROBE.exists():
                     HOST_PROBE.unlink()
+            if failure_values is not None:
+                if condition_file.exists():
+                    condition_file.unlink()
+                break
             if condition_file.exists():
                 condition_file.unlink()
             _remove_interpreter_artifacts(workspace)
@@ -429,9 +523,9 @@ def main() -> None:
                 raise RuntimeError("instrument-canary total provider budget exceeded")
 
             successful_aliases, alias_outputs = _successful_aliases(target_result.events)
-            required_aliases = {"acl-run-01", "acl-run-02"}
-            full_output = alias_outputs.get("acl-run-01", "")
-            focused_output = alias_outputs.get("acl-run-02", "")
+            required_aliases = {"acl-test-focused", "acl-test-full"}
+            full_output = alias_outputs.get("acl-test-full", "")
+            focused_output = alias_outputs.get("acl-test-focused", "")
             boundary_checks = all(
                 name in full_output
                 for name in (
@@ -514,7 +608,7 @@ def main() -> None:
                 "final_response_digest": sha256_bytes(final_response.encode("utf-8")),
                 "command_digest": target_result.command_digest,
                 "command_manifest_digest": target_result.command_manifest_digest,
-                "command_audit_digest": canonical_digest(target_result.command_audit),
+                "command_audit_digest": _command_audit_digest(target_result.command_audit),
                 "accepted_aliases": sorted({entry.alias for entry in target_result.command_audit}),
                 "successful_aliases": sorted(successful_aliases),
                 "target_focused_test_success": "OK" in focused_output,
@@ -561,6 +655,49 @@ def main() -> None:
             stream.flush()
             os.fsync(stream.fileno())
         (output_root / "progress.jsonl").chmod(0o600)
+
+    if failure_values is not None:
+        failure_values["workspace_destroyed"] = (
+            workspace_path is not None and not workspace_path.exists()
+        )
+        completed_at = datetime.now(UTC)
+        completion = {
+            "schema_version": "1.0.0",
+            "canary_id": CANARY_ID,
+            "status": "instrument_canary_failed_closed",
+            "source_commit": source_commit,
+            "preregistration_digest": sha256_file(arguments.preregistration.resolve()),
+            "runtime_lock_digest": sha256_file(arguments.runtime_lock),
+            "model_id": preregistration["runtime"]["model_id"],
+            "claude_code_version": preregistration["runtime"]["claude_code_version"],
+            "seed_commitment": seed.commitment,
+            "public_plan_digest": sha256_bytes(_canonical_bytes(public_plan)),
+            "private_plan_digest": sha256_bytes(_canonical_bytes(private_plan)),
+            "private_plan_raw_digest": f"sha256:{private_plan_ref.sha256}",
+            "planned_runs": 2,
+            "completed_valid_runs": len(results),
+            "completed_runs": results,
+            "failed_run": failure_values,
+            "total_known_cost_usd": total_cost,
+            "max_cost_usd": preregistration["limits"]["max_usd_total"],
+            "second_run_executed": failure_values["sequence"] == 2,
+            "retry_executed": False,
+            "completed_at": completed_at,
+            "raw_retention_deadline": completed_at + timedelta(days=30),
+            "raw_payloads_encrypted_outside_git": True,
+            "condition_mapping_withheld_during_execution": True,
+            "adaptation_quality_comparison_allowed": False,
+            "cross_agent_transfer_claim_allowed": False,
+            "milestone_6_custody_accessed": False,
+            "milestone_6_materials_modified": False,
+        }
+        _exclusive_write(
+            output_root / "completion.json",
+            _canonical_bytes(completion),
+            mode=0o644,
+        )
+        print(json.dumps(completion, ensure_ascii=False, allow_nan=False, sort_keys=True))
+        raise SystemExit(2)
 
     completed_at = datetime.now(UTC)
     completion = {

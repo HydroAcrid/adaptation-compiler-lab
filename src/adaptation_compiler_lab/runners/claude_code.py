@@ -95,10 +95,6 @@ _AMBIENT_READ_NAMES: Final = (
 )
 
 
-class TargetExecutionError(RuntimeConformanceError):
-    """The target runner could not preserve the frozen execution contract."""
-
-
 @dataclass(frozen=True)
 class ClaudeRuntimePaths:
     """External paths selected by the study operator; none are committed."""
@@ -115,6 +111,48 @@ class _PreparedCommand:
     argv: tuple[str, ...]
     command_digest: str
     wrapper_path: Path
+
+
+@dataclass(frozen=True)
+class TargetFailureEvidence:
+    """Raw post-execution evidence retained only for encrypted failure handling."""
+
+    run_id: str
+    runner_version: str
+    model_id: str
+    condition_digest: str
+    command_digest: str
+    started_at: datetime
+    finished_at: datetime
+    exit_code: int | None
+    timed_out: bool
+    stdout: str
+    events: tuple[JsonObject, ...]
+    stderr: str
+    command_manifest_digest: str
+    command_audit: tuple[TargetCommandAuditEntry, ...]
+    config_destroyed: bool
+    failure_code: str
+    failure_subject_digest: str | None
+
+
+class TargetExecutionError(RuntimeConformanceError):
+    """The target runner could not preserve the frozen execution contract."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        evidence: TargetFailureEvidence | None = None,
+        failure_code: str = "target_execution_error",
+        failure_subject_digest: str | None = None,
+        partial_command_audit: tuple[TargetCommandAuditEntry, ...] = (),
+    ) -> None:
+        super().__init__(message)
+        self.evidence = evidence
+        self.failure_code = failure_code
+        self.failure_subject_digest = failure_subject_digest
+        self.partial_command_audit = partial_command_audit
 
 
 def _absolute_permission_rule(tool: str, path: Path, *, descendants: bool = False) -> str:
@@ -299,6 +337,7 @@ def _prepare_commands(
     prepared: list[_PreparedCommand] = []
     manifest: list[JsonObject] = []
     system_path = "/usr/bin:/bin"
+    aliases: set[str] = set()
     for index, command in enumerate(request.allowed_bash_commands, start=1):
         argv = _approved_argv(command)
         resolved = shutil.which(argv[0], path=system_path)
@@ -309,7 +348,16 @@ def _prepare_commands(
             Path("/bin")
         ):
             raise TargetExecutionError("approved command executable resolved outside system paths")
-        alias = f"acl-run-{index:02d}"
+        unittest_arguments = tuple(item for item in argv[3:] if item != "-v")
+        if not unittest_arguments:
+            alias = "acl-test-full"
+        elif len(request.allowed_bash_commands) == 2:
+            alias = "acl-test-focused"
+        else:
+            alias = f"acl-test-focused-{index:02d}"
+        if alias in aliases:
+            raise TargetExecutionError("approved commands produced a duplicate bounded alias")
+        aliases.add(alias)
         command_digest = sha256_bytes(
             json.dumps(argv, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
         )
@@ -367,10 +415,16 @@ def _command_instructions(prepared_commands: tuple[_PreparedCommand, ...]) -> st
         "",
         "Execution boundary: use Read, Glob, and Grep for inspection and Edit or Write for file "
         "changes. The only approved shell commands are the exact bounded aliases below. Invoke an "
-        "alias exactly as shown, without arguments, chaining, redirection, or substitution:",
+        "alias exactly as shown, without arguments, chaining, redirection, substitution, a path "
+        "prefix, or a replacement Python command:",
     ]
     for command in prepared_commands:
-        lines.append(f"- {command.alias}: {shlex.join(command.argv)}")
+        purpose = (
+            "run the full visible suite"
+            if command.alias == "acl-test-full"
+            else ("run the focused regression")
+        )
+        lines.append(f"- `{command.alias}` — {purpose}.")
     lines.append("A command alias has a fixed timeout and resource ceiling and is audit logged.")
     return "\n".join(lines)
 
@@ -483,7 +537,10 @@ def _assert_trace_conformance(
                     prepared = prepared_by_alias.get(raw_command)
                     if prepared is None:
                         raise TargetExecutionError(
-                            "Claude attempted a Bash command outside the bounded manifest"
+                            "Claude attempted a Bash command outside the bounded manifest",
+                            failure_code="out_of_manifest_bash_command",
+                            failure_subject_digest=sha256_bytes(raw_command.encode("utf-8")),
+                            partial_command_audit=tuple(audit),
                         )
                     disable_sandbox = tool_input.get("dangerouslyDisableSandbox")
                     if disable_sandbox not in (None, False):
@@ -715,6 +772,9 @@ class ClaudeCodeTargetRunner:
                 exit_code: int | None
                 stdout = ""
                 stderr = ""
+                events: tuple[JsonObject, ...] = ()
+                command_audit: tuple[TargetCommandAuditEntry, ...] = ()
+                trace_error: TargetExecutionError | None = None
                 try:
                     process = subprocess.Popen(
                         command,
@@ -752,19 +812,23 @@ class ClaudeCodeTargetRunner:
                 if api_key in stdout or api_key in stderr:
                     raise TargetExecutionError("Claude output exposed the API credential")
                 events = _parse_stream(stdout)
-                command_audit = _assert_trace_conformance(
-                    events,
-                    model_id=runtime.model_id,
-                    timed_out=timed_out,
-                    workspace=workspace,
-                    condition_file=condition_file,
-                    prepared_commands=prepared_commands,
-                    command_timeout_seconds=request.command_timeout_seconds,
-                )
                 # Wall clocks can move backwards while a process is running (for example, an NTP
                 # correction). Preserve the result contract without pretending elapsed-time
                 # measurement comes from wall-clock ordering.
                 finished_at = max(datetime.now(UTC), started_at)
+                try:
+                    command_audit = _assert_trace_conformance(
+                        events,
+                        model_id=runtime.model_id,
+                        timed_out=timed_out,
+                        workspace=workspace,
+                        condition_file=condition_file,
+                        prepared_commands=prepared_commands,
+                        command_timeout_seconds=request.command_timeout_seconds,
+                    )
+                except TargetExecutionError as exc:
+                    trace_error = exc
+                    command_audit = exc.partial_command_audit
         finally:
             for name in _RUNTIME_ARTIFACTS:
                 path = workspace / name
@@ -772,6 +836,33 @@ class ClaudeCodeTargetRunner:
                     shutil.rmtree(path)
                 elif path.exists() or path.is_symlink():
                     path.unlink()
+        if trace_error is not None:
+            evidence = TargetFailureEvidence(
+                run_id=request.run_id,
+                runner_version=runtime.version,
+                model_id=runtime.model_id,
+                condition_digest=request.condition_digest,
+                command_digest=command_digest,
+                started_at=started_at,
+                finished_at=finished_at,
+                exit_code=exit_code,
+                timed_out=timed_out,
+                stdout=stdout,
+                events=events,
+                stderr=stderr,
+                command_manifest_digest=command_manifest_digest,
+                command_audit=command_audit,
+                config_destroyed=not config_dir.exists(),
+                failure_code=trace_error.failure_code,
+                failure_subject_digest=trace_error.failure_subject_digest,
+            )
+            raise TargetExecutionError(
+                str(trace_error),
+                evidence=evidence,
+                failure_code=trace_error.failure_code,
+                failure_subject_digest=trace_error.failure_subject_digest,
+                partial_command_audit=command_audit,
+            ) from trace_error
         return TargetRunResult(
             run_id=request.run_id,
             runner_version=runtime.version,
