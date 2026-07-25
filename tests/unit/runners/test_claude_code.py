@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import tempfile
 from pathlib import Path
 from typing import cast
@@ -26,7 +27,11 @@ from adaptation_compiler_lab.runners import (
     TargetExecutionError,
     run_live_no_user_data_smoke,
 )
-from adaptation_compiler_lab.runners.claude_code import serialize_target_trace
+from adaptation_compiler_lab.runners.claude_code import (
+    _PreparedCommand,
+    _write_bash_policy_hook,
+    serialize_target_trace,
+)
 
 _FAKE_CLAUDE = """#!/usr/bin/env python3
 import hashlib
@@ -172,8 +177,33 @@ if "UNBOUNDED_COMMAND_MARKER" in prompt:
         "message": {
             "content": [{
                 "type": "tool_use",
+                "id": "unbounded-bash-1",
                 "name": "Bash",
                 "input": {"command": "python3 -m unittest -v"},
+            }]
+        },
+    }), flush=True)
+
+if "BLOCKED_COMMAND_MARKER" in prompt:
+    print(json.dumps({
+        "type": "assistant",
+        "message": {
+            "content": [{
+                "type": "tool_use",
+                "id": "blocked-bash-1",
+                "name": "Bash",
+                "input": {"command": "find / -type f"},
+            }]
+        },
+    }), flush=True)
+    print(json.dumps({
+        "type": "user",
+        "message": {
+            "content": [{
+                "type": "tool_result",
+                "tool_use_id": "blocked-bash-1",
+                "content": "Blocked by the bounded Bash policy.",
+                "is_error": True,
             }]
         },
     }), flush=True)
@@ -184,6 +214,7 @@ if "OVERSIZED_TIMEOUT_MARKER" in prompt:
         "message": {
             "content": [{
                 "type": "tool_use",
+                "id": "oversized-timeout-1",
                 "name": "Bash",
                 "input": {"command": "acl-test-full", "timeout": 60001},
             }]
@@ -577,7 +608,8 @@ class SolutionTest(unittest.TestCase):
         self.assertLessEqual(resource.getrlimit(resource.RLIMIT_CPU)[0], 30)
         self.assertLessEqual(resource.getrlimit(resource.RLIMIT_AS)[0], 512 * 1024 * 1024)
         self.assertLessEqual(resource.getrlimit(resource.RLIMIT_FSIZE)[0], 16 * 1024 * 1024)
-        self.assertLessEqual(resource.getrlimit(resource.RLIMIT_NPROC)[0], 256)
+        self.assertGreaterEqual(resource.getrlimit(resource.RLIMIT_NPROC)[0], 256)
+        self.assertLessEqual(resource.getrlimit(resource.RLIMIT_NPROC)[0], 1024)
         self.assertLessEqual(resource.getrlimit(resource.RLIMIT_NOFILE)[0], 64)
 """,
         encoding="utf-8",
@@ -637,11 +669,11 @@ def test_two_commands_use_semantic_aliases_without_exposing_implementation(
 
 
 def test_unbounded_command_attempt_invalidates_run(tmp_path: Path) -> None:
-    with pytest.raises(TargetExecutionError, match="outside the bounded manifest") as caught:
+    with pytest.raises(TargetExecutionError, match="not proven blocked") as caught:
         _runner(tmp_path).run(_request(tmp_path, prompt="UNBOUNDED_COMMAND_MARKER"))
 
     error = caught.value
-    assert error.failure_code == "out_of_manifest_bash_command"
+    assert error.failure_code == "unblocked_out_of_manifest_bash_command"
     assert error.failure_subject_digest == (
         "sha256:dbfc5804c380dc96ce100c67f3d38bc50e0bc971839d354a241a4cc436c9fe92"
     )
@@ -659,6 +691,54 @@ def test_unbounded_command_attempt_invalidates_run(tmp_path: Path) -> None:
 def test_oversized_command_timeout_invalidates_run(tmp_path: Path) -> None:
     with pytest.raises(TargetExecutionError, match="invalid command timeout"):
         _runner(tmp_path).run(_request(tmp_path, prompt="OVERSIZED_TIMEOUT_MARKER"))
+
+
+def test_bash_policy_hook_allows_only_exact_foreground_alias(tmp_path: Path) -> None:
+    hook = tmp_path / "bounded-bash-policy.py"
+    _write_bash_policy_hook(
+        hook,
+        prepared_commands=(
+            _PreparedCommand(
+                alias="acl-test-full",
+                argv=("python3", "-m", "unittest", "-v"),
+                command_digest="sha256:" + "0" * 64,
+                wrapper_path=tmp_path / "acl-test-full",
+            ),
+        ),
+    )
+
+    def invoke(command: str, *, background: bool = False) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [str(hook)],
+            input=json.dumps(
+                {
+                    "tool_name": "Bash",
+                    "tool_input": {
+                        "command": command,
+                        "run_in_background": background,
+                    },
+                }
+            ),
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+
+    assert invoke("acl-test-full").returncode == 0
+    assert invoke("python3 -m unittest -v").returncode == 2
+    assert invoke("acl-test-full", background=True).returncode == 2
+
+
+def test_proven_blocked_command_is_audited_without_invalidating_run(tmp_path: Path) -> None:
+    result = _runner(tmp_path).run(_request(tmp_path, prompt="BLOCKED_COMMAND_MARKER"))
+
+    assert result.command_audit == ()
+    assert len(result.denied_command_audit) == 1
+    denied = result.denied_command_audit[0]
+    assert denied.reason == "out_of_manifest_bash_command"
+    assert denied.blocked is True
+    assert denied.requested_command_digest.startswith("sha256:")
 
 
 def test_host_file_tool_attempt_invalidates_run(tmp_path: Path) -> None:

@@ -20,7 +20,7 @@ def test_corrected_comparison_is_frozen_to_public_tasks_and_passing_instrument(
     repository = Path(__file__).parents[2]
     monkeypatch.syspath_prepend(str(repository / "scripts"))
     coordinator: Any = importlib.import_module("run_claude_development_gate")
-    path = repository / "development_benchmark_claude" / "PREREGISTRATION-v2.0.json"
+    path = repository / "development_benchmark_claude" / "PREREGISTRATION-v2.1.json"
     preregistration = json.loads(path.read_text(encoding="utf-8"))
     design = load_claude_development_design(
         repository / "development_benchmark_claude",
@@ -74,3 +74,52 @@ def test_corrected_comparison_validity_does_not_require_a_perfect_score(
         )
         == []
     )
+
+
+def test_successful_alias_receipt_excludes_out_of_manifest_trace_commands(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = Path(__file__).parents[2]
+    monkeypatch.syspath_prepend(str(repository / "scripts"))
+    coordinator: Any = importlib.import_module("run_claude_development_gate")
+    events = (
+        {
+            "message": {
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "id": "approved-use",
+                        "name": "Bash",
+                        "input": {"command": "acl-test-full"},
+                    },
+                    {
+                        "type": "tool_use",
+                        "id": "rejected-use",
+                        "name": "Bash",
+                        "input": {"command": "python3 -m unittest -v"},
+                    },
+                ]
+            }
+        },
+        {
+            "message": {
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": "approved-use",
+                        "is_error": False,
+                    },
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": "rejected-use",
+                        "is_error": False,
+                    },
+                ]
+            }
+        },
+    )
+
+    assert coordinator._successful_audited_aliases(
+        events,
+        accepted_aliases={"acl-test-full"},
+    ) == {"acl-test-full"}

@@ -206,9 +206,13 @@ class ClaudeDevelopmentRunObservation(FrozenModel):
     command_digest: Sha256Digest
     command_manifest_digest: Sha256Digest | None = None
     command_audit_digest: Sha256Digest | None = None
+    denied_command_audit_digest: Sha256Digest | None = None
     accepted_aliases: tuple[NonEmptyStr, ...] = ()
     successful_aliases: tuple[NonEmptyStr, ...] = ()
+    denied_command_attempts: int = Field(default=0, ge=0)
     visible_test_returncode: int | None = None
+    runner_failure_code: NonEmptyStr | None = None
+    runner_failure_subject_digest: Sha256Digest | None = None
     environment_digest: Sha256Digest
     started_at: UtcDateTime
     finished_at: UtcDateTime

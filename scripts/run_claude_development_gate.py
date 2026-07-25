@@ -253,13 +253,28 @@ def _successful_aliases(events: tuple[JsonObject, ...]) -> set[str]:
     return successful
 
 
+def _successful_audited_aliases(
+    events: tuple[JsonObject, ...],
+    *,
+    accepted_aliases: set[str],
+) -> set[str]:
+    """Return successes only for commands accepted by the bounded manifest audit.
+
+    A trace can contain a successful tool result followed by an out-of-manifest Bash attempt.
+    Failure evidence intentionally retains only the partial accepted-command audit, so raw trace
+    commands that are not in that audit must never be promoted into the public observation.
+    """
+
+    return _successful_aliases(events).intersection(accepted_aliases)
+
+
 def _corrected_execution_contract(
     preregistration: dict[str, Any],
     *,
     task_ids: set[str],
 ) -> tuple[dict[str, Any], dict[str, tuple[str, ...]]]:
-    if preregistration.get("schema_version") != "2.0.0":
-        raise RuntimeError("corrected comparison requires preregistration schema 2.0.0")
+    if preregistration.get("schema_version") != "2.1.0":
+        raise RuntimeError("corrected comparison requires preregistration schema 2.1.0")
     execution = preregistration.get("execution")
     expected_execution = {
         "planned_runs": 16,
@@ -274,6 +289,7 @@ def _corrected_execution_contract(
         "command_memory_mb": 512,
         "command_file_size_mb": 16,
         "command_process_limit": 256,
+        "command_process_limit_scope": "additional_uid_tasks_within_outer_pid_boundary",
         "command_open_files_limit": 64,
     }
     if execution != expected_execution:
@@ -678,6 +694,8 @@ def main() -> None:
         "workspace_and_config_teardown_required": True,
         "quality_scores_are_outcomes_not_validity_requirements": True,
         "test_alias_use_is_instruction_adherence_not_validity": True,
+        "proven_policy_denials_are_instruction_adherence_not_instrument_failure": True,
+        "unblocked_out_of_manifest_command_invalidates_and_stops_grid": True,
     }:
         raise RuntimeError("corrected comparison validity policy drifted")
     if preregistration.get("blinding") != {
@@ -732,6 +750,12 @@ def main() -> None:
         raise RuntimeError("corrected comparison task bindings drifted")
     prior_evidence = preregistration.get("prior_evidence")
     expected_prior_evidence = {
+        "corrected_comparison_v2_0_failure_digest": sha256_file(
+            repo
+            / "development_benchmark_claude"
+            / "results"
+            / "corrected-comparison-instrument-failure-v2.0.json"
+        ),
         "instrument_success_receipt_digest": sha256_file(
             repo / "development_benchmark_claude" / "results" / "instrument-canary-success-v12.json"
         ),
@@ -804,7 +828,7 @@ def main() -> None:
         "claude_code_version": design.cli_version,
         "model_id": design.model,
         "runtime_lock_digest": runtime_lock_digest,
-        "runner_boundary": "instrument-canary-success-v12",
+        "runner_boundary": "instrument-canary-success-v12-plus-pretooluse-policy-v1",
     }:
         raise RuntimeError("corrected comparison runtime binding drifted")
     runner = ClaudeCodeTargetRunner(
@@ -899,6 +923,8 @@ def main() -> None:
             )
             trace_conformant = True
             runner_failure_reason: str | None = None
+            runner_failure_code: str | None = None
+            runner_failure_subject_digest: str | None = None
             try:
                 result = runner.run(request)
             except TargetExecutionError as exc:
@@ -907,6 +933,8 @@ def main() -> None:
                 result = exc.evidence
                 trace_conformant = False
                 runner_failure_reason = str(exc)
+                runner_failure_code = exc.failure_code
+                runner_failure_subject_digest = exc.failure_subject_digest
             if condition_file.exists():
                 condition_file.unlink()
             _remove_interpreter_artifacts(workspace)
@@ -940,7 +968,10 @@ def main() -> None:
             diagnostic_passed, diagnostic_total = _counts(scorer_value["diagnostic"])
             neutral_passed, neutral_total = _counts(scorer_value["neutral"])
             accepted_aliases = {entry.alias for entry in result.command_audit}
-            successful_aliases = _successful_aliases(result.events)
+            successful_aliases = _successful_audited_aliases(
+                result.events,
+                accepted_aliases=accepted_aliases,
+            )
             invalid_reasons = _comparison_invalid_reasons(
                 terminal_reasons=terminal_reasons,
                 runner_failure_reason=runner_failure_reason,
@@ -984,9 +1015,13 @@ def main() -> None:
                 "command_digest": result.command_digest,
                 "command_manifest_digest": result.command_manifest_digest,
                 "command_audit_digest": _command_audit_digest(result.command_audit),
+                "denied_command_audit_digest": _command_audit_digest(result.denied_command_audit),
                 "accepted_aliases": tuple(sorted(accepted_aliases)),
                 "successful_aliases": tuple(sorted(successful_aliases)),
+                "denied_command_attempts": len(result.denied_command_audit),
                 "visible_test_returncode": visible_test.returncode,
+                "runner_failure_code": runner_failure_code,
+                "runner_failure_subject_digest": runner_failure_subject_digest,
                 "environment_digest": environment_digest,
                 "started_at": result.started_at,
                 "finished_at": result.finished_at,
@@ -1041,6 +1076,8 @@ def main() -> None:
             stream.flush()
             os.fsync(stream.fileno())
         (output_root / "progress.jsonl").chmod(0o600)
+        if not observation.valid:
+            break
 
     invalid_observations = [item for item in observations if not item.valid]
     if invalid_observations:
@@ -1055,6 +1092,8 @@ def main() -> None:
                             "blind_condition_id": item.blind_condition_id,
                             "blind_output_id": item.blind_output_id,
                             "invalid_reason": item.invalid_reason,
+                            "runner_failure_code": item.runner_failure_code,
+                            "runner_failure_subject_digest": (item.runner_failure_subject_digest),
                             "run_id": item.run_id,
                             "task_id": item.task_id,
                         }
@@ -1066,6 +1105,7 @@ def main() -> None:
                     "raw_retention_deadline": datetime.now(UTC) + timedelta(days=30),
                     "scores_released": False,
                     "source_commit": source_commit_value,
+                    "stopped_early": len(observations) < execution["planned_runs"],
                     "status": "instrument_failure_no_comparison",
                     "total_cost_usd": total_cost,
                 }

@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0.0",
+  "attempt_id": "claude-haiku-compiler-v2-corrected-comparison-attempt-1",
+  "status": "instrument_failure_no_comparison",
+  "recorded_at": "2026-07-25T21:03:06Z",
+  "raw_retention_deadline": "2026-08-24T21:03:06Z",
+  "source_commit": "b2ff8294a75a544718a399e286178fbba6a5949d",
+  "preregistration_digest": "sha256:9ba6a2108c086428f430b130f98fa28d9349486935c5540d878abe3dc4307fe5",
+  "public_plan_digest": "sha256:222b5eaa17c092899e0278d68c2f1bf2e029e27d649a7358210e6e32a585185d",
+  "frozen_input_manifest_digest": "sha256:c51cbbb3d3de9d8c1789f61a34292702f90043fdd83623dbbb35477f3e13080a",
+  "private_plan_payload_digest": "sha256:70c99e34b9b6350e74ade4b74bf16d993be97bbc488ae41bd7fee8cd0d5c2667",
+  "run_payload_digest": "sha256:7870da243b14ee62202c08b133cf6a55b228f0f4bafc33ccd8258c7679ebbb3d",
+  "planned_runs": 16,
+  "completed_provider_runs": 1,
+  "valid_comparison_records": 0,
+  "retry_executed": false,
+  "exact_cost_usd": 0.0469877,
+  "failure": {
+    "stage": "post_execution_trace_and_receipt_validation",
+    "code": "unblocked_out_of_manifest_bash_command",
+    "summary": "Claude executed an unapproved file-discovery command before using the bounded test alias. The outer minimal-filesystem boundary prevented host, credential, sealed-benchmark, and Milestone 6 access, but the exact-command policy had not blocked the command before execution.",
+    "receipt_bug": "The coordinator then rejected its own failure observation because successful raw trace commands were not filtered to the partial accepted-command audit."
+  },
+  "repair": {
+    "compiler_or_material_changed": false,
+    "required": [
+      "enforce exact Bash aliases with a managed PreToolUse hook before execution",
+      "audit policy-denied command digests separately from accepted aliases",
+      "treat a proven blocked attempt as instruction-adherence evidence rather than instrument failure",
+      "fail closed if an out-of-manifest command is not proven blocked",
+      "make the per-command process ceiling relative to ambient UID threads"
+    ]
+  },
+  "raw_payloads_encrypted_outside_git": true,
+  "condition_mapping_exposed": false,
+  "objective_scores_exposed": false,
+  "blind_output_packet_created": false,
+  "adaptation_quality_comparison_allowed": false,
+  "cross_agent_transfer_claim_allowed": false,
+  "milestone_6_custody_accessed": false,
+  "milestone_6_materials_modified": false
+}
