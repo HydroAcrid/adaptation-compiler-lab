@@ -210,3 +210,31 @@ def test_visible_fixture_manifest_excludes_runner_and_repository_metadata(
     assert ".git" not in manifest
     assert ".acl-condition.md" not in manifest
     assert "CLAUDE.md" not in manifest
+
+
+def test_v2_9_blind_packet_is_digest_bound_and_condition_safe() -> None:
+    repository = Path(__file__).parents[2]
+    results = repository / "development_benchmark_claude" / "results"
+    packet = results / "blind-rating-packet-v2.9.md"
+    receipt = json.loads(
+        (results / "corrected-comparison-blind-run-v2.9.json").read_text(encoding="utf-8")
+    )
+
+    assert sha256_file(packet) == receipt["blind_packet_digest"]
+    assert receipt["completed_runs"] == receipt["valid_runs"] == 16
+    assert receipt["condition_mapping_withheld"] is True
+    assert receipt["objective_scores_withheld"] is True
+    assert receipt["token_and_cost_data_withheld"] is True
+    assert receipt["milestone_6_custody_accessed"] is False
+    serialized = packet.read_text(encoding="utf-8")
+    for forbidden in (
+        "strong_static_profile",
+        "compiled_adaptation",
+        "compiled_v2",
+        "blind_condition_id",
+        "ANTHROPIC_API_KEY",
+        "sk-ant-",
+        "/home/kevin_dotel",
+        ".acl-condition",
+    ):
+        assert forbidden not in serialized

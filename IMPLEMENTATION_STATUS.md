@@ -151,6 +151,11 @@ integration, web UI, public release, or remote research-data storage occurred.
 - The final v12 strong-profile and compiled-adaptation cells were both valid and perfect on this
   one public instrument task. Exact cost was USD $0.05902235. This establishes a functioning
   measurement path, not adaptation superiority or general cross-agent transfer.
+- Completed the corrected Claude Haiku strong-profile-versus-compiled grid under preregistration
+  v2.9: 16/16 randomized public development cells are valid. The condition map, automated scores,
+  token use, and cost remain sealed pending Kevin's eight blind ratings. The sanitized packet is
+  `development_benchmark_claude/results/blind-rating-packet-v2.9.md`; no Milestone 6 custody was
+  accessed.
 
 ## Verification performed
 
@@ -165,7 +170,7 @@ uv run pytest
 uv build
 ```
 
-The current full suite formats 225 files, passes strict typing, passes 388
+The current full suite formats 226 files, passes strict typing, passes 399
 tests, and builds both
 the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
@@ -207,8 +212,9 @@ outside the workspace in owner-readable-only files. They are never committed, pr
 persisted in traces. The runner continues to reject ambiguous sources, broad key permissions,
 workspace-local keys, alternate providers, and missing sandbox support.
 
-The bounded Claude development instrument canary is complete. Do not begin the preregistered
-32-run paid Claude Code feasibility pilot without a separate explicit authorization. The next
-research decision is whether to run a properly powered non-held-out Claude comparison or authorize
-the sealed Milestone 6 pilot. Do not modify the frozen pack from this single instrument task,
-access Milestone 6 custody, or interpret instrument conformance as a cross-agent result.
+The corrected non-held-out Claude development grid is complete and remains blinded. The immediate
+next action is Kevin's First/Second/Tie rating for each of the eight anonymous pairs in
+`development_benchmark_claude/results/blind-rating-packet-v2.9.md`. Do not reveal its condition
+mapping, automated scores, token use, or cost until all eight ratings are durably recorded. Do not
+begin the preregistered 32-run paid Claude Code feasibility pilot without separate explicit
+authorization, modify the frozen pack from this comparison, or access Milestone 6 custody.
