@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0.0",
+  "attempt_id": "claude-haiku-compiler-v2-corrected-comparison-attempt-9",
+  "status": "instrument_failure_no_comparison",
+  "recorded_at": "2026-07-25T22:18:55.239070Z",
+  "raw_retention_deadline": "2026-08-24T22:18:55.239070Z",
+  "source_commit": "3dbcfc13a2926af69f55d54bf4391330385b3a32",
+  "preregistration_digest": "sha256:59aba04dd6a0c2407e12db23e608387a780f5b1815297e6d1556b1e97b852080",
+  "public_plan_digest": "sha256:80784ec42551c628d6bcf8b56a08433cb83184b40dd8af1163c861f53dc2bcb9",
+  "frozen_input_manifest_digest": "sha256:1e08fdfe84ce67e8506f1c5c30d29103a671c9fd901a6278d4f8e9e1bcba1156",
+  "failure_receipt_digest": "sha256:f4a22cd6e3aebffcae8530c4bf4f6738b1f68ba8daced17ca9c15777e811ef74",
+  "private_plan_payload_digest": "sha256:36d2d252299cd932f79f63959aaccf8c7b23569fa47288e6acd0d72a2da98f60",
+  "invalid_run_payload_digest": "sha256:f3819ecf222ebfaf48da201727de2c3ffc9651beb645ca0f1ae61d53e31d886f",
+  "planned_runs": 16,
+  "completed_provider_runs": 10,
+  "valid_comparison_records": 9,
+  "retry_executed": false,
+  "exact_cost_usd": 0.39857215,
+  "failure": {
+    "stage": "policy_audit_reconciliation",
+    "code": "structured_preexecution_denial_unclassified",
+    "summary": "The first nine randomized cells were valid. In cell ten, an approved test alias executed normally, while a separate out-of-manifest Python command was rejected by Claude Code's permission layer before the OS shell was invoked. The runner stopped because it had not yet classified structured pre-execution permission denials as proven non-execution."
+  },
+  "repair": {
+    "compiler_or_material_changed": false,
+    "required": [
+      "bind pre-execution denial evidence to the exact Bash tool-use ID in the terminal result",
+      "record an out-of-manifest structured permission denial as agent noncompliance",
+      "continue to require OS policy evidence for every approved alias",
+      "continue to reject an approved alias denied before the OS boundary",
+      "add regression tests for both cases"
+    ]
+  },
+  "raw_payloads_encrypted_outside_git": true,
+  "condition_mapping_exposed": false,
+  "objective_scores_exposed": false,
+  "blind_output_packet_created": false,
+  "partial_valid_records_used": false,
+  "adaptation_quality_comparison_allowed": false,
+  "cross_agent_transfer_claim_allowed": false,
+  "milestone_6_custody_accessed": false,
+  "milestone_6_materials_modified": false
+}

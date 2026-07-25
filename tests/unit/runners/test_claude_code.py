@@ -82,6 +82,8 @@ def invoke_bash(command):
         text=True,
     )
 
+permission_denials = []
+
 print(json.dumps({
     "type": "system",
     "subtype": "init",
@@ -217,6 +219,64 @@ if "BLOCKED_COMMAND_MARKER" in prompt:
         },
     }), flush=True)
 
+if "PERMISSION_LAYER_DENIAL_MARKER" in prompt:
+    permission_denials.append({
+        "tool_input": {"command": "python3 -c 'print(1)'"},
+        "tool_name": "Bash",
+        "tool_use_id": "permission-denied-bash-1",
+    })
+    print(json.dumps({
+        "type": "assistant",
+        "message": {
+            "content": [{
+                "type": "tool_use",
+                "id": "permission-denied-bash-1",
+                "name": "Bash",
+                "input": {"command": "python3 -c 'print(1)'"},
+            }]
+        },
+    }), flush=True)
+    print(json.dumps({
+        "type": "user",
+        "message": {
+            "content": [{
+                "type": "tool_result",
+                "tool_use_id": "permission-denied-bash-1",
+                "content": "Permission denied",
+                "is_error": True,
+            }]
+        },
+    }), flush=True)
+
+if "PERMISSION_LAYER_APPROVED_DENIAL_MARKER" in prompt:
+    permission_denials.append({
+        "tool_input": {"command": "acl-test-full"},
+        "tool_name": "Bash",
+        "tool_use_id": "permission-denied-approved-bash-1",
+    })
+    print(json.dumps({
+        "type": "assistant",
+        "message": {
+            "content": [{
+                "type": "tool_use",
+                "id": "permission-denied-approved-bash-1",
+                "name": "Bash",
+                "input": {"command": "acl-test-full"},
+            }]
+        },
+    }), flush=True)
+    print(json.dumps({
+        "type": "user",
+        "message": {
+            "content": [{
+                "type": "tool_result",
+                "tool_use_id": "permission-denied-approved-bash-1",
+                "content": "Permission denied",
+                "is_error": True,
+            }]
+        },
+    }), flush=True)
+
 if "OVERSIZED_TIMEOUT_MARKER" in prompt:
     completed = invoke_bash("acl-test-full")
     print(json.dumps({
@@ -293,6 +353,7 @@ print(json.dumps({
     "prompt_exposes_python_implementation": (
         "python3 -m unittest" in prompt.split("Execution boundary:", 1)[-1]
     ),
+    "permission_denials": permission_denials,
     "total_cost_usd": 0.01,
 }), flush=True)
 """
@@ -801,6 +862,21 @@ def test_proven_blocked_command_is_audited_without_invalidating_run(tmp_path: Pa
     assert denied.reason == "out_of_manifest_bash_command"
     assert denied.blocked is True
     assert denied.requested_command_digest.startswith("sha256:")
+
+
+def test_permission_layer_denial_is_audited_without_os_execution(tmp_path: Path) -> None:
+    result = _runner(tmp_path).run(_request(tmp_path, prompt="PERMISSION_LAYER_DENIAL_MARKER"))
+
+    assert result.command_audit == ()
+    assert len(result.denied_command_audit) == 1
+    denied = result.denied_command_audit[0]
+    assert denied.reason == "claude_permission_layer_denial"
+    assert denied.blocked is True
+
+
+def test_permission_layer_denial_of_approved_alias_invalidates_run(tmp_path: Path) -> None:
+    with pytest.raises(TargetExecutionError, match="policy evidence"):
+        _runner(tmp_path).run(_request(tmp_path, prompt="PERMISSION_LAYER_APPROVED_DENIAL_MARKER"))
 
 
 def test_internal_denied_shell_probe_does_not_invalidate_run(tmp_path: Path) -> None:

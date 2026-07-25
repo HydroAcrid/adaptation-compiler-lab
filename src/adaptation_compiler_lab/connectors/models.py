@@ -158,7 +158,11 @@ class TargetDeniedCommandAuditEntry(FrozenModel):
 
     sequence: int = Field(ge=1)
     requested_command_digest: Sha256Digest
-    reason: Literal["out_of_manifest_bash_command", "background_bash_forbidden"]
+    reason: Literal[
+        "out_of_manifest_bash_command",
+        "background_bash_forbidden",
+        "claude_permission_layer_denial",
+    ]
     blocked: Literal[True] = True
 
 

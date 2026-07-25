@@ -735,6 +735,20 @@ def _assert_trace_conformance(
         and nested.get("is_error") is True
         and isinstance(nested.get("tool_use_id"), str)
     }
+    permission_denied_bash_ids: set[str] = set()
+    for event in events:
+        if event.get("type") != "result":
+            continue
+        permission_denials = event.get("permission_denials", [])
+        if not isinstance(permission_denials, list):
+            raise TargetExecutionError("Claude result has malformed permission denials")
+        for denial in permission_denials:
+            if (
+                isinstance(denial, dict)
+                and denial.get("tool_name") == "Bash"
+                and isinstance(denial.get("tool_use_id"), str)
+            ):
+                permission_denied_bash_ids.add(cast(str, denial["tool_use_id"]))
     reserved_paths = {
         (workspace / name).resolve() for name in (*_RUNTIME_ARTIFACTS, *_AMBIENT_READ_NAMES)
     }
@@ -797,6 +811,18 @@ def _assert_trace_conformance(
                         None,
                     )
                     if matching_policy_index is None:
+                        if (
+                            expected_policy_decision == "deny"
+                            and tool_use_id in permission_denied_bash_ids
+                        ):
+                            denied_audit.append(
+                                TargetDeniedCommandAuditEntry(
+                                    sequence=len(denied_audit) + 1,
+                                    requested_command_digest=raw_command_digest,
+                                    reason="claude_permission_layer_denial",
+                                )
+                            )
+                            continue
                         raise TargetExecutionError(
                             "Bash tool use lacks matching pre-execution policy evidence",
                             failure_code="bash_policy_evidence_missing",
