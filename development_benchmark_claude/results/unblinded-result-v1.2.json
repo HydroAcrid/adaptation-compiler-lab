@@ -1,0 +1,182 @@
+{
+  "schema_version": "1.0.0",
+  "benchmark_id": "claude-haiku-compiler-v2-development-gate-final-restart",
+  "status": "instrument_limited_no_conclusion",
+  "rating_digest": "sha256:3e15445db52749209130e07b8e18fe9f0978fa13e8e1df60ddaadcb42211179f",
+  "blind_report_digest": "sha256:3bf6f9dd876babcee4f593a8b5eeba48bd1be69ee63a32667e2d17735832bfca",
+  "blind_packet_digest": "sha256:eaed9a507a6f3b01ec2debb0ac5dfb27c899cebf31016f2d1fbb5e413bf4d332",
+  "mapping": [
+    {
+      "task": "communication",
+      "repetition": 1,
+      "first": {
+        "output_id": "output-b3a235ec0f02f0c20f685d81",
+        "condition": "strong_static_profile"
+      },
+      "second": {
+        "output_id": "output-cb1858710531bf1ba34920d4",
+        "condition": "compiled_adaptation"
+      },
+      "preference": "compiled_adaptation"
+    },
+    {
+      "task": "communication",
+      "repetition": 2,
+      "first": {
+        "output_id": "output-2da5b0f66007924a1cf8c8b4",
+        "condition": "compiled_adaptation"
+      },
+      "second": {
+        "output_id": "output-5c1e40bf63f53acf1de6ae16",
+        "condition": "strong_static_profile"
+      },
+      "preference": "strong_static_profile"
+    },
+    {
+      "task": "debugging",
+      "repetition": 1,
+      "first": {
+        "output_id": "output-48be73e2f1fd1254fedb5fb1",
+        "condition": "compiled_adaptation"
+      },
+      "second": {
+        "output_id": "output-8b500b0194f9b0b769a638fb",
+        "condition": "strong_static_profile"
+      },
+      "preference": "compiled_adaptation"
+    },
+    {
+      "task": "debugging",
+      "repetition": 2,
+      "first": {
+        "output_id": "output-33e7eb8563f561c4b91f043d",
+        "condition": "compiled_adaptation"
+      },
+      "second": {
+        "output_id": "output-dfdc9f32ea77c63605b4b7db",
+        "condition": "strong_static_profile"
+      },
+      "preference": "tie"
+    },
+    {
+      "task": "environment_safety",
+      "repetition": 1,
+      "first": {
+        "output_id": "output-2e52e0b4b0b5111fd4aa9389",
+        "condition": "compiled_adaptation"
+      },
+      "second": {
+        "output_id": "output-fb0d9dff5505de8ac04773ef",
+        "condition": "strong_static_profile"
+      },
+      "preference": "compiled_adaptation"
+    },
+    {
+      "task": "environment_safety",
+      "repetition": 2,
+      "first": {
+        "output_id": "output-9d7a30a7a41d7ef655e6441b",
+        "condition": "strong_static_profile"
+      },
+      "second": {
+        "output_id": "output-d9d94151a8f872c9985906e7",
+        "condition": "compiled_adaptation"
+      },
+      "preference": "compiled_adaptation"
+    },
+    {
+      "task": "research_integrity",
+      "repetition": 1,
+      "first": {
+        "output_id": "output-ba2459f5faca3e3d71cef97c",
+        "condition": "strong_static_profile"
+      },
+      "second": {
+        "output_id": "output-e78c32d8e440c2990ac8ba38",
+        "condition": "compiled_adaptation"
+      },
+      "preference": "strong_static_profile"
+    },
+    {
+      "task": "research_integrity",
+      "repetition": 2,
+      "first": {
+        "output_id": "output-dd67417e8df2adf17ed208c7",
+        "condition": "compiled_adaptation"
+      },
+      "second": {
+        "output_id": "output-faf397301359cf1473758d6c",
+        "condition": "strong_static_profile"
+      },
+      "preference": "compiled_adaptation"
+    }
+  ],
+  "condition_aggregates": {
+    "strong_static_profile": {
+      "preference_wins": 2,
+      "preference_ties": 1,
+      "valid_runs": 7,
+      "invalid_runs": 1,
+      "objective_checks": {
+        "passed": 22,
+        "total": 28
+      },
+      "diagnostic_checks": {
+        "passed": 11,
+        "total": 28
+      },
+      "neutral_checks": {
+        "passed": 21,
+        "total": 28
+      },
+      "cost_usd": 0.5173687
+    },
+    "compiled_adaptation": {
+      "preference_wins": 5,
+      "preference_ties": 1,
+      "valid_runs": 8,
+      "invalid_runs": 0,
+      "objective_checks": {
+        "passed": 28,
+        "total": 32
+      },
+      "diagnostic_checks": {
+        "passed": 16,
+        "total": 32
+      },
+      "neutral_checks": {
+        "passed": 21,
+        "total": 32
+      },
+      "cost_usd": 0.5162768
+    }
+  },
+  "cost": {
+    "completed_16_run_grid_usd": 1.0336455,
+    "completed_live_canary_usd": 0.015593,
+    "exact_known_completed_total_usd": 1.0492385,
+    "failed_start_exact_cost_available": false,
+    "failed_start_maximum_total_usd": 2.0,
+    "maximum_cumulative_cost_usd": 3.0492385
+  },
+  "instrument_findings": {
+    "runs_with_bash_permission_denial": 16,
+    "required_agent_test_execution_reliably_available": false,
+    "independent_post_run_test_execution_is_not_agent_verification": true,
+    "neutral_repository_state_contaminated_by_runner_artifacts": true
+  },
+  "interpretation": {
+    "descriptive_direction": "compiled_adaptation_favored",
+    "compiler_v2_success_claim_allowed": false,
+    "compiler_v2_failure_claim_allowed": false,
+    "cross_agent_transfer_claim_allowed": false
+  },
+  "preservation": {
+    "original_outputs_modified": false,
+    "original_traces_modified": false,
+    "blind_ratings_modified": false,
+    "execution_limitations_modified": false,
+    "milestone_6_custody_accessed": false,
+    "milestone_6_materials_modified": false
+  }
+}

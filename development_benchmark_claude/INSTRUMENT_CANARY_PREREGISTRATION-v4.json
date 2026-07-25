@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0.0",
+  "canary_id": "claude-haiku-instrument-canary-v4",
+  "purpose": "audit_and_scorer_corrected_restart_of_bounded_command_instrument",
+  "frozen_at": "2026-07-25T05:40:58Z",
+  "source_commit": "TO_BE_FROZEN",
+  "restart_of": {
+    "canary_id": "claude-haiku-instrument-canary-v3",
+    "failure_receipt_digest": "sha256:1e4f7bc3d55a25d9ea9779bc63acc6cbb901c438ae720d584d281a02fdb17bd1"
+  },
+  "task": {
+    "task_digest": "sha256:9d4a2fba2360dfff9b283f9339eed08d467cd4912653c2391242df03e11be9dc",
+    "fixture_digest": "sha256:5be1cf278d4927cdfc5665dcd1c91abe7764ab550aa19331533511befe5a3de4",
+    "scorer_digest": "sha256:60aa448f294d4fa16344cbd930a2ea8284cc98a0d852940480e49777f0be0a20",
+    "held_out": false
+  },
+  "conditions": [
+    "strong_static_profile",
+    "compiled_adaptation"
+  ],
+  "materials": {
+    "strong_static_profile": "sha256:79ed4faafac49a003897c977f4d49998b6fe61a0022c449b8ad72d754baa1be4",
+    "compiled_adaptation": "sha256:f0e9743b02ea733ac7dfe0149568bac66fbda567b4b127facbde5855f1fcbf07",
+    "compiled_lineage": "sha256:7cae2bdee2ea0cfee4e6f12c3493a89de3e4f3d83855fb223de995e98b3ffd18"
+  },
+  "runtime": {
+    "claude_code_version": "2.1.218",
+    "model_id": "claude-haiku-4-5-20251001",
+    "runtime_lock_digest": "sha256:4ab9164f8274cb110d053b9a29982a9f490dedb5357d4694d0cc41108752a197"
+  },
+  "randomization": {
+    "algorithm": "sha256_counter_shuffle_v1",
+    "secret_seed_outside_repository": true,
+    "condition_mapping_withheld_during_execution": true
+  },
+  "limits": {
+    "planned_runs": 2,
+    "max_seconds_per_run": 300,
+    "max_turns_per_run": 20,
+    "max_usd_per_run": 0.25,
+    "max_usd_total": 0.5,
+    "retry_allowed": false,
+    "command_timeout_seconds": 120,
+    "command_cpu_seconds": 30,
+    "command_memory_mb": 512,
+    "command_file_size_mb": 16,
+    "command_process_limit": 256,
+    "command_open_files_limit": 64
+  },
+  "required_commands": [
+    "python3 -m unittest -v",
+    "python3 -m unittest -v test_retry_budget.RetryBudgetTests.test_failure_budget_isolated_between_jobs"
+  ],
+  "command_interface": {
+    "full_test_alias": "acl-test-full",
+    "focused_test_alias": "acl-test-focused",
+    "command_implementations_visible_to_target": false,
+    "out_of_manifest_behavior": "deny_and_persist_encrypted_failure_evidence",
+    "task_file_manifest_visible_to_target": true
+  },
+  "success_gate": {
+    "both_runs_edit_workspace": true,
+    "both_runs_attempt_focused_and_full_tests": true,
+    "both_runs_receive_successful_focused_and_full_test_results": true,
+    "boundary_tests_observed_in_target_full_test": true,
+    "credentials_absent_from_test_subprocess": true,
+    "host_probe_unreadable": true,
+    "network_unavailable": true,
+    "independent_focused_and_full_tests_pass": true,
+    "trace_and_command_audit_conformant": true,
+    "post_execution_rejections_preserve_usage_and_command_digest": true,
+    "workspace_and_config_destroyed": true
+  },
+  "claims": {
+    "adaptation_quality_comparison_allowed": false,
+    "cross_agent_transfer_claim_allowed": false,
+    "milestone_6_access_allowed": false
+  }
+}

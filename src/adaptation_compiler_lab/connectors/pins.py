@@ -22,6 +22,9 @@ from adaptation_compiler_lab.domain.base import (
 from adaptation_compiler_lab.domain.values import strings_are_sorted_unique
 
 DEFAULT_RUNTIME_LOCK: Final = Path(__file__).resolve().parent / "runtime_pins" / "milestone_4.json"
+DEFAULT_HAIKU_DEVELOPMENT_RUNTIME_LOCK: Final = (
+    Path(__file__).resolve().parent / "runtime_pins" / "claude_haiku_development.json"
+)
 DEFAULT_SOURCE_RUNTIME_LOCK: Final = (
     Path(__file__).resolve().parent / "runtime_pins" / "milestone_5_source.json"
 )
@@ -75,7 +78,7 @@ class ClaudeCodePin(FrozenModel):
     """Claude Code executable and target model identity."""
 
     executable: ExecutablePin
-    model_id: Literal["claude-sonnet-5"]
+    model_id: Literal["claude-sonnet-5", "claude-haiku-4-5-20251001"]
     api_base_url: Literal["https://api.anthropic.com"]
 
 

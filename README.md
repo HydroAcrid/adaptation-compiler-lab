@@ -21,7 +21,10 @@ replacement task families then completed six valid blinded Luna cells. Kevin's t
 were committed before unblinding and all favored the strong static profile. Automated scores tied
 at 12/12 objective, 11/12 diagnostic, and 12/12 neutral checks for each condition, but compiled
 adaptation failed the preregistered tie-or-better rule on preference. Paid cross-agent execution
-remains closed; this is negative same-agent development evidence, not a transfer result.
+then began only as an explicitly authorized two-cell non-held-out instrument canary. Its first,
+strong-profile cell failed closed on an out-of-manifest Bash command; the compiled cell did not
+run and there was no retry. This is an instrumentation failure, not a transfer result, and the
+held-out Milestone 6 pilot remains closed.
 
 ## What is here
 

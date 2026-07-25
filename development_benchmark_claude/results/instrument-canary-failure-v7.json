@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0.0",
+  "canary_id": "claude-haiku-instrument-canary-v7",
+  "preregistration": "INSTRUMENT_CANARY_PREREGISTRATION-v7.json",
+  "preregistration_digest": "sha256:70805a43de0cf994b4df66fe7b0994339def86e22a0c5f71f1d30ef6a503d97e",
+  "source_commit": "7923b6609dbcd803f3500dbb3c68ba2df243a21b",
+  "model": "claude-haiku-4-5-20251001",
+  "claude_code_version": "2.1.218",
+  "status": "instrument_canary_failed_closed",
+  "attempted_at": "2026-07-25T06:15:43Z",
+  "planned_runs": 2,
+  "attempted_runs": 1,
+  "completed_valid_trial_records": 0,
+  "second_run_executed": false,
+  "retries": 0,
+  "failure_stage": "target_bash_sandbox_startup_then_trace_conformance",
+  "failure_reasons": [
+    "The isolated managed-settings override was supplied as a file path even though the pinned Claude Code binary expects a directory.",
+    "Claude Code therefore fell back to the nonexistent WSL Windows-policy path and every approved alias still failed in its internal bubblewrap layer.",
+    "After the alias failures, the target attempted an unapproved command; trace conformance rejected it and retained exact failure evidence."
+  ],
+  "failed_run": {
+    "condition": "compiled_adaptation",
+    "provider_cost_usd": 0.0654497,
+    "accepted_aliases": [
+      "acl-test-focused",
+      "acl-test-full"
+    ],
+    "failure_code": "out_of_manifest_bash_command",
+    "failure_subject_digest": "sha256:fd7ceb67a3b20e032ac959f199c7e1a7062eba15559f3dc2b9ce523661ca58c7",
+    "raw_failure_bundle_digest": "sha256:397f22c8b5ced5e92189c790636a117d959c9dccfc164da1ed16b56e7c356768"
+  },
+  "exact_provider_cost_available": true,
+  "total_provider_cost_usd": 0.0654497,
+  "public_plan_digest": "sha256:10049277447224cb9358dd662358f90673eb111c7f476bcdd01cdb1eee3ee257",
+  "private_plan_digest": "sha256:b3e42f2bd4638c6333a59e1b81e51c217bad3cc68308f5f229a563514170af60",
+  "completion_digest": "sha256:b4b80050a7e8822c70bd1018e20f52f9e402c9a830fb5e54f9afb13aa3f11cd2",
+  "seed_commitment": "sha256:928ad39833ccbbb2e549c00c50d8f23ae50ac2d7af0b8e20238ecca007576f6b",
+  "encrypted_run_evidence_preserved_outside_git": true,
+  "disposable_workspaces_removed": true,
+  "ephemeral_configurations_removed": true,
+  "host_probe_removed": true,
+  "milestone_6_custody_accessed": false,
+  "milestone_6_materials_modified": false,
+  "full_paid_milestone_6_pilot_executed": false,
+  "claim_boundary": "No adaptation-quality conclusion or cross-agent-transfer claim is permitted.",
+  "disposition": "Do not reuse v7. Supply the isolated managed-settings directory using the pinned binary's actual contract and freeze a separate restart."
+}

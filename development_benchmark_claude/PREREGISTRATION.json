@@ -1,0 +1,86 @@
+{
+  "schema_version": "1.0.0",
+  "benchmark_id": "claude-haiku-compiler-v2-development-gate",
+  "frozen_at": "2026-07-24T20:14:09Z",
+  "design_digest": "sha256:1b1d4aaa32e92e1a9f15e25b2f60c650139bf7c2a178b2227f5e31ca6a18622b",
+  "source_commit": "TO_BE_FROZEN",
+  "purpose": "Test whether an evaluation-backed compiled adaptation can match or exceed a strong static profile on fresh cross-agent development tasks while using less target-visible material.",
+  "conditions": [
+    "strong_static_profile",
+    "compiled_adaptation"
+  ],
+  "materials": {
+    "compiled_v2": "sha256:f0e9743b02ea733ac7dfe0149568bac66fbda567b4b127facbde5855f1fcbf07",
+    "strong_static_profile": "sha256:79ed4faafac49a003897c977f4d49998b6fe61a0022c449b8ad72d754baa1be4"
+  },
+  "material_measurements": {
+    "compiled_v2": {
+      "renderer_version": "2.0.0",
+      "target_tokens": 1170,
+      "utf8_bytes": 5637
+    },
+    "strong_static_profile": {
+      "authoring_method": "isolated_ai_author_plus_isolated_ai_review",
+      "target_tokens": 1684,
+      "utf8_bytes": 8080
+    },
+    "token_counter_id": "anthropic:https://api.anthropic.com/v1/messages/count_tokens:2023-06-01:claude-haiku-4-5-20251001:system-envelope-v1"
+  },
+  "tasks": [
+    {
+      "task_id": "claude-development-communication",
+      "family": "communication",
+      "fixture_digest": "sha256:00b8370e41023c85a75c69075e534173ddfcdcab68c9bbe83ff6aace99843a0e",
+      "independent_scorer_digest": "sha256:fca48886de0c354f7e8ed82bae4a4df15ddf02d3a25a58bed06d769b10b44490"
+    },
+    {
+      "task_id": "claude-development-debugging-verification",
+      "family": "debugging_and_verification",
+      "fixture_digest": "sha256:e8fad46b3990f3180f70d1930bd1cb8bfbf05b4763fbcda262d2ed8e9b169537",
+      "independent_scorer_digest": "sha256:736d9646299a4dd61e86168088678c497050bf24eb3cbc8b2f69f89438ce24d2"
+    },
+    {
+      "task_id": "claude-development-environment-safety",
+      "family": "environment_safety",
+      "fixture_digest": "sha256:73a705d93ef685562cca61f32379c3f0a395043949848b0239c7aefa545d1452",
+      "independent_scorer_digest": "sha256:ff2e67905e74cdeeded3522950df1bbb6bfae4514c5e21ff9110c79cded2f11d"
+    },
+    {
+      "task_id": "claude-development-research-integrity",
+      "family": "research_integrity",
+      "fixture_digest": "sha256:617dc2f4872feefe197284fe71c6e9e6a651c11d272ad4163b12818f1075b489",
+      "independent_scorer_digest": "sha256:c51fa2a0c51172b5be8f9390403c0f43c72210f918075a894c9b36a5b6f7c990"
+    }
+  ],
+  "execution": {
+    "model": "claude-haiku-4-5-20251001",
+    "claude_code_version": "2.1.218",
+    "repetitions_per_condition": 2,
+    "planned_runs": 16,
+    "max_seconds_per_run": 600,
+    "max_turns_per_run": 20,
+    "max_usd_per_run": 1.0,
+    "max_usd_for_grid": 16.0,
+    "max_usd_total_gate": 18.0,
+    "retry_allowed": false,
+    "fresh_ephemeral_workspace_and_config_per_run": true
+  },
+  "analysis": {
+    "primary_objective_evidence": "Paired objective, diagnostic, and neutral-control check results by task and repetition.",
+    "primary_preference_evidence": "Kevin's blind First, Second, or Tie rating for each of eight paired outputs.",
+    "compiler_product_advantage_supported_when": "Compiled v2 beats or ties the strong profile on aggregate objective-plus-diagnostic checks and Kevin's paired preferences, has no lower neutral-control rate, and retains its measured token advantage.",
+    "compiler_product_advantage_not_supported_when": "Compiled v2 loses on either task behavior or Kevin's preferences, causes a neutral-control regression, or the run is invalid.",
+    "descriptive_only": true,
+    "general_thesis_claim_allowed": false
+  },
+  "boundaries": {
+    "held_out": false,
+    "milestone_6_custody_accessed": false,
+    "milestone_6_materials_modified": false,
+    "cross_agent_development_evidence": true,
+    "full_paid_milestone_6_pilot_authorized": false,
+    "raw_results_committed": false,
+    "condition_mapping_withheld_until_blind_ratings": true,
+    "objective_scores_withheld_until_blind_ratings": true
+  }
+}

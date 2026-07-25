@@ -1,0 +1,87 @@
+{
+  "schema_version": "1.0.0",
+  "canary_id": "claude-haiku-instrument-canary-v6",
+  "preregistration": "INSTRUMENT_CANARY_PREREGISTRATION-v6.json",
+  "preregistration_digest": "sha256:05b855d6817ac1a8875a52ba80ef3f6fe2744f73de9ac3cf86b0d34baf592af2",
+  "source_commit": "24969dbed785971487f3d24580ebc88f549bad80",
+  "model": "claude-haiku-4-5-20251001",
+  "claude_code_version": "2.1.218",
+  "status": "instrument_canary_failed",
+  "attempted_at": "2026-07-25T06:00:13Z",
+  "planned_runs": 2,
+  "attempted_runs": 2,
+  "completed_valid_trial_records": 0,
+  "second_run_executed": true,
+  "retries": 0,
+  "failure_stage": "target_bash_sandbox_startup",
+  "failure_reasons": [
+    "The native Linux host-platform and empty managed-settings overrides did not change Claude Code 2.1.218's WSL sandbox mount derivation.",
+    "Every approved alias was accepted but its inner Claude Code bubblewrap failed while creating the absent /mnt/c/Program Files/ClaudeCode mount point.",
+    "Both task implementations and all independent objective, diagnostic, and neutral checks passed, but no target-visible test result or boundary assertion was produced."
+  ],
+  "runs": [
+    {
+      "condition": "strong_static_profile",
+      "provider_cost_usd": 0.06287805,
+      "accepted_aliases": [
+        "acl-test-focused",
+        "acl-test-full"
+      ],
+      "successful_aliases": [],
+      "independent_focused_test_returncode": 0,
+      "independent_full_test_returncode": 0,
+      "objective_checks": {
+        "passed": 4,
+        "total": 4
+      },
+      "diagnostic_checks": {
+        "passed": 4,
+        "total": 4
+      },
+      "neutral_checks": {
+        "passed": 4,
+        "total": 4
+      },
+      "raw_bundle_digest": "sha256:3963f2d62290fd127e8d4ba8f839496e0aff7efb452e5590b7b07f34389162ea"
+    },
+    {
+      "condition": "compiled_adaptation",
+      "provider_cost_usd": 0.05939955,
+      "accepted_aliases": [
+        "acl-test-focused",
+        "acl-test-full"
+      ],
+      "successful_aliases": [],
+      "independent_focused_test_returncode": 0,
+      "independent_full_test_returncode": 0,
+      "objective_checks": {
+        "passed": 4,
+        "total": 4
+      },
+      "diagnostic_checks": {
+        "passed": 4,
+        "total": 4
+      },
+      "neutral_checks": {
+        "passed": 4,
+        "total": 4
+      },
+      "raw_bundle_digest": "sha256:223b10118e64ea1fab48bd525c5eec8233316763c2b47b7573b495019cc90d8d"
+    }
+  ],
+  "exact_provider_cost_available": true,
+  "total_provider_cost_usd": 0.1222776,
+  "public_plan_digest": "sha256:b241cd5c3fc169ff56368f7e07f612b228cdd1703824b1a25fa95cf38d226e67",
+  "private_plan_digest": "sha256:a34a710ceb2bfd3e6794011e09f13a7ebfaac51c5772f8d27d64cf61cbb57379",
+  "completion_digest": "sha256:77a60e5e90bc03927fa661d2e493463d327c0187ea2e3599223f423fdbad5448",
+  "seed_commitment": "sha256:42061c293208324283d05bfcc1cc3f4410ba58279640e188a305f9ad60b028c0",
+  "encrypted_run_evidence_preserved_outside_git": true,
+  "disposable_workspaces_removed": true,
+  "ephemeral_configurations_removed": true,
+  "host_probe_removed": true,
+  "milestone_6_custody_accessed": false,
+  "milestone_6_materials_modified": false,
+  "full_paid_milestone_6_pilot_executed": false,
+  "claim_boundary": "No adaptation-quality conclusion or cross-agent-transfer claim is permitted.",
+  "disposition": "Do not reuse v6. Route only the exact generated aliases around Claude Code's faulty WSL wrapper and place each alias inside the independently pinned Bubblewrap boundary."
+}

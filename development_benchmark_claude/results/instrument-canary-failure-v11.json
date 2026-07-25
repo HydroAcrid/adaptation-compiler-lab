@@ -1,0 +1,91 @@
+{
+  "schema_version": "1.0.0",
+  "canary_id": "claude-haiku-instrument-canary-v11",
+  "preregistration": "INSTRUMENT_CANARY_PREREGISTRATION-v11.json",
+  "preregistration_digest": "sha256:f835777d538f27a07ba24f10da6a6d2a2fe69756ceee662a9db394a7ea06fba3",
+  "source_commit": "d1b6b0c73b74a45ef132e2b27006130e842c3b18",
+  "model": "claude-haiku-4-5-20251001",
+  "claude_code_version": "2.1.218",
+  "status": "instrument_canary_failed_classification",
+  "attempted_at": "2026-07-25T06:57:09.711591Z",
+  "planned_runs": 2,
+  "attempted_runs": 2,
+  "completed_valid_trial_records": 1,
+  "retries": 0,
+  "failure_stage": "trial_validity_classification",
+  "failure_reasons": [
+    "Both target processes edited the disposable workspace, accepted and successfully ran both bounded aliases, passed the focused and full tests, observed every boundary check, and tore down cleanly.",
+    "The compiled-adaptation run scored 4/4 objective, 4/4 diagnostic, and 4/4 neutral.",
+    "The strong-static-profile run scored 4/4 objective, 3/4 diagnostic, and 4/4 neutral because it retained a process-wide scalar counter.",
+    "The coordinator incorrectly treated a non-perfect quality score as an invalid execution record, even though adaptation quality is the measured outcome rather than an instrumentation invariant."
+  ],
+  "runs": [
+    {
+      "condition": "compiled_adaptation",
+      "provider_cost_usd": 0.03059535,
+      "accepted_aliases": [
+        "acl-test-focused",
+        "acl-test-full"
+      ],
+      "successful_aliases": [
+        "acl-test-focused",
+        "acl-test-full"
+      ],
+      "objective": {
+        "passed": 4,
+        "total": 4
+      },
+      "diagnostic": {
+        "passed": 4,
+        "total": 4
+      },
+      "neutral": {
+        "passed": 4,
+        "total": 4
+      },
+      "classified_valid": true,
+      "raw_bundle_digest": "sha256:384e6fa951eef1d25866d54a1ba154e88f9d7124d6bdbe4ed1077c164a10edb6"
+    },
+    {
+      "condition": "strong_static_profile",
+      "provider_cost_usd": 0.0316409,
+      "accepted_aliases": [
+        "acl-test-focused",
+        "acl-test-full"
+      ],
+      "successful_aliases": [
+        "acl-test-focused",
+        "acl-test-full"
+      ],
+      "objective": {
+        "passed": 4,
+        "total": 4
+      },
+      "diagnostic": {
+        "passed": 3,
+        "total": 4
+      },
+      "neutral": {
+        "passed": 4,
+        "total": 4
+      },
+      "classified_valid": false,
+      "raw_bundle_digest": "sha256:dae44a343bf415defd741cdbae6ab95a55a253f185b426f9b82ed8a4b3fcffa6"
+    }
+  ],
+  "exact_provider_cost_available": true,
+  "total_provider_cost_usd": 0.06223625,
+  "public_plan_digest": "sha256:16c1e171bc38bb4d3bdf1d7f9fa73d6c6f10704729b004d55a2f9091c05d7293",
+  "private_plan_digest": "sha256:21c14b7f810b1a5a3f6d1c1b8b7d0b7a9c899cdf3ff0a0aacb310885f36d4a5c",
+  "completion_digest": "sha256:b4346d554390c12072615a25848730e55e97762cbcd8f75a2ff586d0463ef2cd",
+  "seed_commitment": "sha256:a3de07d523fa8ef033cd70a43044104e52405ff821c595541531c22604ade877",
+  "encrypted_run_evidence_preserved_outside_git": true,
+  "disposable_workspaces_removed": true,
+  "ephemeral_configurations_removed": true,
+  "host_probe_removed": true,
+  "milestone_6_custody_accessed": false,
+  "milestone_6_materials_modified": false,
+  "full_paid_milestone_6_pilot_executed": false,
+  "claim_boundary": "No adaptation-quality conclusion or cross-agent-transfer claim is permitted from this instrument canary.",
+  "disposition": "Do not rewrite v11. Separate execution validity from recorded adaptation-quality scores, freeze a new canary, and require the same execution and teardown invariants."
+}

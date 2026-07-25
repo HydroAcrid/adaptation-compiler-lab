@@ -13,6 +13,7 @@ from adaptation_compiler_lab.connectors.codex_app_server import (
     DEFAULT_CODEX_SCHEMA_ROOT,
 )
 from adaptation_compiler_lab.connectors.pins import (
+    DEFAULT_HAIKU_DEVELOPMENT_RUNTIME_LOCK,
     DEFAULT_RUNTIME_LOCK,
     DEFAULT_SOURCE_RUNTIME_LOCK,
     ExecutablePin,
@@ -66,6 +67,18 @@ def test_checked_in_runtime_lock_is_strict_and_complete() -> None:
         (repository_root / "conformance" / "milestone-4.json").read_text(encoding="utf-8")
     )
     assert conformance["runtime_lock_sha256"] == sha256_file(DEFAULT_RUNTIME_LOCK)
+
+
+def test_checked_in_haiku_development_lock_reuses_runtime_and_pins_full_model() -> None:
+    production = load_runtime_pins()
+    development = load_runtime_pins(DEFAULT_HAIKU_DEVELOPMENT_RUNTIME_LOCK)
+
+    assert development.lock_version == "1.1.0"
+    assert development.claude_code.model_id == "claude-haiku-4-5-20251001"
+    assert development.claude_code.executable == production.claude_code.executable
+    assert development.sandbox == production.sandbox
+    assert development.node == production.node
+    assert sha256_file(DEFAULT_HAIKU_DEVELOPMENT_RUNTIME_LOCK).startswith("sha256:")
 
 
 def test_checked_in_desktop_source_runtime_lock_is_strict_and_complete() -> None:

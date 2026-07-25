@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0.0",
+  "canary_id": "claude-haiku-instrument-canary-v5",
+  "preregistration": "INSTRUMENT_CANARY_PREREGISTRATION-v5.json",
+  "preregistration_digest": "sha256:6faaa49863efc41919939b1f50abf6142fa5ca970c1411291a1b017de02e8ab8",
+  "source_commit": "ca46e992a25fe42a58dd194568241379ded0a7f0",
+  "model": "claude-haiku-4-5-20251001",
+  "claude_code_version": "2.1.218",
+  "status": "instrument_canary_failed_closed",
+  "attempted_at": "2026-07-25T05:49:55Z",
+  "planned_runs": 2,
+  "attempted_runs": 2,
+  "completed_valid_trial_records": 0,
+  "second_run_executed": true,
+  "retries": 0,
+  "failure_stage": "target_bash_sandbox_startup",
+  "failure_reasons": [
+    "After inherited PATH removal, Claude Code still derived the absent WSL managed-settings path /mnt/c/Program Files/ClaudeCode and bubblewrap failed while creating its mount point.",
+    "After repeated alias startup failures, the strong-profile cell attempted an unapproved ls command; trace conformance rejected it and preserved its command digest.",
+    "The coordinator labeled len(completed_runs) as completed_valid_runs even when the completed run was invalid."
+  ],
+  "runs": [
+    {
+      "condition": "compiled_adaptation",
+      "provider_cost_usd": 0.0492341,
+      "accepted_aliases": [
+        "acl-test-focused",
+        "acl-test-full"
+      ],
+      "successful_aliases": [],
+      "independent_focused_test_returncode": 0,
+      "independent_full_test_returncode": 0,
+      "objective_checks": {
+        "passed": 4,
+        "total": 4
+      },
+      "diagnostic_checks": {
+        "passed": 4,
+        "total": 4
+      },
+      "neutral_checks": {
+        "passed": 4,
+        "total": 4
+      },
+      "raw_bundle_digest": "sha256:e25698b76f010eaa54bede06d997ff925e76a6fe28ecfa115e4d6d6fe2b36ea8"
+    },
+    {
+      "condition": "strong_static_profile",
+      "provider_cost_usd": 0.0528771,
+      "accepted_aliases": [
+        "acl-test-focused",
+        "acl-test-full"
+      ],
+      "successful_aliases": [],
+      "failure_code": "out_of_manifest_bash_command",
+      "failure_subject_digest": "sha256:1de700c29687cae34561545f50d3c8b3d9afe88e04cc11069f8a6dc6e4ce9464",
+      "raw_failure_bundle_digest": "sha256:053d1c24bcf1dc6f4e5082c5cdb787b72ff36dfb7c58dd3715bbe6af434e8bc6"
+    }
+  ],
+  "exact_provider_cost_available": true,
+  "total_provider_cost_usd": 0.1021112,
+  "public_plan_digest": "sha256:c9d3d24cc8b4d992a63d00409bb89708273d4e5f0b7f309fa8b1489ff64eae6a",
+  "private_plan_digest": "sha256:50fd58fff2e7219e61e8b5947b4485644b66e0972cbc840a8ec5a0e4f1a7f61b",
+  "completion_digest": "sha256:eb1e4c46b7af573626af8a46ec7132e27a572b61c3efc13bdc949b23dcc4924a",
+  "seed_commitment": "sha256:23a054d6b00f9f7e42998c435c68009e4432c2e895f47dd60f619832718e3821",
+  "encrypted_run_evidence_preserved_outside_git": true,
+  "disposable_workspaces_removed": true,
+  "ephemeral_configurations_removed": true,
+  "host_probe_removed": true,
+  "milestone_6_custody_accessed": false,
+  "milestone_6_materials_modified": false,
+  "full_paid_milestone_6_pilot_executed": false,
+  "claim_boundary": "No adaptation-quality conclusion or cross-agent-transfer claim is permitted.",
+  "disposition": "Do not reuse v5. Force the pinned native Linux host-platform path, correct the valid-run counter, test both behaviors, and freeze a separate restart."
+}
