@@ -279,8 +279,8 @@ def _corrected_execution_contract(
     *,
     task_ids: set[str],
 ) -> tuple[dict[str, Any], dict[str, tuple[str, ...]]]:
-    if preregistration.get("schema_version") != "2.3.0":
-        raise RuntimeError("corrected comparison requires preregistration schema 2.3.0")
+    if preregistration.get("schema_version") != "2.4.0":
+        raise RuntimeError("corrected comparison requires preregistration schema 2.4.0")
     execution = preregistration.get("execution")
     expected_execution = {
         "planned_runs": 16,
@@ -775,6 +775,12 @@ def main() -> None:
             / "results"
             / "corrected-comparison-instrument-failure-v2.2.json"
         ),
+        "corrected_comparison_v2_3_failure_digest": sha256_file(
+            repo
+            / "development_benchmark_claude"
+            / "results"
+            / "corrected-comparison-instrument-failure-v2.3.json"
+        ),
         "instrument_success_receipt_digest": sha256_file(
             repo / "development_benchmark_claude" / "results" / "instrument-canary-success-v12.json"
         ),
@@ -847,7 +853,7 @@ def main() -> None:
         "claude_code_version": design.cli_version,
         "model_id": design.model,
         "runtime_lock_digest": runtime_lock_digest,
-        "runner_boundary": "instrument-canary-success-v12-plus-outer-policy-shell-v2",
+        "runner_boundary": "instrument-canary-success-v12-plus-outer-policy-shell-v3",
     }:
         raise RuntimeError("corrected comparison runtime binding drifted")
     runner = ClaudeCodeTargetRunner(

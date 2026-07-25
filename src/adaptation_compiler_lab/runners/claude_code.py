@@ -10,7 +10,6 @@ import signal
 import stat
 import subprocess
 import tempfile
-from collections import Counter
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -123,7 +122,7 @@ class _PreparedCommand:
 
 @dataclass(frozen=True)
 class _BashPolicyAuditEntry:
-    requested_command_digest: str
+    argument_digests: tuple[str, ...]
     decision: str
 
 
@@ -306,13 +305,14 @@ def _write_bash_policy_shell(
         f"ALLOWED = {allowed}\n"
         f"AUDIT_PATH = {str(audit_path)!r}\n"
         "arguments = sys.argv[1:]\n"
-        "command = arguments[-1] if arguments else ''\n"
-        "decision = 'allow' if command in ALLOWED else 'deny'\n"
+        "matched_aliases = sorted({argument for argument in arguments if argument in ALLOWED})\n"
+        "decision = 'allow' if len(matched_aliases) == 1 else 'deny'\n"
         "entry = json.dumps({\n"
+        "    'argument_digests': [\n"
+        "        'sha256:' + hashlib.sha256(argument.encode()).hexdigest()\n"
+        "        for argument in arguments\n"
+        "    ],\n"
         "    'decision': decision,\n"
-        "    'requested_command_digest': (\n"
-        "        'sha256:' + hashlib.sha256(command.encode()).hexdigest()\n"
-        "    ),\n"
         "}, sort_keys=True, separators=(',', ':')) + '\\n'\n"
         "descriptor = os.open(AUDIT_PATH, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)\n"
         "with os.fdopen(descriptor, 'w', encoding='utf-8') as stream:\n"
@@ -322,6 +322,7 @@ def _write_bash_policy_shell(
         "if decision == 'deny':\n"
         "    sys.stderr.write('Blocked by the bounded Bash policy.\\n')\n"
         "    raise SystemExit(126)\n"
+        "command = matched_aliases[0]\n"
         "wrapper = ALLOWED[command]\n"
         "os.execve(wrapper, [command], os.environ)\n"
     )
@@ -342,21 +343,23 @@ def _read_bash_policy_audit(path: Path) -> tuple[tuple[_BashPolicyAuditEntry, ..
             raise TargetExecutionError(f"Bash policy audit line {line_number} is invalid") from exc
         if (
             not isinstance(value, dict)
-            or set(value) != {"decision", "requested_command_digest"}
+            or set(value) != {"argument_digests", "decision"}
             or value.get("decision") not in {"allow", "deny"}
-            or not isinstance(value.get("requested_command_digest"), str)
+            or not isinstance(value.get("argument_digests"), list)
+            or not all(isinstance(item, str) for item in value["argument_digests"])
         ):
             raise TargetExecutionError("Bash policy audit entry is malformed")
-        digest = cast(str, value["requested_command_digest"])
-        if (
-            not digest.startswith("sha256:")
-            or len(digest) != 71
-            or any(character not in "0123456789abcdef" for character in digest[7:])
-        ):
-            raise TargetExecutionError("Bash policy audit command digest is malformed")
+        argument_digests = cast(list[str], value["argument_digests"])
+        for digest in argument_digests:
+            if (
+                not digest.startswith("sha256:")
+                or len(digest) != 71
+                or any(character not in "0123456789abcdef" for character in digest[7:])
+            ):
+                raise TargetExecutionError("Bash policy audit argument digest is malformed")
         entries.append(
             _BashPolicyAuditEntry(
-                requested_command_digest=digest,
+                argument_digests=tuple(argument_digests),
                 decision=cast(str, value["decision"]),
             )
         )
@@ -720,9 +723,7 @@ def _assert_trace_conformance(
     prepared_by_alias = {command.alias: command for command in prepared_commands}
     audit: list[TargetCommandAuditEntry] = []
     denied_audit: list[TargetDeniedCommandAuditEntry] = []
-    policy_decisions = Counter(
-        (entry.requested_command_digest, entry.decision) for entry in bash_policy_audit
-    )
+    unmatched_policy_entries = list(bash_policy_audit)
     denied_tool_use_ids = {
         nested.get("tool_use_id")
         for event in events
@@ -783,15 +784,23 @@ def _assert_trace_conformance(
                         "allow" if prepared is not None and run_in_background is False else "deny"
                     )
                     raw_command_digest = sha256_bytes(raw_command.encode("utf-8"))
-                    policy_key = (raw_command_digest, expected_policy_decision)
-                    if policy_decisions[policy_key] < 1:
+                    matching_policy_index = next(
+                        (
+                            index
+                            for index, entry in enumerate(unmatched_policy_entries)
+                            if entry.decision == expected_policy_decision
+                            and raw_command_digest in entry.argument_digests
+                        ),
+                        None,
+                    )
+                    if matching_policy_index is None:
                         raise TargetExecutionError(
                             "Bash tool use lacks matching pre-execution policy evidence",
                             failure_code="bash_policy_evidence_missing",
                             failure_subject_digest=raw_command_digest,
                             partial_command_audit=tuple(audit),
                         )
-                    policy_decisions[policy_key] -= 1
+                    unmatched_policy_entries.pop(matching_policy_index)
                     if prepared is None:
                         if tool_use_id in denied_tool_use_ids:
                             denied_audit.append(
@@ -853,7 +862,7 @@ def _assert_trace_conformance(
                         tool_input.get("file_path", tool_input.get("path")),
                         write=True,
                     )
-    if any(count for count in policy_decisions.values()):
+    if unmatched_policy_entries:
         raise TargetExecutionError("Bash policy audit contains an unmatched execution")
     return tuple(audit), tuple(denied_audit)
 
