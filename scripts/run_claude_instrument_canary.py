@@ -56,7 +56,7 @@ from adaptation_compiler_lab.runners.claude_code import (
 )
 from adaptation_compiler_lab.serialization import canonical_json
 
-CANARY_ID = "claude-haiku-instrument-canary-v11"
+CANARY_ID = "claude-haiku-instrument-canary-v12"
 HOST_PROBE = Path("/tmp/acl-claude-instrument-canary-host-probe")
 CONDITIONS = (
     BenchmarkCondition.STRONG_STATIC_PROFILE,
@@ -138,6 +138,52 @@ def _command_audit_digest(entries: tuple[Any, ...]) -> str:
     )
 
 
+def _instrument_invalid_reasons(
+    *,
+    terminal_reasons: list[str],
+    target_timed_out: bool,
+    target_exit_code: int | None,
+    config_destroyed: bool,
+    source_changed: bool,
+    required_aliases: set[str],
+    accepted_aliases: set[str],
+    successful_aliases: set[str],
+    focused_output: str,
+    full_output: str,
+    boundary_checks: bool,
+    independent_focused_returncode: int,
+    independent_full_returncode: int,
+) -> list[str]:
+    """Validate execution integrity without treating an adaptation score as instrumentation."""
+
+    return [
+        *terminal_reasons,
+        *(
+            reason
+            for reason, observed in (
+                ("target timed out", target_timed_out),
+                ("target returned nonzero", target_exit_code != 0),
+                ("target config survived teardown", not config_destroyed),
+                ("task source was not edited", not source_changed),
+                (
+                    "focused and full aliases were not both accepted",
+                    not required_aliases.issubset(accepted_aliases),
+                ),
+                (
+                    "focused and full aliases did not both succeed",
+                    not required_aliases.issubset(successful_aliases),
+                ),
+                ("focused target test output did not report success", "OK" not in focused_output),
+                ("full target test output did not report success", "OK" not in full_output),
+                ("target boundary checks were not observed", not boundary_checks),
+                ("independent focused test failed", independent_focused_returncode != 0),
+                ("independent full test failed", independent_full_returncode != 0),
+            )
+            if observed
+        ),
+    ]
+
+
 def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict[str, Any]:
     if not path.is_file() or not path.is_relative_to(repo):
         raise RuntimeError("canary preregistration must be a committed repository file")
@@ -145,11 +191,11 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
     exact = {
         "schema_version": "1.0.0",
         "canary_id": CANARY_ID,
-        "purpose": "wsl_resolver_and_permission_mode_restart_of_bounded_command_instrument",
+        "purpose": "validity_quality_separation_restart_of_bounded_command_instrument",
         "restart_of": {
-            "canary_id": "claude-haiku-instrument-canary-v10",
+            "canary_id": "claude-haiku-instrument-canary-v11",
             "failure_receipt_digest": (
-                "sha256:0e16f792bd65fb2b1abfa3e5c94866c13e238ec00e4837d661395c5e4e264d93"
+                "sha256:11f8d90cc42a1357083b87cc4f555613b6649b770cb031fb625d9d6e6cfe0217"
             ),
         },
         "source_commit": "TO_BE_FROZEN",
@@ -248,6 +294,7 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
             "independent_focused_and_full_tests_pass": True,
             "trace_and_command_audit_conformant": True,
             "post_execution_rejections_preserve_usage_and_command_digest": True,
+            "quality_scores_recorded_without_validity_requirement": True,
             "workspace_and_config_destroyed": True,
         },
         "claims": {
@@ -573,43 +620,21 @@ def main() -> None:
             source_changed = "retry_budget.py" in {
                 line[3:] for line in status.stdout.splitlines() if len(line) >= 4
             }
-            invalid_reasons = [
-                *terminal_reasons,
-                *(
-                    reason
-                    for reason, observed in (
-                        ("target timed out", target_result.timed_out),
-                        ("target returned nonzero", target_result.exit_code != 0),
-                        ("target config survived teardown", not target_result.config_destroyed),
-                        ("task source was not edited", not source_changed),
-                        (
-                            "focused and full aliases were not both accepted",
-                            not required_aliases.issubset(
-                                {entry.alias for entry in target_result.command_audit}
-                            ),
-                        ),
-                        (
-                            "focused and full aliases did not both succeed",
-                            not required_aliases.issubset(successful_aliases),
-                        ),
-                        (
-                            "focused target test output did not report success",
-                            "OK" not in focused_output,
-                        ),
-                        ("full target test output did not report success", "OK" not in full_output),
-                        ("target boundary checks were not observed", not boundary_checks),
-                        ("independent focused test failed", focused.returncode != 0),
-                        ("independent full test failed", full.returncode != 0),
-                        (
-                            "independent scorer did not pass every check",
-                            not all(
-                                passed for group in scorer.values() for passed in group.values()
-                            ),
-                        ),
-                    )
-                    if observed
-                ),
-            ]
+            invalid_reasons = _instrument_invalid_reasons(
+                terminal_reasons=terminal_reasons,
+                target_timed_out=target_result.timed_out,
+                target_exit_code=target_result.exit_code,
+                config_destroyed=target_result.config_destroyed,
+                source_changed=source_changed,
+                required_aliases=required_aliases,
+                accepted_aliases={entry.alias for entry in target_result.command_audit},
+                successful_aliases=successful_aliases,
+                focused_output=focused_output,
+                full_output=full_output,
+                boundary_checks=boundary_checks,
+                independent_focused_returncode=focused.returncode,
+                independent_full_returncode=full.returncode,
+            )
             raw_bundle = {
                 "condition": condition.value,
                 "diff": diff.stdout,

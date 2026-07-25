@@ -11,14 +11,40 @@ import pytest
 from adaptation_compiler_lab.connectors.models import TargetCommandAuditEntry
 
 
-def test_canary_v11_preregistration_matches_coordinator(
+def test_instrument_validity_is_independent_of_quality_score(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = Path(__file__).parents[2]
+    monkeypatch.syspath_prepend(str(repository / "scripts"))
+    coordinator: Any = importlib.import_module("run_claude_instrument_canary")
+
+    invalid_reasons = coordinator._instrument_invalid_reasons(
+        terminal_reasons=[],
+        target_timed_out=False,
+        target_exit_code=0,
+        config_destroyed=True,
+        source_changed=True,
+        required_aliases={"acl-test-focused", "acl-test-full"},
+        accepted_aliases={"acl-test-focused", "acl-test-full"},
+        successful_aliases={"acl-test-focused", "acl-test-full"},
+        focused_output="OK",
+        full_output="OK",
+        boundary_checks=True,
+        independent_focused_returncode=0,
+        independent_full_returncode=0,
+    )
+
+    assert invalid_reasons == []
+
+
+def test_canary_v12_preregistration_matches_coordinator(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     repository = Path(__file__).parents[2]
     monkeypatch.syspath_prepend(str(repository / "scripts"))
     coordinator: Any = importlib.import_module("run_claude_instrument_canary")
     preregistration = (
-        repository / "development_benchmark_claude" / "INSTRUMENT_CANARY_PREREGISTRATION-v11.json"
+        repository / "development_benchmark_claude" / "INSTRUMENT_CANARY_PREREGISTRATION-v12.json"
     )
 
     loaded = coordinator._load_preregistration(
@@ -27,7 +53,7 @@ def test_canary_v11_preregistration_matches_coordinator(
         source_commit="synthetic-clean-commit",
     )
 
-    assert loaded["canary_id"] == "claude-haiku-instrument-canary-v11"
+    assert loaded["canary_id"] == "claude-haiku-instrument-canary-v12"
     assert loaded["command_interface"] == {
         "full_test_alias": "acl-test-full",
         "focused_test_alias": "acl-test-focused",
@@ -64,6 +90,7 @@ def test_canary_v11_preregistration_matches_coordinator(
         "inner_claude_sandbox_retained": True,
     }
     assert loaded["success_gate"]["post_execution_rejections_preserve_usage_and_command_digest"]
+    assert loaded["success_gate"]["quality_scores_recorded_without_validity_requirement"]
 
     completion_bytes = coordinator._canonical_bytes(
         {"completed_at": coordinator._utc_text(datetime(2026, 7, 25, 5, 34, 39, tzinfo=UTC))}
