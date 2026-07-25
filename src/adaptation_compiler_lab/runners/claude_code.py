@@ -177,18 +177,24 @@ def _absolute_permission_rule(tool: str, path: Path, *, descendants: bool = Fals
 
 def _tool_rules(workspace: Path, condition_file: Path) -> tuple[list[JsonValue], list[JsonValue]]:
     allow: list[JsonValue] = [
+        "Glob",
+        "Grep",
         _absolute_permission_rule("Read", workspace, descendants=True),
         _absolute_permission_rule("Edit", workspace, descendants=True),
+        _absolute_permission_rule("Write", workspace, descendants=True),
     ]
     deny: list[JsonValue] = list(_REMOVED_TOOLS)
     deny.append(_absolute_permission_rule("Edit", condition_file))
+    deny.append(_absolute_permission_rule("Write", condition_file))
     for name in _AMBIENT_READ_NAMES:
         path = workspace / name
         deny.append(_absolute_permission_rule("Read", path, descendants=path.suffix == ""))
         deny.append(_absolute_permission_rule("Edit", path, descendants=path.suffix == ""))
+        deny.append(_absolute_permission_rule("Write", path, descendants=path.suffix == ""))
     runtime_path = workspace / ".acl-runtime"
     deny.append(_absolute_permission_rule("Read", runtime_path, descendants=True))
     deny.append(_absolute_permission_rule("Edit", runtime_path, descendants=True))
+    deny.append(_absolute_permission_rule("Write", runtime_path, descendants=True))
     return allow, deny
 
 

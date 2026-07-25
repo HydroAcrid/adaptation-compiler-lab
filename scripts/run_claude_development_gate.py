@@ -279,8 +279,8 @@ def _corrected_execution_contract(
     *,
     task_ids: set[str],
 ) -> tuple[dict[str, Any], dict[str, tuple[str, ...]]]:
-    if preregistration.get("schema_version") != "2.5.0":
-        raise RuntimeError("corrected comparison requires preregistration schema 2.5.0")
+    if preregistration.get("schema_version") != "2.6.0":
+        raise RuntimeError("corrected comparison requires preregistration schema 2.6.0")
     execution = preregistration.get("execution")
     expected_execution = {
         "planned_runs": 16,
@@ -703,6 +703,7 @@ def main() -> None:
         "proven_policy_denials_are_instruction_adherence_not_instrument_failure": True,
         "every_bash_trace_requires_digest_matched_os_policy_audit": True,
         "unblocked_out_of_manifest_command_invalidates_and_stops_grid": True,
+        "complete_six_tool_inventory_required": True,
     }:
         raise RuntimeError("corrected comparison validity policy drifted")
     if preregistration.get("blinding") != {
@@ -787,6 +788,12 @@ def main() -> None:
             / "results"
             / "corrected-comparison-instrument-failure-v2.4.json"
         ),
+        "corrected_comparison_v2_5_failure_digest": sha256_file(
+            repo
+            / "development_benchmark_claude"
+            / "results"
+            / "corrected-comparison-instrument-failure-v2.5.json"
+        ),
         "instrument_success_receipt_digest": sha256_file(
             repo / "development_benchmark_claude" / "results" / "instrument-canary-success-v12.json"
         ),
@@ -859,7 +866,7 @@ def main() -> None:
         "claude_code_version": design.cli_version,
         "model_id": design.model,
         "runtime_lock_digest": runtime_lock_digest,
-        "runner_boundary": "instrument-canary-success-v12-plus-outer-policy-shell-v4",
+        "runner_boundary": "instrument-canary-success-v12-plus-outer-policy-shell-v5",
     }:
         raise RuntimeError("corrected comparison runtime binding drifted")
     runner = ClaudeCodeTargetRunner(

@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0.0",
+  "attempt_id": "claude-haiku-compiler-v2-corrected-comparison-attempt-6",
+  "status": "instrument_failure_no_comparison",
+  "recorded_at": "2026-07-25T21:48:09.379856Z",
+  "raw_retention_deadline": "2026-08-24T21:48:09.379856Z",
+  "source_commit": "9b3d85d674cf92bc42fcc252c490b88a0eef01d5",
+  "preregistration_digest": "sha256:c50d064367d006fe0adac025b4fbe0a7338cbea3bbad3a3563bbc0ff9103f478",
+  "public_plan_digest": "sha256:533c848467899e592fa04fa382d418ca649490bdd3b054bdda5006786a1b4674",
+  "frozen_input_manifest_digest": "sha256:15537a0b4447dfd80994cfda39fd9881cd9ebc98390228361ec00e031c5a0c86",
+  "failure_receipt_digest": "sha256:4f1dbd5cbdcb72534b97d2305017f17aab0ac81ca60a0b3e7fc9d59b038a332a",
+  "private_plan_payload_digest": "sha256:3ac27ba8303708cbe875c24197c08647d5c875cf1240906da38f62c68fdee9c1",
+  "run_payload_digest": "sha256:840ef76b0f46c0476105d3352715410bb66dd54add9516ad6570a76306ab47fe",
+  "planned_runs": 16,
+  "completed_provider_runs": 1,
+  "valid_comparison_records": 0,
+  "retry_executed": false,
+  "exact_cost_usd": 0.08996130000000001,
+  "failure": {
+    "stage": "target_execution_and_trace_conformance",
+    "code": "tool_inventory_incomplete",
+    "summary": "Claude initialized only Bash, Edit, and Read because the allowed-tools manifest omitted Glob, Grep, and Write. The agent exhausted its turn budget while guessing fixture paths and attempted to read the disposable workspace parent; the runner rejected the access and accepted no comparison record."
+  },
+  "repair": {
+    "compiler_or_material_changed": false,
+    "required": [
+      "allow Glob and Grep through the CLI permission manifest while retaining OS and trace path confinement",
+      "allow Write only within the disposable task workspace",
+      "deny Write access to the condition, ambient-state, and runner-runtime paths",
+      "assert the complete six-tool inventory in synthetic conformance tests"
+    ]
+  },
+  "raw_payloads_encrypted_outside_git": true,
+  "condition_mapping_exposed": false,
+  "objective_scores_exposed": false,
+  "blind_output_packet_created": false,
+  "adaptation_quality_comparison_allowed": false,
+  "cross_agent_transfer_claim_allowed": false,
+  "milestone_6_custody_accessed": false,
+  "milestone_6_materials_modified": false
+}

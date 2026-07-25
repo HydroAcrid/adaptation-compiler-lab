@@ -567,6 +567,9 @@ def test_synthetic_runner_has_clean_state_tools_and_network(tmp_path: Path) -> N
     assert "--strict-mcp-config" in argv
     assert "--setting-sources" in argv
     assert argv[argv.index("--setting-sources") + 1] == ""
+    assert "Glob" in argv
+    assert "Grep" in argv
+    assert any(isinstance(argument, str) and argument.startswith("Write(//") for argument in argv)
     assert "Bash(acl-test-full)" in argv
     assert "Bash(python3 -m unittest -v)" not in argv
     assert result_event["ambient_loaded"] is False
@@ -586,6 +589,17 @@ def test_synthetic_runner_has_clean_state_tools_and_network(tmp_path: Path) -> N
     assert managed_settings["permissions"] == settings["permissions"]
     assert managed_settings["sandbox"] == settings["sandbox"]
     assert managed_settings["bwrapPath"] == "/opt/acl-runtime/bwrap"
+    permissions = settings["permissions"]
+    assert isinstance(permissions, dict)
+    permission_allow = cast(list[object], permissions["allow"])
+    assert "Glob" in permission_allow
+    assert "Grep" in permission_allow
+    assert any(isinstance(rule, str) and rule.startswith("Write(//") for rule in permission_allow)
+    permission_deny = cast(list[object], permissions["deny"])
+    assert any(
+        isinstance(rule, str) and rule.startswith("Write(//") and rule.endswith("/.acl-runtime/**)")
+        for rule in permission_deny
+    )
     assert result_event["condition_sha256"] == request.condition_digest.removeprefix("sha256:")
     sandbox = settings["sandbox"]
     assert isinstance(sandbox, dict)
