@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import importlib.util
 import inspect
 import json
@@ -35,6 +36,23 @@ def _false_scores() -> tuple[dict[str, bool], dict[str, bool]]:
         "reverse_job_order_is_independent": False,
     }
     return objective, diagnostic
+
+
+def _has_process_wide_scalar_counter(source: str) -> bool:
+    tree = ast.parse(source)
+    module_names: set[str] = set()
+    global_names: set[str] = set()
+    for statement in tree.body:
+        if isinstance(statement, ast.Assign):
+            module_names.update(
+                target.id for target in statement.targets if isinstance(target, ast.Name)
+            )
+        elif isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name):
+            module_names.add(statement.target.id)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Global):
+            global_names.update(node.names)
+    return "_failure_count" in module_names or "_failure_count" in global_names
 
 
 def main() -> None:
@@ -109,8 +127,7 @@ def main() -> None:
         }
         diagnostic = {
             "jobs_have_independent_budgets": alpha == (True, False) and beta_after_alpha,
-            "no_process_wide_scalar_counter": "_failure_count = 0" not in source
-            and "global _failure_count" not in source,
+            "no_process_wide_scalar_counter": not _has_process_wide_scalar_counter(source),
             "reset_is_scoped_to_one_job": reset_pair == (True, False),
             "reverse_job_order_is_independent": right == (True, False) and left_after_right,
         }

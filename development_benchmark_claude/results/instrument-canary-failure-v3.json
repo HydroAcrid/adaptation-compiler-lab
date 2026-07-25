@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.0.0",
+  "canary_id": "claude-haiku-instrument-canary-v3",
+  "preregistration": "INSTRUMENT_CANARY_PREREGISTRATION-v3.json",
+  "preregistration_digest": "sha256:5e6da366e1c75e5aa9345ee7c41bbbec3eb9386653474171c73ca2e523d05b76",
+  "source_commit": "e53122a843f979dab3eb1c28372834fc4cec60e8",
+  "model": "claude-haiku-4-5-20251001",
+  "claude_code_version": "2.1.218",
+  "status": "coordinator_instrumentation_failure",
+  "attempted_at": "2026-07-25T05:37:37Z",
+  "planned_runs": 2,
+  "attempted_runs": 1,
+  "completed_valid_trial_records": 0,
+  "second_run_executed": false,
+  "retries": 0,
+  "first_condition": "strong_static_profile",
+  "target_terminal_subtype": "success",
+  "target_trace_conformant": true,
+  "target_accepted_aliases": [
+    "acl-test-focused",
+    "acl-test-full"
+  ],
+  "target_focused_test_returncode": 0,
+  "target_full_test_returncode": 0,
+  "independent_focused_test_returncode": 0,
+  "independent_full_test_returncode": 0,
+  "objective_checks": {
+    "passed": 4,
+    "total": 4
+  },
+  "diagnostic_checks": {
+    "passed": 3,
+    "total": 4
+  },
+  "neutral_checks": {
+    "passed": 4,
+    "total": 4
+  },
+  "failure_stage": "sanitized_command_audit_digest",
+  "failure_reasons": [
+    "The coordinator passed a list to a canonical serializer whose top-level contract accepts only a model or mapping.",
+    "The independent scorer used substring matching, so the valid global name _failure_counts was misclassified as the forbidden scalar name _failure_count."
+  ],
+  "exact_provider_cost_available": true,
+  "provider_cost_usd": 0.0376895,
+  "input_tokens": 3905,
+  "cache_creation_input_tokens": 8690,
+  "cache_read_input_tokens": 42920,
+  "output_tokens": 3726,
+  "public_plan_digest": "sha256:d7c428ed5451ffa2c3b91269c87a28a8a20d3fc723132902277d9814c9859976",
+  "private_plan_digest": "sha256:db70465ac4ff90b06fbc33fad5591ee29249ab46957084828f60a35e051891d6",
+  "successful_run_bundle_digest": "sha256:e11e36bc620a7e537b4d229d144c577fc893635e66d40c4877054aa102125c63",
+  "seed_commitment": "sha256:0343fde01c2b56b55e6ba896b1738a67775b522a87e0b1a27f46d2dec456fef8",
+  "encrypted_run_evidence_preserved_outside_git": true,
+  "disposable_workspace_removed": true,
+  "ephemeral_configuration_removed": true,
+  "host_probe_removed": true,
+  "milestone_6_custody_accessed": false,
+  "milestone_6_materials_modified": false,
+  "full_paid_milestone_6_pilot_executed": false,
+  "claim_boundary": "No condition comparison, adaptation-quality conclusion, or cross-agent-transfer claim is permitted.",
+  "disposition": "Do not retry v3. Repair and directly test nonempty audit serialization, replace the scorer substring proxy with exact syntax analysis, and freeze a separate restart."
+}

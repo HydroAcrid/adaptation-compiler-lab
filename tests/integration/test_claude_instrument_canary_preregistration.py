@@ -8,15 +8,17 @@ from typing import Any
 
 import pytest
 
+from adaptation_compiler_lab.connectors.models import TargetCommandAuditEntry
 
-def test_canary_v3_preregistration_matches_coordinator(
+
+def test_canary_v4_preregistration_matches_coordinator(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     repository = Path(__file__).parents[2]
     monkeypatch.syspath_prepend(str(repository / "scripts"))
     coordinator: Any = importlib.import_module("run_claude_instrument_canary")
     preregistration = (
-        repository / "development_benchmark_claude" / "INSTRUMENT_CANARY_PREREGISTRATION-v3.json"
+        repository / "development_benchmark_claude" / "INSTRUMENT_CANARY_PREREGISTRATION-v4.json"
     )
 
     loaded = coordinator._load_preregistration(
@@ -25,7 +27,7 @@ def test_canary_v3_preregistration_matches_coordinator(
         source_commit="synthetic-clean-commit",
     )
 
-    assert loaded["canary_id"] == "claude-haiku-instrument-canary-v3"
+    assert loaded["canary_id"] == "claude-haiku-instrument-canary-v4"
     assert loaded["command_interface"] == {
         "full_test_alias": "acl-test-full",
         "focused_test_alias": "acl-test-focused",
@@ -39,3 +41,15 @@ def test_canary_v3_preregistration_matches_coordinator(
         {"completed_at": coordinator._utc_text(datetime(2026, 7, 25, 5, 34, 39, tzinfo=UTC))}
     )
     assert json.loads(completion_bytes) == {"completed_at": "2026-07-25T05:34:39Z"}
+
+    audit = (
+        TargetCommandAuditEntry(
+            sequence=1,
+            alias="acl-test-full",
+            approved_command_digest="sha256:" + ("0" * 64),
+            requested_timeout_ms=5000,
+        ),
+    )
+    digest = coordinator._command_audit_digest(audit)
+    assert digest.startswith("sha256:")
+    assert digest == coordinator._command_audit_digest(audit)

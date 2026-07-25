@@ -12,7 +12,7 @@ from adaptation_compiler_lab.benchmark.codex_development import development_tree
 
 ROOT = Path(__file__).resolve().parents[2] / "development_benchmark_claude" / "instrument_canary"
 EXPECTED_FIXTURE_DIGEST = "sha256:5be1cf278d4927cdfc5665dcd1c91abe7764ab550aa19331533511befe5a3de4"
-EXPECTED_SCORER_DIGEST = "sha256:3b373c105d96b55252c08e70b18d63aa9f8a88244281f05ad7ff65946099b1b7"
+EXPECTED_SCORER_DIGEST = "sha256:60aa448f294d4fa16344cbd930a2ea8284cc98a0d852940480e49777f0be0a20"
 REFERENCE_SOLUTION = '''"""Retry decisions for independent background jobs."""
 
 from __future__ import annotations
@@ -42,6 +42,31 @@ def reset_job(job_id: str) -> None:
     """Forget the recorded failures for one completed or cancelled job."""
 
     _failure_counts.pop(_normalized_job_id(job_id), None)
+'''
+VALID_GLOBAL_DICT_SOLUTION = '''"""Retry decisions for independent background jobs."""
+
+from __future__ import annotations
+
+_failure_counts = {}
+
+
+def should_retry(job_id: str, max_failures: int) -> bool:
+    normalized_job_id = job_id.strip().casefold()
+    if not normalized_job_id:
+        raise ValueError("job_id must not be blank")
+    if max_failures < 1:
+        raise ValueError("max_failures must be positive")
+    global _failure_counts
+    _failure_counts[normalized_job_id] = _failure_counts.get(normalized_job_id, 0) + 1
+    return _failure_counts[normalized_job_id] <= max_failures
+
+
+def reset_job(job_id: str) -> None:
+    if not job_id.strip():
+        raise ValueError("job_id must not be blank")
+    normalized_job_id = job_id.strip().casefold()
+    global _failure_counts
+    _failure_counts[normalized_job_id] = 0
 '''
 
 
@@ -135,6 +160,27 @@ def test_reference_solution_passes_visible_and_independent_checks(tmp_path: Path
     scores = _score(workspace)
 
     assert visible.returncode == 0, visible.stdout + visible.stderr
+    assert all(
+        passed
+        for group in ("objective", "diagnostic", "neutral")
+        for passed in scores[group].values()
+    )
+
+
+def test_valid_global_dictionary_is_not_misclassified_as_scalar(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "global-dictionary"
+    shutil.copytree(ROOT / "fixture", workspace)
+    _initialize_git(workspace)
+    (workspace / "retry_budget.py").write_text(
+        VALID_GLOBAL_DICT_SOLUTION,
+        encoding="utf-8",
+    )
+
+    scores = _score(workspace)
+
+    assert scores["diagnostic"]["no_process_wide_scalar_counter"]
     assert all(
         passed
         for group in ("objective", "diagnostic", "neutral")

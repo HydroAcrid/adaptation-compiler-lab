@@ -56,15 +56,15 @@ from adaptation_compiler_lab.runners.claude_code import (
 )
 from adaptation_compiler_lab.serialization import canonical_json
 
-CANARY_ID = "claude-haiku-instrument-canary-v3"
-HOST_PROBE = Path("/tmp/acl-claude-instrument-canary-host-probe-v3")
+CANARY_ID = "claude-haiku-instrument-canary-v4"
+HOST_PROBE = Path("/tmp/acl-claude-instrument-canary-host-probe-v4")
 CONDITIONS = (
     BenchmarkCondition.STRONG_STATIC_PROFILE,
     BenchmarkCondition.COMPILED_ADAPTATION,
 )
 EXPECTED_TASK_DIGEST = "sha256:9d4a2fba2360dfff9b283f9339eed08d467cd4912653c2391242df03e11be9dc"
 EXPECTED_FIXTURE_DIGEST = "sha256:5be1cf278d4927cdfc5665dcd1c91abe7764ab550aa19331533511befe5a3de4"
-EXPECTED_SCORER_DIGEST = "sha256:3b373c105d96b55252c08e70b18d63aa9f8a88244281f05ad7ff65946099b1b7"
+EXPECTED_SCORER_DIGEST = "sha256:60aa448f294d4fa16344cbd930a2ea8284cc98a0d852940480e49777f0be0a20"
 
 
 def _canonical_bytes(value: Any) -> bytes:
@@ -133,7 +133,9 @@ def _counts(value: dict[str, bool]) -> dict[str, int]:
 
 
 def _command_audit_digest(entries: tuple[Any, ...]) -> str:
-    return sha256_bytes(_canonical_bytes([entry.model_dump(mode="json") for entry in entries]))
+    return sha256_bytes(
+        _canonical_bytes({"entries": [entry.model_dump(mode="json") for entry in entries]})
+    )
 
 
 def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict[str, Any]:
@@ -143,11 +145,11 @@ def _load_preregistration(path: Path, *, repo: Path, source_commit: str) -> dict
     exact = {
         "schema_version": "1.0.0",
         "canary_id": CANARY_ID,
-        "purpose": "task_guided_restart_of_bounded_command_instrument",
+        "purpose": "audit_and_scorer_corrected_restart_of_bounded_command_instrument",
         "restart_of": {
-            "canary_id": "claude-haiku-instrument-canary-v2",
+            "canary_id": "claude-haiku-instrument-canary-v3",
             "failure_receipt_digest": (
-                "sha256:dfed20da30f8ebdb200c9cca76a7dabcec7394bfd781756486e77980eea2bcc8"
+                "sha256:1e4f7bc3d55a25d9ea9779bc63acc6cbb901c438ae720d584d281a02fdb17bd1"
             ),
         },
         "source_commit": "TO_BE_FROZEN",
