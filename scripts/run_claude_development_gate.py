@@ -310,8 +310,8 @@ def _corrected_execution_contract(
     *,
     task_ids: set[str],
 ) -> tuple[dict[str, Any], dict[str, tuple[str, ...]]]:
-    if preregistration.get("schema_version") != "2.7.0":
-        raise RuntimeError("corrected comparison requires preregistration schema 2.7.0")
+    if preregistration.get("schema_version") != "2.8.0":
+        raise RuntimeError("corrected comparison requires preregistration schema 2.8.0")
     execution = preregistration.get("execution")
     expected_execution = {
         "planned_runs": 16,
@@ -737,6 +737,8 @@ def main() -> None:
         "bare_mode_observed_tool_inventory": ["Bash", "Edit", "Read"],
         "visible_fixture_manifest_required": True,
         "generated_alias_bootstrap_match_required": True,
+        "unmatched_denied_internal_policy_entries_allowed": True,
+        "unmatched_allowed_policy_executions_forbidden": True,
     }:
         raise RuntimeError("corrected comparison validity policy drifted")
     if preregistration.get("blinding") != {
@@ -833,6 +835,12 @@ def main() -> None:
             / "results"
             / "corrected-comparison-instrument-failure-v2.6.json"
         ),
+        "corrected_comparison_v2_7_failure_digest": sha256_file(
+            repo
+            / "development_benchmark_claude"
+            / "results"
+            / "corrected-comparison-instrument-failure-v2.7.json"
+        ),
         "instrument_success_receipt_digest": sha256_file(
             repo / "development_benchmark_claude" / "results" / "instrument-canary-success-v12.json"
         ),
@@ -905,7 +913,7 @@ def main() -> None:
         "claude_code_version": design.cli_version,
         "model_id": design.model,
         "runtime_lock_digest": runtime_lock_digest,
-        "runner_boundary": "instrument-canary-success-v12-plus-outer-policy-shell-v6",
+        "runner_boundary": "instrument-canary-success-v12-plus-outer-policy-shell-v7",
     }:
         raise RuntimeError("corrected comparison runtime binding drifted")
     runner = ClaudeCodeTargetRunner(

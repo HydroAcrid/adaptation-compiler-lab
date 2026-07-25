@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0.0",
+  "attempt_id": "claude-haiku-compiler-v2-corrected-comparison-attempt-8",
+  "status": "instrument_failure_no_comparison",
+  "recorded_at": "2026-07-25T22:07:09.205080Z",
+  "raw_retention_deadline": "2026-08-24T22:07:09.205080Z",
+  "source_commit": "a84a53251575162024fd704666da25ef1fd95d38",
+  "preregistration_digest": "sha256:33be16a624d0138ff00d502cfed380d5d4e4c23ccd2f3c035b2b719de93bd9f4",
+  "public_plan_digest": "sha256:6ed2197cb397e369889e43b68ed6df1abba39729b1943340604a90295067d52b",
+  "frozen_input_manifest_digest": "sha256:47506c64e61006f38aacb7ae4551bd07c465c6ccc9e7d7e549849bfe9821ac8d",
+  "failure_receipt_digest": "sha256:db0554ff94c07654d71f1f4e034d10bb833f9c2166f83afebe1a93d93c234a50",
+  "private_plan_payload_digest": "sha256:b31248fdf0bc04ee0223a8410b8536fe578e3e1b63360a9a4abc1c6c408ebbcb",
+  "run_payload_digest": "sha256:05f39a2f0f5ed43e2c0a0caa23e28f10dcb0385da6f0de09e58f42b727624c38",
+  "planned_runs": 16,
+  "completed_provider_runs": 1,
+  "valid_comparison_records": 0,
+  "retry_executed": false,
+  "exact_cost_usd": 0.0252562,
+  "failure": {
+    "stage": "policy_audit_reconciliation",
+    "code": "unmatched_internal_shell_audit",
+    "summary": "The target completed successfully in nine turns and all four model-requested test aliases executed through their fixed wrappers. Claude Code also produced an internal shell audit entry without a corresponding model Bash event; the v2.7 failure path did not expose that entry's decision, so the conservative one-to-one reconciler stopped the grid."
+  },
+  "repair": {
+    "compiler_or_material_changed": false,
+    "required": [
+      "permit unmatched policy entries only when the policy decision is deny",
+      "continue to reject any unmatched allowed policy execution",
+      "retain the complete raw policy-audit digest",
+      "add regression tests for both internal denied and internal allowed shell probes"
+    ]
+  },
+  "raw_payloads_encrypted_outside_git": true,
+  "condition_mapping_exposed": false,
+  "objective_scores_exposed": false,
+  "blind_output_packet_created": false,
+  "adaptation_quality_comparison_allowed": false,
+  "cross_agent_transfer_claim_allowed": false,
+  "milestone_6_custody_accessed": false,
+  "milestone_6_materials_modified": false
+}

@@ -865,8 +865,8 @@ def _assert_trace_conformance(
                         tool_input.get("file_path", tool_input.get("path")),
                         write=True,
                     )
-    if unmatched_policy_entries:
-        raise TargetExecutionError("Bash policy audit contains an unmatched execution")
+    if any(entry.decision == "allow" for entry in unmatched_policy_entries):
+        raise TargetExecutionError("Bash policy audit contains an unmatched allowed execution")
     return tuple(audit), tuple(denied_audit)
 
 

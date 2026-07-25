@@ -92,6 +92,11 @@ print(json.dumps({
     "plugins": [],
 }), flush=True)
 
+if "INTERNAL_DENIED_SHELL_PROBE_MARKER" in prompt:
+    invoke_bash("internal-bootstrap-probe")
+if "INTERNAL_ALLOWED_SHELL_PROBE_MARKER" in prompt:
+    invoke_bash("acl-test-full")
+
 if "M4_LIVE_SMOKE_TASK" in prompt:
     pathlib.Path("smoke-output.txt").write_text("synthetic-smoke-ok", encoding="utf-8")
     print(json.dumps({
@@ -796,6 +801,21 @@ def test_proven_blocked_command_is_audited_without_invalidating_run(tmp_path: Pa
     assert denied.reason == "out_of_manifest_bash_command"
     assert denied.blocked is True
     assert denied.requested_command_digest.startswith("sha256:")
+
+
+def test_internal_denied_shell_probe_does_not_invalidate_run(tmp_path: Path) -> None:
+    result = _runner(tmp_path).run(_request(tmp_path, prompt="INTERNAL_DENIED_SHELL_PROBE_MARKER"))
+
+    assert result.exit_code == 0
+    assert result.command_audit == ()
+    assert result.denied_command_audit == ()
+    assert result.bash_policy_audit_digest is not None
+    assert result.bash_policy_audit_digest.startswith("sha256:")
+
+
+def test_internal_allowed_shell_probe_invalidates_run(tmp_path: Path) -> None:
+    with pytest.raises(TargetExecutionError, match="unmatched allowed execution"):
+        _runner(tmp_path).run(_request(tmp_path, prompt="INTERNAL_ALLOWED_SHELL_PROBE_MARKER"))
 
 
 def test_host_file_tool_attempt_invalidates_run(tmp_path: Path) -> None:

@@ -21,7 +21,7 @@ def test_corrected_comparison_is_frozen_to_public_tasks_and_passing_instrument(
     repository = Path(__file__).parents[2]
     monkeypatch.syspath_prepend(str(repository / "scripts"))
     coordinator: Any = importlib.import_module("run_claude_development_gate")
-    path = repository / "development_benchmark_claude" / "PREREGISTRATION-v2.7.json"
+    path = repository / "development_benchmark_claude" / "PREREGISTRATION-v2.8.json"
     preregistration = json.loads(path.read_text(encoding="utf-8"))
     design = load_claude_development_design(
         repository / "development_benchmark_claude",
@@ -76,6 +76,9 @@ def test_corrected_comparison_is_frozen_to_public_tasks_and_passing_instrument(
         ),
         "corrected_comparison_v2_6_failure_digest": (
             "results/corrected-comparison-instrument-failure-v2.6.json"
+        ),
+        "corrected_comparison_v2_7_failure_digest": (
+            "results/corrected-comparison-instrument-failure-v2.7.json"
         ),
         "instrument_success_receipt_digest": "results/instrument-canary-success-v12.json",
         "v1_2_blind_rating_digest": "results/kevin-blind-rating-v1.2.json",
