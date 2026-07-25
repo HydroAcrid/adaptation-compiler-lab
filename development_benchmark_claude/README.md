@@ -25,6 +25,12 @@ instrument-limited: every run encountered a Bash permission denial, so the agent
 reliably perform the required verification. No compiler-v2 success or failure conclusion is
 allowed from this run.
 
+The separately authorized two-cell instrument canary then failed closed on its first,
+strong-profile cell when trace conformance detected an out-of-manifest Bash command. The compiled
+cell did not run and no retry occurred. Enforcement worked, but the runner raised before
+persisting the returned failure trace or exact provider cost, revealing a second instrumentation
+defect. See `INSTRUMENT_CANARY_RESULT-v1.md`; this attempt contains no condition comparison.
+
 See `PREREGISTRATION-v1.2.json` for the executed design,
 `results/kevin-blind-rating-v1.2.json` for the pre-unblinding rating,
 `results/unblinded-result-v1.2.json` for the mapping and aggregate result, and
