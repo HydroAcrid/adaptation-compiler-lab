@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import tempfile
 from pathlib import Path
 from typing import cast
@@ -26,7 +27,11 @@ from adaptation_compiler_lab.runners import (
     TargetExecutionError,
     run_live_no_user_data_smoke,
 )
-from adaptation_compiler_lab.runners.claude_code import serialize_target_trace
+from adaptation_compiler_lab.runners.claude_code import (
+    _PreparedCommand,
+    _write_bash_policy_shell,
+    serialize_target_trace,
+)
 
 _FAKE_CLAUDE = """#!/usr/bin/env python3
 import hashlib
@@ -64,6 +69,21 @@ managed_settings = json.loads(
     (managed_settings_dir / "managed-settings.json").read_text(encoding="utf-8")
 )
 
+def invoke_bash(command):
+    return subprocess.run(
+        [
+            os.environ["SHELL"],
+            "-c",
+            f"__acl_bootstrap__ {command} __acl_bootstrap_end__",
+            "--",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+permission_denials = []
+
 print(json.dumps({
     "type": "system",
     "subtype": "init",
@@ -73,6 +93,11 @@ print(json.dumps({
     "mcp_servers": [],
     "plugins": [],
 }), flush=True)
+
+if "INTERNAL_DENIED_SHELL_PROBE_MARKER" in prompt:
+    invoke_bash("internal-bootstrap-probe")
+if "INTERNAL_ALLOWED_SHELL_PROBE_MARKER" in prompt:
+    invoke_bash("acl-test-full")
 
 if "M4_LIVE_SMOKE_TASK" in prompt:
     pathlib.Path("smoke-output.txt").write_text("synthetic-smoke-ok", encoding="utf-8")
@@ -91,12 +116,7 @@ if "BOUNDED_COMMAND_SMOKE" in prompt:
         "def add(left, right):\\n    return left + right\\n",
         encoding="utf-8",
     )
-    completed = subprocess.run(
-        ["acl-test-full"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    completed = invoke_bash("acl-test-full")
     print(json.dumps({
         "type": "assistant",
         "message": {
@@ -134,12 +154,7 @@ if "TWO_COMMAND_SMOKE" in prompt:
         encoding="utf-8",
     )
     for sequence, alias in enumerate(("acl-test-focused", "acl-test-full"), start=1):
-        completed = subprocess.run(
-            [alias],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
+        completed = invoke_bash(alias)
         use_id = f"bash-two-{sequence}"
         print(json.dumps({
             "type": "assistant",
@@ -172,20 +187,117 @@ if "UNBOUNDED_COMMAND_MARKER" in prompt:
         "message": {
             "content": [{
                 "type": "tool_use",
+                "id": "unbounded-bash-1",
                 "name": "Bash",
                 "input": {"command": "python3 -m unittest -v"},
             }]
         },
     }), flush=True)
 
-if "OVERSIZED_TIMEOUT_MARKER" in prompt:
+if "BLOCKED_COMMAND_MARKER" in prompt:
+    completed = invoke_bash("find / -type f")
     print(json.dumps({
         "type": "assistant",
         "message": {
             "content": [{
                 "type": "tool_use",
+                "id": "blocked-bash-1",
+                "name": "Bash",
+                "input": {"command": "find / -type f"},
+            }]
+        },
+    }), flush=True)
+    print(json.dumps({
+        "type": "user",
+        "message": {
+            "content": [{
+                "type": "tool_result",
+                "tool_use_id": "blocked-bash-1",
+                "content": completed.stdout + completed.stderr,
+                "is_error": completed.returncode != 0,
+            }]
+        },
+    }), flush=True)
+
+if "PERMISSION_LAYER_DENIAL_MARKER" in prompt:
+    permission_denials.append({
+        "tool_input": {"command": "python3 -c 'print(1)'"},
+        "tool_name": "Bash",
+        "tool_use_id": "permission-denied-bash-1",
+    })
+    print(json.dumps({
+        "type": "assistant",
+        "message": {
+            "content": [{
+                "type": "tool_use",
+                "id": "permission-denied-bash-1",
+                "name": "Bash",
+                "input": {"command": "python3 -c 'print(1)'"},
+            }]
+        },
+    }), flush=True)
+    print(json.dumps({
+        "type": "user",
+        "message": {
+            "content": [{
+                "type": "tool_result",
+                "tool_use_id": "permission-denied-bash-1",
+                "content": "Permission denied",
+                "is_error": True,
+            }]
+        },
+    }), flush=True)
+
+if "PERMISSION_LAYER_APPROVED_DENIAL_MARKER" in prompt:
+    permission_denials.append({
+        "tool_input": {"command": "acl-test-full"},
+        "tool_name": "Bash",
+        "tool_use_id": "permission-denied-approved-bash-1",
+    })
+    print(json.dumps({
+        "type": "assistant",
+        "message": {
+            "content": [{
+                "type": "tool_use",
+                "id": "permission-denied-approved-bash-1",
+                "name": "Bash",
+                "input": {"command": "acl-test-full"},
+            }]
+        },
+    }), flush=True)
+    print(json.dumps({
+        "type": "user",
+        "message": {
+            "content": [{
+                "type": "tool_result",
+                "tool_use_id": "permission-denied-approved-bash-1",
+                "content": "Permission denied",
+                "is_error": True,
+            }]
+        },
+    }), flush=True)
+
+if "OVERSIZED_TIMEOUT_MARKER" in prompt:
+    completed = invoke_bash("acl-test-full")
+    print(json.dumps({
+        "type": "assistant",
+        "message": {
+            "content": [{
+                "type": "tool_use",
+                "id": "oversized-timeout-1",
                 "name": "Bash",
                 "input": {"command": "acl-test-full", "timeout": 60001},
+            }]
+        },
+    }), flush=True)
+    print(json.dumps({
+        "type": "user",
+        "message": {
+            "content": [{
+                "type": "tool_result",
+                "tool_use_id": "oversized-timeout-1",
+                "content": completed.stdout + completed.stderr,
+                "is_error": completed.returncode != 0,
             }]
         },
     }), flush=True)
@@ -241,6 +353,7 @@ print(json.dumps({
     "prompt_exposes_python_implementation": (
         "python3 -m unittest" in prompt.split("Execution boundary:", 1)[-1]
     ),
+    "permission_denials": permission_denials,
     "total_cost_usd": 0.01,
 }), flush=True)
 """
@@ -270,7 +383,7 @@ if not required_flags.issubset(args):
 if "--unshare-net" in args or "--clearenv" in args:
     print("synthetic bwrap: target environment or provider network drifted", file=sys.stderr)
     raise SystemExit(92)
-if args.count("--bind") != 2 or args.count("--ro-bind") != 7:
+if args.count("--bind") != 2 or args.count("--ro-bind") != 9:
     print("synthetic bwrap: unexpected host mount count", file=sys.stderr)
     raise SystemExit(93)
 
@@ -317,7 +430,16 @@ expected_fixed = {
     "/opt/acl-runtime/bwrap": str(pathlib.Path(sys.argv[0]).resolve()),
     "/opt/acl-runtime/socat": str(pathlib.Path(sys.argv[0]).parent / "socat"),
     "/opt/acl-runtime/lib": str(pathlib.Path(sys.argv[0]).parent / "lib"),
+    "/usr/bin/bash": binds.get("/usr/bin/bash"),
+    "/usr/bin/sh": binds.get("/usr/bin/sh"),
 }
+if (
+    not isinstance(expected_fixed["/usr/bin/bash"], str)
+    or expected_fixed["/usr/bin/bash"] != expected_fixed["/usr/bin/sh"]
+    or not expected_fixed["/usr/bin/bash"].startswith("/tmp/acl-claude-config-")
+):
+    print("synthetic bwrap: Bash policy shell mount drifted", file=sys.stderr)
+    raise SystemExit(95)
 if any(binds.get(destination) != source for destination, source in expected_fixed.items()):
     print("synthetic bwrap: fixed runtime mount drifted", file=sys.stderr)
     raise SystemExit(95)
@@ -351,6 +473,7 @@ if command[0] != "/opt/acl-runtime/claude":
     raise SystemExit(100)
 
 command[0] = expected_fixed["/opt/acl-runtime/claude"]
+os.environ["SHELL"] = expected_fixed["/usr/bin/bash"]
 os.chdir(working_directory)
 os.execve(command[0], command, os.environ)
 """
@@ -510,6 +633,9 @@ def test_synthetic_runner_has_clean_state_tools_and_network(tmp_path: Path) -> N
     assert "--strict-mcp-config" in argv
     assert "--setting-sources" in argv
     assert argv[argv.index("--setting-sources") + 1] == ""
+    assert "Glob" in argv
+    assert "Grep" in argv
+    assert any(isinstance(argument, str) and argument.startswith("Write(//") for argument in argv)
     assert "Bash(acl-test-full)" in argv
     assert "Bash(python3 -m unittest -v)" not in argv
     assert result_event["ambient_loaded"] is False
@@ -529,6 +655,17 @@ def test_synthetic_runner_has_clean_state_tools_and_network(tmp_path: Path) -> N
     assert managed_settings["permissions"] == settings["permissions"]
     assert managed_settings["sandbox"] == settings["sandbox"]
     assert managed_settings["bwrapPath"] == "/opt/acl-runtime/bwrap"
+    permissions = settings["permissions"]
+    assert isinstance(permissions, dict)
+    permission_allow = cast(list[object], permissions["allow"])
+    assert "Glob" in permission_allow
+    assert "Grep" in permission_allow
+    assert any(isinstance(rule, str) and rule.startswith("Write(//") for rule in permission_allow)
+    permission_deny = cast(list[object], permissions["deny"])
+    assert any(
+        isinstance(rule, str) and rule.startswith("Write(//") and rule.endswith("/.acl-runtime/**)")
+        for rule in permission_deny
+    )
     assert result_event["condition_sha256"] == request.condition_digest.removeprefix("sha256:")
     sandbox = settings["sandbox"]
     assert isinstance(sandbox, dict)
@@ -577,7 +714,8 @@ class SolutionTest(unittest.TestCase):
         self.assertLessEqual(resource.getrlimit(resource.RLIMIT_CPU)[0], 30)
         self.assertLessEqual(resource.getrlimit(resource.RLIMIT_AS)[0], 512 * 1024 * 1024)
         self.assertLessEqual(resource.getrlimit(resource.RLIMIT_FSIZE)[0], 16 * 1024 * 1024)
-        self.assertLessEqual(resource.getrlimit(resource.RLIMIT_NPROC)[0], 256)
+        self.assertGreaterEqual(resource.getrlimit(resource.RLIMIT_NPROC)[0], 256)
+        self.assertLessEqual(resource.getrlimit(resource.RLIMIT_NPROC)[0], 1024)
         self.assertLessEqual(resource.getrlimit(resource.RLIMIT_NOFILE)[0], 64)
 """,
         encoding="utf-8",
@@ -637,11 +775,11 @@ def test_two_commands_use_semantic_aliases_without_exposing_implementation(
 
 
 def test_unbounded_command_attempt_invalidates_run(tmp_path: Path) -> None:
-    with pytest.raises(TargetExecutionError, match="outside the bounded manifest") as caught:
+    with pytest.raises(TargetExecutionError, match="policy evidence") as caught:
         _runner(tmp_path).run(_request(tmp_path, prompt="UNBOUNDED_COMMAND_MARKER"))
 
     error = caught.value
-    assert error.failure_code == "out_of_manifest_bash_command"
+    assert error.failure_code == "bash_policy_evidence_missing"
     assert error.failure_subject_digest == (
         "sha256:dbfc5804c380dc96ce100c67f3d38bc50e0bc971839d354a241a4cc436c9fe92"
     )
@@ -659,6 +797,101 @@ def test_unbounded_command_attempt_invalidates_run(tmp_path: Path) -> None:
 def test_oversized_command_timeout_invalidates_run(tmp_path: Path) -> None:
     with pytest.raises(TargetExecutionError, match="invalid command timeout"):
         _runner(tmp_path).run(_request(tmp_path, prompt="OVERSIZED_TIMEOUT_MARKER"))
+
+
+def test_bash_policy_shell_allows_only_exact_alias(tmp_path: Path) -> None:
+    policy_shell = tmp_path / "bounded-bash-policy-shell"
+    audit_path = tmp_path / "bounded-bash-policy-audit.jsonl"
+    wrapper = tmp_path / "acl-test-full"
+    _write_executable(
+        wrapper,
+        """#!/usr/bin/python3
+raise SystemExit(0)
+""",
+    )
+    _write_bash_policy_shell(
+        policy_shell,
+        prepared_commands=(
+            _PreparedCommand(
+                alias="acl-test-full",
+                argv=("python3", "-m", "unittest", "-v"),
+                command_digest="sha256:" + "0" * 64,
+                wrapper_path=wrapper,
+            ),
+        ),
+        audit_path=audit_path,
+    )
+
+    def invoke(*arguments: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [str(policy_shell), *arguments],
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+
+    assert invoke("-c", "acl-test-full").returncode == 0
+    assert invoke("-c", "--", "acl-test-full").returncode == 0
+    assert invoke("-c", "python3 -m unittest -v").returncode == 126
+    assert invoke("-c", "source /ignored && acl-test-full", "--").returncode == 0
+    assert invoke("-c", "source /ignored && find / -type f", "--").returncode == 126
+    assert invoke("-c", "acl-test-full-unsafe").returncode == 126
+    sentinel = tmp_path / "must-not-run"
+    assert invoke("-c", "acl-test-full", f"touch {sentinel}").returncode == 0
+    assert not sentinel.exists()
+    audit = [json.loads(line) for line in audit_path.read_text(encoding="utf-8").splitlines()]
+    assert [entry["decision"] for entry in audit] == [
+        "allow",
+        "allow",
+        "deny",
+        "allow",
+        "deny",
+        "deny",
+        "allow",
+    ]
+    assert all("arguments" in entry for entry in audit)
+
+
+def test_proven_blocked_command_is_audited_without_invalidating_run(tmp_path: Path) -> None:
+    result = _runner(tmp_path).run(_request(tmp_path, prompt="BLOCKED_COMMAND_MARKER"))
+
+    assert result.command_audit == ()
+    assert len(result.denied_command_audit) == 1
+    denied = result.denied_command_audit[0]
+    assert denied.reason == "out_of_manifest_bash_command"
+    assert denied.blocked is True
+    assert denied.requested_command_digest.startswith("sha256:")
+
+
+def test_permission_layer_denial_is_audited_without_os_execution(tmp_path: Path) -> None:
+    result = _runner(tmp_path).run(_request(tmp_path, prompt="PERMISSION_LAYER_DENIAL_MARKER"))
+
+    assert result.command_audit == ()
+    assert len(result.denied_command_audit) == 1
+    denied = result.denied_command_audit[0]
+    assert denied.reason == "claude_permission_layer_denial"
+    assert denied.blocked is True
+
+
+def test_permission_layer_denial_of_approved_alias_invalidates_run(tmp_path: Path) -> None:
+    with pytest.raises(TargetExecutionError, match="policy evidence"):
+        _runner(tmp_path).run(_request(tmp_path, prompt="PERMISSION_LAYER_APPROVED_DENIAL_MARKER"))
+
+
+def test_internal_denied_shell_probe_does_not_invalidate_run(tmp_path: Path) -> None:
+    result = _runner(tmp_path).run(_request(tmp_path, prompt="INTERNAL_DENIED_SHELL_PROBE_MARKER"))
+
+    assert result.exit_code == 0
+    assert result.command_audit == ()
+    assert result.denied_command_audit == ()
+    assert result.bash_policy_audit_digest is not None
+    assert result.bash_policy_audit_digest.startswith("sha256:")
+
+
+def test_internal_allowed_shell_probe_invalidates_run(tmp_path: Path) -> None:
+    with pytest.raises(TargetExecutionError, match="unmatched allowed execution"):
+        _runner(tmp_path).run(_request(tmp_path, prompt="INTERNAL_ALLOWED_SHELL_PROBE_MARKER"))
 
 
 def test_host_file_tool_attempt_invalidates_run(tmp_path: Path) -> None:

@@ -4,34 +4,24 @@ Last updated: 2026-07-25
 
 ## Current milestone
 
-**Milestone 5.5 development work and the bounded Claude instrument repair are complete.**
-The final v12 non-held-out Haiku canary produced two valid trial records: one strong static profile
-and one compiled adaptation. Both edited the disposable task, successfully ran the exact focused
-and full aliases, passed the independently executed tests, observed every credential/network/host
-boundary check, scored 4/4 objective, 4/4 diagnostic, and 4/4 neutral, and tore down cleanly. Exact
-v12 provider cost was USD $0.05902235.
+**The corrected non-held-out Claude comparison is complete and unblinded.** The final v2.9 grid
+produced 16/16 valid Haiku runs under the repaired bounded-command runner. Kevin's ratings were
+checksum-bound, committed, and pushed with the mapping and objective scores still hidden. After
+unblinding, compiled adaptation led the strong static profile 5–2 with one tie, 28/32 versus 25/32
+objective checks, and 20/32 versus 18/32 diagnostic checks. Both passed 32/32 neutral checks. The
+successful grid cost exactly USD $0.67584695.
 
-The project owner has authorized automatic continuation after complete milestone exit gates. This
-removes the handoff pause, not objective research/privacy prerequisites. Two digest-bound fresh AI
-contexts completed the strong static profile. A separate deterministic software-custody context
-sealed the hidden tasks, condition mapping, randomization order, and all four exact condition
-materials. The full paid held-out pilot remains suspended. Kevin's three-pair Luna rating was frozen
-before the condition mapping and objective scores were opened.
+The runner instrument is healthy for this comparison: every visible test command executed
+successfully, command and structured trace evidence were captured, and every disposable workspace
+and configuration was destroyed. The measurement design still needs repair. Each visible task had
+only two tests, so incomplete implementations passed, and one broad independent-scorer exception
+boundary can collapse partial behavior into all-zero scores. The result is favorable descriptive
+cross-agent development evidence, not proof that compiler v2 is superior to an excellent profile.
 
-The follow-up repaired future neutral repository-state checks so Python bytecode cannot count as
-a material change, produced the task-level matrix, and traced the two apparent strong-profile
-advantages to brittle research-task scoring. It did not rescore the frozen grid or modify the
-compiler, release, TargetPack, or condition materials. The four-task replacement benchmark is now
-fully implemented. Its research-integrity task completed a two-cell GPT-5.6 Luna/medium
-calibration; Kevin's frozen preference unblinded to compiled adaptation. The other three tasks
-completed six valid Luna cells. Kevin's ratings preferred the strong static profile on all three.
-Both conditions tied at 12/12 objective, 11/12 diagnostic, and 12/12 neutral checks, but compiled
-adaptation failed the preregistered preference rule.
-
-No held-out content or Milestone 6 condition mapping was exposed to construction or the canary.
-The development canary used only its public non-held-out task and the already-frozen strong and
-compiled materials. No held-out trial, model modification, executable-tool creation, Kairn
-integration, web UI, public release, or remote research-data storage occurred.
+No compiler, release, TargetPack, frozen condition material, held-out task, or Milestone 6 mapping
+was accessed or changed in response to the result. No held-out trial, model modification,
+executable-tool creation, Kairn integration, web UI, public release, or remote research-data
+storage occurred.
 
 ## Completed scope
 
@@ -151,6 +141,11 @@ integration, web UI, public release, or remote research-data storage occurred.
 - The final v12 strong-profile and compiled-adaptation cells were both valid and perfect on this
   one public instrument task. Exact cost was USD $0.05902235. This establishes a functioning
   measurement path, not adaptation superiority or general cross-agent transfer.
+- Completed and unblinded the corrected Claude Haiku strong-profile-versus-compiled grid under
+  preregistration v2.9. All 16 public development cells were valid. Kevin's checksum-bound ratings
+  were pushed before unblinding; compiled won 5–2 with one tie and led independent objective and
+  diagnostic counts without a neutral regression. The exact mapping, costs, limitations, and
+  product interpretation are in `CLAUDE_CORRECTED_COMPARISON.md`.
 
 ## Verification performed
 
@@ -165,7 +160,7 @@ uv run pytest
 uv build
 ```
 
-The current full suite formats 225 files, passes strict typing, passes 388
+The current full suite formats 226 files, passes strict typing, passes 401
 tests, and builds both
 the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
@@ -191,12 +186,10 @@ establishes instrument and protocol readiness only, not transfer quality.
   payloads. The completed Kevin ratings apply only to the public v2 development tasks.
 - No claim of independent human authorship, third-party custody, or independently conducted study;
   the active design is internally blinded with automated functional separation.
-- No valid result about base versus ordinary memory and no cross-agent result. The development-only
-  initial four-condition grid found compiled adaptation below the strong profile, but its task set
-  was not sufficiently diagnostic. The replacement strong-versus-compiled gate also classified
-  compiled below strong because the automated scores tied while Kevin preferred strong 3/3.
-- Completed and unblinded six valid Luna cells over the three newly implemented replacement
-  tasks. The run did not access Milestone 6 custody and cannot establish cross-agent transfer.
+- No valid cross-agent result about base versus ordinary memory and no held-out cross-agent
+  superiority result. The public Claude comparison gives a favorable descriptive
+  strong-versus-compiled result, but the small development sample and scorer sensitivity defects
+  do not establish a general transfer or product-advantage claim.
 - No weight training/fine-tuning/LoRA, automatic tool creation/installation, Kairn, web UI, public
   publication, powered study, or remote research-data storage.
 
@@ -207,8 +200,10 @@ outside the workspace in owner-readable-only files. They are never committed, pr
 persisted in traces. The runner continues to reject ambiguous sources, broad key permissions,
 workspace-local keys, alternate providers, and missing sandbox support.
 
-The bounded Claude development instrument canary is complete. Do not begin the preregistered
-32-run paid Claude Code feasibility pilot without a separate explicit authorization. The next
-research decision is whether to run a properly powered non-held-out Claude comparison or authorize
-the sealed Milestone 6 pilot. Do not modify the frozen pack from this single instrument task,
-access Milestone 6 custody, or interpret instrument conformance as a cross-agent result.
+The corrected non-held-out Claude development grid is complete and unblinded. The immediate
+technical next action is a versioned public benchmark repair: strengthen the communication and
+environment visible tests, make independent checks exception-granular, and prove sensitivity with
+defective references. A proposed four-cell strong-versus-compiled Haiku rerun has a $1.00 hard
+cap, but has not been authorized or executed. Do not begin that rerun or the preregistered 32-run
+paid Claude Code feasibility pilot without separate explicit authorization, modify the frozen pack
+from this comparison, or access Milestone 6 custody.

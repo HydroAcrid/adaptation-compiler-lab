@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0.0",
+  "attempt_id": "claude-haiku-compiler-v2-corrected-comparison-attempt-4",
+  "status": "instrument_failure_no_comparison",
+  "recorded_at": "2026-07-25T21:29:34.861867Z",
+  "raw_retention_deadline": "2026-08-24T21:29:34.861867Z",
+  "source_commit": "0faa3ecb797171a85f5bc29601b6c01e14eaac02",
+  "preregistration_digest": "sha256:5bd2c06be92a1e81ee0c03e34a9141ca86de3604486cdf7f8d44988cf58be83c",
+  "public_plan_digest": "sha256:c693e47b52929e0b4be8f23c11e78cab6305b6d221e733e04395870578717312",
+  "frozen_input_manifest_digest": "sha256:b6644b2e89b6b24a28050cf3c0f9a2542328abe67acacb7311f4aa5d898ffbda",
+  "failure_receipt_digest": "sha256:622b60798b7ef09ab3e6b75edd556d9a904ce86b7bca4cc78701365779da01f1",
+  "private_plan_payload_digest": "sha256:133dcb8b8304b6d8386811f442158eec90067e5c898a6e5ad105750057648dbd",
+  "run_payload_digest": "sha256:06e2673bac42c0ec2b0382708c5f4265721da8ac1256ba3d070b9253a6c32e22",
+  "planned_runs": 16,
+  "completed_provider_runs": 1,
+  "valid_comparison_records": 0,
+  "retry_executed": false,
+  "exact_cost_usd": 0.04902725,
+  "failure": {
+    "stage": "policy_audit_reconciliation",
+    "code": "bash_policy_evidence_missing",
+    "summary": "The operating-system shell again blocked every command, including the approved alias. Claude Code places the model command before a trailing bootstrap argument, so auditing only the final argument could not bind the trace command to the policy event. The coordinator wrote a complete canonical failure receipt and stopped after one run."
+  },
+  "repair": {
+    "compiler_or_material_changed": false,
+    "required": [
+      "store a digest for every shell argument without retaining raw command text",
+      "recognize an alias if any argument equals one exact generated alias",
+      "execute only the generated wrapper and ignore every other argument",
+      "reconcile each trace command digest to one unused policy-audit argument digest"
+    ]
+  },
+  "raw_payloads_encrypted_outside_git": true,
+  "condition_mapping_exposed": false,
+  "objective_scores_exposed": false,
+  "blind_output_packet_created": false,
+  "adaptation_quality_comparison_allowed": false,
+  "cross_agent_transfer_claim_allowed": false,
+  "milestone_6_custody_accessed": false,
+  "milestone_6_materials_modified": false
+}

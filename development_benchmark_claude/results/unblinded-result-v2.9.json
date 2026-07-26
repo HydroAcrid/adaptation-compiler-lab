@@ -1,0 +1,671 @@
+{
+  "benchmark_id": "claude-haiku-compiler-v2-corrected-comparison-v2.9",
+  "benchmark_sensitivity_limitation": "The corrected runner executed tests successfully, but several clearly incomplete implementations still passed. The visible two-test suites are too weak to discriminate important edge cases, so this run cannot by itself establish that compiler v2 succeeds or fails.",
+  "blind_report_digest": "sha256:396477f5616218906a967f5eeaf0a59b88e5a54db16927e470d6b9f8ebc0271b",
+  "compiled_product_advantage_established": false,
+  "condition_aggregates": [
+    {
+      "cache_creation_input_tokens": 75850,
+      "cache_read_input_tokens": 202824,
+      "condition": "strong_static_profile",
+      "cost_usd": 0.3420199,
+      "diagnostic": {
+        "passed": 18,
+        "total": 32
+      },
+      "input_tokens": 30845,
+      "invalid_runs": 0,
+      "neutral": {
+        "passed": 32,
+        "total": 32
+      },
+      "objective": {
+        "passed": 25,
+        "total": 32
+      },
+      "output_tokens": 39216,
+      "preference_ties": 1,
+      "preference_wins": 2,
+      "valid_runs": 8
+    },
+    {
+      "cache_creation_input_tokens": 72325,
+      "cache_read_input_tokens": 191058,
+      "condition": "compiled_adaptation",
+      "cost_usd": 0.33382705,
+      "diagnostic": {
+        "passed": 20,
+        "total": 32
+      },
+      "input_tokens": 26745,
+      "invalid_runs": 0,
+      "neutral": {
+        "passed": 32,
+        "total": 32
+      },
+      "objective": {
+        "passed": 28,
+        "total": 32
+      },
+      "output_tokens": 39514,
+      "preference_ties": 1,
+      "preference_wins": 5,
+      "valid_runs": 8
+    }
+  ],
+  "cross_agent_claim_allowed": false,
+  "cross_agent_comparison_executed": true,
+  "decision": "benchmark_limited_descriptive_comparison",
+  "decision_reason": "The corrected runner executed the bounded tests for every valid run. The comparison is descriptive because the scorer found meaningful edge-case differences that the two-test visible suites did not expose, so this run alone cannot establish a durable compiled-pack advantage.",
+  "descriptive_comparison": {
+    "compiled_beats_or_ties_strong_on_diagnostic_checks": true,
+    "compiled_beats_or_ties_strong_on_neutral_checks": true,
+    "compiled_beats_or_ties_strong_on_objective_checks": true,
+    "compiled_beats_or_ties_strong_on_preference": true,
+    "compiled_preference_wins": 5,
+    "preference_ties": 1,
+    "strong_profile_preference_wins": 2
+  },
+  "design_digest": "sha256:dac084b71a49b2749c7be9095e06a9925aaba1c2e25179a86b48a94329478c6a",
+  "instrument_status": {
+    "all_sixteen_runs_valid": true,
+    "all_visible_tests_executed_successfully": true,
+    "runner_test_execution_repaired": true
+  },
+  "milestone_6_custody_accessed": false,
+  "pair_results": [
+    {
+      "outputs": [
+        {
+          "bash_attempt_count": 1,
+          "bash_permission_denial_observed": false,
+          "blind_output_id": "output-2e74c19c888f18d4d0e2d6aa",
+          "cache_creation_input_tokens": 6469,
+          "cache_read_input_tokens": 10985,
+          "condition": "strong_static_profile",
+          "cost_usd": 0.02549175,
+          "diagnostic": {
+            "passed": 3,
+            "total": 4
+          },
+          "duration_seconds": 26.151622,
+          "failed_checks": [
+            "diagnostic:path_values_are_literal_data"
+          ],
+          "input_tokens": 3842,
+          "invalid_reason": null,
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "objective": {
+            "passed": 4,
+            "total": 4
+          },
+          "output_tokens": 2493,
+          "presentation_position": "first",
+          "target_visible_test_returncode": 0,
+          "valid": true
+        },
+        {
+          "bash_attempt_count": 1,
+          "bash_permission_denial_observed": false,
+          "blind_output_id": "output-5b7916d4e7ab51a7ff785ea9",
+          "cache_creation_input_tokens": 8751,
+          "cache_read_input_tokens": 20599,
+          "condition": "compiled_adaptation",
+          "cost_usd": 0.04201865,
+          "diagnostic": {
+            "passed": 3,
+            "total": 4
+          },
+          "duration_seconds": 41.177184,
+          "failed_checks": [
+            "diagnostic:path_values_are_literal_data"
+          ],
+          "input_tokens": 3335,
+          "invalid_reason": null,
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "objective": {
+            "passed": 4,
+            "total": 4
+          },
+          "output_tokens": 5137,
+          "presentation_position": "second",
+          "target_visible_test_returncode": 0,
+          "valid": true
+        }
+      ],
+      "preference": "second_better",
+      "preferred_condition": "compiled_adaptation",
+      "rationale": "Both fail true literal-path safety because neither quotes paths. Second narrowly wins for clearer separation and test -f.",
+      "repetition": 1,
+      "task_id": "claude-development-communication"
+    },
+    {
+      "outputs": [
+        {
+          "bash_attempt_count": 2,
+          "bash_permission_denial_observed": true,
+          "blind_output_id": "output-3bdc50de898b7c335011b3e8",
+          "cache_creation_input_tokens": 8047,
+          "cache_read_input_tokens": 18569,
+          "condition": "compiled_adaptation",
+          "cost_usd": 0.036397650000000004,
+          "diagnostic": {
+            "passed": 2,
+            "total": 4
+          },
+          "duration_seconds": 35.536828,
+          "failed_checks": [
+            "diagnostic:path_values_are_literal_data",
+            "diagnostic:uses_zsh_compatible_commands"
+          ],
+          "input_tokens": 3337,
+          "invalid_reason": null,
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "objective": {
+            "passed": 4,
+            "total": 4
+          },
+          "output_tokens": 4229,
+          "presentation_position": "first",
+          "target_visible_test_returncode": 0,
+          "valid": true
+        },
+        {
+          "bash_attempt_count": 2,
+          "bash_permission_denial_observed": true,
+          "blind_output_id": "output-3eec3f82f70f9537b9b952b2",
+          "cache_creation_input_tokens": 11697,
+          "cache_read_input_tokens": 36892,
+          "condition": "strong_static_profile",
+          "cost_usd": 0.05890645,
+          "diagnostic": {
+            "passed": 3,
+            "total": 4
+          },
+          "duration_seconds": 58.216503,
+          "failed_checks": [
+            "diagnostic:path_values_are_literal_data"
+          ],
+          "input_tokens": 3856,
+          "invalid_reason": null,
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "objective": {
+            "passed": 4,
+            "total": 4
+          },
+          "output_tokens": 7348,
+          "presentation_position": "second",
+          "target_visible_test_returncode": 0,
+          "valid": true
+        }
+      ],
+      "preference": "second_better",
+      "preferred_condition": "strong_static_profile",
+      "rationale": "Second is clearly better because it at least quotes paths containing spaces. Double quotes still do not safely handle every possible shell character, though.",
+      "repetition": 2,
+      "task_id": "claude-development-communication"
+    },
+    {
+      "outputs": [
+        {
+          "bash_attempt_count": 4,
+          "bash_permission_denial_observed": false,
+          "blind_output_id": "output-4fab87776a5b98582bb7299c",
+          "cache_creation_input_tokens": 8071,
+          "cache_read_input_tokens": 25868,
+          "condition": "strong_static_profile",
+          "cost_usd": 0.033574549999999995,
+          "diagnostic": {
+            "passed": 3,
+            "total": 4
+          },
+          "duration_seconds": 28.567178,
+          "failed_checks": [
+            "diagnostic:shared_request_state_is_removed"
+          ],
+          "input_tokens": 3859,
+          "invalid_reason": null,
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "objective": {
+            "passed": 4,
+            "total": 4
+          },
+          "output_tokens": 3408,
+          "presentation_position": "first",
+          "target_visible_test_returncode": 0,
+          "valid": true
+        },
+        {
+          "bash_attempt_count": 4,
+          "bash_permission_denial_observed": false,
+          "blind_output_id": "output-6f5ba7374a8f85245b7a1275",
+          "cache_creation_input_tokens": 6769,
+          "cache_read_input_tokens": 27877,
+          "condition": "compiled_adaptation",
+          "cost_usd": 0.02701695,
+          "diagnostic": {
+            "passed": 3,
+            "total": 4
+          },
+          "duration_seconds": 25.00607,
+          "failed_checks": [
+            "diagnostic:shared_request_state_is_removed"
+          ],
+          "input_tokens": 3358,
+          "invalid_reason": null,
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "objective": {
+            "passed": 4,
+            "total": 4
+          },
+          "output_tokens": 2482,
+          "presentation_position": "second",
+          "target_visible_test_returncode": 0,
+          "valid": true
+        }
+      ],
+      "preference": "second_better",
+      "preferred_condition": "compiled_adaptation",
+      "rationale": "All four debugging outputs produced the identical correct patch. Second explains the concrete leakage sequence better in repetition 1.",
+      "repetition": 1,
+      "task_id": "claude-development-debugging-verification"
+    },
+    {
+      "outputs": [
+        {
+          "bash_attempt_count": 4,
+          "bash_permission_denial_observed": false,
+          "blind_output_id": "output-6cb78cf23a1b5418e363442d",
+          "cache_creation_input_tokens": 7706,
+          "cache_read_input_tokens": 30210,
+          "condition": "compiled_adaptation",
+          "cost_usd": 0.03379650000000001,
+          "diagnostic": {
+            "passed": 3,
+            "total": 4
+          },
+          "duration_seconds": 29.921474,
+          "failed_checks": [
+            "diagnostic:shared_request_state_is_removed"
+          ],
+          "input_tokens": 3358,
+          "invalid_reason": null,
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "objective": {
+            "passed": 4,
+            "total": 4
+          },
+          "output_tokens": 3557,
+          "presentation_position": "first",
+          "target_visible_test_returncode": 0,
+          "valid": true
+        },
+        {
+          "bash_attempt_count": 4,
+          "bash_permission_denial_observed": false,
+          "blind_output_id": "output-de72f0d53d58114804a35c35",
+          "cache_creation_input_tokens": 8515,
+          "cache_read_input_tokens": 40739,
+          "condition": "strong_static_profile",
+          "cost_usd": 0.03732565,
+          "diagnostic": {
+            "passed": 3,
+            "total": 4
+          },
+          "duration_seconds": 34.402924,
+          "failed_checks": [
+            "diagnostic:shared_request_state_is_removed"
+          ],
+          "input_tokens": 3878,
+          "invalid_reason": null,
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "objective": {
+            "passed": 4,
+            "total": 4
+          },
+          "output_tokens": 3746,
+          "presentation_position": "second",
+          "target_visible_test_returncode": 0,
+          "valid": true
+        }
+      ],
+      "preference": "first_better",
+      "preferred_condition": "compiled_adaptation",
+      "rationale": "All four debugging outputs produced the identical correct patch. First explains why normalization was insufficient better in repetition 2.",
+      "repetition": 2,
+      "task_id": "claude-development-debugging-verification"
+    },
+    {
+      "outputs": [
+        {
+          "bash_attempt_count": 1,
+          "bash_permission_denial_observed": false,
+          "blind_output_id": "output-0c7de8affdcc83d8613b698b",
+          "cache_creation_input_tokens": 12349,
+          "cache_read_input_tokens": 16823,
+          "condition": "compiled_adaptation",
+          "cost_usd": 0.06479055,
+          "diagnostic": {
+            "passed": 3,
+            "total": 4
+          },
+          "duration_seconds": 60.738031,
+          "failed_checks": [
+            "diagnostic:unsafe_layouts_are_rejected",
+            "objective:identical_destination_is_not_rewritten"
+          ],
+          "input_tokens": 3312,
+          "invalid_reason": null,
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "objective": {
+            "passed": 3,
+            "total": 4
+          },
+          "output_tokens": 8872,
+          "presentation_position": "first",
+          "target_visible_test_returncode": 0,
+          "valid": true
+        },
+        {
+          "bash_attempt_count": 2,
+          "bash_permission_denial_observed": false,
+          "blind_output_id": "output-4785406804aacb45a5d73903",
+          "cache_creation_input_tokens": 9880,
+          "cache_read_input_tokens": 41679,
+          "condition": "strong_static_profile",
+          "cost_usd": 0.0390809,
+          "diagnostic": {
+            "passed": 2,
+            "total": 4
+          },
+          "duration_seconds": 34.36898,
+          "failed_checks": [
+            "diagnostic:restore_recovers_original_destination",
+            "diagnostic:unsafe_layouts_are_rejected",
+            "objective:identical_destination_is_not_rewritten"
+          ],
+          "input_tokens": 3858,
+          "invalid_reason": null,
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "objective": {
+            "passed": 3,
+            "total": 4
+          },
+          "output_tokens": 3741,
+          "presentation_position": "second",
+          "target_visible_test_returncode": 0,
+          "valid": true
+        }
+      ],
+      "preference": "first_better",
+      "preferred_condition": "compiled_adaptation",
+      "rationale": "First has stronger resolved-path layout validation, reports the backup during preflight, and restores exactly. This is close because its shallow file comparison and reusable backup directory are weaknesses.",
+      "repetition": 1,
+      "task_id": "claude-development-environment-safety"
+    },
+    {
+      "outputs": [
+        {
+          "bash_attempt_count": 3,
+          "bash_permission_denial_observed": false,
+          "blind_output_id": "output-2cd2c8c45d283f9fdc7dff41",
+          "cache_creation_input_tokens": 12443,
+          "cache_read_input_tokens": 50994,
+          "condition": "compiled_adaptation",
+          "cost_usd": 0.05733215,
+          "diagnostic": {
+            "passed": 2,
+            "total": 4
+          },
+          "duration_seconds": 48.760624,
+          "failed_checks": [
+            "diagnostic:explicit_replace_creates_exact_backup",
+            "diagnostic:unsafe_layouts_are_rejected",
+            "objective:identical_destination_is_not_rewritten"
+          ],
+          "input_tokens": 3344,
+          "invalid_reason": null,
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "objective": {
+            "passed": 3,
+            "total": 4
+          },
+          "output_tokens": 6667,
+          "presentation_position": "first",
+          "target_visible_test_returncode": 0,
+          "valid": true
+        },
+        {
+          "bash_attempt_count": 1,
+          "bash_permission_denial_observed": false,
+          "blind_output_id": "output-c8eec04b1b78ae61230877d9",
+          "cache_creation_input_tokens": 13717,
+          "cache_read_input_tokens": 18687,
+          "condition": "strong_static_profile",
+          "cost_usd": 0.07096495,
+          "diagnostic": {
+            "passed": 0,
+            "total": 4
+          },
+          "duration_seconds": 62.564289,
+          "failed_checks": [
+            "diagnostic:conflict_is_safe_without_replace",
+            "diagnostic:explicit_replace_creates_exact_backup",
+            "diagnostic:restore_recovers_original_destination",
+            "diagnostic:unsafe_layouts_are_rejected",
+            "objective:identical_destination_is_not_rewritten",
+            "objective:new_destination_is_copied_exactly",
+            "objective:public_operations_remain_available",
+            "objective:source_tree_is_never_mutated"
+          ],
+          "input_tokens": 3825,
+          "invalid_reason": null,
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "objective": {
+            "passed": 0,
+            "total": 4
+          },
+          "output_tokens": 9625,
+          "presentation_position": "second",
+          "target_visible_test_returncode": 0,
+          "valid": true
+        }
+      ],
+      "preference": "second_better",
+      "preferred_condition": "strong_static_profile",
+      "rationale": "Second recursively checks nested content. First only compares the top level, so it could still overwrite a hand-edited nested file without recognizing the conflict. Second unfortunately fails to reject nested source/destination layouts.",
+      "repetition": 2,
+      "task_id": "claude-development-environment-safety"
+    },
+    {
+      "outputs": [
+        {
+          "bash_attempt_count": 1,
+          "bash_permission_denial_observed": false,
+          "blind_output_id": "output-2d1e0d4cc8758f8163a2b049",
+          "cache_creation_input_tokens": 7986,
+          "cache_read_input_tokens": 12884,
+          "condition": "compiled_adaptation",
+          "cost_usd": 0.0345949,
+          "diagnostic": {
+            "passed": 2,
+            "total": 4
+          },
+          "duration_seconds": 27.229907,
+          "failed_checks": [
+            "diagnostic:failure_and_timeout_remain_distinct",
+            "diagnostic:frozen_decision_order_is_applied",
+            "objective:exact_metrics_are_reported"
+          ],
+          "input_tokens": 3349,
+          "invalid_reason": null,
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "objective": {
+            "passed": 3,
+            "total": 4
+          },
+          "output_tokens": 3995,
+          "presentation_position": "first",
+          "target_visible_test_returncode": 0,
+          "valid": true
+        },
+        {
+          "bash_attempt_count": 1,
+          "bash_permission_denial_observed": false,
+          "blind_output_id": "output-f1cea261b12d1e5f559001de",
+          "cache_creation_input_tokens": 8377,
+          "cache_read_input_tokens": 13572,
+          "condition": "strong_static_profile",
+          "cost_usd": 0.03608744999999999,
+          "diagnostic": {
+            "passed": 2,
+            "total": 4
+          },
+          "duration_seconds": 29.065722,
+          "failed_checks": [
+            "diagnostic:failure_and_timeout_remain_distinct",
+            "diagnostic:frozen_decision_order_is_applied",
+            "objective:exact_metrics_are_reported"
+          ],
+          "input_tokens": 3864,
+          "invalid_reason": null,
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "objective": {
+            "passed": 3,
+            "total": 4
+          },
+          "output_tokens": 4079,
+          "presentation_position": "second",
+          "target_visible_test_returncode": 0,
+          "valid": true
+        }
+      ],
+      "preference": "tie",
+      "preferred_condition": null,
+      "rationale": "Both produce the same supplied-case result and share essentially the same limitations: hardcoded snapshot filenames, no applicability filtering, and omission of completed runs from outcome_counts.",
+      "repetition": 1,
+      "task_id": "claude-development-research-integrity"
+    },
+    {
+      "outputs": [
+        {
+          "bash_attempt_count": 1,
+          "bash_permission_denial_observed": false,
+          "blind_output_id": "output-30163c35bc1ff6ab0db18071",
+          "cache_creation_input_tokens": 9124,
+          "cache_read_input_tokens": 14402,
+          "condition": "strong_static_profile",
+          "cost_usd": 0.040588200000000005,
+          "diagnostic": {
+            "passed": 2,
+            "total": 4
+          },
+          "duration_seconds": 35.214039,
+          "failed_checks": [
+            "diagnostic:failure_and_timeout_remain_distinct",
+            "diagnostic:frozen_decision_order_is_applied",
+            "objective:exact_metrics_are_reported"
+          ],
+          "input_tokens": 3863,
+          "invalid_reason": null,
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "objective": {
+            "passed": 3,
+            "total": 4
+          },
+          "output_tokens": 4776,
+          "presentation_position": "first",
+          "target_visible_test_returncode": 0,
+          "valid": true
+        },
+        {
+          "bash_attempt_count": 1,
+          "bash_permission_denial_observed": false,
+          "blind_output_id": "output-8c9763e191ef1a6c44126829",
+          "cache_creation_input_tokens": 8274,
+          "cache_read_input_tokens": 13102,
+          "condition": "compiled_adaptation",
+          "cost_usd": 0.0378797,
+          "diagnostic": {
+            "passed": 2,
+            "total": 4
+          },
+          "duration_seconds": 31.053266,
+          "failed_checks": [
+            "diagnostic:failure_and_timeout_remain_distinct",
+            "diagnostic:frozen_decision_order_is_applied",
+            "objective:exact_metrics_are_reported"
+          ],
+          "input_tokens": 3352,
+          "invalid_reason": null,
+          "neutral": {
+            "passed": 4,
+            "total": 4
+          },
+          "objective": {
+            "passed": 3,
+            "total": 4
+          },
+          "output_tokens": 4575,
+          "presentation_position": "second",
+          "target_visible_test_returncode": 0,
+          "valid": true
+        }
+      ],
+      "preference": "second_better",
+      "preferred_condition": "compiled_adaptation",
+      "rationale": "Second decisively wins. It filters for applicable advisories, chooses the newest one, preserves all statuses including completed, and always produces a classification. First hardcodes the signed snapshot and can return classification=None.",
+      "repetition": 2,
+      "task_id": "claude-development-research-integrity"
+    }
+  ],
+  "preference_rating_digest": "sha256:2dc3fa790160bc86b35b617bf4ab54ce3c319de1ccd0bf962c56444e59ddef93",
+  "private_plan_digest": "sha256:0be6de77cb50659738bf1c3859dd6058aef52f8141519223070b612eea211f35",
+  "result_version": "1.1.0",
+  "total_cost_usd": 0.6758469500000001
+}

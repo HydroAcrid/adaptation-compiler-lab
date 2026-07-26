@@ -35,3 +35,19 @@ See `PREREGISTRATION-v1.2.json` for the executed design,
 `results/kevin-blind-rating-v1.2.json` for the pre-unblinding rating,
 `results/unblinded-result-v1.2.json` for the mapping and aggregate result, and
 `UNBLINDED_ANALYSIS-v1.2.md` for the condition-level analysis and runner repair.
+
+## Corrected v2.9 comparison
+
+The corrected public development comparison completed all 16 randomized cells with 16 valid
+records under the pinned Claude Haiku runtime. The runner supplied the same deterministic visible
+fixture manifest to both conditions, executed only fixed test aliases through the OS policy
+boundary, treated structured pre-execution denials as instruction-adherence outcomes, and retained
+fail-closed checks for unmatched allowed execution, host access, ambient state, credentials,
+network, teardown, and condition leakage.
+
+The run is still blinded. Condition identities, objective and diagnostic scores, token use, and
+cost remain sealed until Kevin rates all eight anonymous pairs. The repository contains only the
+sanitized [blind rating packet](results/blind-rating-packet-v2.9.md) and its
+digest-bound [completion receipt](results/corrected-comparison-blind-run-v2.9.json); raw traces,
+the condition mapping, and scores remain encrypted outside Git. Milestone 6 custody was not
+accessed or changed.

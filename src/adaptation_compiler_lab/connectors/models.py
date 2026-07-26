@@ -153,6 +153,19 @@ class TargetCommandAuditEntry(FrozenModel):
     accepted: Literal[True] = True
 
 
+class TargetDeniedCommandAuditEntry(FrozenModel):
+    """One out-of-manifest Bash request proven blocked before execution."""
+
+    sequence: int = Field(ge=1)
+    requested_command_digest: Sha256Digest
+    reason: Literal[
+        "out_of_manifest_bash_command",
+        "background_bash_forbidden",
+        "claude_permission_layer_denial",
+    ]
+    blocked: Literal[True] = True
+
+
 class TargetRunResult(FrozenModel):
     """Structured target trace returned to the sealed pilot coordinator."""
 
@@ -168,7 +181,9 @@ class TargetRunResult(FrozenModel):
     events: tuple[JsonObject, ...]
     stderr: str
     command_manifest_digest: Sha256Digest
+    bash_policy_audit_digest: Sha256Digest | None = None
     command_audit: tuple[TargetCommandAuditEntry, ...]
+    denied_command_audit: tuple[TargetDeniedCommandAuditEntry, ...] = ()
     config_destroyed: bool
 
     @model_validator(mode="after")

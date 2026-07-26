@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0.0",
+  "attempt_id": "claude-haiku-compiler-v2-corrected-comparison-attempt-3",
+  "status": "instrument_failure_no_comparison",
+  "recorded_at": "2026-07-25T21:25:57Z",
+  "raw_retention_deadline": "2026-08-24T21:25:57Z",
+  "source_commit": "783b77a604a7ae19cb5907059bd3905a41417b34",
+  "preregistration_digest": "sha256:652ca10a10e60241063cfc5bd526ede9d3c95f9cba72bbdb5eabd8089581b297",
+  "public_plan_digest": "sha256:1b1aa15c0739e6968a2aa0af16a336c6333e5c456322da1b573571f9784f8911",
+  "frozen_input_manifest_digest": "sha256:e560f1dfed1e558a34d2d5f5be19e90114c47684ee86e54ae81cf0f4a9f578a6",
+  "private_plan_payload_digest": "sha256:963d3fbd5126c2f7967621a690c1b11a2c2eb257231164dfd5b4d9199ac8e9c1",
+  "run_payload_digest": "sha256:a64c0c5e4728115097e330cd69459bdf86402bf5991f38cb485514ae8a4b6b0c",
+  "planned_runs": 16,
+  "completed_provider_runs": 1,
+  "valid_comparison_records": 0,
+  "retry_executed": false,
+  "exact_cost_usd": 0.04709435,
+  "failure": {
+    "stage": "policy_shell_alias_dispatch_and_failure_receipt",
+    "code": "approved_alias_argument_shape_not_recognized",
+    "summary": "The operating-system policy shell successfully blocked every non-manifest Bash request before execution. Claude passed the approved alias as the final shell argument rather than the two-argument form anticipated by the policy, so the policy denied the alias too and the target exhausted its turn limit.",
+    "receipt_bug": "The sanitized failure payload still contained a raw datetime; canonical serialization now normalizes every nested typed value through a JSON-mode adapter."
+  },
+  "repair": {
+    "compiler_or_material_changed": false,
+    "required": [
+      "recognize an approved alias only when it is the exact final shell argument",
+      "directly execute the generated wrapper and ignore all preceding shell bootstrap arguments",
+      "continue to deny any command whose final argument is not an exact alias",
+      "canonicalize all nested receipt values before durable write"
+    ]
+  },
+  "raw_payloads_encrypted_outside_git": true,
+  "condition_mapping_exposed": false,
+  "objective_scores_exposed": false,
+  "blind_output_packet_created": false,
+  "adaptation_quality_comparison_allowed": false,
+  "cross_agent_transfer_claim_allowed": false,
+  "milestone_6_custody_accessed": false,
+  "milestone_6_materials_modified": false
+}

@@ -1,0 +1,277 @@
+from __future__ import annotations
+
+import importlib
+import json
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from adaptation_compiler_lab.benchmark.claude_development import (
+    load_claude_development_design,
+)
+from adaptation_compiler_lab.connectors.pins import sha256_file
+from adaptation_compiler_lab.persistence.raw import RawPayloadRef
+
+
+def test_corrected_comparison_is_frozen_to_public_tasks_and_passing_instrument(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = Path(__file__).parents[2]
+    monkeypatch.syspath_prepend(str(repository / "scripts"))
+    coordinator: Any = importlib.import_module("run_claude_development_gate")
+    path = repository / "development_benchmark_claude" / "PREREGISTRATION-v2.9.json"
+    preregistration = json.loads(path.read_text(encoding="utf-8"))
+    design = load_claude_development_design(
+        repository / "development_benchmark_claude",
+        frozen_at=datetime.fromisoformat(preregistration["frozen_at"]),
+    )
+
+    execution, manifests = coordinator._corrected_execution_contract(
+        preregistration,
+        task_ids={task.task_id for task in design.tasks},
+    )
+
+    assert design.content_digest == preregistration["design_digest"]
+    assert execution["planned_runs"] == 16
+    assert execution["max_usd_per_run"] == 0.25
+    assert execution["max_usd_total"] == 4.0
+    assert len(manifests["claude-development-debugging-verification"]) == 2
+    assert all(commands[0] == "python3 -m unittest -v" for commands in manifests.values())
+    assert preregistration["boundaries"] == {
+        "held_out": False,
+        "reuses_previously_executed_public_tasks": True,
+        "prior_outputs_and_scores_are_known_to_the_construction_context": True,
+        "condition_materials_unchanged_after_prior_results": True,
+        "milestone_6_custody_accessed": False,
+        "milestone_6_materials_modified": False,
+        "full_paid_milestone_6_pilot_authorized": False,
+        "general_thesis_claim_allowed": False,
+    }
+    assert preregistration["prior_evidence"]["instrument_success_receipt_digest"] == sha256_file(
+        repository
+        / "development_benchmark_claude"
+        / "results"
+        / "instrument-canary-success-v12.json"
+    )
+    prior_paths = {
+        "corrected_comparison_v2_0_failure_digest": (
+            "results/corrected-comparison-instrument-failure-v2.0.json"
+        ),
+        "corrected_comparison_v2_1_failure_digest": (
+            "results/corrected-comparison-instrument-failure-v2.1.json"
+        ),
+        "corrected_comparison_v2_2_failure_digest": (
+            "results/corrected-comparison-instrument-failure-v2.2.json"
+        ),
+        "corrected_comparison_v2_3_failure_digest": (
+            "results/corrected-comparison-instrument-failure-v2.3.json"
+        ),
+        "corrected_comparison_v2_4_failure_digest": (
+            "results/corrected-comparison-instrument-failure-v2.4.json"
+        ),
+        "corrected_comparison_v2_5_failure_digest": (
+            "results/corrected-comparison-instrument-failure-v2.5.json"
+        ),
+        "corrected_comparison_v2_6_failure_digest": (
+            "results/corrected-comparison-instrument-failure-v2.6.json"
+        ),
+        "corrected_comparison_v2_7_failure_digest": (
+            "results/corrected-comparison-instrument-failure-v2.7.json"
+        ),
+        "corrected_comparison_v2_8_failure_digest": (
+            "results/corrected-comparison-instrument-failure-v2.8.json"
+        ),
+        "instrument_success_receipt_digest": "results/instrument-canary-success-v12.json",
+        "v1_2_blind_rating_digest": "results/kevin-blind-rating-v1.2.json",
+        "v1_2_unblinded_result_digest": "results/unblinded-result-v1.2.json",
+        "v1_2_analysis_digest": "UNBLINDED_ANALYSIS-v1.2.md",
+    }
+    benchmark_root = repository / "development_benchmark_claude"
+    assert preregistration["prior_evidence"] == {
+        name: sha256_file(benchmark_root / relative_path)
+        for name, relative_path in prior_paths.items()
+    }
+
+
+def test_corrected_comparison_validity_does_not_require_a_perfect_score(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = Path(__file__).parents[2]
+    monkeypatch.syspath_prepend(str(repository / "scripts"))
+    coordinator: Any = importlib.import_module("run_claude_development_gate")
+
+    assert (
+        coordinator._comparison_invalid_reasons(
+            terminal_reasons=[],
+            runner_failure_reason=None,
+            timed_out=False,
+            exit_code=0,
+            config_destroyed=True,
+            condition_leakage_observed=False,
+        )
+        == []
+    )
+
+
+def test_successful_alias_receipt_excludes_out_of_manifest_trace_commands(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = Path(__file__).parents[2]
+    monkeypatch.syspath_prepend(str(repository / "scripts"))
+    coordinator: Any = importlib.import_module("run_claude_development_gate")
+    events = (
+        {
+            "message": {
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "id": "approved-use",
+                        "name": "Bash",
+                        "input": {"command": "acl-test-full"},
+                    },
+                    {
+                        "type": "tool_use",
+                        "id": "rejected-use",
+                        "name": "Bash",
+                        "input": {"command": "python3 -m unittest -v"},
+                    },
+                ]
+            }
+        },
+        {
+            "message": {
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": "approved-use",
+                        "is_error": False,
+                    },
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": "rejected-use",
+                        "is_error": False,
+                    },
+                ]
+            }
+        },
+    )
+
+    assert coordinator._successful_audited_aliases(
+        events,
+        accepted_aliases={"acl-test-full"},
+    ) == {"acl-test-full"}
+
+
+def test_failure_receipt_serializes_encrypted_reference_as_json(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = Path(__file__).parents[2]
+    monkeypatch.syspath_prepend(str(repository / "scripts"))
+    coordinator: Any = importlib.import_module("run_claude_development_gate")
+    reference = RawPayloadRef(
+        sha256="0" * 64,
+        size_bytes=1,
+        media_type="application/json",
+        relative_path="sha256/00/" + "0" * 64,
+    )
+
+    value = {
+        "private_plan_ref": coordinator._encrypted_ref(reference),
+        "raw_retention_deadline": datetime(2026, 8, 24, tzinfo=UTC),
+    }
+
+    assert json.loads(coordinator._canonical_bytes(value)) == {
+        "private_plan_ref": coordinator._encrypted_ref(reference).model_dump(mode="json"),
+        "raw_retention_deadline": "2026-08-24T00:00:00Z",
+    }
+
+
+def test_visible_fixture_manifest_excludes_runner_and_repository_metadata(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = Path(__file__).parents[2]
+    monkeypatch.syspath_prepend(str(repository / "scripts"))
+    coordinator: Any = importlib.import_module("run_claude_development_gate")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "feature.py").write_text("VALUE = 1\n", encoding="utf-8")
+    (tmp_path / "test_feature.py").write_text("pass\n", encoding="utf-8")
+    (tmp_path / ".git").mkdir()
+    (tmp_path / ".git" / "config").write_text("private metadata", encoding="utf-8")
+    (tmp_path / ".acl-condition.md").write_text("condition", encoding="utf-8")
+    (tmp_path / "CLAUDE.md").write_text("ambient", encoding="utf-8")
+
+    manifest = coordinator._visible_fixture_manifest(tmp_path)
+
+    assert "- src/feature.py" in manifest
+    assert "- test_feature.py" in manifest
+    assert ".git" not in manifest
+    assert ".acl-condition.md" not in manifest
+    assert "CLAUDE.md" not in manifest
+
+
+def test_v2_9_blind_packet_is_digest_bound_and_condition_safe() -> None:
+    repository = Path(__file__).parents[2]
+    results = repository / "development_benchmark_claude" / "results"
+    packet = results / "blind-rating-packet-v2.9.md"
+    receipt = json.loads(
+        (results / "corrected-comparison-blind-run-v2.9.json").read_text(encoding="utf-8")
+    )
+
+    assert sha256_file(packet) == receipt["blind_packet_digest"]
+    assert receipt["completed_runs"] == receipt["valid_runs"] == 16
+    assert receipt["condition_mapping_withheld"] is True
+    assert receipt["objective_scores_withheld"] is True
+    assert receipt["token_and_cost_data_withheld"] is True
+    assert receipt["milestone_6_custody_accessed"] is False
+    serialized = packet.read_text(encoding="utf-8")
+    for forbidden in (
+        "strong_static_profile",
+        "compiled_adaptation",
+        "compiled_v2",
+        "blind_condition_id",
+        "ANTHROPIC_API_KEY",
+        "sk-ant-",
+        "/home/kevin_dotel",
+        ".acl-condition",
+    ):
+        assert forbidden not in serialized
+
+
+def test_v2_9_rating_and_unblinded_result_are_digest_bound() -> None:
+    repository = Path(__file__).parents[2]
+    results = repository / "development_benchmark_claude" / "results"
+    rating_path = results / "kevin-blind-rating-v2.9.json"
+    result_path = results / "unblinded-result-v2.9.json"
+    rating = json.loads(rating_path.read_text(encoding="utf-8"))
+    result = json.loads(result_path.read_text(encoding="utf-8"))
+
+    assert rating["condition_mapping_seen"] is False
+    assert rating["objective_scores_seen"] is False
+    assert rating["presentation_sha256"] == sha256_file(results / "blind-rating-packet-v2.9.md")
+    assert (results / "kevin-blind-rating-v2.9.sha256").read_text(encoding="ascii").split()[
+        0
+    ] == sha256_file(rating_path).removeprefix("sha256:")
+    assert (results / "unblinded-result-v2.9.sha256").read_text(encoding="ascii").split()[
+        0
+    ] == sha256_file(result_path).removeprefix("sha256:")
+    assert result["preference_rating_digest"] == sha256_file(rating_path)
+    assert result["total_cost_usd"] == pytest.approx(0.67584695)
+    assert result["instrument_status"] == {
+        "all_sixteen_runs_valid": True,
+        "all_visible_tests_executed_successfully": True,
+        "runner_test_execution_repaired": True,
+    }
+    aggregates = {item["condition"]: item for item in result["condition_aggregates"]}
+    assert aggregates["compiled_adaptation"]["preference_wins"] == 5
+    assert aggregates["strong_static_profile"]["preference_wins"] == 2
+    assert {item["preference_ties"] for item in aggregates.values()} == {1}
+    assert aggregates["compiled_adaptation"]["objective"] == {"passed": 28, "total": 32}
+    assert aggregates["strong_static_profile"]["objective"] == {"passed": 25, "total": 32}
+    assert aggregates["compiled_adaptation"]["diagnostic"] == {"passed": 20, "total": 32}
+    assert aggregates["strong_static_profile"]["diagnostic"] == {"passed": 18, "total": 32}
+    assert {tuple(item["neutral"].values()) for item in aggregates.values()} == {(32, 32)}
+    assert result["compiled_product_advantage_established"] is False
+    assert result["milestone_6_custody_accessed"] is False

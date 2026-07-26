@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0.0",
+  "attempt_id": "claude-haiku-compiler-v2-corrected-comparison-attempt-5",
+  "status": "instrument_failure_no_comparison",
+  "recorded_at": "2026-07-25T21:36:32.342449Z",
+  "raw_retention_deadline": "2026-08-24T21:36:32.342449Z",
+  "source_commit": "6b52eaca58d43b592539d9ba390cc4b0ac8dc90b",
+  "preregistration_digest": "sha256:b4d0069bdb5ec30eb238fc1377fc3571bd3b2e1d0bc80b1a9a6280f4d0802081",
+  "public_plan_digest": "sha256:b869332b94489c7843e8c5b6611ea93e8c03c338e40c042558d5bfde6f68cbf9",
+  "frozen_input_manifest_digest": "sha256:00d189e2c9f90e8014de4d2638c9d18574ea9ddcc1592ef53bc20923e3bad52e",
+  "failure_receipt_digest": "sha256:66ba94a965c3aa78595151b05b7ca364268e0ea1f63593a0b719320a3726951b",
+  "private_plan_payload_digest": "sha256:ecf6c20c3a3729abab7df29eb196ea0423d19c917bc62f9a185c51c66d2cc591",
+  "run_payload_digest": "sha256:6f5c2c5ca7a112c264ae29b87a6791e489c01609ab6a9324e55423f14efa83ab",
+  "planned_runs": 16,
+  "completed_provider_runs": 1,
+  "valid_comparison_records": 0,
+  "retry_executed": false,
+  "exact_cost_usd": 0.0818403,
+  "failure": {
+    "stage": "policy_audit_reconciliation",
+    "code": "bash_policy_evidence_missing",
+    "summary": "Per-argument digests proved that Claude Code embeds the model command inside a larger shell-bootstrap argument. The policy denied every request, including the approved alias, and the coordinator wrote a complete failure receipt before stopping."
+  },
+  "repair": {
+    "compiler_or_material_changed": false,
+    "required": [
+      "tokenize each ephemeral shell-bootstrap argument",
+      "recognize only an exact generated alias token",
+      "execute only the generated wrapper and never the bootstrap string",
+      "bind the trace command by ephemeral substring comparison",
+      "retain durably only the digest of the raw policy audit"
+    ]
+  },
+  "raw_payloads_encrypted_outside_git": true,
+  "condition_mapping_exposed": false,
+  "objective_scores_exposed": false,
+  "blind_output_packet_created": false,
+  "adaptation_quality_comparison_allowed": false,
+  "cross_agent_transfer_claim_allowed": false,
+  "milestone_6_custody_accessed": false,
+  "milestone_6_materials_modified": false
+}
