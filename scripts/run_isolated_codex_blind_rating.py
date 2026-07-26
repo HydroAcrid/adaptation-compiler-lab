@@ -198,10 +198,30 @@ def main() -> None:
         bubblewrap=arguments.bubblewrap,
     )
     preconditions = runner.verify_preconditions()
-    result = runner.run(
-        packet=packet_path.read_text(encoding="utf-8"),
-        output_schema=isolated_rating_output_schema(),
-    )
+    try:
+        result = runner.run(
+            packet=packet_path.read_text(encoding="utf-8"),
+            output_schema=isolated_rating_output_schema(),
+        )
+    except BaseException as error:
+        _exclusive_write(
+            rating_output_root / "failure.json",
+            _canonical_bytes(
+                {
+                    "benchmark_id": preregistration["benchmark_id"],
+                    "condition_mapping_seen": False,
+                    "exception_message": str(error),
+                    "exception_type": type(error).__name__,
+                    "milestone_6_custody_accessed": False,
+                    "objective_scores_seen": False,
+                    "rating_created": False,
+                    "retry_allowed": False,
+                    "status": "isolated_rating_coordinator_failure",
+                }
+            ),
+            mode=0o600,
+        )
+        raise
     raw_bundle = _canonical_bytes(
         {
             "command_digest": result.command_digest,
