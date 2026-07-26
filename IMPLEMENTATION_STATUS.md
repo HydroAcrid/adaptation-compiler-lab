@@ -4,19 +4,21 @@ Last updated: 2026-07-25
 
 ## Current milestone
 
-**The corrected non-held-out Claude comparison is complete and unblinded.** The final v2.9 grid
-produced 16/16 valid Haiku runs under the repaired bounded-command runner. Kevin's ratings were
-checksum-bound, committed, and pushed with the mapping and objective scores still hidden. After
-unblinding, compiled adaptation led the strong static profile 5–2 with one tie, 28/32 versus 25/32
-objective checks, and 20/32 versus 18/32 diagnostic checks. Both passed 32/32 neutral checks. The
-successful grid cost exactly USD $0.67584695.
+**The versioned Claude benchmark repair is complete and awaiting Kevin's blind ratings.** It uses
+two newly created public tasks that repair the known communication-literal and recursive
+environment-safety measurement defects. Reference implementations pass every check, while targeted
+defective implementations fail the intended check without collapsing unrelated results.
 
-The runner instrument is healthy for this comparison: every visible test command executed
-successfully, command and structured trace evidence were captured, and every disposable workspace
-and configuration was destroyed. The measurement design still needs repair. Each visible task had
-only two tests, so incomplete implementations passed, and one broad independent-scorer exception
-boundary can collapse partial behavior into all-zero scores. The result is favorable descriptive
-cross-agent development evidence, not proof that compiler v2 is superior to an excellent profile.
+The preregistered Haiku grid produced 4/4 valid strong-profile-versus-compiled records. Every
+bounded test command executed, trace evidence was captured, and all disposable workspaces and
+configurations were destroyed. The anonymous packet and minimized digest receipt are committed;
+condition identities, objective scores, token use, actual cost, run order, and private evidence
+remain sealed until both preference ratings are recorded. No comparison result is stated while
+the blind is open.
+
+The prior v2.9 result remains favorable but benchmark-limited descriptive cross-agent development
+evidence: compiled led Kevin's preferences 5–2 with one tie and led objective/diagnostic counts,
+with no neutral regression. It is not proof that compiler v2 is superior to an excellent profile.
 
 No compiler, release, TargetPack, frozen condition material, held-out task, or Milestone 6 mapping
 was accessed or changed in response to the result. No held-out trial, model modification,
@@ -146,6 +148,15 @@ storage occurred.
   were pushed before unblinding; compiled won 5–2 with one tie and led independent objective and
   diagnostic counts without a neutral regression. The exact mapping, costs, limitations, and
   product interpretation are in `CLAUDE_CORRECTED_COMPARISON.md`.
+- Added a separate versioned public benchmark repair without rewriting the completed v2.9 tasks.
+  Communication now structurally requires canonical POSIX shell-literal paths; environment safety
+  now exercises recursive differences, layout containment, unused backups, exact restoration, and
+  no-op identical publishes. Scenario-granular independent checks and defective/reference
+  conformance fixtures prove sensitivity.
+- Froze the two-task/two-condition/one-repetition Haiku design to the unchanged strong and compiled
+  materials, pinned runtime, exact task/scorer/conformance digests, no-retry rule, and USD $1 hard
+  ceiling. All four live records are valid. The checksum-bound anonymous packet is available for
+  Kevin's ratings while mapping, scores, usage, and actual cost remain sealed.
 
 ## Verification performed
 
@@ -160,7 +171,7 @@ uv run pytest
 uv build
 ```
 
-The current full suite formats 226 files, passes strict typing, passes 401
+The current full suite formats 243 files, passes strict typing, passes 412
 tests, and builds both
 the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
@@ -200,10 +211,11 @@ outside the workspace in owner-readable-only files. They are never committed, pr
 persisted in traces. The runner continues to reject ambiguous sources, broad key permissions,
 workspace-local keys, alternate providers, and missing sandbox support.
 
-The corrected non-held-out Claude development grid is complete and unblinded. The immediate
-technical next action is a versioned public benchmark repair: strengthen the communication and
-environment visible tests, make independent checks exception-granular, and prove sensitivity with
-defective references. A proposed four-cell strong-versus-compiled Haiku rerun has a $1.00 hard
-cap, but has not been authorized or executed. Do not begin that rerun or the preregistered 32-run
-paid Claude Code feasibility pilot without separate explicit authorization, modify the frozen pack
-from this comparison, or access Milestone 6 custody.
+The versioned four-cell repair run is complete and still blinded. The only required next input is
+Kevin's First/Second/Tie rating and rationale for each of the two task pairs in
+`development_benchmark_claude_repair/results/blind-rating-packet-v1.0.md`. Record and checksum-bind
+both ratings before opening the encrypted condition mapping or objective results.
+
+Do not modify the frozen pack from this comparison, begin another Claude grid, execute the
+preregistered 32-run paid Claude Code feasibility pilot, or access Milestone 6 custody without a
+new explicit decision after the blind analysis.

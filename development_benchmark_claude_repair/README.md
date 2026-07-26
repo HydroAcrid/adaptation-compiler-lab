@@ -16,3 +16,14 @@ files are not copied into target workspaces.
 
 The benchmark remains separate from Milestone 6 custody. It compares only the frozen strong static
 profile and frozen compiled adaptation material, one run per condition on each of two tasks.
+
+## Blind-run status
+
+The preregistered four-cell Haiku run completed with 4/4 valid records. The condition mapping,
+objective scores, token use, and actual cost remain sealed until Kevin rates both anonymous pairs.
+The public [blind packet](results/blind-rating-packet-v1.0.md) is bound to the minimized
+[blind-run receipt](results/blind-run-receipt-v1.0.json). Raw traces, the private plan, scores, and
+provider accounting remain encrypted outside the repository.
+
+No frozen condition material was changed, and neither the held-out Milestone 6 tasks nor their
+custody state were accessed.

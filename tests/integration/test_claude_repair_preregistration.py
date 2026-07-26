@@ -71,3 +71,33 @@ def test_repair_preregistration_preserves_prior_v2_9_evidence() -> None:
         ),
         "v2_9_analysis_digest": sha256_file(repository / "CLAUDE_CORRECTED_COMPARISON.md"),
     }
+
+
+def test_repair_blind_packet_is_digest_bound_and_condition_safe() -> None:
+    repository = Path(__file__).parents[2]
+    results = repository / "development_benchmark_claude_repair" / "results"
+    packet = results / "blind-rating-packet-v1.0.md"
+    receipt = json.loads((results / "blind-run-receipt-v1.0.json").read_text(encoding="utf-8"))
+
+    assert sha256_file(packet) == receipt["blind_packet_digest"]
+    assert receipt["completed_runs"] == receipt["valid_runs"] == receipt["planned_runs"] == 4
+    assert receipt["condition_mapping_withheld"] is True
+    assert receipt["objective_scores_withheld"] is True
+    assert receipt["token_and_cost_data_withheld"] is True
+    assert receipt["milestone_6_custody_accessed"] is False
+    serialized = packet.read_text(encoding="utf-8")
+    for forbidden in (
+        "strong_static_profile",
+        "compiled_adaptation",
+        "compiled_v2",
+        "blind_condition_id",
+        "ANTHROPIC_API_KEY",
+        "CLAUDE_API_KEY",
+        "sk-ant-",
+        "/home/kevin_dotel",
+        ".acl-condition",
+        "total_cost_usd",
+        "input_tokens",
+        "output_tokens",
+    ):
+        assert forbidden not in serialized
