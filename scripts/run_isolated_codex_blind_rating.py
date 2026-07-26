@@ -9,7 +9,7 @@ import os
 import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from adaptation_compiler_lab.benchmark.isolated_rating import (
     BlindPairBinding,
@@ -52,6 +52,25 @@ def _git(command: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
         encoding="utf-8",
         timeout=30,
     )
+
+
+def _pair_bindings(raw_pairs: Any) -> tuple[BlindPairBinding, BlindPairBinding]:
+    if not isinstance(raw_pairs, list) or len(raw_pairs) != 2:
+        raise RuntimeError("isolated rating pair bindings are incomplete")
+    pair_values = []
+    for value in raw_pairs:
+        if not isinstance(value, dict):
+            raise RuntimeError("isolated rating pair binding is not an object")
+        normalized = dict(value)
+        output_ids = normalized.get("ordered_output_ids")
+        if not isinstance(output_ids, list):
+            raise RuntimeError("isolated rating output binding is not a JSON array")
+        normalized["ordered_output_ids"] = tuple(output_ids)
+        pair_values.append(BlindPairBinding.model_validate(normalized))
+    pairs = tuple(pair_values)
+    if len({item.task_id for item in pairs}) != 2:
+        raise RuntimeError("isolated rating tasks are not unique")
+    return cast(tuple[BlindPairBinding, BlindPairBinding], pairs)
 
 
 def _validate_preregistration(
@@ -120,13 +139,7 @@ def _validate_preregistration(
         "user_config_and_rules_ignored": True,
     }:
         raise RuntimeError("isolated rating boundary drifted")
-    raw_pairs = preregistration.get("pairs")
-    if not isinstance(raw_pairs, list) or len(raw_pairs) != 2:
-        raise RuntimeError("isolated rating pair bindings are incomplete")
-    pairs = tuple(BlindPairBinding.model_validate(value) for value in raw_pairs)
-    if len({item.task_id for item in pairs}) != 2:
-        raise RuntimeError("isolated rating tasks are not unique")
-    return pairs  # type: ignore[return-value]
+    return _pair_bindings(preregistration.get("pairs"))
 
 
 def main() -> None:

@@ -142,3 +142,23 @@ def test_isolated_rating_is_frozen_before_condition_reveal() -> None:
     assert preregistration["supersedes_unexecuted_preregistration"].endswith("v1.0.json")
     assert preregistration["rating_policy"]["kevin_specific_preference_measured"] is False
     assert preregistration["boundaries"]["milestone_6_custody_accessed"] is False
+
+
+def test_isolated_rating_preregistration_json_pairs_enter_strict_models(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = Path(__file__).parents[2]
+    monkeypatch.syspath_prepend(str(repository / "scripts"))
+    coordinator: Any = importlib.import_module("run_isolated_codex_blind_rating")
+    preregistration = json.loads(
+        (
+            repository
+            / "development_benchmark_claude_repair"
+            / "ISOLATED_RATING_PREREGISTRATION-v1.1.json"
+        ).read_text(encoding="utf-8")
+    )
+
+    pairs = coordinator._pair_bindings(preregistration["pairs"])
+
+    assert len(pairs) == 2
+    assert all(isinstance(item.ordered_output_ids, tuple) for item in pairs)
