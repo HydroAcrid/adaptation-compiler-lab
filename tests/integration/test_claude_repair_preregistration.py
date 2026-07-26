@@ -9,7 +9,11 @@ from typing import Any
 import pytest
 
 from adaptation_compiler_lab.benchmark.claude_repair import load_claude_repair_design
-from adaptation_compiler_lab.connectors.pins import sha256_file
+from adaptation_compiler_lab.benchmark.isolated_rating import IsolatedBlindRatingDecision
+from adaptation_compiler_lab.connectors.pins import sha256_bytes, sha256_file
+from adaptation_compiler_lab.runners.codex_blind_rating import (
+    CODEX_BLIND_RATING_CONTRACT,
+)
 
 
 def test_repair_preregistration_binds_the_new_tasks_and_frozen_materials(
@@ -101,3 +105,39 @@ def test_repair_blind_packet_is_digest_bound_and_condition_safe() -> None:
         "output_tokens",
     ):
         assert forbidden not in serialized
+
+
+def test_isolated_rating_is_frozen_before_condition_reveal() -> None:
+    repository = Path(__file__).parents[2]
+    root = repository / "development_benchmark_claude_repair"
+    preregistration = json.loads(
+        (root / "ISOLATED_RATING_PREREGISTRATION-v1.0.json").read_text(encoding="utf-8")
+    )
+    blind_receipt = json.loads(
+        (root / "results" / "blind-run-receipt-v1.0.json").read_text(encoding="utf-8")
+    )
+    schema_bytes = (
+        json.dumps(
+            IsolatedBlindRatingDecision.model_json_schema(),
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n"
+    ).encode("utf-8")
+
+    assert preregistration["packet_digest"] == sha256_file(
+        root / "results" / "blind-rating-packet-v1.0.md"
+    )
+    assert (
+        preregistration["completion_receipt_digest"] == blind_receipt["completion_receipt_digest"]
+    )
+    assert preregistration["blind_report_digest"].startswith("sha256:")
+    assert preregistration["rating_contract_digest"] == sha256_bytes(
+        CODEX_BLIND_RATING_CONTRACT.encode()
+    )
+    assert preregistration["output_schema_digest"] == sha256_bytes(schema_bytes)
+    assert preregistration["scorer"]["model"] == "gpt-5.6-sol"
+    assert preregistration["scorer"]["reasoning_effort"] == "xhigh"
+    assert preregistration["rating_policy"]["kevin_specific_preference_measured"] is False
+    assert preregistration["boundaries"]["milestone_6_custody_accessed"] is False
