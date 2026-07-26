@@ -1,0 +1,102 @@
+{
+  "rating_version": "1.0.0",
+  "rating_id": "claude-haiku-compiler-v2-kevin-rating-0002",
+  "public_plan_file_sha256": "sha256:7087a4c176545793952586472559535adab7aae2ceecbed2e61731d6ff65db5e",
+  "blind_report_digest": "sha256:396477f5616218906a967f5eeaf0a59b88e5a54db16927e470d6b9f8ebc0271b",
+  "presentation_sha256": "sha256:82c81a95e144531692be65287bc37181fa512a1e0c06dc781039e5ba33dcd4b8",
+  "pair_preferences": [
+    {
+      "task_id": "claude-development-communication",
+      "repetition": 1,
+      "ordered_output_ids": [
+        "output-2e74c19c888f18d4d0e2d6aa",
+        "output-5b7916d4e7ab51a7ff785ea9"
+      ],
+      "preference": "second_better",
+      "preferred_output_id": "output-5b7916d4e7ab51a7ff785ea9",
+      "rationale": "Both fail true literal-path safety because neither quotes paths. Second narrowly wins for clearer separation and test -f."
+    },
+    {
+      "task_id": "claude-development-communication",
+      "repetition": 2,
+      "ordered_output_ids": [
+        "output-3bdc50de898b7c335011b3e8",
+        "output-3eec3f82f70f9537b9b952b2"
+      ],
+      "preference": "second_better",
+      "preferred_output_id": "output-3eec3f82f70f9537b9b952b2",
+      "rationale": "Second is clearly better because it at least quotes paths containing spaces. Double quotes still do not safely handle every possible shell character, though."
+    },
+    {
+      "task_id": "claude-development-debugging-verification",
+      "repetition": 1,
+      "ordered_output_ids": [
+        "output-4fab87776a5b98582bb7299c",
+        "output-6f5ba7374a8f85245b7a1275"
+      ],
+      "preference": "second_better",
+      "preferred_output_id": "output-6f5ba7374a8f85245b7a1275",
+      "rationale": "All four debugging outputs produced the identical correct patch. Second explains the concrete leakage sequence better in repetition 1."
+    },
+    {
+      "task_id": "claude-development-debugging-verification",
+      "repetition": 2,
+      "ordered_output_ids": [
+        "output-6cb78cf23a1b5418e363442d",
+        "output-de72f0d53d58114804a35c35"
+      ],
+      "preference": "first_better",
+      "preferred_output_id": "output-6cb78cf23a1b5418e363442d",
+      "rationale": "All four debugging outputs produced the identical correct patch. First explains why normalization was insufficient better in repetition 2."
+    },
+    {
+      "task_id": "claude-development-environment-safety",
+      "repetition": 1,
+      "ordered_output_ids": [
+        "output-0c7de8affdcc83d8613b698b",
+        "output-4785406804aacb45a5d73903"
+      ],
+      "preference": "first_better",
+      "preferred_output_id": "output-0c7de8affdcc83d8613b698b",
+      "rationale": "First has stronger resolved-path layout validation, reports the backup during preflight, and restores exactly. This is close because its shallow file comparison and reusable backup directory are weaknesses."
+    },
+    {
+      "task_id": "claude-development-environment-safety",
+      "repetition": 2,
+      "ordered_output_ids": [
+        "output-2cd2c8c45d283f9fdc7dff41",
+        "output-c8eec04b1b78ae61230877d9"
+      ],
+      "preference": "second_better",
+      "preferred_output_id": "output-c8eec04b1b78ae61230877d9",
+      "rationale": "Second recursively checks nested content. First only compares the top level, so it could still overwrite a hand-edited nested file without recognizing the conflict. Second unfortunately fails to reject nested source/destination layouts."
+    },
+    {
+      "task_id": "claude-development-research-integrity",
+      "repetition": 1,
+      "ordered_output_ids": [
+        "output-2d1e0d4cc8758f8163a2b049",
+        "output-f1cea261b12d1e5f559001de"
+      ],
+      "preference": "tie",
+      "preferred_output_id": null,
+      "rationale": "Both produce the same supplied-case result and share essentially the same limitations: hardcoded snapshot filenames, no applicability filtering, and omission of completed runs from outcome_counts."
+    },
+    {
+      "task_id": "claude-development-research-integrity",
+      "repetition": 2,
+      "ordered_output_ids": [
+        "output-30163c35bc1ff6ab0db18071",
+        "output-8c9763e191ef1a6c44126829"
+      ],
+      "preference": "second_better",
+      "preferred_output_id": "output-8c9763e191ef1a6c44126829",
+      "rationale": "Second decisively wins. It filters for applicable advisories, chooses the newest one, preserves all statuses including completed, and always produces a classification. First hardcodes the signed snapshot and can return classification=None."
+    }
+  ],
+  "benchmark_limitation": "The corrected runner executed tests successfully, but several clearly incomplete implementations still passed. The visible two-test suites are too weak to discriminate important edge cases, so this run cannot by itself establish that compiler v2 succeeds or fails.",
+  "scorer_identity": "kevin",
+  "condition_mapping_seen": false,
+  "objective_scores_seen": false,
+  "rated_at": "2026-07-26T00:25:31Z"
+}
