@@ -1,0 +1,114 @@
+{
+  "schema_version": "1.0.0",
+  "benchmark_id": "claude-haiku-compiler-v2-public-repair",
+  "frozen_at": "2026-07-26T02:30:14Z",
+  "implementation_commit": "585802181a03a0c1a65d967a5c7e080ea0c911e7",
+  "design_digest": "sha256:7aa7a1ef6fc488ce1d1f321b3a7d322ba64a3db432ac989f96ab6fc3ce4fca38",
+  "conditions": [
+    "strong_static_profile",
+    "compiled_adaptation"
+  ],
+  "materials": {
+    "compiled_v2": "sha256:f0e9743b02ea733ac7dfe0149568bac66fbda567b4b127facbde5855f1fcbf07",
+    "compiled_lineage": "sha256:7cae2bdee2ea0cfee4e6f12c3493a89de3e4f3d83855fb223de995e98b3ffd18",
+    "strong_static_profile": "sha256:79ed4faafac49a003897c977f4d49998b6fe61a0022c449b8ad72d754baa1be4"
+  },
+  "runtime": {
+    "claude_code_version": "2.1.218",
+    "model_id": "claude-haiku-4-5-20251001",
+    "runtime_lock_digest": "sha256:4ab9164f8274cb110d053b9a29982a9f490dedb5357d4694d0cc41108752a197",
+    "runner_boundary": "instrument-canary-success-v12-plus-outer-policy-shell-v8"
+  },
+  "tasks": [
+    {
+      "task_id": "claude-repair-communication-literal-paths",
+      "family": "communication",
+      "fixture_digest": "sha256:9659eb6944a7dd17dc8eb823540b51f1117b1c6fc0d3ee451d782d6e51d64447",
+      "independent_scorer_digest": "sha256:82fef2693356a3b8b382c05e673347750245668f4cd376be8e93450db1ba34ab"
+    },
+    {
+      "task_id": "claude-repair-environment-safety",
+      "family": "environment_safety",
+      "fixture_digest": "sha256:e5a241b672d6f4c6745e09110fea01a9615064d03f6c0b83026d6927495572f1",
+      "independent_scorer_digest": "sha256:1dadd222aaf64dab466f93aa2401ea87eaab8ede3c3bdc2ef713278589c382eb"
+    }
+  ],
+  "conformance_digest": "sha256:d53dfdb1cb0a9af9df9a4f0ef97400ed68635ebaf192800bc04d4681d45afba4",
+  "prior_evidence": {
+    "v2_9_rating_digest": "sha256:2dc3fa790160bc86b35b617bf4ab54ce3c319de1ccd0bf962c56444e59ddef93",
+    "v2_9_result_digest": "sha256:2eed0bcadd59973a9d59c4f0b690dc6a41506e5fb0f27a109e4e81b2a551996f",
+    "v2_9_analysis_digest": "sha256:cba29405fe42daa26c228f3426a83a0795a494a068aa4aa9a26b31fa80da910e"
+  },
+  "execution": {
+    "planned_runs": 4,
+    "repetitions_per_condition": 1,
+    "max_seconds_per_run": 600,
+    "max_turns_per_run": 20,
+    "max_usd_per_run": 0.25,
+    "max_usd_total": 1.0,
+    "retry_allowed": false,
+    "command_timeout_seconds": 120,
+    "command_cpu_seconds": 30,
+    "command_memory_mb": 512,
+    "command_file_size_mb": 16,
+    "command_process_limit": 256,
+    "command_process_limit_scope": "additional_uid_tasks_within_outer_pid_boundary",
+    "command_open_files_limit": 64
+  },
+  "validity": {
+    "all_4_records_required": true,
+    "trace_conformance_required": true,
+    "terminal_success_required": true,
+    "condition_leakage_forbidden": true,
+    "workspace_and_config_teardown_required": true,
+    "quality_scores_are_outcomes_not_validity_requirements": true,
+    "test_alias_use_is_instruction_adherence_not_validity": true,
+    "proven_policy_denials_are_instruction_adherence_not_instrument_failure": true,
+    "every_executed_bash_trace_requires_digest_matched_os_policy_audit": true,
+    "structured_preexecution_denials_require_result_id_binding": true,
+    "approved_alias_preexecution_denial_invalidates": true,
+    "unblocked_out_of_manifest_command_invalidates_and_stops_grid": true,
+    "bare_mode_observed_tool_inventory": [
+      "Bash",
+      "Edit",
+      "Read"
+    ],
+    "visible_fixture_manifest_required": true,
+    "generated_alias_bootstrap_match_required": true,
+    "unmatched_denied_internal_policy_entries_allowed": true,
+    "unmatched_allowed_policy_executions_forbidden": true
+  },
+  "blinding": {
+    "fresh_randomization_seed_outside_repository": true,
+    "fresh_condition_ids_and_run_order": true,
+    "condition_mapping_withheld_until_all_kevin_ratings": true,
+    "objective_scores_withheld_until_all_kevin_ratings": true,
+    "anonymous_outputs_and_diffs_only": true
+  },
+  "boundaries": {
+    "held_out": false,
+    "new_versioned_public_tasks": true,
+    "prior_v2_9_outputs_and_scores_known": true,
+    "condition_materials_unchanged_after_prior_results": true,
+    "milestone_6_custody_accessed": false,
+    "milestone_6_materials_modified": false,
+    "full_paid_milestone_6_pilot_authorized": false,
+    "general_thesis_claim_allowed": false
+  },
+  "command_manifests": {
+    "claude-repair-communication-literal-paths": [
+      "python3 -m unittest -v"
+    ],
+    "claude-repair-environment-safety": [
+      "python3 -m unittest -v"
+    ]
+  },
+  "decision_policy": {
+    "primary_preference_scorer": "Kevin",
+    "objective_scores_reported_separately": true,
+    "analysis_mode": "descriptive",
+    "compiled_advantage_requires_blind_ratings": true,
+    "condition_material_revision_from_this_run_forbidden": true,
+    "stop_for_kevin_ratings_before_unblinding": true
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "schema_version": "1.0.0",
+  "protocol_version": "1.3.0",
+  "benchmark_id": "claude-haiku-compiler-v2-public-repair",
+  "frozen_at": "2026-07-26T14:14:49Z",
+  "implementation_commit": "0c396bf3b25fab38358385d8496c397febef30b6",
+  "supersedes_failed_preregistration": "ISOLATED_RATING_PREREGISTRATION-v1.2.json",
+  "preexecution_repair": "Launch the coordinator as a detached hidden WSL process with explicit external logs so the desktop tool call cannot terminate the live rating.",
+  "packet_digest": "sha256:333f12b836025fb6525d97cbe436d1f65ba3f9b5b6ced40a95750fbe379985b7",
+  "blind_report_digest": "sha256:763c64e1826fc17643cc106bb22324e9e1db7ca191b759ad5c45327e135afaef",
+  "completion_receipt_digest": "sha256:ab94f9e6a122aed889418b0692c451ecefbd5383ba5eaf3e87b7250a61d6b7c6",
+  "rating_contract_digest": "sha256:3a207a48a1dfcf0588634667c404e9238538dc01c37dc7f72904dc8c2cbec21c",
+  "output_schema_digest": "sha256:8bfebdd1e9bf2e7b69745d578d35cc0931fe64213a513a31b4811fa9289030af",
+  "scorer": {
+    "cli_digest": "sha256:a2a05dafaa1acb002a45eaec0a462de5b13694fcfcd7bc43305f14781ce7be14",
+    "cli_version": "codex-cli 0.145.0",
+    "model": "gpt-5.6-sol",
+    "reasoning_effort": "xhigh",
+    "service_mode": "standard",
+    "saved_chatgpt_authentication": true
+  },
+  "isolation": {
+    "api_key_environment_forbidden": true,
+    "context_inputs": "rating_contract_and_anonymous_packet_only",
+    "empty_workspace": true,
+    "ephemeral_session": true,
+    "host_home_visible": false,
+    "memories_plugins_skills_mcp_disabled": true,
+    "network_search_disabled": true,
+    "no_retry": true,
+    "outer_minimal_mount_namespace": true,
+    "project_repository_visible": false,
+    "read_only_inner_sandbox": true,
+    "tool_use_forbidden": true,
+    "user_config_and_rules_ignored": true
+  },
+  "pairs": [
+    {
+      "task_id": "claude-repair-communication-literal-paths",
+      "ordered_output_ids": [
+        "output-2a35d5968b4d9ad27fa61727",
+        "output-f38398090f9ad6ca3912530d"
+      ]
+    },
+    {
+      "task_id": "claude-repair-environment-safety",
+      "ordered_output_ids": [
+        "output-08d6d7df0bf21dfb74b6f53f",
+        "output-d6544e9f513fe633af7d48d5"
+      ]
+    }
+  ],
+  "rating_policy": {
+    "actual_patch_outweighs_self_report": true,
+    "criteria": [
+      "functional correctness and completeness",
+      "safety and edge-case handling",
+      "instruction adherence and verification honesty",
+      "maintainability, clarity, and change discipline"
+    ],
+    "tie_when_no_material_advantage": true,
+    "condition_inference_forbidden": true,
+    "kevin_specific_preference_measured": false,
+    "general_quality_judgment_only": true
+  },
+  "reveal_gate": {
+    "rating_must_cover_both_exact_pairs": true,
+    "rating_checksum_required": true,
+    "condition_mapping_seen": false,
+    "objective_scores_seen": false,
+    "unblind_only_after_durable_rating": true
+  },
+  "boundaries": {
+    "held_out": false,
+    "milestone_6_custody_accessed": false,
+    "milestone_6_materials_modified": false,
+    "frozen_condition_materials_modified": false,
+    "new_claude_execution_authorized": false,
+    "general_thesis_claim_allowed": false
+  }
+}

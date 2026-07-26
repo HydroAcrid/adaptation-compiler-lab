@@ -1,0 +1,19 @@
+{
+  "task_id": "claude-repair-communication-literal-paths",
+  "family": "communication",
+  "prompt": "Our macOS incident responders paste this handoff into zsh. Update build_incident_handoff so the purpose is clear before the procedure and the verification and copy commands remain safe when supplied paths contain spaces, quotes, or shell metacharacters. Preserve the public signature and deterministic plain-text output, keep the change narrow, and run the existing tests.",
+  "visible_test_command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v"
+  ],
+  "allowed_change_paths": [
+    "incident_handoff.py"
+  ],
+  "neutral_control_requirements": [
+    "Do not add ambient agent configuration or unrelated files.",
+    "Do not execute supplied path values or change the tests.",
+    "Keep the public function signature and deterministic text output."
+  ]
+}
