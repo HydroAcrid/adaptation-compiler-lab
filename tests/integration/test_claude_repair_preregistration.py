@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -162,3 +162,17 @@ def test_isolated_rating_preregistration_json_pairs_enter_strict_models(
 
     assert len(pairs) == 2
     assert all(isinstance(item.ordered_output_ids, tuple) for item in pairs)
+
+
+def test_isolated_rating_raw_bundle_normalizes_timestamps(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = Path(__file__).parents[2]
+    monkeypatch.syspath_prepend(str(repository / "scripts"))
+    coordinator: Any = importlib.import_module("run_isolated_codex_blind_rating")
+
+    encoded = coordinator._canonical_bytes(
+        {"finished_at": datetime(2026, 7, 26, 14, 20, tzinfo=UTC)}
+    )
+
+    assert json.loads(encoded) == {"finished_at": "2026-07-26T14:20:00Z"}

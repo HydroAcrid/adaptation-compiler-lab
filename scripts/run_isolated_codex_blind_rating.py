@@ -11,6 +11,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
 
+from pydantic import TypeAdapter
+
 from adaptation_compiler_lab.benchmark.isolated_rating import (
     BlindPairBinding,
     IsolatedAIRatingReceipt,
@@ -25,9 +27,14 @@ from adaptation_compiler_lab.runners.codex_blind_rating import (
 )
 from adaptation_compiler_lab.serialization import canonical_json
 
+_JSON_ADAPTER = TypeAdapter(Any)
+
 
 def _canonical_bytes(value: Any) -> bytes:
-    return (canonical_json(value) + "\n").encode("utf-8")
+    payload = _JSON_ADAPTER.dump_python(value, mode="json")
+    if not isinstance(payload, dict):
+        raise TypeError("canonical isolated-rating payload must be a JSON object")
+    return (canonical_json(cast(dict[str, object], payload)) + "\n").encode("utf-8")
 
 
 def _exclusive_write(path: Path, payload: bytes, *, mode: int = 0o600) -> None:
