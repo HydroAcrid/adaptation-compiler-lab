@@ -16,4 +16,3 @@ files are not copied into target workspaces.
 
 The benchmark remains separate from Milestone 6 custody. It compares only the frozen strong static
 profile and frozen compiled adaptation material, one run per condition on each of two tasks.
-
