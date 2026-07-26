@@ -111,7 +111,7 @@ def test_isolated_rating_is_frozen_before_condition_reveal() -> None:
     repository = Path(__file__).parents[2]
     root = repository / "development_benchmark_claude_repair"
     preregistration = json.loads(
-        (root / "ISOLATED_RATING_PREREGISTRATION-v1.3.json").read_text(encoding="utf-8")
+        (root / "ISOLATED_RATING_PREREGISTRATION-v1.4.json").read_text(encoding="utf-8")
     )
     blind_receipt = json.loads(
         (root / "results" / "blind-run-receipt-v1.0.json").read_text(encoding="utf-8")
@@ -139,7 +139,7 @@ def test_isolated_rating_is_frozen_before_condition_reveal() -> None:
     assert preregistration["output_schema_digest"] == sha256_bytes(schema_bytes)
     assert preregistration["scorer"]["model"] == "gpt-5.6-sol"
     assert preregistration["scorer"]["reasoning_effort"] == "xhigh"
-    assert preregistration["supersedes_failed_preregistration"].endswith("v1.2.json")
+    assert preregistration["supersedes_failed_preregistration"].endswith("v1.3.json")
     assert preregistration["rating_policy"]["kevin_specific_preference_measured"] is False
     assert preregistration["boundaries"]["milestone_6_custody_accessed"] is False
 
@@ -154,7 +154,7 @@ def test_isolated_rating_preregistration_json_pairs_enter_strict_models(
         (
             repository
             / "development_benchmark_claude_repair"
-            / "ISOLATED_RATING_PREREGISTRATION-v1.3.json"
+            / "ISOLATED_RATING_PREREGISTRATION-v1.4.json"
         ).read_text(encoding="utf-8")
     )
 
