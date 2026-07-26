@@ -200,3 +200,41 @@ def test_isolated_ai_rating_is_durable_and_still_blind() -> None:
     assert not rating.tool_use_observed
     assert not rating.milestone_6_custody_accessed
     assert len(rating.decision.pair_ratings) == 2
+
+
+def test_unblinded_repair_result_binds_rating_and_preserves_boundaries() -> None:
+    repository = Path(__file__).parents[2]
+    results = repository / "development_benchmark_claude_repair" / "results"
+    result_path = results / "unblinded-result-v1.0.json"
+    checksum = (results / "unblinded-result-v1.0.sha256").read_text(encoding="ascii").split()[0]
+    result = json.loads(result_path.read_text(encoding="utf-8"))
+
+    assert sha256_file(result_path) == f"sha256:{checksum}"
+    assert result["isolated_rating_digest"] == sha256_file(results / "isolated-ai-rating-v1.0.json")
+    assert result["descriptive_comparison"] == {
+        "classification": "compiled_descriptively_above_strong",
+        "compiled_beats_or_ties_strong_on_diagnostic_checks": True,
+        "compiled_beats_or_ties_strong_on_neutral_checks": True,
+        "compiled_beats_or_ties_strong_on_objective_checks": True,
+        "compiled_preference_wins": 1,
+        "preference_ties": 1,
+        "strong_profile_preference_wins": 0,
+    }
+    assert result["total_cost_usd"] == pytest.approx(0.33626555)
+    assert result["instrument_status"] == {
+        "all_four_runs_valid": True,
+        "all_visible_tests_executed_successfully": True,
+        "all_workspaces_and_configurations_destroyed": True,
+    }
+    assert result["rating_method"] == {
+        "context_inputs": "rating_contract_and_anonymous_packet_only",
+        "kevin_preference_measured": False,
+        "kind": "isolated_ai",
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "xhigh",
+        "tool_use_observed": False,
+    }
+    assert result["compiled_product_advantage_established"] is False
+    assert result["general_cross_agent_claim_allowed"] is False
+    assert result["kevin_specific_preference_claim_allowed"] is False
+    assert result["milestone_6_custody_accessed"] is False

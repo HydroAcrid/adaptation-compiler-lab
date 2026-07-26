@@ -1,20 +1,24 @@
 # Implementation Status
 
-Last updated: 2026-07-25
+Last updated: 2026-07-26
 
 ## Current milestone
 
-**The versioned Claude benchmark repair is complete and awaiting Kevin's blind ratings.** It uses
-two newly created public tasks that repair the known communication-literal and recursive
-environment-safety measurement defects. Reference implementations pass every check, while targeted
-defective implementations fail the intended check without collapsing unrelated results.
+**The versioned Claude benchmark repair and isolated-AI rating are complete.** It uses two newly
+created public tasks that repair the known communication-literal and recursive environment-safety
+measurement defects. Reference implementations pass every check, while targeted defective
+implementations fail the intended check without collapsing unrelated results.
 
-The preregistered Haiku grid produced 4/4 valid strong-profile-versus-compiled records. Every
-bounded test command executed, trace evidence was captured, and all disposable workspaces and
-configurations were destroyed. The anonymous packet and minimized digest receipt are committed;
-condition identities, objective scores, token use, actual cost, run order, and private evidence
-remain sealed until both preference ratings are recorded. No comparison result is stated while
-the blind is open.
+The preregistered Haiku grid produced 4/4 valid strong-profile-versus-compiled records. A blank
+`gpt-5.6-sol` Codex CLI context at `xhigh` reasoning rated the anonymous packet without repository,
+host-home, tool, prior-context, condition-identity, objective-score, or Milestone 6 access. The
+rating was durably checksum-bound before unblinding. Compiled tied the strong profile on
+communication, won environment safety, and tied every automated count at a perfect score. The
+Claude calls cost exactly USD $0.33626555.
+
+This is favorable but small descriptive cross-agent development evidence. The isolated judge
+measures general quality, not Kevin's personal preference. Two public tasks with one repetition
+per condition do not establish general product superiority.
 
 The prior v2.9 result remains favorable but benchmark-limited descriptive cross-agent development
 evidence: compiled led Kevin's preferences 5–2 with one tie and led objective/diagnostic counts,
@@ -155,8 +159,14 @@ storage occurred.
   conformance fixtures prove sensitivity.
 - Froze the two-task/two-condition/one-repetition Haiku design to the unchanged strong and compiled
   materials, pinned runtime, exact task/scorer/conformance digests, no-retry rule, and USD $1 hard
-  ceiling. All four live records are valid. The checksum-bound anonymous packet is available for
-  Kevin's ratings while mapping, scores, usage, and actual cost remain sealed.
+  ceiling. All four live records are valid.
+- Added a reusable isolated Codex blind-rating gate pinned to `codex-cli 0.145.0`,
+  `gpt-5.6-sol`, and `xhigh` reasoning with saved ChatGPT authentication. It mounts only an empty
+  workspace and fresh configuration, disables ambient context and tools, validates structured
+  output, encrypts its trace externally, and binds exact packet/output IDs before rating.
+- Preserved three failed isolated-rating setup attempts with failure evidence, then completed
+  preregistration v1.4. The durable rating was pushed while blind; unblinding found one compiled
+  win and one tie, with both conditions perfect on all automated checks.
 
 ## Verification performed
 
@@ -171,7 +181,7 @@ uv run pytest
 uv build
 ```
 
-The current full suite formats 243 files, passes strict typing, passes 412
+The current full suite formats 249 files, passes strict typing, passes 423
 tests, and builds both
 the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
@@ -192,9 +202,9 @@ establishes instrument and protocol readiness only, not transfer quality.
 - No held-out Claude target trial, held-out task reveal, held-out condition-bearing trace, or paid
   provider spend for the Milestone 6 pilot. The completed paid calls were public non-held-out
   development instrumentation only.
-- No Kevin rating for the held-out pilot, secondary isolated-AI judging result, held-out blinded
-  adjudication, comparative pilot analysis, statistical report, or retention purge of the real
-  payloads. The completed Kevin ratings apply only to the public v2 development tasks.
+- No Kevin rating for the held-out pilot, held-out blinded adjudication, comparative pilot
+  analysis, statistical report, or retention purge of the real payloads. The completed isolated-AI
+  rating applies only to the public repair tasks and is not Kevin-specific preference evidence.
 - No claim of independent human authorship, third-party custody, or independently conducted study;
   the active design is internally blinded with automated functional separation.
 - No valid cross-agent result about base versus ordinary memory and no held-out cross-agent
@@ -211,11 +221,12 @@ outside the workspace in owner-readable-only files. They are never committed, pr
 persisted in traces. The runner continues to reject ambiguous sources, broad key permissions,
 workspace-local keys, alternate providers, and missing sandbox support.
 
-The versioned four-cell repair run is complete and still blinded. The only required next input is
-Kevin's First/Second/Tie rating and rationale for each of the two task pairs in
-`development_benchmark_claude_repair/results/blind-rating-packet-v1.0.md`. Record and checksum-bind
-both ratings before opening the encrypted condition mapping or objective results.
+The versioned four-cell repair run is complete and unblinded only after a durable isolated-AI
+rating. Future public development packets use this isolated scoring gate rather than asking Kevin
+for ratings. Automated tests remain the objective authority, and AI ratings are separately labeled
+general-quality judgments.
 
-Do not modify the frozen pack from this comparison, begin another Claude grid, execute the
-preregistered 32-run paid Claude Code feasibility pilot, or access Milestone 6 custody without a
-new explicit decision after the blind analysis.
+The current owner instruction conflicts with the frozen Milestone 6 plan's Kevin-rating role.
+Do not rewrite or expose that frozen study. Do not modify the pack, begin another Claude grid,
+execute the 32-run paid pilot, or access Milestone 6 custody until a versioned protocol decision
+resolves the scoring incompatibility.

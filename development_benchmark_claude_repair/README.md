@@ -17,13 +17,24 @@ files are not copied into target workspaces.
 The benchmark remains separate from Milestone 6 custody. It compares only the frozen strong static
 profile and frozen compiled adaptation material, one run per condition on each of two tasks.
 
-## Blind-run status
+## Result
 
-The preregistered four-cell Haiku run completed with 4/4 valid records. The condition mapping,
-objective scores, token use, and actual cost remain sealed until Kevin rates both anonymous pairs.
+The preregistered four-cell Haiku run completed with 4/4 valid records. A fresh isolated
+`gpt-5.6-sol` Codex CLI context at `xhigh` reasoning rated the two anonymous pairs from only the
+fixed rating contract and blind packet. It had no project, host-home, tool, prior-context,
+condition-mapping, objective-score, or Milestone 6 access.
+
+The checksum-bound rating was persisted and pushed before unblinding. The compiled adaptation tied
+the strong static profile on communication and won environment safety. Both conditions passed
+8/8 objective, 9/9 diagnostic, and 8/8 neutral checks. The four Claude calls cost exactly
+USD $0.33626555.
+
 The public [blind packet](results/blind-rating-packet-v1.0.md) is bound to the minimized
-[blind-run receipt](results/blind-run-receipt-v1.0.json). Raw traces, the private plan, scores, and
-provider accounting remain encrypted outside the repository.
+[blind-run receipt](results/blind-run-receipt-v1.0.json), the durable
+[isolated rating](results/isolated-ai-rating-v1.0.json), and the final
+[unblinded result](results/unblinded-result-v1.0.json). Raw traces and private inputs remain
+encrypted outside the repository. See `CLAUDE_REPAIR_ISOLATED_ANALYSIS.md` for the interpretation
+and limitations.
 
 No frozen condition material was changed, and neither the held-out Milestone 6 tasks nor their
 custody state were accessed.
