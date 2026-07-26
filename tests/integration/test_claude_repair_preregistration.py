@@ -9,7 +9,10 @@ from typing import Any
 import pytest
 
 from adaptation_compiler_lab.benchmark.claude_repair import load_claude_repair_design
-from adaptation_compiler_lab.benchmark.isolated_rating import isolated_rating_output_schema
+from adaptation_compiler_lab.benchmark.isolated_rating import (
+    IsolatedAIRatingReceipt,
+    isolated_rating_output_schema,
+)
 from adaptation_compiler_lab.connectors.pins import sha256_bytes, sha256_file
 from adaptation_compiler_lab.runners.codex_blind_rating import (
     CODEX_BLIND_RATING_CONTRACT,
@@ -176,3 +179,24 @@ def test_isolated_rating_raw_bundle_normalizes_timestamps(
     )
 
     assert json.loads(encoded) == {"finished_at": "2026-07-26T14:20:00Z"}
+
+
+def test_isolated_ai_rating_is_durable_and_still_blind() -> None:
+    repository = Path(__file__).parents[2]
+    results = repository / "development_benchmark_claude_repair" / "results"
+    rating_path = results / "isolated-ai-rating-v1.0.json"
+    checksum = (results / "isolated-ai-rating-v1.0.sha256").read_text(encoding="ascii").split()[0]
+    rating = IsolatedAIRatingReceipt.model_validate_json(rating_path.read_bytes())
+
+    assert sha256_file(rating_path) == f"sha256:{checksum}"
+    assert rating.presentation_sha256 == sha256_file(results / "blind-rating-packet-v1.0.md")
+    assert rating.scorer_model == "gpt-5.6-sol"
+    assert rating.scorer_reasoning_effort == "xhigh"
+    assert rating.context_inputs == "rating_contract_and_anonymous_packet_only"
+    assert not rating.condition_mapping_seen
+    assert not rating.objective_scores_seen
+    assert not rating.project_repository_visible
+    assert not rating.host_home_visible
+    assert not rating.tool_use_observed
+    assert not rating.milestone_6_custody_accessed
+    assert len(rating.decision.pair_ratings) == 2
