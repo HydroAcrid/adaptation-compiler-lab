@@ -141,3 +141,59 @@ def validate_blind_pair_coverage(
     if actual != expected:
         raise ValueError("isolated rating substituted or omitted a blind output pair")
     return decision
+
+
+def isolated_rating_output_schema() -> dict[str, object]:
+    """Return the minimal strict-output schema; local models enforce stronger constraints."""
+
+    pair_schema: dict[str, object] = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "task_id": {"type": "string"},
+            "ordered_output_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+            "preference": {
+                "type": "string",
+                "enum": ["first_better", "second_better", "tie"],
+            },
+            "preferred_output_id": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+            },
+            "rationale": {"type": "string"},
+        },
+        "required": [
+            "task_id",
+            "ordered_output_ids",
+            "preference",
+            "preferred_output_id",
+            "rationale",
+        ],
+    }
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "decision_version": {
+                "type": "string",
+                "enum": ["1.0.0"],
+            },
+            "pair_ratings": {
+                "type": "array",
+                "items": pair_schema,
+            },
+            "overall_assessment": {"type": "string"},
+            "evaluator_limitations": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+        },
+        "required": [
+            "decision_version",
+            "pair_ratings",
+            "overall_assessment",
+            "evaluator_limitations",
+        ],
+    }

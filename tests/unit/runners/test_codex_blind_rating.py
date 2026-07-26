@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from adaptation_compiler_lab.benchmark.isolated_rating import IsolatedBlindRatingDecision
+from adaptation_compiler_lab.benchmark.isolated_rating import isolated_rating_output_schema
 from adaptation_compiler_lab.connectors.models import JsonObject
 from adaptation_compiler_lab.runners import codex_blind_rating
 from adaptation_compiler_lab.runners.codex_blind_rating import (
@@ -156,7 +156,7 @@ def test_blank_rating_runner_uses_schema_bound_tool_free_ephemeral_session(
 
     result = runner.run(
         packet="# Anonymous\n\n## task-a\n\n## task-b\n",
-        output_schema=IsolatedBlindRatingDecision.model_json_schema(),
+        output_schema=isolated_rating_output_schema(),
     )
 
     assert result.trace_conformant

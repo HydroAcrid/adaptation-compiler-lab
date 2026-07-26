@@ -14,7 +14,7 @@ from typing import Any
 from adaptation_compiler_lab.benchmark.isolated_rating import (
     BlindPairBinding,
     IsolatedAIRatingReceipt,
-    IsolatedBlindRatingDecision,
+    isolated_rating_output_schema,
     validate_blind_pair_coverage,
 )
 from adaptation_compiler_lab.connectors.pins import sha256_bytes, sha256_file
@@ -86,7 +86,7 @@ def _validate_preregistration(
         raise RuntimeError("isolated rating contract drifted")
     schema_bytes = (
         json.dumps(
-            IsolatedBlindRatingDecision.model_json_schema(),
+            isolated_rating_output_schema(),
             ensure_ascii=False,
             sort_keys=True,
             separators=(",", ":"),
@@ -187,7 +187,7 @@ def main() -> None:
     preconditions = runner.verify_preconditions()
     result = runner.run(
         packet=packet_path.read_text(encoding="utf-8"),
-        output_schema=IsolatedBlindRatingDecision.model_json_schema(),
+        output_schema=isolated_rating_output_schema(),
     )
     raw_bundle = _canonical_bytes(
         {

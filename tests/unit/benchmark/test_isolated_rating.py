@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 from pydantic import ValidationError
 
@@ -8,6 +10,7 @@ from adaptation_compiler_lab.benchmark.isolated_rating import (
     IsolatedBlindRatingDecision,
     IsolatedPairRating,
     PairPreference,
+    isolated_rating_output_schema,
     validate_blind_pair_coverage,
 )
 
@@ -76,3 +79,25 @@ def test_isolated_rating_rejects_substituted_output() -> None:
 
     with pytest.raises(ValueError, match="substituted"):
         validate_blind_pair_coverage(decision, expected)
+
+
+def test_isolated_rating_output_schema_is_provider_strict_and_locally_minimal() -> None:
+    schema = isolated_rating_output_schema()
+
+    assert schema["additionalProperties"] is False
+    required = schema["required"]
+    properties = schema["properties"]
+    assert isinstance(required, list)
+    assert isinstance(properties, dict)
+    assert set(required) == set(properties)
+    pair_ratings = properties["pair_ratings"]
+    assert isinstance(pair_ratings, dict)
+    pair_schema = pair_ratings["items"]
+    assert isinstance(pair_schema, dict)
+    assert pair_schema["additionalProperties"] is False
+    pair_required = pair_schema["required"]
+    pair_properties = pair_schema["properties"]
+    assert isinstance(pair_required, list)
+    assert isinstance(pair_properties, dict)
+    assert set(pair_required) == set(pair_properties)
+    assert "prefixItems" not in json.dumps(schema)
