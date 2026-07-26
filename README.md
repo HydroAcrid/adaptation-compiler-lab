@@ -9,22 +9,17 @@ Milestone 5 is complete. Eight exact-consent Codex tasks were captured only into
 encrypted raw boundary; eight Kevin-confirmed behaviors became approved artifacts. Two fresh AI
 contexts authored/reviewed the strong static profile, four conditions passed the common budgets,
 and deterministic software custody sealed the hidden tasks, mapping, 32-cell order, and exact
-condition materials. No held-out task has been exposed to construction, and no paid benchmark
-trial has run. Milestone 5.5 completed a separate 16-cell subscription-backed Codex development
-diagnostic on public non-held-out tasks. Its apparent strong-profile advantage came from one
-ambiguous, brittlely scored task. A two-cell GPT-5.6 Luna follow-up replaced lexical proxies with
-structural scoring; both anonymous conditions tied at 4/4 objective, 3/4 diagnostic, and 4/4
-neutral checks. Kevin slightly preferred the first anonymous output, which unblinding identified
-as compiled adaptation rather than the strong static profile. This is one positive same-agent
-development signal, not a reason to change the compiler or claim transfer. The other three public
-replacement task families then completed six valid blinded Luna cells. Kevin's three preferences
-were committed before unblinding and all favored the strong static profile. Automated scores tied
-at 12/12 objective, 11/12 diagnostic, and 12/12 neutral checks for each condition, but compiled
-adaptation failed the preregistered tie-or-better rule on preference. Paid cross-agent execution
-then began only as an explicitly authorized two-cell non-held-out instrument canary. Its first,
-strong-profile cell failed closed on an out-of-manifest Bash command; the compiled cell did not
-run and there was no retry. This is an instrumentation failure, not a transfer result, and the
-held-out Milestone 6 pilot remains closed.
+condition materials.
+
+Public non-held-out development has now exercised both Codex and Claude. The corrected 16-run
+Claude Haiku strong-profile-versus-compiled grid completed with valid bounded test execution and
+clean teardown. Kevin's eight preferences were committed and pushed before unblinding. Compiled
+adaptation won 5–2 with one tie, passed 28/32 versus 25/32 independent objective checks, and passed
+20/32 versus 18/32 diagnostic checks; both conditions passed 32/32 neutral checks. This is a
+favorable descriptive cross-agent signal, but weak visible tests and coarse exception handling in
+parts of the independent scorer prevent a product-level superiority claim. No held-out task has
+been exposed, the frozen compiler/conditions were not changed from the result, and the Milestone 6
+pilot remains closed.
 
 ## What is here
 
@@ -142,5 +137,8 @@ after valid trials.
   execution contract, blinded structural result, shared task ambiguity, and frozen preference.
 - [`MILESTONE_5_5_LUNA_REMAINING_GATE.md`](MILESTONE_5_5_LUNA_REMAINING_GATE.md): preregistered
   six-cell comparison across the other three public replacement task families.
+- [`CLAUDE_CORRECTED_COMPARISON.md`](CLAUDE_CORRECTED_COMPARISON.md): checksum-bound blind ratings,
+  v2.9 unblinded mapping, condition-level results, exact costs, limitations, and product
+  interpretation.
 - [`MILESTONE_6_AUTHORIZATION_GATE.md`](MILESTONE_6_AUTHORIZATION_GATE.md): exact frozen bindings,
   runtime/spend ceilings, and the explicit authorization required before paid execution.

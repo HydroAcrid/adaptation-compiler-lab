@@ -238,3 +238,40 @@ def test_v2_9_blind_packet_is_digest_bound_and_condition_safe() -> None:
         ".acl-condition",
     ):
         assert forbidden not in serialized
+
+
+def test_v2_9_rating_and_unblinded_result_are_digest_bound() -> None:
+    repository = Path(__file__).parents[2]
+    results = repository / "development_benchmark_claude" / "results"
+    rating_path = results / "kevin-blind-rating-v2.9.json"
+    result_path = results / "unblinded-result-v2.9.json"
+    rating = json.loads(rating_path.read_text(encoding="utf-8"))
+    result = json.loads(result_path.read_text(encoding="utf-8"))
+
+    assert rating["condition_mapping_seen"] is False
+    assert rating["objective_scores_seen"] is False
+    assert rating["presentation_sha256"] == sha256_file(results / "blind-rating-packet-v2.9.md")
+    assert (results / "kevin-blind-rating-v2.9.sha256").read_text(encoding="ascii").split()[
+        0
+    ] == sha256_file(rating_path).removeprefix("sha256:")
+    assert (results / "unblinded-result-v2.9.sha256").read_text(encoding="ascii").split()[
+        0
+    ] == sha256_file(result_path).removeprefix("sha256:")
+    assert result["preference_rating_digest"] == sha256_file(rating_path)
+    assert result["total_cost_usd"] == pytest.approx(0.67584695)
+    assert result["instrument_status"] == {
+        "all_sixteen_runs_valid": True,
+        "all_visible_tests_executed_successfully": True,
+        "runner_test_execution_repaired": True,
+    }
+    aggregates = {item["condition"]: item for item in result["condition_aggregates"]}
+    assert aggregates["compiled_adaptation"]["preference_wins"] == 5
+    assert aggregates["strong_static_profile"]["preference_wins"] == 2
+    assert {item["preference_ties"] for item in aggregates.values()} == {1}
+    assert aggregates["compiled_adaptation"]["objective"] == {"passed": 28, "total": 32}
+    assert aggregates["strong_static_profile"]["objective"] == {"passed": 25, "total": 32}
+    assert aggregates["compiled_adaptation"]["diagnostic"] == {"passed": 20, "total": 32}
+    assert aggregates["strong_static_profile"]["diagnostic"] == {"passed": 18, "total": 32}
+    assert {tuple(item["neutral"].values()) for item in aggregates.values()} == {(32, 32)}
+    assert result["compiled_product_advantage_established"] is False
+    assert result["milestone_6_custody_accessed"] is False

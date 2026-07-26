@@ -104,3 +104,11 @@ authorize paid target execution. Immediately before the first of 32 target calls
 model/runtime, maximum per-trial and total spend, frozen bundle/environment digests, and expected
 run order count, then require Kevin's explicit authorization. After execution, present only blind
 scoring packets and stop for Kevin's ratings before unblinding or comparative analysis.
+
+For a public development comparison, the rating JSON and its checksum must be durable repository
+files with `condition_mapping_seen=false` and `objective_scores_seen=false`. Commit and push those
+files before running `scripts/unblind_claude_development_gate.py`. The unblinding command requires
+the exact `--packet` path as well as the rating paths; it rejects a packet/report digest mismatch
+instead of relying on a version-specific implicit filename. The external encrypted output and
+configuration roots remain outside Git. Commit only the sanitized unblinded result, its checksum,
+and a payload-free analysis.

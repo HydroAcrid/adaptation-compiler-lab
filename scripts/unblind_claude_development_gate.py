@@ -59,14 +59,20 @@ def main() -> None:
     parser.add_argument("--config-root", type=Path, required=True)
     parser.add_argument("--rating", type=Path, required=True)
     parser.add_argument("--rating-checksum", type=Path, required=True)
+    parser.add_argument("--packet", type=Path, required=True)
+    parser.add_argument(
+        "--result-id",
+        default="claude-haiku-compiler-v2-development-comparison",
+    )
     arguments = parser.parse_args()
 
     repo = arguments.repo.resolve()
     output_root = arguments.output_root.resolve()
     rating_path = arguments.rating.resolve()
     rating_checksum = arguments.rating_checksum.resolve()
-    if not rating_path.is_relative_to(repo) or not rating_checksum.is_relative_to(repo):
-        raise RuntimeError("rating and checksum must be durable repository files")
+    packet_path = arguments.packet.resolve()
+    if not all(path.is_relative_to(repo) for path in (rating_path, rating_checksum, packet_path)):
+        raise RuntimeError("rating, checksum, and packet must be durable repository files")
     rating = json.loads(rating_path.read_text(encoding="utf-8"))
     expected_rating_hex = rating_checksum.read_text(encoding="ascii").split()[0]
     if _file_digest(rating_path) != f"sha256:{expected_rating_hex}":
@@ -75,9 +81,6 @@ def main() -> None:
         raise RuntimeError("rating was not recorded blind")
 
     completion = json.loads((output_root / "completion.json").read_text(encoding="utf-8"))
-    packet_path = (
-        repo / "development_benchmark_claude" / "results" / ("blind-rating-packet-v1.2.md")
-    )
     if (
         rating["presentation_sha256"] != _file_digest(packet_path)
         or rating["blind_report_digest"] != completion["blind_report_digest"]
@@ -226,7 +229,7 @@ def main() -> None:
             }
         )
 
-    aggregates = []
+    aggregates: list[dict[str, Any]] = []
     for condition in (
         BenchmarkCondition.STRONG_STATIC_PROFILE,
         BenchmarkCondition.COMPILED_ADAPTATION,
@@ -268,21 +271,58 @@ def main() -> None:
             }
         )
 
+    aggregate_by_condition = {item["condition"]: item for item in aggregates}
+    strong = aggregate_by_condition[BenchmarkCondition.STRONG_STATIC_PROFILE.value]
+    compiled = aggregate_by_condition[BenchmarkCondition.COMPILED_ADAPTATION.value]
+    all_visible_tests_executed = all(
+        details["target_visible_test_returncode"] == 0 for details in bundle_details.values()
+    )
+    benchmark_limitation = rating.get(
+        "benchmark_limitation",
+        rating.get("instrument_limitation"),
+    )
     result = {
-        "result_version": "1.0.0",
-        "benchmark_id": "claude-haiku-compiler-v2-development-gate-final-restart",
+        "result_version": "1.1.0",
+        "benchmark_id": arguments.result_id,
         "design_digest": public_plan.design_digest,
         "private_plan_digest": private_plan.content_digest,
         "blind_report_digest": blind_report.content_digest,
         "preference_rating_digest": _file_digest(rating_path),
         "pair_results": pair_results,
         "condition_aggregates": aggregates,
-        "instrument_defect": rating["instrument_limitation"],
-        "decision": "instrument_limited_no_conclusion",
+        "total_cost_usd": sum(item.total_cost_usd for item in blind_report.observations),
+        "instrument_status": {
+            "all_sixteen_runs_valid": all(item.valid for item in blind_report.observations),
+            "all_visible_tests_executed_successfully": all_visible_tests_executed,
+            "runner_test_execution_repaired": all_visible_tests_executed,
+        },
+        "benchmark_sensitivity_limitation": benchmark_limitation,
+        "descriptive_comparison": {
+            "compiled_preference_wins": compiled["preference_wins"],
+            "strong_profile_preference_wins": strong["preference_wins"],
+            "preference_ties": compiled["preference_ties"],
+            "compiled_beats_or_ties_strong_on_preference": (
+                compiled["preference_wins"] >= strong["preference_wins"]
+            ),
+            "compiled_beats_or_ties_strong_on_objective_checks": (
+                compiled["objective"]["passed"] >= strong["objective"]["passed"]
+            ),
+            "compiled_beats_or_ties_strong_on_diagnostic_checks": (
+                compiled["diagnostic"]["passed"] >= strong["diagnostic"]["passed"]
+            ),
+            "compiled_beats_or_ties_strong_on_neutral_checks": (
+                compiled["neutral"]["passed"] >= strong["neutral"]["passed"]
+            ),
+        },
+        "decision": "benchmark_limited_descriptive_comparison",
         "decision_reason": (
-            "Required test execution was not reliably available, so observed differences mix "
-            "adaptation quality with blocker handling and unsupported verification behavior."
+            "The corrected runner executed the bounded tests for every valid run. The comparison "
+            "is descriptive because the scorer found meaningful edge-case differences that the "
+            "two-test visible suites did not expose, so this run alone cannot establish a durable "
+            "compiled-pack advantage."
         ),
+        "compiled_product_advantage_established": False,
+        "cross_agent_comparison_executed": True,
         "cross_agent_claim_allowed": False,
         "milestone_6_custody_accessed": False,
     }
