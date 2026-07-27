@@ -146,6 +146,57 @@ class ExternalGovernedRelease(FrozenModel):
             raise ValueError("revoked artifact IDs cannot also be active")
         if self.scoped_supersessions != tuple(sorted(set(self.scoped_supersessions))):
             raise ValueError("scoped supersessions must be sorted and unique")
+        event_ids = tuple(item.event_id for item in self.lifecycle_history)
+        if len(event_ids) != len(set(event_ids)):
+            raise ValueError("governed lifecycle event IDs must be unique")
+        stages = tuple(item.stage for item in self.lifecycle_history)
+        if stages != tuple(sorted(stages)):
+            raise ValueError("governed lifecycle events must be stage ordered")
+        for binding in self.active_bindings:
+            introductions = tuple(
+                event
+                for event in self.lifecycle_history
+                if event.introduced_artifact_ref == binding.artifact_ref
+            )
+            if not introductions:
+                raise ValueError("governance binding requires an exact lifecycle introduction")
+            evidence_refs = tuple(sorted({event.evidence_ref for event in introductions}, key=str))
+            evaluation_refs = tuple(
+                sorted({event.evaluation_case_ref for event in introductions}, key=str)
+            )
+            consent_refs = tuple(sorted({event.consent_ref for event in introductions}, key=str))
+            capture_refs = tuple(sorted({event.capture_ref for event in introductions}, key=str))
+            reviewer_ids = tuple(
+                sorted({event.review_approver_id for event in introductions}, key=str)
+            )
+            policy_versions = tuple(
+                sorted({event.review_policy_version for event in introductions}, key=str)
+            )
+            bound_evidence_refs = tuple(
+                sorted(
+                    {
+                        *binding.evidence_links.supporting,
+                        *binding.evidence_links.contradicting,
+                    },
+                    key=str,
+                )
+            )
+            if evidence_refs != bound_evidence_refs:
+                raise ValueError("governance binding evidence must match lifecycle introductions")
+            if evaluation_refs != binding.evaluation_case_refs:
+                raise ValueError(
+                    "governance binding evaluations must match lifecycle introductions"
+                )
+            if consent_refs != binding.consent_refs:
+                raise ValueError("governance binding consent must match lifecycle introductions")
+            if capture_refs != binding.capture_refs:
+                raise ValueError("governance binding capture must match lifecycle introductions")
+            if reviewer_ids != binding.review_approver_ids:
+                raise ValueError("governance binding reviewers must match lifecycle introductions")
+            if policy_versions != binding.review_policy_versions:
+                raise ValueError(
+                    "governance binding review policies must match lifecycle introductions"
+                )
         return self
 
     @property

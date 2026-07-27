@@ -13,10 +13,12 @@ misstate lifecycle history. V1.5 restricts executable policy syntax to a capabil
 subset, binds target profile compatibility, binds each snapshot to the complete transition digest,
 and retains exact links through all prior designs. V1.6 is a metadata-only successor that
 binds formatter-normalized observer bytes after the integrity gate rejected post-freeze source
-drift; it reuses the exact v1.5 runtime fixture. Current v1.7 also requires a known Codex target
+drift; it reuses the exact v1.5 runtime fixture. V1.7 also requires a known Codex target
 family at the Codex renderer itself, preventing a Claude- or unknown-target projection from being
-labeled and delivered as Codex output. No live profile, target, or judge session preceded any
-amendment.
+labeled and delivered as Codex output. Current v1.8 requires each active governance binding to
+match its lifecycle introductions across evidence, consent, capture, evaluation, reviewer, and
+policy metadata, and accepts only normalized safe relative paths in the shared envelope. No live
+profile, target, or judge session preceded any amendment.
 
 ## Question
 
@@ -72,6 +74,14 @@ artifacts, requires complete artifact/scope/evidence equality in governance bind
 manifest input with an exact deterministic re-render, uses the namespace/chroot scorer described
 above, and binds a deterministic digest of every runtime-fixture artifact into preregistration.
 Regression tests cover every finding, including same-length fixture substitution.
+
+The final lineage/path pass rejects serialized releases whose active governance claims cannot be
+reproduced from lifecycle introductions. It also prevents absolute paths, traversal,
+non-normalized separators, control characters, and prose-like injection from entering the
+rendered shared execution envelope. V1.8 binds this prospective runtime change while every task,
+condition material, scorer, observer, sandbox, fixture, measurement, and shared-envelope digest
+remains identical to v1.7. The lifecycle validator is a prospective governed-release integrity
+repair and does not change any frozen target material.
 
 The second PR #19 pass added four more fail-closed constraints: root coordinators cannot start the
 scorer because Linux exempts outer UID 0 from `RLIMIT_NPROC`; manifest construction recomputes the

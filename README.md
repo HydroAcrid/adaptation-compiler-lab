@@ -10,11 +10,12 @@ product result. The compiler now keeps complete governance, provenance, history,
 in an external governed release while sending Codex only effective behavior, unresolved scope or
 precedence, and essential verification. The public three-stage engineering fixture renders 163,
 454, and 461 adaptation bytes, below the independently maintained profile sizes of 227, 508, and
-462 bytes. The current unexecuted v1.7 design also binds each compiled snapshot to the complete
+462 bytes. The current unexecuted v1.8 design also binds each compiled snapshot to the complete
 approved transition, enforces the selected Codex target profile, and evaluates generated benchmark
 policies through a capability-free Python subset so policy code cannot forge scorer channels.
 The Codex renderer independently rejects projections whose target-family dimension is unknown or
-not Codex.
+not Codex. Active governance bindings must reproduce their lifecycle introductions exactly, and
+shared-envelope paths must be normalized safe relative target paths.
 This establishes compactness and lineage preservation, not a performance advantage.
 
 The next public comparison is frozen but unexecuted: three fresh tasks, two conditions, one

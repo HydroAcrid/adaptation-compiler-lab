@@ -32,7 +32,9 @@ enforce target-profile compatibility, and cryptographically bind compiled snapsh
 source transitions. The integrity gate then rejected formatter-normalized observer bytes, so v1.5
 was preserved and superseded by metadata-only v1.6, which reuses the exact v1.5 runtime fixture.
 V1.6 was superseded by v1.7 so the Codex renderer independently requires a known Codex target
-family. No live output informed any amendment.
+family. V1.7 was superseded by v1.8 so the shared envelope accepts only normalized safe relative
+target paths and active governance claims must reproduce their lifecycle introductions. No live
+output informed any amendment.
 
 ## Contents
 
@@ -46,7 +48,10 @@ family. No live output informed any amendment.
   transition-lineage design.
 - `PREREGISTRATION-v1.6.json` and `.sha256`: preserved formatter-normalized observer binding with
   no condition-material change.
-- `PREREGISTRATION-v1.7.json` and `.sha256`: current Codex renderer target-family guard, reusing the
+- `PREREGISTRATION-v1.7.json` and `.sha256`: preserved Codex renderer target-family guard, reusing the
+  exact v1.5 condition material.
+- `PREREGISTRATION-v1.8.json` and `.sha256`: current execution-envelope path-validation amendment,
+  reusing the
   exact v1.5 condition material.
 - `tasks/`: fresh fixtures and task manifests.
 - `runtime-fixture/`: preserved pre-v1.4 runtime fixture.

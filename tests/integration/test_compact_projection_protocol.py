@@ -114,11 +114,11 @@ def _workspace(tmp_path: Path, task: CompactProjectionTask, source: str) -> Path
 def test_fresh_protocol_is_hash_frozen_and_unexecuted() -> None:
     root = _root()
     design = load_compact_projection_design(root)
-    expected = (root / "PREREGISTRATION-v1.7.sha256").read_text(encoding="ascii").split()[0]
+    expected = (root / "PREREGISTRATION-v1.8.sha256").read_text(encoding="ascii").split()[0]
 
-    assert sha256_file(root / "PREREGISTRATION-v1.7.json") == f"sha256:{expected}"
-    assert design.design_version == "1.7.0"
-    assert design.amendment_reason == "codex_renderer_target_guard"
+    assert sha256_file(root / "PREREGISTRATION-v1.8.json") == f"sha256:{expected}"
+    assert design.design_version == "1.8.0"
+    assert design.amendment_reason == "execution_envelope_path_validation"
     assert design.supersedes_design_digest
     assert design.superseded_scorer_digest
     assert design.policy_observer_digest
@@ -584,6 +584,85 @@ def test_codex_target_amendment_generator_cannot_replace_frozen_v1_7() -> None:
         (root / "PREREGISTRATION-v1.7.json").read_bytes(),
         (root / "PREREGISTRATION-v1.7.sha256").read_bytes(),
     )
+
+
+def test_path_validation_amendment_generator_cannot_replace_frozen_v1_8() -> None:
+    root = _root()
+    before = (
+        (root / "PREREGISTRATION-v1.8.json").read_bytes(),
+        (root / "PREREGISTRATION-v1.8.sha256").read_bytes(),
+    )
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(_repo() / "scripts" / "supersede_compact_projection_protocol_v1_8.py"),
+            "--repo",
+            str(_repo()),
+            "--benchmark-root",
+            str(root),
+        ],
+        cwd=_repo(),
+        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=10,
+    )
+
+    assert completed.returncode != 0
+    assert "already frozen" in completed.stderr
+    assert before == (
+        (root / "PREREGISTRATION-v1.8.json").read_bytes(),
+        (root / "PREREGISTRATION-v1.8.sha256").read_bytes(),
+    )
+
+
+def test_path_validation_amendment_rejects_drifted_unchanged_fixture(
+    tmp_path: Path,
+) -> None:
+    copied_repo = tmp_path / "repo"
+    copied = copied_repo / "development_benchmark_compact_projection"
+    shutil.copytree(_root(), copied)
+    for relative in (
+        "scripts/score_compact_projection_task.py",
+        "scripts/observe_compact_projection_policy.py",
+        "src/adaptation_compiler_lab/benchmark/longitudinal_instrument.py",
+        "src/adaptation_compiler_lab/targets/codex_runtime.py",
+    ):
+        destination = copied_repo / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(_repo() / relative, destination)
+    (copied / "PREREGISTRATION-v1.8.json").unlink()
+    (copied / "PREREGISTRATION-v1.8.sha256").unlink()
+    envelope = copied / "runtime-fixture-v1.5" / "shared-execution-envelope.md"
+    envelope.write_text(
+        envelope.read_text(encoding="utf-8").replace("Allowed paths", "Permitted paths"),
+        encoding="utf-8",
+    )
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(_repo() / "scripts" / "supersede_compact_projection_protocol_v1_8.py"),
+            "--repo",
+            str(copied_repo),
+            "--benchmark-root",
+            str(copied),
+        ],
+        cwd=_repo(),
+        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=10,
+    )
+
+    assert completed.returncode != 0
+    assert "drifted since v1.7" in completed.stderr
+    assert not (copied / "PREREGISTRATION-v1.8.json").exists()
+    assert not (copied / "PREREGISTRATION-v1.8.sha256").exists()
 
 
 def test_codex_target_amendment_rejects_drifted_unchanged_fixture(

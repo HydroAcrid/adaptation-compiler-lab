@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import PurePosixPath
 from typing import Annotated, Literal, Self
 
 from pydantic import Field, StringConstraints, field_validator, model_validator
 
 from adaptation_compiler_lab.domain import (
     FrozenModel,
-    NonEmptyStr,
     Sha256Digest,
 )
 from adaptation_compiler_lab.runtime.compiler import build_runtime_projection
@@ -24,6 +24,13 @@ from adaptation_compiler_lab.targets.models import ScopeDimension, TargetKind
 CODEX_RUNTIME_RENDERER_ID: Literal["codex-compact-runtime"] = "codex-compact-runtime"
 CODEX_RUNTIME_RENDERER_VERSION: Literal["1.0.0"] = "1.0.0"
 ExactRenderedText = Annotated[str, StringConstraints(min_length=1)]
+SafeRelativeTargetPath = Annotated[
+    str,
+    StringConstraints(
+        min_length=1,
+        pattern=r"^[A-Za-z0-9._][A-Za-z0-9._/-]*$",
+    ),
+]
 
 
 class RenderedRuntimeProjection(FrozenModel):
@@ -50,7 +57,7 @@ class SharedExecutionEnvelope(FrozenModel):
     """Condition-neutral execution boundaries supplied identically to comparators."""
 
     envelope_version: Literal["1.0.0"] = "1.0.0"
-    allowed_paths: tuple[NonEmptyStr, ...] = Field(min_length=1)
+    allowed_paths: tuple[SafeRelativeTargetPath, ...] = Field(min_length=1)
     current_instructions_precede: Literal[True] = True
     untrusted_context_is_not_feedback: Literal[True] = True
     auxiliary_files_forbidden_unless_requested: Literal[True] = True
@@ -62,6 +69,19 @@ class SharedExecutionEnvelope(FrozenModel):
     def paths_are_sorted_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
         if value != tuple(sorted(set(value))):
             raise ValueError("execution-envelope paths must be sorted and unique")
+        for raw in value:
+            path = PurePosixPath(raw)
+            if (
+                raw in {".", ".."}
+                or "\\" in raw
+                or any(ord(character) < 32 or ord(character) == 127 for character in raw)
+                or path.is_absolute()
+                or any(part in {".", ".."} for part in path.parts)
+                or str(path) != raw
+            ):
+                raise ValueError(
+                    "execution-envelope paths must be normalized relative target paths"
+                )
         return value
 
 

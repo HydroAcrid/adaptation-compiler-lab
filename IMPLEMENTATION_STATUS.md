@@ -53,8 +53,10 @@ profile to satisfy every applicable artifact's compatibility declaration, and bi
 snapshot to the digest of its complete source transition. V1.6 changes no runtime
 material or semantics; it binds formatter-normalized observer bytes after the pre-execution v1.5
 freeze correctly detected source drift. No profile, target, judge, or other live output informed
-that amendment. Current v1.7 independently requires a known Codex target family at the Codex
-renderer boundary and binds the updated renderer source while reusing the exact v1.5 fixture.
+that amendment. V1.7 independently requires a known Codex target family at the Codex renderer
+boundary. Current v1.8 rejects absolute, traversing, non-normalized, control-bearing, or
+instruction-like execution-envelope paths; it binds the updated renderer source while
+reusing the exact v1.5 fixture and every unchanged v1.7 digest.
 
 Three stage packs demonstrate the intended lifecycle: a persistent-destination backup rule; a
 narrow generated-cache atomic-replacement exception; then a refuse-by-default persistent policy
@@ -69,7 +71,7 @@ actions” comparison is retired in favor of separate compiler, machine-time, ap
 and target-cost records. One blind Sol/xhigh judge ran before unblinding; its three compiled
 preferences are secondary, and two rewarded forbidden test-file changes.
 
-The fresh 6A.1 v1.7 protocol uses three new task fixtures and locally distinguishes reference,
+The fresh 6A.1 v1.8 protocol uses three new task fixtures and locally distinguishes reference,
 stale-rule, missed-exception, scope-leak, unnecessary-change, and forbidden-path implementations.
 Its minimum future live cost is six target sessions plus one author, one reviewer, and one blind
 judge: nine subscription sessions, zero API-key calls, and zero provider-billed calls. No role,
@@ -271,7 +273,7 @@ uv run pytest
 uv build
 ```
 
-The current full suite formats 316 files, passes strict typing, passes 526 tests, and builds both
+The current full suite formats 317 files, passes strict typing, passes 542 tests, and builds both
 the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
 verifier matched its pinned binary and canonical generated-schema digest
