@@ -182,14 +182,14 @@ condition/output IDs, minimized observations, and an anonymous preference packet
 gate may justify improving the compiler or pack on non-held-out data, but it cannot support a
 cross-agent-transfer claim and cannot modify the frozen Milestone 6 registration or materials.
 
-## 8. Later execution boundary
+## 8. Deferred external-validation boundary
 
-Milestone 6, after all prior objective gates pass and Kevin explicitly authorizes paid execution,
-must run the 32 trials in the committed seeded order and use a fresh disposable worktree and empty
-target configuration/session per run. Each trial is limited to 30 minutes, 40 turns, and USD $5;
-the pilot is capped at USD $200. Only a transient provider failure before any tool call or file
-change may receive one retry. These limits are frozen but have not been exercised against real
-held-out tasks.
+The original Milestone 6 registration is preserved unchanged as an unexecuted historical
+external-validation study. Its sealed bundle, authorization gate, custody records, hidden tasks,
+condition mapping, randomized order, runtime limits, and USD $200 ceiling remain frozen and
+unrevealed. It is deferred for budget reasons and is optional future research contingent on
+funding—not a prerequisite or blocker for product development. No Sonnet cost canary or 32-run
+pilot is authorized.
 
 Milestone 4 implements the version-pinned source/runner/scorer ports, Codex generated-schema
 verification, and a clean Claude Code command/sandbox/trace contract. Fake fixtures pass
@@ -208,3 +208,24 @@ later, separately authorized Claude development canary may use only new non-held
 cannot reveal the Milestone 6 holdout or authorize the full pilot. Kevin's blind ratings remain the
 gate after valid held-out execution; isolated-AI annotations are optional and secondary. No result
 from this design may be described as independently conducted.
+
+## 9. Milestone 6A longitudinal dogfood gate
+
+The active product milestone is a public, non-held-out, zero-provider-billed Codex dogfood study.
+It validates three sequential evidence transitions: addition, narrower scoped correction, then
+supersession or revocation. Every active instruction retains exact consent, capture, evidence,
+evaluation, and review lineage. Revoked instructions are absent from later target packs, and
+machine-comparable scope probes detect false activation in unrelated contexts.
+
+The public comparison has three cumulative evidence stages, two tasks per stage, two conditions,
+and one repetition: 12 target runs maximum. Compiled adaptation is compared with a strong static
+profile independently maintained and reviewed from the same accumulated eligible evidence. Saved
+ChatGPT authentication is mandatory; API keys and provider-billed calls are forbidden.
+
+The maximum subscription impact is 19 sessions: three profile-author sessions, three independent
+profile-review sessions, 12 fresh `gpt-5.6-luna` target sessions, and one isolated
+`gpt-5.6-sol` general-quality judge. Automated correctness is primary. The isolated judge is
+secondary, condition-blind, and cannot replace or rewrite objective results.
+
+The registration, role packets, six public fixtures, and independent scorers are frozen before
+execution. No Codex comparison session has run.

@@ -1,8 +1,8 @@
 # MVP Specification
 
-Status: **Milestone 5 complete; paid Milestone 6 execution awaiting authorization**
-Implementation status: **eight consented captures, eight approved artifacts, four frozen
-conditions, and sealed 32-cell custody bundle; no target trial**
+Status: **Milestone 6A active; paid external validation deferred**
+Implementation status: **longitudinal dogfood loop and public 12-cell Codex design implemented;
+comparison not executed**
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** describe the
 implemented MVP contract unless explicitly marked as future work.
@@ -16,6 +16,11 @@ It persists signed four-condition benchmark registration and custody ledgers. It
 narrow version-pinned source, target-runner, and scorer ports. Eight consented Codex tasks have
 been captured and reviewed, but no held-out task has been revealed to construction, no paid pilot
 trial has run, and no comparative scoring has occurred.
+
+The sealed Claude study is retained unchanged as optional historical external-validation work.
+The active product milestone instead exercises sequential addition, scoped correction,
+supersession/revocation, activation feedback, pack growth, update latency, and maintenance effort
+using only local deterministic code and saved ChatGPT subscription authentication for later runs.
 
 The intended first study compares the following conditions on held-out tasks:
 

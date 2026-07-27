@@ -5,7 +5,7 @@ from completed coding work into typed external artifacts. Its research question 
 compiled adaptation pack can improve a target coding agent on unseen work beyond a base agent,
 ordinary memory, and a strong static profile.
 
-Milestone 5 is complete. Eight exact-consent Codex tasks were captured only into the external
+Milestone 6A is active. Eight exact-consent Codex tasks were captured only into the external
 encrypted raw boundary; eight Kevin-confirmed behaviors became approved artifacts. Two fresh AI
 contexts authored/reviewed the strong static profile, four conditions passed the common budgets,
 and deterministic software custody sealed the hidden tasks, mapping, 32-cell order, and exact
@@ -19,7 +19,13 @@ adaptation won 5–2 with one tie, passed 28/32 versus 25/32 independent objecti
 favorable descriptive cross-agent signal, but weak visible tests and coarse exception handling in
 parts of the independent scorer prevent a product-level superiority claim. No held-out task has
 been exposed, the frozen compiler/conditions were not changed from the result, and the Milestone 6
-pilot remains closed.
+pilot remains sealed and is now optional future research deferred for budget reasons.
+
+The active product path is a zero-provider-billed longitudinal dogfood gate. It compiles an
+addition, a narrower scoped correction, and a supersession/revocation through three stage packs;
+measures lineage, scope activation, pack growth, update latency, and maintenance effort; and
+records append-only helped/hurt/irrelevant feedback. A 12-run compiled-versus-strong-profile Codex
+subscription comparison is preregistered but has not been executed.
 
 ## What is here
 

@@ -1,24 +1,22 @@
 # Implementation Status
 
-Last updated: 2026-07-26
+Last updated: 2026-07-27
 
 ## Current milestone
 
-**The versioned Claude benchmark repair and isolated-AI rating are complete.** It uses two newly
-created public tasks that repair the known communication-literal and recursive environment-safety
-measurement defects. Reference implementations pass every check, while targeted defective
-implementations fail the intended check without collapsing unrelated results.
+**Milestone 6A longitudinal dogfood implementation is complete and the Codex comparison remains
+unexecuted.** The deterministic workflow verifies signed consent/capture, governed Evidence v1.1,
+review approval, addition, narrower scoped correction, supersession/revocation, release rendering,
+clean delivery, activation scope, and append-only user feedback.
 
-The preregistered Haiku grid produced 4/4 valid strong-profile-versus-compiled records. A blank
-`gpt-5.6-sol` Codex CLI context at `xhigh` reasoning rated the anonymous packet without repository,
-host-home, tool, prior-context, condition-identity, objective-score, or Milestone 6 access. The
-rating was durably checksum-bound before unblinding. Compiled tied the strong profile on
-communication, won environment safety, and tied every automated count at a perfect score. The
-Claude calls cost exactly USD $0.33626555.
+Three stage packs demonstrate the intended lifecycle: a persistent-destination backup rule; a
+narrow generated-cache atomic-replacement exception; then a refuse-by-default persistent policy
+that supersedes the original. The old artifact and evidence ID disappear from Stage 3 while the
+narrow exception remains active only for its registered project scope.
 
-This is favorable but small descriptive cross-agent development evidence. The isolated judge
-measures general quality, not Kevin's personal preference. Two public tasks with one repetition
-per condition do not establish general product superiority.
+Six public tasks and independent scorers are frozen for a 12-run maximum
+compiled-versus-strong-profile Codex subscription comparison. No profile-author, profile-review,
+target, or judge session has run.
 
 The prior v2.9 result remains favorable but benchmark-limited descriptive cross-agent development
 evidence: compiled led Kevin's preferences 5–2 with one tie and led objective/diagnostic counts,
@@ -167,6 +165,14 @@ storage occurred.
 - Preserved three failed isolated-rating setup attempts with failure evidence, then completed
   preregistration v1.4. The durable rating was pushed while blind; unblinding found one compiled
   win and one tie, with both conditions perfect on all automated checks.
+- Added typed longitudinal transitions, exact active-instruction lineage, deterministic scoped
+  supersession, pack size/growth and update-effort measurements, clean Codex delivery receipts,
+  append-only helped/hurt/irrelevant feedback, and derived correction/activation metrics.
+- Added SQLite migration 0006 with update/delete guards for immutable dogfood feedback.
+- Added six public stage-sensitive fixtures with independent objective, diagnostic, and neutral
+  scenarios. Seeded implementations fail their intended diagnostic; references pass all checks.
+- Froze the 12-target-run, 19-total-session maximum subscription design plus isolated author,
+  reviewer, and judge role packets. No comparison session has been executed.
 
 ## Verification performed
 
@@ -181,7 +187,7 @@ uv run pytest
 uv build
 ```
 
-The current full suite formats 249 files, passes strict typing, passes 423
+The current full suite formats 270 files, passes strict typing, passes 437
 tests, and builds both
 the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
@@ -199,9 +205,9 @@ establishes instrument and protocol readiness only, not transfer quality.
 
 ## Explicitly not implemented or exercised
 
-- No held-out Claude target trial, held-out task reveal, held-out condition-bearing trace, or paid
-  provider spend for the Milestone 6 pilot. The completed paid calls were public non-held-out
-  development instrumentation only.
+- No held-out Claude target trial, held-out task reveal, held-out condition-bearing trace, Sonnet
+  canary, or paid Milestone 6 pilot. The study is preserved unchanged and deferred for budget
+  reasons as optional future research.
 - No Kevin rating for the held-out pilot, held-out blinded adjudication, comparative pilot
   analysis, statistical report, or retention purge of the real payloads. The completed isolated-AI
   rating applies only to the public repair tasks and is not Kevin-specific preference evidence.
@@ -222,16 +228,20 @@ persisted in traces. The runner continues to reject ambiguous sources, broad key
 workspace-local keys, alternate providers, and missing sandbox support.
 
 The versioned four-cell repair run is complete and unblinded only after a durable isolated-AI
-rating. Future public development packets use this isolated scoring gate rather than asking Kevin
-for ratings. Automated tests remain the objective authority, and AI ratings are separately labeled
-general-quality judgments.
+rating. Future public development packets use an isolated condition-blind judge rather than asking
+Kevin for ratings. Automated tests remain the objective authority, and AI ratings are separately
+labeled general-quality judgments.
 
 The scorer conflict is resolved without changing the frozen study. Kevin clarified before any
 held-out reveal or trial that he will perform the preregistered anonymous ratings for this phase.
 Automated tests remain objective authority; isolated-AI judging is deferred and may provide only
 secondary analysis after Kevin's ratings are durable.
 
-The next gate is a read-only Milestone 6 preflight that reverifies every frozen digest, retention
-window, credential balance, runtime pin, custody boundary, randomized order, and cost ceiling.
-Do not reveal held-out material or execute the 32-run paid pilot until that preflight passes and
-Kevin explicitly authorizes the paid run.
+Milestone 6A is the active product gate. Its deterministic dogfood loop, feedback ledger, metrics,
+six public fixtures, role packets, and preregistration are implemented. The exact subscription
+impact is capped at 19 sessions, including 12 target runs; provider-billed calls and API keys are
+forbidden.
+
+Stop before execution. The next decision is whether to authorize the subscription-only profile
+author/reviewer and 12-cell Codex comparison. The deferred external-validation study is not
+unfinished required work and must remain sealed unless separately revived with funding.

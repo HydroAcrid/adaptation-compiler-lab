@@ -1,7 +1,6 @@
 # Threat Model
 
-Status: **Milestone 5 internal-role separation and sealed software custody complete; paid trials
-not authorized**
+Status: **Milestone 6A longitudinal dogfood gate active; external-validation study deferred**
 
 ## Assets and trust boundary
 
@@ -55,6 +54,11 @@ approval, or artifact promotion.
 | Target subprocess exfiltrates data over network | Bash sandbox denies every domain/socket; web/MCP tools and alternate providers are removed; nonessential Claude traffic, telemetry, error reporting, updates, and marketplaces are disabled. | The Claude process itself must reach the pinned Anthropic API endpoint; host-level compromise and TLS/domain-fronting limitations remain outside the built-in proxy guarantee. |
 | Prompt, API key, configuration, or raw trace leaks through process state/Git | Task input travels over stdin; the key comes from the environment or a mode-0600 external file and enters only the child environment; configuration is temporary; result models omit credentials; raw traces are excluded from Git. Property tests vary synthetic keys and scans reject secret/private-path content. | OS process inspection by the same host user and compromised runners remain operator risks. |
 | Partial target teardown contaminates a later trial | New configuration per run, process-group termination on timeout, disabled background tasks, no persistence, and teardown assertions. | Milestone 6 must also destroy each disposable worktree and independently verify no orphan process. |
+| Stale longitudinal rule survives supersession or revocation | Each stage deterministically rebuilds from active artifacts; superseded IDs and their evidence links are absent from later rendered packs; scoped exceptions are explicitly rewired to the current broader rule. | Already delivered copies cannot be recalled remotely; this gate verifies clean future delivery and local activation state only. |
+| Narrow correction leaks into unrelated work | Machine-comparable subject, target, workspace, project, repository, task, environment, and condition scopes are resolved before activation; narrower replacements suppress broader rules only where applicable. | Natural-language target compliance is measured later; deterministic routing cannot guarantee that an agent follows a correctly selected instruction. |
+| Feedback is rewritten or attached to the wrong pack | Helped/hurt/irrelevant events are append-only, subject-scoped, digest-bound to an exact stage pack, and rejected on conflicting ID reuse. | The owner supplies relevance and outcome judgments; this lightweight signal is not objective correctness evidence. |
+| Static-profile comparison receives unequal evidence | Each cumulative stage binds both conditions to the same eligible evidence, identical task budget, and isolated author/reviewer packets; automated task scenarios are primary evidence. | Context isolation is process-enforced and the one-repetition public comparison remains diagnostic, not a powered claim. |
+| Subscription comparison accidentally incurs provider charges or reaches sealed custody | The frozen design requires saved ChatGPT authentication, forbids API keys, contains no external-study locators, and caps execution at 19 subscription sessions / 12 target runs. | Live quota and authentication must be checked immediately before any separately authorized run. |
 
 ## Privacy policy for this phase
 
@@ -86,7 +90,7 @@ unscheduled pilot execution.
 8. Every new non-synthetic Evidence record uses v1.1 and exact signed consent/capture references.
 9. No component trains a model or automatically creates/installs a tool. Isolated profile and
    review contexts may receive only their explicitly authorized approved-corpus packets; target
-   calls remain behind the paid-run gate.
+   calls remain behind their explicit execution gate.
 10. Destructive recall never executes from an unsigned or stale preview and never rewrites an
     immutable record.
 11. Revoked or expired material cannot support approval, promotion, release, rendering, or
@@ -105,6 +109,10 @@ unscheduled pilot execution.
     randomized order; it receives only signed/digest-bound public commitments.
 19. Internally blinded results cannot be described as independently conducted or third-party
     validated.
+20. A longitudinal pack contains only currently active instructions, and every active instruction
+    retains exact consent, capture, evidence, evaluation, and review lineage.
+21. A scoped correction may suppress a broader instruction only inside its registered scope.
+22. Milestone 6A execution cannot read or mutate the deferred external-validation custody boundary.
 
 ## Incident posture
 
