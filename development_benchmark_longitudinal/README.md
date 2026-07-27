@@ -1,6 +1,6 @@
 # Milestone 6A Longitudinal Development Comparison
 
-Status: **preregistered and not executed**
+Status: **executed and unblinded; strict gate failed**
 
 This is a public, non-held-out, subscription-only development comparison. It evaluates compiled
 adaptation against a strong independently maintained static profile across three cumulative
@@ -39,9 +39,25 @@ counts, elapsed maintenance time, and evidence digest are recorded before target
 - one turn, 600 seconds, no retry, and network disabled;
 - one isolated `gpt-5.6-sol`/xhigh blind judging pass after automated scoring.
 
-The maximum subscription impact is 19 sessions: three profile-author sessions, three independent
-profile-review sessions, 12 target sessions, and one isolated judge session. No session has been
-executed under this registration.
+The original maximum was 19 sessions: three profile-author sessions, three independent
+profile-review sessions, 12 target sessions, and one isolated judge session. The first final
+reviewer failed provenance validation. After explicit owner authorization,
+`EXECUTION_AMENDMENT-v1.1.json` allowed exactly one replacement reviewer and raised the attempted
+ceiling to 20. No other retry was allowed.
 
 The comparison has no access to the deferred Milestone 6 external-validation study, its tasks,
 mapping, randomization, custody, or sealed bundle.
+
+## Result
+
+All 12 target cells and the isolated judge completed. Nine target records were valid. All three
+invalid records occurred under compiled adaptation: two changed a forbidden path and one issued a
+parent/host-path-style command. Compiled and profile tied at 6/6 objective, 2/6 diagnostic, and 2/6
+neutral checks. The judge preferred compiled three times and tied three, but two preferences
+rewarded forbidden test-file changes.
+
+The final compiled material was 1,652 bytes with five recorded update actions; the profile was 462
+bytes with three. The strict gate failed on record validity, final size, and maintenance actions.
+See `results/MILESTONE_6A_RESULT.md`, `results/unblinded-result.json`, and
+`../MILESTONE_6A_ANALYSIS.md`. Original outputs, traces, scores, ratings, and execution limitations
+remain unchanged.

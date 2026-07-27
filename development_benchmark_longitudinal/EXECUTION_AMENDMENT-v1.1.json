@@ -1,0 +1,41 @@
+{
+  "amendment_version": "1.1.0",
+  "amends_protocol_version": "1.0.0",
+  "authorized_at": "2026-07-27T18:11:02Z",
+  "authorization_kind": "explicit_user_authorization_in_project_task",
+  "reason": "The original Stage 3 reviewer returned a behaviorally plausible profile with malformed provenance metadata. Strict validation failed closed before target execution.",
+  "original_maximum_total_sessions": 19,
+  "maximum_valid_sessions": 19,
+  "maximum_attempted_sessions": 20,
+  "additional_authorized_sessions": 1,
+  "replacement_role_id": "longitudinal-profile-reviewer-stage-3",
+  "replacement_model": "gpt-5.6-luna",
+  "replacement_reasoning_effort": "medium",
+  "replacement_service_mode": "standard",
+  "prior_attempt": {
+    "source_commit": "873ab0cfa6f7e6584de4055df4295e786bbd1f87",
+    "sessions_attempted": 6,
+    "validated_encrypted_role_outputs": 5,
+    "rejected_role_outputs": 1,
+    "target_sessions_started": 0,
+    "judge_sessions_started": 0,
+    "provider_billed_calls": 0,
+    "external_validation_accessed": false,
+    "failure_receipt_digest": "sha256:1d54ff87f2e5262158e2b9d42024ffd81d39c9edeb2df301748b4b3f5987f0d0",
+    "stdout_log_digest": "sha256:ac26aad2efe9298016b61f3b1302dc494d1455e073717951e9329895528c800a",
+    "stderr_log_digest": "sha256:aa9b22a5c81c4a9a7ec127ddbefc08af6a5dbcd65613d41fec74e73b9978cca7"
+  },
+  "recovery_constraints": {
+    "reuse_only_validated_encrypted_outputs": true,
+    "preserve_rejected_attempt_evidence_without_promotion": true,
+    "replacement_sessions": 1,
+    "further_retries_allowed": false,
+    "target_grid_unchanged": true,
+    "condition_materials_unchanged": true,
+    "task_fixtures_unchanged": true,
+    "randomization_unchanged": true,
+    "sealed_external_validation_access_allowed": false,
+    "api_keys_allowed": false,
+    "provider_billed_calls": 0
+  }
+}

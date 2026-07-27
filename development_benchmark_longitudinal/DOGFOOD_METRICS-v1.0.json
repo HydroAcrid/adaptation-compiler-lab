@@ -1,0 +1,21 @@
+{
+  "metrics_version": "1.0.0",
+  "synthetic_fixture_only": true,
+  "feedback_count": 3,
+  "helped_count": 1,
+  "hurt_count": 1,
+  "irrelevant_count": 1,
+  "repeated_correction_count": 1,
+  "correct_activation_count": 2,
+  "false_activation_count": 1,
+  "missed_activation_count": 1,
+  "total_maintenance_actions": 12,
+  "total_maintenance_seconds": 90.0,
+  "stage_pack_bytes": [1977, 3076, 3107],
+  "stage_primary_instruction_bytes": [922, 1629, 1652],
+  "stage_update_latency_seconds": [40.0, 40.0, 40.0],
+  "stage_maintenance_actions": [3, 4, 5],
+  "stage_maintenance_seconds": [30.0, 30.0, 30.0],
+  "provider_billed_calls": 0,
+  "external_validation_accessed": false
+}

@@ -59,27 +59,41 @@ def score_longitudinal_task(
 ) -> LongitudinalTaskScore:
     """Score all frozen scenarios without exposing condition identity."""
 
-    module = _load_policy(workspace.resolve(), task.task_id)
+    try:
+        module = _load_policy(workspace.resolve(), task.task_id)
+    except Exception as error:
+        return _failed_score(task, f"{type(error).__name__}: {error}")
     results: list[LongitudinalScenarioResult] = []
     for scenario in task.scenarios:
-        expected: str
-        if task.task_kind == "action":
-            function = getattr(module, "choose_publish_action", None)
-            if not callable(function):
-                raise ValueError("action task is missing choose_publish_action")
-            value = function(scenario.destination_exists, scenario.backup_requested)
-            observed = str(value)
-            expected = scenario.expected_action
-            passed = value == expected
-        else:
-            function = getattr(module, "build_publish_plan", None)
-            if not callable(function):
-                raise ValueError("plan task is missing build_publish_plan")
-            raw_value = function(scenario.destination_exists, scenario.backup_requested)
-            value = tuple(raw_value) if isinstance(raw_value, (list, tuple)) else (str(raw_value),)
-            observed = repr(value)
-            expected = repr(scenario.expected_plan)
-            passed = value == scenario.expected_plan
+        try:
+            expected: str
+            if task.task_kind == "action":
+                function = getattr(module, "choose_publish_action", None)
+                if not callable(function):
+                    raise ValueError("action task is missing choose_publish_action")
+                value = function(scenario.destination_exists, scenario.backup_requested)
+                observed = str(value)
+                expected = scenario.expected_action
+                passed = value == expected
+            else:
+                function = getattr(module, "build_publish_plan", None)
+                if not callable(function):
+                    raise ValueError("plan task is missing build_publish_plan")
+                raw_value = function(scenario.destination_exists, scenario.backup_requested)
+                value = (
+                    tuple(raw_value) if isinstance(raw_value, (list, tuple)) else (str(raw_value),)
+                )
+                observed = repr(value)
+                expected = repr(scenario.expected_plan)
+                passed = value == scenario.expected_plan
+        except Exception as error:
+            observed = f"{type(error).__name__}: {error}"
+            expected = (
+                scenario.expected_action
+                if task.task_kind == "action"
+                else repr(scenario.expected_plan)
+            )
+            passed = False
         results.append(
             LongitudinalScenarioResult(
                 scenario_id=scenario.scenario_id,
@@ -106,4 +120,35 @@ def score_longitudinal_task(
         diagnostic_total=diagnostic[1],
         neutral_passed=neutral[0],
         neutral_total=neutral[1],
+    )
+
+
+def _failed_score(task: LongitudinalDevelopmentTask, observed: str) -> LongitudinalTaskScore:
+    results = tuple(
+        LongitudinalScenarioResult(
+            scenario_id=scenario.scenario_id,
+            metric=scenario.metric,
+            passed=False,
+            observed=observed,
+            expected=(
+                scenario.expected_action
+                if task.task_kind == "action"
+                else repr(scenario.expected_plan)
+            ),
+        )
+        for scenario in task.scenarios
+    )
+
+    def total(metric: str) -> int:
+        return sum(item.metric == metric for item in results)
+
+    return LongitudinalTaskScore(
+        task_id=task.task_id,
+        scenario_results=results,
+        objective_passed=0,
+        objective_total=total("objective"),
+        diagnostic_passed=0,
+        diagnostic_total=total("diagnostic"),
+        neutral_passed=0,
+        neutral_total=total("neutral"),
     )
