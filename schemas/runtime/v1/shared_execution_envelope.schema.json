@@ -10,7 +10,8 @@
       },
       "minItems": 1,
       "title": "Allowed Paths",
-      "type": "array"
+      "type": "array",
+      "uniqueItems": true
     },
     "auxiliary_files_forbidden_unless_requested": {
       "const": true,

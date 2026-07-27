@@ -71,11 +71,30 @@ class GovernedLifecycleEvent(FrozenModel):
 
     @model_validator(mode="after")
     def transition_shape_is_valid(self) -> Self:
-        introducing_kinds = {"addition", "scoped_correction", "supersession"}
-        if self.transition_kind in introducing_kinds and self.introduced_artifact_ref is None:
-            raise ValueError("introducing lifecycle events require an artifact reference")
-        if self.transition_kind == "revocation" and self.introduced_artifact_ref is not None:
-            raise ValueError("revocation lifecycle events cannot introduce an artifact")
+        if self.released_at > self.activated_at:
+            raise ValueError("lifecycle release must precede activation")
+        if self.transition_kind == "addition":
+            if (
+                self.introduced_artifact_ref is None
+                or self.affected_artifact_id is not None
+                or self.supersedes_artifact_ids
+            ):
+                raise ValueError("addition lifecycle event must introduce exactly one artifact")
+        elif self.transition_kind in {"scoped_correction", "supersession"}:
+            if (
+                self.introduced_artifact_ref is None
+                or self.affected_artifact_id is None
+                or self.supersedes_artifact_ids != (self.affected_artifact_id,)
+            ):
+                raise ValueError(
+                    f"{self.transition_kind} lifecycle event must replace exactly one artifact"
+                )
+        elif (
+            self.introduced_artifact_ref is not None
+            or self.affected_artifact_id is None
+            or self.supersedes_artifact_ids
+        ):
+            raise ValueError("revocation lifecycle event must remove exactly one artifact")
         return self
 
 
@@ -161,6 +180,60 @@ class ExternalGovernedRelease(FrozenModel):
         stages = tuple(item.stage for item in self.lifecycle_history)
         if stages != tuple(sorted(stages)):
             raise ValueError("governed lifecycle events must be stage ordered")
+        lifecycle_active: set[Identifier] = set()
+        expected_revoked: set[Identifier] = set()
+        expected_supersessions: list[tuple[Identifier, Identifier]] = []
+        for event in self.lifecycle_history:
+            introduced_id = (
+                event.introduced_artifact_ref.record_id
+                if event.introduced_artifact_ref is not None
+                else None
+            )
+            affected_id = event.affected_artifact_id
+            if event.transition_kind == "addition":
+                assert introduced_id is not None
+                if introduced_id in lifecycle_active or introduced_id in expected_revoked:
+                    raise ValueError("lifecycle addition reused an artifact ID")
+                lifecycle_active.add(introduced_id)
+            elif event.transition_kind == "scoped_correction":
+                assert introduced_id is not None
+                assert affected_id is not None
+                if affected_id not in lifecycle_active:
+                    raise ValueError("lifecycle correction targets no active artifact")
+                if introduced_id in lifecycle_active or introduced_id in expected_revoked:
+                    raise ValueError("lifecycle correction reused an artifact ID")
+                lifecycle_active.add(introduced_id)
+                expected_supersessions.append((introduced_id, affected_id))
+            else:
+                assert affected_id is not None
+                if affected_id not in lifecycle_active:
+                    raise ValueError("lifecycle removal targets no active artifact")
+                prior_replacements = tuple(
+                    replacing_id
+                    for replacing_id, replaced_id in expected_supersessions
+                    if replaced_id == affected_id
+                )
+                lifecycle_active.remove(affected_id)
+                expected_revoked.add(affected_id)
+                expected_supersessions = [
+                    pair for pair in expected_supersessions if affected_id not in pair
+                ]
+                if event.transition_kind == "supersession":
+                    assert introduced_id is not None
+                    if introduced_id in lifecycle_active or introduced_id in expected_revoked:
+                        raise ValueError("lifecycle supersession reused an artifact ID")
+                    lifecycle_active.add(introduced_id)
+                    expected_supersessions.extend(
+                        (replacing_id, introduced_id)
+                        for replacing_id in prior_replacements
+                        if replacing_id in lifecycle_active
+                    )
+        if artifact_ids != tuple(sorted(lifecycle_active)):
+            raise ValueError("active artifacts do not match lifecycle state")
+        if self.revoked_artifact_ids != tuple(sorted(expected_revoked)):
+            raise ValueError("revoked artifact IDs do not match lifecycle state")
+        if self.scoped_supersessions != tuple(sorted(expected_supersessions)):
+            raise ValueError("scoped supersessions do not match lifecycle state")
         for binding in self.active_bindings:
             introductions = tuple(
                 event

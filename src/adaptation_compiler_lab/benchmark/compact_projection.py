@@ -72,6 +72,7 @@ class CompactProjectionComparisonDesign(FrozenModel):
         "1.7.0",
         "1.8.0",
         "1.9.0",
+        "1.10.0",
     ] = "1.0.0"
     design_id: Literal["milestone-6a1-compact-runtime-public-development"] = (
         "milestone-6a1-compact-runtime-public-development"
@@ -129,6 +130,7 @@ class CompactProjectionComparisonDesign(FrozenModel):
             "codex_renderer_target_guard",
             "execution_envelope_path_validation",
             "portable_envelope_schema_alignment",
+            "canonical_envelope_collection_and_lifecycle_state",
         ]
         | None
     ) = None
@@ -249,6 +251,15 @@ class CompactProjectionComparisonDesign(FrozenModel):
             and self.amendment_reason != "portable_envelope_schema_alignment"
         ):
             raise ValueError("compact projection v1.9 requires its registered amendment reason")
+        if self.design_version == "1.10.0" and any(
+            item is None for item in (*amendment, *isolation)
+        ):
+            raise ValueError("compact projection v1.10 requires complete isolation metadata")
+        if (
+            self.design_version == "1.10.0"
+            and self.amendment_reason != "canonical_envelope_collection_and_lifecycle_state"
+        ):
+            raise ValueError("compact projection v1.10 requires its registered amendment reason")
         return self
 
     @property
@@ -268,6 +279,7 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
     preregistration = next(
         path
         for path in (
+            root / "PREREGISTRATION-v1.10.json",
             root / "PREREGISTRATION-v1.9.json",
             root / "PREREGISTRATION-v1.8.json",
             root / "PREREGISTRATION-v1.7.json",
@@ -298,6 +310,7 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
         "1.7.0": "1.6",
         "1.8.0": "1.7",
         "1.9.0": "1.8",
+        "1.10.0": "1.9",
     }
     current = design
     while current.design_version in chain:
@@ -314,7 +327,7 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
         historical = CompactProjectionComparisonDesign.model_validate_json(
             historical_path.read_bytes()
         )
-        if current.design_version in {"1.7.0", "1.8.0", "1.9.0"}:
+        if current.design_version in {"1.7.0", "1.8.0", "1.9.0", "1.10.0"}:
             unchanged_fields = (
                 "independent_scorer_digest",
                 "policy_observer_digest",
@@ -365,6 +378,7 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
         "1.7.0",
         "1.8.0",
         "1.9.0",
+        "1.10.0",
     }:
         if sha256_file(repo / "scripts" / "observe_compact_projection_policy.py") != (
             design.policy_observer_digest
@@ -387,6 +401,7 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
         "1.7.0": "runtime-fixture-v1.5",
         "1.8.0": "runtime-fixture-v1.5",
         "1.9.0": "runtime-fixture-v1.5",
+        "1.10.0": "runtime-fixture-v1.5",
     }.get(design.design_version, "runtime-fixture")
     runtime_fixture = root / runtime_fixture_name
     if sha256_file(runtime_fixture / "MEASUREMENTS-v1.0.json") != (

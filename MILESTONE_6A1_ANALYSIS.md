@@ -17,9 +17,10 @@ drift; it reuses the exact v1.5 runtime fixture. V1.7 also requires a known Code
 family at the Codex renderer itself, preventing a Claude- or unknown-target projection from being
 labeled and delivered as Codex output. V1.8 requires each active governance binding to
 match its lifecycle introductions across evidence, consent, capture, evaluation, reviewer, and
-policy metadata, and accepts only normalized safe relative paths in the shared envelope. Current
-v1.9 aligns the exported portable JSON Schema with that path boundary. No live profile, target, or
-judge session preceded any amendment.
+policy metadata, and accepts only normalized safe relative paths in the shared envelope. V1.9
+aligns the exported portable JSON Schema with that path boundary. Current v1.10 adds unique,
+canonical path collections and exact lifecycle-derived active, revoked, and scoped-supersession
+state. No live profile, target, or judge session preceded any amendment.
 
 ## Question
 
@@ -79,11 +80,12 @@ Regression tests cover every finding, including same-length fixture substitution
 The final lineage/path passes reject serialized releases whose active governance claims cannot be
 reproduced from lifecycle introductions. It also prevents absolute paths, traversal,
 non-normalized separators, control characters, and prose-like injection from entering the
-rendered shared execution envelope. V1.8 binds the initial path-validation change and v1.9 binds
-portable-schema parity while every task, condition material, scorer, observer, sandbox, fixture,
-measurement, and shared-envelope digest remains identical to v1.7. The lifecycle validator now
-includes scope-limiting evidence and accepts only semantically valid introducing transitions.
-These are prospective governed-release integrity repairs and do not change frozen target material.
+rendered shared execution envelope. V1.8 binds the initial path-validation change, v1.9 binds
+portable item-schema parity, and v1.10 binds canonical collection semantics while every task,
+condition material, scorer, observer, sandbox, fixture, measurement, and shared-envelope digest
+remains identical to v1.7. The lifecycle validator includes scope-limiting evidence, mirrors every
+per-kind transition constraint, and reproduces active/revoked/supersession state. These are
+prospective governed-release integrity repairs and do not change frozen target material.
 
 The second PR #19 pass added four more fail-closed constraints: root coordinators cannot start the
 scorer because Linux exempts outer UID 0 from `RLIMIT_NPROC`; manifest construction recomputes the

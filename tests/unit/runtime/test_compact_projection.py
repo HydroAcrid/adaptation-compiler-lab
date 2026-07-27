@@ -431,7 +431,7 @@ def test_governance_binding_requires_lifecycle_introduction() -> None:
     raw = release.model_dump(mode="json", round_trip=True)
     raw["lifecycle_history"][0]["introduced_artifact_ref"] = None
 
-    with pytest.raises(ValueError, match="artifact reference"):
+    with pytest.raises(ValueError, match="introduce exactly one"):
         ExternalGovernedRelease.model_validate_json(canonical_json(raw))
 
 
@@ -463,7 +463,45 @@ def test_revocation_event_cannot_masquerade_as_lifecycle_introduction() -> None:
     raw = release.model_dump(mode="json", round_trip=True)
     raw["lifecycle_history"][0]["transition_kind"] = "revocation"
 
-    with pytest.raises(ValueError, match="cannot introduce"):
+    with pytest.raises(ValueError, match="remove exactly one"):
+        ExternalGovernedRelease.model_validate_json(canonical_json(raw))
+
+
+@pytest.mark.parametrize(
+    ("transition_kind", "affected_artifact_id", "supersedes_artifact_ids", "message"),
+    (
+        ("addition", "prior", [], "introduce exactly one"),
+        ("scoped_correction", None, [], "replace exactly one"),
+        ("supersession", None, [], "replace exactly one"),
+        ("revocation", None, [], "remove exactly one"),
+    ),
+)
+def test_lifecycle_transition_shape_is_exact(
+    transition_kind: str,
+    affected_artifact_id: str | None,
+    supersedes_artifact_ids: list[str],
+    message: str,
+) -> None:
+    release = _releases()[0]
+    raw = release.model_dump(mode="json", round_trip=True)
+    event = raw["lifecycle_history"][0]
+    event["transition_kind"] = transition_kind
+    event["affected_artifact_id"] = affected_artifact_id
+    event["supersedes_artifact_ids"] = supersedes_artifact_ids
+    if transition_kind == "revocation":
+        event["introduced_artifact_ref"] = None
+
+    with pytest.raises(ValueError, match=message):
+        ExternalGovernedRelease.model_validate_json(canonical_json(raw))
+
+
+def test_scoped_supersessions_must_match_lifecycle_state() -> None:
+    release = _releases()[1]
+    raw = release.model_dump(mode="json", round_trip=True)
+    replacing, replaced = raw["scoped_supersessions"][0]
+    raw["scoped_supersessions"][0] = [replaced, replacing]
+
+    with pytest.raises(ValueError, match="scoped supersessions do not match"):
         ExternalGovernedRelease.model_validate_json(canonical_json(raw))
 
 
@@ -503,6 +541,19 @@ def test_shared_execution_envelope_schema_rejects_unsafe_paths(
 
     with pytest.raises(ValidationError):
         validator.validate({"allowed_paths": [unsafe_path]})
+
+
+def test_shared_execution_envelope_canonicalizes_unique_path_order() -> None:
+    envelope = SharedExecutionEnvelope(allowed_paths=("z/file.py", "a/file.py"))
+
+    assert envelope.allowed_paths == ("a/file.py", "z/file.py")
+
+
+def test_shared_execution_envelope_schema_rejects_duplicate_paths() -> None:
+    validator = Draft202012Validator(SharedExecutionEnvelope.model_json_schema())
+
+    with pytest.raises(ValidationError):
+        validator.validate({"allowed_paths": ["policy.py", "policy.py"]})
 
 
 def test_manifest_rejects_arbitrary_content_with_borrowed_clause_digests() -> None:

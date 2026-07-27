@@ -73,7 +73,10 @@ class SharedExecutionEnvelope(FrozenModel):
     """Condition-neutral execution boundaries supplied identically to comparators."""
 
     envelope_version: Literal["1.0.0"] = "1.0.0"
-    allowed_paths: tuple[SafeRelativeTargetPath, ...] = Field(min_length=1)
+    allowed_paths: tuple[SafeRelativeTargetPath, ...] = Field(
+        min_length=1,
+        json_schema_extra={"uniqueItems": True},
+    )
     current_instructions_precede: Literal[True] = True
     untrusted_context_is_not_feedback: Literal[True] = True
     auxiliary_files_forbidden_unless_requested: Literal[True] = True
@@ -82,9 +85,9 @@ class SharedExecutionEnvelope(FrozenModel):
 
     @field_validator("allowed_paths")
     @classmethod
-    def paths_are_sorted_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        if value != tuple(sorted(set(value))):
-            raise ValueError("execution-envelope paths must be sorted and unique")
+    def paths_are_canonical(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("execution-envelope paths must be unique")
         for raw in value:
             path = PurePosixPath(raw)
             if (
@@ -98,7 +101,7 @@ class SharedExecutionEnvelope(FrozenModel):
                 raise ValueError(
                     "execution-envelope paths must be normalized relative target paths"
                 )
-        return value
+        return tuple(sorted(value))
 
 
 class RenderedExecutionEnvelope(FrozenModel):

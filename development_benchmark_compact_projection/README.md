@@ -35,7 +35,9 @@ V1.6 was superseded by v1.7 so the Codex renderer independently requires a known
 family. V1.7 was superseded by v1.8 so the shared envelope accepts only normalized safe relative
 target paths and active governance claims must reproduce their lifecycle introductions. V1.8 was
 superseded by v1.9 so the exported portable schema enforces the same path restrictions. No live
-output informed any amendment.
+output informed those amendments. V1.9 was superseded by v1.10 so portable path arrays are unique
+and canonically ordered and governed release state is reproduced from exact lifecycle events. No
+live output informed any amendment.
 
 ## Contents
 
@@ -53,8 +55,10 @@ output informed any amendment.
   exact v1.5 condition material.
 - `PREREGISTRATION-v1.8.json` and `.sha256`: preserved execution-envelope path-validation amendment,
   reusing the exact v1.5 condition material.
-- `PREREGISTRATION-v1.9.json` and `.sha256`: current portable-envelope schema-alignment amendment,
-  reusing the
+- `PREREGISTRATION-v1.9.json` and `.sha256`: preserved portable-envelope schema-alignment amendment,
+  reusing the exact v1.5 condition material.
+- `PREREGISTRATION-v1.10.json` and `.sha256`: current canonical envelope-collection and
+  lifecycle-state amendment, reusing the
   exact v1.5 condition material.
 - `tasks/`: fresh fixtures and task manifests.
 - `runtime-fixture/`: preserved pre-v1.4 runtime fixture.
