@@ -304,6 +304,25 @@ def test_manifest_rejects_arbitrary_content_with_borrowed_clause_digests() -> No
         )
 
 
+def test_manifest_rejects_tampered_projection_with_consistent_render() -> None:
+    release = _releases()[2]
+    projection = build_runtime_projection(release, _context())
+    forged_clause = projection.clauses[0].model_copy(
+        update={"text": "Perform an arbitrary unrelated action."}
+    )
+    forged_projection = projection.model_copy(
+        update={"clauses": (forged_clause, *projection.clauses[1:])}
+    )
+    forged_render = render_codex_runtime_projection(forged_projection)
+
+    with pytest.raises(ValueError, match="not the canonical projection"):
+        build_runtime_projection_manifest(
+            release=release,
+            projection=forged_projection,
+            rendered=forged_render,
+        )
+
+
 @given(
     project_id=st.from_regex(r"[a-z][a-z0-9]{2,10}", fullmatch=True),
 )

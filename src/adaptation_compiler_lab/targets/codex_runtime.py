@@ -11,6 +11,7 @@ from adaptation_compiler_lab.domain import (
     NonEmptyStr,
     Sha256Digest,
 )
+from adaptation_compiler_lab.runtime.compiler import build_runtime_projection
 from adaptation_compiler_lab.runtime.models import (
     CanonicalRuntimeProjection,
     ClauseProvenanceBinding,
@@ -127,6 +128,9 @@ def build_runtime_projection_manifest(
 
     if projection.external_release_digest != release.content_digest:
         raise ValueError("runtime projection does not bind the supplied external release")
+    expected_projection = build_runtime_projection(release, projection.context)
+    if projection != expected_projection:
+        raise ValueError("runtime projection is not the canonical projection of its release")
     expected_rendered = render_codex_runtime_projection(projection)
     if rendered != expected_rendered:
         raise ValueError("rendered runtime content does not exactly match its projection")

@@ -9,6 +9,8 @@ from adaptation_compiler_lab.benchmark.longitudinal import (
     load_longitudinal_comparison,
 )
 from adaptation_compiler_lab.benchmark.longitudinal_instrument import (
+    _scorer_sandbox_command,
+    condition_identity_leaked,
     condition_leakage_matches,
     normalize_target_material,
     normalized_utf8_size,
@@ -55,6 +57,37 @@ def test_leakage_detection_uses_normalized_actual_material_excerpts() -> None:
     assert matches
     assert {item.material_index for item in matches} == {0}
     assert not condition_leakage_matches("The implementation is complete.", materials)
+
+
+@pytest.mark.parametrize(
+    "marker",
+    (
+        "Compiled Adaptation",
+        "persistent-backup@1.0.0",
+        "persistent-refuse-default@2.0.0",
+        "dogfood-evidence-stage-1",
+        "Strong Static Profile",
+        "experimental condition",
+    ),
+)
+def test_short_condition_identity_markers_remain_leakage(marker: str) -> None:
+    assert condition_identity_leaked(f"Used {marker}.")
+
+
+def test_scorer_sandbox_fails_closed_for_root_coordinator(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("os.getuid", lambda: 0)
+
+    with pytest.raises(OSError, match="non-root outer coordinator"):
+        _scorer_sandbox_command(
+            sandbox_root=tmp_path / "sandbox",
+            scorer_script=tmp_path / "scorer.py",
+            benchmark_root=tmp_path / "benchmark",
+            workspace=tmp_path / "workspace",
+            task_id="task",
+        )
 
 
 @pytest.mark.parametrize("status", (" M", "M ", "MM"))

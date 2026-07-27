@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import json
 import os
 from pathlib import Path
 
@@ -30,19 +29,6 @@ def _exclusive_write(path: Path, content: str) -> None:
         stream.write(content)
         stream.flush()
         os.fsync(stream.fileno())
-
-
-def _atomic_replace(path: Path, content: str) -> None:
-    temporary = path.with_name(f".{path.name}.refresh")
-    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
-            stream.write(content)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, path)
-    finally:
-        temporary.unlink(missing_ok=True)
 
 
 def _tasks() -> tuple[
@@ -202,11 +188,6 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo", type=Path, required=True)
     parser.add_argument("--benchmark-root", type=Path, required=True)
-    parser.add_argument(
-        "--refresh-unexecuted",
-        action="store_true",
-        help="atomically re-freeze only when every recorded session-start flag is false",
-    )
     arguments = parser.parse_args()
 
     repo = arguments.repo.resolve()
@@ -245,22 +226,11 @@ def main() -> int:
     preregistration = canonical_json(design) + "\n"
     preregistration_path = root / "PREREGISTRATION-v1.0.json"
     checksum_path = root / "PREREGISTRATION-v1.0.sha256"
-    writer = _exclusive_write
     if preregistration_path.exists() or checksum_path.exists():
-        if not arguments.refresh_unexecuted:
-            raise ValueError("compact projection protocol is already frozen")
-        previous = json.loads(preregistration_path.read_text(encoding="utf-8"))
-        session_flags = (
-            "target_sessions_started",
-            "profile_sessions_started",
-            "judge_sessions_started",
-        )
-        if any(previous.get(name) is not False for name in session_flags):
-            raise ValueError("cannot refresh a compact projection protocol after execution")
-        writer = _atomic_replace
-    writer(preregistration_path, preregistration)
+        raise ValueError("compact projection protocol is already frozen")
+    _exclusive_write(preregistration_path, preregistration)
     digest = hashlib.sha256(preregistration.encode("utf-8")).hexdigest()
-    writer(
+    _exclusive_write(
         checksum_path,
         f"{digest}  PREREGISTRATION-v1.0.json\n",
     )

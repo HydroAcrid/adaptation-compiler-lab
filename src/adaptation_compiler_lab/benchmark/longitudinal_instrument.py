@@ -115,6 +115,23 @@ def condition_leakage_matches(
     return tuple(matches)
 
 
+_LONGITUDINAL_CONDITION_IDENTITY_MARKERS = (
+    "compiled adaptation",
+    "persistent-backup@",
+    "persistent-refuse-default@",
+    "dogfood-evidence-",
+    "strong static profile",
+    "experimental condition",
+)
+
+
+def condition_identity_leaked(output: str) -> bool:
+    """Detect short condition/provenance markers that excerpt windows cannot catch."""
+
+    normalized = unicodedata.normalize("NFKC", output).casefold()
+    return any(marker in normalized for marker in _LONGITUDINAL_CONDITION_IDENTITY_MARKERS)
+
+
 type GitStatus = Literal[" ", "M", "T", "A", "D", "R", "C", "U", "?", "!"]
 _GIT_STATUSES = frozenset({" ", "M", "T", "A", "D", "R", "C", "U", "?", "!"})
 
@@ -354,6 +371,11 @@ def _scorer_sandbox_command(
 
     if sys.platform != "linux" or os.name != "posix":
         raise OSError("the scorer sandbox requires Linux")
+    if os.getuid() == 0:
+        raise OSError(
+            "the scorer sandbox requires a non-root outer coordinator so RLIMIT_NPROC "
+            "is enforceable"
+        )
     required_commands = ("unshare", "sh", "mount", "chroot", "setpriv")
     resolved = {name: shutil.which(name) for name in required_commands}
     missing = tuple(name for name, path in resolved.items() if path is None)

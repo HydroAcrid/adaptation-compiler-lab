@@ -28,6 +28,10 @@ independently; revoked artifacts cannot reactivate; governance bindings require 
 scope, and evidence equality; manifests certify only an exact deterministic re-render; generated
 policy executes in a read-only Linux user/mount/network/PID namespace and chroot; and the
 preregistration binds the complete runtime-fixture tree rather than size metadata alone.
+The second review requires a non-root outer coordinator so the process limit is enforceable,
+recomputes the canonical projection from release plus context before certification, permanently
+disables preregistration refresh, and combines short identity/provenance markers with actual
+material-excerpt leakage detection.
 
 Three stage packs demonstrate the intended lifecycle: a persistent-destination backup rule; a
 narrow generated-cache atomic-replacement exception; then a refuse-by-default persistent policy

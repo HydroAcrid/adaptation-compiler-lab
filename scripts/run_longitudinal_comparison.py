@@ -36,6 +36,7 @@ from adaptation_compiler_lab.benchmark.longitudinal_execution import (
 )
 from adaptation_compiler_lab.benchmark.longitudinal_instrument import (
     BoundedScorerReceipt,
+    condition_identity_leaked,
     condition_leakage_matches,
     parse_porcelain_v1_z,
     run_bounded_longitudinal_scorer,
@@ -609,11 +610,12 @@ def main() -> None:
                     )
                 if command_violations:
                     invalid.extend(command_violations)
+                leakage_payload = result.final_response + "\n" + diff_result.stdout
                 leakage_matches = condition_leakage_matches(
-                    result.final_response + "\n" + diff_result.stdout,
+                    leakage_payload,
                     tuple([*strong, *compiled]),
                 )
-                leakage = bool(leakage_matches)
+                leakage = condition_identity_leaked(leakage_payload) or bool(leakage_matches)
                 if leakage:
                     invalid.append("condition identity or provenance leaked into output")
                 for reason, observed in (

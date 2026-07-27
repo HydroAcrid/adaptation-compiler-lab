@@ -57,6 +57,12 @@ manifest input with an exact deterministic re-render, uses the namespace/chroot 
 above, and binds a deterministic digest of every runtime-fixture artifact into preregistration.
 Regression tests cover every finding, including same-length fixture substitution.
 
+The second PR #19 pass added four more fail-closed constraints: root coordinators cannot start the
+scorer because Linux exempts outer UID 0 from `RLIMIT_NPROC`; manifest construction recomputes the
+canonical projection from the release and context before rendering; the temporary pre-execution
+review-refresh path was removed after the corrected freeze; and short condition/provenance markers
+remain leakage even when they are too short for copied-excerpt windows.
+
 ## Clause-level analysis
 
 `development_benchmark_compact_projection/CLAUSE_ANALYSIS-v1.0.json` classifies every line,

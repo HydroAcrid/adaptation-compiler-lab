@@ -275,3 +275,35 @@ def test_preregistration_rejects_same_length_runtime_fixture_substitution(
 
     with pytest.raises(ValueError, match="runtime fixture tree digest drifted"):
         load_compact_projection_design(copied)
+
+
+def test_frozen_protocol_generator_cannot_refresh_existing_design() -> None:
+    root = _root()
+    before = (
+        (root / "PREREGISTRATION-v1.0.json").read_bytes(),
+        (root / "PREREGISTRATION-v1.0.sha256").read_bytes(),
+    )
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(_repo() / "scripts" / "freeze_compact_projection_protocol.py"),
+            "--repo",
+            str(_repo()),
+            "--benchmark-root",
+            str(root),
+        ],
+        cwd=_repo(),
+        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=10,
+    )
+
+    assert completed.returncode != 0
+    assert "already frozen" in completed.stderr
+    assert before == (
+        (root / "PREREGISTRATION-v1.0.json").read_bytes(),
+        (root / "PREREGISTRATION-v1.0.sha256").read_bytes(),
+    )
