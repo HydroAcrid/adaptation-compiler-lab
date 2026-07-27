@@ -225,14 +225,17 @@ def main() -> None:
     reviewer_packet = (benchmark / "profile-reviewer-packet.md").read_text(encoding="utf-8")
     reviewed_profiles: list[str] = []
     stage_receipts: list[dict[str, object]] = []
+    sessions_attempted = 0
 
     try:
         for stage, packet in enumerate(packets, start=1):
             evidence_text = canonical_json(packet)
+            exact_evidence_ids = list(packet.evidence_ids)
             prior = reviewed_profiles[-1] if reviewed_profiles else "[No prior profile: Stage 1]"
             author_prompt = (
                 f"Produce the Stage {stage} static profile as the required JSON object. "
                 "Use every item in the exact cumulative evidence packet, honor status and scope, "
+                f"and return evidence_ids as this exact sorted list: {exact_evidence_ids!r}. "
                 "and include only currently active behavior in profile_text. The profile must be "
                 "standalone, compact, precise, and under 12,000 UTF-8 bytes. Do not use tools.\n\n"
                 f"EXACT EVIDENCE PACKET\n{evidence_text}\n\n"
@@ -242,6 +245,7 @@ def main() -> None:
                 f"Starting isolated profile author stage {stage} (session {stage * 2 - 1}/6).",
                 flush=True,
             )
+            sessions_attempted += 1
             author_result = runner.run(
                 role_id=f"longitudinal-profile-author-stage-{stage}",
                 developer_contract=author_packet,
@@ -266,8 +270,10 @@ def main() -> None:
 
             reviewer_prompt = (
                 f"Review and strengthen the Stage {stage} draft as the required JSON object. "
-                "Use only the exact evidence, previous reviewed profile, and draft below. Remove "
-                "unsupported content; preserve precise scope and supersession; return a standalone "
+                "Use only the exact evidence, previous reviewed profile, and draft below. "
+                f"Return evidence_ids as this exact sorted cumulative list, including superseded "
+                f"evidence: {exact_evidence_ids!r}. Remove unsupported content, preserve precise "
+                "scope and supersession, and return a standalone "
                 "approved_profile_text under 12,000 UTF-8 bytes. Do not use tools.\n\n"
                 f"EXACT EVIDENCE PACKET\n{evidence_text}\n\n"
                 f"PREVIOUS REVIEWED PROFILE\n{prior}\n\n"
@@ -277,6 +283,7 @@ def main() -> None:
                 f"Starting isolated profile reviewer stage {stage} (session {stage * 2}/6).",
                 flush=True,
             )
+            sessions_attempted += 1
             review_result = runner.run(
                 role_id=f"longitudinal-profile-reviewer-stage-{stage}",
                 developer_contract=reviewer_packet,
@@ -331,7 +338,10 @@ def main() -> None:
                     "external_validation_accessed": False,
                     "provider_billed_calls": 0,
                     "retry_allowed": False,
-                    "sessions_completed": len(stage_receipts) * 2,
+                    "sessions_attempted": sessions_attempted,
+                    "validated_encrypted_role_outputs": sum(
+                        path.is_file() for path in (output_root / "encrypted").rglob("*")
+                    ),
                     "source_commit": source_commit,
                 }
             ),

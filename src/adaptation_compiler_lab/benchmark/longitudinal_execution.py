@@ -167,6 +167,7 @@ class LongitudinalBlindReport(FrozenModel):
     report_version: Literal["1.0.0"] = "1.0.0"
     design_digest: Sha256Digest
     execution_protocol_digest: Sha256Digest
+    execution_amendment_digest: Sha256Digest
     profile_construction_receipt_digest: Sha256Digest
     source_commit: NonEmptyStr
     observations: Annotated[
@@ -235,6 +236,56 @@ class LongitudinalExecutionProtocol(FrozenModel):
         if self.compiled_stage_update_latency_seconds != (40.0, 40.0, 40.0):
             raise ValueError("compiled update-latency measurements drifted")
         return self
+
+
+class LongitudinalPriorAttempt(FrozenModel):
+    source_commit: NonEmptyStr
+    sessions_attempted: Literal[6] = 6
+    validated_encrypted_role_outputs: Literal[5] = 5
+    rejected_role_outputs: Literal[1] = 1
+    target_sessions_started: Literal[0] = 0
+    judge_sessions_started: Literal[0] = 0
+    provider_billed_calls: Literal[0] = 0
+    external_validation_accessed: Literal[False] = False
+    failure_receipt_digest: Sha256Digest
+    stdout_log_digest: Sha256Digest
+    stderr_log_digest: Sha256Digest
+
+
+class LongitudinalRecoveryConstraints(FrozenModel):
+    reuse_only_validated_encrypted_outputs: Literal[True] = True
+    preserve_rejected_attempt_evidence_without_promotion: Literal[True] = True
+    replacement_sessions: Literal[1] = 1
+    further_retries_allowed: Literal[False] = False
+    target_grid_unchanged: Literal[True] = True
+    condition_materials_unchanged: Literal[True] = True
+    task_fixtures_unchanged: Literal[True] = True
+    randomization_unchanged: Literal[True] = True
+    sealed_external_validation_access_allowed: Literal[False] = False
+    api_keys_allowed: Literal[False] = False
+    provider_billed_calls: Literal[0] = 0
+
+
+class LongitudinalExecutionAmendment(FrozenModel):
+    amendment_version: Literal["1.1.0"] = "1.1.0"
+    amends_protocol_version: Literal["1.0.0"] = "1.0.0"
+    authorized_at: UtcDateTime
+    authorization_kind: Literal["explicit_user_authorization_in_project_task"]
+    reason: RationaleText
+    original_maximum_total_sessions: Literal[19] = 19
+    maximum_valid_sessions: Literal[19] = 19
+    maximum_attempted_sessions: Literal[20] = 20
+    additional_authorized_sessions: Literal[1] = 1
+    replacement_role_id: Literal["longitudinal-profile-reviewer-stage-3"]
+    replacement_model: Literal["gpt-5.6-luna"] = "gpt-5.6-luna"
+    replacement_reasoning_effort: Literal["medium"] = "medium"
+    replacement_service_mode: Literal["standard"] = "standard"
+    prior_attempt: LongitudinalPriorAttempt
+    recovery_constraints: LongitudinalRecoveryConstraints
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
 
 
 def static_profile_author_schema() -> dict[str, object]:
@@ -347,6 +398,12 @@ def load_evidence_packets(
 def load_execution_protocol(root: Path) -> LongitudinalExecutionProtocol:
     return LongitudinalExecutionProtocol.model_validate_json(
         (root / "EXECUTION_PROTOCOL-v1.0.json").read_bytes()
+    )
+
+
+def load_execution_amendment(root: Path) -> LongitudinalExecutionAmendment:
+    return LongitudinalExecutionAmendment.model_validate_json(
+        (root / "EXECUTION_AMENDMENT-v1.1.json").read_bytes()
     )
 
 

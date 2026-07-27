@@ -30,6 +30,7 @@ from adaptation_compiler_lab.benchmark.longitudinal_execution import (
     LongitudinalBlindReport,
     load_compiled_materials,
     load_evidence_packets,
+    load_execution_amendment,
     load_execution_protocol,
     validate_static_profile,
 )
@@ -384,6 +385,7 @@ def main() -> None:
     benchmark = repo / "development_benchmark_longitudinal"
     design = load_longitudinal_comparison(benchmark)
     protocol = load_execution_protocol(benchmark)
+    amendment = load_execution_amendment(benchmark)
     packets = load_evidence_packets(benchmark)
     compiled = load_compiled_materials(benchmark)
     if protocol.design_digest != design.content_digest:
@@ -445,6 +447,9 @@ def main() -> None:
     if (
         not isinstance(profile_receipt, dict)
         or profile_receipt.get("total_sessions") != 6
+        or profile_receipt.get("attempted_sessions") != 7
+        or profile_receipt.get("replacement_sessions") != 1
+        or profile_receipt.get("execution_amendment_digest") != amendment.content_digest
         or profile_receipt.get("compiled_adaptation_access") is not False
         or profile_receipt.get("target_task_access") is not False
     ):
@@ -691,6 +696,7 @@ def main() -> None:
     blind_report = LongitudinalBlindReport(
         design_digest=design.content_digest,
         execution_protocol_digest=canonical_digest(protocol),
+        execution_amendment_digest=amendment.content_digest,
         profile_construction_receipt_digest=sha256_file(receipt_path),
         source_commit=source_commit,
         observations=tuple(sorted(observations, key=lambda item: item.run_id)),
@@ -740,6 +746,8 @@ def main() -> None:
                 "judge_input_bindings_digest": sha256_file(
                     public_results / "judge-input-bindings.json"
                 ),
+                "maximum_attempted_subscription_sessions": (amendment.maximum_attempted_sessions),
+                "profile_construction_attempted_sessions": 7,
                 "private_plan_ref_digest": f"sha256:{private_ref.sha256}",
                 "provider_billed_calls": 0,
                 "runs": len(observations),

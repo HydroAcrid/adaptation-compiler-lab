@@ -9,6 +9,7 @@ from adaptation_compiler_lab.benchmark.longitudinal import load_longitudinal_com
 from adaptation_compiler_lab.benchmark.longitudinal_execution import (
     load_compiled_materials,
     load_evidence_packets,
+    load_execution_amendment,
     load_execution_protocol,
     validate_static_profile,
 )
@@ -25,6 +26,7 @@ def test_execution_protocol_binds_design_evidence_and_compiled_materials() -> No
     packets = load_evidence_packets(root)
     compiled = load_compiled_materials(root)
     protocol = load_execution_protocol(root)
+    amendment = load_execution_amendment(root)
 
     assert protocol.design_digest == design.content_digest
     assert protocol.preregistration_sha256 == sha256_file(root / "PREREGISTRATION-v1.0.json")
@@ -49,6 +51,12 @@ def test_execution_protocol_binds_design_evidence_and_compiled_materials() -> No
     assert protocol.compiled_stage_update_latency_seconds == (40.0, 40.0, 40.0)
     assert not protocol.api_keys_allowed
     assert not protocol.external_validation_access_allowed
+    assert amendment.original_maximum_total_sessions == 19
+    assert amendment.maximum_valid_sessions == 19
+    assert amendment.maximum_attempted_sessions == 20
+    assert amendment.additional_authorized_sessions == 1
+    assert amendment.recovery_constraints.replacement_sessions == 1
+    assert not amendment.recovery_constraints.further_retries_allowed
 
 
 def test_evidence_packets_are_cumulative_and_stage_three_supersedes() -> None:

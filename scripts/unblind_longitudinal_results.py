@@ -21,6 +21,7 @@ from adaptation_compiler_lab.benchmark.longitudinal_execution import (
     LongitudinalBlindReport,
     LongitudinalJudgeDecision,
     load_compiled_materials,
+    load_execution_amendment,
     load_execution_protocol,
 )
 from adaptation_compiler_lab.benchmark.models import BenchmarkCondition
@@ -327,6 +328,7 @@ def main() -> None:
         raise RuntimeError("unblinded outputs already exist; refusing to overwrite")
     design = load_longitudinal_comparison(benchmark)
     protocol = load_execution_protocol(benchmark)
+    amendment = load_execution_amendment(benchmark)
     dogfood_metrics = _object(benchmark / "DOGFOOD_METRICS-v1.0.json")
     if protocol.dogfood_metrics_digest != sha256_file(benchmark / "DOGFOOD_METRICS-v1.0.json"):
         raise RuntimeError("frozen dogfood metrics binding drifted")
@@ -340,6 +342,10 @@ def main() -> None:
         raise RuntimeError("completion no longer binds the blind report")
     if judge_receipt.get("decision_digest") != canonical_digest(judge):
         raise RuntimeError("judge receipt no longer binds its decision")
+    if report.execution_amendment_digest != amendment.content_digest:
+        raise RuntimeError("blind report execution-amendment binding drifted")
+    if judge_receipt.get("execution_amendment_digest") != amendment.content_digest:
+        raise RuntimeError("judge receipt execution-amendment binding drifted")
 
     config_root = arguments.comparison_config_root.resolve()
     seed = _load_key(config_root / "randomization-seed.key")
@@ -466,6 +472,7 @@ def main() -> None:
         "design_digest": design.content_digest,
         "dogfood_instrumentation_metrics": dogfood_metrics,
         "external_validation_accessed": False,
+        "execution_amendment_digest": amendment.content_digest,
         "gate": {
             "checks": checks,
             "outcome": "pass" if all(checks.values()) else "fail",
@@ -476,6 +483,7 @@ def main() -> None:
         "provider_billed_calls": 0,
         "randomization_seed_commitment": private_plan["seed_commitment"],
         "source_commit": report.source_commit,
+        "total_attempted_subscription_sessions": amendment.maximum_attempted_sessions,
     }
     gate_outcome = "pass" if all(checks.values()) else "fail"
     _exclusive_write(

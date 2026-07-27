@@ -14,6 +14,7 @@ from adaptation_compiler_lab.benchmark.longitudinal import load_longitudinal_com
 from adaptation_compiler_lab.benchmark.longitudinal_execution import (
     LongitudinalBlindReport,
     LongitudinalJudgeDecision,
+    load_execution_amendment,
     load_execution_protocol,
     longitudinal_judge_schema,
 )
@@ -164,6 +165,7 @@ def main() -> None:
     results = benchmark / "results"
     design = load_longitudinal_comparison(benchmark)
     protocol = load_execution_protocol(benchmark)
+    amendment = load_execution_amendment(benchmark)
     runner = CodexStructuredRoleRunner(
         executable=arguments.codex_executable,
         saved_auth_file=arguments.saved_auth,
@@ -200,6 +202,8 @@ def main() -> None:
         raise RuntimeError("blind report design binding drifted")
     if blind_report.execution_protocol_digest != canonical_digest(protocol):
         raise RuntimeError("blind report protocol binding drifted")
+    if blind_report.execution_amendment_digest != amendment.content_digest:
+        raise RuntimeError("blind report execution-amendment binding drifted")
 
     if _git(repo, "status", "--porcelain"):
         raise RuntimeError("isolated judging requires a clean repository")
@@ -266,6 +270,7 @@ def main() -> None:
         "decision": decision.model_dump(mode="json", round_trip=True),
         "decision_digest": canonical_digest(decision),
         "external_validation_accessed": False,
+        "execution_amendment_digest": amendment.content_digest,
         "judge_input_bindings_digest": sha256_file(results / "judge-input-bindings.json"),
         "model": result.model,
         "provider_billed_calls": 0,
@@ -274,6 +279,7 @@ def main() -> None:
         "service_mode": result.service_mode,
         "session_files_persisted": result.session_files_persisted,
         "sessions": 1,
+        "total_attempted_subscription_sessions": amendment.maximum_attempted_sessions,
         "tool_use_observed": result.tool_use_observed,
         "trace_conformant": result.trace_conformant,
         "trace_digest": sha256_bytes(result.trace_bytes),
