@@ -31,7 +31,9 @@ preregistration binds the complete runtime-fixture tree rather than size metadat
 The second review requires a non-root outer coordinator so the process limit is enforceable,
 recomputes the canonical projection from release plus context before certification, permanently
 disables preregistration refresh, and combines short identity/provenance markers with actual
-material-excerpt leakage detection.
+material-excerpt leakage detection. The final review also requires scorer output to be captured
+as exact bytes and decoded only inside the per-cell validation boundary, so invalid UTF-8 becomes
+a durable malformed-output receipt instead of aborting the comparison coordinator.
 
 Three stage packs demonstrate the intended lifecycle: a persistent-destination backup rule; a
 narrow generated-cache atomic-replacement exception; then a refuse-by-default persistent policy

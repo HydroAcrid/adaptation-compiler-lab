@@ -180,6 +180,32 @@ def test_bounded_scorer_records_malformed_json_without_raising(tmp_path: Path) -
     assert result.score.objective_passed == 0
 
 
+def test_bounded_scorer_records_non_utf8_output_without_raising(tmp_path: Path) -> None:
+    benchmark = _benchmark()
+    task = load_longitudinal_comparison(benchmark).tasks[0]
+    workspace = tmp_path / "workspace"
+    shutil.copytree(benchmark / task.fixture_directory, workspace)
+    fake_scorer = tmp_path / "non_utf8_scorer.py"
+    fake_scorer.write_text(
+        "import sys\nsys.stdout.buffer.write(b'\\xff')\n",
+        encoding="utf-8",
+    )
+
+    result = run_bounded_longitudinal_scorer(
+        scorer_script=fake_scorer,
+        benchmark_root=benchmark,
+        task=task,
+        workspace=workspace,
+        timeout_seconds=2,
+    )
+
+    assert result.receipt.status == "malformed_output"
+    assert result.receipt.stdout_digest == (
+        "sha256:a8100ae6aa1940d0b663bb31cd466142ebbdbd5187131b92d93818987832eb89"
+    )
+    assert result.score.objective_passed == 0
+
+
 def test_bounded_scorer_preserves_successful_score(tmp_path: Path) -> None:
     benchmark = _benchmark()
     task = load_longitudinal_comparison(benchmark).tasks[0]

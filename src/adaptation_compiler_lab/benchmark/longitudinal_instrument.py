@@ -220,8 +220,8 @@ class BoundedScorerResult(FrozenModel):
     receipt: BoundedScorerReceipt
 
 
-def _text_digest(value: str) -> Sha256Digest:
-    return f"sha256:{hashlib.sha256(value.encode('utf-8')).hexdigest()}"
+def _bytes_digest(value: bytes) -> Sha256Digest:
+    return f"sha256:{hashlib.sha256(value).hexdigest()}"
 
 
 def _failed_score(
@@ -438,8 +438,8 @@ def run_bounded_longitudinal_scorer(
     # WSL accounts some host tasks that are not visible in the distribution's
     # /proc mount. Keep a conservative absolute floor while still bounding forks.
     process_limit = max(_current_uid_process_count() + 16, 128)
-    stdout = ""
-    stderr = ""
+    stdout = b""
+    stderr = b""
     exit_code: int | None = None
     status: Literal["succeeded", "timed_out", "crashed", "malformed_output"]
     reason: str | None = None
@@ -458,8 +458,6 @@ def run_bounded_longitudinal_scorer(
                 cwd=workspace,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True,
-                encoding="utf-8",
                 start_new_session=True,
                 preexec_fn=lambda: _scorer_resource_limits(
                     timeout_seconds,
@@ -494,10 +492,11 @@ def run_bounded_longitudinal_scorer(
                 reason = f"scorer subprocess exited with code {exit_code}"
             else:
                 try:
-                    score = LongitudinalTaskScore.model_validate_json(stdout)
+                    decoded_stdout = stdout.decode("utf-8")
+                    score = LongitudinalTaskScore.model_validate_json(decoded_stdout)
                     if score.task_id != task.task_id:
                         raise ValueError("scorer returned a different task ID")
-                except (ValueError, TypeError) as error:
+                except (UnicodeDecodeError, ValueError, TypeError) as error:
                     status = "malformed_output"
                     reason = f"{type(error).__name__}: {error}"
                 else:
@@ -508,8 +507,8 @@ def run_bounded_longitudinal_scorer(
                             status=status,
                             exit_code=exit_code,
                             duration_seconds=time.monotonic() - started,
-                            stdout_digest=_text_digest(stdout),
-                            stderr_digest=_text_digest(stderr),
+                            stdout_digest=_bytes_digest(stdout),
+                            stderr_digest=_bytes_digest(stderr),
                             timeout_seconds=timeout_seconds,
                         ),
                     )
@@ -520,8 +519,8 @@ def run_bounded_longitudinal_scorer(
             status=status,
             exit_code=exit_code,
             duration_seconds=time.monotonic() - started,
-            stdout_digest=_text_digest(stdout),
-            stderr_digest=_text_digest(stderr),
+            stdout_digest=_bytes_digest(stdout),
+            stderr_digest=_bytes_digest(stderr),
             failure_reason=reason,
             timeout_seconds=timeout_seconds,
         ),
