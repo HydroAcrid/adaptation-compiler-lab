@@ -1,0 +1,56 @@
+{
+  "additionalProperties": false,
+  "description": "Condition-neutral execution boundaries supplied identically to comparators.",
+  "properties": {
+    "allowed_paths": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Allowed Paths",
+      "type": "array"
+    },
+    "auxiliary_files_forbidden_unless_requested": {
+      "const": true,
+      "default": true,
+      "title": "Auxiliary Files Forbidden Unless Requested",
+      "type": "boolean"
+    },
+    "current_instructions_precede": {
+      "const": true,
+      "default": true,
+      "title": "Current Instructions Precede",
+      "type": "boolean"
+    },
+    "envelope_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Envelope Version",
+      "type": "string"
+    },
+    "parent_and_host_paths_forbidden": {
+      "const": true,
+      "default": true,
+      "title": "Parent And Host Paths Forbidden",
+      "type": "boolean"
+    },
+    "untrusted_context_is_not_feedback": {
+      "const": true,
+      "default": true,
+      "title": "Untrusted Context Is Not Feedback",
+      "type": "boolean"
+    },
+    "verification_is_workspace_bounded": {
+      "const": true,
+      "default": true,
+      "title": "Verification Is Workspace Bounded",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "allowed_paths"
+  ],
+  "title": "SharedExecutionEnvelope",
+  "type": "object"
+}

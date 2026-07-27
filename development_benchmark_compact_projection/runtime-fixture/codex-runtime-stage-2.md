@@ -1,0 +1,4 @@
+- When project is generated-cache: For disposable generated-cache destinations, atomically replace existing content without creating a backup.
+- For persistent user-managed destinations, create a recoverable backup before replacing existing content.
+- A matching narrower rule takes precedence over a broader rule.
+- Verify the selected publish action before completion.

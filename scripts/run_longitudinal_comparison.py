@@ -34,8 +34,12 @@ from adaptation_compiler_lab.benchmark.longitudinal_execution import (
     load_execution_protocol,
     validate_static_profile,
 )
-from adaptation_compiler_lab.benchmark.longitudinal_scoring import (
-    score_longitudinal_task,
+from adaptation_compiler_lab.benchmark.longitudinal_instrument import (
+    BoundedScorerReceipt,
+    condition_leakage_matches,
+    parse_porcelain_v1_z,
+    run_bounded_longitudinal_scorer,
+    unexpected_changed_paths,
 )
 from adaptation_compiler_lab.benchmark.models import BenchmarkCondition
 from adaptation_compiler_lab.benchmark.role_packets import ApprovedSourceFamily
@@ -268,21 +272,6 @@ def _command_audit(result: CodexSubscriptionRawResult) -> tuple[tuple[str, ...],
     return tuple(commands), tuple(sorted(set(violations)))
 
 
-def _condition_leakage(text: str) -> bool:
-    lowered = text.casefold()
-    return any(
-        marker in lowered
-        for marker in (
-            "compiled adaptation",
-            "persistent-backup@",
-            "persistent-refuse-default@",
-            "dogfood-evidence-",
-            "strong static profile",
-            "experimental condition",
-        )
-    )
-
-
 def _raw_bundle(
     *,
     result: CodexSubscriptionRawResult,
@@ -290,6 +279,7 @@ def _raw_bundle(
     status: str,
     visible_test: subprocess.CompletedProcess[str],
     score: dict[str, object],
+    scorer_receipt: BoundedScorerReceipt,
     commands: tuple[str, ...],
 ) -> bytes:
     return _canonical_bytes(
@@ -305,6 +295,7 @@ def _raw_bundle(
             "reasoning_effort": result.reasoning_effort,
             "run_id": result.run_id,
             "score": score,
+            "scorer_receipt": scorer_receipt.model_dump(mode="json", round_trip=True),
             "service_mode": result.service_mode,
             "started_at": result.started_at.isoformat(),
             "status": status,
@@ -576,7 +567,10 @@ def main() -> None:
                 )
                 result = runner.run(request, workspace=workspace)
                 diff_result = _git(["diff", "--binary", "HEAD"], cwd=workspace)
-                status_result = _git(["status", "--porcelain"], cwd=workspace)
+                status_result = _git(
+                    ["status", "--porcelain=v1", "-z", "--untracked-files=all"],
+                    cwd=workspace,
+                )
                 if diff_result.returncode != 0 or status_result.returncode != 0:
                     raise RuntimeError("unable to capture longitudinal workspace changes")
                 visible = _run(
@@ -584,19 +578,42 @@ def main() -> None:
                     cwd=workspace,
                     timeout=60,
                 )
-                scored = score_longitudinal_task(task, workspace)
+                bounded_score = run_bounded_longitudinal_scorer(
+                    scorer_script=repo / "scripts" / "score_longitudinal_task.py",
+                    benchmark_root=benchmark,
+                    task=task,
+                    workspace=workspace,
+                    timeout_seconds=10,
+                )
+                scored = bounded_score.score
                 score_value = scored.model_dump(mode="json", round_trip=True)
                 commands, command_violations = _command_audit(result)
-                status_lines = tuple(
-                    line for line in status_result.stdout.splitlines() if line.strip()
+                try:
+                    changes = parse_porcelain_v1_z(status_result.stdout)
+                except ValueError as error:
+                    changes = ()
+                    invalid.append(f"malformed Git status: {error}")
+                unexpected_paths = unexpected_changed_paths(
+                    changes,
+                    frozenset(generic_task.allowed_change_paths),
                 )
-                if any(not re.fullmatch(r" M policy\.py", line) for line in status_lines):
-                    invalid.append("workspace changed a path other than policy.py")
-                if not status_lines:
+                if unexpected_paths:
+                    invalid.append(
+                        "workspace changed forbidden paths: " + ", ".join(unexpected_paths)
+                    )
+                if not changes:
                     invalid.append("target made no policy.py change")
+                if bounded_score.receipt.status != "succeeded":
+                    invalid.append(
+                        f"independent scorer failed safely: {bounded_score.receipt.status}"
+                    )
                 if command_violations:
                     invalid.extend(command_violations)
-                leakage = _condition_leakage(result.final_response + "\n" + diff_result.stdout)
+                leakage_matches = condition_leakage_matches(
+                    result.final_response + "\n" + diff_result.stdout,
+                    tuple([*strong, *compiled]),
+                )
+                leakage = bool(leakage_matches)
                 if leakage:
                     invalid.append("condition identity or provenance leaked into output")
                 for reason, observed in (
@@ -621,6 +638,7 @@ def main() -> None:
                         status=status_result.stdout,
                         visible_test=visible,
                         score=score_value,
+                        scorer_receipt=bounded_score.receipt,
                         commands=commands,
                     ),
                     media_type=(

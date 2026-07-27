@@ -20,8 +20,15 @@ from adaptation_compiler_lab.dogfood.models import (
     DogfoodTransitionKind,
     LongitudinalDogfoodResult,
 )
+from adaptation_compiler_lab.dogfood.public_fixture import (
+    PUBLIC_DOGFOOD_NOW,
+    PUBLIC_DOGFOOD_SUBJECT,
+    public_dogfood_transitions,
+)
 
 __all__ = [
+    "PUBLIC_DOGFOOD_NOW",
+    "PUBLIC_DOGFOOD_SUBJECT",
     "ActivationFeedback",
     "DogfoodContext",
     "DogfoodDeliveryReceipt",
@@ -38,5 +45,6 @@ __all__ = [
     "LongitudinalDogfoodResult",
     "deliver_stage_pack",
     "instructions_for_context",
+    "public_dogfood_transitions",
     "summarize_feedback",
 ]

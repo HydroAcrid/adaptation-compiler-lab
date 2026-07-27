@@ -5,10 +5,22 @@ from completed coding work into typed external artifacts. Its research question 
 compiled adaptation pack can improve a target coding agent on unseen work beyond a base agent,
 ordinary memory, and a strong static profile.
 
-Milestone 6A is complete with a failed product gate. Eight exact-consent Codex tasks remain only in
-the external encrypted raw boundary; eight Kevin-confirmed behaviors remain approved artifacts.
-Deterministic software custody still seals the deferred hidden study, mapping, randomized order,
-and condition materials without reveal or modification.
+Milestone 6A.1 implements a compact runtime projection without changing Milestone 6A's failed
+product result. The compiler now keeps complete governance, provenance, history, and rollback data
+in an external governed release while sending Codex only effective behavior, unresolved scope or
+precedence, and essential verification. The public three-stage engineering fixture renders 163,
+371, and 378 adaptation bytes, below the independently maintained profile sizes of 227, 508, and
+462 bytes. This establishes compactness and lineage preservation, not a performance advantage.
+
+The next public comparison is frozen but unexecuted: three fresh tasks, two conditions, one
+repetition, one isolated profile-author session, one reviewer session, and one secondary blind
+judge require at most nine saved-ChatGPT Codex subscription sessions. No live session or
+provider-billed call occurred in Milestone 6A.1.
+
+Eight exact-consent Codex tasks remain only in the external encrypted raw boundary; eight
+Kevin-confirmed behaviors remain approved artifacts. Deterministic software custody still seals
+the deferred hidden study, mapping, randomized order, and condition materials without reveal or
+modification.
 
 Public non-held-out development has now exercised both Codex and Claude. The corrected 16-run
 Claude Haiku strong-profile-versus-compiled grid completed with valid bounded test execution and
@@ -54,6 +66,12 @@ worked; its current target-visible projection did not beat an excellent profile.
   purged, retired, or invalidated material.
 - File-only renderers for generic JSON, generic Markdown, Codex-oriented, and Claude Code-oriented
   packs.
+- A target-independent canonical runtime representation, compact Codex renderer, external
+  governed release, exact clause-to-provenance manifest, context resolution, and a separately
+  measured condition-neutral execution envelope.
+- A frozen, unexecuted fresh compact-projection protocol with three new task fixtures, an
+  independent scorer, six target cells, isolated profile roles, a corrected judge packet, local
+  seeded-defect sensitivity tests, and a nine-session maximum.
 - Structural `SourceConnector`, `TargetRunner`, and condition-blind `Scorer` ports; a Codex
   app-server adapter pinned to CLI `0.145.0` and its version-generated `thread/list`/`thread/read`
   schemas.
@@ -146,6 +164,13 @@ after valid trials.
   six-cell comparison across the other three public replacement task families.
 - [`MILESTONE_6A_ANALYSIS.md`](MILESTONE_6A_ANALYSIS.md): complete longitudinal execution,
   condition-level results, failed gate, product interpretation, and minimal next iteration.
+- [`MILESTONE_6A1_ANALYSIS.md`](MILESTONE_6A1_ANALYSIS.md): immutable 6A integrity audit,
+  instrument repairs, clause-level failure analysis, representation split, exact compactness
+  measurements, and fresh comparison boundary.
+- [`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md): docs-only portable
+  specialty preset composition and the proposed Frontend Studio demonstration.
+- [`development_benchmark_compact_projection`](development_benchmark_compact_projection): frozen
+  runtime fixture, clause manifests, fresh tasks/scorer, role packets, and unexecuted protocol.
 - [`CLAUDE_CORRECTED_COMPARISON.md`](CLAUDE_CORRECTED_COMPARISON.md): checksum-bound blind ratings,
   v2.9 unblinded mapping, condition-level results, exact costs, limitations, and product
   interpretation.

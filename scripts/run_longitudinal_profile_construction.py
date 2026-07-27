@@ -20,6 +20,10 @@ from adaptation_compiler_lab.benchmark.longitudinal_execution import (
     static_profile_review_schema,
     validate_static_profile,
 )
+from adaptation_compiler_lab.benchmark.longitudinal_instrument import (
+    normalize_target_material,
+    normalized_utf8_size,
+)
 from adaptation_compiler_lab.connectors.pins import sha256_bytes, sha256_file
 from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore, RawEncryptionKey
 from adaptation_compiler_lab.runners.codex_structured_role import (
@@ -305,7 +309,8 @@ def main() -> None:
                     "application/vnd.adaptation-compiler-lab.longitudinal-profile-review+json"
                 ),
             )
-            reviewed_profiles.append(reviewed.approved_profile_text.rstrip() + "\n")
+            reviewed_text = normalize_target_material(reviewed.approved_profile_text)
+            reviewed_profiles.append(reviewed_text)
             print(f"Profile stage {stage} validated and encrypted.", flush=True)
             stage_receipts.append(
                 {
@@ -317,7 +322,7 @@ def main() -> None:
                     "author_intentional_edit_operations": (authored.intentional_edit_operations),
                     "evidence_ids": list(packet.evidence_ids),
                     "evidence_packet_digest": packet.content_digest,
-                    "profile_bytes": len(reviewed.approved_profile_text.encode("utf-8")),
+                    "profile_bytes": normalized_utf8_size(reviewed.approved_profile_text),
                     "profile_digest": sha256_bytes(reviewed_profiles[-1].encode("utf-8")),
                     "review": _result_receipt(
                         review_result,
