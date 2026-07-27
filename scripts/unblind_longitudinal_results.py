@@ -337,7 +337,10 @@ def main() -> None:
     )
     completion = _object(results / "completion.json")
     judge_receipt = _object(results / "judge-receipt.json")
-    judge = LongitudinalJudgeDecision.model_validate(judge_receipt.get("decision"))
+    judge_value = judge_receipt.get("decision")
+    if not isinstance(judge_value, dict):
+        raise RuntimeError("judge receipt is missing its decision object")
+    judge = LongitudinalJudgeDecision.model_validate_json(canonical_json(judge_value))
     if completion.get("blind_report_digest") != report.content_digest:
         raise RuntimeError("completion no longer binds the blind report")
     if judge_receipt.get("decision_digest") != canonical_digest(judge):
