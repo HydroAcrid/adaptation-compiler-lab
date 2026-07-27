@@ -31,7 +31,8 @@ scope on verification clauses. V1.4 was superseded by v1.5 to restrict executabl
 enforce target-profile compatibility, and cryptographically bind compiled snapshots to complete
 source transitions. The integrity gate then rejected formatter-normalized observer bytes, so v1.5
 was preserved and superseded by metadata-only v1.6, which reuses the exact v1.5 runtime fixture.
-No live output informed any amendment.
+V1.6 was superseded by v1.7 so the Codex renderer independently requires a known Codex target
+family. No live output informed any amendment.
 
 ## Contents
 
@@ -43,8 +44,10 @@ No live output informed any amendment.
   design.
 - `PREREGISTRATION-v1.5.json` and `.sha256`: preserved exact restricted-policy, target-binding, and
   transition-lineage design.
-- `PREREGISTRATION-v1.6.json` and `.sha256`: current formatter-normalized observer binding with no
-  condition-material change.
+- `PREREGISTRATION-v1.6.json` and `.sha256`: preserved formatter-normalized observer binding with
+  no condition-material change.
+- `PREREGISTRATION-v1.7.json` and `.sha256`: current Codex renderer target-family guard, reusing the
+  exact v1.5 condition material.
 - `tasks/`: fresh fixtures and task manifests.
 - `runtime-fixture/`: preserved pre-v1.4 runtime fixture.
 - `runtime-fixture-v1.4/`: preserved trusted-observation/scoped-verification fixture.

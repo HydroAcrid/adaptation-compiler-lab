@@ -19,6 +19,7 @@ from adaptation_compiler_lab.runtime.models import (
     RuntimeProjectionManifest,
 )
 from adaptation_compiler_lab.targets.base import sha256_text
+from adaptation_compiler_lab.targets.models import ScopeDimension, TargetKind
 
 CODEX_RUNTIME_RENDERER_ID: Literal["codex-compact-runtime"] = "codex-compact-runtime"
 CODEX_RUNTIME_RENDERER_VERSION: Literal["1.0.0"] = "1.0.0"
@@ -85,6 +86,11 @@ def render_codex_runtime_projection(
 ) -> RenderedRuntimeProjection:
     """Render clauses without audit headings, IDs, versions, or condition labels."""
 
+    if (
+        ScopeDimension.TARGET_FAMILIES not in projection.context.known_dimensions
+        or projection.context.target_family != TargetKind.CODEX.value
+    ):
+        raise ValueError("Codex runtime renderer requires a known Codex target family")
     if not projection.clauses:
         raise ValueError("Codex runtime projection cannot be empty")
     content = "".join(f"- {clause.text}\n" for clause in projection.clauses)

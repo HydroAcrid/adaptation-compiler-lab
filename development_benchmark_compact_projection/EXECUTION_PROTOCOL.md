@@ -1,7 +1,7 @@
 # Frozen execution protocol
 
-Status: v1.6 designed and frozen; no live sessions started. Byte-identical v1.0 through v1.5
-registrations remain as superseded pre-execution history. V1.6 keeps generated policy execution in
+Status: v1.7 designed and frozen; no live sessions started. Byte-identical v1.0 through v1.6
+registrations remain as superseded pre-execution history. V1.7 keeps generated policy execution in
 an untrusted child worker inside the answer-blind filesystem/network/PID sandbox and admits only a
 capability-free Python decision subset, preventing generated code from writing the wrapper's
 observation channel. A trusted supervisor owns official observation output; only the parent scorer
@@ -12,6 +12,9 @@ remain durable failed receipts.
 V1.6 is metadata-only: it binds deterministic formatter output for the observer after v1.5's
 integrity check correctly rejected source-byte drift. It reuses the exact v1.5 runtime fixture and
 changes no task, condition material, scorer behavior, session limit, or cost.
+
+V1.7 also requires the target-family dimension to be known and equal to Codex at the Codex renderer
+boundary. It reuses the exact v1.5 runtime fixture and changes no target-visible bytes.
 
 ## Freeze order
 

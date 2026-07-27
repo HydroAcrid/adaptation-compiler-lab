@@ -212,6 +212,40 @@ def test_incompatible_target_profile_fails_closed() -> None:
         build_runtime_projection(release, incompatible)
 
 
+def test_codex_renderer_rejects_projection_for_another_target_family() -> None:
+    projection = build_runtime_projection(_releases()[0], _context())
+    wrong_target = projection.model_copy(
+        update={
+            "context": projection.context.model_copy(
+                update={"target_family": TargetKind.CLAUDE_CODE.value}
+            )
+        }
+    )
+
+    with pytest.raises(ValueError, match="known Codex target family"):
+        render_codex_runtime_projection(wrong_target)
+
+
+def test_codex_renderer_rejects_unknown_target_family_dimension() -> None:
+    projection = build_runtime_projection(_releases()[0], _context())
+    unknown_target = projection.model_copy(
+        update={
+            "context": projection.context.model_copy(
+                update={
+                    "known_dimensions": tuple(
+                        item
+                        for item in projection.context.known_dimensions
+                        if item is not ScopeDimension.TARGET_FAMILIES
+                    )
+                }
+            )
+        }
+    )
+
+    with pytest.raises(ValueError, match="known Codex target family"):
+        render_codex_runtime_projection(unknown_target)
+
+
 def test_external_release_requires_exact_compiled_transition_contents() -> None:
     transitions = _transitions()
     result = LongitudinalDogfoodCompiler(default_target_profile(TargetKind.CODEX)).compile(

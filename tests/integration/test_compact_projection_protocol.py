@@ -114,11 +114,11 @@ def _workspace(tmp_path: Path, task: CompactProjectionTask, source: str) -> Path
 def test_fresh_protocol_is_hash_frozen_and_unexecuted() -> None:
     root = _root()
     design = load_compact_projection_design(root)
-    expected = (root / "PREREGISTRATION-v1.6.sha256").read_text(encoding="ascii").split()[0]
+    expected = (root / "PREREGISTRATION-v1.7.sha256").read_text(encoding="ascii").split()[0]
 
-    assert sha256_file(root / "PREREGISTRATION-v1.6.json") == f"sha256:{expected}"
-    assert design.design_version == "1.6.0"
-    assert design.amendment_reason == "observer_format_normalization"
+    assert sha256_file(root / "PREREGISTRATION-v1.7.json") == f"sha256:{expected}"
+    assert design.design_version == "1.7.0"
+    assert design.amendment_reason == "codex_renderer_target_guard"
     assert design.supersedes_design_digest
     assert design.superseded_scorer_digest
     assert design.policy_observer_digest
@@ -551,4 +551,36 @@ def test_observer_format_amendment_generator_cannot_replace_frozen_v1_6() -> Non
     assert before == (
         (root / "PREREGISTRATION-v1.6.json").read_bytes(),
         (root / "PREREGISTRATION-v1.6.sha256").read_bytes(),
+    )
+
+
+def test_codex_target_amendment_generator_cannot_replace_frozen_v1_7() -> None:
+    root = _root()
+    before = (
+        (root / "PREREGISTRATION-v1.7.json").read_bytes(),
+        (root / "PREREGISTRATION-v1.7.sha256").read_bytes(),
+    )
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(_repo() / "scripts" / "supersede_compact_projection_protocol_v1_7.py"),
+            "--repo",
+            str(_repo()),
+            "--benchmark-root",
+            str(root),
+        ],
+        cwd=_repo(),
+        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=10,
+    )
+
+    assert completed.returncode != 0
+    assert "already frozen" in completed.stderr
+    assert before == (
+        (root / "PREREGISTRATION-v1.7.json").read_bytes(),
+        (root / "PREREGISTRATION-v1.7.sha256").read_bytes(),
     )

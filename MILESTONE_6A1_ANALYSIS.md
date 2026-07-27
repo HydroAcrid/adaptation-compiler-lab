@@ -2,7 +2,7 @@
 
 Status: implementation and local validation complete; no live comparison executed.
 
-Protocol note (2026-07-27): unexecuted v1.0 through v1.5 registrations are preserved. Review first
+Protocol note (2026-07-27): unexecuted v1.0 through v1.6 registrations are preserved. Review first
 identified scalar/list-to-tuple coercion, then demonstrated that imported policy code could exit
 the trusted scorer process after printing fabricated checks, and finally identified a pre-exec
 resource-limit exception that could escape without a failure receipt. A final pass separated
@@ -11,10 +11,12 @@ clauses. A further pass showed that worker stdout was still writable by generate
 compatibility was not enforced by the compact path, and same-ID transition substitution could
 misstate lifecycle history. V1.5 restricts executable policy syntax to a capability-free
 subset, binds target profile compatibility, binds each snapshot to the complete transition digest,
-and retains exact links through all prior designs. Current v1.6 is a metadata-only successor that
+and retains exact links through all prior designs. V1.6 is a metadata-only successor that
 binds formatter-normalized observer bytes after the integrity gate rejected post-freeze source
-drift; it reuses the exact v1.5 runtime fixture. No live profile, target, or judge session preceded
-any amendment.
+drift; it reuses the exact v1.5 runtime fixture. Current v1.7 also requires a known Codex target
+family at the Codex renderer itself, preventing a Claude- or unknown-target projection from being
+labeled and delivered as Codex output. No live profile, target, or judge session preceded any
+amendment.
 
 ## Question
 
@@ -99,6 +101,8 @@ and external release construction requires an exact match before creating lifecy
 binds these repairs and a new versioned fixture while preserving v1.0 through v1.4 byte-for-byte.
 V1.6 preserves v1.5 byte-for-byte and changes only the observer source digest required after
 deterministic formatting.
+V1.7 preserves v1.6 byte-for-byte, reuses the exact v1.5 runtime fixture, and binds the independent
+Codex renderer target-family guard.
 
 ## Clause-level analysis
 
