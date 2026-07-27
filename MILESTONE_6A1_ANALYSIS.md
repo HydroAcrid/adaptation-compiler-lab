@@ -2,10 +2,11 @@
 
 Status: implementation and local validation complete; no live comparison executed.
 
-Protocol note (2026-07-27): the unexecuted v1.0 comparison registration is preserved and
-superseded by v1.1. Review identified scalar/list-to-tuple coercion in the independent scorer;
-v1.1 binds a strict `tuple[str, ...]` scorer and exact links to the prior design and scorer
-digests. No live profile, target, or judge session preceded the amendment.
+Protocol note (2026-07-27): unexecuted v1.0 and v1.1 registrations are preserved. Review first
+identified scalar/list-to-tuple coercion, then demonstrated that imported policy code could exit
+the trusted scorer process after printing fabricated checks. Current v1.2 binds a strict trusted
+scorer, an answer-blind isolated policy observer, the sandbox implementation, and exact links
+through both prior designs. No live profile, target, or judge session preceded either amendment.
 
 ## Question
 

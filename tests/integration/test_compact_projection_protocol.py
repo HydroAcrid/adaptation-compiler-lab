@@ -114,13 +114,15 @@ def _workspace(tmp_path: Path, task: CompactProjectionTask, source: str) -> Path
 def test_fresh_protocol_is_hash_frozen_and_unexecuted() -> None:
     root = _root()
     design = load_compact_projection_design(root)
-    expected = (root / "PREREGISTRATION-v1.1.sha256").read_text(encoding="ascii").split()[0]
+    expected = (root / "PREREGISTRATION-v1.2.sha256").read_text(encoding="ascii").split()[0]
 
-    assert sha256_file(root / "PREREGISTRATION-v1.1.json") == f"sha256:{expected}"
-    assert design.design_version == "1.1.0"
-    assert design.amendment_reason == "strict_tuple_return_contract"
+    assert sha256_file(root / "PREREGISTRATION-v1.2.json") == f"sha256:{expected}"
+    assert design.design_version == "1.2.0"
+    assert design.amendment_reason == "isolated_policy_observation"
     assert design.supersedes_design_digest
     assert design.superseded_scorer_digest
+    assert design.policy_observer_digest
+    assert design.scorer_sandbox_digest
     assert design.planned_target_sessions == 6
     assert design.maximum_subscription_sessions == 9
     assert not design.target_sessions_started
@@ -232,6 +234,41 @@ def test_scorer_rejects_non_tuple_return_contract(
     assert not checks["compact-s3-diagnostic-durable-default"]
 
 
+def test_policy_cannot_forge_trusted_score_output(tmp_path: Path) -> None:
+    task = load_compact_projection_design(_root()).tasks[2]
+    fabricated = {
+        "checks": {
+            "diagnostic": {
+                scenario.scenario_id: True
+                for scenario in task.scenarios
+                if scenario.metric == "diagnostic"
+            },
+            "neutral": {
+                scenario.scenario_id: True
+                for scenario in task.scenarios
+                if scenario.metric == "neutral"
+            },
+            "objective": {
+                scenario.scenario_id: True
+                for scenario in task.scenarios
+                if scenario.metric == "objective"
+            },
+        },
+        "observed": {},
+        "task_id": task.task_id,
+    }
+    source = f"import json, os\nprint(json.dumps({fabricated!r}))\nos._exit(0)\n"
+
+    result = _score(task, _workspace(tmp_path, task, source))
+
+    assert not any(_all_checks(result).values())
+    receipts = result["receipts"]
+    assert isinstance(receipts, dict)
+    assert {receipt["status"] for receipt in receipts.values() if isinstance(receipt, dict)} == {
+        "malformed_output"
+    }
+
+
 def test_validity_gate_detects_forbidden_path_defect() -> None:
     changes = parse_porcelain_v1_z(" M deployment_policy.py\0?? notes.md\0")
 
@@ -285,6 +322,14 @@ def test_preregistration_rejects_same_length_runtime_fixture_substitution(
     scorer = copied_repo / "scripts" / "score_compact_projection_task.py"
     scorer.parent.mkdir(parents=True)
     shutil.copy2(_repo() / "scripts" / scorer.name, scorer)
+    observer = copied_repo / "scripts" / "observe_compact_projection_policy.py"
+    shutil.copy2(_repo() / "scripts" / observer.name, observer)
+    sandbox = copied_repo / "src/adaptation_compiler_lab/benchmark/longitudinal_instrument.py"
+    sandbox.parent.mkdir(parents=True)
+    shutil.copy2(
+        _repo() / "src/adaptation_compiler_lab/benchmark/longitudinal_instrument.py",
+        sandbox,
+    )
     renderer = copied_repo / "src/adaptation_compiler_lab/targets/codex_runtime.py"
     renderer.parent.mkdir(parents=True)
     shutil.copy2(
@@ -361,4 +406,36 @@ def test_scorer_amendment_generator_cannot_replace_frozen_v1_1() -> None:
     assert before == (
         (root / "PREREGISTRATION-v1.1.json").read_bytes(),
         (root / "PREREGISTRATION-v1.1.sha256").read_bytes(),
+    )
+
+
+def test_isolation_amendment_generator_cannot_replace_frozen_v1_2() -> None:
+    root = _root()
+    before = (
+        (root / "PREREGISTRATION-v1.2.json").read_bytes(),
+        (root / "PREREGISTRATION-v1.2.sha256").read_bytes(),
+    )
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(_repo() / "scripts" / "supersede_compact_projection_protocol_v1_2.py"),
+            "--repo",
+            str(_repo()),
+            "--benchmark-root",
+            str(root),
+        ],
+        cwd=_repo(),
+        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=10,
+    )
+
+    assert completed.returncode != 0
+    assert "already frozen" in completed.stderr
+    assert before == (
+        (root / "PREREGISTRATION-v1.2.json").read_bytes(),
+        (root / "PREREGISTRATION-v1.2.sha256").read_bytes(),
     )

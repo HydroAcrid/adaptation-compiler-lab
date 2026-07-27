@@ -61,7 +61,7 @@ class CompactProjectionTask(FrozenModel):
 
 
 class CompactProjectionComparisonDesign(FrozenModel):
-    design_version: Literal["1.0.0", "1.1.0"] = "1.0.0"
+    design_version: Literal["1.0.0", "1.1.0", "1.2.0"] = "1.0.0"
     design_id: Literal["milestone-6a1-compact-runtime-public-development"] = (
         "milestone-6a1-compact-runtime-public-development"
     )
@@ -107,7 +107,11 @@ class CompactProjectionComparisonDesign(FrozenModel):
     ai_preference_cannot_rescue_failed_primary_gate: Literal[True] = True
     supersedes_design_digest: Sha256Digest | None = None
     superseded_scorer_digest: Sha256Digest | None = None
-    amendment_reason: Literal["strict_tuple_return_contract"] | None = None
+    amendment_reason: (
+        Literal["strict_tuple_return_contract", "isolated_policy_observation"] | None
+    ) = None
+    policy_observer_digest: Sha256Digest | None = None
+    scorer_sandbox_digest: Sha256Digest | None = None
     scorer_sensitivity_cases: tuple[
         Literal["reference"],
         Literal["stale_rule"],
@@ -136,10 +140,32 @@ class CompactProjectionComparisonDesign(FrozenModel):
             self.superseded_scorer_digest,
             self.amendment_reason,
         )
-        if self.design_version == "1.0.0" and any(item is not None for item in amendment):
+        isolation = (
+            self.policy_observer_digest,
+            self.scorer_sandbox_digest,
+        )
+        if self.design_version == "1.0.0" and any(
+            item is not None for item in (*amendment, *isolation)
+        ):
             raise ValueError("compact projection v1.0 cannot contain amendment metadata")
         if self.design_version == "1.1.0" and any(item is None for item in amendment):
             raise ValueError("compact projection v1.1 requires complete amendment metadata")
+        if (
+            self.design_version == "1.1.0"
+            and self.amendment_reason != "strict_tuple_return_contract"
+        ):
+            raise ValueError("compact projection v1.1 requires its registered amendment reason")
+        if self.design_version == "1.1.0" and any(item is not None for item in isolation):
+            raise ValueError("compact projection v1.1 cannot contain v1.2 isolation metadata")
+        if self.design_version == "1.2.0" and any(
+            item is None for item in (*amendment, *isolation)
+        ):
+            raise ValueError("compact projection v1.2 requires complete isolation metadata")
+        if (
+            self.design_version == "1.2.0"
+            and self.amendment_reason != "isolated_policy_observation"
+        ):
+            raise ValueError("compact projection v1.2 requires its registered amendment reason")
         return self
 
     @property
@@ -156,10 +182,14 @@ class CompactProjectionComparisonDesign(FrozenModel):
 def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDesign:
     """Load and revalidate every frozen public task, fixture, scorer, and renderer."""
 
-    preregistration = (
-        root / "PREREGISTRATION-v1.1.json"
-        if (root / "PREREGISTRATION-v1.1.json").is_file()
-        else root / "PREREGISTRATION-v1.0.json"
+    preregistration = next(
+        path
+        for path in (
+            root / "PREREGISTRATION-v1.2.json",
+            root / "PREREGISTRATION-v1.1.json",
+            root / "PREREGISTRATION-v1.0.json",
+        )
+        if path.is_file()
     )
     checksum = preregistration.with_suffix(".sha256")
     checksum_fields = checksum.read_text(encoding="ascii").split()
@@ -168,9 +198,15 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
     if sha256_file(preregistration) != f"sha256:{checksum_fields[0]}":
         raise ValueError("compact projection preregistration checksum drifted")
     design = CompactProjectionComparisonDesign.model_validate_json(preregistration.read_bytes())
-    if design.design_version == "1.1.0":
-        historical_path = root / "PREREGISTRATION-v1.0.json"
-        historical_checksum = root / "PREREGISTRATION-v1.0.sha256"
+    chain = {
+        "1.1.0": "1.0",
+        "1.2.0": "1.1",
+    }
+    current = design
+    while current.design_version in chain:
+        historical_label = chain[current.design_version]
+        historical_path = root / f"PREREGISTRATION-v{historical_label}.json"
+        historical_checksum = root / f"PREREGISTRATION-v{historical_label}.sha256"
         historical_fields = historical_checksum.read_text(encoding="ascii").split()
         if (
             len(historical_fields) != 2
@@ -181,10 +217,11 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
         historical = CompactProjectionComparisonDesign.model_validate_json(
             historical_path.read_bytes()
         )
-        if design.supersedes_design_digest != historical.content_digest:
+        if current.supersedes_design_digest != historical.content_digest:
             raise ValueError("compact projection supersession digest drifted")
-        if design.superseded_scorer_digest != historical.independent_scorer_digest:
+        if current.superseded_scorer_digest != historical.independent_scorer_digest:
             raise ValueError("compact projection superseded scorer digest drifted")
+        current = historical
     observed_fixtures: list[Sha256Digest] = []
     for task in design.tasks:
         fixture = (root / task.fixture_directory).resolve()
@@ -202,6 +239,16 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
         design.independent_scorer_digest
     ):
         raise ValueError("compact projection scorer digest drifted")
+    if design.design_version == "1.2.0":
+        if sha256_file(repo / "scripts" / "observe_compact_projection_policy.py") != (
+            design.policy_observer_digest
+        ):
+            raise ValueError("compact projection policy observer digest drifted")
+        if (
+            sha256_file(repo / "src/adaptation_compiler_lab/benchmark/longitudinal_instrument.py")
+            != design.scorer_sandbox_digest
+        ):
+            raise ValueError("compact projection scorer sandbox digest drifted")
     if (
         sha256_file(repo / "src/adaptation_compiler_lab/targets/codex_runtime.py")
         != design.renderer_source_digest

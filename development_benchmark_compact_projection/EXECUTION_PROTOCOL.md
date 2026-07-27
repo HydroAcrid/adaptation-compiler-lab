@@ -1,7 +1,9 @@
 # Frozen execution protocol
 
-Status: v1.1 designed and frozen; no live sessions started. The byte-identical v1.0 registration
-is retained as superseded pre-execution history after review identified non-tuple scorer coercion.
+Status: v1.2 designed and frozen; no live sessions started. Byte-identical v1.0 and v1.1
+registrations remain as superseded pre-execution history. V1.2 keeps policy execution in a
+separate answer-blind filesystem/network/PID sandbox and computes pass/fail only in the trusted
+parent scorer.
 
 ## Freeze order
 

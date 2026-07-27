@@ -38,11 +38,13 @@ stdout and stderr use regular files under the child-enforced one-MiB-per-stream 
 preventing unbounded coordinator pipe buffering, and the short provenance-marker set covers the
 scoped-correction artifact as well as the persistent rules.
 
-The fresh comparison's original v1.0 preregistration remains byte-identical and unexecuted but is
-superseded by v1.1 after review found that its independent scorer coerced list and scalar returns
-into tuples. The current scorer requires the exact `tuple[str, ...]` public contract. V1.1 binds
-the replacement scorer plus the exact v1.0 design and scorer digests; no profile, target, judge,
-or other live output informed the amendment.
+The fresh comparison's v1.0 and v1.1 preregistrations remain byte-identical and unexecuted.
+V1.0 was superseded for list/scalar coercion. V1.1 was superseded after review showed that policy
+import still shared the process that emitted the trusted score. Current v1.2 executes each policy
+call in an answer-blind read-only filesystem/network/PID sandbox that cannot see the benchmark or
+trusted parent, records bounded per-scenario observation receipts, and computes checks only in the
+parent scorer. V1.2 binds its scorer, observer, sandbox, and exact v1.1 lineage; no profile,
+target, judge, or other live output informed either amendment.
 
 Three stage packs demonstrate the intended lifecycle: a persistent-destination backup rule; a
 narrow generated-cache atomic-replacement exception; then a refuse-by-default persistent policy
@@ -57,7 +59,7 @@ actions” comparison is retired in favor of separate compiler, machine-time, ap
 and target-cost records. One blind Sol/xhigh judge ran before unblinding; its three compiled
 preferences are secondary, and two rewarded forbidden test-file changes.
 
-The fresh 6A.1 v1.1 protocol uses three new task fixtures and locally distinguishes reference,
+The fresh 6A.1 v1.2 protocol uses three new task fixtures and locally distinguishes reference,
 stale-rule, missed-exception, scope-leak, unnecessary-change, and forbidden-path implementations.
 Its minimum future live cost is six target sessions plus one author, one reviewer, and one blind
 judge: nine subscription sessions, zero API-key calls, and zero provider-billed calls. No role,

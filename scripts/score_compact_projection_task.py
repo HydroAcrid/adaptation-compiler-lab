@@ -1,27 +1,14 @@
-"""Independent stdlib-only scorer for one fresh compact-projection task."""
+"""Trusted scorer coordinator for one fresh compact-projection task."""
 
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import json
-import sys
 from pathlib import Path
-from types import ModuleType
 
-
-def _load_policy(workspace: Path, task_id: str) -> ModuleType:
-    path = workspace / "deployment_policy.py"
-    specification = importlib.util.spec_from_file_location(
-        "_acl_compact_" + task_id.replace("-", "_"),
-        path,
-    )
-    if specification is None or specification.loader is None:
-        raise ValueError("deployment_policy.py could not be loaded")
-    module = importlib.util.module_from_spec(specification)
-    sys.dont_write_bytecode = True
-    specification.loader.exec_module(module)
-    return module
+from adaptation_compiler_lab.benchmark.longitudinal_instrument import (
+    run_bounded_compact_policy_observation,
+)
 
 
 def main() -> int:
@@ -32,36 +19,52 @@ def main() -> int:
 
     manifest = json.loads(arguments.task_manifest.read_text(encoding="utf-8"))
     task_id = manifest["task_id"]
-    module = _load_policy(arguments.workspace.resolve(), task_id)
-    function = getattr(module, "plan_delivery", None)
-    if not callable(function):
-        raise ValueError("deployment policy omitted plan_delivery")
+    observer_script = Path(__file__).with_name("observe_compact_projection_policy.py")
     groups: dict[str, dict[str, bool]] = {
         "diagnostic": {},
         "neutral": {},
         "objective": {},
     }
     observed: dict[str, str] = {}
+    receipts: dict[str, dict[str, object]] = {}
     for scenario in manifest["scenarios"]:
         scenario_id = scenario["scenario_id"]
-        try:
-            raw = function(
-                scenario["destination_exists"],
-                scenario["storage_class"],
-                scenario["recovery_copy_approved"],
-            )
-            if not isinstance(raw, tuple) or not all(isinstance(item, str) for item in raw):
-                raise TypeError("plan_delivery must return tuple[str, ...]")
-            value = raw
+        result = run_bounded_compact_policy_observation(
+            observer_script=observer_script,
+            workspace=arguments.workspace.resolve(),
+            scenario_id=scenario_id,
+            destination_exists=scenario["destination_exists"],
+            storage_class=scenario["storage_class"],
+            recovery_copy_approved=scenario["recovery_copy_approved"],
+            timeout_seconds=2,
+        )
+        observation = result.observation
+        receipts[scenario_id] = result.receipt.model_dump(
+            mode="json",
+            round_trip=True,
+        )
+        if observation is not None and observation.status == "returned":
+            value = observation.value
             observed[scenario_id] = repr(value)
             passed = value == tuple(scenario["expected_plan"])
-        except Exception as error:
-            observed[scenario_id] = f"{type(error).__name__}: {error}"
+        else:
+            detail = (
+                observation.detail if observation is not None else result.receipt.failure_reason
+            )
+            observed[scenario_id] = (
+                f"{observation.status if observation is not None else result.receipt.status}: "
+                f"{detail}"
+            )
             passed = False
         groups[scenario["metric"]][scenario_id] = passed
     print(
         json.dumps(
-            {"checks": groups, "observed": observed, "task_id": task_id},
+            {
+                "checks": groups,
+                "observed": observed,
+                "receipts": receipts,
+                "task_id": task_id,
+            },
             ensure_ascii=False,
             sort_keys=True,
             separators=(",", ":"),
