@@ -288,6 +288,25 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
         historical = CompactProjectionComparisonDesign.model_validate_json(
             historical_path.read_bytes()
         )
+        if current.design_version == "1.7.0":
+            unchanged_fields = (
+                "independent_scorer_digest",
+                "policy_observer_digest",
+                "runtime_fixture_measurements_digest",
+                "runtime_fixture_tree_digest",
+                "scorer_sandbox_digest",
+                "shared_execution_envelope_digest",
+                "task_fixture_digests",
+            )
+            drifted = tuple(
+                field
+                for field in unchanged_fields
+                if getattr(current, field) != getattr(historical, field)
+            )
+            if drifted:
+                raise ValueError(
+                    "compact projection v1.7 rebound unchanged artifacts: " + ", ".join(drifted)
+                )
         if current.supersedes_design_digest != historical.content_digest:
             raise ValueError("compact projection supersession digest drifted")
         if current.superseded_scorer_digest != historical.independent_scorer_digest:

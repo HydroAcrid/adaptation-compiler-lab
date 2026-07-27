@@ -103,6 +103,8 @@ V1.6 preserves v1.5 byte-for-byte and changes only the observer source digest re
 deterministic formatting.
 V1.7 preserves v1.6 byte-for-byte, reuses the exact v1.5 runtime fixture, and binds the independent
 Codex renderer target-family guard.
+Its loader and issuer also require every unchanged task, scorer, observer, sandbox, fixture,
+measurement, and envelope digest to equal v1.6 before accepting the renderer-only amendment.
 
 ## Clause-level analysis
 

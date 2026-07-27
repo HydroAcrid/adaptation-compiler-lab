@@ -14,7 +14,9 @@ integrity check correctly rejected source-byte drift. It reuses the exact v1.5 r
 changes no task, condition material, scorer behavior, session limit, or cost.
 
 V1.7 also requires the target-family dimension to be known and equal to Codex at the Codex renderer
-boundary. It reuses the exact v1.5 runtime fixture and changes no target-visible bytes.
+boundary. It reuses the exact v1.5 runtime fixture and changes no target-visible bytes. Issuance
+fails before writing if any unchanged task, scorer, observer, sandbox, fixture, measurement, or
+envelope digest differs from v1.6.
 
 ## Freeze order
 

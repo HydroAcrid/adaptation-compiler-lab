@@ -51,6 +51,47 @@ def main() -> int:
         raise ValueError("cannot amend a protocol after any registered session starts")
 
     runtime_fixture = root / "runtime-fixture-v1.5"
+    task_digests = tuple(
+        development_tree_digest((root / task.fixture_directory).resolve())
+        for task in historical.tasks
+    )
+    unchanged_digests = {
+        "independent scorer": (
+            sha256_file(repo / "scripts" / "score_compact_projection_task.py"),
+            historical.independent_scorer_digest,
+        ),
+        "policy observer": (
+            sha256_file(repo / "scripts" / "observe_compact_projection_policy.py"),
+            historical.policy_observer_digest,
+        ),
+        "runtime fixture measurements": (
+            sha256_file(runtime_fixture / "MEASUREMENTS-v1.0.json"),
+            historical.runtime_fixture_measurements_digest,
+        ),
+        "runtime fixture tree": (
+            development_tree_digest(runtime_fixture),
+            historical.runtime_fixture_tree_digest,
+        ),
+        "scorer sandbox": (
+            sha256_file(repo / "src/adaptation_compiler_lab/benchmark/longitudinal_instrument.py"),
+            historical.scorer_sandbox_digest,
+        ),
+        "shared execution envelope": (
+            sha256_file(runtime_fixture / "shared-execution-envelope.md"),
+            historical.shared_execution_envelope_digest,
+        ),
+        "task fixtures": (
+            task_digests,
+            historical.task_fixture_digests,
+        ),
+    }
+    drifted = tuple(
+        label for label, (observed, expected) in unchanged_digests.items() if observed != expected
+    )
+    if drifted:
+        raise ValueError(
+            "refusing to rebind artifacts that drifted since v1.6: " + ", ".join(drifted)
+        )
     replacement = CompactProjectionComparisonDesign.model_validate(
         {
             **historical.model_dump(
@@ -59,22 +100,14 @@ def main() -> int:
             ),
             "amendment_reason": "codex_renderer_target_guard",
             "design_version": "1.7.0",
-            "policy_observer_digest": sha256_file(
-                repo / "scripts" / "observe_compact_projection_policy.py"
-            ),
+            "policy_observer_digest": historical.policy_observer_digest,
             "renderer_source_digest": sha256_file(
                 repo / "src/adaptation_compiler_lab/targets/codex_runtime.py"
             ),
-            "runtime_fixture_measurements_digest": sha256_file(
-                runtime_fixture / "MEASUREMENTS-v1.0.json"
-            ),
-            "runtime_fixture_tree_digest": development_tree_digest(runtime_fixture),
-            "scorer_sandbox_digest": sha256_file(
-                repo / "src/adaptation_compiler_lab/benchmark/longitudinal_instrument.py"
-            ),
-            "shared_execution_envelope_digest": sha256_file(
-                runtime_fixture / "shared-execution-envelope.md"
-            ),
+            "runtime_fixture_measurements_digest": (historical.runtime_fixture_measurements_digest),
+            "runtime_fixture_tree_digest": historical.runtime_fixture_tree_digest,
+            "scorer_sandbox_digest": historical.scorer_sandbox_digest,
+            "shared_execution_envelope_digest": (historical.shared_execution_envelope_digest),
             "superseded_scorer_digest": historical.independent_scorer_digest,
             "supersedes_design_digest": historical.content_digest,
         }
