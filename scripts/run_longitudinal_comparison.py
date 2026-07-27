@@ -377,6 +377,7 @@ def main() -> None:
     parser.add_argument("--codex-executable", type=Path, required=True)
     parser.add_argument("--saved-auth", type=Path, required=True)
     parser.add_argument("--preflight-only", action="store_true")
+    parser.add_argument("--validate-inputs-only", action="store_true")
     arguments = parser.parse_args()
 
     if any(os.environ.get(name) for name in _FORBIDDEN_ENV):
@@ -466,6 +467,21 @@ def main() -> None:
         )
         assert_condition_material_safe(text)
         strong.append(text)
+    if arguments.validate_inputs_only:
+        print(
+            canonical_json(
+                {
+                    "compiled_material_digests": list(protocol.compiled_material_digests),
+                    "external_validation_accessed": False,
+                    "profile_construction_receipt_digest": sha256_file(receipt_path),
+                    "strong_profile_digests": [
+                        sha256_bytes(item.encode("utf-8")) for item in strong
+                    ],
+                    "target_sessions_started": 0,
+                }
+            )
+        )
+        return
 
     output_root = arguments.output_root.resolve()
     config_root = arguments.config_root.resolve()
