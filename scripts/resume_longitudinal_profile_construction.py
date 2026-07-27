@@ -138,9 +138,11 @@ def _parsed_output(
     bundle: dict[str, object],
     model: type[StaticProfileAuthorOutput] | type[StaticProfileReviewOutput],
 ) -> StaticProfileAuthorOutput | StaticProfileReviewOutput:
-    parsed = model.model_validate(bundle.get("parsed_output"))
     response = bundle.get("response")
-    if not isinstance(response, str) or model.model_validate_json(response) != parsed:
+    if not isinstance(response, str):
+        raise RuntimeError("recovered role bundle omitted its original response")
+    parsed = model.model_validate_json(response)
+    if bundle.get("parsed_output") != parsed.model_dump(mode="json", round_trip=True):
         raise RuntimeError("recovered parsed role output does not match its original response")
     if (
         bundle.get("exit_code") != 0
