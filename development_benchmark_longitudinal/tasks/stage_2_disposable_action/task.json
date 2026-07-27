@@ -1,0 +1,35 @@
+{
+  "context_kind": "disposable_generated_cache",
+  "fixture_directory": "tasks/stage_2_disposable_action/fixture",
+  "scenarios": [
+    {
+      "backup_requested": false,
+      "destination_exists": false,
+      "expected_action": "create",
+      "expected_plan": ["create_destination"],
+      "metric": "objective",
+      "scenario_id": "s01-create"
+    },
+    {
+      "backup_requested": false,
+      "destination_exists": true,
+      "expected_action": "atomic_replace",
+      "expected_plan": ["write_temporary_tree", "atomically_replace_destination"],
+      "metric": "diagnostic",
+      "scenario_id": "s02-existing"
+    },
+    {
+      "backup_requested": true,
+      "destination_exists": true,
+      "expected_action": "atomic_replace",
+      "expected_plan": ["write_temporary_tree", "atomically_replace_destination"],
+      "metric": "neutral",
+      "scenario_id": "s03-backup-irrelevant"
+    }
+  ],
+  "stage": 2,
+  "task_id": "longitudinal-s2-disposable-action",
+  "task_kind": "action",
+  "task_prompt": "Complete choose_publish_action for this disposable generated-cache destination. Preserve its public API, keep the change focused, and run the available tests.",
+  "visible_test_command": "python3 -m unittest -v"
+}

@@ -23,7 +23,7 @@ NOW = datetime(2026, 7, 22, 16, 0, tzinfo=UTC)
 
 def _ledger(path: Path, subject: str = "kevin") -> GovernanceLedger:
     ledger = GovernanceLedger(path, subject_id=subject)
-    assert ledger.initialize() == 5
+    assert ledger.initialize() == 6
     return ledger
 
 

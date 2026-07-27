@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **Milestone 5 complete; paid Milestone 6 execution not authorized**
+Status: **Milestone 6A active; paid external-validation study deferred**
 
 ## 1. System shape
 
@@ -21,6 +21,10 @@ flowchart LR
     A --> F["Frozen Release"]
     F --> P["Validated TargetPack files"]
     F --> X["Activation pointer / rollback journal"]
+    P --> L6["Longitudinal scope and supersession resolver"]
+    L6 --> DF["Fresh Codex dogfood delivery"]
+    DF --> FB["Append-only helped / hurt / irrelevant feedback"]
+    FB --> MX["Activation, correction, size, latency, effort metrics"]
     G --> C["Signed impact preview and recall"]
     C --> R
     C --> F

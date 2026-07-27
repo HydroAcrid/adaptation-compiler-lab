@@ -1,6 +1,6 @@
 # Project Charter
 
-Status: **Milestone 5 complete; paid Milestone 6 execution awaiting authorization**
+Status: **Milestone 6A active; paid external-validation study deferred**
 Project: **adaptation-compiler-lab**
 Intended first source / target: **Codex / Claude Code**
 
@@ -12,9 +12,10 @@ The project tests one hypothesis:
 > into typed, versioned external artifacts and transferred to Coding Agent B, improving B on unseen
 > tasks beyond ordinary memory and a strong static profile.
 
-This is a testable claim, not a result. The implementation currently supplies a controlled local
-instrument, a consented encrypted source corpus, and a sealed internally blinded benchmark; no
-target-agent experiment has been run.
+This is a testable claim, not a result. The implementation supplies a controlled local instrument,
+a consented encrypted source corpus, public development comparisons, and a sealed internally
+blinded external-validation benchmark. The external study remains unexecuted and is not a
+prerequisite for continued product development.
 
 ## Current deliverable
 
@@ -37,6 +38,13 @@ encrypted captures, eight reviewed behavioral artifacts, two-pass isolated-AI st
 construction, a separately seeded deterministic software custodian, four frozen condition
 materials, and a sealed 32-cell internal benchmark. This is not authorization to read an
 unconsented task, run the paid pilot, unblind conditions, or claim transfer improvement.
+
+Milestone 6A adds a zero-provider-billed longitudinal dogfood loop over the existing governance,
+review, release, rendering, and activation foundations. It measures addition, scoped correction,
+supersession/revocation, pack growth, update latency, maintenance effort, and lightweight
+activation feedback. Its public Codex subscription comparison is preregistered but not executed.
+The frozen Claude study remains unchanged, sealed, and optional future research contingent on
+funding.
 
 ## Governing principles
 

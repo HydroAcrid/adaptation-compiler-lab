@@ -1,6 +1,6 @@
 # Decision Log
 
-Last updated: 2026-07-25
+Last updated: 2026-07-27
 
 This log separates implemented choices from objective gates and later open decisions. On
 2026-07-22 the project owner authorized automatic continuation between milestones. That removes the
@@ -89,6 +89,8 @@ blind ratings, holdout isolation, or any fixed exclusion.
 | D-078 | Future blind-rating authority | **Owner decision implemented 2026-07-26.** Do not ask Kevin to rate future public development packets. Use a blank `gpt-5.6-sol` Codex CLI context at `xhigh` reasoning with only the anonymous packet and fixed contract, no repository/host-home/ambient context/tools, a fresh ephemeral configuration, exact pair binding, encrypted trace, and durable receipt before unblinding. Automated tests remain objective authority. Report the AI verdict separately as general-quality judgment; never relabel it as Kevin-specific preference. |
 | D-079 | Frozen held-out scorer incompatibility | **Resolved without protocol amendment 2026-07-27.** Before any held-out reveal or trial, Kevin clarified that the isolated-AI replacement is deferred until after the current feasibility phase. The original frozen design therefore remains authoritative: Kevin rates anonymous held-out outputs, automated tests score correctness, and isolated AI remains optional secondary analysis only after Kevin's ratings are durable. No scorer, holdout, mapping, randomization, condition material, or custody record changed, so no fresh holdout is required. |
 | D-080 | Milestone 6 execution gate after scorer clarification | **Open; owner authorization required 2026-07-27.** The scoring conflict is resolved, but this clarification does not itself authorize provider spend or reveal. Before the 32-run pilot, reverify all frozen digests, retention windows, target credential balance, pinned runtime, custody boundary, random order, and USD $200 hard ceiling, then obtain explicit paid-run authorization. |
+| D-081 | Paid external-validation study | **Deferred for budget reasons 2026-07-27; owner decision.** Do not run the Sonnet cost canary or 32-run Claude pilot. Preserve the existing registration, sealed bundle, authorization gate, custody records, tasks, mapping, and randomized order unchanged and unrevealed as an unexecuted historical study. Cross-model validation is optional future research contingent on funding and is not required for continued product development. This supersedes D-080's active preflight recommendation without changing the frozen study. |
+| D-082 | Active product milestone | **Milestone 6A selected and implemented without live comparison execution 2026-07-27.** Add a deterministic longitudinal dogfood loop for addition, scoped correction, supersession/revocation, exact lineage, scope isolation, pack growth, update latency, maintenance effort, and append-only helped/hurt/irrelevant feedback. Freeze a public 3-stage × 2-task × 2-condition Codex subscription design with automated correctness primary and one isolated AI judge secondary. Maximum target runs are 12; maximum subscription sessions are 19; API keys and provider-billed calls are forbidden. Stop before executing the comparison. |
 
 ## Decision process
 
