@@ -1,0 +1,42 @@
+{
+  "packet_version": "1.0.0",
+  "stage": 3,
+  "items": [
+    {
+      "evidence_id": "dogfood-evidence-1",
+      "observed_order": 1,
+      "status": "superseded",
+      "superseded_by": "dogfood-evidence-3",
+      "scope": {
+        "destination_kind": "persistent_user_managed",
+        "target_family": "codex"
+      },
+      "approved_behavior": "When a persistent user-managed destination already exists, create a recoverable backup before replacing its content.",
+      "verification": "This behavior must no longer activate after Stage 3."
+    },
+    {
+      "evidence_id": "dogfood-evidence-2",
+      "observed_order": 2,
+      "status": "active_scoped_exception",
+      "scope": {
+        "destination_kind": "disposable_generated_cache",
+        "project_id": "generated-cache",
+        "target_family": "codex"
+      },
+      "approved_behavior": "When a disposable generated-cache destination already exists, atomically replace it without creating a backup.",
+      "verification": "The scoped exception remains active after the broader persistent behavior changes."
+    },
+    {
+      "evidence_id": "dogfood-evidence-3",
+      "observed_order": 3,
+      "status": "active_supersession",
+      "supersedes": "dogfood-evidence-1",
+      "scope": {
+        "destination_kind": "persistent_user_managed",
+        "target_family": "codex"
+      },
+      "approved_behavior": "When a persistent user-managed destination already exists, refuse overwrite unless a recoverable backup is explicitly requested.",
+      "verification": "If backup is explicitly requested, create the recoverable backup before replacement."
+    }
+  ]
+}

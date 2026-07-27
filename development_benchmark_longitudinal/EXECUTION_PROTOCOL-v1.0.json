@@ -1,0 +1,45 @@
+{
+  "protocol_version": "1.0.0",
+  "design_digest": "sha256:63763c19684db02c6ae8fa146a89e67c666d5f88f735b665956138545b1d15d7",
+  "preregistration_sha256": "sha256:b488cfbcbe2a58e37ea44c9c45dfdda5e5f85a1cf3c2c906263a66fd78a3a2f8",
+  "evidence_packet_digests": [
+    "sha256:1939eb955578adc82d1e66af74a99a4ff9dc8feea427e26c3075ddcf4464308e",
+    "sha256:f81e085f3752ece795f8f3e4b78c836e23fde995e18c7c6c9dad32b1cb0b40be",
+    "sha256:def711a0c818a565b18de459b1b7a1cde3eb67129e7e89d2a12976ff14e2ad17"
+  ],
+  "compiled_material_digests": [
+    "sha256:6483a196da770debb0a19abd6933f64629ee366e4c45283ce4e7882d43fe4e66",
+    "sha256:54840e5261e87d65b17a0652240059f709405a3c47158e55706fe85d575e2f60",
+    "sha256:969053e24d21f9fe402e93c57423a662381027a9c6f48108e3412fb32810e70d"
+  ],
+  "task_fixture_digests": [
+    "sha256:d40989c7b81c5ecec5da8aaf529580a7ec93f3cbece9fa03a5063373c477d2a9",
+    "sha256:29d44a3c8cf908ddfaf37e268529964b2f913a91635bd78a0fd84ad18b964ba7",
+    "sha256:0b394514bce559ae61101ed44ebbad606950b88054d4a32dda6bf4a14844fd29",
+    "sha256:1b77d7d2ee943ecc72926932cdbf1aa431124c43cb56300ea8f22effeb6d87f5",
+    "sha256:b4bb82f914e6bdd3c86c68509df88918c35a4225157e5e8b833070d4b8666f88",
+    "sha256:edc0ae8f19aaf2525b03bdace74492b18675e1f8bd91b1d9ec5c53ecf3032d7d"
+  ],
+  "independent_scorer_digest": "sha256:76a32e9c0a4d2ce2472c5199c9fefa62bd520369ac56a1606a6e9c506c3432cf",
+  "dogfood_metrics_digest": "sha256:c281716f5cf458da5a660470fc2299edb9e28d5902ffddfa8de712ae2eaae69c",
+  "profile_author_model": "gpt-5.6-luna",
+  "profile_author_reasoning": "medium",
+  "profile_reviewer_model": "gpt-5.6-luna",
+  "profile_reviewer_reasoning": "medium",
+  "target_model": "gpt-5.6-luna",
+  "target_reasoning": "medium",
+  "judge_model": "gpt-5.6-sol",
+  "judge_reasoning": "xhigh",
+  "maximum_profile_author_sessions": 3,
+  "maximum_profile_review_sessions": 3,
+  "maximum_target_sessions": 12,
+  "maximum_judge_sessions": 1,
+  "maximum_total_sessions": 19,
+  "compiled_stage_maintenance_actions": [3, 4, 5],
+  "compiled_stage_maintenance_seconds": [30.0, 30.0, 30.0],
+  "compiled_stage_update_latency_seconds": [40.0, 40.0, 40.0],
+  "retries_allowed": false,
+  "api_keys_allowed": false,
+  "provider_billed_calls": 0,
+  "external_validation_access_allowed": false
+}

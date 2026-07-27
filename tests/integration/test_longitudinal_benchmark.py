@@ -9,10 +9,14 @@ from pathlib import Path
 from adaptation_compiler_lab.benchmark.longitudinal import (
     load_longitudinal_comparison,
 )
+from adaptation_compiler_lab.benchmark.longitudinal_execution import (
+    load_compiled_materials,
+)
 from adaptation_compiler_lab.benchmark.longitudinal_scoring import (
     score_longitudinal_task,
 )
 from adaptation_compiler_lab.connectors.pins import sha256_file
+from tests.unit.dogfood.test_longitudinal import _dogfood
 
 
 def _root() -> Path:
@@ -60,6 +64,31 @@ def test_all_public_task_fixtures_execute_visible_tests() -> None:
         assert completed.returncode == 0, (task.task_id, completed.stdout, completed.stderr)
 
 
+def test_frozen_compiled_condition_is_exact_dogfood_renderer_output() -> None:
+    root = _root()
+    materials = load_compiled_materials(root)
+    rendered = _dogfood()
+    metrics = json.loads((root / "DOGFOOD_METRICS-v1.0.json").read_text(encoding="utf-8"))
+
+    for material, stage in zip(materials, rendered.stages, strict=True):
+        agents = next(
+            item.content for item in stage.rendered_pack.files if item.path == "AGENTS.md"
+        )
+        assert material == agents
+    assert metrics["stage_pack_bytes"] == [
+        stage.measurement.target_visible_bytes for stage in rendered.stages
+    ]
+    assert metrics["stage_primary_instruction_bytes"] == [
+        stage.measurement.primary_instruction_bytes for stage in rendered.stages
+    ]
+    assert metrics["stage_update_latency_seconds"] == [
+        stage.measurement.update_latency_seconds for stage in rendered.stages
+    ]
+    assert metrics["stage_maintenance_actions"] == [
+        stage.measurement.maintenance_actions for stage in rendered.stages
+    ]
+
+
 def test_independent_scorer_detects_each_seeded_stage_defect() -> None:
     root = _root()
     design = load_longitudinal_comparison(root)
@@ -92,14 +121,27 @@ def test_independent_scorer_accepts_reference_behavior(tmp_path: Path) -> None:
         assert all(item.passed for item in score.scenario_results)
 
 
-def test_comparison_directory_contains_no_execution_result() -> None:
+def test_independent_scorer_records_broken_target_as_failed_result(tmp_path: Path) -> None:
+    root = _root()
+    task = load_longitudinal_comparison(root).tasks[0]
+    workspace = tmp_path / "broken-target"
+    shutil.copytree(root / task.fixture_directory, workspace)
+    (workspace / "policy.py").write_text("this is invalid python\n", encoding="utf-8")
+
+    score = score_longitudinal_task(task, workspace)
+
+    assert score.objective_passed == score.diagnostic_passed == score.neutral_passed == 0
+    assert all(not item.passed for item in score.scenario_results)
+    assert all("SyntaxError" in item.observed for item in score.scenario_results)
+
+
+def test_comparison_directory_excludes_private_execution_state() -> None:
     root = _root()
     forbidden_names = {
-        "blind-report.json",
-        "completion-receipt.json",
         "private-plan.json",
         "run-result.json",
-        "unblinded-result.json",
+        "randomization-seed.key",
+        "trace-encryption.key",
     }
     assert not forbidden_names & {path.name for path in root.rglob("*") if path.is_file()}
     assert not tuple(root.rglob("__pycache__"))

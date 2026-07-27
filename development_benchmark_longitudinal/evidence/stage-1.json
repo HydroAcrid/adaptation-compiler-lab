@@ -1,0 +1,17 @@
+{
+  "packet_version": "1.0.0",
+  "stage": 1,
+  "items": [
+    {
+      "evidence_id": "dogfood-evidence-1",
+      "observed_order": 1,
+      "status": "active",
+      "scope": {
+        "destination_kind": "persistent_user_managed",
+        "target_family": "codex"
+      },
+      "approved_behavior": "When a persistent user-managed destination already exists, create a recoverable backup before replacing its content.",
+      "verification": "Verify the selected publish action before completion."
+    }
+  ]
+}
