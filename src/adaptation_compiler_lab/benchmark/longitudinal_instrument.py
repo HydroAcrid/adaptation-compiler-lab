@@ -6,9 +6,11 @@ import hashlib
 import math
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 import unicodedata
 from pathlib import Path
@@ -191,6 +193,9 @@ class BoundedScorerReceipt(FrozenModel):
     stderr_digest: Sha256Digest
     failure_reason: str | None = None
     timeout_seconds: Annotated[float, Field(gt=0, allow_inf_nan=False)]
+    sandbox_mode: Literal["linux-user-mount-network-pid-chroot-v1"] = (
+        "linux-user-mount-network-pid-chroot-v1"
+    )
 
 
 class BoundedScorerResult(FrozenModel):
@@ -239,7 +244,29 @@ def _failed_score(
     )
 
 
-def _scorer_resource_limits(timeout_seconds: float) -> None:
+def _current_uid_process_count() -> int:
+    """Count existing host tasks so RLIMIT_NPROC leaves only bounded headroom."""
+
+    uid = os.getuid()
+    count = 0
+    for status_path in Path("/proc").glob("[0-9]*/status"):
+        try:
+            uid_line = next(
+                line
+                for line in status_path.read_text(encoding="ascii").splitlines()
+                if line.startswith("Uid:")
+            )
+        except (OSError, StopIteration, UnicodeDecodeError):
+            continue
+        if int(uid_line.split()[1]) == uid:
+            try:
+                count += sum(1 for _ in (status_path.parent / "task").iterdir())
+            except OSError:
+                count += 1
+    return count
+
+
+def _scorer_resource_limits(timeout_seconds: float, process_limit: int) -> None:
     """Apply Linux child-only resource ceilings before generated policy import."""
 
     import resource
@@ -249,7 +276,130 @@ def _scorer_resource_limits(timeout_seconds: float) -> None:
     resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
     resource.setrlimit(resource.RLIMIT_FSIZE, (1024 * 1024, 1024 * 1024))
     resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
-    resource.setrlimit(resource.RLIMIT_NPROC, (16, 16))
+    resource.setrlimit(resource.RLIMIT_NPROC, (process_limit, process_limit))
+
+
+_SCORER_SANDBOX_SCRIPT = r"""
+set -eu
+root=$1
+venv=$2
+python_runtime=$3
+python_binary=$4
+source_root=$5
+scorer=$6
+benchmark=$7
+workspace=$8
+task_id=$9
+
+mount --make-rprivate /
+
+mount_read_only_directory() {
+    source=$1
+    target=$2
+    mkdir -p "$target"
+    mount --rbind "$source" "$target"
+    mount --make-rslave "$target"
+    mount -o remount,ro,bind "$target"
+}
+
+mount_read_only_file() {
+    source=$1
+    target=$2
+    : > "$target"
+    mount --bind "$source" "$target"
+    mount -o remount,ro,bind "$target"
+}
+
+mount_read_only_directory /usr "$root/usr"
+if [ -e /lib ]; then
+    mount_read_only_directory /lib "$root/lib"
+fi
+if [ -e /lib64 ]; then
+    mount_read_only_directory /lib64 "$root/lib64"
+fi
+mount_read_only_directory "$venv" "$root/venv"
+mount_read_only_directory "$python_runtime" "$root/python-runtime"
+mount_read_only_directory "$source_root" "$root/app-src"
+mount_read_only_directory "$benchmark" "$root/benchmark"
+mount_read_only_directory "$workspace" "$root/workspace"
+mkdir -p "$root/dev" "$root/proc" "$root/tmp"
+chmod 1777 "$root/tmp"
+mount_read_only_file /dev/null "$root/dev/null"
+mount_read_only_file /dev/urandom "$root/dev/urandom"
+mount -t proc -o nosuid,nodev,noexec,hidepid=2 proc "$root/proc"
+mount -t tmpfs -o nodev,nosuid,noexec,size=16m tmpfs "$root/tmp"
+mount_read_only_file "$scorer" "$root/scorer.py"
+
+exec /usr/sbin/chroot "$root" /usr/bin/setpriv \
+    --bounding-set=-all \
+    --inh-caps=-all \
+    --ambient-caps=-all \
+    --no-new-privs \
+    "/python-runtime/bin/$python_binary" /scorer.py \
+    --benchmark-root /benchmark \
+    --task-id "$task_id" \
+    --workspace /workspace
+"""
+
+
+def _scorer_sandbox_command(
+    *,
+    sandbox_root: Path,
+    scorer_script: Path,
+    benchmark_root: Path,
+    workspace: Path,
+    task_id: str,
+) -> list[str]:
+    """Build a fail-closed Linux namespace/chroot command for untrusted policy code."""
+
+    if sys.platform != "linux" or os.name != "posix":
+        raise OSError("the scorer sandbox requires Linux")
+    required_commands = ("unshare", "sh", "mount", "chroot", "setpriv")
+    resolved = {name: shutil.which(name) for name in required_commands}
+    missing = tuple(name for name, path in resolved.items() if path is None)
+    if missing:
+        raise OSError(f"missing scorer sandbox commands: {', '.join(missing)}")
+    venv = Path(sys.prefix).resolve()
+    python_executable = Path(sys.executable).resolve()
+    python_runtime = python_executable.parents[1]
+    source_root = Path(__file__).resolve().parents[2]
+    for label, path in (
+        ("virtual environment", venv),
+        ("Python runtime", python_runtime),
+        ("package source", source_root),
+        ("benchmark root", benchmark_root.resolve()),
+        ("workspace", workspace.resolve()),
+    ):
+        if not path.is_dir():
+            raise OSError(f"scorer sandbox {label} is not a directory: {path}")
+    if not scorer_script.resolve().is_file():
+        raise OSError(f"scorer script is not a file: {scorer_script}")
+    sandbox_root.chmod(0o755)
+    return [
+        cast(str, resolved["unshare"]),
+        "--user",
+        "--map-user=65534",
+        "--map-group=65534",
+        "--keep-caps",
+        "--mount",
+        "--net",
+        "--pid",
+        "--fork",
+        "--kill-child",
+        cast(str, resolved["sh"]),
+        "-ceu",
+        _SCORER_SANDBOX_SCRIPT,
+        "scorer-sandbox",
+        str(sandbox_root),
+        str(venv),
+        str(python_runtime),
+        python_executable.name,
+        str(source_root),
+        str(scorer_script.resolve()),
+        str(benchmark_root.resolve()),
+        str(workspace.resolve()),
+        task_id,
+    ]
 
 
 def run_bounded_longitudinal_scorer(
@@ -260,82 +410,87 @@ def run_bounded_longitudinal_scorer(
     workspace: Path,
     timeout_seconds: float,
 ) -> BoundedScorerResult:
-    """Run generated-policy scoring outside the coordinator with a hard timeout."""
+    """Score inside a bounded Linux filesystem/network/PID sandbox."""
 
-    command = [
-        sys.executable,
-        str(scorer_script.resolve()),
-        "--benchmark-root",
-        str(benchmark_root.resolve()),
-        "--task-id",
-        task.task_id,
-        "--workspace",
-        str(workspace.resolve()),
-    ]
     started = time.monotonic()
+    # WSL accounts some host tasks that are not visible in the distribution's
+    # /proc mount. Keep a conservative absolute floor while still bounding forks.
+    process_limit = max(_current_uid_process_count() + 16, 128)
     stdout = ""
     stderr = ""
     exit_code: int | None = None
     status: Literal["succeeded", "timed_out", "crashed", "malformed_output"]
     reason: str | None = None
-    try:
-        process = subprocess.Popen(
-            command,
-            cwd=workspace,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
-            start_new_session=True,
-            preexec_fn=(
-                (lambda: _scorer_resource_limits(timeout_seconds)) if os.name == "posix" else None
-            ),
-            env={
-                "HOME": str(workspace.resolve()),
-                "LANG": "C.UTF-8",
-                "LC_ALL": "C.UTF-8",
-                "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
-                "PYTHONDONTWRITEBYTECODE": "1",
-            },
-        )
-        stdout, stderr = process.communicate(timeout=timeout_seconds)
-        exit_code = process.returncode
-    except subprocess.TimeoutExpired:
-        if os.name == "posix":
-            os.killpg(process.pid, signal.SIGKILL)
-        else:
-            process.kill()
-        stdout, stderr = process.communicate()
-        status = "timed_out"
-        reason = f"exceeded {timeout_seconds:g} seconds"
-    except OSError as error:
-        status = "crashed"
-        reason = f"scorer subprocess could not start: {error}"
-    else:
-        if exit_code != 0:
-            status = "crashed"
-            reason = f"scorer subprocess exited with code {exit_code}"
-        else:
-            try:
-                score = LongitudinalTaskScore.model_validate_json(stdout)
-                if score.task_id != task.task_id:
-                    raise ValueError("scorer returned a different task ID")
-            except (ValueError, TypeError) as error:
-                status = "malformed_output"
-                reason = f"{type(error).__name__}: {error}"
-            else:
-                status = "succeeded"
-                return BoundedScorerResult(
-                    score=score,
-                    receipt=BoundedScorerReceipt(
-                        status=status,
-                        exit_code=exit_code,
-                        duration_seconds=time.monotonic() - started,
-                        stdout_digest=_text_digest(stdout),
-                        stderr_digest=_text_digest(stderr),
-                        timeout_seconds=timeout_seconds,
+    with tempfile.TemporaryDirectory(prefix="acl-scorer-sandbox-") as temporary:
+        sandbox_root = Path(temporary)
+        try:
+            command = _scorer_sandbox_command(
+                sandbox_root=sandbox_root,
+                scorer_script=scorer_script,
+                benchmark_root=benchmark_root,
+                workspace=workspace,
+                task_id=task.task_id,
+            )
+            process = subprocess.Popen(
+                command,
+                cwd=workspace,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                start_new_session=True,
+                preexec_fn=lambda: _scorer_resource_limits(
+                    timeout_seconds,
+                    process_limit,
+                ),
+                env={
+                    "HOME": "/workspace",
+                    "LANG": "C.UTF-8",
+                    "LC_ALL": "C.UTF-8",
+                    "PATH": "/usr/bin:/bin",
+                    "PYTHONDONTWRITEBYTECODE": "1",
+                    "PYTHONPATH": (
+                        f"/venv/lib/python{sys.version_info.major}."
+                        f"{sys.version_info.minor}/site-packages:/app-src"
                     ),
-                )
+                    "TMPDIR": "/tmp",
+                },
+            )
+            stdout, stderr = process.communicate(timeout=timeout_seconds)
+            exit_code = process.returncode
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+            stdout, stderr = process.communicate()
+            status = "timed_out"
+            reason = f"exceeded {timeout_seconds:g} seconds"
+        except OSError as error:
+            status = "crashed"
+            reason = f"scorer sandbox could not start: {error}"
+        else:
+            if exit_code != 0:
+                status = "crashed"
+                reason = f"scorer subprocess exited with code {exit_code}"
+            else:
+                try:
+                    score = LongitudinalTaskScore.model_validate_json(stdout)
+                    if score.task_id != task.task_id:
+                        raise ValueError("scorer returned a different task ID")
+                except (ValueError, TypeError) as error:
+                    status = "malformed_output"
+                    reason = f"{type(error).__name__}: {error}"
+                else:
+                    status = "succeeded"
+                    return BoundedScorerResult(
+                        score=score,
+                        receipt=BoundedScorerReceipt(
+                            status=status,
+                            exit_code=exit_code,
+                            duration_seconds=time.monotonic() - started,
+                            stdout_digest=_text_digest(stdout),
+                            stderr_digest=_text_digest(stderr),
+                            timeout_seconds=timeout_seconds,
+                        ),
+                    )
     assert reason is not None
     return BoundedScorerResult(
         score=_failed_score(task, status=status, reason=reason),

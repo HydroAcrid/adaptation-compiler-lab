@@ -20,8 +20,9 @@ repetition: six target sessions. One profile author, one independent profile rev
 condition-blind judge bring the exact maximum to nine saved-ChatGPT Codex subscription sessions.
 There are no API keys or provider-billed calls.
 
-No role or target session has started. The renderer, task fixtures, scorer, common envelope, and
-preregistration are frozen before profile construction.
+No role or target session has started. The renderer, task fixtures, scorer, common envelope, every
+runtime release/projection/render/manifest byte, and preregistration are frozen before profile
+construction.
 
 ## Contents
 

@@ -163,3 +163,104 @@ def test_bounded_scorer_preserves_successful_score(tmp_path: Path) -> None:
 
     assert result.receipt.status == "succeeded"
     assert result.score.task_id == task.task_id
+    assert result.receipt.sandbox_mode == "linux-user-mount-network-pid-chroot-v1"
+
+
+_VALID_POLICY = """
+def plan_sync(destination_exists: bool, destination_kind: str) -> str:
+    if not destination_exists:
+        return "create"
+    return "atomic_replace"
+"""
+
+
+@pytest.mark.parametrize(
+    "probe",
+    (
+        """
+from pathlib import Path
+try:
+    Path({host_sentinel!r}).read_text(encoding="utf-8")
+except OSError:
+{valid_policy}
+else:
+    raise RuntimeError("host filesystem was visible")
+""",
+        """
+from pathlib import Path
+try:
+    Path("/benchmark/PREREGISTRATION-v1.0.json").write_text("tampered")
+except OSError:
+{valid_policy}
+else:
+    raise RuntimeError("benchmark mount was writable")
+""",
+        """
+from pathlib import Path
+try:
+    Path("/workspace/hostile.txt").write_text("tampered")
+except OSError:
+{valid_policy}
+else:
+    raise RuntimeError("workspace mount was writable")
+""",
+        """
+import os
+if os.getppid() == 0:
+{valid_policy}
+else:
+    raise RuntimeError("coordinator process was visible")
+""",
+        """
+from pathlib import Path
+status = Path("/proc/self/status").read_text(encoding="ascii")
+effective = next(line for line in status.splitlines() if line.startswith("CapEff:"))
+if int(effective.split()[1], 16) == 0:
+{valid_policy}
+else:
+    raise RuntimeError("sandbox capabilities were not dropped")
+""",
+        """
+import socket
+try:
+    socket.create_connection(("1.1.1.1", 53), timeout=0.1)
+except OSError:
+{valid_policy}
+else:
+    raise RuntimeError("external network was reachable")
+""",
+    ),
+)
+def test_scorer_sandbox_hides_host_and_blocks_mutation_and_network(
+    tmp_path: Path,
+    probe: str,
+) -> None:
+    benchmark = _benchmark()
+    task = load_longitudinal_comparison(benchmark).tasks[0]
+    workspace = tmp_path / "workspace"
+    shutil.copytree(benchmark / task.fixture_directory, workspace)
+    sentinel = tmp_path / "host-sentinel.txt"
+    sentinel.write_text("private-host-value", encoding="utf-8")
+    valid_policy = "\n".join(
+        f"    {line}" if line else line for line in _VALID_POLICY.strip().splitlines()
+    )
+    source = probe.format(
+        host_sentinel=str(sentinel),
+        valid_policy=valid_policy,
+    )
+    (workspace / "policy.py").write_text(source, encoding="utf-8")
+    preregistration = benchmark / "PREREGISTRATION-v1.0.json"
+    preregistration_before = preregistration.read_bytes()
+
+    result = run_bounded_longitudinal_scorer(
+        scorer_script=_repo() / "scripts" / "score_longitudinal_task.py",
+        benchmark_root=benchmark,
+        task=task,
+        workspace=workspace,
+        timeout_seconds=5,
+    )
+
+    assert result.receipt.status == "succeeded"
+    assert sentinel.read_text(encoding="utf-8") == "private-host-value"
+    assert preregistration.read_bytes() == preregistration_before
+    assert not (workspace / "hostile.txt").exists()

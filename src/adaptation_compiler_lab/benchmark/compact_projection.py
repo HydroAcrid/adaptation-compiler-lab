@@ -79,6 +79,7 @@ class CompactProjectionComparisonDesign(FrozenModel):
     renderer_id: Literal["codex-compact-runtime"] = "codex-compact-runtime"
     renderer_version: Literal["1.0.0"] = "1.0.0"
     runtime_fixture_measurements_digest: Sha256Digest
+    runtime_fixture_tree_digest: Sha256Digest
     shared_execution_envelope_digest: Sha256Digest
     evidence_stage_count: Literal[3] = 3
     tasks_per_stage: Literal[1] = 1
@@ -166,6 +167,8 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
         design.runtime_fixture_measurements_digest
     ):
         raise ValueError("compact runtime measurements digest drifted")
+    if development_tree_digest(root / "runtime-fixture") != (design.runtime_fixture_tree_digest):
+        raise ValueError("compact runtime fixture tree digest drifted")
     if sha256_file(root / "runtime-fixture" / "shared-execution-envelope.md") != (
         design.shared_execution_envelope_digest
     ):

@@ -6,7 +6,7 @@ Status: designed and frozen; no live sessions started.
 
 1. Freeze runtime renderer version and source digest.
 2. Freeze all task manifests, fixture tree digests, independent scorer digest, shared envelope
-   digest, and preregistration checksum.
+   digest, the deterministic full runtime-fixture tree digest, and preregistration checksum.
 3. Prove local scorer sensitivity with reference, stale-rule, missed-exception, scope-leak,
    unnecessary-change, and forbidden-path implementations.
 4. Only then may an isolated profile author receive the approved evidence.

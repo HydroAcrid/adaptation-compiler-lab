@@ -125,8 +125,25 @@ class ExternalGovernedRelease(FrozenModel):
             raise ValueError("external release artifacts must be sorted and unique")
         if binding_ids != artifact_ids:
             raise ValueError("every external release artifact requires exact governance binding")
+        for artifact, binding in zip(
+            self.active_artifacts,
+            self.active_bindings,
+            strict=True,
+        ):
+            if binding.artifact_ref != artifact.artifact_ref:
+                raise ValueError("governance binding must reference the exact artifact version")
+            if binding.scope != artifact.scope:
+                raise ValueError("governance binding scope must exactly match its artifact")
+            if binding.evidence_links != artifact.evidence_links:
+                raise ValueError(
+                    "governance binding evidence links must exactly match its artifact"
+                )
         if self.revoked_artifact_ids != tuple(sorted(set(self.revoked_artifact_ids))):
             raise ValueError("revoked artifact IDs must be sorted and unique")
+        if any(item.revoked for item in self.active_artifacts):
+            raise ValueError("revoked artifacts cannot be active in an external release")
+        if set(artifact_ids) & set(self.revoked_artifact_ids):
+            raise ValueError("revoked artifact IDs cannot also be active")
         if self.scoped_supersessions != tuple(sorted(set(self.scoped_supersessions))):
             raise ValueError("scoped supersessions must be sorted and unique")
         return self

@@ -215,16 +215,20 @@ def _scope_applicability(
         return _Applicability.NO_MATCH, ()
     conditions = [condition for _, condition in checks if condition is not None]
 
-    if scope.activation_conditions or scope.exclusions:
+    if scope.activation_conditions:
         if ScopeDimension.ACTIVATION_CONDITIONS in known:
             labels = set(context.condition_labels)
-            if not set(scope.activation_conditions) <= labels or set(scope.exclusions) & labels:
+            if not set(scope.activation_conditions) <= labels:
                 return _Applicability.NO_MATCH, ()
         else:
-            if scope.activation_conditions:
-                conditions.append("conditions include " + ", ".join(scope.activation_conditions))
-            if scope.exclusions:
-                conditions.append("conditions exclude " + ", ".join(scope.exclusions))
+            conditions.append("conditions include " + ", ".join(scope.activation_conditions))
+    if scope.exclusions:
+        if ScopeDimension.EXCLUSIONS in known:
+            labels = set(context.condition_labels)
+            if set(scope.exclusions) & labels:
+                return _Applicability.NO_MATCH, ()
+        else:
+            conditions.append("conditions exclude " + ", ".join(scope.exclusions))
 
     has_validity = (
         scope.valid_from is not None
@@ -271,7 +275,13 @@ def build_runtime_projection(
 ) -> CanonicalRuntimeProjection:
     """Resolve known scope, omit inactive rules, and retain only effective clauses."""
 
-    artifacts = {item.artifact_ref.record_id: item for item in release.active_artifacts}
+    revoked_ids = set(release.revoked_artifact_ids)
+    all_artifacts = {item.artifact_ref.record_id: item for item in release.active_artifacts}
+    artifacts = {
+        artifact_id: artifact
+        for artifact_id, artifact in all_artifacts.items()
+        if not artifact.revoked and artifact_id not in revoked_ids
+    }
     applicability: dict[str, tuple[_Applicability, tuple[str, ...]]] = {
         artifact_id: _scope_applicability(artifact, context)
         for artifact_id, artifact in artifacts.items()
@@ -346,7 +356,7 @@ def build_runtime_projection(
     omitted = _sorted_refs(
         {
             artifact.artifact_ref
-            for artifact_id, artifact in artifacts.items()
+            for artifact_id, artifact in all_artifacts.items()
             if artifact_id not in selected
         }
     )

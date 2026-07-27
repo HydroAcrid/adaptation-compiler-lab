@@ -7,6 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from adaptation_compiler_lab.benchmark.compact_projection import (
     CompactProjectionTask,
     load_compact_projection_design,
@@ -249,3 +251,27 @@ def test_runtime_fixture_manifests_bind_every_exact_rendered_clause() -> None:
             )
             == manifest
         )
+
+
+def test_preregistration_rejects_same_length_runtime_fixture_substitution(
+    tmp_path: Path,
+) -> None:
+    copied_repo = tmp_path / "repo"
+    copied = copied_repo / "development_benchmark_compact_projection"
+    shutil.copytree(_root(), copied)
+    scorer = copied_repo / "scripts" / "score_compact_projection_task.py"
+    scorer.parent.mkdir(parents=True)
+    shutil.copy2(_repo() / "scripts" / scorer.name, scorer)
+    renderer = copied_repo / "src/adaptation_compiler_lab/targets/codex_runtime.py"
+    renderer.parent.mkdir(parents=True)
+    shutil.copy2(
+        _repo() / "src/adaptation_compiler_lab/targets/codex_runtime.py",
+        renderer,
+    )
+    runtime = copied / "runtime-fixture" / "codex-runtime-stage-1.md"
+    original = runtime.read_text(encoding="utf-8")
+    runtime.write_text(original.replace("recoverable", "forgettable"), encoding="utf-8")
+    assert len(runtime.read_bytes()) == len(original.encode("utf-8"))
+
+    with pytest.raises(ValueError, match="runtime fixture tree digest drifted"):
+        load_compact_projection_design(copied)

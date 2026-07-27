@@ -36,8 +36,11 @@ written.
 All five post-merge PR #18 findings were confirmed and repaired for future coordinators:
 
 1. Unblinding verifies the exact private-plan file digest before parsing its mapping or run order.
-2. Generated policy scoring runs in a subprocess with a hard timeout. Timeout, `SystemExit`,
-   `os._exit`, crash, and malformed JSON become failed scores with durable receipts.
+2. Generated policy scoring runs in a Linux user/mount/network/PID namespace and read-only chroot
+   with dropped capabilities plus hard wall, CPU, memory, file, descriptor, and process ceilings.
+   Host files, the network, coordinator processes, benchmark files, and task files are unavailable
+   or read-only. Timeout, `SystemExit`, `os._exit`, crash, and malformed JSON become failed scores
+   with durable receipts.
 3. Leakage scanning fingerprints normalized windows from the actual condition materials rather
    than checking a few labels.
 4. Git state uses NUL-delimited porcelain-v1 parsing, reads both status columns, and handles
@@ -46,6 +49,13 @@ All five post-merge PR #18 findings were confirmed and repaired for future coord
 
 These changes are prospective. No Milestone 6A observation, receipt, score, or rating was
 rewritten.
+
+PR #19 added six pre-merge hardening requirements. The implementation now resolves activation
+conditions and exclusions as independent scope dimensions, rejects and defensively omits revoked
+artifacts, requires complete artifact/scope/evidence equality in governance bindings, compares
+manifest input with an exact deterministic re-render, uses the namespace/chroot scorer described
+above, and binds a deterministic digest of every runtime-fixture artifact into preregistration.
+Regression tests cover every finding, including same-length fixture substitution.
 
 ## Clause-level analysis
 

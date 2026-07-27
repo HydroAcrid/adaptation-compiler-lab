@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import cast
 
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -27,6 +28,7 @@ from adaptation_compiler_lab.runtime import (
     build_runtime_projection,
 )
 from adaptation_compiler_lab.serialization import canonical_digest, canonical_json
+from adaptation_compiler_lab.targets.base import sha256_text
 from adaptation_compiler_lab.targets.codex_runtime import (
     SharedExecutionEnvelope,
     build_runtime_projection_manifest,
@@ -200,6 +202,106 @@ def test_shared_execution_envelope_is_separate_and_exactly_measured() -> None:
     assert "Allowed paths: policy.py." in envelope.content
     assert "parent or host paths" in envelope.content
     assert "Allowed paths" not in adaptation.content
+
+
+def test_activation_conditions_and_exclusions_resolve_independently() -> None:
+    release = _releases()[0]
+    artifact = release.active_artifacts[0]
+    scope = artifact.scope.model_copy(
+        update={
+            "activation_conditions": ("approved",),
+            "exclusions": ("blocked",),
+        }
+    )
+    scoped = release.model_copy(
+        update={
+            "active_artifacts": (artifact.model_copy(update={"scope": scope}),),
+            "active_bindings": (release.active_bindings[0].model_copy(update={"scope": scope}),),
+        }
+    )
+    exclusion_known = _context().model_copy(
+        update={
+            "known_dimensions": tuple(
+                sorted(
+                    (*_context().known_dimensions, ScopeDimension.EXCLUSIONS),
+                    key=lambda item: item.value,
+                )
+            ),
+            "condition_labels": ("blocked",),
+        }
+    )
+    activation_known = _context().model_copy(
+        update={
+            "known_dimensions": tuple(
+                sorted(
+                    (*_context().known_dimensions, ScopeDimension.ACTIVATION_CONDITIONS),
+                    key=lambda item: item.value,
+                )
+            ),
+            "condition_labels": ("approved",),
+        }
+    )
+
+    assert not build_runtime_projection(scoped, exclusion_known).clauses
+    unresolved_exclusion = build_runtime_projection(scoped, activation_known)
+    assert unresolved_exclusion.clauses
+    assert "conditions exclude blocked" in unresolved_exclusion.clauses[0].text
+
+
+def test_revoked_artifacts_are_rejected_and_defensively_omitted() -> None:
+    release = _releases()[0]
+    revoked = release.active_artifacts[0].model_copy(update={"revoked": True})
+    raw = release.model_dump(mode="json", round_trip=True)
+    raw["active_artifacts"][0]["revoked"] = True
+
+    with pytest.raises(ValueError, match="revoked artifacts cannot be active"):
+        ExternalGovernedRelease.model_validate_json(canonical_json(raw))
+
+    bypassed = release.model_copy(update={"active_artifacts": (revoked,)})
+    projection = build_runtime_projection(bypassed, _context())
+    assert not projection.clauses
+    assert projection.omitted_artifact_refs == (revoked.artifact_ref,)
+
+    raw = release.model_dump(mode="json", round_trip=True)
+    raw["revoked_artifact_ids"] = [release.active_artifacts[0].artifact_ref.record_id]
+    with pytest.raises(ValueError, match="cannot also be active"):
+        ExternalGovernedRelease.model_validate_json(canonical_json(raw))
+
+
+@pytest.mark.parametrize("field", ("artifact_ref", "scope", "evidence_links"))
+def test_governance_bindings_must_exactly_match_active_artifacts(field: str) -> None:
+    release = _releases()[0]
+    raw = release.model_dump(mode="json", round_trip=True)
+    if field == "artifact_ref":
+        raw["active_bindings"][0]["artifact_ref"]["record_version"] = "9.0.0"
+    elif field == "scope":
+        raw["active_bindings"][0]["scope"]["project_ids"] = ["wrong-project"]
+    else:
+        raw["active_bindings"][0]["evidence_links"]["supporting"][0]["record_version"] = "9.0.0"
+
+    with pytest.raises(ValueError, match="governance binding"):
+        ExternalGovernedRelease.model_validate_json(canonical_json(raw))
+
+
+def test_manifest_rejects_arbitrary_content_with_borrowed_clause_digests() -> None:
+    release = _releases()[2]
+    projection = build_runtime_projection(release, _context())
+    legitimate = render_codex_runtime_projection(projection)
+    content = "- unrelated but internally self-consistent target instruction\n"
+    forged = legitimate.model_copy(
+        update={
+            "content": content,
+            "content_digest": sha256_text(content),
+            "utf8_bytes": len(content.encode("utf-8")),
+        }
+    )
+
+    with pytest.raises(ValueError, match="does not exactly match"):
+        build_runtime_projection_manifest(
+            release=release,
+            projection=projection,
+            rendered=forged,
+        )
 
 
 @given(

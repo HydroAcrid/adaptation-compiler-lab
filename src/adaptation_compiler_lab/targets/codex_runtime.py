@@ -127,8 +127,9 @@ def build_runtime_projection_manifest(
 
     if projection.external_release_digest != release.content_digest:
         raise ValueError("runtime projection does not bind the supplied external release")
-    if rendered.clause_digests != tuple(item.content_digest for item in projection.clauses):
-        raise ValueError("rendered clause order or digest drifted")
+    expected_rendered = render_codex_runtime_projection(projection)
+    if rendered != expected_rendered:
+        raise ValueError("rendered runtime content does not exactly match its projection")
     bindings_by_artifact = {item.artifact_ref.record_id: item for item in release.active_bindings}
     clause_bindings = tuple(
         ClauseProvenanceBinding(

@@ -21,9 +21,13 @@ bytes. The identical 362-byte execution envelope is separate from both compariso
 Every target clause binds to exact artifact/evidence/consent/evaluation/review lineage.
 
 All five PR #18 evaluation-instrument findings are repaired prospectively: exact private-plan
-digest verification, bounded subprocess scoring and durable failures, actual-material excerpt
-leakage detection, NUL-delimited two-column Git status parsing, and exact normalized byte
-measurement.
+digest verification, sandboxed scoring and durable failures, actual-material excerpt leakage
+detection, NUL-delimited two-column Git status parsing, and exact normalized byte measurement.
+PR #19 review then hardened the new boundary further: activation and exclusion dimensions resolve
+independently; revoked artifacts cannot reactivate; governance bindings require exact artifact,
+scope, and evidence equality; manifests certify only an exact deterministic re-render; generated
+policy executes in a read-only Linux user/mount/network/PID namespace and chroot; and the
+preregistration binds the complete runtime-fixture tree rather than size metadata alone.
 
 Three stage packs demonstrate the intended lifecycle: a persistent-destination backup rule; a
 narrow generated-cache atomic-replacement exception; then a refuse-by-default persistent policy
