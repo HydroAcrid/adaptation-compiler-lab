@@ -1,10 +1,17 @@
 # Frozen execution protocol
 
-Status: v1.4 designed and frozen; no live sessions started. Byte-identical v1.0 through v1.3
-registrations remain as superseded pre-execution history. V1.4 keeps generated policy execution in
-an untrusted child worker inside the answer-blind filesystem/network/PID sandbox. A trusted
-supervisor owns official observation output; only the parent scorer sees expected outcomes and
-computes pass/fail. Pre-exec startup failures remain durable failed receipts.
+Status: v1.6 designed and frozen; no live sessions started. Byte-identical v1.0 through v1.5
+registrations remain as superseded pre-execution history. V1.6 keeps generated policy execution in
+an untrusted child worker inside the answer-blind filesystem/network/PID sandbox and admits only a
+capability-free Python decision subset, preventing generated code from writing the wrapper's
+observation channel. A trusted supervisor owns official observation output; only the parent scorer
+sees expected outcomes and computes pass/fail. Target-profile compatibility and exact source-
+transition digests are checked before projection/release construction. Pre-exec startup failures
+remain durable failed receipts.
+
+V1.6 is metadata-only: it binds deterministic formatter output for the observer after v1.5's
+integrity check correctly rejected source-byte drift. It reuses the exact v1.5 runtime fixture and
+changes no task, condition material, scorer behavior, session limit, or cost.
 
 ## Freeze order
 

@@ -321,6 +321,7 @@ class LongitudinalDogfoodCompiler:
                     stage=transition.stage,
                     transition_id=transition.transition_id,
                     transition_kind=transition.kind,
+                    source_transition_digest=canonical_digest(transition),
                     release_id=release.release_ref.record_id,
                     release_digest=release.release_ref.content_digest,
                     rendered_pack=pack,

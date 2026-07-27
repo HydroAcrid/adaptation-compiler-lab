@@ -74,6 +74,7 @@ def main() -> int:
             ScopeDimension.TARGET_FAMILIES,
             ScopeDimension.VALIDITY_WINDOW,
         ),
+        target_profile_id=default_target_profile(TargetKind.CODEX).capabilities.profile_id,
         subject_id=PUBLIC_DOGFOOD_SUBJECT,
         target_family=TargetKind.CODEX.value,
         evaluated_at=PUBLIC_DOGFOOD_NOW + timedelta(days=1),

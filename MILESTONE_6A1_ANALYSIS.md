@@ -2,14 +2,19 @@
 
 Status: implementation and local validation complete; no live comparison executed.
 
-Protocol note (2026-07-27): unexecuted v1.0 through v1.3 registrations are preserved. Review first
+Protocol note (2026-07-27): unexecuted v1.0 through v1.5 registrations are preserved. Review first
 identified scalar/list-to-tuple coercion, then demonstrated that imported policy code could exit
 the trusted scorer process after printing fabricated checks, and finally identified a pre-exec
 resource-limit exception that could escape without a failure receipt. A final pass separated
 untrusted policy workers from official observation output and preserved scope on verification
-clauses. Current v1.4 binds the trusted scorer, answer-blind observer supervisor, repaired sandbox,
-versioned runtime fixture, and exact links through all prior designs. No live profile, target, or
-judge session preceded any amendment.
+clauses. A further pass showed that worker stdout was still writable by generated code, target
+compatibility was not enforced by the compact path, and same-ID transition substitution could
+misstate lifecycle history. V1.5 restricts executable policy syntax to a capability-free
+subset, binds target profile compatibility, binds each snapshot to the complete transition digest,
+and retains exact links through all prior designs. Current v1.6 is a metadata-only successor that
+binds formatter-normalized observer bytes after the integrity gate rejected post-freeze source
+drift; it reuses the exact v1.5 runtime fixture. No live profile, target, or judge session preceded
+any amendment.
 
 ## Question
 
@@ -85,9 +90,19 @@ uses the same separation instead of executing the immutable historical Milestone
 Verification clauses retain the same unresolved scope as their source behavior and deduplicate
 only at equal effective scope. V1.4 binds these repairs and a new versioned runtime fixture.
 
+The next pass rejects imports, process exits, I/O, ambient builtins, attributes, decorators, and
+other capability-bearing syntax before a generated policy can run. Only literal decision logic,
+safe helper functions, and `ValueError` are available, so worker-channel bytes are emitted only by
+the wrapper. Runtime projection now fails closed when an applicable artifact excludes the selected
+Codex profile. Dogfood snapshots carry the canonical digest of the complete approved transition,
+and external release construction requires an exact match before creating lifecycle events. V1.5
+binds these repairs and a new versioned fixture while preserving v1.0 through v1.4 byte-for-byte.
+V1.6 preserves v1.5 byte-for-byte and changes only the observer source digest required after
+deterministic formatting.
+
 ## Clause-level analysis
 
-`development_benchmark_compact_projection/CLAUSE_ANALYSIS-v1.0.json` classifies every line,
+`development_benchmark_compact_projection/CLAUSE_ANALYSIS-v1.2.json` classifies every line,
 including blank-line bytes, in all three old compiled packs, all three strong profiles, and all
 three proposed runtime projections. A line may retain secondary semantic roles where one compact
 sentence combines action, scope, or verification.

@@ -70,17 +70,18 @@ def main() -> int:
         raise ValueError("historical profile receipt stages are malformed")
     author_seconds = sum(_duration(item, "author") for item in stages if isinstance(item, dict))
     reviewer_seconds = sum(_duration(item, "review") for item in stages if isinstance(item, dict))
+    profile = default_target_profile(TargetKind.CODEX)
     context = RuntimeProjectionContext(
         known_dimensions=(
             ScopeDimension.SUBJECT_IDS,
             ScopeDimension.TARGET_FAMILIES,
             ScopeDimension.VALIDITY_WINDOW,
         ),
+        target_profile_id=profile.capabilities.profile_id,
         subject_id=PUBLIC_DOGFOOD_SUBJECT,
         target_family=TargetKind.CODEX.value,
         evaluated_at=PUBLIC_DOGFOOD_NOW + timedelta(days=1),
     )
-    profile = default_target_profile(TargetKind.CODEX)
     started = time.perf_counter()
     for _ in range(arguments.iterations):
         compiled = LongitudinalDogfoodCompiler(profile).compile(transitions)
@@ -98,14 +99,14 @@ def main() -> int:
         (
             repo
             / "development_benchmark_compact_projection"
-            / "runtime-fixture-v1.4"
+            / "runtime-fixture-v1.5"
             / "MEASUREMENTS-v1.0.json"
         ).read_text(encoding="utf-8")
     )
     _exclusive_write(
         arguments.output.resolve(),
         {
-            "measurement_version": "1.1.0",
+            "measurement_version": "1.2.0",
             "deterministic_compiler_operations": {
                 "clause_manifest_bindings_per_cycle": 3,
                 "governed_release_freezes_per_cycle": 3,

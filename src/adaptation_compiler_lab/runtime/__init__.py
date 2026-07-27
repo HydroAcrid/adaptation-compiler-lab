@@ -1,6 +1,7 @@
 """Governed external releases and compact target-visible runtime projections."""
 
 from adaptation_compiler_lab.runtime.compiler import (
+    RuntimeProjectionError,
     build_external_governed_releases,
     build_runtime_projection,
 )
@@ -25,6 +26,7 @@ __all__ = [
     "RuntimeClause",
     "RuntimeClauseRole",
     "RuntimeProjectionContext",
+    "RuntimeProjectionError",
     "RuntimeProjectionManifest",
     "build_external_governed_releases",
     "build_runtime_projection",

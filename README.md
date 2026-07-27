@@ -10,7 +10,10 @@ product result. The compiler now keeps complete governance, provenance, history,
 in an external governed release while sending Codex only effective behavior, unresolved scope or
 precedence, and essential verification. The public three-stage engineering fixture renders 163,
 454, and 461 adaptation bytes, below the independently maintained profile sizes of 227, 508, and
-462 bytes. This establishes compactness and lineage preservation, not a performance advantage.
+462 bytes. The current unexecuted v1.6 design also binds each compiled snapshot to the complete
+approved transition, enforces the selected Codex target profile, and evaluates generated benchmark
+policies through a capability-free Python subset so policy code cannot forge scorer channels.
+This establishes compactness and lineage preservation, not a performance advantage.
 
 The next public comparison is frozen but unexecuted: three fresh tasks, two conditions, one
 repetition, one isolated profile-author session, one reviewer session, and one secondary blind

@@ -114,11 +114,11 @@ def _workspace(tmp_path: Path, task: CompactProjectionTask, source: str) -> Path
 def test_fresh_protocol_is_hash_frozen_and_unexecuted() -> None:
     root = _root()
     design = load_compact_projection_design(root)
-    expected = (root / "PREREGISTRATION-v1.4.sha256").read_text(encoding="ascii").split()[0]
+    expected = (root / "PREREGISTRATION-v1.6.sha256").read_text(encoding="ascii").split()[0]
 
-    assert sha256_file(root / "PREREGISTRATION-v1.4.json") == f"sha256:{expected}"
-    assert design.design_version == "1.4.0"
-    assert design.amendment_reason == "trusted_observation_channel_and_scoped_verification"
+    assert sha256_file(root / "PREREGISTRATION-v1.6.json") == f"sha256:{expected}"
+    assert design.design_version == "1.6.0"
+    assert design.amendment_reason == "observer_format_normalization"
     assert design.supersedes_design_digest
     assert design.superseded_scorer_digest
     assert design.policy_observer_digest
@@ -234,14 +234,13 @@ def test_scorer_rejects_non_tuple_return_contract(
     assert not checks["compact-s3-diagnostic-durable-default"]
 
 
-def test_policy_cannot_forge_trusted_score_output(tmp_path: Path) -> None:
+def test_policy_cannot_forge_worker_observation_output(tmp_path: Path) -> None:
     task = load_compact_projection_design(_root()).tasks[2]
     fabricated = {
         "detail": None,
-        "observation_version": "1.1.0",
-        "scenario_id": task.scenarios[0].scenario_id,
         "status": "returned",
         "value": ["refuse_replacement"],
+        "worker_version": "1.0.0",
     }
     source = f"import json, os\nprint(json.dumps({fabricated!r}))\nos._exit(0)\n"
 
@@ -265,7 +264,7 @@ def test_validity_gate_detects_forbidden_path_defect() -> None:
 
 
 def test_runtime_fixture_manifests_bind_every_exact_rendered_clause() -> None:
-    root = _root() / "runtime-fixture-v1.4"
+    root = _root() / "runtime-fixture-v1.5"
     measurements = json.loads((root / "MEASUREMENTS-v1.0.json").read_text(encoding="utf-8"))
     assert measurements["shared_execution_envelope_bytes"] == 362
 
@@ -322,7 +321,7 @@ def test_preregistration_rejects_same_length_runtime_fixture_substitution(
         _repo() / "src/adaptation_compiler_lab/targets/codex_runtime.py",
         renderer,
     )
-    runtime = copied / "runtime-fixture-v1.4" / "codex-runtime-stage-1.md"
+    runtime = copied / "runtime-fixture-v1.5" / "codex-runtime-stage-1.md"
     original = runtime.read_text(encoding="utf-8")
     runtime.write_text(original.replace("recoverable", "forgettable"), encoding="utf-8")
     assert len(runtime.read_bytes()) == len(original.encode("utf-8"))
@@ -488,4 +487,68 @@ def test_trusted_observation_amendment_generator_cannot_replace_frozen_v1_4() ->
     assert before == (
         (root / "PREREGISTRATION-v1.4.json").read_bytes(),
         (root / "PREREGISTRATION-v1.4.sha256").read_bytes(),
+    )
+
+
+def test_restricted_policy_amendment_generator_cannot_replace_frozen_v1_5() -> None:
+    root = _root()
+    before = (
+        (root / "PREREGISTRATION-v1.5.json").read_bytes(),
+        (root / "PREREGISTRATION-v1.5.sha256").read_bytes(),
+    )
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(_repo() / "scripts" / "supersede_compact_projection_protocol_v1_5.py"),
+            "--repo",
+            str(_repo()),
+            "--benchmark-root",
+            str(root),
+        ],
+        cwd=_repo(),
+        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=10,
+    )
+
+    assert completed.returncode != 0
+    assert "already frozen" in completed.stderr
+    assert before == (
+        (root / "PREREGISTRATION-v1.5.json").read_bytes(),
+        (root / "PREREGISTRATION-v1.5.sha256").read_bytes(),
+    )
+
+
+def test_observer_format_amendment_generator_cannot_replace_frozen_v1_6() -> None:
+    root = _root()
+    before = (
+        (root / "PREREGISTRATION-v1.6.json").read_bytes(),
+        (root / "PREREGISTRATION-v1.6.sha256").read_bytes(),
+    )
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(_repo() / "scripts" / "supersede_compact_projection_protocol_v1_6.py"),
+            "--repo",
+            str(_repo()),
+            "--benchmark-root",
+            str(root),
+        ],
+        cwd=_repo(),
+        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=10,
+    )
+
+    assert completed.returncode != 0
+    assert "already frozen" in completed.stderr
+    assert before == (
+        (root / "PREREGISTRATION-v1.6.json").read_bytes(),
+        (root / "PREREGISTRATION-v1.6.sha256").read_bytes(),
     )

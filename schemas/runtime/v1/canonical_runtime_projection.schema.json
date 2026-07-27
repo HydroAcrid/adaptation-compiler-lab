@@ -223,6 +223,21 @@
           "default": null,
           "title": "Target Family"
         },
+        "target_profile_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Profile Id"
+        },
         "task_class": {
           "anyOf": [
             {

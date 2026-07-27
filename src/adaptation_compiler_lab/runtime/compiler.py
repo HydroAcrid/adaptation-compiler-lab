@@ -59,6 +59,10 @@ def build_external_governed_releases(
     for transition, snapshot in zip(transitions, result.stages, strict=True):
         if transition.stage != snapshot.stage or transition.transition_id != snapshot.transition_id:
             raise RuntimeProjectionError("transition does not bind its compiled snapshot")
+        if snapshot.source_transition_digest != canonical_digest(transition):
+            raise RuntimeProjectionError(
+                "compiled snapshot does not bind the exact transition contents"
+            )
         evidence_ref = cast(EvidenceRef, record_ref(transition.source_evidence))
         events.append(
             GovernedLifecycleEvent(
@@ -286,6 +290,23 @@ def build_runtime_projection(
         artifact_id: _scope_applicability(artifact, context)
         for artifact_id, artifact in artifacts.items()
     }
+    compatible_profile_ids = {
+        value for value in (context.target_profile_id, context.target_family) if value is not None
+    }
+    incompatible = tuple(
+        sorted(
+            artifact_id
+            for artifact_id, artifact in artifacts.items()
+            if applicability[artifact_id][0] is not _Applicability.NO_MATCH
+            and artifact.target_compatibility
+            and not compatible_profile_ids & set(artifact.target_compatibility)
+        )
+    )
+    if incompatible:
+        raise RuntimeProjectionError(
+            "runtime target profile is incompatible with active artifacts: "
+            + ", ".join(incompatible)
+        )
     selected = {
         artifact_id: artifact
         for artifact_id, artifact in artifacts.items()

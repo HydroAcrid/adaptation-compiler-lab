@@ -157,6 +157,7 @@ class RuntimeProjectionContext(FrozenModel):
     """Known and unknown scope dimensions at projection time."""
 
     known_dimensions: tuple[ScopeDimension, ...]
+    target_profile_id: Identifier | None = None
     subject_id: Identifier | None = None
     workspace_id: Identifier | None = None
     project_id: Identifier | None = None

@@ -61,7 +61,15 @@ class CompactProjectionTask(FrozenModel):
 
 
 class CompactProjectionComparisonDesign(FrozenModel):
-    design_version: Literal["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0"] = "1.0.0"
+    design_version: Literal[
+        "1.0.0",
+        "1.1.0",
+        "1.2.0",
+        "1.3.0",
+        "1.4.0",
+        "1.5.0",
+        "1.6.0",
+    ] = "1.0.0"
     design_id: Literal["milestone-6a1-compact-runtime-public-development"] = (
         "milestone-6a1-compact-runtime-public-development"
     )
@@ -113,6 +121,8 @@ class CompactProjectionComparisonDesign(FrozenModel):
             "isolated_policy_observation",
             "preexec_failure_receipt",
             "trusted_observation_channel_and_scoped_verification",
+            "restricted_policy_runtime_target_binding_and_transition_lineage",
+            "observer_format_normalization",
         ]
         | None
     ) = None
@@ -187,6 +197,25 @@ class CompactProjectionComparisonDesign(FrozenModel):
             and self.amendment_reason != "trusted_observation_channel_and_scoped_verification"
         ):
             raise ValueError("compact projection v1.4 requires its registered amendment reason")
+        if self.design_version == "1.5.0" and any(
+            item is None for item in (*amendment, *isolation)
+        ):
+            raise ValueError("compact projection v1.5 requires complete isolation metadata")
+        if (
+            self.design_version == "1.5.0"
+            and self.amendment_reason
+            != "restricted_policy_runtime_target_binding_and_transition_lineage"
+        ):
+            raise ValueError("compact projection v1.5 requires its registered amendment reason")
+        if self.design_version == "1.6.0" and any(
+            item is None for item in (*amendment, *isolation)
+        ):
+            raise ValueError("compact projection v1.6 requires complete isolation metadata")
+        if (
+            self.design_version == "1.6.0"
+            and self.amendment_reason != "observer_format_normalization"
+        ):
+            raise ValueError("compact projection v1.6 requires its registered amendment reason")
         return self
 
     @property
@@ -206,6 +235,8 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
     preregistration = next(
         path
         for path in (
+            root / "PREREGISTRATION-v1.6.json",
+            root / "PREREGISTRATION-v1.5.json",
             root / "PREREGISTRATION-v1.4.json",
             root / "PREREGISTRATION-v1.3.json",
             root / "PREREGISTRATION-v1.2.json",
@@ -226,6 +257,8 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
         "1.2.0": "1.1",
         "1.3.0": "1.2",
         "1.4.0": "1.3",
+        "1.5.0": "1.4",
+        "1.6.0": "1.5",
     }
     current = design
     while current.design_version in chain:
@@ -264,7 +297,13 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
         design.independent_scorer_digest
     ):
         raise ValueError("compact projection scorer digest drifted")
-    if design.design_version in {"1.2.0", "1.3.0", "1.4.0"}:
+    if design.design_version in {
+        "1.2.0",
+        "1.3.0",
+        "1.4.0",
+        "1.5.0",
+        "1.6.0",
+    }:
         if sha256_file(repo / "scripts" / "observe_compact_projection_policy.py") != (
             design.policy_observer_digest
         ):
@@ -279,9 +318,12 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
         != design.renderer_source_digest
     ):
         raise ValueError("compact runtime renderer source digest drifted")
-    runtime_fixture = root / (
-        "runtime-fixture-v1.4" if design.design_version == "1.4.0" else "runtime-fixture"
-    )
+    runtime_fixture_name = {
+        "1.4.0": "runtime-fixture-v1.4",
+        "1.5.0": "runtime-fixture-v1.5",
+        "1.6.0": "runtime-fixture-v1.5",
+    }.get(design.design_version, "runtime-fixture")
+    runtime_fixture = root / runtime_fixture_name
     if sha256_file(runtime_fixture / "MEASUREMENTS-v1.0.json") != (
         design.runtime_fixture_measurements_digest
     ):

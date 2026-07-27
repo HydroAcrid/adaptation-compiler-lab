@@ -24,6 +24,7 @@ from adaptation_compiler_lab.runtime import (
     ExternalGovernedRelease,
     RuntimeClauseRole,
     RuntimeProjectionContext,
+    RuntimeProjectionError,
     build_external_governed_releases,
     build_runtime_projection,
 )
@@ -70,6 +71,7 @@ def _context(
         dimensions.append(ScopeDimension.PROJECT_IDS)
     return RuntimeProjectionContext(
         known_dimensions=tuple(sorted(dimensions, key=lambda item: item.value)),
+        target_profile_id=default_target_profile(TargetKind.CODEX).capabilities.profile_id,
         subject_id=PUBLIC_DOGFOOD_SUBJECT,
         project_id=project_id,
         target_family=TargetKind.CODEX.value,
@@ -200,6 +202,33 @@ def test_unrelated_subject_and_target_do_not_activate() -> None:
 
     assert not build_runtime_projection(release, wrong_subject).clauses
     assert not build_runtime_projection(release, wrong_target).clauses
+
+
+def test_incompatible_target_profile_fails_closed() -> None:
+    release = _releases()[0]
+    incompatible = _context().model_copy(update={"target_profile_id": "claude-code-files"})
+
+    with pytest.raises(RuntimeProjectionError, match="target profile is incompatible"):
+        build_runtime_projection(release, incompatible)
+
+
+def test_external_release_requires_exact_compiled_transition_contents() -> None:
+    transitions = _transitions()
+    result = LongitudinalDogfoodCompiler(default_target_profile(TargetKind.CODEX)).compile(
+        transitions
+    )
+    first = transitions[0]
+    substituted_evidence = first.source_evidence.model_copy(
+        update={"authority_reason": "Substituted same-ID evidence."}
+    )
+    substituted = (
+        first.model_copy(update={"source_evidence": substituted_evidence}),
+        transitions[1],
+        transitions[2],
+    )
+
+    with pytest.raises(RuntimeProjectionError, match="exact transition contents"):
+        build_external_governed_releases(substituted, result)
 
 
 def test_every_rendered_clause_binds_to_external_provenance() -> None:

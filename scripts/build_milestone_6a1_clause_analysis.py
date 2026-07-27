@@ -146,7 +146,7 @@ def main() -> int:
 
     repo = arguments.repo.resolve()
     old = repo / "development_benchmark_longitudinal" / "condition-materials"
-    runtime = repo / "development_benchmark_compact_projection" / "runtime-fixture-v1.4"
+    runtime = repo / "development_benchmark_compact_projection" / "runtime-fixture-v1.5"
     stages: list[dict[str, object]] = []
     for stage in (1, 2, 3):
         projection = json.loads(
@@ -186,7 +186,7 @@ def main() -> int:
     _exclusive_write(
         arguments.output.resolve(),
         {
-            "analysis_version": "1.1.0",
+            "analysis_version": "1.2.0",
             "classification_is_line_based": True,
             "stages": stages,
         },

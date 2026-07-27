@@ -131,7 +131,7 @@ def test_normalized_byte_measurement_includes_exact_trailing_newline() -> None:
 @pytest.mark.parametrize(
     ("source", "expected_status"),
     (
-        ("while True:\n    pass\n", "timed_out"),
+        ("while True:\n    pass\n", "succeeded"),
         ("raise SystemExit(9)\n", "succeeded"),
         ("import os\nos._exit(0)\n", "succeeded"),
         ("import os\nos._exit(7)\n", "succeeded"),
@@ -198,6 +198,35 @@ def test_policy_cannot_forge_longitudinal_trusted_score_output(tmp_path: Path) -
         "objective_total": 1,
         "scenario_results": [],
         "task_id": task.task_id,
+    }
+    (workspace / "policy.py").write_text(
+        f"import json, os\nprint(json.dumps({fabricated!r}))\nos._exit(0)\n",
+        encoding="utf-8",
+    )
+
+    result = run_bounded_longitudinal_scorer(
+        observer_script=_repo() / "scripts" / "observe_longitudinal_policy.py",
+        task=task,
+        workspace=workspace,
+        timeout_seconds=2,
+    )
+
+    assert result.receipt.status == "succeeded"
+    assert result.score.objective_passed == 0
+    assert result.score.diagnostic_passed == 0
+    assert result.score.neutral_passed == 0
+
+
+def test_policy_cannot_forge_longitudinal_worker_observation(tmp_path: Path) -> None:
+    benchmark = _benchmark()
+    task = load_longitudinal_comparison(benchmark).tasks[0]
+    workspace = tmp_path / "workspace"
+    shutil.copytree(benchmark / task.fixture_directory, workspace)
+    fabricated = {
+        "detail": None,
+        "status": "returned",
+        "value": "atomic_replace",
+        "worker_version": "1.0.0",
     }
     (workspace / "policy.py").write_text(
         f"import json, os\nprint(json.dumps({fabricated!r}))\nos._exit(0)\n",
