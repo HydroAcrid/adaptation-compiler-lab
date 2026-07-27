@@ -102,6 +102,7 @@ blind ratings, holdout isolation, or any fixed exclusion.
 | D-091 | Milestone 6A.1 second-review fail-closed boundaries | **Implemented 2026-07-27.** Refuse sandbox startup for an outer UID-0 coordinator because its process limit is not enforceable; require a non-root outer coordinator, then map it to an unprivileged namespace identity and drop capabilities. Recompute the canonical projection from release plus context before provenance certification. Remove the one-time preregistration refresh capability after the review repair, and preserve explicit short identity/provenance leakage markers alongside copied-material excerpts. |
 
 | D-092 | Milestone 6A.1 scorer output encoding boundary | **Implemented from final PR #19 review 2026-07-27.** Capture isolated scorer stdout and stderr as exact bytes, bind receipts to those byte digests, and perform strict UTF-8 decoding only inside the per-cell output-validation boundary. Invalid UTF-8 is a durable `malformed_output` result and cannot abort the comparison coordinator. |
+| D-093 | Milestone 6A.1 scorer output and identity ceilings | **Implemented from follow-up PR #19 review 2026-07-27.** Replace unbounded coordinator pipes with regular output files governed by the scorer child’s one-MiB-per-stream `RLIMIT_FSIZE`, then read at most the registered ceiling plus one byte. Retain explicit short leakage markers for every fixture artifact identity, including the scoped-correction artifact, alongside actual-material excerpt detection. |
 
 ## Decision process
 

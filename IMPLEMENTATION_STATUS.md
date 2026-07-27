@@ -33,7 +33,10 @@ recomputes the canonical projection from release plus context before certificati
 disables preregistration refresh, and combines short identity/provenance markers with actual
 material-excerpt leakage detection. The final review also requires scorer output to be captured
 as exact bytes and decoded only inside the per-cell validation boundary, so invalid UTF-8 becomes
-a durable malformed-output receipt instead of aborting the comparison coordinator.
+a durable malformed-output receipt instead of aborting the comparison coordinator. Captured
+stdout and stderr use regular files under the child-enforced one-MiB-per-stream file-size ceiling,
+preventing unbounded coordinator pipe buffering, and the short provenance-marker set covers the
+scoped-correction artifact as well as the persistent rules.
 
 Three stage packs demonstrate the intended lifecycle: a persistent-destination backup rule; a
 narrow generated-cache atomic-replacement exception; then a refuse-by-default persistent policy

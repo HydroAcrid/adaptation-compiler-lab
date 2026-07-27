@@ -63,6 +63,7 @@ def test_leakage_detection_uses_normalized_actual_material_excerpts() -> None:
     "marker",
     (
         "Compiled Adaptation",
+        "disposable-atomic-replace@1.0.0",
         "persistent-backup@1.0.0",
         "persistent-refuse-default@2.0.0",
         "dogfood-evidence-stage-1",
@@ -203,6 +204,32 @@ def test_bounded_scorer_records_non_utf8_output_without_raising(tmp_path: Path) 
     assert result.receipt.stdout_digest == (
         "sha256:a8100ae6aa1940d0b663bb31cd466142ebbdbd5187131b92d93818987832eb89"
     )
+    assert result.score.objective_passed == 0
+
+
+def test_bounded_scorer_limits_hostile_output_without_buffering_pipes(
+    tmp_path: Path,
+) -> None:
+    benchmark = _benchmark()
+    task = load_longitudinal_comparison(benchmark).tasks[0]
+    workspace = tmp_path / "workspace"
+    shutil.copytree(benchmark / task.fixture_directory, workspace)
+    fake_scorer = tmp_path / "output_flood_scorer.py"
+    fake_scorer.write_text(
+        "import os\nwhile True:\n    os.write(1, b'x' * 65536)\n",
+        encoding="utf-8",
+    )
+
+    result = run_bounded_longitudinal_scorer(
+        scorer_script=fake_scorer,
+        benchmark_root=benchmark,
+        task=task,
+        workspace=workspace,
+        timeout_seconds=2,
+    )
+
+    assert result.receipt.status == "crashed"
+    assert result.receipt.failure_reason
     assert result.score.objective_passed == 0
 
 

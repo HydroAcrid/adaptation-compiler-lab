@@ -117,6 +117,7 @@ def condition_leakage_matches(
 
 _LONGITUDINAL_CONDITION_IDENTITY_MARKERS = (
     "compiled adaptation",
+    "disposable-atomic-replace@",
     "persistent-backup@",
     "persistent-refuse-default@",
     "dogfood-evidence-",
@@ -283,6 +284,9 @@ def _current_uid_process_count() -> int:
     return count
 
 
+_SCORER_OUTPUT_LIMIT_BYTES = 1024 * 1024
+
+
 def _scorer_resource_limits(timeout_seconds: float, process_limit: int) -> None:
     """Apply Linux child-only resource ceilings before generated policy import."""
 
@@ -291,7 +295,10 @@ def _scorer_resource_limits(timeout_seconds: float, process_limit: int) -> None:
     cpu_soft = max(1, math.ceil(timeout_seconds))
     resource.setrlimit(resource.RLIMIT_CPU, (cpu_soft, cpu_soft + 1))
     resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
-    resource.setrlimit(resource.RLIMIT_FSIZE, (1024 * 1024, 1024 * 1024))
+    resource.setrlimit(
+        resource.RLIMIT_FSIZE,
+        (_SCORER_OUTPUT_LIMIT_BYTES, _SCORER_OUTPUT_LIMIT_BYTES),
+    )
     resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
     resource.setrlimit(resource.RLIMIT_NPROC, (process_limit, process_limit))
 
@@ -453,41 +460,57 @@ def run_bounded_longitudinal_scorer(
                 workspace=workspace,
                 task_id=task.task_id,
             )
-            process = subprocess.Popen(
-                command,
-                cwd=workspace,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                start_new_session=True,
-                preexec_fn=lambda: _scorer_resource_limits(
-                    timeout_seconds,
-                    process_limit,
-                ),
-                env={
-                    "HOME": "/workspace",
-                    "LANG": "C.UTF-8",
-                    "LC_ALL": "C.UTF-8",
-                    "PATH": "/usr/bin:/bin",
-                    "PYTHONDONTWRITEBYTECODE": "1",
-                    "PYTHONPATH": (
-                        f"/venv/lib/python{sys.version_info.major}."
-                        f"{sys.version_info.minor}/site-packages:/app-src"
+            stdout_path = sandbox_root / "stdout.bin"
+            stderr_path = sandbox_root / "stderr.bin"
+            with (
+                stdout_path.open("w+b") as stdout_stream,
+                stderr_path.open("w+b") as stderr_stream,
+            ):
+                process = subprocess.Popen(
+                    command,
+                    cwd=workspace,
+                    stdout=stdout_stream,
+                    stderr=stderr_stream,
+                    start_new_session=True,
+                    preexec_fn=lambda: _scorer_resource_limits(
+                        timeout_seconds,
+                        process_limit,
                     ),
-                    "TMPDIR": "/tmp",
-                },
-            )
-            stdout, stderr = process.communicate(timeout=timeout_seconds)
-            exit_code = process.returncode
-        except subprocess.TimeoutExpired:
-            os.killpg(process.pid, signal.SIGKILL)
-            stdout, stderr = process.communicate()
-            status = "timed_out"
-            reason = f"exceeded {timeout_seconds:g} seconds"
+                    env={
+                        "HOME": "/workspace",
+                        "LANG": "C.UTF-8",
+                        "LC_ALL": "C.UTF-8",
+                        "PATH": "/usr/bin:/bin",
+                        "PYTHONDONTWRITEBYTECODE": "1",
+                        "PYTHONPATH": (
+                            f"/venv/lib/python{sys.version_info.major}."
+                            f"{sys.version_info.minor}/site-packages:/app-src"
+                        ),
+                        "TMPDIR": "/tmp",
+                    },
+                )
+                try:
+                    exit_code = process.wait(timeout=timeout_seconds)
+                except subprocess.TimeoutExpired:
+                    os.killpg(process.pid, signal.SIGKILL)
+                    exit_code = process.wait()
+                    status = "timed_out"
+                    reason = f"exceeded {timeout_seconds:g} seconds"
+                stdout_stream.seek(0)
+                stderr_stream.seek(0)
+                stdout = stdout_stream.read(_SCORER_OUTPUT_LIMIT_BYTES + 1)
+                stderr = stderr_stream.read(_SCORER_OUTPUT_LIMIT_BYTES + 1)
         except OSError as error:
             status = "crashed"
             reason = f"scorer sandbox could not start: {error}"
-        else:
-            if exit_code != 0:
+        if reason is None:
+            if len(stdout) > _SCORER_OUTPUT_LIMIT_BYTES or len(stderr) > _SCORER_OUTPUT_LIMIT_BYTES:
+                status = "crashed"
+                reason = (
+                    "scorer output exceeded the "
+                    f"{_SCORER_OUTPUT_LIMIT_BYTES}-byte per-stream ceiling"
+                )
+            elif exit_code != 0:
                 status = "crashed"
                 reason = f"scorer subprocess exited with code {exit_code}"
             else:
