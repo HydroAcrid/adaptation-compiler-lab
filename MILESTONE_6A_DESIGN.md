@@ -1,6 +1,6 @@
 # Milestone 6A — Longitudinal Adaptation and Dogfood Gate
 
-Status: **implementation and synthetic validation complete; Codex comparison not executed**
+Status: **implementation and live comparison complete; strict gate failed**
 
 ## Decision and boundary
 
@@ -118,7 +118,9 @@ confirm saved ChatGPT authentication.
 - 3 isolated profile-review sessions;
 - 12 fresh target sessions using `gpt-5.6-luna`, medium reasoning, Standard service;
 - 1 isolated blind `gpt-5.6-sol`/xhigh judging pass after automated scoring;
-- **19 subscription sessions maximum** and **12 target runs maximum**.
+- **19 planned valid subscription sessions** and **12 target runs maximum**. After the original
+  final reviewer failed closed, the owner authorized amendment v1.1 for exactly one replacement
+  review, raising the attempted-session ceiling to 20 without changing the target grid.
 
 Each target cell uses a new task-only workspace and configuration, one turn, a 600-second timeout,
 network disabled, identical permissions, and no retry. Exact remaining subscription allowance
@@ -149,10 +151,14 @@ cannot rescue a failed automated gate.
 This one-run-per-cell development comparison can guide product iteration. It cannot establish
 general superiority, cross-model transfer, or a powered research claim.
 
-## Current stop
+## Result
 
-The dogfood implementation, synthetic lifecycle validation, public fixtures, independent scorer,
-role packets, and preregistration are present. Clean-workspace pack delivery is validated, while
-the delivery receipt deliberately records that the required fresh Codex session has not started.
-No profile-author, profile-review, target, or judge Codex session has been launched. Stop here
-before executing the comparison.
+The complete 12-cell grid and one blind judge ran with saved ChatGPT authentication and zero
+provider-billed calls. Compiled and profile tied on objective, diagnostic, and neutral counts.
+Compiled produced only 3/6 valid records versus 6/6 for the profile, finished at 1,652 versus 462
+bytes, and required five versus three final-stage maintenance actions. The strict gate failed.
+
+The deterministic compiler lifecycle remains validated, but the current target-visible projection
+did not establish an advantage over a strong static profile. Preserve this result and create any
+renderer/benchmark improvement as a new public-development version. See
+`MILESTONE_6A_ANALYSIS.md`.

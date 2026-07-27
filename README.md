@@ -5,11 +5,10 @@ from completed coding work into typed external artifacts. Its research question 
 compiled adaptation pack can improve a target coding agent on unseen work beyond a base agent,
 ordinary memory, and a strong static profile.
 
-Milestone 6A is active. Eight exact-consent Codex tasks were captured only into the external
-encrypted raw boundary; eight Kevin-confirmed behaviors became approved artifacts. Two fresh AI
-contexts authored/reviewed the strong static profile, four conditions passed the common budgets,
-and deterministic software custody sealed the hidden tasks, mapping, 32-cell order, and exact
-condition materials.
+Milestone 6A is complete with a failed product gate. Eight exact-consent Codex tasks remain only in
+the external encrypted raw boundary; eight Kevin-confirmed behaviors remain approved artifacts.
+Deterministic software custody still seals the deferred hidden study, mapping, randomized order,
+and condition materials without reveal or modification.
 
 Public non-held-out development has now exercised both Codex and Claude. The corrected 16-run
 Claude Haiku strong-profile-versus-compiled grid completed with valid bounded test execution and
@@ -21,11 +20,13 @@ parts of the independent scorer prevent a product-level superiority claim. No he
 been exposed, the frozen compiler/conditions were not changed from the result, and the Milestone 6
 pilot remains sealed and is now optional future research deferred for budget reasons.
 
-The active product path is a zero-provider-billed longitudinal dogfood gate. It compiles an
-addition, a narrower scoped correction, and a supersession/revocation through three stage packs;
-measures lineage, scope activation, pack growth, update latency, and maintenance effort; and
-records append-only helped/hurt/irrelevant feedback. A 12-run compiled-versus-strong-profile Codex
-subscription comparison is preregistered but has not been executed.
+The zero-provider-billed longitudinal dogfood gate compiled an addition, narrower scoped
+correction, and supersession/revocation through three packs with exact lineage, scope activation,
+growth, latency, maintenance, and append-only feedback metrics. Its 12-run
+compiled-versus-strong-profile Codex comparison is complete. Both conditions tied at 6/6
+objective, 2/6 diagnostic, and 2/6 neutral checks, but compiled produced only 3/6 valid records
+versus 6/6 for the profile and finished 1,652 versus 462 bytes. The compiler's lifecycle machinery
+worked; its current target-visible projection did not beat an excellent profile.
 
 ## What is here
 
@@ -143,6 +144,8 @@ after valid trials.
   execution contract, blinded structural result, shared task ambiguity, and frozen preference.
 - [`MILESTONE_5_5_LUNA_REMAINING_GATE.md`](MILESTONE_5_5_LUNA_REMAINING_GATE.md): preregistered
   six-cell comparison across the other three public replacement task families.
+- [`MILESTONE_6A_ANALYSIS.md`](MILESTONE_6A_ANALYSIS.md): complete longitudinal execution,
+  condition-level results, failed gate, product interpretation, and minimal next iteration.
 - [`CLAUDE_CORRECTED_COMPARISON.md`](CLAUDE_CORRECTED_COMPARISON.md): checksum-bound blind ratings,
   v2.9 unblinded mapping, condition-level results, exact costs, limitations, and product
   interpretation.

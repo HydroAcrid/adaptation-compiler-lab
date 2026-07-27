@@ -4,19 +4,22 @@ Last updated: 2026-07-27
 
 ## Current milestone
 
-**Milestone 6A longitudinal dogfood implementation is complete and the Codex comparison remains
-unexecuted.** The deterministic workflow verifies signed consent/capture, governed Evidence v1.1,
-review approval, addition, narrower scoped correction, supersession/revocation, release rendering,
-clean delivery, activation scope, and append-only user feedback.
+**Milestone 6A longitudinal dogfood implementation and Codex comparison are complete; the strict
+product gate failed.** The deterministic workflow verifies signed consent/capture, governed
+Evidence v1.1, review approval, addition, narrower scoped correction, supersession/revocation,
+release rendering, clean delivery, activation scope, and append-only user feedback.
 
 Three stage packs demonstrate the intended lifecycle: a persistent-destination backup rule; a
 narrow generated-cache atomic-replacement exception; then a refuse-by-default persistent policy
 that supersedes the original. The old artifact and evidence ID disappear from Stage 3 while the
 narrow exception remains active only for its registered project scope.
 
-Six public tasks and independent scorers are frozen for a 12-run maximum
-compiled-versus-strong-profile Codex subscription comparison. No profile-author, profile-review,
-target, or judge session has run.
+Six public tasks and independent scorers produced 12 frozen target records. Compiled and profile
+tied at 6/6 objective, 2/6 diagnostic, and 2/6 neutral checks. Compiled produced 3/6 valid records
+versus 6/6 for the profile; all three invalid compiled runs violated path/command discipline.
+Compiled finished at 1,652 bytes and five maintenance actions versus the profile's 462 bytes and
+three actions. One blind Sol/xhigh judge ran before unblinding; its three compiled preferences are
+secondary, and two rewarded forbidden test-file changes.
 
 The prior v2.9 result remains favorable but benchmark-limited descriptive cross-agent development
 evidence: compiled led Kevin's preferences 5–2 with one tie and led objective/diagnostic counts,
@@ -171,8 +174,13 @@ storage occurred.
 - Added SQLite migration 0006 with update/delete guards for immutable dogfood feedback.
 - Added six public stage-sensitive fixtures with independent objective, diagnostic, and neutral
   scenarios. Seeded implementations fail their intended diagnostic; references pass all checks.
-- Froze the 12-target-run, 19-total-session maximum subscription design plus isolated author,
-  reviewer, and judge role packets. No comparison session has been executed.
+- Froze and executed the 12-target-run longitudinal design plus isolated author, reviewer, and
+  judge roles. The original final reviewer failed closed on malformed provenance; one explicitly
+  authorized amendment raised the attempted-session ceiling from 19 to 20 and recovered the five
+  valid encrypted outputs before one replacement review. No target rerun occurred.
+- Completed and unblinded all 12 Luna/medium target cells only after the anonymous packet and
+  Sol/xhigh judgment were frozen. Nine records were valid. Compiled tied all automated correctness
+  counts but failed the validity, compactness, and maintenance gates.
 
 ## Verification performed
 
@@ -187,7 +195,7 @@ uv run pytest
 uv build
 ```
 
-The current full suite formats 270 files, passes strict typing, passes 437
+The current full suite formats 280 files, passes strict typing, passes 448
 tests, and builds both
 the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
@@ -237,11 +245,14 @@ held-out reveal or trial that he will perform the preregistered anonymous rating
 Automated tests remain objective authority; isolated-AI judging is deferred and may provide only
 secondary analysis after Kevin's ratings are durable.
 
-Milestone 6A is the active product gate. Its deterministic dogfood loop, feedback ledger, metrics,
-six public fixtures, role packets, and preregistration are implemented. The exact subscription
-impact is capped at 19 sessions, including 12 target runs; provider-billed calls and API keys are
-forbidden.
+Milestone 6A is complete. Its deterministic lifecycle passed, but its comparative product gate
+failed: correctness tied, compiled had three guardrail-invalid records, and the static profile was
+smaller and required fewer recorded actions. Twenty subscription sessions were attempted under
+the original protocol plus one explicit amendment; provider-billed calls and API keys remained
+zero.
 
-Stop before execution. The next decision is whether to authorize the subscription-only profile
-author/reviewer and 12-cell Codex comparison. The deferred external-validation study is not
-unfinished required work and must remain sealed unless separately revived with funding.
+The smallest justified next product step is a new versioned minimal-projection renderer: keep full
+provenance in the external audit asset, expose only active actionable behavior and scope to the
+target, and add explicit change discipline. Any new comparison requires new public tasks and
+preregistration. The deferred external-validation study is not unfinished required work and must
+remain sealed unless separately revived with funding.
