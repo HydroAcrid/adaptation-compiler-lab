@@ -61,7 +61,7 @@ class CompactProjectionTask(FrozenModel):
 
 
 class CompactProjectionComparisonDesign(FrozenModel):
-    design_version: Literal["1.0.0", "1.1.0", "1.2.0", "1.3.0"] = "1.0.0"
+    design_version: Literal["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0"] = "1.0.0"
     design_id: Literal["milestone-6a1-compact-runtime-public-development"] = (
         "milestone-6a1-compact-runtime-public-development"
     )
@@ -112,6 +112,7 @@ class CompactProjectionComparisonDesign(FrozenModel):
             "strict_tuple_return_contract",
             "isolated_policy_observation",
             "preexec_failure_receipt",
+            "trusted_observation_channel_and_scoped_verification",
         ]
         | None
     ) = None
@@ -177,6 +178,15 @@ class CompactProjectionComparisonDesign(FrozenModel):
             raise ValueError("compact projection v1.3 requires complete isolation metadata")
         if self.design_version == "1.3.0" and self.amendment_reason != "preexec_failure_receipt":
             raise ValueError("compact projection v1.3 requires its registered amendment reason")
+        if self.design_version == "1.4.0" and any(
+            item is None for item in (*amendment, *isolation)
+        ):
+            raise ValueError("compact projection v1.4 requires complete isolation metadata")
+        if (
+            self.design_version == "1.4.0"
+            and self.amendment_reason != "trusted_observation_channel_and_scoped_verification"
+        ):
+            raise ValueError("compact projection v1.4 requires its registered amendment reason")
         return self
 
     @property
@@ -196,6 +206,7 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
     preregistration = next(
         path
         for path in (
+            root / "PREREGISTRATION-v1.4.json",
             root / "PREREGISTRATION-v1.3.json",
             root / "PREREGISTRATION-v1.2.json",
             root / "PREREGISTRATION-v1.1.json",
@@ -214,6 +225,7 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
         "1.1.0": "1.0",
         "1.2.0": "1.1",
         "1.3.0": "1.2",
+        "1.4.0": "1.3",
     }
     current = design
     while current.design_version in chain:
@@ -252,7 +264,7 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
         design.independent_scorer_digest
     ):
         raise ValueError("compact projection scorer digest drifted")
-    if design.design_version in {"1.2.0", "1.3.0"}:
+    if design.design_version in {"1.2.0", "1.3.0", "1.4.0"}:
         if sha256_file(repo / "scripts" / "observe_compact_projection_policy.py") != (
             design.policy_observer_digest
         ):
@@ -267,13 +279,16 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
         != design.renderer_source_digest
     ):
         raise ValueError("compact runtime renderer source digest drifted")
-    if sha256_file(root / "runtime-fixture" / "MEASUREMENTS-v1.0.json") != (
+    runtime_fixture = root / (
+        "runtime-fixture-v1.4" if design.design_version == "1.4.0" else "runtime-fixture"
+    )
+    if sha256_file(runtime_fixture / "MEASUREMENTS-v1.0.json") != (
         design.runtime_fixture_measurements_digest
     ):
         raise ValueError("compact runtime measurements digest drifted")
-    if development_tree_digest(root / "runtime-fixture") != (design.runtime_fixture_tree_digest):
+    if development_tree_digest(runtime_fixture) != design.runtime_fixture_tree_digest:
         raise ValueError("compact runtime fixture tree digest drifted")
-    if sha256_file(root / "runtime-fixture" / "shared-execution-envelope.md") != (
+    if sha256_file(runtime_fixture / "shared-execution-envelope.md") != (
         design.shared_execution_envelope_digest
     ):
         raise ValueError("shared execution envelope digest drifted")

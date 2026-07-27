@@ -580,8 +580,7 @@ def main() -> None:
                     timeout=60,
                 )
                 bounded_score = run_bounded_longitudinal_scorer(
-                    scorer_script=repo / "scripts" / "score_longitudinal_task.py",
-                    benchmark_root=benchmark,
+                    observer_script=repo / "scripts" / "observe_longitudinal_policy.py",
                     task=task,
                     workspace=workspace,
                     timeout_seconds=10,

@@ -227,7 +227,7 @@ class BoundedScorerResult(FrozenModel):
 class CompactPolicyObservation(FrozenModel):
     """One untrusted-policy observation without hidden expected outcomes."""
 
-    observation_version: Literal["1.0.0"] = "1.0.0"
+    observation_version: Literal["1.0.0", "1.1.0"] = "1.1.0"
     scenario_id: NonEmptyStr
     status: Literal["returned", "invalid_return", "raised"]
     value: tuple[str, ...] | None = None
@@ -236,6 +236,21 @@ class CompactPolicyObservation(FrozenModel):
 
 class BoundedCompactPolicyObservationResult(FrozenModel):
     observation: CompactPolicyObservation | None
+    receipt: BoundedScorerReceipt
+
+
+class LongitudinalPolicyObservation(FrozenModel):
+    """One untrusted longitudinal-policy result without expected outcomes."""
+
+    observation_version: Literal["1.0.0"] = "1.0.0"
+    scenario_id: NonEmptyStr
+    status: Literal["returned", "raised"]
+    value: str | tuple[str, ...] | None = None
+    detail: str | None = None
+
+
+class BoundedLongitudinalPolicyObservationResult(FrozenModel):
+    observation: LongitudinalPolicyObservation | None
     receipt: BoundedScorerReceipt
 
 
@@ -734,30 +749,39 @@ def run_bounded_compact_policy_observation(
     )
 
 
-def run_bounded_longitudinal_scorer(
+def run_bounded_longitudinal_policy_observation(
     *,
-    scorer_script: Path,
-    benchmark_root: Path,
-    task: LongitudinalDevelopmentTask,
+    observer_script: Path,
     workspace: Path,
+    scenario_id: str,
+    task_kind: Literal["action", "plan"],
+    destination_exists: bool,
+    backup_requested: bool,
     timeout_seconds: float,
-) -> BoundedScorerResult:
-    """Score inside a bounded Linux filesystem/network/PID sandbox."""
+) -> BoundedLongitudinalPolicyObservationResult:
+    """Observe one longitudinal call in a sandbox that has no expected outcomes."""
 
     started = time.monotonic()
-    # WSL accounts some host tasks that are not visible in the distribution's
-    # /proc mount. Keep a conservative absolute floor while still bounding forks.
     process_limit = max(_current_uid_process_count() + 16, 128)
-    status: Literal["succeeded", "timed_out", "crashed", "malformed_output"]
-    with tempfile.TemporaryDirectory(prefix="acl-scorer-sandbox-") as temporary:
+    scenario_json = json.dumps(
+        {
+            "backup_requested": backup_requested,
+            "destination_exists": destination_exists,
+            "scenario_id": scenario_id,
+            "task_kind": task_kind,
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    with tempfile.TemporaryDirectory(prefix="acl-longitudinal-observer-sandbox-") as temporary:
         sandbox_root = Path(temporary)
         try:
-            command = _scorer_sandbox_command(
+            command = _policy_observer_sandbox_command(
                 sandbox_root=sandbox_root,
-                scorer_script=scorer_script,
-                benchmark_root=benchmark_root,
+                observer_script=observer_script,
                 workspace=workspace,
-                task_id=task.task_id,
+                scenario_json=scenario_json,
             )
             outcome = _run_bounded_sandbox_command(
                 command=command,
@@ -773,35 +797,31 @@ def run_bounded_longitudinal_scorer(
                 exit_code=None,
                 stdout=b"",
                 stderr=b"",
-                reason=f"scorer sandbox could not start: {error}",
+                reason=f"longitudinal observer sandbox could not start: {error}",
                 duration_seconds=time.monotonic() - started,
             )
-        status = outcome.status
-        reason = outcome.reason
-        if status == "succeeded":
-            try:
-                decoded_stdout = outcome.stdout.decode("utf-8")
-                score = LongitudinalTaskScore.model_validate_json(decoded_stdout)
-                if score.task_id != task.task_id:
-                    raise ValueError("scorer returned a different task ID")
-            except (UnicodeDecodeError, ValueError, TypeError) as error:
-                status = "malformed_output"
-                reason = f"{type(error).__name__}: {error}"
-            else:
-                return BoundedScorerResult(
-                    score=score,
-                    receipt=BoundedScorerReceipt(
-                        status=status,
-                        exit_code=outcome.exit_code,
-                        duration_seconds=outcome.duration_seconds,
-                        stdout_digest=_bytes_digest(outcome.stdout),
-                        stderr_digest=_bytes_digest(outcome.stderr),
-                        timeout_seconds=timeout_seconds,
-                    ),
-                )
-    assert reason is not None
-    return BoundedScorerResult(
-        score=_failed_score(task, status=status, reason=reason),
+    status: Literal["succeeded", "timed_out", "crashed", "malformed_output"] = outcome.status
+    reason = outcome.reason
+    observation: LongitudinalPolicyObservation | None = None
+    if status == "succeeded":
+        try:
+            observation = LongitudinalPolicyObservation.model_validate_json(
+                outcome.stdout.decode("utf-8")
+            )
+            if observation.scenario_id != scenario_id:
+                raise ValueError("longitudinal observer returned a different scenario ID")
+            if observation.status == "returned":
+                if task_kind == "action" and not isinstance(observation.value, str):
+                    raise ValueError("longitudinal action observation must be a string")
+                if task_kind == "plan" and not isinstance(observation.value, tuple):
+                    raise ValueError("longitudinal plan observation must be a string tuple")
+            elif observation.value is not None:
+                raise ValueError("raised longitudinal observation cannot contain a value")
+        except (UnicodeDecodeError, ValueError, TypeError) as error:
+            status = "malformed_output"
+            reason = f"{type(error).__name__}: {error}"
+    return BoundedLongitudinalPolicyObservationResult(
+        observation=observation,
         receipt=BoundedScorerReceipt(
             status=status,
             exit_code=outcome.exit_code,
@@ -809,6 +829,116 @@ def run_bounded_longitudinal_scorer(
             stdout_digest=_bytes_digest(outcome.stdout),
             stderr_digest=_bytes_digest(outcome.stderr),
             failure_reason=reason,
+            timeout_seconds=timeout_seconds,
+        ),
+    )
+
+
+def _score_longitudinal_observations(
+    task: LongitudinalDevelopmentTask,
+    observations: tuple[LongitudinalPolicyObservation, ...],
+) -> LongitudinalTaskScore:
+    results: list[LongitudinalScenarioResult] = []
+    for scenario, observation in zip(task.scenarios, observations, strict=True):
+        expected = (
+            scenario.expected_action if task.task_kind == "action" else repr(scenario.expected_plan)
+        )
+        if observation.status != "returned":
+            observed = observation.detail or "policy observation raised"
+            passed = False
+        elif task.task_kind == "action":
+            observed = str(observation.value)
+            passed = observation.value == scenario.expected_action
+        else:
+            observed = repr(observation.value)
+            passed = observation.value == scenario.expected_plan
+        results.append(
+            LongitudinalScenarioResult(
+                scenario_id=scenario.scenario_id,
+                metric=scenario.metric,
+                passed=passed,
+                observed=observed,
+                expected=expected,
+            )
+        )
+
+    def counts(metric: str) -> tuple[int, int]:
+        selected = [item for item in results if item.metric == metric]
+        return sum(item.passed for item in selected), len(selected)
+
+    objective = counts("objective")
+    diagnostic = counts("diagnostic")
+    neutral = counts("neutral")
+    return LongitudinalTaskScore(
+        task_id=task.task_id,
+        scenario_results=tuple(results),
+        objective_passed=objective[0],
+        objective_total=objective[1],
+        diagnostic_passed=diagnostic[0],
+        diagnostic_total=diagnostic[1],
+        neutral_passed=neutral[0],
+        neutral_total=neutral[1],
+    )
+
+
+def run_bounded_longitudinal_scorer(
+    *,
+    observer_script: Path,
+    task: LongitudinalDevelopmentTask,
+    workspace: Path,
+    timeout_seconds: float,
+) -> BoundedScorerResult:
+    """Compute trusted scores from answer-blind, isolated policy observations."""
+
+    started = time.monotonic()
+    observed: list[LongitudinalPolicyObservation] = []
+    receipts: list[BoundedScorerReceipt] = []
+    for scenario in task.scenarios:
+        result = run_bounded_longitudinal_policy_observation(
+            observer_script=observer_script,
+            workspace=workspace,
+            scenario_id=scenario.scenario_id,
+            task_kind=task.task_kind,
+            destination_exists=scenario.destination_exists,
+            backup_requested=scenario.backup_requested,
+            timeout_seconds=timeout_seconds,
+        )
+        receipts.append(result.receipt)
+        if result.receipt.status != "succeeded" or result.observation is None:
+            reason = result.receipt.failure_reason or "longitudinal observation failed"
+            return BoundedScorerResult(
+                score=_failed_score(task, status=result.receipt.status, reason=reason),
+                receipt=BoundedScorerReceipt(
+                    status=result.receipt.status,
+                    exit_code=result.receipt.exit_code,
+                    duration_seconds=time.monotonic() - started,
+                    stdout_digest=_bytes_digest(
+                        json.dumps(
+                            [item.model_dump(mode="json") for item in receipts],
+                            sort_keys=True,
+                            separators=(",", ":"),
+                        ).encode("utf-8")
+                    ),
+                    stderr_digest=_bytes_digest(b""),
+                    failure_reason=reason,
+                    timeout_seconds=timeout_seconds,
+                ),
+            )
+        observed.append(result.observation)
+    score = _score_longitudinal_observations(task, tuple(observed))
+    receipt_bytes = json.dumps(
+        [item.model_dump(mode="json") for item in receipts],
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return BoundedScorerResult(
+        score=score,
+        receipt=BoundedScorerReceipt(
+            status="succeeded",
+            exit_code=0,
+            duration_seconds=time.monotonic() - started,
+            stdout_digest=_bytes_digest(receipt_bytes),
+            stderr_digest=_bytes_digest(b""),
             timeout_seconds=timeout_seconds,
         ),
     )

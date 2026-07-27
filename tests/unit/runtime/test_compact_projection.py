@@ -104,10 +104,41 @@ def test_partial_context_retains_narrow_rule_and_claim_specific_precedence() -> 
 
     projection = build_runtime_projection(stage_two, _context())
 
-    assert len(projection.clauses) == 4
+    assert len(projection.clauses) == 5
     assert any(RuntimeClauseRole.NECESSARY_SCOPE in item.roles for item in projection.clauses)
     assert any(RuntimeClauseRole.NECESSARY_PRECEDENCE in item.roles for item in projection.clauses)
-    assert "project is generated-cache" in projection.clauses[0].text
+    assert "project=generated-cache" in projection.clauses[0].text
+
+
+def test_partial_context_preserves_scope_on_verification_and_deduplicates_by_scope() -> None:
+    first, second, third = _transitions()
+    assert first.instruction is not None
+    assert second.instruction is not None
+    shared_requirement = first.instruction.behavioral_contract.verification_requirements[0]
+    scoped_contract = second.instruction.behavioral_contract.model_copy(
+        update={"verification_requirements": (shared_requirement,)}
+    )
+    scoped_instruction = second.instruction.model_copy(
+        update={"behavioral_contract": scoped_contract}
+    )
+    release = _releases(
+        (first, second.model_copy(update={"instruction": scoped_instruction}), third)
+    )[1]
+
+    projection = build_runtime_projection(release, _context())
+    verification = [
+        clause
+        for clause in projection.clauses
+        if RuntimeClauseRole.NECESSARY_VERIFICATION in clause.roles
+        and shared_requirement in clause.text
+    ]
+
+    assert len(verification) == 2
+    assert any(RuntimeClauseRole.NECESSARY_SCOPE not in clause.roles for clause in verification)
+    scoped = next(
+        clause for clause in verification if RuntimeClauseRole.NECESSARY_SCOPE in clause.roles
+    )
+    assert scoped.text.startswith("When project=generated-cache:")
 
 
 def test_fully_known_context_resolves_precedence_and_omits_inactive_rule() -> None:

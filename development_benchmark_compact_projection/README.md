@@ -25,21 +25,27 @@ common envelope, every runtime release/projection/render/manifest byte, and curr
 preregistration are frozen before profile construction. The preserved v1.0 registration was
 superseded by v1.1 for strict tuple returns; v1.1 was then superseded by v1.2 because policy code
 still shared the trusted scoring process. V1.2 was superseded by v1.3 so inherited pre-exec
-resource-limit failures produce durable failed receipts instead of aborting the coordinator. No
-live output informed any amendment.
+resource-limit failures produce durable failed receipts instead of aborting the coordinator. V1.3
+was superseded by v1.4 to reserve official observation output for trusted supervisors and retain
+scope on verification clauses. No live output informed any amendment.
 
 ## Contents
 
 - `PREREGISTRATION-v1.0.json` and `.sha256`: preserved, unexecuted scorer-coercion design.
 - `PREREGISTRATION-v1.1.json` and `.sha256`: preserved, unexecuted strict-return design.
 - `PREREGISTRATION-v1.2.json` and `.sha256`: preserved, unexecuted isolated observer/scorer design.
-- `PREREGISTRATION-v1.3.json` and `.sha256`: current exact design with fail-closed pre-exec
-  failure-receipt handling.
+- `PREREGISTRATION-v1.3.json` and `.sha256`: preserved pre-exec failure-receipt design.
+- `PREREGISTRATION-v1.4.json` and `.sha256`: current exact trusted-observation and scoped-
+  verification design.
 - `tasks/`: fresh fixtures and task manifests.
-- `runtime-fixture/`: external releases, canonical projections, compact Codex text, clause-binding
-  manifests, common envelope, and exact size measurements.
-- `CLAUSE_ANALYSIS-v1.0.json`: line-complete classification of old, profile, and proposed material.
-- `MAINTENANCE_METRICS-v1.0.json`: separated compiler, review, profile, machine, and target costs.
+- `runtime-fixture/`: preserved pre-v1.4 runtime fixture.
+- `runtime-fixture-v1.4/`: current external releases, canonical projections, compact Codex text,
+  clause-binding manifests, common envelope, and exact size measurements.
+- `CLAUSE_ANALYSIS-v1.0.json`: preserved pre-v1.4 line classification.
+- `CLAUSE_ANALYSIS-v1.1.json`: current line-complete classification.
+- `MAINTENANCE_METRICS-v1.0.json`: preserved pre-v1.4 measurement.
+- `MAINTENANCE_METRICS-v1.1.json`: current separated compiler, review, profile, machine, and target
+  costs.
 - `PROFILE_AUTHOR_PACKET.md`, `PROFILE_REVIEWER_PACKET.md`, and `JUDGE_PACKET.md`: isolated future
   role contracts.
 - `EXECUTION_PROTOCOL.md`: custody, freezing, stopping, and no-tuning workflow.

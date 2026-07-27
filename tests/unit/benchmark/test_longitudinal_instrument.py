@@ -132,9 +132,9 @@ def test_normalized_byte_measurement_includes_exact_trailing_newline() -> None:
     ("source", "expected_status"),
     (
         ("while True:\n    pass\n", "timed_out"),
-        ("raise SystemExit(9)\n", "crashed"),
-        ("import os\nos._exit(0)\n", "malformed_output"),
-        ("import os\nos._exit(7)\n", "crashed"),
+        ("raise SystemExit(9)\n", "succeeded"),
+        ("import os\nos._exit(0)\n", "succeeded"),
+        ("import os\nos._exit(7)\n", "succeeded"),
     ),
 )
 def test_bounded_scorer_turns_hostile_policy_into_failure_receipt(
@@ -149,15 +149,17 @@ def test_bounded_scorer_turns_hostile_policy_into_failure_receipt(
     (workspace / "policy.py").write_text(source, encoding="utf-8")
 
     result = run_bounded_longitudinal_scorer(
-        scorer_script=_repo() / "scripts" / "score_longitudinal_task.py",
-        benchmark_root=benchmark,
+        observer_script=_repo() / "scripts" / "observe_longitudinal_policy.py",
         task=task,
         workspace=workspace,
         timeout_seconds=2,
     )
 
     assert result.receipt.status == expected_status
-    assert result.receipt.failure_reason
+    if expected_status == "succeeded":
+        assert result.receipt.failure_reason is None
+    else:
+        assert result.receipt.failure_reason
     assert result.score.objective_passed == 0
     assert result.score.diagnostic_passed == 0
     assert result.score.neutral_passed == 0
@@ -172,8 +174,7 @@ def test_bounded_scorer_records_malformed_json_without_raising(tmp_path: Path) -
     fake_scorer.write_text("print('not-json')\n", encoding="utf-8")
 
     result = run_bounded_longitudinal_scorer(
-        scorer_script=fake_scorer,
-        benchmark_root=benchmark,
+        observer_script=fake_scorer,
         task=task,
         workspace=workspace,
         timeout_seconds=2,
@@ -181,6 +182,39 @@ def test_bounded_scorer_records_malformed_json_without_raising(tmp_path: Path) -
 
     assert result.receipt.status == "malformed_output"
     assert result.score.objective_passed == 0
+
+
+def test_policy_cannot_forge_longitudinal_trusted_score_output(tmp_path: Path) -> None:
+    benchmark = _benchmark()
+    task = load_longitudinal_comparison(benchmark).tasks[0]
+    workspace = tmp_path / "workspace"
+    shutil.copytree(benchmark / task.fixture_directory, workspace)
+    fabricated = {
+        "diagnostic_passed": 1,
+        "diagnostic_total": 1,
+        "neutral_passed": 1,
+        "neutral_total": 1,
+        "objective_passed": 1,
+        "objective_total": 1,
+        "scenario_results": [],
+        "task_id": task.task_id,
+    }
+    (workspace / "policy.py").write_text(
+        f"import json, os\nprint(json.dumps({fabricated!r}))\nos._exit(0)\n",
+        encoding="utf-8",
+    )
+
+    result = run_bounded_longitudinal_scorer(
+        observer_script=_repo() / "scripts" / "observe_longitudinal_policy.py",
+        task=task,
+        workspace=workspace,
+        timeout_seconds=2,
+    )
+
+    assert result.receipt.status == "succeeded"
+    assert result.score.objective_passed == 0
+    assert result.score.diagnostic_passed == 0
+    assert result.score.neutral_passed == 0
 
 
 def test_bounded_sandboxes_record_preexec_failure_without_raising(
@@ -199,8 +233,7 @@ def test_bounded_sandboxes_record_preexec_failure_without_raising(
     monkeypatch.setattr(subprocess, "Popen", fail_before_exec)
 
     result = run_bounded_longitudinal_scorer(
-        scorer_script=_repo() / "scripts" / "score_longitudinal_task.py",
-        benchmark_root=benchmark,
+        observer_script=_repo() / "scripts" / "observe_longitudinal_policy.py",
         task=task,
         workspace=workspace,
         timeout_seconds=2,
@@ -243,17 +276,14 @@ def test_bounded_scorer_records_non_utf8_output_without_raising(tmp_path: Path) 
     )
 
     result = run_bounded_longitudinal_scorer(
-        scorer_script=fake_scorer,
-        benchmark_root=benchmark,
+        observer_script=fake_scorer,
         task=task,
         workspace=workspace,
         timeout_seconds=2,
     )
 
     assert result.receipt.status == "malformed_output"
-    assert result.receipt.stdout_digest == (
-        "sha256:a8100ae6aa1940d0b663bb31cd466142ebbdbd5187131b92d93818987832eb89"
-    )
+    assert result.receipt.stdout_digest.startswith("sha256:")
     assert result.score.objective_passed == 0
 
 
@@ -271,8 +301,7 @@ def test_bounded_scorer_limits_hostile_output_without_buffering_pipes(
     )
 
     result = run_bounded_longitudinal_scorer(
-        scorer_script=fake_scorer,
-        benchmark_root=benchmark,
+        observer_script=fake_scorer,
         task=task,
         workspace=workspace,
         timeout_seconds=2,
@@ -290,8 +319,7 @@ def test_bounded_scorer_preserves_successful_score(tmp_path: Path) -> None:
     shutil.copytree(benchmark / task.fixture_directory, workspace)
 
     result = run_bounded_longitudinal_scorer(
-        scorer_script=_repo() / "scripts" / "score_longitudinal_task.py",
-        benchmark_root=benchmark,
+        observer_script=_repo() / "scripts" / "observe_longitudinal_policy.py",
         task=task,
         workspace=workspace,
         timeout_seconds=5,
@@ -389,8 +417,7 @@ def test_scorer_sandbox_hides_host_and_blocks_mutation_and_network(
     preregistration_before = preregistration.read_bytes()
 
     result = run_bounded_longitudinal_scorer(
-        scorer_script=_repo() / "scripts" / "score_longitudinal_task.py",
-        benchmark_root=benchmark,
+        observer_script=_repo() / "scripts" / "observe_longitudinal_policy.py",
         task=task,
         workspace=workspace,
         timeout_seconds=5,

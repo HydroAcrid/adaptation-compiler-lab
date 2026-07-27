@@ -1,9 +1,10 @@
 # Frozen execution protocol
 
-Status: v1.3 designed and frozen; no live sessions started. Byte-identical v1.0 through v1.2
-registrations remain as superseded pre-execution history. V1.3 keeps policy execution in a
-separate answer-blind filesystem/network/PID sandbox, converts pre-exec startup failures into
-durable failed receipts, and computes pass/fail only in the trusted parent scorer.
+Status: v1.4 designed and frozen; no live sessions started. Byte-identical v1.0 through v1.3
+registrations remain as superseded pre-execution history. V1.4 keeps generated policy execution in
+an untrusted child worker inside the answer-blind filesystem/network/PID sandbox. A trusted
+supervisor owns official observation output; only the parent scorer sees expected outcomes and
+computes pass/fail. Pre-exec startup failures remain durable failed receipts.
 
 ## Freeze order
 

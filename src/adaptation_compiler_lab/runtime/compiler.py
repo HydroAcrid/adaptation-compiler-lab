@@ -150,7 +150,7 @@ def _dimension(
             else (_Applicability.NO_MATCH, None)
         )
     if len(allowed) == 1:
-        return _Applicability.PARTIAL, f"{singular} is {allowed[0]}"
+        return _Applicability.PARTIAL, f"{singular}={allowed[0]}"
     return _Applicability.PARTIAL, f"{singular} is one of {', '.join(allowed)}"
 
 
@@ -340,15 +340,25 @@ def build_runtime_projection(
             )
         )
 
-    verification_sources: dict[str, set[ArtifactRef]] = {}
+    verification_sources: dict[tuple[str, tuple[str, ...]], set[ArtifactRef]] = {}
     for artifact in ordered_artifacts:
+        state, conditions = applicability[artifact.artifact_ref.record_id]
         for requirement in artifact.behavioral_contract.verification_requirements:
-            verification_sources.setdefault(requirement.strip(), set()).add(artifact.artifact_ref)
-    for text, sources in sorted(verification_sources.items()):
+            effective_conditions = conditions if state is _Applicability.PARTIAL else ()
+            verification_sources.setdefault(
+                (requirement.strip(), effective_conditions),
+                set(),
+            ).add(artifact.artifact_ref)
+    for (requirement, conditions), sources in sorted(verification_sources.items()):
+        text = requirement
+        roles = [RuntimeClauseRole.NECESSARY_VERIFICATION]
+        if conditions:
+            text = f"When {' and '.join(conditions)}: {text}"
+            roles.append(RuntimeClauseRole.NECESSARY_SCOPE)
         clauses.append(
             RuntimeClause(
                 text=text,
-                roles=(RuntimeClauseRole.NECESSARY_VERIFICATION,),
+                roles=tuple(sorted(roles, key=lambda item: item.value)),
                 source_artifact_refs=_sorted_refs(sources),
             )
         )

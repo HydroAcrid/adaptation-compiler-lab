@@ -98,14 +98,14 @@ def main() -> int:
         (
             repo
             / "development_benchmark_compact_projection"
-            / "runtime-fixture"
+            / "runtime-fixture-v1.4"
             / "MEASUREMENTS-v1.0.json"
         ).read_text(encoding="utf-8")
     )
     _exclusive_write(
         arguments.output.resolve(),
         {
-            "measurement_version": "1.0.0",
+            "measurement_version": "1.1.0",
             "deterministic_compiler_operations": {
                 "clause_manifest_bindings_per_cycle": 3,
                 "governed_release_freezes_per_cycle": 3,

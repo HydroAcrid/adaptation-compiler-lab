@@ -9,7 +9,7 @@ Milestone 6A.1 implements a compact runtime projection without changing Mileston
 product result. The compiler now keeps complete governance, provenance, history, and rollback data
 in an external governed release while sending Codex only effective behavior, unresolved scope or
 precedence, and essential verification. The public three-stage engineering fixture renders 163,
-371, and 378 adaptation bytes, below the independently maintained profile sizes of 227, 508, and
+454, and 461 adaptation bytes, below the independently maintained profile sizes of 227, 508, and
 462 bytes. This establishes compactness and lineage preservation, not a performance advantage.
 
 The next public comparison is frozen but unexecuted: three fresh tasks, two conditions, one

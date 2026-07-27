@@ -2,13 +2,14 @@
 
 Status: implementation and local validation complete; no live comparison executed.
 
-Protocol note (2026-07-27): unexecuted v1.0 through v1.2 registrations are preserved. Review first
+Protocol note (2026-07-27): unexecuted v1.0 through v1.3 registrations are preserved. Review first
 identified scalar/list-to-tuple coercion, then demonstrated that imported policy code could exit
 the trusted scorer process after printing fabricated checks, and finally identified a pre-exec
-resource-limit exception that could escape without a failure receipt. Current v1.3 binds a strict
-trusted scorer, an answer-blind isolated policy observer, the repaired sandbox implementation,
-and exact links through all prior designs. No live profile, target, or judge session preceded any
-amendment.
+resource-limit exception that could escape without a failure receipt. A final pass separated
+untrusted policy workers from official observation output and preserved scope on verification
+clauses. Current v1.4 binds the trusted scorer, answer-blind observer supervisor, repaired sandbox,
+versioned runtime fixture, and exact links through all prior designs. No live profile, target, or
+judge session preceded any amendment.
 
 ## Question
 
@@ -77,6 +78,13 @@ crashed receipt used for other sandbox startup failures. Both the longitudinal s
 policy observer share this boundary. V1.2 remains byte-identical; v1.3 is its linked, unexecuted
 successor with the repaired sandbox digest.
 
+The next pass moved generated policy import/calls into child workers whose bytes are treated only
+as untrusted return observations; trusted supervisors alone emit observation records, and the
+parent alone compares them with hidden expected outcomes. The future longitudinal coordinator now
+uses the same separation instead of executing the immutable historical Milestone 6A scorer.
+Verification clauses retain the same unresolved scope as their source behavior and deduplicate
+only at equal effective scope. V1.4 binds these repairs and a new versioned runtime fixture.
+
 ## Clause-level analysis
 
 `development_benchmark_compact_projection/CLAUSE_ANALYSIS-v1.0.json` classifies every line,
@@ -87,8 +95,8 @@ sentence combines action, scope, or verification.
 | Stage | Old compiled | Strong profile | Compact runtime | Shared envelope |
 | --- | ---: | ---: | ---: | ---: |
 | 1 | 922 | 227 | 163 | 362 |
-| 2 | 1,629 | 508 | 371 | 362 |
-| 3 | 1,652 | 462 | 378 | 362 |
+| 2 | 1,629 | 508 | 454 | 362 |
+| 3 | 1,652 | 462 | 461 | 362 |
 
 The shared envelope is identical between future conditions and is excluded from adaptation-byte
 comparisons.
@@ -161,8 +169,8 @@ manifest all have independent digests.
 | Stage | External governed release | Canonical runtime representation | External clause manifest | Target text |
 | --- | ---: | ---: | ---: | ---: |
 | 1 | 5,297 | 1,306 | 1,044 | 163 |
-| 2 | 10,280 | 2,389 | 1,780 | 371 |
-| 3 | 11,744 | 2,420 | 1,780 | 378 |
+| 2 | 10,280 | 2,559 | 2,000 | 454 |
+| 3 | 11,744 | 2,590 | 2,000 | 461 |
 
 ## Separated maintenance measurements
 
@@ -171,12 +179,12 @@ measurements separate:
 
 - deterministic full-cycle operations: three lifecycle applications, three governed release
   freezes, three runtime projections, and three clause-manifest bindings;
-- machine time: 200 complete three-stage cycles averaged approximately 0.0081 seconds per cycle
+- machine time: 200 complete three-stage cycles averaged approximately 0.0061 seconds per cycle
   on the recorded Python 3.12 Linux environment;
 - user review touches: three explicit approvals;
 - historical static-profile effort: three author sessions, three valid reviewer sessions, one
   replacement reviewer attempt, about 29.61 author seconds, and 29.91 reviewer seconds; and
-- target cost: 163/371/378 adaptation bytes, estimated as 41/93/95 tokens.
+- target cost: 163/454/461 adaptation bytes, estimated as 41/114/116 tokens.
 
 No synthetic combined effort score is calculated.
 
