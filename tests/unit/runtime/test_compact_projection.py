@@ -6,6 +6,8 @@ from typing import cast
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import ValidationError
 
 from adaptation_compiler_lab.dogfood import (
     PUBLIC_DOGFOOD_NOW,
@@ -429,7 +431,7 @@ def test_governance_binding_requires_lifecycle_introduction() -> None:
     raw = release.model_dump(mode="json", round_trip=True)
     raw["lifecycle_history"][0]["introduced_artifact_ref"] = None
 
-    with pytest.raises(ValueError, match="lifecycle introduction"):
+    with pytest.raises(ValueError, match="artifact reference"):
         ExternalGovernedRelease.model_validate_json(canonical_json(raw))
 
 
@@ -439,6 +441,29 @@ def test_governance_binding_evidence_must_match_lifecycle_introduction() -> None
     raw["lifecycle_history"][0]["evidence_ref"]["record_version"] = "9.0.0"
 
     with pytest.raises(ValueError, match="governance binding evidence"):
+        ExternalGovernedRelease.model_validate_json(canonical_json(raw))
+
+
+def test_scope_limiting_evidence_must_match_lifecycle_introduction() -> None:
+    release = _releases()[0]
+    raw = release.model_dump(mode="json", round_trip=True)
+    scope_limiting = {
+        **raw["active_artifacts"][0]["evidence_links"]["supporting"][0],
+        "record_id": "unintroduced-scope-evidence",
+    }
+    raw["active_artifacts"][0]["evidence_links"]["scope_limiting"] = [scope_limiting]
+    raw["active_bindings"][0]["evidence_links"]["scope_limiting"] = [scope_limiting]
+
+    with pytest.raises(ValueError, match="governance binding evidence"):
+        ExternalGovernedRelease.model_validate_json(canonical_json(raw))
+
+
+def test_revocation_event_cannot_masquerade_as_lifecycle_introduction() -> None:
+    release = _releases()[0]
+    raw = release.model_dump(mode="json", round_trip=True)
+    raw["lifecycle_history"][0]["transition_kind"] = "revocation"
+
+    with pytest.raises(ValueError, match="cannot introduce"):
         ExternalGovernedRelease.model_validate_json(canonical_json(raw))
 
 
@@ -457,6 +482,27 @@ def test_governance_binding_evidence_must_match_lifecycle_introduction() -> None
 def test_shared_execution_envelope_rejects_unsafe_paths(unsafe_path: str) -> None:
     with pytest.raises(ValueError):
         SharedExecutionEnvelope(allowed_paths=(unsafe_path,))
+
+
+@pytest.mark.parametrize(
+    "unsafe_path",
+    (
+        "/tmp/work",
+        "../host",
+        "./policy.py",
+        "nested/../host",
+        "nested/./policy.py",
+        "nested//policy.py",
+        "nested/",
+    ),
+)
+def test_shared_execution_envelope_schema_rejects_unsafe_paths(
+    unsafe_path: str,
+) -> None:
+    validator = Draft202012Validator(SharedExecutionEnvelope.model_json_schema())
+
+    with pytest.raises(ValidationError):
+        validator.validate({"allowed_paths": [unsafe_path]})
 
 
 def test_manifest_rejects_arbitrary_content_with_borrowed_clause_digests() -> None:

@@ -5,7 +5,13 @@ from __future__ import annotations
 from pathlib import PurePosixPath
 from typing import Annotated, Literal, Self
 
-from pydantic import Field, StringConstraints, field_validator, model_validator
+from pydantic import (
+    Field,
+    StringConstraints,
+    WithJsonSchema,
+    field_validator,
+    model_validator,
+)
 
 from adaptation_compiler_lab.domain import (
     FrozenModel,
@@ -29,6 +35,16 @@ SafeRelativeTargetPath = Annotated[
     StringConstraints(
         min_length=1,
         pattern=r"^[A-Za-z0-9._][A-Za-z0-9._/-]*$",
+    ),
+    WithJsonSchema(
+        {
+            "type": "string",
+            "minLength": 1,
+            "pattern": (
+                r"^(?!\.{1,2}(?:/|$))(?!.*\/\.{1,2}(?:/|$))(?!.*//)"
+                r"[A-Za-z0-9._](?:[A-Za-z0-9._/-]*[A-Za-z0-9._-])?$"
+            ),
+        }
     ),
 ]
 

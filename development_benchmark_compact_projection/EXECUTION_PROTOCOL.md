@@ -1,7 +1,7 @@
 # Frozen execution protocol
 
-Status: v1.8 designed and frozen; no live sessions started. Byte-identical v1.0 through v1.7
-registrations remain as superseded pre-execution history. V1.8 keeps generated policy execution in
+Status: v1.9 designed and frozen; no live sessions started. Byte-identical v1.0 through v1.8
+registrations remain as superseded pre-execution history. V1.9 keeps generated policy execution in
 an untrusted child worker inside the answer-blind filesystem/network/PID sandbox and admits only a
 capability-free Python decision subset, preventing generated code from writing the wrapper's
 observation channel. A trusted supervisor owns official observation output; only the parent scorer
@@ -23,6 +23,11 @@ requires active governance metadata to reproduce lifecycle introductions exactly
 exact v1.5 runtime fixture and changes no target-visible bytes. Issuance fails before writing if
 any unchanged task, scorer, observer, sandbox, fixture, measurement, or envelope digest differs
 from v1.7.
+
+V1.9 makes the exported portable JSON Schema reject traversal, dot segments, duplicate separators,
+and trailing separators just as the Python model does. It reuses the exact v1.5 runtime fixture
+and changes no target-visible bytes. Issuance fails before writing if any unchanged task, scorer,
+observer, sandbox, fixture, measurement, or envelope digest differs from v1.8.
 
 ## Freeze order
 

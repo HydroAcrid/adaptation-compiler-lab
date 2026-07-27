@@ -69,6 +69,15 @@ class GovernedLifecycleEvent(FrozenModel):
             raise ValueError("governed lifecycle supersessions must be sorted and unique")
         return value
 
+    @model_validator(mode="after")
+    def transition_shape_is_valid(self) -> Self:
+        introducing_kinds = {"addition", "scoped_correction", "supersession"}
+        if self.transition_kind in introducing_kinds and self.introduced_artifact_ref is None:
+            raise ValueError("introducing lifecycle events require an artifact reference")
+        if self.transition_kind == "revocation" and self.introduced_artifact_ref is not None:
+            raise ValueError("revocation lifecycle events cannot introduce an artifact")
+        return self
+
 
 class ArtifactGovernanceBinding(FrozenModel):
     """Complete active artifact lineage retained in the external release."""
@@ -156,7 +165,8 @@ class ExternalGovernedRelease(FrozenModel):
             introductions = tuple(
                 event
                 for event in self.lifecycle_history
-                if event.introduced_artifact_ref == binding.artifact_ref
+                if event.transition_kind in {"addition", "scoped_correction", "supersession"}
+                and event.introduced_artifact_ref == binding.artifact_ref
             )
             if not introductions:
                 raise ValueError("governance binding requires an exact lifecycle introduction")
@@ -177,6 +187,7 @@ class ExternalGovernedRelease(FrozenModel):
                     {
                         *binding.evidence_links.supporting,
                         *binding.evidence_links.contradicting,
+                        *binding.evidence_links.scope_limiting,
                     },
                     key=str,
                 )

@@ -33,7 +33,8 @@ source transitions. The integrity gate then rejected formatter-normalized observ
 was preserved and superseded by metadata-only v1.6, which reuses the exact v1.5 runtime fixture.
 V1.6 was superseded by v1.7 so the Codex renderer independently requires a known Codex target
 family. V1.7 was superseded by v1.8 so the shared envelope accepts only normalized safe relative
-target paths and active governance claims must reproduce their lifecycle introductions. No live
+target paths and active governance claims must reproduce their lifecycle introductions. V1.8 was
+superseded by v1.9 so the exported portable schema enforces the same path restrictions. No live
 output informed any amendment.
 
 ## Contents
@@ -50,7 +51,9 @@ output informed any amendment.
   no condition-material change.
 - `PREREGISTRATION-v1.7.json` and `.sha256`: preserved Codex renderer target-family guard, reusing the
   exact v1.5 condition material.
-- `PREREGISTRATION-v1.8.json` and `.sha256`: current execution-envelope path-validation amendment,
+- `PREREGISTRATION-v1.8.json` and `.sha256`: preserved execution-envelope path-validation amendment,
+  reusing the exact v1.5 condition material.
+- `PREREGISTRATION-v1.9.json` and `.sha256`: current portable-envelope schema-alignment amendment,
   reusing the
   exact v1.5 condition material.
 - `tasks/`: fresh fixtures and task manifests.
