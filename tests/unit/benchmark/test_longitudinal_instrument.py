@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -15,6 +16,7 @@ from adaptation_compiler_lab.benchmark.longitudinal_instrument import (
     normalize_target_material,
     normalized_utf8_size,
     parse_porcelain_v1_z,
+    run_bounded_compact_policy_observation,
     run_bounded_longitudinal_scorer,
     unexpected_changed_paths,
     verify_private_plan_digest,
@@ -179,6 +181,54 @@ def test_bounded_scorer_records_malformed_json_without_raising(tmp_path: Path) -
 
     assert result.receipt.status == "malformed_output"
     assert result.score.objective_passed == 0
+
+
+def test_bounded_sandboxes_record_preexec_failure_without_raising(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    benchmark = _benchmark()
+    task = load_longitudinal_comparison(benchmark).tasks[0]
+    workspace = tmp_path / "workspace"
+    shutil.copytree(benchmark / task.fixture_directory, workspace)
+
+    def fail_before_exec(*args: object, **kwargs: object) -> None:
+        del args, kwargs
+        raise subprocess.SubprocessError("Exception occurred in preexec_fn.")
+
+    monkeypatch.setattr(subprocess, "Popen", fail_before_exec)
+
+    result = run_bounded_longitudinal_scorer(
+        scorer_script=_repo() / "scripts" / "score_longitudinal_task.py",
+        benchmark_root=benchmark,
+        task=task,
+        workspace=workspace,
+        timeout_seconds=2,
+    )
+
+    assert result.receipt.status == "crashed"
+    assert result.receipt.exit_code is None
+    assert result.receipt.failure_reason
+    assert "preexec_fn" in result.receipt.failure_reason
+    assert result.score.objective_passed == 0
+    assert result.score.diagnostic_passed == 0
+    assert result.score.neutral_passed == 0
+
+    observation = run_bounded_compact_policy_observation(
+        observer_script=_repo() / "scripts" / "observe_compact_projection_policy.py",
+        workspace=workspace,
+        scenario_id="preexec-failure",
+        destination_exists=True,
+        storage_class="disposable",
+        recovery_copy_approved=False,
+        timeout_seconds=2,
+    )
+
+    assert observation.observation is None
+    assert observation.receipt.status == "crashed"
+    assert observation.receipt.exit_code is None
+    assert observation.receipt.failure_reason
+    assert "preexec_fn" in observation.receipt.failure_reason
 
 
 def test_bounded_scorer_records_non_utf8_output_without_raising(tmp_path: Path) -> None:

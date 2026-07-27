@@ -61,7 +61,7 @@ class CompactProjectionTask(FrozenModel):
 
 
 class CompactProjectionComparisonDesign(FrozenModel):
-    design_version: Literal["1.0.0", "1.1.0", "1.2.0"] = "1.0.0"
+    design_version: Literal["1.0.0", "1.1.0", "1.2.0", "1.3.0"] = "1.0.0"
     design_id: Literal["milestone-6a1-compact-runtime-public-development"] = (
         "milestone-6a1-compact-runtime-public-development"
     )
@@ -108,7 +108,12 @@ class CompactProjectionComparisonDesign(FrozenModel):
     supersedes_design_digest: Sha256Digest | None = None
     superseded_scorer_digest: Sha256Digest | None = None
     amendment_reason: (
-        Literal["strict_tuple_return_contract", "isolated_policy_observation"] | None
+        Literal[
+            "strict_tuple_return_contract",
+            "isolated_policy_observation",
+            "preexec_failure_receipt",
+        ]
+        | None
     ) = None
     policy_observer_digest: Sha256Digest | None = None
     scorer_sandbox_digest: Sha256Digest | None = None
@@ -166,6 +171,12 @@ class CompactProjectionComparisonDesign(FrozenModel):
             and self.amendment_reason != "isolated_policy_observation"
         ):
             raise ValueError("compact projection v1.2 requires its registered amendment reason")
+        if self.design_version == "1.3.0" and any(
+            item is None for item in (*amendment, *isolation)
+        ):
+            raise ValueError("compact projection v1.3 requires complete isolation metadata")
+        if self.design_version == "1.3.0" and self.amendment_reason != "preexec_failure_receipt":
+            raise ValueError("compact projection v1.3 requires its registered amendment reason")
         return self
 
     @property
@@ -185,6 +196,7 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
     preregistration = next(
         path
         for path in (
+            root / "PREREGISTRATION-v1.3.json",
             root / "PREREGISTRATION-v1.2.json",
             root / "PREREGISTRATION-v1.1.json",
             root / "PREREGISTRATION-v1.0.json",
@@ -201,6 +213,7 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
     chain = {
         "1.1.0": "1.0",
         "1.2.0": "1.1",
+        "1.3.0": "1.2",
     }
     current = design
     while current.design_version in chain:
@@ -239,7 +252,7 @@ def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDes
         design.independent_scorer_digest
     ):
         raise ValueError("compact projection scorer digest drifted")
-    if design.design_version == "1.2.0":
+    if design.design_version in {"1.2.0", "1.3.0"}:
         if sha256_file(repo / "scripts" / "observe_compact_projection_policy.py") != (
             design.policy_observer_digest
         ):

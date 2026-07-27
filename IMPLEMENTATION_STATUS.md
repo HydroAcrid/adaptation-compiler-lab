@@ -38,13 +38,15 @@ stdout and stderr use regular files under the child-enforced one-MiB-per-stream 
 preventing unbounded coordinator pipe buffering, and the short provenance-marker set covers the
 scoped-correction artifact as well as the persistent rules.
 
-The fresh comparison's v1.0 and v1.1 preregistrations remain byte-identical and unexecuted.
+The fresh comparison's v1.0 through v1.2 preregistrations remain byte-identical and unexecuted.
 V1.0 was superseded for list/scalar coercion. V1.1 was superseded after review showed that policy
-import still shared the process that emitted the trusted score. Current v1.2 executes each policy
+import still shared the process that emitted the trusted score. V1.2 executes each policy
 call in an answer-blind read-only filesystem/network/PID sandbox that cannot see the benchmark or
 trusted parent, records bounded per-scenario observation receipts, and computes checks only in the
-parent scorer. V1.2 binds its scorer, observer, sandbox, and exact v1.1 lineage; no profile,
-target, judge, or other live output informed either amendment.
+parent scorer. Current v1.3 additionally converts pre-exec `SubprocessError` failures caused by
+stricter inherited host limits into durable crashed receipts for both scoring paths, and binds the
+repaired sandbox plus exact v1.2 lineage. No profile, target, judge, or other live output informed
+any amendment.
 
 Three stage packs demonstrate the intended lifecycle: a persistent-destination backup rule; a
 narrow generated-cache atomic-replacement exception; then a refuse-by-default persistent policy
@@ -59,7 +61,7 @@ actions” comparison is retired in favor of separate compiler, machine-time, ap
 and target-cost records. One blind Sol/xhigh judge ran before unblinding; its three compiled
 preferences are secondary, and two rewarded forbidden test-file changes.
 
-The fresh 6A.1 v1.2 protocol uses three new task fixtures and locally distinguishes reference,
+The fresh 6A.1 v1.3 protocol uses three new task fixtures and locally distinguishes reference,
 stale-rule, missed-exception, scope-leak, unnecessary-change, and forbidden-path implementations.
 Its minimum future live cost is six target sessions plus one author, one reviewer, and one blind
 judge: nine subscription sessions, zero API-key calls, and zero provider-billed calls. No role,
@@ -261,7 +263,7 @@ uv run pytest
 uv build
 ```
 
-The current full suite formats 280 files, passes strict typing, passes 448
+The current full suite formats 311 files, passes strict typing, passes 513
 tests, and builds both
 the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime

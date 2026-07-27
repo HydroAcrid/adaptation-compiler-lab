@@ -389,7 +389,7 @@ def _run_bounded_sandbox_command(
             stderr_stream.seek(0)
             stdout = stdout_stream.read(_SCORER_OUTPUT_LIMIT_BYTES + 1)
             stderr = stderr_stream.read(_SCORER_OUTPUT_LIMIT_BYTES + 1)
-    except OSError as error:
+    except (OSError, subprocess.SubprocessError) as error:
         if process is not None and process.poll() is None:
             with suppress(ProcessLookupError):
                 os.killpg(process.pid, signal.SIGKILL)

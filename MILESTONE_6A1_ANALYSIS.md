@@ -2,11 +2,13 @@
 
 Status: implementation and local validation complete; no live comparison executed.
 
-Protocol note (2026-07-27): unexecuted v1.0 and v1.1 registrations are preserved. Review first
+Protocol note (2026-07-27): unexecuted v1.0 through v1.2 registrations are preserved. Review first
 identified scalar/list-to-tuple coercion, then demonstrated that imported policy code could exit
-the trusted scorer process after printing fabricated checks. Current v1.2 binds a strict trusted
-scorer, an answer-blind isolated policy observer, the sandbox implementation, and exact links
-through both prior designs. No live profile, target, or judge session preceded either amendment.
+the trusted scorer process after printing fabricated checks, and finally identified a pre-exec
+resource-limit exception that could escape without a failure receipt. Current v1.3 binds a strict
+trusted scorer, an answer-blind isolated policy observer, the repaired sandbox implementation,
+and exact links through all prior designs. No live profile, target, or judge session preceded any
+amendment.
 
 ## Question
 
@@ -68,6 +70,12 @@ scorer because Linux exempts outer UID 0 from `RLIMIT_NPROC`; manifest construct
 canonical projection from the release and context before rendering; the temporary pre-execution
 review-refresh path was removed after the corrected freeze; and short condition/provenance markers
 remain leakage even when they are too short for copied-excerpt windows.
+
+The last PR #19 pass also converts `subprocess.SubprocessError` raised before exec—such as when a
+host hard resource limit is already below the requested sandbox limit—into the same durable
+crashed receipt used for other sandbox startup failures. Both the longitudinal scorer and compact
+policy observer share this boundary. V1.2 remains byte-identical; v1.3 is its linked, unexecuted
+successor with the repaired sandbox digest.
 
 ## Clause-level analysis
 

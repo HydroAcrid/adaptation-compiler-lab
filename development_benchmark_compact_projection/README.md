@@ -24,14 +24,17 @@ No role or target session has started. The renderer, task fixtures, answer-blind
 common envelope, every runtime release/projection/render/manifest byte, and current
 preregistration are frozen before profile construction. The preserved v1.0 registration was
 superseded by v1.1 for strict tuple returns; v1.1 was then superseded by v1.2 because policy code
-still shared the trusted scoring process. No live output informed either amendment.
+still shared the trusted scoring process. V1.2 was superseded by v1.3 so inherited pre-exec
+resource-limit failures produce durable failed receipts instead of aborting the coordinator. No
+live output informed any amendment.
 
 ## Contents
 
 - `PREREGISTRATION-v1.0.json` and `.sha256`: preserved, unexecuted scorer-coercion design.
 - `PREREGISTRATION-v1.1.json` and `.sha256`: preserved, unexecuted strict-return design.
-- `PREREGISTRATION-v1.2.json` and `.sha256`: current exact design and isolated observer/scorer
-  bindings.
+- `PREREGISTRATION-v1.2.json` and `.sha256`: preserved, unexecuted isolated observer/scorer design.
+- `PREREGISTRATION-v1.3.json` and `.sha256`: current exact design with fail-closed pre-exec
+  failure-receipt handling.
 - `tasks/`: fresh fixtures and task manifests.
 - `runtime-fixture/`: external releases, canonical projections, compact Codex text, clause-binding
   manifests, common envelope, and exact size measurements.

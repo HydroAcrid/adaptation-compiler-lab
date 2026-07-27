@@ -114,11 +114,11 @@ def _workspace(tmp_path: Path, task: CompactProjectionTask, source: str) -> Path
 def test_fresh_protocol_is_hash_frozen_and_unexecuted() -> None:
     root = _root()
     design = load_compact_projection_design(root)
-    expected = (root / "PREREGISTRATION-v1.2.sha256").read_text(encoding="ascii").split()[0]
+    expected = (root / "PREREGISTRATION-v1.3.sha256").read_text(encoding="ascii").split()[0]
 
-    assert sha256_file(root / "PREREGISTRATION-v1.2.json") == f"sha256:{expected}"
-    assert design.design_version == "1.2.0"
-    assert design.amendment_reason == "isolated_policy_observation"
+    assert sha256_file(root / "PREREGISTRATION-v1.3.json") == f"sha256:{expected}"
+    assert design.design_version == "1.3.0"
+    assert design.amendment_reason == "preexec_failure_receipt"
     assert design.supersedes_design_digest
     assert design.superseded_scorer_digest
     assert design.policy_observer_digest
@@ -438,4 +438,36 @@ def test_isolation_amendment_generator_cannot_replace_frozen_v1_2() -> None:
     assert before == (
         (root / "PREREGISTRATION-v1.2.json").read_bytes(),
         (root / "PREREGISTRATION-v1.2.sha256").read_bytes(),
+    )
+
+
+def test_preexec_amendment_generator_cannot_replace_frozen_v1_3() -> None:
+    root = _root()
+    before = (
+        (root / "PREREGISTRATION-v1.3.json").read_bytes(),
+        (root / "PREREGISTRATION-v1.3.sha256").read_bytes(),
+    )
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(_repo() / "scripts" / "supersede_compact_projection_protocol_v1_3.py"),
+            "--repo",
+            str(_repo()),
+            "--benchmark-root",
+            str(root),
+        ],
+        cwd=_repo(),
+        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=10,
+    )
+
+    assert completed.returncode != 0
+    assert "already frozen" in completed.stderr
+    assert before == (
+        (root / "PREREGISTRATION-v1.3.json").read_bytes(),
+        (root / "PREREGISTRATION-v1.3.sha256").read_bytes(),
     )
