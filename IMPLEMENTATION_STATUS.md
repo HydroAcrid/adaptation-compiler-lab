@@ -226,7 +226,12 @@ rating. Future public development packets use this isolated scoring gate rather 
 for ratings. Automated tests remain the objective authority, and AI ratings are separately labeled
 general-quality judgments.
 
-The current owner instruction conflicts with the frozen Milestone 6 plan's Kevin-rating role.
-Do not rewrite or expose that frozen study. Do not modify the pack, begin another Claude grid,
-execute the 32-run paid pilot, or access Milestone 6 custody until a versioned protocol decision
-resolves the scoring incompatibility.
+The scorer conflict is resolved without changing the frozen study. Kevin clarified before any
+held-out reveal or trial that he will perform the preregistered anonymous ratings for this phase.
+Automated tests remain objective authority; isolated-AI judging is deferred and may provide only
+secondary analysis after Kevin's ratings are durable.
+
+The next gate is a read-only Milestone 6 preflight that reverifies every frozen digest, retention
+window, credential balance, runtime pin, custody boundary, randomized order, and cost ceiling.
+Do not reveal held-out material or execute the 32-run paid pilot until that preflight passes and
+Kevin explicitly authorizes the paid run.

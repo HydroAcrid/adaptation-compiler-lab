@@ -139,7 +139,7 @@ A separately powered study may be recommended only if the feasibility pilot is v
 pack point estimate is at least as high as every comparator, no guardrail regresses by more than
 five percentage points, and no high-severity adverse case remains unresolved.
 
-### 6.1 Later owner direction on ratings
+### 6.1 Owner directions on ratings
 
 On 2026-07-26, Kevin directed that future rating packets be scored by a fresh, context-isolated
 `gpt-5.6-sol` Codex CLI session at `xhigh` reasoning rather than sent to him. For public,
@@ -151,11 +151,17 @@ structured receipt before unblinding. Its output is a secondary general-quality 
 automated tests remain the objective correctness authority, and no Kevin-specific preference
 claim is permitted.
 
-This later direction does not rewrite the frozen v1.1 held-out design above. That design still
-names Kevin as scorer, so it is incompatible with the current no-rating-request instruction.
-Milestone 6 must not execute and the AI scorer must not be silently substituted. A new versioned
-protocol decision is required before any held-out execution, without exposing or modifying the
-existing sealed tasks, mapping, randomization, or condition materials.
+On 2026-07-27, before any held-out reveal or trial, Kevin clarified that the isolated-AI
+replacement is deferred until after this feasibility phase. The frozen v1.1 held-out design above
+therefore remains authoritative without amendment: Kevin is the blinded preference scorer,
+automated tests determine objective correctness, and an isolated AI judge may provide only the
+already-preregistered secondary annotations after Kevin's ratings are durably recorded. The
+isolated-AI gate remains available for public development comparisons and later studies.
+
+This clarification changes neither the registered scorer nor any frozen study material. It
+resolves the temporary incompatibility without a new holdout. The sealed tasks, mapping,
+randomization, condition materials, custody records, and reveal boundary remain unchanged and
+unaccessed.
 
 ## 7. Milestone 5.5 non-held-out development gate
 
@@ -199,7 +205,6 @@ bundle. The complete bundle contains 32 preregistered cells and remains inaccess
 construction. It has not created target trial records, obtained blind ratings, or calculated an
 empirical comparison. The separate Milestone 5.5 Codex development gate must complete first. A
 later, separately authorized Claude development canary may use only new non-held-out tasks; it
-cannot reveal the Milestone 6 holdout or authorize the full pilot. The frozen Kevin-rating gate is
-now incompatible with the owner's later direction and must be resolved through a new versioned
-protocol before held-out execution. No result from this design may be described as independently
-conducted.
+cannot reveal the Milestone 6 holdout or authorize the full pilot. Kevin's blind ratings remain the
+gate after valid held-out execution; isolated-AI annotations are optional and secondary. No result
+from this design may be described as independently conducted.

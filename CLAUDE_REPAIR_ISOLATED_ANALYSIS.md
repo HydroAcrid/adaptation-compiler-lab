@@ -81,16 +81,16 @@ small for a durable superiority claim.
 
 ## Forward rating policy
 
-Future public development packets use the isolated Codex rating gate instead of requesting manual
+Public development packets may use the isolated Codex rating gate without requesting manual
 ratings from Kevin. Automated tests remain the objective correctness authority. The isolated AI
 rating remains a secondary, separately reported general-quality judgment; it must never be
 described as Kevin's preference.
 
-The frozen Milestone 6 preregistration still names Kevin as a held-out preference scorer. Because
-the frozen study cannot be rewritten post-freeze and the current owner instruction forbids future
-rating requests, Milestone 6 must not execute under that incompatible scoring plan. Resolving it
-requires a new versioned protocol decision without exposing or modifying the existing sealed
-tasks, mapping, randomization, or condition materials.
+On 2026-07-27, before any held-out reveal or trial, Kevin clarified that the frozen Milestone 6
+phase should continue under its original scoring plan. Kevin will rate its anonymous outputs,
+automated tests will score correctness, and isolated-AI judging is deferred until those ratings
+are durable. Because the registered scorer did not change, the existing sealed tasks, mapping,
+randomization, and condition materials remain valid and no fresh holdout is required.
 
 ## Boundaries preserved
 
