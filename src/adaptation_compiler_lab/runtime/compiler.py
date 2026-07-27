@@ -5,6 +5,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import cast
 
+from adaptation_compiler_lab.dogfood.compiler import (
+    DogfoodWorkflowError,
+    LongitudinalDogfoodCompiler,
+)
 from adaptation_compiler_lab.dogfood.models import (
     DogfoodTransition,
     LongitudinalDogfoodResult,
@@ -28,7 +32,9 @@ from adaptation_compiler_lab.serialization import canonical_digest, record_ref
 from adaptation_compiler_lab.targets.models import (
     ArtifactRenderProjection,
     ScopeDimension,
+    TargetKind,
 )
+from adaptation_compiler_lab.targets.profiles import default_target_profile
 
 
 class RuntimeProjectionError(ValueError):
@@ -53,9 +59,8 @@ def build_external_governed_releases(
 
     if len(transitions) != len(result.stages):
         raise RuntimeProjectionError("transition and snapshot counts differ")
-    events: list[GovernedLifecycleEvent] = []
-    releases: list[ExternalGovernedRelease] = []
-    parent_digest: str | None = None
+    if len(transitions) != 3:
+        raise RuntimeProjectionError("external dogfood release requires exactly three transitions")
     for transition, snapshot in zip(transitions, result.stages, strict=True):
         if transition.stage != snapshot.stage or transition.transition_id != snapshot.transition_id:
             raise RuntimeProjectionError("transition does not bind its compiled snapshot")
@@ -63,6 +68,23 @@ def build_external_governed_releases(
             raise RuntimeProjectionError(
                 "compiled snapshot does not bind the exact transition contents"
             )
+    exact_transitions = transitions
+    try:
+        expected_result = LongitudinalDogfoodCompiler(
+            default_target_profile(TargetKind.CODEX)
+        ).compile(exact_transitions)
+    except DogfoodWorkflowError as error:
+        raise RuntimeProjectionError(
+            "transitions cannot reproduce a valid compiled result"
+        ) from error
+    if result != expected_result:
+        raise RuntimeProjectionError(
+            "supplied snapshots do not exactly match deterministic compilation"
+        )
+    events: list[GovernedLifecycleEvent] = []
+    releases: list[ExternalGovernedRelease] = []
+    parent_digest: str | None = None
+    for transition, snapshot in zip(transitions, result.stages, strict=True):
         evidence_ref = cast(EvidenceRef, record_ref(transition.source_evidence))
         events.append(
             GovernedLifecycleEvent(

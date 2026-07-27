@@ -270,7 +270,7 @@ uv run pytest
 uv build
 ```
 
-The current full suite formats 315 files, passes strict typing, passes 521 tests, and builds both
+The current full suite formats 315 files, passes strict typing, passes 522 tests, and builds both
 the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
 verifier matched its pinned binary and canonical generated-schema digest

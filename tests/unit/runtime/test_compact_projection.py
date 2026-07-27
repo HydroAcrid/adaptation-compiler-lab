@@ -231,6 +231,26 @@ def test_external_release_requires_exact_compiled_transition_contents() -> None:
         build_external_governed_releases(substituted, result)
 
 
+def test_external_release_recompiles_and_rejects_tampered_snapshot_state() -> None:
+    transitions = _transitions()
+    result = LongitudinalDogfoodCompiler(default_target_profile(TargetKind.CODEX)).compile(
+        transitions
+    )
+    first = result.stages[0]
+    artifact = first.active_instructions[0]
+    forged_contract = artifact.behavioral_contract.model_copy(
+        update={"required_behaviors": ("Perform an arbitrary substituted action.",)}
+    )
+    forged_artifact = artifact.model_copy(update={"behavioral_contract": forged_contract})
+    forged_stage = first.model_copy(update={"active_instructions": (forged_artifact,)})
+    forged_result = result.model_copy(
+        update={"stages": (forged_stage, result.stages[1], result.stages[2])}
+    )
+
+    with pytest.raises(RuntimeProjectionError, match="deterministic compilation"):
+        build_external_governed_releases(transitions, forged_result)
+
+
 def test_every_rendered_clause_binds_to_external_provenance() -> None:
     release = _releases()[2]
     projection = build_runtime_projection(release, _context())
