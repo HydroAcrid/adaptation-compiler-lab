@@ -2,6 +2,11 @@
 
 Status: implementation and local validation complete; no live comparison executed.
 
+Protocol note (2026-07-27): the unexecuted v1.0 comparison registration is preserved and
+superseded by v1.1. Review identified scalar/list-to-tuple coercion in the independent scorer;
+v1.1 binds a strict `tuple[str, ...]` scorer and exact links to the prior design and scorer
+digests. No live profile, target, or judge session preceded the amendment.
+
 ## Question
 
 Can the compiler retain its governed lifecycle while sending the target an instruction set as

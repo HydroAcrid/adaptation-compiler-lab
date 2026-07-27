@@ -50,7 +50,9 @@ def main() -> int:
                 scenario["storage_class"],
                 scenario["recovery_copy_approved"],
             )
-            value = tuple(raw) if isinstance(raw, (list, tuple)) else (str(raw),)
+            if not isinstance(raw, tuple) or not all(isinstance(item, str) for item in raw):
+                raise TypeError("plan_delivery must return tuple[str, ...]")
+            value = raw
             observed[scenario_id] = repr(value)
             passed = value == tuple(scenario["expected_plan"])
         except Exception as error:

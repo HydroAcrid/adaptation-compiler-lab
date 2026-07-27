@@ -204,8 +204,10 @@ def main() -> int:
             _exclusive_write(manifest, expected_manifest)
     design = CompactProjectionComparisonDesign(
         tasks=tasks,
-        task_fixture_digests=tuple(
-            development_tree_digest(root / task.fixture_directory) for task in tasks
+        task_fixture_digests=(
+            development_tree_digest(root / tasks[0].fixture_directory),
+            development_tree_digest(root / tasks[1].fixture_directory),
+            development_tree_digest(root / tasks[2].fixture_directory),
         ),
         independent_scorer_digest=sha256_file(
             repo / "scripts" / "score_compact_projection_task.py"
@@ -223,7 +225,9 @@ def main() -> int:
             root / "runtime-fixture" / "shared-execution-envelope.md"
         ),
     )
-    preregistration = canonical_json(design) + "\n"
+    preregistration = (
+        canonical_json(design.model_dump(mode="json", exclude_none=True, round_trip=True)) + "\n"
+    )
     preregistration_path = root / "PREREGISTRATION-v1.0.json"
     checksum_path = root / "PREREGISTRATION-v1.0.sha256"
     if preregistration_path.exists() or checksum_path.exists():

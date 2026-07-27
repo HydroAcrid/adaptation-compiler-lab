@@ -61,7 +61,7 @@ class CompactProjectionTask(FrozenModel):
 
 
 class CompactProjectionComparisonDesign(FrozenModel):
-    design_version: Literal["1.0.0"] = "1.0.0"
+    design_version: Literal["1.0.0", "1.1.0"] = "1.0.0"
     design_id: Literal["milestone-6a1-compact-runtime-public-development"] = (
         "milestone-6a1-compact-runtime-public-development"
     )
@@ -105,6 +105,9 @@ class CompactProjectionComparisonDesign(FrozenModel):
     no_automated_regression_required: Literal[True] = True
     projection_must_not_exceed_profile_without_registered_necessity: Literal[True] = True
     ai_preference_cannot_rescue_failed_primary_gate: Literal[True] = True
+    supersedes_design_digest: Sha256Digest | None = None
+    superseded_scorer_digest: Sha256Digest | None = None
+    amendment_reason: Literal["strict_tuple_return_contract"] | None = None
     scorer_sensitivity_cases: tuple[
         Literal["reference"],
         Literal["stale_rule"],
@@ -128,19 +131,60 @@ class CompactProjectionComparisonDesign(FrozenModel):
             raise ValueError("compact projection tasks must be sorted and unique")
         if Counter(item.stage for item in self.tasks) != Counter({1: 1, 2: 1, 3: 1}):
             raise ValueError("compact projection design needs one task per stage")
+        amendment = (
+            self.supersedes_design_digest,
+            self.superseded_scorer_digest,
+            self.amendment_reason,
+        )
+        if self.design_version == "1.0.0" and any(item is not None for item in amendment):
+            raise ValueError("compact projection v1.0 cannot contain amendment metadata")
+        if self.design_version == "1.1.0" and any(item is None for item in amendment):
+            raise ValueError("compact projection v1.1 requires complete amendment metadata")
         return self
 
     @property
     def content_digest(self) -> Sha256Digest:
-        return canonical_digest(self)
+        return canonical_digest(
+            self.model_dump(
+                mode="json",
+                exclude_none=True,
+                round_trip=True,
+            )
+        )
 
 
 def load_compact_projection_design(root: Path) -> CompactProjectionComparisonDesign:
     """Load and revalidate every frozen public task, fixture, scorer, and renderer."""
 
-    design = CompactProjectionComparisonDesign.model_validate_json(
-        (root / "PREREGISTRATION-v1.0.json").read_bytes()
+    preregistration = (
+        root / "PREREGISTRATION-v1.1.json"
+        if (root / "PREREGISTRATION-v1.1.json").is_file()
+        else root / "PREREGISTRATION-v1.0.json"
     )
+    checksum = preregistration.with_suffix(".sha256")
+    checksum_fields = checksum.read_text(encoding="ascii").split()
+    if len(checksum_fields) != 2 or checksum_fields[1] != preregistration.name:
+        raise ValueError("compact projection preregistration checksum is malformed")
+    if sha256_file(preregistration) != f"sha256:{checksum_fields[0]}":
+        raise ValueError("compact projection preregistration checksum drifted")
+    design = CompactProjectionComparisonDesign.model_validate_json(preregistration.read_bytes())
+    if design.design_version == "1.1.0":
+        historical_path = root / "PREREGISTRATION-v1.0.json"
+        historical_checksum = root / "PREREGISTRATION-v1.0.sha256"
+        historical_fields = historical_checksum.read_text(encoding="ascii").split()
+        if (
+            len(historical_fields) != 2
+            or historical_fields[1] != historical_path.name
+            or sha256_file(historical_path) != f"sha256:{historical_fields[0]}"
+        ):
+            raise ValueError("superseded compact projection preregistration drifted")
+        historical = CompactProjectionComparisonDesign.model_validate_json(
+            historical_path.read_bytes()
+        )
+        if design.supersedes_design_digest != historical.content_digest:
+            raise ValueError("compact projection supersession digest drifted")
+        if design.superseded_scorer_digest != historical.independent_scorer_digest:
+            raise ValueError("compact projection superseded scorer digest drifted")
     observed_fixtures: list[Sha256Digest] = []
     for task in design.tasks:
         fixture = (root / task.fixture_directory).resolve()

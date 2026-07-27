@@ -114,9 +114,13 @@ def _workspace(tmp_path: Path, task: CompactProjectionTask, source: str) -> Path
 def test_fresh_protocol_is_hash_frozen_and_unexecuted() -> None:
     root = _root()
     design = load_compact_projection_design(root)
-    expected = (root / "PREREGISTRATION-v1.0.sha256").read_text(encoding="ascii").split()[0]
+    expected = (root / "PREREGISTRATION-v1.1.sha256").read_text(encoding="ascii").split()[0]
 
-    assert sha256_file(root / "PREREGISTRATION-v1.0.json") == f"sha256:{expected}"
+    assert sha256_file(root / "PREREGISTRATION-v1.1.json") == f"sha256:{expected}"
+    assert design.design_version == "1.1.0"
+    assert design.amendment_reason == "strict_tuple_return_contract"
+    assert design.supersedes_design_digest
+    assert design.superseded_scorer_digest
     assert design.planned_target_sessions == 6
     assert design.maximum_subscription_sessions == 9
     assert not design.target_sessions_started
@@ -207,6 +211,25 @@ def test_scorer_detects_unnecessary_change(tmp_path: Path) -> None:
     checks = _all_checks(_score(task, _workspace(tmp_path, task, source)))
 
     assert not checks["compact-s1-objective-new-durable"]
+
+
+@pytest.mark.parametrize(
+    "replacement",
+    (
+        '"refuse_replacement"',
+        '["refuse_replacement"]',
+    ),
+)
+def test_scorer_rejects_non_tuple_return_contract(
+    tmp_path: Path,
+    replacement: str,
+) -> None:
+    task = load_compact_projection_design(_root()).tasks[2]
+    source = _reference(3).replace('else ("refuse_replacement",)', f"else {replacement}")
+
+    checks = _all_checks(_score(task, _workspace(tmp_path, task, source)))
+
+    assert not checks["compact-s3-diagnostic-durable-default"]
 
 
 def test_validity_gate_detects_forbidden_path_defect() -> None:
@@ -306,4 +329,36 @@ def test_frozen_protocol_generator_cannot_refresh_existing_design() -> None:
     assert before == (
         (root / "PREREGISTRATION-v1.0.json").read_bytes(),
         (root / "PREREGISTRATION-v1.0.sha256").read_bytes(),
+    )
+
+
+def test_scorer_amendment_generator_cannot_replace_frozen_v1_1() -> None:
+    root = _root()
+    before = (
+        (root / "PREREGISTRATION-v1.1.json").read_bytes(),
+        (root / "PREREGISTRATION-v1.1.sha256").read_bytes(),
+    )
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(_repo() / "scripts" / "supersede_compact_projection_protocol.py"),
+            "--repo",
+            str(_repo()),
+            "--benchmark-root",
+            str(root),
+        ],
+        cwd=_repo(),
+        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=10,
+    )
+
+    assert completed.returncode != 0
+    assert "already frozen" in completed.stderr
+    assert before == (
+        (root / "PREREGISTRATION-v1.1.json").read_bytes(),
+        (root / "PREREGISTRATION-v1.1.sha256").read_bytes(),
     )

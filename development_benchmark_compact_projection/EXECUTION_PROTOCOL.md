@@ -1,6 +1,7 @@
 # Frozen execution protocol
 
-Status: designed and frozen; no live sessions started.
+Status: v1.1 designed and frozen; no live sessions started. The byte-identical v1.0 registration
+is retained as superseded pre-execution history after review identified non-tuple scorer coercion.
 
 ## Freeze order
 

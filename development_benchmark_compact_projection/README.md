@@ -20,13 +20,15 @@ repetition: six target sessions. One profile author, one independent profile rev
 condition-blind judge bring the exact maximum to nine saved-ChatGPT Codex subscription sessions.
 There are no API keys or provider-billed calls.
 
-No role or target session has started. The renderer, task fixtures, scorer, common envelope, every
-runtime release/projection/render/manifest byte, and preregistration are frozen before profile
-construction.
+No role or target session has started. The renderer, task fixtures, strict-return scorer, common
+envelope, every runtime release/projection/render/manifest byte, and current preregistration are
+frozen before profile construction. The preserved v1.0 registration is superseded by v1.1 because
+review found that its scorer coerced non-tuple return values; no output informed that amendment.
 
 ## Contents
 
-- `PREREGISTRATION-v1.0.json` and `.sha256`: exact design and source bindings.
+- `PREREGISTRATION-v1.0.json` and `.sha256`: preserved, unexecuted scorer-coercion design.
+- `PREREGISTRATION-v1.1.json` and `.sha256`: current exact design and strict scorer binding.
 - `tasks/`: fresh fixtures and task manifests.
 - `runtime-fixture/`: external releases, canonical projections, compact Codex text, clause-binding
   manifests, common envelope, and exact size measurements.

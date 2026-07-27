@@ -103,6 +103,7 @@ blind ratings, holdout isolation, or any fixed exclusion.
 
 | D-092 | Milestone 6A.1 scorer output encoding boundary | **Implemented from final PR #19 review 2026-07-27.** Capture isolated scorer stdout and stderr as exact bytes, bind receipts to those byte digests, and perform strict UTF-8 decoding only inside the per-cell output-validation boundary. Invalid UTF-8 is a durable `malformed_output` result and cannot abort the comparison coordinator. |
 | D-093 | Milestone 6A.1 scorer output and identity ceilings | **Implemented from follow-up PR #19 review 2026-07-27.** Replace unbounded coordinator pipes with regular output files governed by the scorer child’s one-MiB-per-stream `RLIMIT_FSIZE`, then read at most the registered ceiling plus one byte. Retain explicit short leakage markers for every fixture artifact identity, including the scoped-correction artifact, alongside actual-material excerpt detection. |
+| D-094 | Milestone 6A.1 strict scorer amendment | **Implemented before any session 2026-07-27.** Preserve the flawed but unexecuted v1.0 registration byte-for-byte. Supersede it with v1.1, which requires the documented `tuple[str, ...]` return contract instead of coercing lists or scalar strings, binds the replacement scorer digest, and links the exact prior design/scorer digests. V1.1 remains frozen and unexecuted with the same nine-session maximum and zero provider-billed calls. |
 
 ## Decision process
 

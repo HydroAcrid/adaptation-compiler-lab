@@ -38,6 +38,12 @@ stdout and stderr use regular files under the child-enforced one-MiB-per-stream 
 preventing unbounded coordinator pipe buffering, and the short provenance-marker set covers the
 scoped-correction artifact as well as the persistent rules.
 
+The fresh comparison's original v1.0 preregistration remains byte-identical and unexecuted but is
+superseded by v1.1 after review found that its independent scorer coerced list and scalar returns
+into tuples. The current scorer requires the exact `tuple[str, ...]` public contract. V1.1 binds
+the replacement scorer plus the exact v1.0 design and scorer digests; no profile, target, judge,
+or other live output informed the amendment.
+
 Three stage packs demonstrate the intended lifecycle: a persistent-destination backup rule; a
 narrow generated-cache atomic-replacement exception; then a refuse-by-default persistent policy
 that supersedes the original. The old artifact and evidence ID disappear from Stage 3 while the
@@ -51,7 +57,7 @@ actions” comparison is retired in favor of separate compiler, machine-time, ap
 and target-cost records. One blind Sol/xhigh judge ran before unblinding; its three compiled
 preferences are secondary, and two rewarded forbidden test-file changes.
 
-The fresh 6A.1 protocol uses three new task fixtures and locally distinguishes reference,
+The fresh 6A.1 v1.1 protocol uses three new task fixtures and locally distinguishes reference,
 stale-rule, missed-exception, scope-leak, unnecessary-change, and forbidden-path implementations.
 Its minimum future live cost is six target sessions plus one author, one reviewer, and one blind
 judge: nine subscription sessions, zero API-key calls, and zero provider-billed calls. No role,
