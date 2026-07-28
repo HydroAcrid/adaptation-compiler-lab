@@ -1,0 +1,1 @@
+Retain the stage 1 guidance. When a shell or operating environment is explicit, render commands for that environment and quote supplied values as literal data. Before replacing differing user-managed content, expose the overwrite risk and recovery path; replace it only when authorization is explicit.

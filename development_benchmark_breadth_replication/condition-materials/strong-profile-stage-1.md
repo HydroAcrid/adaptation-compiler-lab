@@ -1,0 +1,1 @@
+For a nontechnical operational handoff, explain the practical purpose before procedural detail. When a proposed fix has failed, inspect the live implementation and reproduce the failure before choosing a new cause. For time-sensitive decisions, select the most authoritative applicable source available as of the decision time.

@@ -4,48 +4,44 @@ Last updated: 2026-07-28
 
 ## Current milestone
 
-**Milestone 6A.3 passed its fair task-channel product comparison.** Six fresh tasks crossed the
-same frozen strong static profile and compiled adaptation through the same exact-once user-task
-adapter, common execution envelope, pinned Luna/medium model, disposable workspace, and
-independent scorer. All 12 records were instrument-valid and behaviorally conformant.
+**Milestone 6A.4 passed its scoped breadth-replication gate.** The final answer-blind validation
+compared the unchanged strong static profile with a 974-byte compiled pack whose only change from
+the prior 885-byte version was a stronger communication clause. The profile remained 986 bytes.
+The non-communication compiled rules were byte-identical, the eligible evidence did not change,
+and no new user behavior was inferred.
 
-Compiled adaptation passed all 16/16 objective, 20/20 diagnostic, and 12/12 neutral checks. The
-strong profile passed 16/16 objective, 14/20 diagnostic, and 11/12 neutral checks. Compiled won
-five task pairs and tied one under the preregistered automated rule, with no regression at any of
-the three sequential evidence stages. The permitted claim is
-`compiled_outperformed_on_fresh_suite`.
+On two fresh tasks delivered through the same exact-once user-task adapter, all four Luna/medium
+records were instrument-valid and ran their tests. Compiled adaptation passed 12/12 communication
+checks and beat the profile's 11/12, then tied the profile 11/11 on an unrelated
+research-integrity control. The condition-blind Sol/xhigh judge independently preferred compiled
+on communication and tied the research outputs. The compiled condition was perfect on every
+fresh objective, diagnostic, neutral, and bounded-command check.
 
-This result directly answers the narrow product question that remained after Milestone 6A.2. The
-advantage came from lifecycle-aware scoping: the compiled projection applied each addition,
-exception, and supersession only where active, while the cumulative profile over-applied later
-recovery rules to earlier stages and under-specified one final confirmation sequence. The
-compiled materials were also smaller at every stage: 216/336/343 bytes versus 221/460/504 bytes.
+The final gate also digest-bound the prior valid v3 comparison. Compiled and profile remained tied
+on debugging, environment safety, and research integrity; the final expression repair changed
+none of those rules. Together, the preregistered bounded claim is
+`compiled_matched_or_outperformed_profile_across_four_families_with_lifecycle_advantages`.
+This means no worse than the excellent profile on the four approved behavior families in this
+development evidence, not that every inherited implementation was perfect.
 
-The condition-blind Sol/xhigh judge preferred the profile four times, compiled once, and tied once.
-That is not a contradiction. It was intentionally denied automated scores and hidden behavioral
-expectations, and often preferred the profile's broader defensive branches on surface quality.
-Automated correctness and scope isolation were preregistered as primary; the judge is secondary
-general-quality evidence and cannot override them.
+The path to this result is preserved rather than hidden. The original breadth run, scoring
+adjudication, oracle-remediation run, v2 sandbox failure, and valid v3 communication loss remain
+immutable. The v3 loss exposed a real compiler-expression defect: the compact rule said to match
+the shell and quote paths but omitted the need for real supported commands/options and honest
+verification claims. The least-invasive repair strengthened that one clause only and passed a
+fresh direct task plus an unrelated leakage control.
 
-The route remained fail-closed. Two original judge attempts and one diagnostic attempt exposed an
-invalid fixed-tuple response schema; a second diagnostic exposed the strict `required` rule.
-Versioned amendments preserved every target artifact, captured encrypted failure evidence, added
-recursive strict-schema validation, and produced one valid judgment without rerunning targets.
-A separate zero-session amendment repaired strict JSON deserialization in the unblinder. These
-instrument repairs did not change tasks, materials, outputs, scores, identities, or mapping.
+Milestones 6A.3 and 6A.4 now provide two complementary pieces of same-agent product evidence:
+6A.3 showed lifecycle-aware compilation outperforming a cumulative profile across sequential
+addition, exception, and revocation stages; 6A.4 showed the compact governed pack matching or
+beating the profile across the four approved behavior families after one scoped versioned repair.
+Both used saved ChatGPT authentication and zero provider-billed calls.
 
-The portable asset remains the typed behavioral specification plus evidence, consent, evaluation,
-review, lifecycle, and release lineage. Natural-language rendering and task-channel delivery are
-target-specific adapters. Revoked behavior is removed before rendering; unrelated scopes remain
-excluded; raw evidence remains outside promoted material.
-
-The claim remains bounded: this is strong internally blinded, same-agent product evidence on six
-fresh development tasks, not a powered general result and not new cross-model transfer proof.
-
-The deferred Milestone 6 Claude study remains an unchanged, sealed, optional historical design.
-No held-out task, condition mapping, or randomized order was accessed or modified. No model
-weights, automatic tool creation, Kairn integration, web UI, public release, or remote raw-data
-storage was introduced.
+The claim remains bounded: this is internally blinded Codex development evidence with one run per
+fresh condition/task cell, not a powered general result or new cross-model proof. The deferred
+Milestone 6 Claude study remains sealed, unchanged, and optional. Portable Specialty Presets
+(Milestone 6B) remain a docs-only architecture draft; no preset has been imported, activated, or
+evaluated.
 
 ## Completed scope
 
@@ -219,6 +215,14 @@ storage was introduced.
 - Completed and unblinded all 12 Luna/medium target cells only after the anonymous packet and
   Sol/xhigh judgment were frozen. Nine records were valid. Compiled tied all automated correctness
   counts but failed the validity, compactness, and maintenance gates.
+- Completed the six-task Milestone 6A.3 fair task-channel comparison. All 12 target records were
+  valid; compiled won five pairs and tied one while remaining smaller at every evidence stage.
+- Completed Milestone 6A.4 through immutable adapter, oracle, sandbox, and valid-comparison
+  failures; a v3 runner smoke; eight valid v3 target records; and a communication-only expression
+  repair. The final four fresh target records and one blind judge passed the scoped gate.
+- Bound the final 974-byte compiled pack to the same eligible evidence as the unchanged 986-byte
+  profile, proved every non-communication rule byte-identical, and recorded the bounded
+  four-family claim without touching the deferred external-validation study.
 
 ## Verification performed
 
@@ -233,8 +237,8 @@ uv run pytest
 uv build
 ```
 
-The current full suite checks formatting for 444 files, passes Ruff lint, passes strict typing
-across 234 source files, passes 642 tests, and builds both the source distribution and wheel.
+The current full suite checks formatting for 576 files, passes Ruff lint, passes strict typing
+across 257 source files, passes 683 tests, and builds both the source distribution and wheel.
 Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
 verifier matched its pinned binary and canonical generated-schema digest
@@ -246,8 +250,9 @@ The real Claude/sandbox verifier matched all local binary/version/helper pins an
 started a bubblewrap user namespace. The accepted authenticated smoke then exercised the API under
 the frozen model/tool/sandbox contract.
 
-Passing source capture, profile, condition, custody, synthetic/runtime, and live-smoke checks
-establishes instrument and protocol readiness only, not transfer quality.
+The source, custody, runtime, and smoke checks establish instrument readiness. Milestones 6A.3 and
+6A.4 additionally provide bounded same-agent development evidence about compiled-versus-profile
+quality; they do not establish powered general or held-out cross-model transfer.
 
 ## Explicitly not implemented or exercised
 
@@ -268,30 +273,19 @@ establishes instrument and protocol readiness only, not transfer quality.
 
 ## Gate result and next action
 
-The dedicated Console credential, signing keys, raw key, custody key, and randomization seed reside
-outside the workspace in owner-readable-only files. They are never committed, printed, or
-persisted in traces. The runner continues to reject ambiguous sources, broad key permissions,
-workspace-local keys, alternate providers, and missing sandbox support.
+Milestone 6A.4 is complete. Its exact tasks, public plan, condition materials, source digests,
+anonymous outputs, blind judge receipt, unblinded mapping, and result are durable. Raw traces,
+private mappings, and encryption material remain outside the workspace in owner-readable-only
+storage.
 
-The versioned four-cell repair run is complete and unblinded only after a durable isolated-AI
-rating. Future public development packets use an isolated condition-blind judge rather than asking
-Kevin for ratings. Automated tests remain the objective authority, and AI ratings are separately
-labeled general-quality judgments.
+The current bounded product answer is affirmative: compilation has now beaten the profile on
+lifecycle-stage scoping and matched or beaten it across the approved behavior families while
+remaining compact and governed. The project still must not claim universal superiority,
+independent replication, or held-out cross-model transfer.
 
-The scorer conflict is resolved without changing the frozen study. Kevin clarified before any
-held-out reveal or trial that he will perform the preregistered anonymous ratings for this phase.
-Automated tests remain objective authority; isolated-AI judging is deferred and may provide only
-secondary analysis after Kevin's ratings are durable.
-
-Milestone 6A remains complete with a failed comparative gate, and the v2.2 compact paired
-comparison also remains failed. Milestone 6A.2 has now passed its narrower product canary:
-task-scoped compiled material was delivered exactly once in the user task, produced a valid
-record, passed every diagnostic/neutral/objective check, and stayed smaller than the static
-reference. Provider-billed calls and API keys remained zero.
-
-The system therefore has a working governed compilation-and-delivery path, but no general
-compiled-over-static superiority claim. The smallest future comparison is a new preregistered
-paired test on fresh tasks that routes both materials through the same exact-once user-task
-adapter. It is optional evidence, not required repair work. The deferred external-validation
-study is not unfinished required work and must remain sealed unless separately revived with
-funding.
+No Portable Specialty Preset exists yet. Milestone 6B is the proposed next product milestone, but
+its current artifact is architecture documentation only. Implementation should begin with one
+versioned `CapabilityPreset` contract, source/license/trust admission, temporary activation,
+personal overlay composition, exact deactivation/rollback, and a zero-provider-billed Frontend
+Studio development comparison. The sealed external-validation study is not required for 6B and
+must remain untouched unless separately revived with funding.
