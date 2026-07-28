@@ -1,96 +1,55 @@
 # Implementation Status
 
-Last updated: 2026-07-27
+Last updated: 2026-07-28
 
 ## Current milestone
 
-**Milestone 6A.1 compact runtime projection is implemented and locally validated; its fresh live
-comparison is deliberately unexecuted.** Milestone 6A remains immutable and its strict product
-gate remains failed. The deterministic lifecycle still verifies signed consent/capture, governed
-Evidence v1.1, review approval, addition, narrower scoped correction, supersession/revocation,
-release rendering, activation scope, rollback, and append-only feedback.
+**Milestone 6A.2 has a passing task-delivery product canary.** A fresh saved-ChatGPT Codex session
+received the exact 216-byte Stage 1 compiled adaptation once in its user task, with the common
+safety/isolation contract retained in the developer channel. The run was valid, passed 2/2
+diagnostic, 1/1 neutral, and 1/1 objective checks, executed the visible two-test suite, stayed
+inside the disposable workspace, and destroyed its workspace and configuration afterward.
+The delivery receipt binds the original task digest, exact material digest and byte count,
+delivered-task digest, `user_task` channel, and one occurrence. Provider-billed calls remain zero.
 
-The read-only 6A audit passed the preregistration, task, scorer, material, receipt, judge,
-private-plan, randomization, and unblinded-result digest chain. The exact private-plan digest
-matches its frozen receipt. Historical off-by-one profile byte measurements were recorded as a
-known defect and not rewritten.
+This is the first end-to-end evidence that the current product path works on a targeted fresh task:
+typed governed behavior with full provenance can be rendered compactly, routed into the effective
+target channel, activated in scope, and independently verified without false activation. It is not
+a shortcut or a rewritten result: the original 6A gate and the v2.2 paired compact comparison both
+remain failed and immutable.
 
-The new representation split retains 5,297/10,280/11,744-byte external governed releases plus
-1,044/2,000/2,000-byte external clause manifests. Codex receives only 163/454/461 adaptation
-bytes. The identical 362-byte execution envelope is separate from both comparison conditions.
-Every target clause binds to exact artifact/evidence/consent/evaluation/review lineage.
+The path to the passing canary was evidence-driven:
 
-All five PR #18 evaluation-instrument findings are repaired prospectively: exact private-plan
-digest verification, sandboxed scoring and durable failures, actual-material excerpt leakage
-detection, NUL-delimited two-column Git status parsing, and exact normalized byte measurement.
-PR #19 review then hardened the new boundary further: activation and exclusion dimensions resolve
-independently; revoked artifacts cannot reactivate; governance bindings require exact artifact,
-scope, and evidence equality; manifests certify only an exact deterministic re-render; generated
-policy executes in a read-only Linux user/mount/network/PID namespace and chroot; and the
-preregistration binds the complete runtime-fixture tree rather than size metadata alone.
-The second review requires a non-root outer coordinator so the process limit is enforceable,
-recomputes the canonical projection from release plus context before certification, permanently
-disables preregistration refresh, and combines short identity/provenance markers with actual
-material-excerpt leakage detection. The final review also requires scorer output to be captured
-as exact bytes and decoded only inside the per-cell validation boundary, so invalid UTF-8 becomes
-a durable malformed-output receipt instead of aborting the comparison coordinator. Captured
-stdout and stderr use regular files under the child-enforced one-MiB-per-stream file-size ceiling,
-preventing unbounded coordinator pipe buffering, and the short provenance-marker set covers the
-scoped-correction artifact as well as the persistent rules.
+- The v2.2 paired comparison produced six valid records but the compiled condition regressed at
+  Stages 1 and 2; the static profile won one blind judgment and tied two.
+- Semantic decision types and a natural renderer v5 improved Stages 2 and 3, but the three-session
+  v2.3 remediation still missed one Stage 1 diagnostic and invented a neutral behavior. A signed
+  post-hoc audit additionally invalidated that Stage 1 record because the frozen command audit had
+  missed relative `.agents`/`.codex` inspection.
+- Closed-world wording and the hardened command audit fixed the invented neutral behavior, but a
+  one-session v2.4 canary still missed the no-request behavior and was correctly marked invalid
+  for control-surface inspection.
+- Trace evidence then isolated the remaining target-adapter defect: task-scoped adaptation was
+  present only in the developer-profile channel, where the concrete user task dominated it. The
+  v2.5 adapter delivers task-scoped material exactly once with the task while keeping universal
+  boundaries separate. Its one-session canary passed every registered gate.
 
-The fresh comparison's v1.0 through v1.6 preregistrations remain byte-identical and unexecuted.
-V1.0 was superseded for list/scalar coercion. V1.1 was superseded after review showed that policy
-import still shared the process that emitted the trusted score. V1.2 executes each policy
-call in an answer-blind read-only filesystem/network/PID sandbox that cannot see the benchmark or
-trusted parent, records bounded per-scenario observation receipts, and computes checks only in the
-parent scorer. V1.3 additionally converts pre-exec `SubprocessError` failures caused by
-stricter inherited host limits into durable crashed receipts for both scoring paths, and binds the
-repaired sandbox plus exact v1.2 lineage. V1.4 separates untrusted policy-worker bytes from
-official observation output, computes longitudinal and compact checks only outside generated-code
-processes, and preserves effective scope on verification clauses. V1.5 rejects generated
-policies outside a capability-free Python subset before execution, requires the selected target
-profile to satisfy every applicable artifact's compatibility declaration, and binds every compiled
-snapshot to the digest of its complete source transition. V1.6 changes no runtime
-material or semantics; it binds formatter-normalized observer bytes after the pre-execution v1.5
-freeze correctly detected source drift. No profile, target, judge, or other live output informed
-that amendment. V1.7 independently requires a known Codex target family at the Codex renderer
-boundary. V1.8 rejects absolute, traversing, non-normalized, control-bearing, or instruction-like
-execution-envelope paths. V1.9 makes the exported JSON Schema enforce the same traversal,
-dot-segment, duplicate-separator, and trailing-separator restrictions as the Python model; it
-binds the updated renderer source while reusing the exact v1.5 fixture and every unchanged v1.8
-digest. Current v1.10 also makes path arrays schema-unique and canonically sorts them on load while
-reproducing active, revoked, and scoped-supersession state from exact per-kind lifecycle events.
-The portable external-release schema carries the same per-kind introduction/removal cardinality
-constraints for schema-only consumers.
+The portable asset remains the typed behavioral specification plus evidence, consent, evaluation,
+review, lifecycle, and release lineage. Natural-language rendering and task-channel delivery are
+target-specific adapters. Revoked behavior is removed before rendering; unrelated scopes remain
+excluded; raw evidence remains outside promoted material.
 
-Three stage packs demonstrate the intended lifecycle: a persistent-destination backup rule; a
-narrow generated-cache atomic-replacement exception; then a refuse-by-default persistent policy
-that supersedes the original. The old artifact and evidence ID disappear from Stage 3 while the
-narrow exception remains active only for its registered project scope.
+The product claim is deliberately bounded. The successful canary proves instrumented task-level
+delivery and activation for compiled material, not that compiled adaptation is generally better
+than an excellent static profile and not cross-model transfer. The next comparative evidence,
+when authorized, must use fresh tasks and deliver both compiled and static materials through the
+same exact-once user-task channel. No further model run is required to preserve the present
+engineering success.
 
-Six public tasks and independent scorers produced 12 frozen target records. Compiled and profile
-tied at 6/6 objective, 2/6 diagnostic, and 2/6 neutral checks. Compiled produced 3/6 valid records
-versus 6/6 for the profile; all three invalid compiled runs violated path/command discipline.
-Compiled finished at 1,652 bytes versus the profile's 462 bytes. The old unlike “maintenance
-actions” comparison is retired in favor of separate compiler, machine-time, approval, profile,
-and target-cost records. One blind Sol/xhigh judge ran before unblinding; its three compiled
-preferences are secondary, and two rewarded forbidden test-file changes.
-
-The fresh 6A.1 v1.10 protocol uses three new task fixtures and locally distinguishes reference,
-stale-rule, missed-exception, scope-leak, unnecessary-change, and forbidden-path implementations.
-Its minimum future live cost is six target sessions plus one author, one reviewer, and one blind
-judge: nine subscription sessions, zero API-key calls, and zero provider-billed calls. No role,
-target, or judge session has started.
-
-The prior v2.9 result remains favorable but benchmark-limited descriptive cross-agent development
-evidence: compiled led Kevin's preferences 5–2 with one tie and led objective/diagnostic counts,
-with no neutral regression. It is not proof that compiler v2 is superior to an excellent profile.
-
-The frozen Milestone 6A inputs, releases, packs, conditions, outputs, and results were not changed.
-Only their public records and explicitly authorized encrypted 6A failure traces were read for the
-postmortem. No held-out task or Milestone 6 mapping was accessed; no held-out trial, model
-modification, executable-tool creation, Kairn integration, web UI, public release, or remote
-research-data storage occurred.
+The deferred Milestone 6 Claude study remains an unchanged, sealed, optional historical design.
+No held-out task, condition mapping, or randomized order was accessed or modified. No model
+weights, automatic tool creation, Kairn integration, web UI, public release, or remote raw-data
+storage was introduced.
 
 ## Completed scope
 
@@ -278,8 +237,9 @@ uv run pytest
 uv build
 ```
 
-The current full suite formats 319 files, passes strict typing, passes 566 tests, and builds both
-the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, both
+The current full suite checks formatting for 417 files, passes Ruff lint, passes strict typing
+across 230 source files, passes 631 tests, and builds both the source distribution and wheel.
+Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
 verifier matched its pinned binary and canonical generated-schema digest
 `sha256:e2d36bf67743ea6d89f93b598efaaffd873a1be0668a775401ab8817b808a851`.
@@ -327,14 +287,15 @@ held-out reveal or trial that he will perform the preregistered anonymous rating
 Automated tests remain objective authority; isolated-AI judging is deferred and may provide only
 secondary analysis after Kevin's ratings are durable.
 
-Milestone 6A is complete. Its deterministic lifecycle passed, but its comparative product gate
-failed: correctness tied, compiled had three guardrail-invalid records, and the static profile was
-smaller and required fewer recorded actions. Twenty subscription sessions were attempted under
-the original protocol plus one explicit amendment; provider-billed calls and API keys remained
-zero.
+Milestone 6A remains complete with a failed comparative gate, and the v2.2 compact paired
+comparison also remains failed. Milestone 6A.2 has now passed its narrower product canary:
+task-scoped compiled material was delivered exactly once in the user task, produced a valid
+record, passed every diagnostic/neutral/objective check, and stayed smaller than the static
+reference. Provider-billed calls and API keys remained zero.
 
-The smallest justified next product step is a new versioned minimal-projection renderer: keep full
-provenance in the external audit asset, expose only active actionable behavior and scope to the
-target, and add explicit change discipline. Any new comparison requires new public tasks and
-preregistration. The deferred external-validation study is not unfinished required work and must
-remain sealed unless separately revived with funding.
+The system therefore has a working governed compilation-and-delivery path, but no general
+compiled-over-static superiority claim. The smallest future comparison is a new preregistered
+paired test on fresh tasks that routes both materials through the same exact-once user-task
+adapter. It is optional evidence, not required repair work. The deferred external-validation
+study is not unfinished required work and must remain sealed unless separately revived with
+funding.

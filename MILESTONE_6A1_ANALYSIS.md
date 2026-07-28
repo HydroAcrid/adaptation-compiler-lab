@@ -1,6 +1,7 @@
 # Milestone 6A.1: Compact Runtime Projection
 
-Status: implementation and local validation complete; no live comparison executed.
+Status: historical analysis plus completed public development runs through the passing
+Milestone 6A.2 task-delivery canary.
 
 Protocol note (2026-07-27): unexecuted v1.0 through v1.6 registrations are preserved. Review first
 identified scalar/list-to-tuple coercion, then demonstrated that imported policy code could exit
@@ -236,5 +237,66 @@ No synthetic combined effort score is calculated.
 - One target-specific renderer exists (Codex). The canonical runtime representation itself is
   target-independent, but additional adapters remain future work.
 
-The next product evidence must come from the frozen fresh comparison. No tuning is allowed after
-seeing its live outputs under renderer version 1.0.0.
+## Live comparison and remediation results
+
+The frozen v2.2 paired comparison was executed before any remediation. All six target records were
+valid, but the primary product gate failed. The compiled condition missed diagnostic, neutral,
+and objective behavior at Stage 2 and diagnostic/neutral behavior at Stage 1. The strong static
+profile won one of three secondary blind judgments and tied the other two. The compact compiled
+material remained smaller at all stages (159/378/382 bytes versus 221/460/504 bytes), so
+compactness alone did not produce reliable activation.
+
+The remediation did not rewrite that result:
+
+1. Semantic decision tables separated resource class, recovery-request state, and operation from
+   target wording. Natural renderer v5 produced 216/345/360-byte packs. Its three live compiled
+   sessions passed all Stage 2 and 3 checks but missed one Stage 1 diagnostic and one neutral
+   check. The immutable result remains failed.
+2. Trace review found a previously missed relative `.agents`/`.codex` inspection. A separate
+   signed post-hoc adjudication marks the affected Stage 1 record invalid while preserving the
+   original record. The command audit now detects both relative and absolute control-surface
+   inspection.
+3. Closed-world renderer v6 removed the invented neutral behavior, but its one-session canary
+   still missed the no-request diagnostic and was correctly invalidated by the hardened audit.
+4. The second trace isolated a delivery-layer defect rather than another portable-semantic defect:
+   task-scoped adaptation lived in the developer-profile channel while the concrete task lived in
+   the user channel. The target followed the task's narrower wording.
+
+## Passing task-delivery canary
+
+Milestone 6A.2 routes task-scoped adaptation exactly once into the user task and leaves universal
+execution and isolation policy in the developer channel. A typed delivery receipt binds the
+original prompt digest, exact material digest, byte count, delivered prompt digest, channel, and
+occurrence count.
+
+The fresh Stage 1 canary passed:
+
+- valid target record;
+- diagnostic 2/2, including the no-recovery-request case;
+- neutral 1/1;
+- objective 1/1;
+- actual visible suite ran two tests;
+- no forbidden command or ambient-surface observation;
+- configuration and workspace destroyed;
+- 216 compiled bytes versus the 221-byte static-profile reference;
+- zero API-key or provider-billed calls; and
+- no access to the deferred external-validation study.
+
+The passing record is
+`development_benchmark_compact_projection/task-delivery-canary-v1/result.json`.
+The v2.2 result, semantic-remediation failure, signed post-hoc audit, and closed-world failure
+remain unchanged beside it.
+
+## Claim boundary and next evidence
+
+The current system has demonstrated a real product mechanism: governed semantics can remain
+typed, versioned, scoped, reversible, and evidence-linked externally while a small target-specific
+projection is delivered through the channel where a coding agent will actually apply it. A strong
+manual profile does not automatically supply this lifecycle, revocation, provenance, deterministic
+rendering, or exact delivery receipt.
+
+The evidence still does not establish that compiled adaptation outperforms an excellent profile
+in general. A future paired comparison must use fresh tasks, route both condition materials once
+through the same user-task channel, keep the common safety envelope identical, and freeze the
+mapping before execution. It must not reinterpret the historical v2.2 failure or the passing
+single-condition canary.
