@@ -296,6 +296,7 @@ def test_outer_target_sandbox_allows_source_edit_and_tests_but_denies_other_path
                 "--symlink usr/lib64 /lib64 --symlink usr/sbin /sbin "
                 "--ro-bind /etc /etc --proc /proc --dev /dev --tmpfs /tmp "
                 "-- /usr/bin/true; "
+                "printf 'ephemeral\\n' > /workspace/.agents/helper-state; "
                 "getent hosts chatgpt.com >/dev/null; "
                 "printf 'def value() -> int:\\n    return 2\\n' "
                 "> /workspace/src/transfer_policy.py; "
@@ -322,6 +323,7 @@ def test_outer_target_sandbox_allows_source_edit_and_tests_but_denies_other_path
     assert completed.returncode == 0, completed.stderr
     assert "return 2" in (source / "transfer_policy.py").read_text(encoding="utf-8")
     assert "forbidden" not in test_file.read_text(encoding="utf-8")
+    assert not any((workspace / ".agents").iterdir())
     assert "OK" in completed.stderr
 
 

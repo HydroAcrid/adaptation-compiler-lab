@@ -443,7 +443,12 @@ def main() -> None:
     benchmark = repo / "development_benchmark_compact_projection"
     design = load_compact_projection_design(benchmark)
     contract = load_compact_execution_contract(benchmark, design=design)
-    retry_iteration = design.design_version in {"1.15.0", "1.16.0", "1.17.0"}
+    retry_iteration = design.design_version in {
+        "1.15.0",
+        "1.16.0",
+        "1.17.0",
+        "1.18.0",
+    }
     iteration = design.design_version in {
         "1.12.0",
         "1.13.0",
@@ -451,6 +456,7 @@ def main() -> None:
         "1.15.0",
         "1.16.0",
         "1.17.0",
+        "1.18.0",
     }
     if iteration and arguments.bubblewrap is None:
         raise RuntimeError("repaired target execution requires the pinned outer sandbox")
@@ -571,7 +577,7 @@ def main() -> None:
         if iteration
         else "results"
     )
-    if design.design_version in {"1.16.0", "1.17.0"}:
+    if design.design_version in {"1.16.0", "1.17.0", "1.18.0"}:
         smoke_version = design.design_version.removesuffix(".0")
         smoke = json.loads(
             (benchmark / f"INSTRUMENT_SMOKE-v{smoke_version}.json").read_text(encoding="utf-8")

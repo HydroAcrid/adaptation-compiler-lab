@@ -50,7 +50,9 @@ def is_interpreter_generated_path(path: str | None) -> bool:
 class CompactExecutionContract(FrozenModel):
     """Machine-validated identity and isolation settings frozen before live sessions."""
 
-    contract_version: Literal["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0"] = "1.0.0"
+    contract_version: Literal["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0"] = (
+        "1.0.0"
+    )
     design_digest: Sha256Digest
     execution_protocol_digest: Sha256Digest
     cli_version: Literal["codex-cli 0.145.0"] = "codex-cli 0.145.0"
@@ -160,6 +162,19 @@ class CompactExecutionContract(FrozenModel):
             or self.inherited_profile_receipt_digest is None
         ):
             raise ValueError("compact execution contract v1.5 settings drifted")
+        elif self.contract_version == "1.6.0" and (
+            self.maximum_subscription_sessions != 8
+            or self.profile_author_sessions != 0
+            or self.profile_review_sessions != 0
+            or self.instrument_smoke_sessions != 1
+            or self.target_sandbox != "workspace-write-inside-read-only-outer-mount-namespace"
+            or self.target_outer_sandbox_digest != self.role_outer_sandbox_digest
+            or self.target_workspace_policy != "workspace-read-only-except-registered-source-file"
+            or self.target_runner_source_digest is None
+            or self.instrument_smoke_source_digest is None
+            or self.inherited_profile_receipt_digest is None
+        ):
+            raise ValueError("compact execution contract v1.6 settings drifted")
         return self
 
     @property
@@ -186,6 +201,7 @@ def load_compact_execution_contract(
         "1.15.0": "EXECUTION_CONTRACT-v1.3.json",
         "1.16.0": "EXECUTION_CONTRACT-v1.4.json",
         "1.17.0": "EXECUTION_CONTRACT-v1.5.json",
+        "1.18.0": "EXECUTION_CONTRACT-v1.6.json",
     }.get(design.design_version, "EXECUTION_CONTRACT-v1.0.json")
     contract = CompactExecutionContract.model_validate_json((root / contract_name).read_bytes())
     if contract.design_digest != design.content_digest:

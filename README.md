@@ -30,7 +30,10 @@ mounts only that exact binary at a private runtime path, proves nested sandbox s
 and requires one successful neutral live edit-and-test smoke before the unchanged grid can run.
 Its first smoke coordinator stopped before launching Codex because of an invalid source-family
 enum reference. V1.17 fixes that pre-session defect and binds the exact smoke coordinator source
-digest in addition to the target-runner digest.
+digest in addition to the target-runner digest. Its live turn then exposed Codex's need for an
+ephemeral `/workspace/.agents` helper directory beneath the otherwise read-only repository root.
+V1.18 overlays only that path with an in-memory filesystem while preserving the sole source file
+as the only host-backed writable target.
 
 The design binds each compiled snapshot to the complete approved transition, enforces the selected
 Codex target profile, and evaluates generated benchmark policies through a capability-free Python
@@ -44,7 +47,7 @@ acceptance, allowed path collections are unique and canonically ordered, and the
 enforces each lifecycle transition's discriminated structural shape.
 This establishes compactness and lineage preservation, not a performance advantage.
 
-The v1.17 public comparison is designed but unexecuted: one instrument smoke, three unchanged
+The v1.18 public comparison is designed but unexecuted: one instrument smoke, three unchanged
 tasks, two conditions, one repetition, and one secondary blind judge require at most eight
 saved-ChatGPT Codex subscription sessions. No provider-billed call or API key is used.
 
@@ -100,9 +103,9 @@ worked; its current target-visible projection did not beat an excellent profile.
 - A target-independent canonical runtime representation, compact Codex renderer, external
   governed release, exact clause-to-provenance manifest, context resolution, and a separately
   measured condition-neutral execution envelope.
-- Immutable failed v1.11 instrument, v1.13 role, v1.14 resolver, v1.15 inner-sandbox, and v1.16
-  pre-session smoke results plus a v1.17 compact-projection protocol with three entirely fresh task
-  fixtures, an independent scorer, six
+- Immutable failed v1.11 instrument, v1.13 role, v1.14 resolver, v1.15 inner-sandbox, v1.16
+  pre-session smoke, and v1.17 live-smoke results plus a v1.18 compact-projection protocol with
+  three entirely fresh task fixtures, an independent scorer, six
   target cells, one frozen isolated profile-remediation receipt, a corrected judge packet, local
   seeded-defect sensitivity tests, nested inner/outer target sandbox validation, a mandatory live
   instrument smoke, and an eight-session maximum.

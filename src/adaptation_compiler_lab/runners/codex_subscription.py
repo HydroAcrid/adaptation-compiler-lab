@@ -626,6 +626,8 @@ class CodexSubscriptionRunner:
     ) -> list[str]:
         if self._bubblewrap is None:
             return inner_command
+        scratch = workspace / ".agents"
+        scratch.mkdir(mode=0o700, exist_ok=False)
         writable_files = tuple(
             sorted(
                 {
@@ -708,6 +710,8 @@ class CodexSubscriptionRunner:
             "--ro-bind",
             str(workspace),
             str(_OUTER_WORKSPACE),
+            "--tmpfs",
+            str(_OUTER_WORKSPACE / ".agents"),
             *writable_args,
             "--chdir",
             str(_OUTER_WORKSPACE),

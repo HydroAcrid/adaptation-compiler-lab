@@ -59,7 +59,12 @@ def main() -> None:
     repo = arguments.repo.resolve()
     benchmark = repo / "development_benchmark_compact_projection"
     design = load_compact_projection_design(benchmark)
-    retry_iteration = design.design_version in {"1.15.0", "1.16.0", "1.17.0"}
+    retry_iteration = design.design_version in {
+        "1.15.0",
+        "1.16.0",
+        "1.17.0",
+        "1.18.0",
+    }
     iteration = design.design_version in {
         "1.12.0",
         "1.13.0",
@@ -67,6 +72,7 @@ def main() -> None:
         "1.15.0",
         "1.16.0",
         "1.17.0",
+        "1.18.0",
     }
     results = benchmark / (
         f"results-v{design.design_version.removesuffix('.0')}"
