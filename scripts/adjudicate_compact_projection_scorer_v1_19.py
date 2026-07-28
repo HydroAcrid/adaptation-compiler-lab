@@ -340,7 +340,9 @@ def main() -> None:
             workspace_root=repo,
         ),
     )
-    python = arguments.python.resolve()
+    python = arguments.python.expanduser().absolute()
+    if not python.is_file():
+        raise RuntimeError("trusted adjudication interpreter is unavailable")
     scorer = repo / "scripts/score_compact_projection_task.py"
     task_by_id = {task.task_id: task for task in design.tasks}
     corrected_observations = []
