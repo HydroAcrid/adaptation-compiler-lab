@@ -7,6 +7,7 @@ from adaptation_compiler_lab.benchmark.task_channel_comparison import (
     load_task_channel_design,
     seed_commitment,
 )
+from scripts.run_fair_task_channel_judge import _terminal_failure_summary
 
 
 def test_randomization_is_deterministic_blocked_and_condition_blind() -> None:
@@ -54,3 +55,21 @@ def test_randomization_seed_changes_commitment_and_order() -> None:
     assert seed_commitment(first_seed) != seed_commitment(second_seed)
     assert first.seed_commitment != second.seed_commitment
     assert first.run_order != second.run_order
+
+
+def test_terminal_failure_summary_retains_provider_diagnostic() -> None:
+    trace = (
+        b'{"type":"thread.started","thread_id":"thread"}\n'
+        b'{"type":"turn.started"}\n'
+        b'{"type":"turn.failed","error":{"code":"rate_limit",'
+        b'"message":"temporary capacity limit"}}\n'
+    )
+
+    assert _terminal_failure_summary(trace) == {
+        "event_count": 3,
+        "terminal_count": 1,
+        "trace_parseable": True,
+        "terminal_type": "turn.failed",
+        "error_code": "rate_limit",
+        "error_message": "temporary capacity limit",
+    }

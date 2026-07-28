@@ -197,3 +197,13 @@ def test_frozen_design_plan_contract_and_schemas_revalidate() -> None:
     assert {path.name for path in schema_root.glob("*.schema.json")} == set(schemas)
     for name, schema in schemas.items():
         assert json.loads((schema_root / name).read_text(encoding="utf-8")) == schema
+
+
+def test_judge_instrument_amendment_preserves_target_artifacts() -> None:
+    amendment = json.loads(
+        (_root() / "JUDGE_INSTRUMENT_AMENDMENT-v1.json").read_text(encoding="utf-8")
+    )
+
+    assert amendment["target_artifacts_changed"] is False
+    assert amendment["target_session_count"] == 12
+    assert amendment["condition_mapping_accessed"] is False

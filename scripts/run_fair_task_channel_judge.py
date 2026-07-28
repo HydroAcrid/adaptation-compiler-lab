@@ -125,6 +125,63 @@ def _raw_bundle(
     )
 
 
+def _failed_raw_bundle(*, result: StructuredRoleRawResult) -> bytes:
+    return _canonical_bytes(
+        {
+            "command_digest": result.command_digest,
+            "contract_digest": result.contract_digest,
+            "duration_seconds": result.duration_seconds,
+            "environment_digest": result.environment_digest,
+            "exit_code": result.exit_code,
+            "finished_at": result.finished_at.isoformat(),
+            "model": result.model,
+            "prompt_digest": result.prompt_digest,
+            "reasoning_effort": result.reasoning_effort,
+            "response": result.response,
+            "role_id": result.role_id,
+            "started_at": result.started_at.isoformat(),
+            "stderr": result.stderr,
+            "timed_out": result.timed_out,
+            "trace_base64": base64.b64encode(result.trace_bytes).decode("ascii"),
+            "trace_validation_error": result.trace_validation_error,
+            "usage": {
+                "cached_input_tokens": result.cached_input_tokens,
+                "input_tokens": result.input_tokens,
+                "output_tokens": result.output_tokens,
+                "reasoning_output_tokens": result.reasoning_output_tokens,
+            },
+        }
+    )
+
+
+def _terminal_failure_summary(trace: bytes) -> dict[str, object]:
+    try:
+        events = tuple(
+            json.loads(line) for line in trace.decode("utf-8").splitlines() if line.strip()
+        )
+    except (UnicodeDecodeError, ValueError):
+        return {"trace_parseable": False}
+    terminal = [
+        event
+        for event in events
+        if isinstance(event, dict) and event.get("type") in {"turn.completed", "turn.failed"}
+    ]
+    summary: dict[str, object] = {
+        "event_count": len(events),
+        "terminal_count": len(terminal),
+        "trace_parseable": True,
+    }
+    if len(terminal) == 1:
+        summary["terminal_type"] = terminal[0].get("type")
+        error = terminal[0].get("error")
+        if isinstance(error, dict):
+            summary["error_code"] = error.get("code")
+            message = error.get("message")
+            if isinstance(message, str):
+                summary["error_message"] = message[:500]
+    return summary
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo", type=Path, required=True)
@@ -210,6 +267,26 @@ def main() -> None:
         prompt=prompt,
         output_schema=FairTaskChannelJudgeDecision.model_json_schema(),
     )
+    if not result.trace_conformant:
+        raw_ref = raw_store.put(
+            _failed_raw_bundle(result=result),
+            media_type=(
+                "application/vnd.adaptation-compiler-lab.fair-task-channel-judge-failure+json"
+            ),
+        )
+        failure_receipt = {
+            "receipt_version": "1.0.0",
+            "condition_mapping_access": False,
+            "encrypted_trace_ref": f"sha256:{raw_ref.sha256}",
+            "external_validation_accessed": False,
+            "provider_billed_calls": 0,
+            "terminal": _terminal_failure_summary(result.trace_bytes),
+            "trace_validation_error": result.trace_validation_error,
+        }
+        _exclusive_write(
+            output_root / "failure-receipt.json",
+            _canonical_bytes(failure_receipt),
+        )
     _assert_valid(result)
     decision = FairTaskChannelJudgeDecision.model_validate_json(result.response)
     observed = {item.task_id: item.ordered_output_ids for item in decision.pair_ratings}
