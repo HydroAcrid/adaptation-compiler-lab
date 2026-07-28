@@ -987,7 +987,7 @@ def main() -> None:
             }
         ),
     )
-    print("All six target cells completed; blind report and packet are frozen.", flush=True)
+    _progress("All six target cells completed; blind report and packet are frozen.")
 
 
 if __name__ == "__main__":
