@@ -16,6 +16,9 @@ from adaptation_compiler_lab.runtime.decision_schema_export_v21 import (
 )
 from adaptation_compiler_lab.runtime.schema_export import runtime_schema_bundle
 from adaptation_compiler_lab.runtime.semantic_schema_export import semantic_schema_bundle
+from adaptation_compiler_lab.runtime.semantic_schema_export_v31 import (
+    semantic_v31_schema_bundle,
+)
 from adaptation_compiler_lab.serialization import schema_bundle
 
 
@@ -96,6 +99,17 @@ def test_runtime_v21_schema_snapshots_match_complete_decision_contracts() -> Non
 def test_runtime_v3_schema_snapshots_match_semantic_decision_contracts() -> None:
     directory = Path(__file__).parents[1] / "schemas" / "runtime" / "v3"
     schemas = semantic_schema_bundle()
+
+    assert {path.name for path in directory.glob("*.schema.json")} == {
+        f"{name}.schema.json" for name in schemas
+    }
+    for name, schema in schemas.items():
+        assert json.loads((directory / f"{name}.schema.json").read_text(encoding="utf-8")) == schema
+
+
+def test_runtime_v31_schema_snapshots_match_closed_world_contracts() -> None:
+    directory = Path(__file__).parents[1] / "schemas" / "runtime" / "v3.1"
+    schemas = semantic_v31_schema_bundle()
 
     assert {path.name for path in directory.glob("*.schema.json")} == {
         f"{name}.schema.json" for name in schemas
