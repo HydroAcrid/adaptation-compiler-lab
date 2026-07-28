@@ -1,6 +1,6 @@
 # Frozen execution protocol
 
-Status: v1.16 designed but not yet frozen; no v1.16 session has started. V1.11 remains an
+Status: v1.17 designed but not yet frozen; no v1.17 session has started. V1.11 remains an
 immutable failed result: all six records were invalid because the trusted scorer resolved the
 virtual-environment interpreter to its base executable, and five target workspaces contained
 forbidden test or bytecode changes. V1.12 introduced entirely fresh tasks, a semantics-preserving
@@ -33,6 +33,12 @@ and requires the preflight to launch a nested sandbox successfully. Before the s
 one neutral live smoke must edit its sole writable production file, execute the bounded local test,
 pass an independent post-run test, and freeze a valid receipt. V1.16 changes no experimental task,
 condition material, scorer, model, or target write permission.
+
+The first v1.16 smoke coordinator stopped before constructing a target request because it named a
+nonexistent source-family enum member. No Codex process, trace, target session, or provider-billed
+call was created. V1.17 corrects that type reference and additionally binds the exact live-smoke
+coordinator source digest in the execution contract. All v1.16 experimental inputs and limits
+remain unchanged.
 
 The v1.15 trusted scorer uses the project virtual environment without resolving its symlink and
 sets the repository `src` directory as `PYTHONPATH`. Python bytecode is disabled; any interpreter-
@@ -96,7 +102,7 @@ measurement, or envelope digest differs from v1.9.
 
 The frozen v1.14 remediation reviewer received the same eligible evidence as construction and only
 the frozen v1.11 profile drafts, but no projection, compiled pack, tasks, mappings, scores, target
-outputs, or prior target outputs. V1.16 creates no new profile role. Construction does not receive
+outputs, or prior target outputs. V1.17 creates no new profile role. Construction does not receive
 task fixtures or scorer outcomes. Targets receive one blinded condition and the identical shared
 envelope. The judge receives the exact allowed-path and neutral execution constraints but no
 condition identity.
@@ -144,10 +150,10 @@ quality or discipline regresses.
 
 ## Stopping and tuning
 
-Renderer version 1.1.0 and the experimental tasks remain immutable. The v1.16 retry is allowed
-only because v1.15 ended before every tool call and file change, no condition was unblinded, and
-construction changed only the execution instrument. Observed task behavior may inform a later
-version and entirely new tasks, but it may not tune and rerun this version against the same tasks.
-Stop immediately on
+Renderer version 1.1.0 and the experimental tasks remain immutable. The v1.17 retry is allowed
+only because v1.15 ended before every tool call and file change, v1.16 stopped before launching
+Codex, no condition was unblinded, and construction changed only the execution instrument.
+Observed task behavior may inform a later version and entirely new tasks, but it may not tune and
+rerun this version against the same tasks. Stop immediately on
 private-plan drift, condition leakage, workspace escape, missing receipt, API-key use,
 external-validation access, or scorer substitution.

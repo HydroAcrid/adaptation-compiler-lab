@@ -119,13 +119,14 @@ def _workspace(tmp_path: Path, task: CompactProjectionTask, source: str) -> Path
 def test_fresh_protocol_is_hash_frozen_and_unexecuted() -> None:
     root = _root()
     design = load_compact_projection_design(root)
-    expected = (root / "PREREGISTRATION-v1.16.sha256").read_text(encoding="ascii").split()[0]
+    expected = (root / "PREREGISTRATION-v1.17.sha256").read_text(encoding="ascii").split()[0]
 
-    assert sha256_file(root / "PREREGISTRATION-v1.16.json") == f"sha256:{expected}"
-    assert design.design_version == "1.16.0"
-    assert design.amendment_reason == "nested_target_sandbox_runtime_and_live_smoke_gate"
+    assert sha256_file(root / "PREREGISTRATION-v1.17.json") == f"sha256:{expected}"
+    assert design.design_version == "1.17.0"
+    assert design.amendment_reason == "smoke_role_binding_and_source_family_fix"
     assert design.prior_failed_profile_receipt_digest
     assert design.prior_failed_target_receipt_digest
+    assert design.prior_failed_smoke_receipt_digest
     assert design.supersedes_design_digest
     assert design.superseded_scorer_digest
     assert design.policy_observer_digest
@@ -173,6 +174,7 @@ def test_execution_contract_freezes_luna_and_eight_subscription_sessions() -> No
     assert contract.judge_sessions == 1
     assert contract.target_outer_sandbox_digest == contract.role_outer_sandbox_digest
     assert contract.target_runner_source_digest
+    assert contract.instrument_smoke_source_digest
     assert contract.inherited_profile_receipt_digest
     assert contract.target_workspace_policy == "workspace-read-only-except-registered-source-file"
     assert not contract.api_keys_allowed

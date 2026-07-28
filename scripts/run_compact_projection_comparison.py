@@ -443,13 +443,14 @@ def main() -> None:
     benchmark = repo / "development_benchmark_compact_projection"
     design = load_compact_projection_design(benchmark)
     contract = load_compact_execution_contract(benchmark, design=design)
-    retry_iteration = design.design_version in {"1.15.0", "1.16.0"}
+    retry_iteration = design.design_version in {"1.15.0", "1.16.0", "1.17.0"}
     iteration = design.design_version in {
         "1.12.0",
         "1.13.0",
         "1.14.0",
         "1.15.0",
         "1.16.0",
+        "1.17.0",
     }
     if iteration and arguments.bubblewrap is None:
         raise RuntimeError("repaired target execution requires the pinned outer sandbox")
@@ -570,16 +571,24 @@ def main() -> None:
         if iteration
         else "results"
     )
-    if design.design_version == "1.16.0":
-        smoke = json.loads((benchmark / "INSTRUMENT_SMOKE-v1.16.json").read_text(encoding="utf-8"))
+    if design.design_version in {"1.16.0", "1.17.0"}:
+        smoke_version = design.design_version.removesuffix(".0")
+        smoke = json.loads(
+            (benchmark / f"INSTRUMENT_SMOKE-v{smoke_version}.json").read_text(encoding="utf-8")
+        )
         if (
             not isinstance(smoke, dict)
             or smoke.get("valid") is not True
             or smoke.get("design_digest") != design.content_digest
             or smoke.get("execution_contract_digest") != contract.content_digest
             or smoke.get("target_runner_source_digest") != contract.target_runner_source_digest
+            or (
+                contract.instrument_smoke_source_digest is not None
+                and smoke.get("instrument_smoke_source_digest")
+                != contract.instrument_smoke_source_digest
+            )
         ):
-            raise RuntimeError("v1.16 target execution requires its valid live smoke receipt")
+            raise RuntimeError("target execution requires its valid live smoke receipt")
     if output_root.exists() or config_root.exists() or public_results.exists():
         raise RuntimeError("compact execution outputs already exist; refusing to overwrite")
     output_root.mkdir(parents=True, mode=0o700)
