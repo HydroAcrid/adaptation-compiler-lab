@@ -1,0 +1,1 @@
+For Codex targets with no project-specific scope, when a persistent user-managed destination already exists, create a recoverable backup before replacing its content. Verify the selected publish action before completion.
