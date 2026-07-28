@@ -4,47 +4,43 @@ Last updated: 2026-07-28
 
 ## Current milestone
 
-**Milestone 6A.2 has a passing task-delivery product canary.** A fresh saved-ChatGPT Codex session
-received the exact 216-byte Stage 1 compiled adaptation once in its user task, with the common
-safety/isolation contract retained in the developer channel. The run was valid, passed 2/2
-diagnostic, 1/1 neutral, and 1/1 objective checks, executed the visible two-test suite, stayed
-inside the disposable workspace, and destroyed its workspace and configuration afterward.
-The delivery receipt binds the original task digest, exact material digest and byte count,
-delivered-task digest, `user_task` channel, and one occurrence. Provider-billed calls remain zero.
+**Milestone 6A.3 passed its fair task-channel product comparison.** Six fresh tasks crossed the
+same frozen strong static profile and compiled adaptation through the same exact-once user-task
+adapter, common execution envelope, pinned Luna/medium model, disposable workspace, and
+independent scorer. All 12 records were instrument-valid and behaviorally conformant.
 
-This is the first end-to-end evidence that the current product path works on a targeted fresh task:
-typed governed behavior with full provenance can be rendered compactly, routed into the effective
-target channel, activated in scope, and independently verified without false activation. It is not
-a shortcut or a rewritten result: the original 6A gate and the v2.2 paired compact comparison both
-remain failed and immutable.
+Compiled adaptation passed all 16/16 objective, 20/20 diagnostic, and 12/12 neutral checks. The
+strong profile passed 16/16 objective, 14/20 diagnostic, and 11/12 neutral checks. Compiled won
+five task pairs and tied one under the preregistered automated rule, with no regression at any of
+the three sequential evidence stages. The permitted claim is
+`compiled_outperformed_on_fresh_suite`.
 
-The path to the passing canary was evidence-driven:
+This result directly answers the narrow product question that remained after Milestone 6A.2. The
+advantage came from lifecycle-aware scoping: the compiled projection applied each addition,
+exception, and supersession only where active, while the cumulative profile over-applied later
+recovery rules to earlier stages and under-specified one final confirmation sequence. The
+compiled materials were also smaller at every stage: 216/336/343 bytes versus 221/460/504 bytes.
 
-- The v2.2 paired comparison produced six valid records but the compiled condition regressed at
-  Stages 1 and 2; the static profile won one blind judgment and tied two.
-- Semantic decision types and a natural renderer v5 improved Stages 2 and 3, but the three-session
-  v2.3 remediation still missed one Stage 1 diagnostic and invented a neutral behavior. A signed
-  post-hoc audit additionally invalidated that Stage 1 record because the frozen command audit had
-  missed relative `.agents`/`.codex` inspection.
-- Closed-world wording and the hardened command audit fixed the invented neutral behavior, but a
-  one-session v2.4 canary still missed the no-request behavior and was correctly marked invalid
-  for control-surface inspection.
-- Trace evidence then isolated the remaining target-adapter defect: task-scoped adaptation was
-  present only in the developer-profile channel, where the concrete user task dominated it. The
-  v2.5 adapter delivers task-scoped material exactly once with the task while keeping universal
-  boundaries separate. Its one-session canary passed every registered gate.
+The condition-blind Sol/xhigh judge preferred the profile four times, compiled once, and tied once.
+That is not a contradiction. It was intentionally denied automated scores and hidden behavioral
+expectations, and often preferred the profile's broader defensive branches on surface quality.
+Automated correctness and scope isolation were preregistered as primary; the judge is secondary
+general-quality evidence and cannot override them.
+
+The route remained fail-closed. Two original judge attempts and one diagnostic attempt exposed an
+invalid fixed-tuple response schema; a second diagnostic exposed the strict `required` rule.
+Versioned amendments preserved every target artifact, captured encrypted failure evidence, added
+recursive strict-schema validation, and produced one valid judgment without rerunning targets.
+A separate zero-session amendment repaired strict JSON deserialization in the unblinder. These
+instrument repairs did not change tasks, materials, outputs, scores, identities, or mapping.
 
 The portable asset remains the typed behavioral specification plus evidence, consent, evaluation,
 review, lifecycle, and release lineage. Natural-language rendering and task-channel delivery are
 target-specific adapters. Revoked behavior is removed before rendering; unrelated scopes remain
 excluded; raw evidence remains outside promoted material.
 
-The product claim is deliberately bounded. The successful canary proves instrumented task-level
-delivery and activation for compiled material, not that compiled adaptation is generally better
-than an excellent static profile and not cross-model transfer. The next comparative evidence,
-when authorized, must use fresh tasks and deliver both compiled and static materials through the
-same exact-once user-task channel. No further model run is required to preserve the present
-engineering success.
+The claim remains bounded: this is strong internally blinded, same-agent product evidence on six
+fresh development tasks, not a powered general result and not new cross-model transfer proof.
 
 The deferred Milestone 6 Claude study remains an unchanged, sealed, optional historical design.
 No held-out task, condition mapping, or randomized order was accessed or modified. No model
@@ -237,8 +233,8 @@ uv run pytest
 uv build
 ```
 
-The current full suite checks formatting for 417 files, passes Ruff lint, passes strict typing
-across 230 source files, passes 631 tests, and builds both the source distribution and wheel.
+The current full suite checks formatting for 444 files, passes Ruff lint, passes strict typing
+across 234 source files, passes 642 tests, and builds both the source distribution and wheel.
 Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
 verifier matched its pinned binary and canonical generated-schema digest
