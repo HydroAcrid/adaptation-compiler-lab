@@ -60,3 +60,65 @@ def public_decision_tables(
         )
         for transition, stage_cases in zip(transitions, cases, strict=True)
     )
+
+
+def public_complete_decision_tables(
+    transitions: tuple[DogfoodTransition, DogfoodTransition, DogfoodTransition],
+) -> tuple[ArtifactDecisionTable, ...]:
+    """Bind complete positive, negative, and preservation branches."""
+
+    preservation = BehavioralDecisionCase(
+        case_id="zz-unlisted-preservation",
+        situation="unlisted",
+        required_actions=("preserve behavior",),
+    )
+    cases = (
+        (
+            BehavioralDecisionCase(
+                case_id="retained-recovery-no",
+                situation="persistent existing; recovery=no",
+                required_actions=("backup", "replace"),
+            ),
+            BehavioralDecisionCase(
+                case_id="retained-recovery-yes",
+                situation="persistent existing; recovery=yes",
+                required_actions=("backup", "replace"),
+            ),
+            preservation,
+        ),
+        (
+            BehavioralDecisionCase(
+                case_id="cache-recovery-no",
+                situation="disposable cache existing; recovery=no",
+                required_actions=("temporary write", "atomic replace"),
+                forbidden_actions=("backup",),
+            ),
+            BehavioralDecisionCase(
+                case_id="cache-recovery-yes",
+                situation="disposable cache existing; recovery=yes",
+                required_actions=("temporary write", "atomic replace"),
+                forbidden_actions=("backup",),
+            ),
+        ),
+        (
+            BehavioralDecisionCase(
+                case_id="retained-recovery-no",
+                situation="persistent existing; recovery=no",
+                required_actions=("refuse",),
+                forbidden_actions=("replace",),
+            ),
+            BehavioralDecisionCase(
+                case_id="retained-recovery-yes",
+                situation="persistent existing; recovery=yes",
+                required_actions=("backup", "replace"),
+            ),
+            preservation,
+        ),
+    )
+    return tuple(
+        ArtifactDecisionTable(
+            artifact_ref=cast(ArtifactRenderProjection, transition.instruction).artifact_ref,
+            cases=stage_cases,
+        )
+        for transition, stage_cases in zip(transitions, cases, strict=True)
+    )

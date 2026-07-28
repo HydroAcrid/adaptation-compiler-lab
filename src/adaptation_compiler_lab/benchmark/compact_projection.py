@@ -86,6 +86,7 @@ class CompactProjectionComparisonDesign(FrozenModel):
         "1.18.0",
         "1.19.0",
         "2.0.0",
+        "2.1.0",
     ] = "1.0.0"
     design_id: Literal["milestone-6a1-compact-runtime-public-development"] = (
         "milestone-6a1-compact-runtime-public-development"
@@ -101,10 +102,12 @@ class CompactProjectionComparisonDesign(FrozenModel):
     task_fixture_digests: tuple[Sha256Digest, Sha256Digest, Sha256Digest]
     independent_scorer_digest: Sha256Digest
     renderer_source_digest: Sha256Digest
-    renderer_id: Literal["codex-compact-runtime", "codex-decision-runtime"] = (
-        "codex-compact-runtime"
-    )
-    renderer_version: Literal["1.0.0", "1.1.0", "2.0.0"] = "1.0.0"
+    renderer_id: Literal[
+        "codex-compact-runtime",
+        "codex-decision-runtime",
+        "codex-decision-table-runtime",
+    ] = "codex-compact-runtime"
+    renderer_version: Literal["1.0.0", "1.1.0", "2.0.0", "2.1.0"] = "1.0.0"
     runtime_fixture_measurements_digest: Sha256Digest
     runtime_fixture_tree_digest: Sha256Digest
     shared_execution_envelope_digest: Sha256Digest
@@ -157,6 +160,7 @@ class CompactProjectionComparisonDesign(FrozenModel):
             "ephemeral_unified_exec_workspace_mount",
             "ephemeral_codex_workspace_mount",
             "typed_decision_projection_and_fresh_tasks",
+            "complete_decision_table_and_path_audit_fix",
         ]
         | None
     ) = None
@@ -309,6 +313,7 @@ class CompactProjectionComparisonDesign(FrozenModel):
             "1.18.0",
             "1.19.0",
             "2.0.0",
+            "2.1.0",
         } and (
             self.prior_failed_result_digest is not None
             or self.prior_failed_profile_receipt_digest is not None
@@ -325,17 +330,27 @@ class CompactProjectionComparisonDesign(FrozenModel):
                 "1.18.0",
                 "1.19.0",
                 "2.0.0",
+                "2.1.0",
             }
             and self.prior_failed_profile_receipt_digest is not None
         ):
             raise ValueError("compact profile-failure lineage starts at v1.14")
         if (
-            self.design_version not in {"1.15.0", "1.16.0", "1.17.0", "1.18.0", "1.19.0", "2.0.0"}
+            self.design_version
+            not in {
+                "1.15.0",
+                "1.16.0",
+                "1.17.0",
+                "1.18.0",
+                "1.19.0",
+                "2.0.0",
+                "2.1.0",
+            }
             and self.prior_failed_target_receipt_digest is not None
         ):
             raise ValueError("compact target-failure lineage starts at v1.15")
         if (
-            self.design_version not in {"1.17.0", "1.18.0", "1.19.0", "2.0.0"}
+            self.design_version not in {"1.17.0", "1.18.0", "1.19.0", "2.0.0", "2.1.0"}
             and self.prior_failed_smoke_receipt_digest is not None
         ):
             raise ValueError("compact smoke-failure lineage starts at v1.17")
@@ -494,6 +509,27 @@ class CompactProjectionComparisonDesign(FrozenModel):
                 or self.renderer_version != "2.0.0"
             ):
                 raise ValueError("compact projection v2.0 requires its exact decision gate")
+        elif self.design_version == "2.1.0":
+            if any(item is None for item in (*amendment, *isolation)):
+                raise ValueError("compact projection v2.1 requires complete amendment metadata")
+            if self.amendment_reason != "complete_decision_table_and_path_audit_fix":
+                raise ValueError("compact projection v2.1 requires its amendment reason")
+            if (
+                self.prior_failed_result_digest is None
+                or self.prior_failed_profile_receipt_digest is None
+                or self.prior_failed_target_receipt_digest is None
+                or self.prior_failed_smoke_receipt_digest is None
+            ):
+                raise ValueError("compact projection v2.1 must retain all failure lineages")
+            if (
+                self.profile_author_sessions != 0
+                or self.profile_review_sessions != 0
+                or self.instrument_smoke_sessions != 1
+                or self.maximum_subscription_sessions != 8
+                or self.renderer_id != "codex-decision-table-runtime"
+                or self.renderer_version != "2.1.0"
+            ):
+                raise ValueError("compact projection v2.1 requires its exact decision gate")
         elif (
             self.profile_author_sessions != 1
             or self.profile_review_sessions != 1
@@ -521,7 +557,7 @@ def load_compact_projection_design(
     """Load and revalidate every frozen public task, fixture, scorer, and renderer."""
 
     if version is not None:
-        if version not in {*{f"1.{minor}" for minor in range(20)}, "2.0"}:
+        if version not in {*{f"1.{minor}" for minor in range(20)}, "2.0", "2.1"}:
             raise ValueError("unsupported compact projection design version")
         preregistration = root / f"PREREGISTRATION-v{version}.json"
         if not preregistration.is_file():
@@ -530,6 +566,7 @@ def load_compact_projection_design(
         preregistration = next(
             path
             for path in (
+                root / "PREREGISTRATION-v2.1.json",
                 root / "PREREGISTRATION-v2.0.json",
                 root / "PREREGISTRATION-v1.19.json",
                 root / "PREREGISTRATION-v1.18.json",
@@ -582,6 +619,7 @@ def load_compact_projection_design(
         "1.18.0": "1.17",
         "1.19.0": "1.18",
         "2.0.0": "1.19",
+        "2.1.0": "2.0",
     }
     current = design
     while current.design_version in chain:
@@ -814,6 +852,23 @@ def load_compact_projection_design(
                 raise ValueError(
                     "compact projection v2.0 rebound unaffected artifacts: " + ", ".join(drifted)
                 )
+        if current.design_version == "2.1.0":
+            unchanged_fields_v21 = (
+                "independent_scorer_digest",
+                "policy_observer_digest",
+                "prior_failed_profile_receipt_digest",
+                "scorer_sandbox_digest",
+                "shared_execution_envelope_digest",
+            )
+            drifted = tuple(
+                field
+                for field in unchanged_fields_v21
+                if getattr(current, field) != getattr(historical, field)
+            )
+            if drifted:
+                raise ValueError(
+                    "compact projection v2.1 rebound unaffected artifacts: " + ", ".join(drifted)
+                )
         if current.supersedes_design_digest != historical.content_digest:
             raise ValueError("compact projection supersession digest drifted")
         if current.superseded_scorer_digest != historical.independent_scorer_digest:
@@ -856,6 +911,7 @@ def load_compact_projection_design(
         "1.18.0",
         "1.19.0",
         "2.0.0",
+        "2.1.0",
     }:
         if sha256_file(repo / "scripts" / "observe_compact_projection_policy.py") != (
             design.policy_observer_digest
@@ -867,7 +923,9 @@ def load_compact_projection_design(
         ):
             raise ValueError("compact projection scorer sandbox digest drifted")
     renderer_source = (
-        repo / "src/adaptation_compiler_lab/targets/codex_runtime_v3.py"
+        repo / "src/adaptation_compiler_lab/targets/codex_runtime_v4.py"
+        if design.design_version == "2.1.0"
+        else repo / "src/adaptation_compiler_lab/targets/codex_runtime_v3.py"
         if design.design_version == "2.0.0"
         else repo / "src/adaptation_compiler_lab/targets/codex_runtime_v2.py"
         if design.design_version
@@ -903,6 +961,7 @@ def load_compact_projection_design(
         "1.18.0": "runtime-fixture-v1.12",
         "1.19.0": "runtime-fixture-v1.12",
         "2.0.0": "runtime-fixture-v2.0",
+        "2.1.0": "runtime-fixture-v2.1",
     }.get(design.design_version, "runtime-fixture")
     runtime_fixture = root / runtime_fixture_name
     measurement_name = (
@@ -918,11 +977,16 @@ def load_compact_projection_design(
             "1.18.0",
             "1.19.0",
             "2.0.0",
+            "2.1.0",
         }
         else "MEASUREMENTS-v1.0.json"
     )
-    if design.design_version == "2.0.0":
-        measurement_name = "MEASUREMENTS-v2.0.json"
+    if design.design_version in {"2.0.0", "2.1.0"}:
+        measurement_name = (
+            "MEASUREMENTS-v2.1.json"
+            if design.design_version == "2.1.0"
+            else "MEASUREMENTS-v2.0.json"
+        )
     if sha256_file(runtime_fixture / measurement_name) != (
         design.runtime_fixture_measurements_digest
     ):

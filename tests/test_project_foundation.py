@@ -11,6 +11,9 @@ from adaptation_compiler_lab.benchmark.models import (
 from adaptation_compiler_lab.domain import RecordKind
 from adaptation_compiler_lab.governance.schema_export import governance_schema_bundle
 from adaptation_compiler_lab.runtime.decision_schema_export import decision_schema_bundle
+from adaptation_compiler_lab.runtime.decision_schema_export_v21 import (
+    decision_v21_schema_bundle,
+)
 from adaptation_compiler_lab.runtime.schema_export import runtime_schema_bundle
 from adaptation_compiler_lab.serialization import schema_bundle
 
@@ -70,6 +73,17 @@ def test_runtime_v1_schema_snapshots_match_projection_contracts() -> None:
 def test_runtime_v2_schema_snapshots_match_decision_contracts() -> None:
     directory = Path(__file__).parents[1] / "schemas" / "runtime" / "v2"
     schemas = decision_schema_bundle()
+
+    assert {path.name for path in directory.glob("*.schema.json")} == {
+        f"{name}.schema.json" for name in schemas
+    }
+    for name, schema in schemas.items():
+        assert json.loads((directory / f"{name}.schema.json").read_text(encoding="utf-8")) == schema
+
+
+def test_runtime_v21_schema_snapshots_match_complete_decision_contracts() -> None:
+    directory = Path(__file__).parents[1] / "schemas" / "runtime" / "v2.1"
+    schemas = decision_v21_schema_bundle()
 
     assert {path.name for path in directory.glob("*.schema.json")} == {
         f"{name}.schema.json" for name in schemas

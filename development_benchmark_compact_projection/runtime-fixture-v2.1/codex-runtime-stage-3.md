@@ -1,0 +1,6 @@
+- [generated-cache] disposable cache existing; recovery=no: temporary write -> atomic replace; never backup.
+- [generated-cache] disposable cache existing; recovery=yes: temporary write -> atomic replace; never backup.
+- persistent existing; recovery=no: refuse; never replace.
+- persistent existing; recovery=yes: backup -> replace.
+- unlisted: preserve behavior.
+- Verify action.

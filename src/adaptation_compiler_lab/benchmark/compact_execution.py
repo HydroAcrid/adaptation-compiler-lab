@@ -60,6 +60,7 @@ class CompactExecutionContract(FrozenModel):
         "1.6.0",
         "1.7.0",
         "1.8.0",
+        "1.9.0",
     ] = "1.0.0"
     design_digest: Sha256Digest
     execution_protocol_digest: Sha256Digest
@@ -90,6 +91,7 @@ class CompactExecutionContract(FrozenModel):
         "workspace-read-only-except-registered-source-file",
     ] = "workspace-writable"
     target_runner_source_digest: Sha256Digest | None = None
+    target_orchestrator_source_digest: Sha256Digest | None = None
     instrument_smoke_source_digest: Sha256Digest | None = None
     inherited_profile_receipt_digest: Sha256Digest | None = None
     target_web_search: Literal["disabled"] = "disabled"
@@ -114,6 +116,7 @@ class CompactExecutionContract(FrozenModel):
                 or self.target_outer_sandbox_digest is not None
                 or self.target_workspace_policy != "workspace-writable"
                 or self.target_runner_source_digest is not None
+                or self.target_orchestrator_source_digest is not None
                 or self.instrument_smoke_source_digest is not None
                 or self.inherited_profile_receipt_digest is not None
             ):
@@ -127,6 +130,7 @@ class CompactExecutionContract(FrozenModel):
             or self.target_outer_sandbox_digest != self.role_outer_sandbox_digest
             or self.target_workspace_policy != "workspace-read-only-except-registered-source-file"
             or self.target_runner_source_digest is not None
+            or self.target_orchestrator_source_digest is not None
             or self.instrument_smoke_source_digest is not None
             or self.inherited_profile_receipt_digest is not None
         ):
@@ -140,6 +144,7 @@ class CompactExecutionContract(FrozenModel):
             or self.target_outer_sandbox_digest != self.role_outer_sandbox_digest
             or self.target_workspace_policy != "workspace-read-only-except-registered-source-file"
             or self.target_runner_source_digest is None
+            or self.target_orchestrator_source_digest is not None
             or self.instrument_smoke_source_digest is not None
             or self.inherited_profile_receipt_digest is None
         ):
@@ -153,6 +158,7 @@ class CompactExecutionContract(FrozenModel):
             or self.target_outer_sandbox_digest != self.role_outer_sandbox_digest
             or self.target_workspace_policy != "workspace-read-only-except-registered-source-file"
             or self.target_runner_source_digest is None
+            or self.target_orchestrator_source_digest is not None
             or self.instrument_smoke_source_digest is not None
             or self.inherited_profile_receipt_digest is None
         ):
@@ -166,6 +172,7 @@ class CompactExecutionContract(FrozenModel):
             or self.target_outer_sandbox_digest != self.role_outer_sandbox_digest
             or self.target_workspace_policy != "workspace-read-only-except-registered-source-file"
             or self.target_runner_source_digest is None
+            or self.target_orchestrator_source_digest is not None
             or self.instrument_smoke_source_digest is None
             or self.inherited_profile_receipt_digest is None
         ):
@@ -179,6 +186,7 @@ class CompactExecutionContract(FrozenModel):
             or self.target_outer_sandbox_digest != self.role_outer_sandbox_digest
             or self.target_workspace_policy != "workspace-read-only-except-registered-source-file"
             or self.target_runner_source_digest is None
+            or self.target_orchestrator_source_digest is not None
             or self.instrument_smoke_source_digest is None
             or self.inherited_profile_receipt_digest is None
         ):
@@ -192,10 +200,25 @@ class CompactExecutionContract(FrozenModel):
             or self.target_outer_sandbox_digest != self.role_outer_sandbox_digest
             or self.target_workspace_policy != "workspace-read-only-except-registered-source-file"
             or self.target_runner_source_digest is None
+            or self.target_orchestrator_source_digest is not None
             or self.instrument_smoke_source_digest is None
             or self.inherited_profile_receipt_digest is None
         ):
             raise ValueError("compact execution contract v1.7-v1.8 settings drifted")
+        elif self.contract_version == "1.9.0" and (
+            self.maximum_subscription_sessions != 8
+            or self.profile_author_sessions != 0
+            or self.profile_review_sessions != 0
+            or self.instrument_smoke_sessions != 1
+            or self.target_sandbox != "workspace-write-inside-read-only-outer-mount-namespace"
+            or self.target_outer_sandbox_digest != self.role_outer_sandbox_digest
+            or self.target_workspace_policy != "workspace-read-only-except-registered-source-file"
+            or self.target_runner_source_digest is None
+            or self.target_orchestrator_source_digest is None
+            or self.instrument_smoke_source_digest is None
+            or self.inherited_profile_receipt_digest is None
+        ):
+            raise ValueError("compact execution contract v1.9 settings drifted")
         return self
 
     @property
@@ -205,6 +228,8 @@ class CompactExecutionContract(FrozenModel):
             payload.pop("instrument_smoke_sessions")
         if self.instrument_smoke_source_digest is None:
             payload.pop("instrument_smoke_source_digest")
+        if self.target_orchestrator_source_digest is None:
+            payload.pop("target_orchestrator_source_digest")
         return canonical_digest(payload)
 
 
@@ -225,15 +250,15 @@ def load_compact_execution_contract(
         "1.18.0": "EXECUTION_CONTRACT-v1.6.json",
         "1.19.0": "EXECUTION_CONTRACT-v1.7.json",
         "2.0.0": "EXECUTION_CONTRACT-v1.8.json",
+        "2.1.0": "EXECUTION_CONTRACT-v1.9.json",
     }.get(design.design_version, "EXECUTION_CONTRACT-v1.0.json")
     contract = CompactExecutionContract.model_validate_json((root / contract_name).read_bytes())
     if contract.design_digest != design.content_digest:
         raise ValueError("compact execution contract design binding drifted")
-    protocol = (
-        root / "EXECUTION_PROTOCOL-v2.0.md"
-        if design.design_version == "2.0.0"
-        else root / "EXECUTION_PROTOCOL.md"
-    )
+    protocol = {
+        "2.0.0": root / "EXECUTION_PROTOCOL-v2.0.md",
+        "2.1.0": root / "EXECUTION_PROTOCOL-v2.1.md",
+    }.get(design.design_version, root / "EXECUTION_PROTOCOL.md")
     if contract.execution_protocol_digest != sha256_file(protocol):
         raise ValueError("compact execution protocol binding drifted")
     if contract.maximum_subscription_sessions != design.maximum_subscription_sessions:
@@ -251,6 +276,11 @@ def load_compact_execution_contract(
         )
     ):
         raise ValueError("compact target-runner source binding drifted")
+    if contract.target_orchestrator_source_digest is not None and (
+        contract.target_orchestrator_source_digest
+        != sha256_file(root.parent / "scripts" / "run_compact_projection_comparison.py")
+    ):
+        raise ValueError("compact target-orchestrator source binding drifted")
     if contract.instrument_smoke_source_digest is not None and (
         contract.instrument_smoke_source_digest
         != sha256_file(
@@ -258,7 +288,7 @@ def load_compact_execution_contract(
             / "scripts"
             / (
                 "run_decision_projection_live_smoke.py"
-                if design.design_version == "2.0.0"
+                if design.design_version in {"2.0.0", "2.1.0"}
                 else "run_compact_projection_live_smoke.py"
             )
         )
