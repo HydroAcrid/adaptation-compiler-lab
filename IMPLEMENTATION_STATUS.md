@@ -60,6 +60,8 @@ dot-segment, duplicate-separator, and trailing-separator restrictions as the Pyt
 binds the updated renderer source while reusing the exact v1.5 fixture and every unchanged v1.8
 digest. Current v1.10 also makes path arrays schema-unique and canonically sorts them on load while
 reproducing active, revoked, and scoped-supersession state from exact per-kind lifecycle events.
+The portable external-release schema carries the same per-kind introduction/removal cardinality
+constraints for schema-only consumers.
 
 Three stage packs demonstrate the intended lifecycle: a persistent-destination backup rule; a
 narrow generated-cache atomic-replacement exception; then a refuse-by-default persistent policy
@@ -276,7 +278,7 @@ uv run pytest
 uv build
 ```
 
-The current full suite formats 319 files, passes strict typing, passes 562 tests, and builds both
+The current full suite formats 319 files, passes strict typing, passes 566 tests, and builds both
 the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
 verifier matched its pinned binary and canonical generated-schema digest

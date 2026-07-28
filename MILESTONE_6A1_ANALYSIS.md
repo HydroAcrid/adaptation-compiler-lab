@@ -85,7 +85,9 @@ portable item-schema parity, and v1.10 binds canonical collection semantics whil
 condition material, scorer, observer, sandbox, fixture, measurement, and shared-envelope digest
 remains identical to v1.7. The lifecycle validator includes scope-limiting evidence, mirrors every
 per-kind transition constraint, and reproduces active/revoked/supersession state. These are
-prospective governed-release integrity repairs and do not change frozen target material.
+prospective governed-release integrity repairs and do not change frozen target material. The
+exported schema also discriminates addition, correction, supersession, and revocation shapes for
+portable schema-only validation.
 
 The second PR #19 pass added four more fail-closed constraints: root coordinators cannot start the
 scorer because Linux exempts outer UID 0 from `RLIMIT_NPROC`; manifest construction recomputes the

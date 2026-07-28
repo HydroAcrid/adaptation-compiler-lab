@@ -18,7 +18,8 @@ not Codex. Active governance bindings must reproduce their lifecycle introductio
 shared-envelope paths must be normalized safe relative target paths.
 The exported portable schema enforces the same path normalization boundary as the Python model.
 Lifecycle-derived active, revoked, and scoped-supersession state is reproduced before release
-acceptance, and allowed path collections are unique and canonically ordered.
+acceptance, allowed path collections are unique and canonically ordered, and the portable schema
+enforces each lifecycle transition's discriminated structural shape.
 This establishes compactness and lineage preservation, not a performance advantage.
 
 The next public comparison is frozen but unexecuted: three fresh tasks, two conditions, one

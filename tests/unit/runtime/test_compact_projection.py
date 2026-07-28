@@ -495,6 +495,34 @@ def test_lifecycle_transition_shape_is_exact(
         ExternalGovernedRelease.model_validate_json(canonical_json(raw))
 
 
+@pytest.mark.parametrize(
+    ("transition_kind", "affected_artifact_id", "supersedes_artifact_ids"),
+    (
+        ("addition", "prior", ["prior"]),
+        ("scoped_correction", None, []),
+        ("supersession", None, []),
+        ("revocation", None, []),
+    ),
+)
+def test_lifecycle_transition_shape_is_enforced_by_portable_schema(
+    transition_kind: str,
+    affected_artifact_id: str | None,
+    supersedes_artifact_ids: list[str],
+) -> None:
+    release = _releases()[0]
+    raw = release.model_dump(mode="json", round_trip=True)
+    event = raw["lifecycle_history"][0]
+    event["transition_kind"] = transition_kind
+    event["affected_artifact_id"] = affected_artifact_id
+    event["supersedes_artifact_ids"] = supersedes_artifact_ids
+    if transition_kind == "revocation":
+        event["introduced_artifact_ref"] = None
+    validator = Draft202012Validator(ExternalGovernedRelease.model_json_schema())
+
+    with pytest.raises(ValidationError):
+        validator.validate(raw)
+
+
 def test_scoped_supersessions_must_match_lifecycle_state() -> None:
     release = _releases()[1]
     raw = release.model_dump(mode="json", round_trip=True)

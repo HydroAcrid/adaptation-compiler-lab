@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated, Literal, Self
+from typing import Annotated, ClassVar, Literal, Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from adaptation_compiler_lab.domain import (
     ArtifactRef,
@@ -40,6 +40,64 @@ class RuntimeClauseRole(StrEnum):
 
 class GovernedLifecycleEvent(FrozenModel):
     """Content-addressed lifecycle history retained outside the target prompt."""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(
+        json_schema_extra={
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {"transition_kind": {"const": "addition"}},
+                        "required": ["transition_kind"],
+                    },
+                    "then": {
+                        "properties": {
+                            "introduced_artifact_ref": {"not": {"type": "null"}},
+                            "affected_artifact_id": {"type": "null"},
+                            "supersedes_artifact_ids": {"maxItems": 0},
+                        },
+                        "required": ["introduced_artifact_ref"],
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "transition_kind": {"enum": ["scoped_correction", "supersession"]}
+                        },
+                        "required": ["transition_kind"],
+                    },
+                    "then": {
+                        "properties": {
+                            "introduced_artifact_ref": {"not": {"type": "null"}},
+                            "affected_artifact_id": {"type": "string"},
+                            "supersedes_artifact_ids": {
+                                "minItems": 1,
+                                "maxItems": 1,
+                            },
+                        },
+                        "required": [
+                            "introduced_artifact_ref",
+                            "affected_artifact_id",
+                            "supersedes_artifact_ids",
+                        ],
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {"transition_kind": {"const": "revocation"}},
+                        "required": ["transition_kind"],
+                    },
+                    "then": {
+                        "properties": {
+                            "introduced_artifact_ref": {"type": "null"},
+                            "affected_artifact_id": {"type": "string"},
+                            "supersedes_artifact_ids": {"maxItems": 0},
+                        },
+                        "required": ["affected_artifact_id"],
+                    },
+                },
+            ]
+        }
+    )
 
     event_id: Identifier
     stage: int = Field(ge=1)
