@@ -5,14 +5,20 @@ from completed coding work into typed external artifacts. Its research question 
 compiled adaptation pack can improve a target coding agent on unseen work beyond a base agent,
 ordinary memory, and a strong static profile.
 
-Milestone 6A.3 now provides a positive fair comparison against the strong static profile. On six
-fresh development tasks delivered through the same exact-once user-task channel, compiled
-adaptation won five automated task pairs and tied one. It passed 16/16 objective, 20/20 diagnostic,
-and 12/12 neutral checks versus 16/16, 14/20, and 11/12 for the profile, with all 12 runs valid.
-The compiled projection remained smaller at every evidence stage. This supports the bounded claim
-that lifecycle-aware compilation outperformed the cumulative static profile on this fresh suite;
-it is not a powered general claim or new cross-model proof. See
-[`development_benchmark_task_channel_comparison/results-v1/MILESTONE_6A3_RESULT.md`](development_benchmark_task_channel_comparison/results-v1/MILESTONE_6A3_RESULT.md).
+Milestones 6A.3 and 6A.4 now provide positive, complementary comparisons against the strong static
+profile. Milestone 6A.3 showed lifecycle-aware compilation winning five of six fresh staged task
+pairs with one tie. Milestone 6A.4 then replicated breadth across the four approved behavior
+families: after a versioned communication-only expression repair, compiled won the fresh
+communication task 12–11, tied an unrelated research control 11–11, retained the prior
+debugging/environment/research ties, and remained smaller at 974 versus 986 bytes. All four final
+records were instrument-valid, and a condition-blind judge independently selected compiled on
+communication and tied research.
+
+This supports the bounded same-agent claim that the compiler matched or outperformed an excellent
+static profile in these development comparisons while retaining provenance, scoping,
+supersession, revocation, and rollback advantages. It is not a powered general claim or new
+cross-model proof. See
+[`MILESTONE_6A4_ANALYSIS.md`](MILESTONE_6A4_ANALYSIS.md).
 
 Milestone 6A.1 implements a compact runtime projection without changing Milestone 6A's failed
 product result. The compiler now keeps complete governance, provenance, history, and rollback data
@@ -63,9 +69,11 @@ acceptance, allowed path collections are unique and canonically ordered, and the
 enforces each lifecycle transition's discriminated structural shape.
 This establishes compactness and lineage preservation, not a performance advantage.
 
-The v1.19 public comparison has completed its one instrument smoke and six target sessions. One
-secondary blind judge remains within the eight-session ceiling after the zero-session scorer
-adjudication. No provider-billed call or API key is used.
+The v1.19 public comparison completed its instrument smoke, six targets, zero-session scorer
+adjudication, blind judge, and unblinding. All six reconstructed target records were valid, but
+the gate remained failed because both conditions shared Stage 1 and Stage 2 behavior misses.
+Later task-delivery and fair-comparison milestones supersede it as the current product evidence.
+No provider-billed call or API key was used.
 
 Eight exact-consent Codex tasks remain only in the external encrypted raw boundary; eight
 Kevin-confirmed behaviors remain approved artifacts. Deterministic software custody still seals
@@ -220,10 +228,13 @@ after valid trials.
 - [`MILESTONE_6A1_ANALYSIS.md`](MILESTONE_6A1_ANALYSIS.md): immutable 6A integrity audit,
   instrument repairs, clause-level failure analysis, representation split, exact compactness
   measurements, and fresh comparison boundary.
+- [`MILESTONE_6A4_ANALYSIS.md`](MILESTONE_6A4_ANALYSIS.md): complete breadth-replication history,
+  scoped expression repair, final blinded results, bounded product claim, and remaining limits.
 - [`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md): docs-only portable
   specialty preset composition and the proposed Frontend Studio demonstration.
 - [`development_benchmark_compact_projection`](development_benchmark_compact_projection): frozen
-  runtime fixture, clause manifests, fresh tasks/scorer, role packets, and unexecuted protocol.
+  runtime fixture, clause manifests, fresh tasks/scorer, role packets, immutable failures,
+  zero-session adjudication, blind judge, and completed v1.19 result.
 - [`CLAUDE_CORRECTED_COMPARISON.md`](CLAUDE_CORRECTED_COMPARISON.md): checksum-bound blind ratings,
   v2.9 unblinded mapping, condition-level results, exact costs, limitations, and product
   interpretation.
