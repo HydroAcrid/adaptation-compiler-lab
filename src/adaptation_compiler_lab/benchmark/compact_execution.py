@@ -287,8 +287,10 @@ def load_compact_execution_contract(
             root.parent
             / "scripts"
             / (
-                "run_decision_projection_live_smoke.py"
-                if design.design_version in {"2.0.0", "2.1.0"}
+                "run_complete_decision_projection_live_smoke.py"
+                if design.design_version == "2.1.0"
+                else "run_decision_projection_live_smoke.py"
+                if design.design_version == "2.0.0"
                 else "run_compact_projection_live_smoke.py"
             )
         )

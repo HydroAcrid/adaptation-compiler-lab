@@ -51,7 +51,7 @@ def main() -> int:
             repo / "scripts/run_compact_projection_comparison.py"
         ),
         instrument_smoke_source_digest=sha256_file(
-            repo / "scripts/run_decision_projection_live_smoke.py"
+            repo / "scripts/run_complete_decision_projection_live_smoke.py"
         ),
         inherited_profile_receipt_digest=sha256_file(
             benchmark / "profile-remediation-receipt-v1.14.json"
