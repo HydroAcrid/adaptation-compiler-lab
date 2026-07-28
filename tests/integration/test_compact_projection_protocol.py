@@ -217,6 +217,40 @@ def test_reference_implementations_pass_every_frozen_scenario(tmp_path: Path) ->
         assert all(_all_checks(result).values())
 
 
+def test_scorer_runs_under_frozen_minimal_system_path(tmp_path: Path) -> None:
+    task = load_compact_projection_design(_root()).tasks[0]
+    workspace = _workspace(tmp_path, task, _reference(task.stage))
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(_repo() / "scripts/score_compact_projection_task.py"),
+            "--task-manifest",
+            str(_root() / task.fixture_directory).replace("/fixture", "/task.json"),
+            "--workspace",
+            str(workspace),
+        ],
+        cwd=workspace,
+        env={
+            "HOME": str(workspace),
+            "LANG": "C.UTF-8",
+            "LC_ALL": "C.UTF-8",
+            "PATH": "/usr/sbin:/usr/bin:/sbin:/bin",
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PYTHONPATH": str(_repo() / "src"),
+        },
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=30,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    value = json.loads(completed.stdout)
+    assert all(receipt["status"] == "succeeded" for receipt in value["receipts"].values())
+    assert all(_all_checks(value).values())
+
+
 def test_scorer_detects_stale_rule(tmp_path: Path) -> None:
     task = load_compact_projection_design(_root()).tasks[2]
     source = _reference(2)

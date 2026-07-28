@@ -186,10 +186,30 @@ def main() -> None:
         )
         return
 
-    blind_report = CompactProjectionBlindReport.model_validate_json(
-        (results / "blind-report.json").read_bytes()
+    adjudicated_report = results / "blind-report-adjudicated.json"
+    report_path = (
+        adjudicated_report if adjudicated_report.is_file() else results / "blind-report.json"
     )
-    completion = _load_object(results / "completion.json")
+    completion_path = (
+        results / "completion-adjudicated.json"
+        if adjudicated_report.is_file()
+        else results / "completion.json"
+    )
+    blind_report = CompactProjectionBlindReport.model_validate_json(report_path.read_bytes())
+    completion = _load_object(completion_path)
+    adjudication_digest: str | None = None
+    if adjudicated_report.is_file():
+        adjudication_path = results / "scorer-adjudication-receipt.json"
+        adjudication = _load_object(adjudication_path)
+        adjudication_digest = sha256_file(adjudication_path)
+        if (
+            adjudication.get("condition_mapping_access") is not False
+            or adjudication.get("new_target_sessions") != 0
+            or adjudication.get("corrected_blind_report_digest") != blind_report.content_digest
+            or not all(item.valid for item in blind_report.observations)
+            or completion.get("adjudication_receipt_digest") != adjudication_digest
+        ):
+            raise RuntimeError("scorer adjudication binding is invalid")
     binding_document = _load_object(results / "judge-input-bindings.json")
     packet_path = results / "blind-rating-packet.md"
     packet_digest = sha256_file(packet_path)
@@ -273,6 +293,7 @@ def main() -> None:
         "api_key_environment_present": False,
         "authentication": "saved_chatgpt",
         "blind_packet_digest": packet_digest,
+        "blind_report_digest": blind_report.content_digest,
         "condition_mapping_access": False,
         "decision": decision.model_dump(mode="json", round_trip=True),
         "decision_digest": canonical_digest(decision),
@@ -287,10 +308,12 @@ def main() -> None:
         "service_mode": result.service_mode,
         "session_files_persisted": result.session_files_persisted,
         "sessions": 1,
+        "scorer_adjudication_receipt_digest": adjudication_digest,
         "tool_use_observed": result.tool_use_observed,
         "trace_conformant": result.trace_conformant,
         "trace_digest": sha256_bytes(result.trace_bytes),
         "trace_ref_digest": f"sha256:{raw_ref.sha256}",
+        "judge_source_digest": sha256_file(Path(__file__)),
         "usage": {
             "cached_input_tokens": result.cached_input_tokens,
             "input_tokens": result.input_tokens,

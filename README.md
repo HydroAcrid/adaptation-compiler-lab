@@ -36,6 +36,11 @@ V1.18 overlays only that path with an in-memory filesystem while preserving the 
 as the only host-backed writable target.
 The next live smoke revealed the corresponding `.codex` helper path; v1.19 gives both exact helper
 directories ephemeral in-memory mounts without exposing another host-backed writable path.
+That v1.19 smoke passed. All six subsequent targets produced bounded source patches and passed
+visible tests, but their independent observations failed safely because the trusted scorer
+environment omitted `/usr/sbin` from `PATH`. The original invalid records are frozen; a blinded
+zero-session reconstruction-and-rescore adjudication is the only permitted correction before the
+secondary judge. No target output will be rerun or replaced.
 
 The design binds each compiled snapshot to the complete approved transition, enforces the selected
 Codex target profile, and evaluates generated benchmark policies through a capability-free Python
@@ -49,9 +54,9 @@ acceptance, allowed path collections are unique and canonically ordered, and the
 enforces each lifecycle transition's discriminated structural shape.
 This establishes compactness and lineage preservation, not a performance advantage.
 
-The v1.19 public comparison is designed but unexecuted: one instrument smoke, three unchanged
-tasks, two conditions, one repetition, and one secondary blind judge require at most eight
-saved-ChatGPT Codex subscription sessions. No provider-billed call or API key is used.
+The v1.19 public comparison has completed its one instrument smoke and six target sessions. One
+secondary blind judge remains within the eight-session ceiling after the zero-session scorer
+adjudication. No provider-billed call or API key is used.
 
 Eight exact-consent Codex tasks remain only in the external encrypted raw boundary; eight
 Kevin-confirmed behaviors remain approved artifacts. Deterministic software custody still seals

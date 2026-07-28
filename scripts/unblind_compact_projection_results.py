@@ -84,10 +84,29 @@ def main() -> None:
         else "results"
     )
     contract = load_compact_execution_contract(benchmark, design=design)
-    blind = CompactProjectionBlindReport.model_validate_json(
-        (results / "blind-report.json").read_bytes()
+    adjudicated_report = results / "blind-report-adjudicated.json"
+    report_path = (
+        adjudicated_report if adjudicated_report.is_file() else results / "blind-report.json"
     )
-    completion = _object(results / "completion.json")
+    completion_path = (
+        results / "completion-adjudicated.json"
+        if adjudicated_report.is_file()
+        else results / "completion.json"
+    )
+    blind = CompactProjectionBlindReport.model_validate_json(report_path.read_bytes())
+    completion = _object(completion_path)
+    adjudication_digest: str | None = None
+    if adjudicated_report.is_file():
+        adjudication_path = results / "scorer-adjudication-receipt.json"
+        adjudication = _object(adjudication_path)
+        adjudication_digest = sha256_file(adjudication_path)
+        if (
+            adjudication.get("condition_mapping_access") is not False
+            or adjudication.get("new_target_sessions") != 0
+            or adjudication.get("corrected_blind_report_digest") != blind.content_digest
+            or completion.get("adjudication_receipt_digest") != adjudication_digest
+        ):
+            raise RuntimeError("scorer adjudication binding is invalid")
     judge_receipt = _object(results / "judge-receipt.json")
     decision = CompactJudgeDecision.model_validate_json(
         json.dumps(
@@ -101,6 +120,8 @@ def main() -> None:
         raise RuntimeError("completion no longer binds the blind report")
     if judge_receipt.get("condition_mapping_access") is not False:
         raise RuntimeError("judge had condition-mapping access")
+    if judge_receipt.get("blind_report_digest") != blind.content_digest:
+        raise RuntimeError("judge receipt no longer binds the selected blind report")
     if judge_receipt.get("blind_packet_digest") != sha256_file(results / "blind-rating-packet.md"):
         raise RuntimeError("judge receipt no longer binds the blind packet")
     if judge_receipt.get("decision_digest") != canonical_digest(decision):
@@ -298,6 +319,7 @@ def main() -> None:
         ],
         "private_plan_digest": canonical_digest(private_plan),
         "provider_billed_calls": 0,
+        "scorer_adjudication_receipt_digest": adjudication_digest,
         "randomization_seed_commitment": private_plan["seed_commitment"],
         "source_commit": blind.source_commit,
         "prior_failed_result_digest": design.prior_failed_result_digest,
