@@ -7,7 +7,10 @@ from adaptation_compiler_lab.benchmark.task_channel_comparison import (
     load_task_channel_design,
     seed_commitment,
 )
-from scripts.run_fair_task_channel_judge import _terminal_failure_summary
+from scripts.run_fair_task_channel_judge import (
+    _judge_output_schema,
+    _terminal_failure_summary,
+)
 
 
 def test_randomization_is_deterministic_blocked_and_condition_blind() -> None:
@@ -73,3 +76,12 @@ def test_terminal_failure_summary_retains_provider_diagnostic() -> None:
         "error_code": "rate_limit",
         "error_message": "temporary capacity limit",
     }
+
+
+def test_judge_schema_gives_fixed_tuple_a_general_items_schema() -> None:
+    schema = _judge_output_schema()
+    ordered_ids = schema["$defs"]["CompactJudgePair"]["properties"]["ordered_output_ids"]
+
+    assert ordered_ids["items"] == ordered_ids["prefixItems"][0]
+    assert ordered_ids["minItems"] == 2
+    assert ordered_ids["maxItems"] == 2

@@ -483,14 +483,21 @@ def load_task_channel_contract(
     judge_runner = repo / "scripts/run_fair_task_channel_judge.py"
     judge_digest = sha256_file(judge_runner)
     if judge_digest != contract.judge_runner_source_digest:
-        amendment_path = root / "JUDGE_INSTRUMENT_AMENDMENT-v1.json"
-        try:
-            amendment = json.loads(amendment_path.read_text(encoding="utf-8"))
-        except (OSError, ValueError) as error:
-            raise ValueError("fair comparison judge runner drifted without amendment") from error
+        amendment = None
+        for name in (
+            "JUDGE_INSTRUMENT_AMENDMENT-v2.json",
+            "JUDGE_INSTRUMENT_AMENDMENT-v1.json",
+        ):
+            amendment_path = root / name
+            if amendment_path.is_file():
+                try:
+                    amendment = json.loads(amendment_path.read_text(encoding="utf-8"))
+                except ValueError as error:
+                    raise ValueError("fair comparison judge amendment is malformed") from error
+                break
         if (
             not isinstance(amendment, dict)
-            or amendment.get("amendment_version") != "1.0.0"
+            or amendment.get("amendment_version") not in {"1.0.0", "2.0.0"}
             or amendment.get("original_contract_digest") != contract.content_digest
             or amendment.get("original_judge_runner_digest") != contract.judge_runner_source_digest
             or amendment.get("amended_judge_runner_digest") != judge_digest

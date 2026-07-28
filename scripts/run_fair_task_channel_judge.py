@@ -182,6 +182,24 @@ def _terminal_failure_summary(trace: bytes) -> dict[str, object]:
     return summary
 
 
+def _judge_output_schema() -> dict[str, object]:
+    schema = FairTaskChannelJudgeDecision.model_json_schema()
+    pair = schema.get("$defs", {}).get("CompactJudgePair")
+    if not isinstance(pair, dict):
+        raise RuntimeError("judge schema lacks CompactJudgePair")
+    properties = pair.get("properties")
+    if not isinstance(properties, dict):
+        raise RuntimeError("judge pair schema lacks properties")
+    ordered_ids = properties.get("ordered_output_ids")
+    if not isinstance(ordered_ids, dict):
+        raise RuntimeError("judge pair schema lacks ordered output IDs")
+    prefix_items = ordered_ids.get("prefixItems")
+    if not isinstance(prefix_items, list) or len(prefix_items) != 2:
+        raise RuntimeError("judge ordered output IDs are not a fixed pair")
+    ordered_ids["items"] = prefix_items[0]
+    return schema
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo", type=Path, required=True)
@@ -265,7 +283,7 @@ def main() -> None:
         role_id="fair-task-channel-isolated-judge",
         developer_contract=developer_contract,
         prompt=prompt,
-        output_schema=FairTaskChannelJudgeDecision.model_json_schema(),
+        output_schema=_judge_output_schema(),
     )
     if not result.trace_conformant:
         raw_ref = raw_store.put(

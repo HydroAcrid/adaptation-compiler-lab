@@ -207,3 +207,10 @@ def test_judge_instrument_amendment_preserves_target_artifacts() -> None:
     assert amendment["target_artifacts_changed"] is False
     assert amendment["target_session_count"] == 12
     assert amendment["condition_mapping_accessed"] is False
+
+    correction = json.loads(
+        (_root() / "JUDGE_INSTRUMENT_AMENDMENT-v2.json").read_text(encoding="utf-8")
+    )
+    assert correction["target_artifacts_changed"] is False
+    assert correction["target_session_count"] == 12
+    assert correction["diagnosis"].startswith("The structured-output API rejected")
