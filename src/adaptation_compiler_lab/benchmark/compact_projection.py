@@ -41,12 +41,21 @@ class CompactProjectionTask(FrozenModel):
         Literal["deployment_policy.py", "src/transfer_policy.py"],
         ...,
     ] = ("deployment_policy.py",)
-    visible_test_command: tuple[Literal["python3", "-m", "unittest", "-v"], ...] = (
-        "python3",
-        "-m",
-        "unittest",
-        "-v",
-    )
+    visible_test_command: (
+        tuple[
+            Literal["python3"],
+            Literal["-m"],
+            Literal["unittest"],
+            Literal["-v"],
+        ]
+        | tuple[
+            Literal["python3"],
+            Literal["-m"],
+            Literal["unittest"],
+            Literal["discover"],
+            Literal["-v"],
+        ]
+    ) = ("python3", "-m", "unittest", "-v")
     scenarios: Annotated[tuple[CompactProjectionScenario, ...], Field(min_length=4)]
 
     @field_validator("scenarios")

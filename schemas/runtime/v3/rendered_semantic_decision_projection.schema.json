@@ -1,0 +1,55 @@
+{
+  "additionalProperties": false,
+  "description": "Target-visible natural rules with external semantic lineage.",
+  "properties": {
+    "clause_digests": {
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Clause Digests",
+      "type": "array"
+    },
+    "content": {
+      "minLength": 1,
+      "title": "Content",
+      "type": "string"
+    },
+    "content_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Content Digest",
+      "type": "string"
+    },
+    "renderer_id": {
+      "const": "codex-semantic-decision-runtime",
+      "default": "codex-semantic-decision-runtime",
+      "title": "Renderer Id",
+      "type": "string"
+    },
+    "renderer_version": {
+      "const": "3.0.0",
+      "default": "3.0.0",
+      "title": "Renderer Version",
+      "type": "string"
+    },
+    "target_family": {
+      "const": "codex",
+      "default": "codex",
+      "title": "Target Family",
+      "type": "string"
+    },
+    "utf8_bytes": {
+      "minimum": 1,
+      "title": "Utf8 Bytes",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "content",
+    "content_digest",
+    "utf8_bytes",
+    "clause_digests"
+  ],
+  "title": "RenderedSemanticDecisionProjection",
+  "type": "object"
+}

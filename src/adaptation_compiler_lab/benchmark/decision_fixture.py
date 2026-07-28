@@ -8,6 +8,11 @@ from adaptation_compiler_lab.dogfood.models import DogfoodTransition
 from adaptation_compiler_lab.runtime import (
     ArtifactDecisionTable,
     BehavioralDecisionCase,
+    DecisionOperation,
+    DecisionResourceClass,
+    RecoveryRequestState,
+    SemanticDecisionCase,
+    SemanticDecisionTable,
 )
 from adaptation_compiler_lab.targets.models import ArtifactRenderProjection
 
@@ -117,6 +122,71 @@ def public_complete_decision_tables(
     )
     return tuple(
         ArtifactDecisionTable(
+            artifact_ref=cast(ArtifactRenderProjection, transition.instruction).artifact_ref,
+            cases=stage_cases,
+        )
+        for transition, stage_cases in zip(transitions, cases, strict=True)
+    )
+
+
+def public_semantic_decision_tables(
+    transitions: tuple[DogfoodTransition, DogfoodTransition, DogfoodTransition],
+) -> tuple[SemanticDecisionTable, ...]:
+    """Bind portable semantic selectors and operations to reviewed artifacts."""
+
+    preserve = SemanticDecisionCase(
+        case_id="zz-unlisted-preservation",
+        resource_class=DecisionResourceClass.UNLISTED,
+        recovery_request=RecoveryRequestState.NOT_APPLICABLE,
+        required_operations=(DecisionOperation.PRESERVE_BEHAVIOR,),
+    )
+    cases = (
+        (
+            SemanticDecisionCase(
+                case_id="persistent-any-request",
+                resource_class=DecisionResourceClass.PERSISTENT_USER_MANAGED,
+                recovery_request=RecoveryRequestState.EITHER,
+                required_operations=(
+                    DecisionOperation.CREATE_RECOVERABLE_BACKUP,
+                    DecisionOperation.REPLACE_CONTENTS,
+                ),
+            ),
+            preserve,
+        ),
+        (
+            SemanticDecisionCase(
+                case_id="cache-any-request",
+                resource_class=DecisionResourceClass.DISPOSABLE_GENERATED_CACHE,
+                recovery_request=RecoveryRequestState.EITHER,
+                required_operations=(
+                    DecisionOperation.PREPARE_TEMPORARY_REPLACEMENT,
+                    DecisionOperation.ACTIVATE_ATOMICALLY,
+                ),
+                forbidden_operations=(DecisionOperation.CREATE_RECOVERABLE_BACKUP,),
+            ),
+        ),
+        (
+            SemanticDecisionCase(
+                case_id="persistent-not-requested",
+                resource_class=DecisionResourceClass.PERSISTENT_USER_MANAGED,
+                recovery_request=RecoveryRequestState.NOT_REQUESTED,
+                required_operations=(DecisionOperation.REFUSE_REPLACEMENT,),
+                forbidden_operations=(DecisionOperation.REPLACE_CONTENTS,),
+            ),
+            SemanticDecisionCase(
+                case_id="persistent-requested",
+                resource_class=DecisionResourceClass.PERSISTENT_USER_MANAGED,
+                recovery_request=RecoveryRequestState.REQUESTED,
+                required_operations=(
+                    DecisionOperation.CREATE_RECOVERABLE_BACKUP,
+                    DecisionOperation.REPLACE_CONTENTS,
+                ),
+            ),
+            preserve,
+        ),
+    )
+    return tuple(
+        SemanticDecisionTable(
             artifact_ref=cast(ArtifactRenderProjection, transition.instruction).artifact_ref,
             cases=stage_cases,
         )
