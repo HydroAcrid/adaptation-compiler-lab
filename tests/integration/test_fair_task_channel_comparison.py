@@ -10,6 +10,7 @@ from pathlib import Path
 from adaptation_compiler_lab.benchmark.codex_development import CodexDevelopmentTask
 from adaptation_compiler_lab.benchmark.role_packets import ApprovedSourceFamily
 from adaptation_compiler_lab.benchmark.task_channel_comparison import (
+    FairComparisonTrialReceipt,
     TaskChannelComparisonPublicPlan,
     load_task_channel_contract,
     load_task_channel_design,
@@ -221,3 +222,24 @@ def test_judge_instrument_amendment_preserves_target_artifacts() -> None:
     assert strict_correction["target_artifacts_changed"] is False
     assert strict_correction["target_session_count"] == 12
     assert strict_correction["diagnosis"].startswith("After the fixed-tuple repair")
+
+
+def test_frozen_blind_trials_deserialize_through_the_strict_json_boundary() -> None:
+    report = json.loads((_root() / "results-v1/blind-report.json").read_text(encoding="utf-8"))
+
+    trials = tuple(
+        FairComparisonTrialReceipt.model_validate_json(
+            json.dumps(item, sort_keys=True, separators=(",", ":"))
+        )
+        for item in report["trials"]
+    )
+
+    assert len(trials) == 12
+    assert all(trial.integrity_valid for trial in trials)
+
+    amendment = json.loads(
+        (_root() / "UNBLIND_INSTRUMENT_AMENDMENT-v1.json").read_text(encoding="utf-8")
+    )
+    assert amendment["target_artifacts_changed"] is False
+    assert amendment["judge_artifacts_changed"] is False
+    assert amendment["new_model_sessions"] == 0

@@ -200,7 +200,9 @@ def main() -> None:
     raw_trials = blind_report.get("trials")
     if not isinstance(raw_trials, list):
         raise RuntimeError("fair comparison blind trials are malformed")
-    trials = tuple(FairComparisonTrialReceipt.model_validate(item) for item in raw_trials)
+    trials = tuple(
+        FairComparisonTrialReceipt.model_validate_json(canonical_json(item)) for item in raw_trials
+    )
     assignments = cast(list[dict[str, object]], private["condition_assignments"])
     condition_by_blind = {
         str(item["blind_condition_id"]): BenchmarkCondition(str(item["condition"]))
@@ -279,7 +281,7 @@ def main() -> None:
         claim = "compiled_outperformed_on_fresh_suite"
     else:
         claim = "compiled_matched_with_lifecycle_advantages"
-    decision = FairTaskChannelJudgeDecision.model_validate(judge["decision"])
+    decision = FairTaskChannelJudgeDecision.model_validate_json(canonical_json(judge["decision"]))
     output_to_condition = {
         trial.observation.blind_output_id: condition_by_blind[trial.observation.blind_condition_id]
         for trial in trials
