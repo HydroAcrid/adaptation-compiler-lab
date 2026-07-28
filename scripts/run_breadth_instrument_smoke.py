@@ -59,8 +59,11 @@ def main() -> None:
         executable=arguments.codex_executable,
         saved_auth_file=arguments.saved_auth,
         contract=CodexExecutionContract(
+            cli_version="codex-cli 0.145.0",
+            cli_digest=("sha256:a2a05dafaa1acb002a45eaec0a462de5b13694fcfcd7bc43305f14781ce7be14"),
             model="gpt-5.6-luna",
             reasoning_effort="medium",
+            service_mode="standard",
             max_seconds=300,
         ),
         bubblewrap=arguments.bubblewrap,
