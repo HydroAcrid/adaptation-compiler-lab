@@ -214,3 +214,10 @@ def test_judge_instrument_amendment_preserves_target_artifacts() -> None:
     assert correction["target_artifacts_changed"] is False
     assert correction["target_session_count"] == 12
     assert correction["diagnosis"].startswith("The structured-output API rejected")
+
+    strict_correction = json.loads(
+        (_root() / "JUDGE_INSTRUMENT_AMENDMENT-v3.json").read_text(encoding="utf-8")
+    )
+    assert strict_correction["target_artifacts_changed"] is False
+    assert strict_correction["target_session_count"] == 12
+    assert strict_correction["diagnosis"].startswith("After the fixed-tuple repair")

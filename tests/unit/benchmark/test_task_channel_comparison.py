@@ -85,3 +85,17 @@ def test_judge_schema_gives_fixed_tuple_a_general_items_schema() -> None:
     assert ordered_ids["items"] == ordered_ids["prefixItems"][0]
     assert ordered_ids["minItems"] == 2
     assert ordered_ids["maxItems"] == 2
+
+    def assert_strict(node: object) -> None:
+        if isinstance(node, dict):
+            properties = node.get("properties")
+            if isinstance(properties, dict):
+                assert node["required"] == list(properties)
+                assert node["additionalProperties"] is False
+            for value in node.values():
+                assert_strict(value)
+        elif isinstance(node, list):
+            for value in node:
+                assert_strict(value)
+
+    assert_strict(schema)

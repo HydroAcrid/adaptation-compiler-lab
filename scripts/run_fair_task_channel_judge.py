@@ -197,6 +197,20 @@ def _judge_output_schema() -> dict[str, object]:
     if not isinstance(prefix_items, list) or len(prefix_items) != 2:
         raise RuntimeError("judge ordered output IDs are not a fixed pair")
     ordered_ids["items"] = prefix_items[0]
+
+    def make_strict(node: object) -> None:
+        if isinstance(node, dict):
+            properties = node.get("properties")
+            if isinstance(properties, dict):
+                node["required"] = list(properties)
+                node["additionalProperties"] = False
+            for value in node.values():
+                make_strict(value)
+        elif isinstance(node, list):
+            for value in node:
+                make_strict(value)
+
+    make_strict(schema)
     return schema
 
 

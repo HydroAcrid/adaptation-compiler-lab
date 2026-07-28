@@ -485,6 +485,7 @@ def load_task_channel_contract(
     if judge_digest != contract.judge_runner_source_digest:
         amendment = None
         for name in (
+            "JUDGE_INSTRUMENT_AMENDMENT-v3.json",
             "JUDGE_INSTRUMENT_AMENDMENT-v2.json",
             "JUDGE_INSTRUMENT_AMENDMENT-v1.json",
         ):
@@ -497,7 +498,7 @@ def load_task_channel_contract(
                 break
         if (
             not isinstance(amendment, dict)
-            or amendment.get("amendment_version") not in {"1.0.0", "2.0.0"}
+            or amendment.get("amendment_version") not in {"1.0.0", "2.0.0", "3.0.0"}
             or amendment.get("original_contract_digest") != contract.content_digest
             or amendment.get("original_judge_runner_digest") != contract.judge_runner_source_digest
             or amendment.get("amended_judge_runner_digest") != judge_digest
