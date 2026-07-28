@@ -14,13 +14,17 @@ every clause remains bound to external evidence and lifecycle state.
 The first v1.11 live comparison is preserved as a failed instrument result: all six records were
 invalid because the scorer invoked the wrong Python environment and target repository-state checks
 were contaminated by forbidden test or bytecode changes. It was not used to tune or rerun those
-tasks. The current v1.14 design uses entirely fresh tasks, documents their legal action vocabulary,
+tasks. The current v1.15 design uses entirely fresh tasks, documents their legal action vocabulary,
 keeps the full workspace read-only except the registered source file, invokes the scorer
 through the project virtual environment, and deterministically ignores interpreter-generated
 bytecode. V1.12 remains unexecuted pre-live registration history; v1.13 changed no task or
 target-visible condition material from v1.12. Its one profile-remediation session failed closed on
 an over-strict Stage 3 validator and promoted no material. V1.14 corrects only that validator
 against the active Stage 3 evidence and does not reuse the rejected response.
+V1.14's six target cells are also preserved as an unjudged pre-action infrastructure failure: the
+minimal namespace omitted the exact WSL DNS symlink target, so no model turn, tool call, or file
+change occurred. V1.15 adds the resolver mount and an in-namespace DNS preflight, reuses the valid
+v1.14 profile, and authorizes only the untouched six-cell target grid plus its blind judge.
 
 The design binds each compiled snapshot to the complete approved transition, enforces the selected
 Codex target profile, and evaluates generated benchmark policies through a capability-free Python
@@ -35,8 +39,8 @@ enforces each lifecycle transition's discriminated structural shape.
 This establishes compactness and lineage preservation, not a performance advantage.
 
 The repaired public comparison is frozen but unexecuted: three fresh tasks, two conditions, one
-repetition, one isolated profile-remediation reviewer, and one secondary blind judge require at
-most eight saved-ChatGPT Codex subscription sessions. No provider-billed call or API key is used.
+repetition, and one secondary blind judge require at most seven saved-ChatGPT Codex subscription
+sessions. No provider-billed call or API key is used.
 
 Eight exact-consent Codex tasks remain only in the external encrypted raw boundary; eight
 Kevin-confirmed behaviors remain approved artifacts. Deterministic software custody still seals
@@ -90,10 +94,10 @@ worked; its current target-visible projection did not beat an excellent profile.
 - A target-independent canonical runtime representation, compact Codex renderer, external
   governed release, exact clause-to-provenance manifest, context resolution, and a separately
   measured condition-neutral execution envelope.
-- Immutable failed v1.11 instrument and v1.13 role results plus a frozen v1.14 compact-projection
-  protocol with three entirely fresh task fixtures, an independent scorer, six target cells, one
-  isolated profile-remediation role, a corrected judge packet, local seeded-defect sensitivity
-  tests, an outer read-only target sandbox, and an eight-session maximum.
+- Immutable failed v1.11 instrument, v1.13 role, and v1.14 resolver results plus a frozen v1.15
+  compact-projection protocol with three entirely fresh task fixtures, an independent scorer, six
+  target cells, one frozen isolated profile-remediation receipt, a corrected judge packet, local
+  seeded-defect sensitivity tests, an outer read-only target sandbox, and a seven-session maximum.
 - Structural `SourceConnector`, `TargetRunner`, and condition-blind `Scorer` ports; a Codex
   app-server adapter pinned to CLI `0.145.0` and its version-generated `thread/list`/`thread/read`
   schemas.

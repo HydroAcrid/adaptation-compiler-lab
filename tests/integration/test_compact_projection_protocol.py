@@ -119,19 +119,21 @@ def _workspace(tmp_path: Path, task: CompactProjectionTask, source: str) -> Path
 def test_fresh_protocol_is_hash_frozen_and_unexecuted() -> None:
     root = _root()
     design = load_compact_projection_design(root)
-    expected = (root / "PREREGISTRATION-v1.14.sha256").read_text(encoding="ascii").split()[0]
+    expected = (root / "PREREGISTRATION-v1.15.sha256").read_text(encoding="ascii").split()[0]
 
-    assert sha256_file(root / "PREREGISTRATION-v1.14.json") == f"sha256:{expected}"
-    assert design.design_version == "1.14.0"
-    assert design.amendment_reason == "stage_specific_evidence_validation"
+    assert sha256_file(root / "PREREGISTRATION-v1.15.json") == f"sha256:{expected}"
+    assert design.design_version == "1.15.0"
+    assert design.amendment_reason == "target_resolver_mount_and_preact_retry"
     assert design.prior_failed_profile_receipt_digest
+    assert design.prior_failed_target_receipt_digest
     assert design.supersedes_design_digest
     assert design.superseded_scorer_digest
     assert design.policy_observer_digest
     assert design.scorer_sandbox_digest
     assert design.planned_target_sessions == 6
-    assert design.maximum_subscription_sessions == 8
+    assert design.maximum_subscription_sessions == 7
     assert design.profile_author_sessions == 0
+    assert design.profile_review_sessions == 0
     assert not design.target_sessions_started
     assert not design.profile_sessions_started
     assert not design.judge_sessions_started
@@ -154,7 +156,7 @@ def test_shared_envelope_path_matches_every_registered_task() -> None:
     }
 
 
-def test_execution_contract_freezes_luna_and_eight_subscription_sessions() -> None:
+def test_execution_contract_freezes_luna_and_seven_subscription_sessions() -> None:
     root = _root()
     design = load_compact_projection_design(root)
     contract = load_compact_execution_contract(root, design=design)
@@ -162,12 +164,14 @@ def test_execution_contract_freezes_luna_and_eight_subscription_sessions() -> No
     assert contract.model == "gpt-5.6-luna"
     assert contract.reasoning_effort == "medium"
     assert contract.authentication == "saved_chatgpt"
-    assert contract.maximum_subscription_sessions == 8
+    assert contract.maximum_subscription_sessions == 7
     assert contract.profile_author_sessions == 0
-    assert contract.profile_review_sessions == 1
+    assert contract.profile_review_sessions == 0
     assert contract.target_sessions == 6
     assert contract.judge_sessions == 1
     assert contract.target_outer_sandbox_digest == contract.role_outer_sandbox_digest
+    assert contract.target_runner_source_digest
+    assert contract.inherited_profile_receipt_digest
     assert contract.target_workspace_policy == "workspace-read-only-except-registered-source-file"
     assert not contract.api_keys_allowed
 

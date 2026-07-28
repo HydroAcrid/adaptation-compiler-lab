@@ -288,6 +288,7 @@ def test_outer_target_sandbox_allows_source_edit_and_tests_but_denies_other_path
             "-c",
             (
                 "set -eu; "
+                "getent hosts chatgpt.com >/dev/null; "
                 "printf 'def value() -> int:\\n    return 2\\n' "
                 "> /workspace/src/transfer_policy.py; "
                 f"test ! -e {shlex.quote(str(host_probe))}; "

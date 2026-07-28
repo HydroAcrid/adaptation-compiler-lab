@@ -34,6 +34,7 @@ _OUTER_RUNTIME_ROOT: Final = Path("/opt/acl-codex-target")
 _OUTER_CODEX: Final = _OUTER_RUNTIME_ROOT / "codex"
 _OUTER_CODEX_HOME: Final = Path("/codex-home")
 _OUTER_WORKSPACE: Final = Path("/workspace")
+_WSL_RESOLV_CONF: Final = Path("/mnt/wsl/resolv.conf")
 _MODEL: Final = "gpt-5.6-terra"
 _REASONING_EFFORT: Final = "high"
 _DISABLED_FEATURES: Final = (
@@ -273,27 +274,57 @@ class CodexSubscriptionRunner:
             raise CodexSubscriptionError("pinned target bubblewrap is unavailable")
         if sha256_file(self._bubblewrap) != _EXPECTED_BWRAP_DIGEST:
             raise CodexSubscriptionError("pinned target bubblewrap digest drifted")
+        if not _WSL_RESOLV_CONF.is_file():
+            raise CodexSubscriptionError("exact WSL resolver target is unavailable")
         completed = subprocess.run(
             [
                 str(self._bubblewrap),
+                "--unshare-all",
+                "--share-net",
+                "--die-with-parent",
+                "--new-session",
                 "--ro-bind",
-                "/",
-                "/",
+                "/usr",
+                "/usr",
+                "--symlink",
+                "usr/bin",
+                "/bin",
+                "--symlink",
+                "usr/lib",
+                "/lib",
+                "--symlink",
+                "usr/lib64",
+                "/lib64",
+                "--symlink",
+                "usr/sbin",
+                "/sbin",
+                "--ro-bind",
+                "/etc",
+                "/etc",
                 "--proc",
                 "/proc",
                 "--dev",
                 "/dev",
-                "--unshare-user",
-                "--unshare-pid",
-                "--die-with-parent",
-                "/bin/true",
+                "--tmpfs",
+                "/tmp",
+                "--dir",
+                "/mnt",
+                "--dir",
+                str(_WSL_RESOLV_CONF.parent),
+                "--ro-bind",
+                str(_WSL_RESOLV_CONF),
+                str(_WSL_RESOLV_CONF),
+                "--",
+                "/usr/bin/getent",
+                "hosts",
+                "chatgpt.com",
             ],
             check=False,
             capture_output=True,
             timeout=10,
         )
         if completed.returncode != 0:
-            raise CodexSubscriptionError("pinned target outer sandbox is unavailable")
+            raise CodexSubscriptionError("pinned target outer sandbox or resolver is unavailable")
 
     def _copy_auth(self, destination: Path) -> None:
         if not self._saved_auth_file.is_file():
@@ -605,6 +636,13 @@ class CodexSubscriptionRunner:
             "/dev",
             "--tmpfs",
             "/tmp",
+            "--dir",
+            "/mnt",
+            "--dir",
+            str(_WSL_RESOLV_CONF.parent),
+            "--ro-bind",
+            str(_WSL_RESOLV_CONF),
+            str(_WSL_RESOLV_CONF),
             "--dir",
             "/opt",
             "--dir",
