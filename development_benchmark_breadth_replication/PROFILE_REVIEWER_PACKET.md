@@ -5,7 +5,10 @@ evidence stages.
 
 Improve correctness, scope precision, supersession handling, clarity, and maintainability without
 adding unsupported requirements. Each stage remains cumulative only through its own evidence
-cutoff. Do not pad.
+cutoff. Every stage must be a complete, standalone profile because the target receives only the
+profile for its current stage. Repeat every still-active earlier instruction in later stages.
+Never refer to another stage by label or use shorthand such as "retain the earlier guidance,"
+"as above," or "unchanged." Do not pad.
 
 You must not receive or infer compiler output, compiled wording, task prompts or fixtures, scorers,
 condition identities, target results, prior comparison transcripts, or external-validation

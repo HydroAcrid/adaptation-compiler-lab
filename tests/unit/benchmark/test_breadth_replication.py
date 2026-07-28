@@ -7,7 +7,9 @@ from adaptation_compiler_lab.benchmark.breadth_replication import (
     BreadthReplicationTask,
     build_breadth_plan,
     seed_commitment,
+    validate_breadth_profile_content,
 )
+from scripts.render_breadth_compiled_materials import render_breadth_compiled_materials
 from scripts.run_breadth_judge import _strict_schema as judge_schema
 from scripts.run_breadth_profile_construction import _strict_schema as profile_schema
 
@@ -49,6 +51,51 @@ def test_profile_contract_has_three_bounded_stages() -> None:
 
     assert profile.stage_1 == "one"
     assert len(profile.model_dump()) == 4
+
+
+def test_profile_content_validation_accepts_cumulative_author_draft() -> None:
+    root = Path(__file__).parents[3] / "development_benchmark_breadth_replication"
+    profile = BreadthProfileSet.model_validate_json(
+        (root / "profile-author-output.json").read_bytes()
+    )
+
+    validate_breadth_profile_content(profile)
+
+
+def test_profile_content_validation_rejects_unresolved_stage_references() -> None:
+    root = Path(__file__).parents[3] / "development_benchmark_breadth_replication"
+    profile = BreadthProfileSet.model_validate_json(
+        (root / "rejected-profile-reviewer-output-v1.json").read_bytes()
+    )
+
+    try:
+        validate_breadth_profile_content(profile)
+    except ValueError as error:
+        assert "unresolved stage reference" in str(error)
+    else:
+        raise AssertionError("non-standalone profile unexpectedly passed")
+
+
+def test_compiled_materials_match_renderer_and_are_smaller_than_profile() -> None:
+    root = Path(__file__).parents[3] / "development_benchmark_breadth_replication"
+    rendered = render_breadth_compiled_materials()
+    profile = BreadthProfileSet.model_validate_json(
+        (root / "profile-reviewer-output.json").read_bytes()
+    )
+
+    assert all(
+        (root / f"condition-materials/compiled-stage-{stage}.md").read_text(encoding="utf-8")
+        == value
+        for stage, value in enumerate(rendered, start=1)
+    )
+    assert all(
+        len(compiled.encode("utf-8")) < len(strong.encode("utf-8"))
+        for compiled, strong in zip(
+            rendered,
+            (profile.stage_1, profile.stage_2, profile.stage_3),
+            strict=True,
+        )
+    )
 
 
 def test_structured_role_schemas_are_strict_for_every_object() -> None:

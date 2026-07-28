@@ -266,8 +266,6 @@ if __name__ == "__main__":
         ),
         starter='''"""Plan local synchronization."""
 
-from pathlib import Path
-
 
 class UnsafeLayoutError(ValueError):
     pass
@@ -439,13 +437,15 @@ from advisory import select_advisory
 
 class AdvisoryTests(unittest.TestCase):
     def test_one_signed_record_is_selected(self) -> None:
-        records = ({
-            "source": "signed_registry",
-            "signed": True,
-            "applicable": True,
-            "effective_at": "2026-01-01T00:00:00Z",
-            "recommendation": "allow",
-        },)
+        records = (
+            {
+                "source": "signed_registry",
+                "signed": True,
+                "applicable": True,
+                "effective_at": "2026-01-01T00:00:00Z",
+                "recommendation": "allow",
+            },
+        )
         self.assertEqual(
             select_advisory(records, "2026-02-01T00:00:00Z")["recommendation"],
             "allow",
@@ -503,8 +503,7 @@ def build_trial_report(
 ) -> dict[str, object]:
     counts = Counter(str(entry["status"]) for entry in ledger)
     outcome_counts = {
-        status: counts.get(status, 0)
-        for status in ("completed", "failed", "timeout")
+        status: counts.get(status, 0) for status in ("completed", "failed", "timeout")
     }
     completed = [entry for entry in ledger if entry["status"] == "completed"]
     valid_rate = len(completed) / len(ledger) if ledger else 0.0
@@ -512,9 +511,7 @@ def build_trial_report(
         classification = "inconclusive"
     else:
         average = sum(float(entry["score"]) for entry in completed) / len(completed)
-        classification = (
-            "positive" if average >= protocol["success_threshold"] else "negative"
-        )
+        classification = "positive" if average >= protocol["success_threshold"] else "negative"
     return {
         "classification": classification,
         "outcome_counts": outcome_counts,

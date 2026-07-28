@@ -8,6 +8,8 @@ from pathlib import Path
 
 from adaptation_compiler_lab.benchmark.breadth_replication import (
     BreadthReplicationTask,
+    load_breadth_contract,
+    load_breadth_design,
 )
 from adaptation_compiler_lab.benchmark.role_packets import ApprovedSourceFamily
 from scripts.run_durable_progress_comparison import _initialize_workspace
@@ -96,3 +98,24 @@ def test_every_reference_passes_all_independent_checks(tmp_path: Path) -> None:
             for group in ("objective", "diagnostic", "neutral")
             for result in value[group].values()
         ), json.dumps(value, indent=2, sort_keys=True)
+
+
+def test_frozen_breadth_design_and_contract_revalidate_every_dependency() -> None:
+    root = _root()
+
+    design = load_breadth_design(root)
+    contract = load_breadth_contract(root, design=design)
+
+    assert design.planned_target_sessions == 16
+    assert design.profile_construction_sessions == 3
+    assert design.maximum_subscription_sessions == 20
+    assert all(
+        compiled < profile
+        for compiled, profile in zip(
+            design.compiled_material_bytes,
+            design.profile_material_bytes,
+            strict=True,
+        )
+    )
+    assert contract.provider_billed_calls == 0
+    assert contract.external_validation_accessed is False

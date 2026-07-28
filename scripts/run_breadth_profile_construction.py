@@ -11,6 +11,7 @@ from typing import Literal, cast
 from adaptation_compiler_lab.benchmark.breadth_replication import (
     BreadthProfileConstructionReceipt,
     BreadthProfileSet,
+    validate_breadth_profile_content,
 )
 from adaptation_compiler_lab.connectors.pins import sha256_bytes, sha256_file
 from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore, RawEncryptionKey
@@ -188,6 +189,7 @@ def main() -> None:
     )
     _assert_valid(result)
     profile = BreadthProfileSet.model_validate_json(result.response)
+    validate_breadth_profile_content(profile)
     raw_ref = raw_store.put(
         _raw_bundle(result, profile),
         media_type=(

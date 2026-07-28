@@ -1,7 +1,5 @@
 """Plan local synchronization."""
 
-from pathlib import Path
-
 
 class UnsafeLayoutError(ValueError):
     pass

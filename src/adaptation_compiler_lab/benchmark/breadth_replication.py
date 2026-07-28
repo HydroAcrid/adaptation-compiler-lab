@@ -29,6 +29,144 @@ _CONDITIONS = (
     BenchmarkCondition.COMPILED_ADAPTATION,
 )
 
+_UNRESOLVED_PROFILE_REFERENCES = (
+    "retain the stage",
+    "earlier stage",
+    "previous stage",
+    "prior stage",
+    "as above",
+    "unchanged guidance",
+)
+
+
+def _require_profile_concepts(
+    value: str,
+    *,
+    stage: int,
+    behavior: str,
+    concepts: tuple[tuple[str, ...], ...],
+) -> None:
+    normalized = " ".join(value.lower().split())
+    missing = tuple(
+        "/".join(alternatives)
+        for alternatives in concepts
+        if not any(term in normalized for term in alternatives)
+    )
+    if missing:
+        raise ValueError(
+            f"breadth profile Stage {stage} omits {behavior} concepts: {', '.join(missing)}"
+        )
+
+
+def validate_breadth_profile_content(profile: BreadthProfileSet) -> None:
+    """Reject non-standalone or semantically incomplete staged profiles."""
+
+    stages = (profile.stage_1, profile.stage_2, profile.stage_3)
+    for stage, value in enumerate(stages, start=1):
+        normalized = " ".join(value.lower().split())
+        unresolved = tuple(
+            marker for marker in _UNRESOLVED_PROFILE_REFERENCES if marker in normalized
+        )
+        if unresolved:
+            raise ValueError(
+                f"breadth profile Stage {stage} contains unresolved stage reference: "
+                f"{', '.join(unresolved)}"
+            )
+        _require_profile_concepts(
+            value,
+            stage=stage,
+            behavior="purpose-first communication",
+            concepts=(("purpose",), ("before",), ("procedur", "command", "detail")),
+        )
+        _require_profile_concepts(
+            value,
+            stage=stage,
+            behavior="current authoritative research",
+            concepts=(
+                ("authoritative",),
+                ("applicable",),
+                ("decision time", "time-sensitive", "as of"),
+            ),
+        )
+        if stage < 3:
+            _require_profile_concepts(
+                value,
+                stage=stage,
+                behavior="failed-fix re-diagnosis",
+                concepts=(
+                    ("fix", "defect"),
+                    ("fail",),
+                    ("live",),
+                    ("reproduc", "re-diagnos", "rediagnos"),
+                    ("cause",),
+                ),
+            )
+        if stage >= 2:
+            _require_profile_concepts(
+                value,
+                stage=stage,
+                behavior="environment-specific literal commands",
+                concepts=(
+                    ("shell", "operating environment"),
+                    ("command", "render"),
+                    ("quot", "literal"),
+                ),
+            )
+        if stage == 2:
+            _require_profile_concepts(
+                value,
+                stage=stage,
+                behavior="authorized recoverable replacement",
+                concepts=(
+                    ("replac", "overwrite"),
+                    ("differ", "user-managed"),
+                    ("risk",),
+                    ("recover", "backup"),
+                    ("authoriz",),
+                ),
+            )
+        if stage == 3:
+            _require_profile_concepts(
+                value,
+                stage=stage,
+                behavior="live-evidence supersession",
+                concepts=(
+                    ("note", "remembered"),
+                    ("hypoth",),
+                    ("live",),
+                    ("repository", "implementation"),
+                    ("execution evidence", "current evidence"),
+                    ("defect", "fix"),
+                    ("resolv", "determin"),
+                ),
+            )
+            _require_profile_concepts(
+                value,
+                stage=stage,
+                behavior="nonduplicative scoped authorization",
+                concepts=(
+                    ("authoriz",),
+                    ("current task", "function input", "already granted"),
+                    ("duplicate", "again", "another"),
+                    ("permission", "gate"),
+                    ("recover", "backup"),
+                    ("scope", "boundar"),
+                ),
+            )
+            _require_profile_concepts(
+                value,
+                stage=stage,
+                behavior="frozen honest evaluation",
+                concepts=(
+                    ("frozen",),
+                    ("evaluation", "protocol", "rule"),
+                    ("failure",),
+                    ("timeout",),
+                    ("negative", "inconclusive"),
+                    ("criteria",),
+                ),
+            )
+
 
 class BreadthReplicationTask(FrozenModel):
     """One fresh natural task assigned to an evidence stage."""
@@ -131,6 +269,11 @@ class BreadthReplicationDesign(FrozenModel):
     profile_material_bytes: tuple[int, int, int]
     profile_author_receipt_digest: Sha256Digest
     profile_reviewer_receipt_digest: Sha256Digest
+    profile_author_packet_digest: Sha256Digest
+    profile_reviewer_packet_digest: Sha256Digest
+    rejected_profile_attempt_digest: Sha256Digest
+    profile_rejection_record_digest: Sha256Digest
+    compiled_renderer_source_digest: Sha256Digest
     scorer_source_digest: Sha256Digest
     task_delivery_source_digest: Sha256Digest
     command_audit_source_digest: Sha256Digest
@@ -145,9 +288,9 @@ class BreadthReplicationDesign(FrozenModel):
     approved_source_families: Literal[4] = 4
     tasks_per_family: Literal[2] = 2
     planned_target_sessions: Literal[16] = 16
-    profile_construction_sessions: Literal[2] = 2
+    profile_construction_sessions: Literal[3] = 3
     isolated_judge_sessions: Literal[1] = 1
-    global_preact_transient_retries: Literal[1] = 1
+    global_preact_transient_retries: Literal[0] = 0
     maximum_subscription_sessions: Literal[20] = 20
     provider_billed_calls: Literal[0] = 0
     api_keys_allowed: Literal[False] = False
@@ -203,6 +346,7 @@ class BreadthReplicationContract(FrozenModel):
     judge_runner_source_digest: Sha256Digest
     unblind_source_digest: Sha256Digest
     profile_runner_source_digest: Sha256Digest
+    breadth_model_source_digest: Sha256Digest
     target_runner_source_digest: Sha256Digest
     structured_role_runner_source_digest: Sha256Digest
     cli_version: Literal["codex-cli 0.145.0"] = "codex-cli 0.145.0"
@@ -413,6 +557,10 @@ def load_breadth_design(root: Path) -> BreadthReplicationDesign:
             raise ValueError(f"breadth task model drifted: {wrapped.task_id}")
     checks = (
         (root / "EVIDENCE_STAGES-v1.json", design.evidence_stages_digest),
+        (
+            repo / "scripts/render_breadth_compiled_materials.py",
+            design.compiled_renderer_source_digest,
+        ),
         (repo / "scripts/score_breadth_replication_task.py", design.scorer_source_digest),
         (
             repo / "src/adaptation_compiler_lab/targets/task_delivery.py",
@@ -429,6 +577,22 @@ def load_breadth_design(root: Path) -> BreadthReplicationDesign:
         (
             root / "profile-reviewer-receipt.json",
             design.profile_reviewer_receipt_digest,
+        ),
+        (
+            root / "PROFILE_AUTHOR_PACKET.md",
+            design.profile_author_packet_digest,
+        ),
+        (
+            root / "PROFILE_REVIEWER_PACKET.md",
+            design.profile_reviewer_packet_digest,
+        ),
+        (
+            root / "rejected-profile-reviewer-output-v1.json",
+            design.rejected_profile_attempt_digest,
+        ),
+        (
+            root / "PROFILE_REVIEW_REJECTION-v1.json",
+            design.profile_rejection_record_digest,
         ),
     )
     for artifact, expected in checks:
@@ -474,6 +638,10 @@ def load_breadth_contract(
         (
             repo / "scripts/run_breadth_profile_construction.py",
             contract.profile_runner_source_digest,
+        ),
+        (
+            repo / "src/adaptation_compiler_lab/benchmark/breadth_replication.py",
+            contract.breadth_model_source_digest,
         ),
         (
             repo / "src/adaptation_compiler_lab/runners/codex_subscription.py",
