@@ -9,6 +9,9 @@ from pathlib import Path
 
 import pytest
 
+from adaptation_compiler_lab.benchmark.compact_execution import (
+    load_compact_execution_contract,
+)
 from adaptation_compiler_lab.benchmark.compact_projection import (
     CompactProjectionTask,
     load_compact_projection_design,
@@ -114,11 +117,11 @@ def _workspace(tmp_path: Path, task: CompactProjectionTask, source: str) -> Path
 def test_fresh_protocol_is_hash_frozen_and_unexecuted() -> None:
     root = _root()
     design = load_compact_projection_design(root)
-    expected = (root / "PREREGISTRATION-v1.10.sha256").read_text(encoding="ascii").split()[0]
+    expected = (root / "PREREGISTRATION-v1.11.sha256").read_text(encoding="ascii").split()[0]
 
-    assert sha256_file(root / "PREREGISTRATION-v1.10.json") == f"sha256:{expected}"
-    assert design.design_version == "1.10.0"
-    assert design.amendment_reason == "canonical_envelope_collection_and_lifecycle_state"
+    assert sha256_file(root / "PREREGISTRATION-v1.11.json") == f"sha256:{expected}"
+    assert design.design_version == "1.11.0"
+    assert design.amendment_reason == "shared_envelope_task_path_alignment"
     assert design.supersedes_design_digest
     assert design.superseded_scorer_digest
     assert design.policy_observer_digest
@@ -131,6 +134,36 @@ def test_fresh_protocol_is_hash_frozen_and_unexecuted() -> None:
     assert design.provider_billed_calls == 0
     assert not design.api_keys_allowed
     assert not design.sealed_external_validation_accessed
+
+
+def test_shared_envelope_path_matches_every_registered_task() -> None:
+    root = _root()
+    design = load_compact_projection_design(root)
+    envelope = (root / "runtime-fixture-v1.11" / "shared-execution-envelope.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "Allowed paths: deployment_policy.py." in envelope
+    assert "Allowed paths: policy.py." not in envelope
+    assert {path for task in design.tasks for path in task.allowed_change_paths} == {
+        "deployment_policy.py"
+    }
+
+
+def test_execution_contract_freezes_luna_and_nine_subscription_sessions() -> None:
+    root = _root()
+    design = load_compact_projection_design(root)
+    contract = load_compact_execution_contract(root, design=design)
+
+    assert contract.model == "gpt-5.6-luna"
+    assert contract.reasoning_effort == "medium"
+    assert contract.authentication == "saved_chatgpt"
+    assert contract.maximum_subscription_sessions == 9
+    assert contract.profile_author_sessions == 1
+    assert contract.profile_review_sessions == 1
+    assert contract.target_sessions == 6
+    assert contract.judge_sessions == 1
+    assert not contract.api_keys_allowed
 
 
 def test_task_prompts_are_natural_and_do_not_disclose_expected_implementation() -> None:
@@ -264,9 +297,9 @@ def test_validity_gate_detects_forbidden_path_defect() -> None:
 
 
 def test_runtime_fixture_manifests_bind_every_exact_rendered_clause() -> None:
-    root = _root() / "runtime-fixture-v1.5"
+    root = _root() / "runtime-fixture-v1.11"
     measurements = json.loads((root / "MEASUREMENTS-v1.0.json").read_text(encoding="utf-8"))
-    assert measurements["shared_execution_envelope_bytes"] == 362
+    assert measurements["shared_execution_envelope_bytes"] == 373
 
     for expected, stage in zip((163, 454, 461), (1, 2, 3), strict=True):
         release = ExternalGovernedRelease.model_validate_json(
@@ -321,7 +354,7 @@ def test_preregistration_rejects_same_length_runtime_fixture_substitution(
         _repo() / "src/adaptation_compiler_lab/targets/codex_runtime.py",
         renderer,
     )
-    runtime = copied / "runtime-fixture-v1.5" / "codex-runtime-stage-1.md"
+    runtime = copied / "runtime-fixture-v1.11" / "codex-runtime-stage-1.md"
     original = runtime.read_text(encoding="utf-8")
     runtime.write_text(original.replace("recoverable", "forgettable"), encoding="utf-8")
     assert len(runtime.read_bytes()) == len(original.encode("utf-8"))

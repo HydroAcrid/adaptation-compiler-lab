@@ -1,7 +1,9 @@
 # Frozen execution protocol
 
-Status: v1.10 designed and frozen; no live sessions started. Byte-identical v1.0 through v1.9
-registrations remain as superseded pre-execution history. V1.10 keeps generated policy execution in
+Status: v1.11 designed and frozen; no live sessions started. V1.0 through v1.10 registrations
+remain as superseded pre-execution history. V1.11 corrects the common envelope's allowed path from
+`policy.py` to the registered task path `deployment_policy.py`; no task, scorer, renderer,
+condition material, or live output informed the amendment. V1.10 keeps generated policy execution in
 an untrusted child worker inside the answer-blind filesystem/network/PID sandbox and admits only a
 capability-free Python decision subset, preventing generated code from writing the wrapper's
 observation channel. A trusted supervisor owns official observation output; only the parent scorer
@@ -71,6 +73,16 @@ The deferred external-validation study is outside this workspace and outside thi
 Maximum: 9 saved-ChatGPT Codex subscription sessions. Provider-billed calls: 0. API keys: 0.
 No retry is allowed for an agent, validity, timeout, or post-action failure. A future amendment is
 required before any narrowly defined pre-action infrastructure retry.
+
+## Frozen execution identity
+
+All nine sessions use the pinned Linux `codex-cli 0.145.0` binary with digest
+`sha256:a2a05dafaa1acb002a45eaec0a462de5b13694fcfcd7bc43305f14781ce7be14`,
+the exact `gpt-5.6-luna` model, medium reasoning, Standard service mode, saved ChatGPT
+authentication, and a 600-second limit. API-key environment variables are removed. Role sessions
+are tool-free inside the pinned outer sandbox. Target sessions are ephemeral, ignore user
+configuration and rules, disable ambient features and web search, inherit no shell environment,
+and allow workspace writes only.
 
 ## Success gate
 

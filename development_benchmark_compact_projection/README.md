@@ -22,7 +22,10 @@ There are no API keys or provider-billed calls.
 
 No role or target session has started. The renderer, task fixtures, answer-blind scorer chain,
 common envelope, every runtime release/projection/render/manifest byte, and current
-preregistration are frozen before profile construction. The preserved v1.0 registration was
+preregistration are frozen before profile construction. V1.10 was superseded by v1.11 before
+execution because a preflight audit found that its common envelope named `policy.py` while every
+registered task permits only `deployment_policy.py`; v1.11 changes only the shared-envelope
+artifacts and their dependent measurements and hashes. The preserved v1.0 registration was
 superseded by v1.1 for strict tuple returns; v1.1 was then superseded by v1.2 because policy code
 still shared the trusted scoring process. V1.2 was superseded by v1.3 so inherited pre-exec
 resource-limit failures produce durable failed receipts instead of aborting the coordinator. V1.3
@@ -60,11 +63,15 @@ live output informed any amendment.
 - `PREREGISTRATION-v1.10.json` and `.sha256`: current canonical envelope-collection and
   lifecycle-state amendment, reusing the
   exact v1.5 condition material.
+- `PREREGISTRATION-v1.11.json` and `.sha256`: current pre-execution shared-envelope path
+  alignment amendment.
 - `tasks/`: fresh fixtures and task manifests.
 - `runtime-fixture/`: preserved pre-v1.4 runtime fixture.
 - `runtime-fixture-v1.4/`: preserved trusted-observation/scoped-verification fixture.
 - `runtime-fixture-v1.5/`: current external releases, target-bound canonical projections, compact
   Codex text, clause-binding manifests, common envelope, and exact size measurements.
+- `runtime-fixture-v1.11/`: byte-identical v1.5 releases, projections, renders, and manifests with
+  only the corrected common-envelope path and dependent measurements changed.
 - `CLAUSE_ANALYSIS-v1.0.json`: preserved pre-v1.4 line classification.
 - `CLAUSE_ANALYSIS-v1.1.json`: preserved v1.4 line-complete classification.
 - `CLAUSE_ANALYSIS-v1.2.json`: current line-complete classification.
