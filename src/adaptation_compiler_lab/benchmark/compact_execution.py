@@ -59,6 +59,7 @@ class CompactExecutionContract(FrozenModel):
         "1.5.0",
         "1.6.0",
         "1.7.0",
+        "1.8.0",
     ] = "1.0.0"
     design_digest: Sha256Digest
     execution_protocol_digest: Sha256Digest
@@ -182,7 +183,7 @@ class CompactExecutionContract(FrozenModel):
             or self.inherited_profile_receipt_digest is None
         ):
             raise ValueError("compact execution contract v1.6 settings drifted")
-        elif self.contract_version == "1.7.0" and (
+        elif self.contract_version in {"1.7.0", "1.8.0"} and (
             self.maximum_subscription_sessions != 8
             or self.profile_author_sessions != 0
             or self.profile_review_sessions != 0
@@ -194,7 +195,7 @@ class CompactExecutionContract(FrozenModel):
             or self.instrument_smoke_source_digest is None
             or self.inherited_profile_receipt_digest is None
         ):
-            raise ValueError("compact execution contract v1.7 settings drifted")
+            raise ValueError("compact execution contract v1.7-v1.8 settings drifted")
         return self
 
     @property
@@ -223,11 +224,17 @@ def load_compact_execution_contract(
         "1.17.0": "EXECUTION_CONTRACT-v1.5.json",
         "1.18.0": "EXECUTION_CONTRACT-v1.6.json",
         "1.19.0": "EXECUTION_CONTRACT-v1.7.json",
+        "2.0.0": "EXECUTION_CONTRACT-v1.8.json",
     }.get(design.design_version, "EXECUTION_CONTRACT-v1.0.json")
     contract = CompactExecutionContract.model_validate_json((root / contract_name).read_bytes())
     if contract.design_digest != design.content_digest:
         raise ValueError("compact execution contract design binding drifted")
-    if contract.execution_protocol_digest != sha256_file(root / "EXECUTION_PROTOCOL.md"):
+    protocol = (
+        root / "EXECUTION_PROTOCOL-v2.0.md"
+        if design.design_version == "2.0.0"
+        else root / "EXECUTION_PROTOCOL.md"
+    )
+    if contract.execution_protocol_digest != sha256_file(protocol):
         raise ValueError("compact execution protocol binding drifted")
     if contract.maximum_subscription_sessions != design.maximum_subscription_sessions:
         raise ValueError("compact execution session budget drifted")
@@ -246,7 +253,15 @@ def load_compact_execution_contract(
         raise ValueError("compact target-runner source binding drifted")
     if contract.instrument_smoke_source_digest is not None and (
         contract.instrument_smoke_source_digest
-        != sha256_file(root.parent / "scripts" / "run_compact_projection_live_smoke.py")
+        != sha256_file(
+            root.parent
+            / "scripts"
+            / (
+                "run_decision_projection_live_smoke.py"
+                if design.design_version == "2.0.0"
+                else "run_compact_projection_live_smoke.py"
+            )
+        )
     ):
         raise ValueError("compact instrument-smoke source binding drifted")
     if contract.inherited_profile_receipt_digest is not None and (

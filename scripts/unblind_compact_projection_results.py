@@ -65,6 +65,7 @@ def main() -> None:
         "1.17.0",
         "1.18.0",
         "1.19.0",
+        "2.0.0",
     }
     iteration = design.design_version in {
         "1.12.0",
@@ -75,6 +76,7 @@ def main() -> None:
         "1.17.0",
         "1.18.0",
         "1.19.0",
+        "2.0.0",
     }
     results = benchmark / (
         f"results-v{design.design_version.removesuffix('.0')}"
@@ -245,7 +247,13 @@ def main() -> None:
     compiled_sizes = [
         (
             benchmark
-            / ("runtime-fixture-v1.12" if iteration else "runtime-fixture-v1.11")
+            / (
+                "runtime-fixture-v2.0"
+                if design.design_version == "2.0.0"
+                else "runtime-fixture-v1.12"
+                if iteration
+                else "runtime-fixture-v1.11"
+            )
             / f"codex-runtime-stage-{stage}.md"
         )
         .stat()
@@ -266,6 +274,11 @@ def main() -> None:
         item.neutral_checks_passed == item.neutral_checks_total for item in compiled
     )
     zero_scope_leakage = zero_false_activation
+    compiled_required_behavior_complete = all(
+        item.diagnostic_checks_passed == item.diagnostic_checks_total
+        and item.objective_checks_passed == item.objective_checks_total
+        for item in compiled
+    )
     size_gate = all(
         compiled_size <= profile_size
         for compiled_size, profile_size in zip(
@@ -279,6 +292,7 @@ def main() -> None:
         "compiled_no_diagnostic_regression_at_any_stage": no_regression_by_metric["diagnostic"],
         "compiled_no_neutral_regression_at_any_stage": no_regression_by_metric["neutral"],
         "compiled_no_objective_regression_at_any_stage": no_regression_by_metric["objective"],
+        "compiled_required_behavior_complete_at_every_stage": (compiled_required_behavior_complete),
         "condition_mapping_was_withheld_until_judge_frozen": (
             judge_receipt.get("condition_mapping_access") is False
         ),

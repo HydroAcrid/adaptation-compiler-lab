@@ -1,8 +1,8 @@
 from datetime import timedelta
-from typing import cast
 
 import pytest
 
+from adaptation_compiler_lab.benchmark.decision_fixture import public_decision_tables
 from adaptation_compiler_lab.dogfood import (
     PUBLIC_DOGFOOD_NOW,
     PUBLIC_DOGFOOD_SUBJECT,
@@ -10,7 +10,6 @@ from adaptation_compiler_lab.dogfood import (
     public_dogfood_transitions,
 )
 from adaptation_compiler_lab.runtime import (
-    ArtifactDecisionTable,
     BehavioralDecisionCase,
     RuntimeProjectionContext,
     bind_decision_release,
@@ -21,59 +20,8 @@ from adaptation_compiler_lab.targets.codex_runtime_v3 import (
     build_runtime_projection_manifest_v3,
     render_codex_runtime_projection_v3,
 )
-from adaptation_compiler_lab.targets.models import (
-    ArtifactRenderProjection,
-    ScopeDimension,
-    TargetKind,
-)
+from adaptation_compiler_lab.targets.models import ScopeDimension, TargetKind
 from adaptation_compiler_lab.targets.profiles import default_target_profile
-
-
-def _decision_tables() -> tuple[ArtifactDecisionTable, ...]:
-    transitions = public_dogfood_transitions()
-    cases = (
-        (
-            BehavioralDecisionCase(
-                case_id="retained-existing-any-request",
-                situation=(
-                    "an existing persistent user-managed target, whether recovery was "
-                    "requested or not"
-                ),
-                required_actions=("create a recovery copy", "replace it"),
-            ),
-        ),
-        (
-            BehavioralDecisionCase(
-                case_id="cache-existing-any-request",
-                situation=(
-                    "an existing disposable generated-cache target, whether recovery was "
-                    "requested or not"
-                ),
-                required_actions=("write a temporary tree", "atomically replace it"),
-                forbidden_actions=("create a recovery copy",),
-            ),
-        ),
-        (
-            BehavioralDecisionCase(
-                case_id="retained-existing-requested",
-                situation=("an existing persistent user-managed target has a recovery request"),
-                required_actions=("create a recovery copy", "replace it"),
-            ),
-            BehavioralDecisionCase(
-                case_id="retained-existing-unrequested",
-                situation=("an existing persistent user-managed target has no recovery request"),
-                required_actions=("refuse replacement",),
-                forbidden_actions=("replace it",),
-            ),
-        ),
-    )
-    return tuple(
-        ArtifactDecisionTable(
-            artifact_ref=cast(ArtifactRenderProjection, transition.instruction).artifact_ref,
-            cases=stage_cases,
-        )
-        for transition, stage_cases in zip(transitions, cases, strict=True)
-    )
 
 
 def _rendered_stages() -> tuple[str, str, str]:
@@ -95,7 +43,10 @@ def _rendered_stages() -> tuple[str, str, str]:
     )
     rendered: list[str] = []
     for release in releases:
-        decision_release = bind_decision_release(release, _decision_tables())
+        decision_release = bind_decision_release(
+            release,
+            public_decision_tables(transitions),
+        )
         projection = build_codex_runtime_projection_v3(decision_release, context)
         output = render_codex_runtime_projection_v3(projection)
         manifest = build_runtime_projection_manifest_v3(
@@ -126,7 +77,10 @@ def test_decision_tables_bind_exact_artifacts_without_changing_v1_release() -> N
     release = build_external_governed_releases(transitions, dogfood)[-1]
     original_digest = release.content_digest
 
-    decision_release = bind_decision_release(release, _decision_tables())
+    decision_release = bind_decision_release(
+        release,
+        public_decision_tables(transitions),
+    )
 
     assert decision_release.governed_release.content_digest == original_digest
     assert tuple(item.artifact_ref for item in decision_release.decision_tables) == tuple(

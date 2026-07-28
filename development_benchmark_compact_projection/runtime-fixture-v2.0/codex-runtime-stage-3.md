@@ -1,0 +1,4 @@
+- Project generated-cache - If an existing disposable generated-cache target, whether recovery was requested or not: write a temporary tree; then atomically replace it; do not create a recovery copy.
+- If an existing persistent user-managed target has a recovery request: create a recovery copy; then replace it.
+- If an existing persistent user-managed target has no recovery request: refuse replacement; do not replace it.
+- Verify the selected publish action before completion.

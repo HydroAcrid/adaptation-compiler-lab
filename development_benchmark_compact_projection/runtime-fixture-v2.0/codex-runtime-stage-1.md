@@ -1,0 +1,2 @@
+- If an existing persistent user-managed target, whether recovery was requested or not: create a recovery copy; then replace it.
+- Verify the selected publish action before completion.

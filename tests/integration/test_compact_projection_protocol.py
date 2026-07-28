@@ -118,7 +118,7 @@ def _workspace(tmp_path: Path, task: CompactProjectionTask, source: str) -> Path
 
 def test_fresh_protocol_is_hash_frozen_and_unexecuted() -> None:
     root = _root()
-    design = load_compact_projection_design(root)
+    design = load_compact_projection_design(root, version="1.19")
     expected = (root / "PREREGISTRATION-v1.19.sha256").read_text(encoding="ascii").split()[0]
 
     assert sha256_file(root / "PREREGISTRATION-v1.19.json") == f"sha256:{expected}"
@@ -146,7 +146,7 @@ def test_fresh_protocol_is_hash_frozen_and_unexecuted() -> None:
 
 def test_shared_envelope_path_matches_every_registered_task() -> None:
     root = _root()
-    design = load_compact_projection_design(root)
+    design = load_compact_projection_design(root, version="1.19")
     envelope = (root / "runtime-fixture-v1.12" / "shared-execution-envelope.md").read_text(
         encoding="utf-8"
     )
@@ -160,7 +160,7 @@ def test_shared_envelope_path_matches_every_registered_task() -> None:
 
 def test_execution_contract_freezes_luna_and_eight_subscription_sessions() -> None:
     root = _root()
-    design = load_compact_projection_design(root)
+    design = load_compact_projection_design(root, version="1.19")
     contract = load_compact_execution_contract(root, design=design)
 
     assert contract.model == "gpt-5.6-luna"
@@ -181,7 +181,7 @@ def test_execution_contract_freezes_luna_and_eight_subscription_sessions() -> No
 
 
 def test_task_prompts_are_natural_and_do_not_disclose_expected_implementation() -> None:
-    design = load_compact_projection_design(_root())
+    design = load_compact_projection_design(_root(), version="1.19")
 
     for task in design.tasks:
         lowered = task.task_prompt.casefold()
@@ -193,7 +193,7 @@ def test_task_prompts_are_natural_and_do_not_disclose_expected_implementation() 
 
 
 def test_visible_tests_pass_in_all_fresh_fixtures() -> None:
-    design = load_compact_projection_design(_root())
+    design = load_compact_projection_design(_root(), version="1.19")
 
     for task in design.tasks:
         completed = subprocess.run(
@@ -210,7 +210,7 @@ def test_visible_tests_pass_in_all_fresh_fixtures() -> None:
 
 
 def test_reference_implementations_pass_every_frozen_scenario(tmp_path: Path) -> None:
-    design = load_compact_projection_design(_root())
+    design = load_compact_projection_design(_root(), version="1.19")
 
     for task in design.tasks:
         result = _score(task, _workspace(tmp_path, task, _reference(task.stage)))
@@ -218,7 +218,7 @@ def test_reference_implementations_pass_every_frozen_scenario(tmp_path: Path) ->
 
 
 def test_scorer_runs_under_frozen_minimal_system_path(tmp_path: Path) -> None:
-    task = load_compact_projection_design(_root()).tasks[0]
+    task = load_compact_projection_design(_root(), version="1.19").tasks[0]
     workspace = _workspace(tmp_path, task, _reference(task.stage))
     completed = subprocess.run(
         [
@@ -252,7 +252,7 @@ def test_scorer_runs_under_frozen_minimal_system_path(tmp_path: Path) -> None:
 
 
 def test_scorer_detects_stale_rule(tmp_path: Path) -> None:
-    task = load_compact_projection_design(_root()).tasks[2]
+    task = load_compact_projection_design(_root(), version="1.19").tasks[2]
     source = _reference(2)
 
     checks = _all_checks(_score(task, _workspace(tmp_path, task, source)))
@@ -261,7 +261,7 @@ def test_scorer_detects_stale_rule(tmp_path: Path) -> None:
 
 
 def test_scorer_detects_missed_exception(tmp_path: Path) -> None:
-    task = load_compact_projection_design(_root()).tasks[1]
+    task = load_compact_projection_design(_root(), version="1.19").tasks[1]
     source = _reference(1)
 
     checks = _all_checks(_score(task, _workspace(tmp_path, task, source)))
@@ -270,7 +270,7 @@ def test_scorer_detects_missed_exception(tmp_path: Path) -> None:
 
 
 def test_scorer_detects_scope_leak(tmp_path: Path) -> None:
-    task = load_compact_projection_design(_root()).tasks[1]
+    task = load_compact_projection_design(_root(), version="1.19").tasks[1]
     source = _reference(2).replace(
         'if retention_class == "rebuildable_cache":\n'
         '        return ("write_temporary_tree", "atomically_replace_target")\n'
@@ -284,7 +284,7 @@ def test_scorer_detects_scope_leak(tmp_path: Path) -> None:
 
 
 def test_scorer_detects_unnecessary_change(tmp_path: Path) -> None:
-    task = load_compact_projection_design(_root()).tasks[0]
+    task = load_compact_projection_design(_root(), version="1.19").tasks[0]
     source = _reference(1).replace(
         'return ("create_target",)',
         'return ("refuse_transfer",)',
@@ -307,7 +307,7 @@ def test_scorer_rejects_non_tuple_return_contract(
     tmp_path: Path,
     replacement: str,
 ) -> None:
-    task = load_compact_projection_design(_root()).tasks[2]
+    task = load_compact_projection_design(_root(), version="1.19").tasks[2]
     source = _reference(3).replace('else ("refuse_transfer",)', f"else {replacement}")
 
     checks = _all_checks(_score(task, _workspace(tmp_path, task, source)))
@@ -316,7 +316,7 @@ def test_scorer_rejects_non_tuple_return_contract(
 
 
 def test_policy_cannot_forge_worker_observation_output(tmp_path: Path) -> None:
-    task = load_compact_projection_design(_root()).tasks[2]
+    task = load_compact_projection_design(_root(), version="1.19").tasks[2]
     fabricated = {
         "detail": None,
         "status": "returned",
@@ -409,7 +409,7 @@ def test_preregistration_rejects_same_length_runtime_fixture_substitution(
     assert len(runtime.read_bytes()) == len(original.encode("utf-8"))
 
     with pytest.raises(ValueError, match="runtime fixture tree digest drifted"):
-        load_compact_projection_design(copied)
+        load_compact_projection_design(copied, version="1.19")
 
 
 def test_frozen_protocol_generator_cannot_refresh_existing_design() -> None:
