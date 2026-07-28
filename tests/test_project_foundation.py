@@ -7,6 +7,9 @@ from pathlib import Path
 from adaptation_compiler_lab.benchmark.breadth_adjudication_schema_export import (
     breadth_adjudication_schemas,
 )
+from adaptation_compiler_lab.benchmark.breadth_remediation_schema_export import (
+    breadth_remediation_schemas,
+)
 from adaptation_compiler_lab.benchmark.breadth_replication_schema_export import (
     breadth_replication_schemas,
 )
@@ -160,6 +163,15 @@ def test_breadth_replication_v1_schema_snapshots_match_contracts() -> None:
 def test_breadth_adjudication_v11_schema_snapshots_match_contracts() -> None:
     directory = Path(__file__).parents[1] / "schemas" / "breadth_replication" / "v1_1"
     schemas = breadth_adjudication_schemas()
+
+    assert {path.name for path in directory.glob("*.schema.json")} == set(schemas)
+    for name, schema in schemas.items():
+        assert json.loads((directory / name).read_text(encoding="utf-8")) == schema
+
+
+def test_breadth_remediation_v1_schema_snapshots_match_contracts() -> None:
+    directory = Path(__file__).parents[1] / "schemas" / "breadth_remediation" / "v1"
+    schemas = breadth_remediation_schemas()
 
     assert {path.name for path in directory.glob("*.schema.json")} == set(schemas)
     for name, schema in schemas.items():
