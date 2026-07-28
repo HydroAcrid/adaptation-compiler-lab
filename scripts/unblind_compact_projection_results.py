@@ -66,7 +66,14 @@ def main() -> None:
     )
     completion = _object(results / "completion.json")
     judge_receipt = _object(results / "judge-receipt.json")
-    decision = CompactJudgeDecision.model_validate(judge_receipt.get("decision"))
+    decision = CompactJudgeDecision.model_validate_json(
+        json.dumps(
+            judge_receipt.get("decision"),
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+    )
     if completion.get("blind_report_digest") != blind.content_digest:
         raise RuntimeError("completion no longer binds the blind report")
     if judge_receipt.get("condition_mapping_access") is not False:
@@ -85,7 +92,7 @@ def main() -> None:
     if canonical_digest(private_plan) != completion.get("private_plan_digest"):
         raise RuntimeError("private plan digest drifted before unblinding")
     seed = base64.b64decode(
-        (config_root / "randomization-seed.key").read_bytes(),
+        (config_root / "randomization-seed.key").read_bytes().strip(),
         validate=True,
     )
     if sha256_bytes(seed) != private_plan.get("seed_commitment"):
