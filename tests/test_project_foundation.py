@@ -8,6 +8,9 @@ from adaptation_compiler_lab.benchmark.models import (
     FeasibilityDesign,
     InternalFeasibilityDesign,
 )
+from adaptation_compiler_lab.benchmark.task_channel_schema_export import (
+    task_channel_comparison_schemas,
+)
 from adaptation_compiler_lab.domain import RecordKind
 from adaptation_compiler_lab.governance.schema_export import governance_schema_bundle
 from adaptation_compiler_lab.runtime.decision_schema_export import decision_schema_bundle
@@ -128,6 +131,15 @@ def test_target_delivery_v1_schema_snapshots_match_receipt_contracts() -> None:
     }
     for name, schema in schemas.items():
         assert json.loads((directory / f"{name}.schema.json").read_text(encoding="utf-8")) == schema
+
+
+def test_task_channel_comparison_v1_schema_snapshots_match_contracts() -> None:
+    directory = Path(__file__).parents[1] / "schemas" / "task_channel_comparison" / "v1"
+    schemas = task_channel_comparison_schemas()
+
+    assert {path.name for path in directory.glob("*.schema.json")} == set(schemas)
+    for name, schema in schemas.items():
+        assert json.loads((directory / name).read_text(encoding="utf-8")) == schema
 
 
 def test_feasibility_preregistration_is_typed_and_digest_frozen() -> None:
