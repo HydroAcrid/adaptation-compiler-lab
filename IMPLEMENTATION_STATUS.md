@@ -4,10 +4,64 @@ Last updated: 2026-07-27
 
 ## Current milestone
 
-**Milestone 6A longitudinal dogfood implementation and Codex comparison are complete; the strict
-product gate failed.** The deterministic workflow verifies signed consent/capture, governed
+**Milestone 6A.1 compact runtime projection is implemented and locally validated; its fresh live
+comparison is deliberately unexecuted.** Milestone 6A remains immutable and its strict product
+gate remains failed. The deterministic lifecycle still verifies signed consent/capture, governed
 Evidence v1.1, review approval, addition, narrower scoped correction, supersession/revocation,
-release rendering, clean delivery, activation scope, and append-only user feedback.
+release rendering, activation scope, rollback, and append-only feedback.
+
+The read-only 6A audit passed the preregistration, task, scorer, material, receipt, judge,
+private-plan, randomization, and unblinded-result digest chain. The exact private-plan digest
+matches its frozen receipt. Historical off-by-one profile byte measurements were recorded as a
+known defect and not rewritten.
+
+The new representation split retains 5,297/10,280/11,744-byte external governed releases plus
+1,044/2,000/2,000-byte external clause manifests. Codex receives only 163/454/461 adaptation
+bytes. The identical 362-byte execution envelope is separate from both comparison conditions.
+Every target clause binds to exact artifact/evidence/consent/evaluation/review lineage.
+
+All five PR #18 evaluation-instrument findings are repaired prospectively: exact private-plan
+digest verification, sandboxed scoring and durable failures, actual-material excerpt leakage
+detection, NUL-delimited two-column Git status parsing, and exact normalized byte measurement.
+PR #19 review then hardened the new boundary further: activation and exclusion dimensions resolve
+independently; revoked artifacts cannot reactivate; governance bindings require exact artifact,
+scope, and evidence equality; manifests certify only an exact deterministic re-render; generated
+policy executes in a read-only Linux user/mount/network/PID namespace and chroot; and the
+preregistration binds the complete runtime-fixture tree rather than size metadata alone.
+The second review requires a non-root outer coordinator so the process limit is enforceable,
+recomputes the canonical projection from release plus context before certification, permanently
+disables preregistration refresh, and combines short identity/provenance markers with actual
+material-excerpt leakage detection. The final review also requires scorer output to be captured
+as exact bytes and decoded only inside the per-cell validation boundary, so invalid UTF-8 becomes
+a durable malformed-output receipt instead of aborting the comparison coordinator. Captured
+stdout and stderr use regular files under the child-enforced one-MiB-per-stream file-size ceiling,
+preventing unbounded coordinator pipe buffering, and the short provenance-marker set covers the
+scoped-correction artifact as well as the persistent rules.
+
+The fresh comparison's v1.0 through v1.6 preregistrations remain byte-identical and unexecuted.
+V1.0 was superseded for list/scalar coercion. V1.1 was superseded after review showed that policy
+import still shared the process that emitted the trusted score. V1.2 executes each policy
+call in an answer-blind read-only filesystem/network/PID sandbox that cannot see the benchmark or
+trusted parent, records bounded per-scenario observation receipts, and computes checks only in the
+parent scorer. V1.3 additionally converts pre-exec `SubprocessError` failures caused by
+stricter inherited host limits into durable crashed receipts for both scoring paths, and binds the
+repaired sandbox plus exact v1.2 lineage. V1.4 separates untrusted policy-worker bytes from
+official observation output, computes longitudinal and compact checks only outside generated-code
+processes, and preserves effective scope on verification clauses. V1.5 rejects generated
+policies outside a capability-free Python subset before execution, requires the selected target
+profile to satisfy every applicable artifact's compatibility declaration, and binds every compiled
+snapshot to the digest of its complete source transition. V1.6 changes no runtime
+material or semantics; it binds formatter-normalized observer bytes after the pre-execution v1.5
+freeze correctly detected source drift. No profile, target, judge, or other live output informed
+that amendment. V1.7 independently requires a known Codex target family at the Codex renderer
+boundary. V1.8 rejects absolute, traversing, non-normalized, control-bearing, or instruction-like
+execution-envelope paths. V1.9 makes the exported JSON Schema enforce the same traversal,
+dot-segment, duplicate-separator, and trailing-separator restrictions as the Python model; it
+binds the updated renderer source while reusing the exact v1.5 fixture and every unchanged v1.8
+digest. Current v1.10 also makes path arrays schema-unique and canonically sorts them on load while
+reproducing active, revoked, and scoped-supersession state from exact per-kind lifecycle events.
+The portable external-release schema carries the same per-kind introduction/removal cardinality
+constraints for schema-only consumers.
 
 Three stage packs demonstrate the intended lifecycle: a persistent-destination backup rule; a
 narrow generated-cache atomic-replacement exception; then a refuse-by-default persistent policy
@@ -17,21 +71,50 @@ narrow exception remains active only for its registered project scope.
 Six public tasks and independent scorers produced 12 frozen target records. Compiled and profile
 tied at 6/6 objective, 2/6 diagnostic, and 2/6 neutral checks. Compiled produced 3/6 valid records
 versus 6/6 for the profile; all three invalid compiled runs violated path/command discipline.
-Compiled finished at 1,652 bytes and five maintenance actions versus the profile's 462 bytes and
-three actions. One blind Sol/xhigh judge ran before unblinding; its three compiled preferences are
-secondary, and two rewarded forbidden test-file changes.
+Compiled finished at 1,652 bytes versus the profile's 462 bytes. The old unlike “maintenance
+actions” comparison is retired in favor of separate compiler, machine-time, approval, profile,
+and target-cost records. One blind Sol/xhigh judge ran before unblinding; its three compiled
+preferences are secondary, and two rewarded forbidden test-file changes.
+
+The fresh 6A.1 v1.10 protocol uses three new task fixtures and locally distinguishes reference,
+stale-rule, missed-exception, scope-leak, unnecessary-change, and forbidden-path implementations.
+Its minimum future live cost is six target sessions plus one author, one reviewer, and one blind
+judge: nine subscription sessions, zero API-key calls, and zero provider-billed calls. No role,
+target, or judge session has started.
 
 The prior v2.9 result remains favorable but benchmark-limited descriptive cross-agent development
 evidence: compiled led Kevin's preferences 5–2 with one tie and led objective/diagnostic counts,
 with no neutral regression. It is not proof that compiler v2 is superior to an excellent profile.
 
-No compiler, release, TargetPack, frozen condition material, held-out task, or Milestone 6 mapping
-was accessed or changed in response to the result. No held-out trial, model modification,
-executable-tool creation, Kairn integration, web UI, public release, or remote research-data
-storage occurred.
+The frozen Milestone 6A inputs, releases, packs, conditions, outputs, and results were not changed.
+Only their public records and explicitly authorized encrypted 6A failure traces were read for the
+postmortem. No held-out task or Milestone 6 mapping was accessed; no held-out trial, model
+modification, executable-tool creation, Kairn integration, web UI, public release, or remote
+research-data storage occurred.
 
 ## Completed scope
 
+- Added portable external governed releases with cumulative lifecycle history, active artifact
+  versions, exact lineage, scoped supersession/revocation, parent-release rollback, renderer
+  identity, and reproducible digests.
+- Added a schema-driven target-independent runtime projection that resolves known context, retains
+  the smallest sufficient conditional for unknown context, removes inactive and superseded
+  behavior, deduplicates verification, and expresses unresolved claim-specific precedence.
+- Added a compact Codex renderer with exact normalized UTF-8 accounting and a non-target-visible
+  clause-binding manifest. Audit IDs, condition names, evidence IDs, versions, authority labels,
+  and audit headings do not enter target text.
+- Moved universal execution/security rules into a separate shared envelope with exact allowed
+  paths, untrusted-context boundaries, no auxiliary files/tests, no parent/host access, and
+  workspace-bounded verification.
+- Added generic table-driven and property coverage for stable ordering/digests, addition, scoped
+  exceptions, precedence, supersession, revocation, partial/full context, no unrelated leakage,
+  activation/deactivation, provenance binding, byte accounting, and varied generated scopes.
+- Froze the unexecuted fresh three-task comparison, exact task/scorer/renderer/envelope digests,
+  isolated role packets, corrected anonymous judge contract, primary automated gate, stopping
+  rules, and nine-session maximum.
+- Added a docs-only Milestone 6B Portable Specialty Presets architecture with temporary
+  activation, clean deactivation, source/license/trust review, progressive loading, rollback,
+  personal overlays, and the proposed Frontend Studio demonstration.
 - All compiler, provenance, review, release, target-rendering, governance, encrypted evidence,
   withdrawal, recall, conflict, activation, benchmark custody, registry, preregistration, and
   immutable-result controls from Milestones 1–3 remain intact and backward compatible.
@@ -195,8 +278,7 @@ uv run pytest
 uv build
 ```
 
-The current full suite formats 280 files, passes strict typing, passes 448
-tests, and builds both
+The current full suite formats 319 files, passes strict typing, passes 566 tests, and builds both
 the source distribution and wheel. Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
 verifier matched its pinned binary and canonical generated-schema digest

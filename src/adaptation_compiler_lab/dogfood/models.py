@@ -172,6 +172,7 @@ class DogfoodStageSnapshot(FrozenModel):
     stage: Annotated[int, Field(ge=1, le=3)]
     transition_id: Identifier
     transition_kind: DogfoodTransitionKind
+    source_transition_digest: Sha256Digest | None = None
     release_id: Identifier
     release_digest: Sha256Digest
     rendered_pack: RenderedPack

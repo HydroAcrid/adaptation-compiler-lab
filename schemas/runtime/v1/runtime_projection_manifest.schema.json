@@ -1,0 +1,96 @@
+{
+  "$defs": {
+    "ClauseProvenanceBinding": {
+      "additionalProperties": false,
+      "description": "Hidden exact binding from one rendered clause to governed lineage.",
+      "properties": {
+        "clause_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Clause Digest",
+          "type": "string"
+        },
+        "rendered_fragment_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Rendered Fragment Digest",
+          "type": "string"
+        },
+        "source_binding_digests": {
+          "items": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Source Binding Digests",
+          "type": "array"
+        }
+      },
+      "required": [
+        "clause_digest",
+        "rendered_fragment_digest",
+        "source_binding_digests"
+      ],
+      "title": "ClauseProvenanceBinding",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "External manifest; never delivered with the target-visible projection.",
+  "properties": {
+    "clause_bindings": {
+      "items": {
+        "$ref": "#/$defs/ClauseProvenanceBinding"
+      },
+      "title": "Clause Bindings",
+      "type": "array"
+    },
+    "external_release_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "External Release Digest",
+      "type": "string"
+    },
+    "manifest_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Manifest Version",
+      "type": "string"
+    },
+    "rendered_content_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Rendered Content Digest",
+      "type": "string"
+    },
+    "rendered_utf8_bytes": {
+      "minimum": 0,
+      "title": "Rendered Utf8 Bytes",
+      "type": "integer"
+    },
+    "runtime_projection_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Runtime Projection Digest",
+      "type": "string"
+    },
+    "target_renderer_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Target Renderer Id",
+      "type": "string"
+    },
+    "target_renderer_version": {
+      "minLength": 1,
+      "title": "Target Renderer Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "external_release_digest",
+    "runtime_projection_digest",
+    "target_renderer_id",
+    "target_renderer_version",
+    "rendered_content_digest",
+    "rendered_utf8_bytes",
+    "clause_bindings"
+  ],
+  "title": "RuntimeProjectionManifest",
+  "type": "object"
+}

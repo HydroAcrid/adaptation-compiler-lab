@@ -20,6 +20,10 @@ from adaptation_compiler_lab.benchmark.longitudinal_execution import (
     static_profile_review_schema,
     validate_static_profile,
 )
+from adaptation_compiler_lab.benchmark.longitudinal_instrument import (
+    normalize_target_material,
+    normalized_utf8_size,
+)
 from adaptation_compiler_lab.connectors.pins import sha256_bytes, sha256_file
 from adaptation_compiler_lab.persistence.errors import IntegrityError
 from adaptation_compiler_lab.persistence.raw import (
@@ -363,7 +367,7 @@ def main() -> None:
             packet=packet,
         )
         assert_condition_material_safe(reviewed.approved_profile_text)
-        reviewed_text = reviewed.approved_profile_text.rstrip() + "\n"
+        reviewed_text = normalize_target_material(reviewed.approved_profile_text)
         reviewed_profiles.append(reviewed_text)
         stage_receipts.append(
             {
@@ -375,7 +379,7 @@ def main() -> None:
                 "author_intentional_edit_operations": (authored.intentional_edit_operations),
                 "evidence_ids": list(packet.evidence_ids),
                 "evidence_packet_digest": packet.content_digest,
-                "profile_bytes": len(reviewed.approved_profile_text.encode("utf-8")),
+                "profile_bytes": normalized_utf8_size(reviewed.approved_profile_text),
                 "profile_digest": sha256_bytes(reviewed_text.encode("utf-8")),
                 "review": _recovered_receipt(
                     review_bundle,
@@ -463,7 +467,7 @@ def main() -> None:
         )
         raise
 
-    reviewed_text = reviewed_stage_three.approved_profile_text.rstrip() + "\n"
+    reviewed_text = normalize_target_material(reviewed_stage_three.approved_profile_text)
     reviewed_profiles.append(reviewed_text)
     author_bundle, author_reference = recovered["longitudinal-profile-author-stage-3"]
     stage_receipts.append(
@@ -478,7 +482,7 @@ def main() -> None:
             ),
             "evidence_ids": list(packet.evidence_ids),
             "evidence_packet_digest": packet.content_digest,
-            "profile_bytes": len(reviewed_stage_three.approved_profile_text.encode("utf-8")),
+            "profile_bytes": normalized_utf8_size(reviewed_stage_three.approved_profile_text),
             "profile_digest": sha256_bytes(reviewed_text.encode("utf-8")),
             "review": _replacement_receipt(
                 result,

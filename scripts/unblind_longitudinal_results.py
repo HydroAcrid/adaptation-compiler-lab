@@ -24,6 +24,9 @@ from adaptation_compiler_lab.benchmark.longitudinal_execution import (
     load_execution_amendment,
     load_execution_protocol,
 )
+from adaptation_compiler_lab.benchmark.longitudinal_instrument import (
+    verify_private_plan_digest,
+)
 from adaptation_compiler_lab.benchmark.models import BenchmarkCondition
 from adaptation_compiler_lab.connectors.pins import sha256_bytes, sha256_file
 from adaptation_compiler_lab.serialization import canonical_digest, canonical_json
@@ -353,6 +356,10 @@ def main() -> None:
     config_root = arguments.comparison_config_root.resolve()
     seed = _load_key(config_root / "randomization-seed.key")
     private_plan_path = config_root / "private-plan.json"
+    expected_private_plan_digest = completion.get("private_plan_ref_digest")
+    if not isinstance(expected_private_plan_digest, str):
+        raise RuntimeError("completion receipt omitted the frozen private-plan digest")
+    verify_private_plan_digest(private_plan_path, expected_private_plan_digest)
     private_plan = _object(private_plan_path)
     if private_plan.get("seed_commitment") != sha256_bytes(seed):
         raise RuntimeError("private plan does not match the committed randomization seed")

@@ -1,0 +1,340 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "artifact",
+          "default": "artifact",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "ReleaseRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "release",
+          "default": "release",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "ReleaseRef",
+      "type": "object"
+    },
+    "RuntimeClause": {
+      "additionalProperties": false,
+      "description": "One target-independent effective runtime clause.",
+      "properties": {
+        "roles": {
+          "items": {
+            "$ref": "#/$defs/RuntimeClauseRole"
+          },
+          "minItems": 1,
+          "title": "Roles",
+          "type": "array"
+        },
+        "source_artifact_refs": {
+          "items": {
+            "$ref": "#/$defs/ArtifactRef"
+          },
+          "minItems": 1,
+          "title": "Source Artifact Refs",
+          "type": "array"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "roles",
+        "source_artifact_refs"
+      ],
+      "title": "RuntimeClause",
+      "type": "object"
+    },
+    "RuntimeClauseRole": {
+      "description": "Semantic role retained externally for each target-visible clause.",
+      "enum": [
+        "actionable_behavior",
+        "necessary_scope",
+        "necessary_precedence",
+        "necessary_verification"
+      ],
+      "title": "RuntimeClauseRole",
+      "type": "string"
+    },
+    "RuntimeProjectionContext": {
+      "additionalProperties": false,
+      "description": "Known and unknown scope dimensions at projection time.",
+      "properties": {
+        "condition_labels": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Condition Labels",
+          "type": "array"
+        },
+        "environment_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment Id"
+        },
+        "evaluated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evaluated At"
+        },
+        "known_dimensions": {
+          "items": {
+            "$ref": "#/$defs/ScopeDimension"
+          },
+          "title": "Known Dimensions",
+          "type": "array"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Id"
+        },
+        "repository_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Repository Id"
+        },
+        "subject_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subject Id"
+        },
+        "target_family": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Family"
+        },
+        "target_profile_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Profile Id"
+        },
+        "task_class": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Task Class"
+        },
+        "workspace_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Workspace Id"
+        }
+      },
+      "required": [
+        "known_dimensions"
+      ],
+      "title": "RuntimeProjectionContext",
+      "type": "object"
+    },
+    "ScopeDimension": {
+      "description": "Scope dimensions a renderer must preserve when present.",
+      "enum": [
+        "subject_ids",
+        "workspace_ids",
+        "project_ids",
+        "repository_ids",
+        "task_classes",
+        "target_families",
+        "environment_ids",
+        "activation_conditions",
+        "exclusions",
+        "validity_window"
+      ],
+      "title": "ScopeDimension",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Target-independent active clauses derived from one governed release.",
+  "properties": {
+    "clauses": {
+      "items": {
+        "$ref": "#/$defs/RuntimeClause"
+      },
+      "title": "Clauses",
+      "type": "array"
+    },
+    "context": {
+      "$ref": "#/$defs/RuntimeProjectionContext"
+    },
+    "external_release_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "External Release Digest",
+      "type": "string"
+    },
+    "omitted_artifact_refs": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "title": "Omitted Artifact Refs",
+      "type": "array"
+    },
+    "projection_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Projection Version",
+      "type": "string"
+    },
+    "release_ref": {
+      "$ref": "#/$defs/ReleaseRef"
+    }
+  },
+  "required": [
+    "external_release_digest",
+    "release_ref",
+    "context",
+    "clauses"
+  ],
+  "title": "CanonicalRuntimeProjection",
+  "type": "object"
+}

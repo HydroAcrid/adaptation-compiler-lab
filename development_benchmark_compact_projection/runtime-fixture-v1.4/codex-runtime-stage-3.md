@@ -1,0 +1,5 @@
+- When project=generated-cache: For disposable generated-cache destinations, atomically replace existing content without creating a backup.
+- For persistent user-managed destinations, refuse overwrite unless a recoverable backup is explicitly requested.
+- A matching narrower rule takes precedence over a broader rule.
+- Verify the selected publish action before completion.
+- When project=generated-cache: Verify the selected publish action before completion.

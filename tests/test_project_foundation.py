@@ -10,6 +10,7 @@ from adaptation_compiler_lab.benchmark.models import (
 )
 from adaptation_compiler_lab.domain import RecordKind
 from adaptation_compiler_lab.governance.schema_export import governance_schema_bundle
+from adaptation_compiler_lab.runtime.schema_export import runtime_schema_bundle
 from adaptation_compiler_lab.serialization import schema_bundle
 
 
@@ -46,6 +47,17 @@ def test_evidence_v11_schema_snapshot_matches_the_additive_contract() -> None:
 def test_governance_v1_schema_snapshots_match_signed_contracts() -> None:
     directory = Path(__file__).parents[1] / "schemas" / "governance" / "v1"
     schemas = governance_schema_bundle()
+
+    assert {path.name for path in directory.glob("*.schema.json")} == {
+        f"{name}.schema.json" for name in schemas
+    }
+    for name, schema in schemas.items():
+        assert json.loads((directory / f"{name}.schema.json").read_text(encoding="utf-8")) == schema
+
+
+def test_runtime_v1_schema_snapshots_match_projection_contracts() -> None:
+    directory = Path(__file__).parents[1] / "schemas" / "runtime" / "v1"
+    schemas = runtime_schema_bundle()
 
     assert {path.name for path in directory.glob("*.schema.json")} == {
         f"{name}.schema.json" for name in schemas
