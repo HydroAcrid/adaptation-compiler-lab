@@ -5,10 +5,14 @@ from adaptation_compiler_lab.runtime.compiler import (
     build_external_governed_releases,
     build_runtime_projection,
 )
+from adaptation_compiler_lab.runtime.decisions import bind_decision_release
 from adaptation_compiler_lab.runtime.models import (
+    ArtifactDecisionTable,
     ArtifactGovernanceBinding,
+    BehavioralDecisionCase,
     CanonicalRuntimeProjection,
     ClauseProvenanceBinding,
+    ExternalDecisionRelease,
     ExternalGovernedRelease,
     GovernedLifecycleEvent,
     RuntimeClause,
@@ -18,9 +22,12 @@ from adaptation_compiler_lab.runtime.models import (
 )
 
 __all__ = [
+    "ArtifactDecisionTable",
     "ArtifactGovernanceBinding",
+    "BehavioralDecisionCase",
     "CanonicalRuntimeProjection",
     "ClauseProvenanceBinding",
+    "ExternalDecisionRelease",
     "ExternalGovernedRelease",
     "GovernedLifecycleEvent",
     "RuntimeClause",
@@ -28,6 +35,7 @@ __all__ = [
     "RuntimeProjectionContext",
     "RuntimeProjectionError",
     "RuntimeProjectionManifest",
+    "bind_decision_release",
     "build_external_governed_releases",
     "build_runtime_projection",
 ]
