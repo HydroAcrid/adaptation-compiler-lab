@@ -1,0 +1,4 @@
+- persistent existing; recovery=no: backup -> replace.
+- persistent existing; recovery=yes: backup -> replace.
+- unlisted: preserve behavior.
+- Verify action.

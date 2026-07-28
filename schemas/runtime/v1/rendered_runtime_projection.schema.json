@@ -27,8 +27,11 @@
       "type": "string"
     },
     "renderer_version": {
-      "const": "1.0.0",
       "default": "1.0.0",
+      "enum": [
+        "1.0.0",
+        "1.1.0"
+      ],
       "title": "Renderer Version",
       "type": "string"
     },

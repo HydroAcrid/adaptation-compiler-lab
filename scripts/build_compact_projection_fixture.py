@@ -80,7 +80,7 @@ def main() -> int:
         evaluated_at=PUBLIC_DOGFOOD_NOW + timedelta(days=1),
     )
     envelope = render_shared_execution_envelope(
-        SharedExecutionEnvelope(allowed_paths=("policy.py",))
+        SharedExecutionEnvelope(allowed_paths=("deployment_policy.py",))
     )
     _exclusive_write(output / "shared-execution-envelope.md", envelope.content)
     _exclusive_write(

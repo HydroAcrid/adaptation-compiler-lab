@@ -88,7 +88,7 @@ def _literal_default(node: ast.expr) -> bool:
     return False
 
 
-def _validated_policy_tree(path: Path) -> ast.Module:
+def _validated_policy_tree(path: Path, *, required_function: str) -> ast.Module:
     """Return a capability-free policy AST or reject it before execution."""
 
     source = path.read_bytes()
@@ -96,8 +96,8 @@ def _validated_policy_tree(path: Path) -> ast.Module:
         raise ValueError("deployment policy source exceeded its ceiling")
     tree = ast.parse(source.decode("utf-8"), filename=str(path))
     functions = {item.name: item for item in tree.body if isinstance(item, ast.FunctionDef)}
-    if "plan_delivery" not in functions:
-        raise ValueError("deployment policy omitted plan_delivery")
+    if required_function not in functions:
+        raise ValueError(f"policy omitted {required_function}")
     for item in tree.body:
         if (
             isinstance(item, ast.Expr)
@@ -149,20 +149,26 @@ def _validated_policy_tree(path: Path) -> ast.Module:
     return ast.fix_missing_locations(tree)
 
 
-def _load_policy(workspace: Path) -> ModuleType:
-    path = workspace / "deployment_policy.py"
-    tree = _validated_policy_tree(path)
+def _load_policy(workspace: Path) -> tuple[ModuleType, str]:
+    transfer_path = workspace / "src" / "transfer_policy.py"
+    if transfer_path.is_file():
+        path = transfer_path
+        function_name = "plan_transfer"
+    else:
+        path = workspace / "deployment_policy.py"
+        function_name = "plan_delivery"
+    tree = _validated_policy_tree(path, required_function=function_name)
     specification = importlib.util.spec_from_loader(
         "_acl_compact_restricted_policy",
         loader=None,
     )
     if specification is None:
-        raise ValueError("deployment_policy.py could not be prepared")
+        raise ValueError("policy could not be prepared")
     module = importlib.util.module_from_spec(specification)
     sys.dont_write_bytecode = True
     module.__dict__["__builtins__"] = {"ValueError": ValueError}
     exec(compile(tree, str(path), "exec"), module.__dict__, module.__dict__)
-    return module
+    return module, function_name
 
 
 def _emit(value: dict[str, Any]) -> None:
@@ -180,19 +186,30 @@ def _worker(workspace: Path, call: dict[str, Any]) -> int:
     """Execute untrusted policy; every byte from this process remains an observation."""
 
     try:
-        module = _load_policy(workspace)
-        function = getattr(module, "plan_delivery", None)
+        module, function_name = _load_policy(workspace)
+        function = getattr(module, function_name, None)
         if not callable(function):
-            raise ValueError("deployment policy omitted plan_delivery")
-        raw = function(
-            call["destination_exists"],
-            call["storage_class"],
-            call["recovery_copy_approved"],
-        )
+            raise ValueError(f"policy omitted {function_name}")
+        if function_name == "plan_transfer":
+            retention_class = {
+                "durable_release": "retained_user_tree",
+                "ephemeral_build_cache": "rebuildable_cache",
+            }[call["storage_class"]]
+            raw = function(
+                call["destination_exists"],
+                retention_class,
+                call["recovery_copy_approved"],
+            )
+        else:
+            raw = function(
+                call["destination_exists"],
+                call["storage_class"],
+                call["recovery_copy_approved"],
+            )
         if not isinstance(raw, tuple) or not all(isinstance(item, str) for item in raw):
             _emit(
                 {
-                    "detail": "plan_delivery must return tuple[str, ...]",
+                    "detail": f"{function_name} must return tuple[str, ...]",
                     "status": "invalid_return",
                     "value": None,
                     "worker_version": "1.0.0",

@@ -53,7 +53,7 @@ class RenderedRuntimeProjection(FrozenModel):
     """Only this compact text is delivered to the target agent."""
 
     renderer_id: Literal["codex-compact-runtime"] = CODEX_RUNTIME_RENDERER_ID
-    renderer_version: Literal["1.0.0"] = CODEX_RUNTIME_RENDERER_VERSION
+    renderer_version: Literal["1.0.0", "1.1.0"] = CODEX_RUNTIME_RENDERER_VERSION
     target_family: Literal["codex"] = "codex"
     content: ExactRenderedText
     content_digest: Sha256Digest
@@ -134,6 +134,7 @@ def render_codex_runtime_projection(
         raise ValueError("Codex runtime projection cannot be empty")
     content = "".join(f"- {clause.text}\n" for clause in projection.clauses)
     return RenderedRuntimeProjection(
+        renderer_version="1.0.0",
         content=content,
         content_digest=sha256_text(content),
         utf8_bytes=len(content.encode("utf-8")),

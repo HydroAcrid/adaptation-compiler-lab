@@ -27,6 +27,15 @@ _EXPECTED_CLI_VERSION: Final = "codex-cli 0.145.0"
 _EXPECTED_CLI_DIGEST: Final = (
     "sha256:a2a05dafaa1acb002a45eaec0a462de5b13694fcfcd7bc43305f14781ce7be14"
 )
+_EXPECTED_BWRAP_DIGEST: Final = (
+    "sha256:d78807229d616606e339c5988392b9e0ab4a6a6998fa51e4590837f426a12fca"
+)
+_OUTER_RUNTIME_ROOT: Final = Path("/opt/acl-codex-target")
+_OUTER_CODEX: Final = _OUTER_RUNTIME_ROOT / "codex"
+_OUTER_BWRAP: Final = _OUTER_RUNTIME_ROOT / "bwrap"
+_OUTER_CODEX_HOME: Final = Path("/codex-home")
+_OUTER_WORKSPACE: Final = Path("/workspace")
+_WSL_RESOLV_CONF: Final = Path("/mnt/wsl/resolv.conf")
 _MODEL: Final = "gpt-5.6-terra"
 _REASONING_EFFORT: Final = "high"
 _DISABLED_FEATURES: Final = (
@@ -229,6 +238,7 @@ class CodexSubscriptionRunner:
         saved_auth_file: Path,
         max_seconds: int = 1200,
         contract: CodexExecutionContract | None = None,
+        bubblewrap: Path | None = None,
     ) -> None:
         self._executable = executable.expanduser().resolve()
         self._saved_auth_file = saved_auth_file.expanduser().resolve()
@@ -240,6 +250,7 @@ class CodexSubscriptionRunner:
             service_mode="standard",
             max_seconds=max_seconds,
         )
+        self._bubblewrap = bubblewrap.expanduser().resolve() if bubblewrap else None
 
     def _verify_binary(self) -> None:
         if not self._executable.is_file():
@@ -256,6 +267,109 @@ class CodexSubscriptionRunner:
         )
         if completed.returncode != 0 or completed.stdout.strip() != self._contract.cli_version:
             raise CodexSubscriptionError("pinned Codex CLI version drifted")
+
+    def _verify_outer_sandbox(self) -> None:
+        if self._bubblewrap is None:
+            return
+        if not self._bubblewrap.is_file():
+            raise CodexSubscriptionError("pinned target bubblewrap is unavailable")
+        if sha256_file(self._bubblewrap) != _EXPECTED_BWRAP_DIGEST:
+            raise CodexSubscriptionError("pinned target bubblewrap digest drifted")
+        if not _WSL_RESOLV_CONF.is_file():
+            raise CodexSubscriptionError("exact WSL resolver target is unavailable")
+        completed = subprocess.run(
+            [
+                str(self._bubblewrap),
+                "--unshare-all",
+                "--share-net",
+                "--die-with-parent",
+                "--new-session",
+                "--ro-bind",
+                "/usr",
+                "/usr",
+                "--symlink",
+                "usr/bin",
+                "/bin",
+                "--symlink",
+                "usr/lib",
+                "/lib",
+                "--symlink",
+                "usr/lib64",
+                "/lib64",
+                "--symlink",
+                "usr/sbin",
+                "/sbin",
+                "--ro-bind",
+                "/etc",
+                "/etc",
+                "--proc",
+                "/proc",
+                "--dev",
+                "/dev",
+                "--tmpfs",
+                "/tmp",
+                "--dir",
+                "/mnt",
+                "--dir",
+                str(_WSL_RESOLV_CONF.parent),
+                "--ro-bind",
+                str(_WSL_RESOLV_CONF),
+                str(_WSL_RESOLV_CONF),
+                "--dir",
+                "/opt",
+                "--dir",
+                str(_OUTER_RUNTIME_ROOT),
+                "--ro-bind",
+                str(self._bubblewrap),
+                str(_OUTER_BWRAP),
+                "--",
+                str(_OUTER_BWRAP),
+                "--unshare-all",
+                "--share-net",
+                "--die-with-parent",
+                "--new-session",
+                "--ro-bind",
+                "/usr",
+                "/usr",
+                "--symlink",
+                "usr/bin",
+                "/bin",
+                "--symlink",
+                "usr/lib",
+                "/lib",
+                "--symlink",
+                "usr/lib64",
+                "/lib64",
+                "--symlink",
+                "usr/sbin",
+                "/sbin",
+                "--ro-bind",
+                "/etc",
+                "/etc",
+                "--proc",
+                "/proc",
+                "--dev",
+                "/dev",
+                "--tmpfs",
+                "/tmp",
+                "--dir",
+                "/mnt",
+                "--dir",
+                str(_WSL_RESOLV_CONF.parent),
+                "--ro-bind",
+                str(_WSL_RESOLV_CONF),
+                str(_WSL_RESOLV_CONF),
+                "--",
+                "/usr/bin/getent",
+                "hosts",
+                "chatgpt.com",
+            ],
+            check=False,
+            capture_output=True,
+            timeout=10,
+        )
+        if completed.returncode != 0:
+            raise CodexSubscriptionError("pinned target outer sandbox or resolver is unavailable")
 
     def _copy_auth(self, destination: Path) -> None:
         if not self._saved_auth_file.is_file():
@@ -325,6 +439,23 @@ class CodexSubscriptionRunner:
             if completed.returncode != 0 or lines.count(status) != 1 or unexpected:
                 raise CodexSubscriptionError("Codex authentication is not saved ChatGPT login")
             return status
+
+    def verify_target_preconditions(self) -> JsonObject:
+        """Verify auth, model identity, and the optional outer target sandbox."""
+
+        self._verify_outer_sandbox()
+        return {
+            "authentication": self.verify_chatgpt_authentication(),
+            "model_catalog": self.verify_model_availability(),
+            "outer_sandbox": (
+                {
+                    "digest": sha256_file(self._bubblewrap),
+                    "workspace_policy": "read-only-except-registered-source-file",
+                }
+                if self._bubblewrap
+                else None
+            ),
+        }
 
     @staticmethod
     def _rpc_response(
@@ -485,6 +616,116 @@ class CodexSubscriptionRunner:
                         process.kill()
                         process.wait(timeout=5)
 
+    def _outer_sandbox_command(
+        self,
+        *,
+        inner_command: list[str],
+        codex_home: Path,
+        workspace: Path,
+        allowed_change_paths: tuple[str, ...],
+    ) -> list[str]:
+        if self._bubblewrap is None:
+            return inner_command
+        scratch_paths = tuple(workspace / name for name in (".agents", ".codex"))
+        if any(path.exists() for path in scratch_paths):
+            raise CodexSubscriptionError("outer target scratch path already exists")
+        for path in scratch_paths:
+            path.mkdir(mode=0o700)
+        scratch_args = [
+            value
+            for path in scratch_paths
+            for value in ("--tmpfs", str(_OUTER_WORKSPACE / path.name))
+        ]
+        writable_files = tuple(
+            sorted(
+                {
+                    (
+                        (workspace / value).resolve(),
+                        _OUTER_WORKSPACE / value,
+                    )
+                    for value in allowed_change_paths
+                }
+            )
+        )
+        if not writable_files:
+            raise CodexSubscriptionError("outer target sandbox requires an allowed file")
+        if any(
+            not host_path.is_file()
+            or not host_path.is_relative_to(workspace)
+            or not sandbox_path.is_relative_to(_OUTER_WORKSPACE)
+            for host_path, sandbox_path in writable_files
+        ):
+            raise CodexSubscriptionError("outer target writable file is unsafe")
+        writable_args = [
+            value
+            for host_path, sandbox_path in writable_files
+            for value in ("--bind", str(host_path), str(sandbox_path))
+        ]
+        return [
+            str(self._bubblewrap),
+            "--unshare-all",
+            "--share-net",
+            "--die-with-parent",
+            "--new-session",
+            "--ro-bind",
+            "/usr",
+            "/usr",
+            "--symlink",
+            "usr/bin",
+            "/bin",
+            "--symlink",
+            "usr/lib",
+            "/lib",
+            "--symlink",
+            "usr/lib64",
+            "/lib64",
+            "--symlink",
+            "usr/sbin",
+            "/sbin",
+            "--ro-bind",
+            "/etc",
+            "/etc",
+            "--proc",
+            "/proc",
+            "--dev",
+            "/dev",
+            "--tmpfs",
+            "/tmp",
+            "--dir",
+            "/mnt",
+            "--dir",
+            str(_WSL_RESOLV_CONF.parent),
+            "--ro-bind",
+            str(_WSL_RESOLV_CONF),
+            str(_WSL_RESOLV_CONF),
+            "--dir",
+            "/opt",
+            "--dir",
+            str(_OUTER_RUNTIME_ROOT),
+            "--dir",
+            str(_OUTER_CODEX_HOME),
+            "--dir",
+            str(_OUTER_WORKSPACE),
+            "--ro-bind",
+            str(self._executable),
+            str(_OUTER_CODEX),
+            "--ro-bind",
+            str(self._bubblewrap),
+            str(_OUTER_BWRAP),
+            "--bind",
+            str(codex_home),
+            str(_OUTER_CODEX_HOME),
+            "--ro-bind",
+            str(workspace),
+            str(_OUTER_WORKSPACE),
+            *scratch_args,
+            *writable_args,
+            "--chdir",
+            str(_OUTER_WORKSPACE),
+            "--",
+            *inner_command,
+        ]
+
     def run(
         self,
         request: CodexDevelopmentRunRequest,
@@ -494,6 +735,7 @@ class CodexSubscriptionRunner:
         """Execute one ephemeral turn and return raw bytes for immediate encrypted storage."""
 
         self._verify_binary()
+        self._verify_outer_sandbox()
         resolved_workspace = workspace.expanduser().resolve()
         if not resolved_workspace.is_dir() or not (resolved_workspace / ".git").is_dir():
             raise CodexSubscriptionError("development workspace must be an isolated Git repository")
@@ -514,12 +756,17 @@ class CodexSubscriptionRunner:
             f"{request.condition_text}"
         ).rstrip()
         feature_args = [value for name in _DISABLED_FEATURES for value in ("--disable", name)]
+        execution_workspace = _OUTER_WORKSPACE if self._bubblewrap else resolved_workspace
+        execution_path = (
+            f"{_OUTER_RUNTIME_ROOT}:/usr/bin:/bin" if self._bubblewrap else "/usr/bin:/bin"
+        )
         shell_environment_set = (
-            f'{{ PATH = "/usr/bin:/bin", HOME = {json.dumps(str(resolved_workspace))}, '
+            f"{{ PATH = {json.dumps(execution_path)}, "
+            f"HOME = {json.dumps(str(execution_workspace))}, "
             'PYTHONDONTWRITEBYTECODE = "1" }'
         )
-        command = [
-            str(self._executable),
+        inner_command = [
+            str(_OUTER_CODEX if self._bubblewrap else self._executable),
             "exec",
             "--ephemeral",
             "--ignore-user-config",
@@ -531,7 +778,7 @@ class CodexSubscriptionRunner:
             "--color",
             "never",
             "--cd",
-            str(resolved_workspace),
+            str(execution_workspace),
             "--model",
             self._contract.model,
             "--sandbox",
@@ -562,8 +809,12 @@ class CodexSubscriptionRunner:
         command_digest = sha256_bytes(
             json.dumps(
                 {
-                    "argv": command,
+                    "argv": inner_command,
                     "developer_profile_digest": developer_profile_digest,
+                    "outer_sandbox_digest": (
+                        sha256_file(self._bubblewrap) if self._bubblewrap else None
+                    ),
+                    "outer_writable_paths": list(request.task.allowed_change_paths),
                     "prompt_digest": sha256_bytes(request.task.prompt.encode("utf-8")),
                 },
                 ensure_ascii=False,
@@ -582,6 +833,12 @@ class CodexSubscriptionRunner:
             "ignore_user_config": True,
             "isolated_codex_home": True,
             "model": self._contract.model,
+            "nested_sandbox_binary_digest": (
+                sha256_file(self._bubblewrap) if self._bubblewrap else None
+            ),
+            "nested_sandbox_binary_path": (str(_OUTER_BWRAP) if self._bubblewrap else None),
+            "outer_minimal_mount_namespace": self._bubblewrap is not None,
+            "outer_workspace_read_only_except_allowed_files": (self._bubblewrap is not None),
             "reasoning_effort": self._contract.reasoning_effort,
             "sandbox": "workspace-write",
             "service_mode": self._contract.service_mode,
@@ -615,10 +872,18 @@ class CodexSubscriptionRunner:
             )
             if observed_profile_digest != developer_profile_digest:
                 raise CodexSubscriptionError("isolated Codex profile digest changed")
-            environment = self._environment(codex_home)
+            environment = self._environment(_OUTER_CODEX_HOME if self._bubblewrap else codex_home)
+            if self._bubblewrap:
+                environment["PATH"] = execution_path
             if any(name in environment for name in _FORBIDDEN_ENV_NAMES):
                 raise CodexSubscriptionError("API credential environment reached Codex")
             try:
+                command = self._outer_sandbox_command(
+                    inner_command=inner_command,
+                    codex_home=codex_home,
+                    workspace=resolved_workspace,
+                    allowed_change_paths=request.task.allowed_change_paths,
+                )
                 process = subprocess.Popen(
                     command,
                     cwd=resolved_workspace,

@@ -1,13 +1,71 @@
 # Frozen execution protocol
 
-Status: v1.10 designed and frozen; no live sessions started. Byte-identical v1.0 through v1.9
-registrations remain as superseded pre-execution history. V1.10 keeps generated policy execution in
-an untrusted child worker inside the answer-blind filesystem/network/PID sandbox and admits only a
-capability-free Python decision subset, preventing generated code from writing the wrapper's
-observation channel. A trusted supervisor owns official observation output; only the parent scorer
-sees expected outcomes and computes pass/fail. Target-profile compatibility and exact source-
-transition digests are checked before projection/release construction. Pre-exec startup failures
-remain durable failed receipts.
+Status: v1.19 designed but not yet frozen; no v1.19 session has started. V1.11 remains an
+immutable failed result: all six records were invalid because the trusted scorer resolved the
+virtual-environment interpreter to its base executable, and five target workspaces contained
+forbidden test or bytecode changes. V1.12 introduced entirely fresh tasks, a semantics-preserving
+compact renderer, documented action vocabulary, and a read-only target layout. It remains
+unexecuted pre-live history. V1.13 changes no task, fixture, target-visible condition material,
+scorer behavior, or session budget. It binds the formatted renderer source and freezes the repaired
+coordinator and outer target sandbox. Its one remediation-review session failed closed because a
+validator incorrectly required an older selected-action sentence at Stage 3. No profile was
+promoted and the rejected response is not reused. V1.14 changes only that validation rule: Stages
+1–2 retain selected-action verification, while Stage 3 is validated against its active scoped-cache
+continuity and explicit requested-backup requirements. All tasks, fixtures, target-visible compiled
+material, scorers, and target isolation remain unchanged.
+
+V1.14 then attempted all six blinded target cells. Every Codex process exited before a conformant
+model turn, tool call, or file change because the minimal namespace mounted `/etc/resolv.conf` but
+not its exact WSL symlink target at `/mnt/wsl/resolv.conf`. The six invalid records and encrypted
+traces are preserved, the condition mapping remains sealed, and no judge or unblinding occurred.
+V1.15 mounts that exact resolver file, fails preflight unless DNS works inside the same minimal
+namespace, reuses the already valid v1.14 profile receipt, and authorizes only six fresh target
+sessions plus one blind judge. It changes no task, condition material, scorer, model, or target
+write permission.
+
+All six v1.15 model turns then reached Codex but failed before any tool call or file change:
+Codex's inner workspace-write sandbox could not find `bwrap` because the minimal outer namespace
+intentionally exposed only `/usr/bin:/bin`, while the pinned binary lives in the external
+toolchain. Those invalid records and encrypted traces are preserved unchanged; the mapping remains
+sealed and no judge or unblinding occurred. V1.16 mounts only the same digest-pinned `bwrap` binary
+at `/opt/acl-codex-target/bwrap`, exposes that one private runtime directory on the target PATH,
+and requires the preflight to launch a nested sandbox successfully. Before the six-cell comparison,
+one neutral live smoke must edit its sole writable production file, execute the bounded local test,
+pass an independent post-run test, and freeze a valid receipt. V1.16 changes no experimental task,
+condition material, scorer, model, or target write permission.
+
+The first v1.16 smoke coordinator stopped before constructing a target request because it named a
+nonexistent source-family enum member. No Codex process, trace, target session, or provider-billed
+call was created. V1.17 corrects that type reference and additionally binds the exact live-smoke
+coordinator source digest in the execution contract. All v1.16 experimental inputs and limits
+remain unchanged.
+
+The v1.17 smoke reached Codex, but the unified command subsystem could not create its internal
+`/workspace/.agents` scratch state beneath the deliberately read-only repository root. No tool
+command or source change occurred, the independent test failed, and the invalid encrypted trace
+and public receipt are preserved. V1.18 precreates an empty host directory and overlays that exact
+path with an ephemeral in-memory filesystem inside the outer namespace. It does not expand
+host-backed write access: only the registered production source file remains writable on disk.
+
+The v1.18 smoke proved the `.agents` mount but then revealed a second explicit Codex helper path,
+`/workspace/.codex`, which the inner sandbox must create before applying a patch. It again made no
+tool command or source change, and its invalid receipt and encrypted trace are preserved. V1.19
+adds a second exact in-memory helper mount for `.codex`; the repository root and every nonregistered
+host file remain read-only.
+
+The v1.15 trusted scorer uses the project virtual environment without resolving its symlink and
+sets the repository `src` directory as `PYTHONPATH`. Python bytecode is disabled; any interpreter-
+generated bytecode path is deterministically excluded from repository-state validity. The entire
+target workspace is read-only in a pinned outer mount namespace except the registered source
+file, while Codex's inner workspace sandbox remains enabled. The outer namespace exposes no
+host project, parent path, sealed benchmark material, or ambient configuration.
+
+V1.10 keeps generated policy execution in an untrusted child worker inside the answer-blind
+filesystem/network/PID sandbox and admits only a capability-free Python decision subset, preventing
+generated code from writing the wrapper's observation channel. A trusted supervisor owns official
+observation output; only the parent scorer sees expected outcomes and computes pass/fail.
+Target-profile compatibility and exact source-transition digests are checked before
+projection/release construction. Pre-exec startup failures remain durable failed receipts.
 
 V1.6 is metadata-only: it binds deterministic formatter output for the observer after v1.5's
 integrity check correctly rejected source-byte drift. It reuses the exact v1.5 runtime fixture and
@@ -42,9 +100,11 @@ measurement, or envelope digest differs from v1.9.
    digest, the deterministic full runtime-fixture tree digest, and preregistration checksum.
 3. Prove local scorer sensitivity with reference, stale-rule, missed-exception, scope-leak,
    unnecessary-change, and forbidden-path implementations.
-4. Only then may an isolated profile author receive the approved evidence.
-5. Freeze the reviewed three-stage profile before creating the private condition mapping.
-6. Create a fresh secret randomization seed and private six-cell run order.
+4. Reuse the already frozen valid v1.14 profile remediation receipt; no new profile session is
+   permitted.
+5. Run exactly one neutral live instrument smoke and freeze its validity receipt.
+6. Only after that receipt is committed, create a fresh secret randomization seed and private
+   six-cell run order.
 7. Run fresh isolated Codex sessions with identical model, reasoning, permissions, timeout,
    workspace state, and shared envelope.
 8. Persist automated records and validity receipts before creating an anonymous judge packet.
@@ -53,9 +113,10 @@ measurement, or envelope digest differs from v1.9.
 
 ## Information separation
 
-The profile author and reviewer receive the same eligible evidence as construction, but no
-projection, tasks, mappings, scores, or target outputs. Construction does not receive task
-fixtures or scorer outcomes. Targets receive one blinded condition and the identical shared
+The frozen v1.14 remediation reviewer received the same eligible evidence as construction and only
+the frozen v1.11 profile drafts, but no projection, compiled pack, tasks, mappings, scores, target
+outputs, or prior target outputs. V1.19 creates no new profile role. Construction does not receive
+task fixtures or scorer outcomes. Targets receive one blinded condition and the identical shared
 envelope. The judge receives the exact allowed-path and neutral execution constraints but no
 condition identity.
 
@@ -63,14 +124,26 @@ The deferred external-validation study is outside this workspace and outside thi
 
 ## Exact subscription impact
 
-- profile author: 1 session;
-- profile reviewer: 1 session;
+- new profile author: 0 sessions;
+- isolated remediation reviewer: 0 sessions (the valid v1.14 receipt is reused);
+- neutral live instrument smoke: 1 session;
 - targets: 3 tasks × 2 conditions × 1 repetition = 6 sessions; and
 - isolated judge: 1 session.
 
-Maximum: 9 saved-ChatGPT Codex subscription sessions. Provider-billed calls: 0. API keys: 0.
+Maximum: 8 saved-ChatGPT Codex subscription sessions. Provider-billed calls: 0. API keys: 0.
 No retry is allowed for an agent, validity, timeout, or post-action failure. A future amendment is
 required before any narrowly defined pre-action infrastructure retry.
+
+## Frozen execution identity
+
+All eight sessions use the pinned Linux `codex-cli 0.145.0` binary with digest
+`sha256:a2a05dafaa1acb002a45eaec0a462de5b13694fcfcd7bc43305f14781ce7be14`,
+the exact `gpt-5.6-luna` model, medium reasoning, Standard service mode, saved ChatGPT
+authentication, and a 600-second limit. API-key environment variables are removed. Role sessions
+are tool-free inside the pinned outer sandbox. Target sessions are ephemeral, ignore user
+configuration and rules, disable ambient features and web search, inherit no shell environment,
+and run under the pinned outer mount namespace with the workspace read-only except the registered
+source file.
 
 ## Success gate
 
@@ -90,8 +163,11 @@ quality or discipline regresses.
 
 ## Stopping and tuning
 
-Renderer version 1.0.0 is immutable once any profile or target session starts. Observed live
-outputs may inform a later version and entirely new tasks, but they may not tune and rerun this
-version against the same tasks. Stop immediately on private-plan drift, condition leakage,
-workspace escape, missing receipt, API-key use, external-validation access, or scorer
-substitution.
+Renderer version 1.1.0 and the experimental tasks remain immutable. The v1.19 retry is allowed
+only because v1.15 ended before every tool call and file change, v1.16 stopped before launching
+Codex, v1.17 and v1.18 made no tool call or source change, no condition was unblinded, and
+construction changed only the execution instrument.
+Observed task behavior may inform a later version and entirely new tasks, but it may not tune and
+rerun this version against the same tasks. Stop immediately on
+private-plan drift, condition leakage, workspace escape, missing receipt, API-key use,
+external-validation access, or scorer substitution.

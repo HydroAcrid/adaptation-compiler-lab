@@ -7,12 +7,44 @@ ordinary memory, and a strong static profile.
 
 Milestone 6A.1 implements a compact runtime projection without changing Milestone 6A's failed
 product result. The compiler now keeps complete governance, provenance, history, and rollback data
-in an external governed release while sending Codex only effective behavior, unresolved scope or
-precedence, and essential verification. The public three-stage engineering fixture renders 163,
-454, and 461 adaptation bytes, below the independently maintained profile sizes of 227, 508, and
-462 bytes. The current unexecuted v1.10 design also binds each compiled snapshot to the complete
-approved transition, enforces the selected Codex target profile, and evaluates generated benchmark
-policies through a capability-free Python subset so policy code cannot forge scorer channels.
+in an external governed release while sending Codex only effective behavior, necessary scope, and
+deduplicated verification. Compact renderer v1.1 produces 163, 297, and 304 target-visible bytes;
+every clause remains bound to external evidence and lifecycle state.
+
+The first v1.11 live comparison is preserved as a failed instrument result: all six records were
+invalid because the scorer invoked the wrong Python environment and target repository-state checks
+were contaminated by forbidden test or bytecode changes. It was not used to tune or rerun those
+tasks. The current v1.15 design uses entirely fresh tasks, documents their legal action vocabulary,
+keeps the full workspace read-only except the registered source file, invokes the scorer
+through the project virtual environment, and deterministically ignores interpreter-generated
+bytecode. V1.12 remains unexecuted pre-live registration history; v1.13 changed no task or
+target-visible condition material from v1.12. Its one profile-remediation session failed closed on
+an over-strict Stage 3 validator and promoted no material. V1.14 corrects only that validator
+against the active Stage 3 evidence and does not reuse the rejected response.
+V1.14's six target cells are also preserved as an unjudged pre-action infrastructure failure: the
+minimal namespace omitted the exact WSL DNS symlink target, so no model turn, tool call, or file
+change occurred. V1.15 adds the resolver mount and an in-namespace DNS preflight, reuses the valid
+v1.14 profile, and reached all six model turns. They still made no tool call or file change because
+the outer namespace did not expose the pinned `bwrap` required by Codex's inner sandbox. V1.16
+mounts only that exact binary at a private runtime path, proves nested sandbox startup in preflight,
+and requires one successful neutral live edit-and-test smoke before the unchanged grid can run.
+Its first smoke coordinator stopped before launching Codex because of an invalid source-family
+enum reference. V1.17 fixes that pre-session defect and binds the exact smoke coordinator source
+digest in addition to the target-runner digest. Its live turn then exposed Codex's need for an
+ephemeral `/workspace/.agents` helper directory beneath the otherwise read-only repository root.
+V1.18 overlays only that path with an in-memory filesystem while preserving the sole source file
+as the only host-backed writable target.
+The next live smoke revealed the corresponding `.codex` helper path; v1.19 gives both exact helper
+directories ephemeral in-memory mounts without exposing another host-backed writable path.
+That v1.19 smoke passed. All six subsequent targets produced bounded source patches and passed
+visible tests, but their independent observations failed safely because the trusted scorer
+environment omitted `/usr/sbin` from `PATH`. The original invalid records are frozen; a blinded
+zero-session reconstruction-and-rescore adjudication is the only permitted correction before the
+secondary judge. No target output will be rerun or replaced.
+
+The design binds each compiled snapshot to the complete approved transition, enforces the selected
+Codex target profile, and evaluates generated benchmark policies through a capability-free Python
+subset so policy code cannot forge scorer channels.
 The Codex renderer independently rejects projections whose target-family dimension is unknown or
 not Codex. Active governance bindings must reproduce their lifecycle introductions exactly, and
 shared-envelope paths must be normalized safe relative target paths.
@@ -22,10 +54,9 @@ acceptance, allowed path collections are unique and canonically ordered, and the
 enforces each lifecycle transition's discriminated structural shape.
 This establishes compactness and lineage preservation, not a performance advantage.
 
-The next public comparison is frozen but unexecuted: three fresh tasks, two conditions, one
-repetition, one isolated profile-author session, one reviewer session, and one secondary blind
-judge require at most nine saved-ChatGPT Codex subscription sessions. No live session or
-provider-billed call occurred in Milestone 6A.1.
+The v1.19 public comparison has completed its one instrument smoke and six target sessions. One
+secondary blind judge remains within the eight-session ceiling after the zero-session scorer
+adjudication. No provider-billed call or API key is used.
 
 Eight exact-consent Codex tasks remain only in the external encrypted raw boundary; eight
 Kevin-confirmed behaviors remain approved artifacts. Deterministic software custody still seals
@@ -79,9 +110,12 @@ worked; its current target-visible projection did not beat an excellent profile.
 - A target-independent canonical runtime representation, compact Codex renderer, external
   governed release, exact clause-to-provenance manifest, context resolution, and a separately
   measured condition-neutral execution envelope.
-- A frozen, unexecuted fresh compact-projection protocol with three new task fixtures, an
-  independent scorer, six target cells, isolated profile roles, a corrected judge packet, local
-  seeded-defect sensitivity tests, and a nine-session maximum.
+- Immutable failed v1.11 instrument, v1.13 role, v1.14 resolver, v1.15 inner-sandbox, v1.16
+  pre-session smoke, and v1.17–v1.18 live-smoke results plus a v1.19 compact-projection protocol with
+  three entirely fresh task fixtures, an independent scorer, six
+  target cells, one frozen isolated profile-remediation receipt, a corrected judge packet, local
+  seeded-defect sensitivity tests, nested inner/outer target sandbox validation, a mandatory live
+  instrument smoke, and an eight-session maximum.
 - Structural `SourceConnector`, `TargetRunner`, and condition-blind `Scorer` ports; a Codex
   app-server adapter pinned to CLI `0.145.0` and its version-generated `thread/list`/`thread/read`
   schemas.

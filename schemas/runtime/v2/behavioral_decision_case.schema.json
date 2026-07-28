@@ -1,0 +1,43 @@
+{
+  "additionalProperties": false,
+  "description": "One explicit branch of a promoted behavioral decision.",
+  "properties": {
+    "case_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Case Id",
+      "type": "string"
+    },
+    "forbidden_actions": {
+      "default": [],
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Forbidden Actions",
+      "type": "array"
+    },
+    "required_actions": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Required Actions",
+      "type": "array"
+    },
+    "situation": {
+      "minLength": 1,
+      "title": "Situation",
+      "type": "string"
+    }
+  },
+  "required": [
+    "case_id",
+    "situation",
+    "required_actions"
+  ],
+  "title": "BehavioralDecisionCase",
+  "type": "object"
+}

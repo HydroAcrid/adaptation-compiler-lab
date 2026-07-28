@@ -1,0 +1,79 @@
+{
+  "$defs": {
+    "DecisionOperation": {
+      "description": "Portable behavioral operation rendered into target-natural language.",
+      "enum": [
+        "create_recoverable_backup",
+        "replace_contents",
+        "prepare_temporary_replacement",
+        "activate_atomically",
+        "refuse_replacement",
+        "preserve_behavior"
+      ],
+      "title": "DecisionOperation",
+      "type": "string"
+    },
+    "DecisionResourceClass": {
+      "description": "Portable resource class used by a behavioral decision.",
+      "enum": [
+        "persistent_user_managed",
+        "disposable_generated_cache",
+        "unlisted"
+      ],
+      "title": "DecisionResourceClass",
+      "type": "string"
+    },
+    "RecoveryRequestState": {
+      "description": "Whether an explicit recovery request is part of a decision branch.",
+      "enum": [
+        "requested",
+        "not_requested",
+        "either",
+        "not_applicable"
+      ],
+      "title": "RecoveryRequestState",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One machine-checkable portable branch without target-specific wording.",
+  "properties": {
+    "case_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Case Id",
+      "type": "string"
+    },
+    "forbidden_operations": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/DecisionOperation"
+      },
+      "title": "Forbidden Operations",
+      "type": "array"
+    },
+    "recovery_request": {
+      "$ref": "#/$defs/RecoveryRequestState"
+    },
+    "required_operations": {
+      "items": {
+        "$ref": "#/$defs/DecisionOperation"
+      },
+      "minItems": 1,
+      "title": "Required Operations",
+      "type": "array"
+    },
+    "resource_class": {
+      "$ref": "#/$defs/DecisionResourceClass"
+    }
+  },
+  "required": [
+    "case_id",
+    "resource_class",
+    "recovery_request",
+    "required_operations"
+  ],
+  "title": "SemanticDecisionCase",
+  "type": "object"
+}

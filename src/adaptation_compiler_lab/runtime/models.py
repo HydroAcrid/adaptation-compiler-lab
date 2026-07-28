@@ -346,6 +346,180 @@ class ExternalGovernedRelease(FrozenModel):
         return canonical_digest(self)
 
 
+class BehavioralDecisionCase(FrozenModel):
+    """One explicit branch of a promoted behavioral decision."""
+
+    case_id: Identifier
+    situation: NonEmptyStr
+    required_actions: Annotated[tuple[NonEmptyStr, ...], Field(min_length=1)]
+    forbidden_actions: tuple[NonEmptyStr, ...] = ()
+
+    @field_validator("required_actions", "forbidden_actions")
+    @classmethod
+    def actions_are_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("behavioral decision actions must be unique")
+        return value
+
+    @model_validator(mode="after")
+    def required_and_forbidden_are_disjoint(self) -> Self:
+        if set(self.required_actions) & set(self.forbidden_actions):
+            raise ValueError("a behavioral decision cannot require and forbid the same action")
+        return self
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class ArtifactDecisionTable(FrozenModel):
+    """Typed decision branches bound to one exact governed artifact."""
+
+    decision_table_version: Literal["1.0.0"] = "1.0.0"
+    artifact_ref: ArtifactRef
+    cases: Annotated[tuple[BehavioralDecisionCase, ...], Field(min_length=1)]
+
+    @field_validator("cases")
+    @classmethod
+    def cases_are_sorted_unique(
+        cls,
+        value: tuple[BehavioralDecisionCase, ...],
+    ) -> tuple[BehavioralDecisionCase, ...]:
+        case_ids = tuple(item.case_id for item in value)
+        if case_ids != tuple(sorted(set(case_ids))):
+            raise ValueError("behavioral decision cases must be sorted and unique")
+        return value
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class ExternalDecisionRelease(FrozenModel):
+    """Versioned decision-table projection over an immutable v1 governed release."""
+
+    external_decision_release_version: Literal["1.0.0"] = "1.0.0"
+    governed_release: ExternalGovernedRelease
+    decision_tables: Annotated[tuple[ArtifactDecisionTable, ...], Field(min_length=1)]
+
+    @model_validator(mode="after")
+    def every_active_artifact_has_one_exact_table(self) -> Self:
+        artifact_refs = tuple(item.artifact_ref for item in self.governed_release.active_artifacts)
+        table_refs = tuple(item.artifact_ref for item in self.decision_tables)
+        if table_refs != artifact_refs:
+            raise ValueError(
+                "decision tables must match the sorted exact active artifact references"
+            )
+        return self
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class DecisionResourceClass(StrEnum):
+    """Portable resource class used by a behavioral decision."""
+
+    PERSISTENT_USER_MANAGED = "persistent_user_managed"
+    DISPOSABLE_GENERATED_CACHE = "disposable_generated_cache"
+    UNLISTED = "unlisted"
+
+
+class RecoveryRequestState(StrEnum):
+    """Whether an explicit recovery request is part of a decision branch."""
+
+    REQUESTED = "requested"
+    NOT_REQUESTED = "not_requested"
+    EITHER = "either"
+    NOT_APPLICABLE = "not_applicable"
+
+
+class DecisionOperation(StrEnum):
+    """Portable behavioral operation rendered into target-natural language."""
+
+    CREATE_RECOVERABLE_BACKUP = "create_recoverable_backup"
+    REPLACE_CONTENTS = "replace_contents"
+    PREPARE_TEMPORARY_REPLACEMENT = "prepare_temporary_replacement"
+    ACTIVATE_ATOMICALLY = "activate_atomically"
+    REFUSE_REPLACEMENT = "refuse_replacement"
+    PRESERVE_BEHAVIOR = "preserve_behavior"
+
+
+class SemanticDecisionCase(FrozenModel):
+    """One machine-checkable portable branch without target-specific wording."""
+
+    case_id: Identifier
+    resource_class: DecisionResourceClass
+    recovery_request: RecoveryRequestState
+    required_operations: Annotated[tuple[DecisionOperation, ...], Field(min_length=1)]
+    forbidden_operations: tuple[DecisionOperation, ...] = ()
+
+    @model_validator(mode="after")
+    def branch_is_semantically_coherent(self) -> Self:
+        if len(self.required_operations) != len(set(self.required_operations)):
+            raise ValueError("semantic decision operations must be unique")
+        if len(self.forbidden_operations) != len(set(self.forbidden_operations)):
+            raise ValueError("semantic forbidden operations must be unique")
+        if set(self.required_operations) & set(self.forbidden_operations):
+            raise ValueError("semantic decision cannot require and forbid one operation")
+        if self.resource_class is DecisionResourceClass.UNLISTED:
+            if (
+                self.recovery_request is not RecoveryRequestState.NOT_APPLICABLE
+                or self.required_operations != (DecisionOperation.PRESERVE_BEHAVIOR,)
+                or self.forbidden_operations
+            ):
+                raise ValueError("unlisted semantic branch must only preserve behavior")
+        elif self.recovery_request is RecoveryRequestState.NOT_APPLICABLE:
+            raise ValueError("listed semantic branches require a recovery-request state")
+        return self
+
+
+class SemanticDecisionTable(FrozenModel):
+    """Portable semantic cases bound to one exact governed artifact."""
+
+    semantic_decision_table_version: Literal["1.0.0"] = "1.0.0"
+    artifact_ref: ArtifactRef
+    cases: Annotated[tuple[SemanticDecisionCase, ...], Field(min_length=1)]
+
+    @model_validator(mode="after")
+    def cases_are_sorted_unique_and_nonoverlapping(self) -> Self:
+        case_ids = tuple(item.case_id for item in self.cases)
+        if case_ids != tuple(sorted(set(case_ids))):
+            raise ValueError("semantic decision cases must be sorted and unique")
+        selectors = tuple((item.resource_class, item.recovery_request) for item in self.cases)
+        if len(selectors) != len(set(selectors)):
+            raise ValueError("semantic decision selectors cannot overlap")
+        for resource in DecisionResourceClass:
+            states = {
+                item.recovery_request for item in self.cases if item.resource_class is resource
+            }
+            if RecoveryRequestState.EITHER in states and len(states) > 1:
+                raise ValueError("an either branch cannot overlap explicit recovery branches")
+        return self
+
+
+class ExternalSemanticDecisionRelease(FrozenModel):
+    """Semantic decision projection over an immutable governed release."""
+
+    external_semantic_release_version: Literal["1.0.0"] = "1.0.0"
+    governed_release: ExternalGovernedRelease
+    decision_tables: Annotated[tuple[SemanticDecisionTable, ...], Field(min_length=1)]
+
+    @model_validator(mode="after")
+    def every_active_artifact_has_one_exact_table(self) -> Self:
+        artifact_refs = tuple(item.artifact_ref for item in self.governed_release.active_artifacts)
+        table_refs = tuple(item.artifact_ref for item in self.decision_tables)
+        if table_refs != artifact_refs:
+            raise ValueError(
+                "semantic tables must match the sorted exact active artifact references"
+            )
+        return self
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
 class RuntimeProjectionContext(FrozenModel):
     """Known and unknown scope dimensions at projection time."""
 

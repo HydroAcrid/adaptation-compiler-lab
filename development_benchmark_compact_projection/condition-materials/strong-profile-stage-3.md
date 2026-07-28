@@ -1,0 +1,1 @@
+When a persistent user-managed destination already exists, refuse overwrite unless a recoverable backup is explicitly requested. If backup is explicitly requested, create the recoverable backup before replacement. When a disposable generated-cache destination already exists, atomically replace it without creating a backup.

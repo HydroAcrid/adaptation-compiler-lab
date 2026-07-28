@@ -1,0 +1,2 @@
+- For persistent user-managed destinations, create a recoverable backup before replacing existing content.
+- Verify the selected publish action before completion.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import shlex
 import stat
 import subprocess
 from datetime import UTC, datetime
@@ -240,6 +241,92 @@ def test_runner_rejects_ambient_agent_guidance(
 
     with pytest.raises(CodexSubscriptionError, match="AGENTS"):
         runner.run(_request(), workspace=workspace)
+
+
+def test_outer_target_sandbox_allows_source_edit_and_tests_but_denies_other_paths(
+    tmp_path: Path,
+) -> None:
+    toolchains = Path.home() / ".local/share/adaptation-compiler-lab/toolchains"
+    codex = (
+        toolchains / "codex-0.145.0/node_modules/@openai/codex-linux-x64/vendor/"
+        "x86_64-unknown-linux-musl/bin/codex"
+    )
+    bubblewrap = toolchains / "claude-sandbox-runtime-jammy/usr/bin/bwrap"
+    if not codex.is_file() or not bubblewrap.is_file():
+        pytest.skip("pinned local target sandbox runtime is unavailable")
+    workspace = tmp_path / "workspace"
+    source = workspace / "src"
+    source.mkdir(parents=True)
+    (source / "transfer_policy.py").write_text(
+        "def value() -> int:\n    return 1\n",
+        encoding="utf-8",
+    )
+    test_file = workspace / "test_transfer_policy.py"
+    test_file.write_text(
+        "import sys\n"
+        "import unittest\n"
+        "from pathlib import Path\n"
+        "sys.path.insert(0, str(Path(__file__).parent / 'src'))\n"
+        "from transfer_policy import value\n"
+        "class Tests(unittest.TestCase):\n"
+        "    def test_value(self) -> None:\n"
+        "        self.assertEqual(value(), 2)\n",
+        encoding="utf-8",
+    )
+    codex_home = tmp_path / "codex-home"
+    codex_home.mkdir()
+    (codex_home / "auth.json").write_text("{}\n", encoding="utf-8")
+    runner = CodexSubscriptionRunner(
+        executable=codex,
+        saved_auth_file=codex_home / "auth.json",
+        bubblewrap=bubblewrap,
+    )
+    host_probe = Path(__file__).parents[3] / "pyproject.toml"
+    command = runner._outer_sandbox_command(
+        inner_command=[
+            "/usr/bin/env",
+            "PATH=/opt/acl-codex-target:/usr/bin:/bin",
+            "/bin/sh",
+            "-c",
+            (
+                "set -eu; "
+                'test "$(command -v bwrap)" = /opt/acl-codex-target/bwrap; '
+                "bwrap --unshare-all --share-net --die-with-parent --new-session "
+                "--ro-bind /usr /usr --symlink usr/bin /bin --symlink usr/lib /lib "
+                "--symlink usr/lib64 /lib64 --symlink usr/sbin /sbin "
+                "--ro-bind /etc /etc --proc /proc --dev /dev --tmpfs /tmp "
+                "-- /usr/bin/true; "
+                "printf 'ephemeral\\n' > /workspace/.agents/helper-state; "
+                "printf 'ephemeral\\n' > /workspace/.codex/helper-state; "
+                "getent hosts chatgpt.com >/dev/null; "
+                "printf 'def value() -> int:\\n    return 2\\n' "
+                "> /workspace/src/transfer_policy.py; "
+                f"test ! -e {shlex.quote(str(host_probe))}; "
+                "if printf 'forbidden\\n' > /workspace/test_transfer_policy.py "
+                "2>/tmp/root-write-error; then exit 90; fi; "
+                "python3 -m unittest -v"
+            ),
+        ],
+        codex_home=codex_home,
+        workspace=workspace,
+        allowed_change_paths=("src/transfer_policy.py",),
+    )
+
+    completed = subprocess.run(
+        command,
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=20,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert "return 2" in (source / "transfer_policy.py").read_text(encoding="utf-8")
+    assert "forbidden" not in test_file.read_text(encoding="utf-8")
+    assert not any((workspace / ".agents").iterdir())
+    assert not any((workspace / ".codex").iterdir())
+    assert "OK" in completed.stderr
 
 
 def test_run_observation_timestamps_remain_utc() -> None:
