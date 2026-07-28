@@ -1,0 +1,52 @@
+{
+  "additionalProperties": false,
+  "description": "Exact binding for one nonduplicated user-task material delivery.",
+  "properties": {
+    "channel": {
+      "const": "user_task",
+      "default": "user_task",
+      "title": "Channel",
+      "type": "string"
+    },
+    "delivered_prompt_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Delivered Prompt Digest",
+      "type": "string"
+    },
+    "material_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Material Digest",
+      "type": "string"
+    },
+    "material_occurrences": {
+      "const": 1,
+      "default": 1,
+      "title": "Material Occurrences",
+      "type": "integer"
+    },
+    "material_utf8_bytes": {
+      "minimum": 1,
+      "title": "Material Utf8 Bytes",
+      "type": "integer"
+    },
+    "original_prompt_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Original Prompt Digest",
+      "type": "string"
+    },
+    "receipt_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Receipt Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "original_prompt_digest",
+    "material_digest",
+    "delivered_prompt_digest",
+    "material_utf8_bytes"
+  ],
+  "title": "TaskMaterialDeliveryReceipt",
+  "type": "object"
+}
