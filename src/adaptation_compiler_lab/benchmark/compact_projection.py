@@ -79,6 +79,7 @@ class CompactProjectionComparisonDesign(FrozenModel):
         "1.11.0",
         "1.12.0",
         "1.13.0",
+        "1.14.0",
     ] = "1.0.0"
     design_id: Literal["milestone-6a1-compact-runtime-public-development"] = (
         "milestone-6a1-compact-runtime-public-development"
@@ -140,12 +141,14 @@ class CompactProjectionComparisonDesign(FrozenModel):
             "shared_envelope_task_path_alignment",
             "fresh_tasks_compact_projection_and_instrument_repair",
             "prelive_source_binding_and_target_sandbox_freeze",
+            "stage_specific_evidence_validation",
         ]
         | None
     ) = None
     policy_observer_digest: Sha256Digest | None = None
     scorer_sandbox_digest: Sha256Digest | None = None
     prior_failed_result_digest: Sha256Digest | None = None
+    prior_failed_profile_receipt_digest: Sha256Digest | None = None
     scorer_sensitivity_cases: tuple[
         Literal["reference"],
         Literal["stale_rule"],
@@ -279,11 +282,13 @@ class CompactProjectionComparisonDesign(FrozenModel):
             and self.amendment_reason != "shared_envelope_task_path_alignment"
         ):
             raise ValueError("compact projection v1.11 requires its registered amendment reason")
-        if (
-            self.design_version not in {"1.12.0", "1.13.0"}
-            and self.prior_failed_result_digest is not None
+        if self.design_version not in {"1.12.0", "1.13.0", "1.14.0"} and (
+            self.prior_failed_result_digest is not None
+            or self.prior_failed_profile_receipt_digest is not None
         ):
             raise ValueError("compact projection prior-result lineage starts at v1.12")
+        if self.design_version != "1.14.0" and self.prior_failed_profile_receipt_digest is not None:
+            raise ValueError("compact profile-failure lineage starts at v1.14")
         if self.design_version == "1.12.0":
             if any(item is None for item in (*amendment, *isolation)):
                 raise ValueError("compact projection v1.12 requires complete amendment metadata")
@@ -310,6 +315,22 @@ class CompactProjectionComparisonDesign(FrozenModel):
                 or self.maximum_subscription_sessions != 8
             ):
                 raise ValueError("compact projection v1.13 requires its exact 8-session budget")
+        elif self.design_version == "1.14.0":
+            if any(item is None for item in (*amendment, *isolation)):
+                raise ValueError("compact projection v1.14 requires complete amendment metadata")
+            if self.amendment_reason != "stage_specific_evidence_validation":
+                raise ValueError("compact projection v1.14 requires its amendment reason")
+            if (
+                self.prior_failed_result_digest is None
+                or self.prior_failed_profile_receipt_digest is None
+            ):
+                raise ValueError("compact projection v1.14 must retain both failure lineages")
+            if (
+                self.profile_author_sessions != 0
+                or self.profile_review_sessions != 1
+                or self.maximum_subscription_sessions != 8
+            ):
+                raise ValueError("compact projection v1.14 requires its exact 8-session budget")
         elif (
             self.profile_author_sessions != 1
             or self.profile_review_sessions != 1
@@ -337,7 +358,7 @@ def load_compact_projection_design(
     """Load and revalidate every frozen public task, fixture, scorer, and renderer."""
 
     if version is not None:
-        if version not in {f"1.{minor}" for minor in range(14)}:
+        if version not in {f"1.{minor}" for minor in range(15)}:
             raise ValueError("unsupported compact projection design version")
         preregistration = root / f"PREREGISTRATION-v{version}.json"
         if not preregistration.is_file():
@@ -346,6 +367,7 @@ def load_compact_projection_design(
         preregistration = next(
             path
             for path in (
+                root / "PREREGISTRATION-v1.14.json",
                 root / "PREREGISTRATION-v1.13.json",
                 root / "PREREGISTRATION-v1.12.json",
                 root / "PREREGISTRATION-v1.11.json",
@@ -384,6 +406,7 @@ def load_compact_projection_design(
         "1.11.0": "1.10",
         "1.12.0": "1.11",
         "1.13.0": "1.12",
+        "1.14.0": "1.13",
     }
     current = design
     while current.design_version in chain:
@@ -458,6 +481,28 @@ def load_compact_projection_design(
                 raise ValueError(
                     "compact projection v1.13 rebound unaffected artifacts: " + ", ".join(drifted)
                 )
+        if current.design_version == "1.14.0":
+            unchanged_fields_v114 = (
+                "independent_scorer_digest",
+                "policy_observer_digest",
+                "prior_failed_result_digest",
+                "renderer_source_digest",
+                "runtime_fixture_measurements_digest",
+                "runtime_fixture_tree_digest",
+                "scorer_sandbox_digest",
+                "shared_execution_envelope_digest",
+                "task_fixture_digests",
+                "tasks",
+            )
+            drifted = tuple(
+                field
+                for field in unchanged_fields_v114
+                if getattr(current, field) != getattr(historical, field)
+            )
+            if drifted:
+                raise ValueError(
+                    "compact projection v1.14 rebound unaffected artifacts: " + ", ".join(drifted)
+                )
         if current.supersedes_design_digest != historical.content_digest:
             raise ValueError("compact projection supersession digest drifted")
         if current.superseded_scorer_digest != historical.independent_scorer_digest:
@@ -493,6 +538,7 @@ def load_compact_projection_design(
         "1.11.0",
         "1.12.0",
         "1.13.0",
+        "1.14.0",
     }:
         if sha256_file(repo / "scripts" / "observe_compact_projection_policy.py") != (
             design.policy_observer_digest
@@ -505,7 +551,7 @@ def load_compact_projection_design(
             raise ValueError("compact projection scorer sandbox digest drifted")
     renderer_source = (
         repo / "src/adaptation_compiler_lab/targets/codex_runtime_v2.py"
-        if design.design_version in {"1.12.0", "1.13.0"}
+        if design.design_version in {"1.12.0", "1.13.0", "1.14.0"}
         else repo / "src/adaptation_compiler_lab/targets/codex_runtime.py"
     )
     if sha256_file(renderer_source) != design.renderer_source_digest:
@@ -521,11 +567,12 @@ def load_compact_projection_design(
         "1.11.0": "runtime-fixture-v1.11",
         "1.12.0": "runtime-fixture-v1.12",
         "1.13.0": "runtime-fixture-v1.12",
+        "1.14.0": "runtime-fixture-v1.12",
     }.get(design.design_version, "runtime-fixture")
     runtime_fixture = root / runtime_fixture_name
     measurement_name = (
         "MEASUREMENTS-v1.1.json"
-        if design.design_version in {"1.12.0", "1.13.0"}
+        if design.design_version in {"1.12.0", "1.13.0", "1.14.0"}
         else "MEASUREMENTS-v1.0.json"
     )
     if sha256_file(runtime_fixture / measurement_name) != (

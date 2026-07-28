@@ -14,11 +14,13 @@ every clause remains bound to external evidence and lifecycle state.
 The first v1.11 live comparison is preserved as a failed instrument result: all six records were
 invalid because the scorer invoked the wrong Python environment and target repository-state checks
 were contaminated by forbidden test or bytecode changes. It was not used to tune or rerun those
-tasks. The current v1.13 design uses entirely fresh tasks, documents their legal action vocabulary,
+tasks. The current v1.14 design uses entirely fresh tasks, documents their legal action vocabulary,
 keeps the full workspace read-only except the registered source file, invokes the scorer
 through the project virtual environment, and deterministically ignores interpreter-generated
-bytecode. V1.12 remains unexecuted pre-live registration history; v1.13 changes no task or
-target-visible condition material from v1.12.
+bytecode. V1.12 remains unexecuted pre-live registration history; v1.13 changed no task or
+target-visible condition material from v1.12. Its one profile-remediation session failed closed on
+an over-strict Stage 3 validator and promoted no material. V1.14 corrects only that validator
+against the active Stage 3 evidence and does not reuse the rejected response.
 
 The design binds each compiled snapshot to the complete approved transition, enforces the selected
 Codex target profile, and evaluates generated benchmark policies through a capability-free Python
@@ -88,7 +90,7 @@ worked; its current target-visible projection did not beat an excellent profile.
 - A target-independent canonical runtime representation, compact Codex renderer, external
   governed release, exact clause-to-provenance manifest, context resolution, and a separately
   measured condition-neutral execution envelope.
-- An immutable failed v1.11 instrument result plus a frozen, unexecuted v1.13 compact-projection
+- Immutable failed v1.11 instrument and v1.13 role results plus a frozen v1.14 compact-projection
   protocol with three entirely fresh task fixtures, an independent scorer, six target cells, one
   isolated profile-remediation role, a corrected judge packet, local seeded-defect sensitivity
   tests, an outer read-only target sandbox, and an eight-session maximum.

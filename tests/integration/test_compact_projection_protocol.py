@@ -119,11 +119,12 @@ def _workspace(tmp_path: Path, task: CompactProjectionTask, source: str) -> Path
 def test_fresh_protocol_is_hash_frozen_and_unexecuted() -> None:
     root = _root()
     design = load_compact_projection_design(root)
-    expected = (root / "PREREGISTRATION-v1.13.sha256").read_text(encoding="ascii").split()[0]
+    expected = (root / "PREREGISTRATION-v1.14.sha256").read_text(encoding="ascii").split()[0]
 
-    assert sha256_file(root / "PREREGISTRATION-v1.13.json") == f"sha256:{expected}"
-    assert design.design_version == "1.13.0"
-    assert design.amendment_reason == "prelive_source_binding_and_target_sandbox_freeze"
+    assert sha256_file(root / "PREREGISTRATION-v1.14.json") == f"sha256:{expected}"
+    assert design.design_version == "1.14.0"
+    assert design.amendment_reason == "stage_specific_evidence_validation"
+    assert design.prior_failed_profile_receipt_digest
     assert design.supersedes_design_digest
     assert design.superseded_scorer_digest
     assert design.policy_observer_digest

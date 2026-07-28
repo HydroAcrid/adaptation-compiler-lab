@@ -59,8 +59,8 @@ def main() -> None:
     repo = arguments.repo.resolve()
     benchmark = repo / "development_benchmark_compact_projection"
     design = load_compact_projection_design(benchmark)
-    iteration = design.design_version in {"1.12.0", "1.13.0"}
-    results = benchmark / ("results-v1.13" if iteration else "results")
+    iteration = design.design_version in {"1.12.0", "1.13.0", "1.14.0"}
+    results = benchmark / ("results-v1.14" if iteration else "results")
     contract = load_compact_execution_contract(benchmark, design=design)
     blind = CompactProjectionBlindReport.model_validate_json(
         (results / "blind-report.json").read_bytes()
@@ -192,7 +192,7 @@ def main() -> None:
     profile_sizes = [
         (
             benchmark
-            / ("condition-materials-v1.13" if iteration else "condition-materials")
+            / ("condition-materials-v1.14" if iteration else "condition-materials")
             / f"strong-profile-stage-{stage}.md"
         )
         .stat()
@@ -279,6 +279,7 @@ def main() -> None:
         "randomization_seed_commitment": private_plan["seed_commitment"],
         "source_commit": blind.source_commit,
         "prior_failed_result_digest": design.prior_failed_result_digest,
+        "prior_failed_profile_receipt_digest": design.prior_failed_profile_receipt_digest,
         "total_subscription_sessions": design.maximum_subscription_sessions,
         "unblinded_at": datetime.now(UTC).isoformat(),
     }

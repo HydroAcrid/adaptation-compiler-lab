@@ -443,9 +443,9 @@ def main() -> None:
     benchmark = repo / "development_benchmark_compact_projection"
     design = load_compact_projection_design(benchmark)
     contract = load_compact_execution_contract(benchmark, design=design)
-    iteration = design.design_version in {"1.12.0", "1.13.0"}
+    iteration = design.design_version in {"1.12.0", "1.13.0", "1.14.0"}
     if iteration and arguments.bubblewrap is None:
-        raise RuntimeError("v1.13 target execution requires the pinned outer sandbox")
+        raise RuntimeError("repaired target execution requires the pinned outer sandbox")
     if arguments.preflight_only:
         preflight_runner = CodexSubscriptionRunner(
             executable=arguments.codex_executable,
@@ -472,7 +472,7 @@ def main() -> None:
         return
     runtime = benchmark / ("runtime-fixture-v1.12" if iteration else "runtime-fixture-v1.11")
     profile_receipt_path = benchmark / (
-        "profile-remediation-receipt-v1.13.json"
+        "profile-remediation-receipt-v1.14.json"
         if iteration
         else "profile-construction-receipt.json"
     )
@@ -491,7 +491,7 @@ def main() -> None:
     strong_texts = tuple(
         (
             benchmark
-            / ("condition-materials-v1.13" if iteration else "condition-materials")
+            / ("condition-materials-v1.14" if iteration else "condition-materials")
             / f"strong-profile-stage-{stage}.md"
         ).read_text(encoding="utf-8")
         for stage in (1, 2, 3)
@@ -549,7 +549,7 @@ def main() -> None:
 
     output_root = arguments.output_root.resolve()
     config_root = arguments.config_root.resolve()
-    public_results = benchmark / ("results-v1.13" if iteration else "results")
+    public_results = benchmark / ("results-v1.14" if iteration else "results")
     if output_root.exists() or config_root.exists() or public_results.exists():
         raise RuntimeError("compact execution outputs already exist; refusing to overwrite")
     output_root.mkdir(parents=True, mode=0o700)

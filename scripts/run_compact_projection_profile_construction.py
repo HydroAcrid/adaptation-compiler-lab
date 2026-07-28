@@ -198,10 +198,10 @@ def main() -> None:
     source_commit = _git(repo, "rev-parse", "HEAD")
     output_root = arguments.output_root.resolve()
     config_root = arguments.config_root.resolve()
-    remediation = design.design_version in {"1.12.0", "1.13.0"}
-    materials = benchmark / ("condition-materials-v1.13" if remediation else "condition-materials")
+    remediation = design.design_version in {"1.12.0", "1.13.0", "1.14.0"}
+    materials = benchmark / ("condition-materials-v1.14" if remediation else "condition-materials")
     public_receipt = benchmark / (
-        "profile-remediation-receipt-v1.13.json"
+        "profile-remediation-receipt-v1.14.json"
         if remediation
         else "profile-construction-receipt.json"
     )
@@ -235,7 +235,7 @@ def main() -> None:
             historical_materials = benchmark / "condition-materials"
             inherited_receipt = benchmark / "profile-construction-receipt.json"
             if not inherited_receipt.is_file():
-                raise RuntimeError("v1.12 remediation requires the frozen v1.11 profile receipt")
+                raise RuntimeError("profile remediation requires the frozen v1.11 profile receipt")
             drafts = [
                 {
                     "evidence_ids": list(packet.evidence_ids),

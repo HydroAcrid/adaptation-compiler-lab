@@ -50,7 +50,7 @@ def is_interpreter_generated_path(path: str | None) -> bool:
 class CompactExecutionContract(FrozenModel):
     """Machine-validated identity and isolation settings frozen before live sessions."""
 
-    contract_version: Literal["1.0.0", "1.1.0"] = "1.0.0"
+    contract_version: Literal["1.0.0", "1.1.0", "1.2.0"] = "1.0.0"
     design_digest: Sha256Digest
     execution_protocol_digest: Sha256Digest
     cli_version: Literal["codex-cli 0.145.0"] = "codex-cli 0.145.0"
@@ -107,7 +107,7 @@ class CompactExecutionContract(FrozenModel):
             or self.target_outer_sandbox_digest != self.role_outer_sandbox_digest
             or self.target_workspace_policy != "workspace-read-only-except-registered-source-file"
         ):
-            raise ValueError("compact execution contract v1.1 settings drifted")
+            raise ValueError("compact execution contract v1.1-v1.2 settings drifted")
         return self
 
     @property
@@ -122,11 +122,11 @@ def load_compact_execution_contract(
 ) -> CompactExecutionContract:
     """Load the live contract and bind it to the exact design and protocol bytes."""
 
-    contract_name = (
-        "EXECUTION_CONTRACT-v1.1.json"
-        if design.design_version in {"1.12.0", "1.13.0"}
-        else "EXECUTION_CONTRACT-v1.0.json"
-    )
+    contract_name = {
+        "1.12.0": "EXECUTION_CONTRACT-v1.1.json",
+        "1.13.0": "EXECUTION_CONTRACT-v1.1.json",
+        "1.14.0": "EXECUTION_CONTRACT-v1.2.json",
+    }.get(design.design_version, "EXECUTION_CONTRACT-v1.0.json")
     contract = CompactExecutionContract.model_validate_json((root / contract_name).read_bytes())
     if contract.design_digest != design.content_digest:
         raise ValueError("compact execution contract design binding drifted")
@@ -318,12 +318,14 @@ def validate_compact_remediated_profile_stages(
         LongitudinalEvidencePacket,
     ],
 ) -> None:
-    """Apply the v1.12 baseline checks found missing before any v1.12 target run."""
+    """Apply stage-specific baseline checks before a repaired target run."""
 
     validate_compact_profile_stages(stages=stages, packets=packets)
     for stage in stages:
         lowered = stage.approved_profile_text.casefold()
-        if not all(token in lowered for token in ("verify", "selected", "action")):
+        if stage.stage < 3 and not all(
+            token in lowered for token in ("verify", "selected", "action")
+        ):
             raise ValueError(
                 f"remediated profile Stage {stage.stage} omitted selected-action verification"
             )
@@ -332,6 +334,12 @@ def validate_compact_remediated_profile_stages(
         ):
             raise ValueError(
                 f"remediated profile Stage {stage.stage} omitted the exact project scope"
+            )
+        if stage.stage == 3 and not all(
+            token in lowered for token in ("requested", "create", "backup", "before", "replace")
+        ):
+            raise ValueError(
+                "remediated profile Stage 3 omitted requested-backup replacement behavior"
             )
 
 

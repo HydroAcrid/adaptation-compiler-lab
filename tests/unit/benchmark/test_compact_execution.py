@@ -187,7 +187,7 @@ def test_remediated_profile_requires_verification_and_exact_project_scope() -> N
         "Verify the selected action.",
         "For project generated-cache, atomically replace generated caches without a backup. "
         "For persistent destinations, refuse overwrite unless a backup is explicitly requested. "
-        "Verify the selected action.",
+        "If requested, create the backup before replacement.",
     )
     stages = tuple(
         CompactProfileReviewStage(
