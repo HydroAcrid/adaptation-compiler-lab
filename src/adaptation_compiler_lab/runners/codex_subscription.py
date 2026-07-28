@@ -626,8 +626,16 @@ class CodexSubscriptionRunner:
     ) -> list[str]:
         if self._bubblewrap is None:
             return inner_command
-        scratch = workspace / ".agents"
-        scratch.mkdir(mode=0o700, exist_ok=False)
+        scratch_paths = tuple(workspace / name for name in (".agents", ".codex"))
+        if any(path.exists() for path in scratch_paths):
+            raise CodexSubscriptionError("outer target scratch path already exists")
+        for path in scratch_paths:
+            path.mkdir(mode=0o700)
+        scratch_args = [
+            value
+            for path in scratch_paths
+            for value in ("--tmpfs", str(_OUTER_WORKSPACE / path.name))
+        ]
         writable_files = tuple(
             sorted(
                 {
@@ -710,8 +718,7 @@ class CodexSubscriptionRunner:
             "--ro-bind",
             str(workspace),
             str(_OUTER_WORKSPACE),
-            "--tmpfs",
-            str(_OUTER_WORKSPACE / ".agents"),
+            *scratch_args,
             *writable_args,
             "--chdir",
             str(_OUTER_WORKSPACE),

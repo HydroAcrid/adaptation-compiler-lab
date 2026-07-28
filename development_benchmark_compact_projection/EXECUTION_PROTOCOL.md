@@ -1,6 +1,6 @@
 # Frozen execution protocol
 
-Status: v1.18 designed but not yet frozen; no v1.18 session has started. V1.11 remains an
+Status: v1.19 designed but not yet frozen; no v1.19 session has started. V1.11 remains an
 immutable failed result: all six records were invalid because the trusted scorer resolved the
 virtual-environment interpreter to its base executable, and five target workspaces contained
 forbidden test or bytecode changes. V1.12 introduced entirely fresh tasks, a semantics-preserving
@@ -46,6 +46,12 @@ command or source change occurred, the independent test failed, and the invalid 
 and public receipt are preserved. V1.18 precreates an empty host directory and overlays that exact
 path with an ephemeral in-memory filesystem inside the outer namespace. It does not expand
 host-backed write access: only the registered production source file remains writable on disk.
+
+The v1.18 smoke proved the `.agents` mount but then revealed a second explicit Codex helper path,
+`/workspace/.codex`, which the inner sandbox must create before applying a patch. It again made no
+tool command or source change, and its invalid receipt and encrypted trace are preserved. V1.19
+adds a second exact in-memory helper mount for `.codex`; the repository root and every nonregistered
+host file remain read-only.
 
 The v1.15 trusted scorer uses the project virtual environment without resolving its symlink and
 sets the repository `src` directory as `PYTHONPATH`. Python bytecode is disabled; any interpreter-
@@ -109,7 +115,7 @@ measurement, or envelope digest differs from v1.9.
 
 The frozen v1.14 remediation reviewer received the same eligible evidence as construction and only
 the frozen v1.11 profile drafts, but no projection, compiled pack, tasks, mappings, scores, target
-outputs, or prior target outputs. V1.18 creates no new profile role. Construction does not receive
+outputs, or prior target outputs. V1.19 creates no new profile role. Construction does not receive
 task fixtures or scorer outcomes. Targets receive one blinded condition and the identical shared
 envelope. The judge receives the exact allowed-path and neutral execution constraints but no
 condition identity.
@@ -157,10 +163,10 @@ quality or discipline regresses.
 
 ## Stopping and tuning
 
-Renderer version 1.1.0 and the experimental tasks remain immutable. The v1.18 retry is allowed
+Renderer version 1.1.0 and the experimental tasks remain immutable. The v1.19 retry is allowed
 only because v1.15 ended before every tool call and file change, v1.16 stopped before launching
-Codex, v1.17 made no tool call or source change, no condition was unblinded, and construction
-changed only the execution instrument.
+Codex, v1.17 and v1.18 made no tool call or source change, no condition was unblinded, and
+construction changed only the execution instrument.
 Observed task behavior may inform a later version and entirely new tasks, but it may not tune and
 rerun this version against the same tasks. Stop immediately on
 private-plan drift, condition leakage, workspace escape, missing receipt, API-key use,

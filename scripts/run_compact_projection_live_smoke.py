@@ -122,17 +122,17 @@ def main() -> None:
     repo = arguments.repo.resolve()
     benchmark = repo / "development_benchmark_compact_projection"
     design = load_compact_projection_design(benchmark)
-    if design.design_version != "1.18.0" or design.instrument_smoke_sessions != 1:
-        raise RuntimeError("live smoke requires the frozen v1.18 design")
+    if design.design_version != "1.19.0" or design.instrument_smoke_sessions != 1:
+        raise RuntimeError("live smoke requires the frozen v1.19 design")
     contract = load_compact_execution_contract(benchmark, design=design)
-    if contract.contract_version != "1.6.0" or contract.instrument_smoke_sessions != 1:
-        raise RuntimeError("live smoke requires the frozen v1.6 execution contract")
+    if contract.contract_version != "1.7.0" or contract.instrument_smoke_sessions != 1:
+        raise RuntimeError("live smoke requires the frozen v1.7 execution contract")
     if _git(["status", "--porcelain"], cwd=repo).stdout:
         raise RuntimeError("live smoke requires a clean repository")
 
     output_root = arguments.output_root.resolve()
     config_root = arguments.config_root.resolve()
-    public_receipt = benchmark / "INSTRUMENT_SMOKE-v1.18.json"
+    public_receipt = benchmark / "INSTRUMENT_SMOKE-v1.19.json"
     if output_root.exists() or config_root.exists() or public_receipt.exists():
         raise RuntimeError("live smoke outputs already exist; refusing to overwrite")
     output_root.mkdir(parents=True, mode=0o700)
@@ -184,7 +184,7 @@ def main() -> None:
             neutral_control_requirements=("Do not modify or create any other file.",),
         )
         request = CodexDevelopmentRunRequest(
-            run_id="compact-instrument-live-smoke-v1-18",
+            run_id="compact-instrument-live-smoke-v1-19",
             blind_condition_id="instrument-neutral",
             blind_output_id="instrument-smoke-output",
             task=task,

@@ -64,6 +64,7 @@ def main() -> None:
         "1.16.0",
         "1.17.0",
         "1.18.0",
+        "1.19.0",
     }
     iteration = design.design_version in {
         "1.12.0",
@@ -73,6 +74,7 @@ def main() -> None:
         "1.16.0",
         "1.17.0",
         "1.18.0",
+        "1.19.0",
     }
     results = benchmark / (
         f"results-v{design.design_version.removesuffix('.0')}"

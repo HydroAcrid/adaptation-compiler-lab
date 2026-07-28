@@ -34,6 +34,8 @@ digest in addition to the target-runner digest. Its live turn then exposed Codex
 ephemeral `/workspace/.agents` helper directory beneath the otherwise read-only repository root.
 V1.18 overlays only that path with an in-memory filesystem while preserving the sole source file
 as the only host-backed writable target.
+The next live smoke revealed the corresponding `.codex` helper path; v1.19 gives both exact helper
+directories ephemeral in-memory mounts without exposing another host-backed writable path.
 
 The design binds each compiled snapshot to the complete approved transition, enforces the selected
 Codex target profile, and evaluates generated benchmark policies through a capability-free Python
@@ -47,7 +49,7 @@ acceptance, allowed path collections are unique and canonically ordered, and the
 enforces each lifecycle transition's discriminated structural shape.
 This establishes compactness and lineage preservation, not a performance advantage.
 
-The v1.18 public comparison is designed but unexecuted: one instrument smoke, three unchanged
+The v1.19 public comparison is designed but unexecuted: one instrument smoke, three unchanged
 tasks, two conditions, one repetition, and one secondary blind judge require at most eight
 saved-ChatGPT Codex subscription sessions. No provider-billed call or API key is used.
 
@@ -104,7 +106,7 @@ worked; its current target-visible projection did not beat an excellent profile.
   governed release, exact clause-to-provenance manifest, context resolution, and a separately
   measured condition-neutral execution envelope.
 - Immutable failed v1.11 instrument, v1.13 role, v1.14 resolver, v1.15 inner-sandbox, v1.16
-  pre-session smoke, and v1.17 live-smoke results plus a v1.18 compact-projection protocol with
+  pre-session smoke, and v1.17–v1.18 live-smoke results plus a v1.19 compact-projection protocol with
   three entirely fresh task fixtures, an independent scorer, six
   target cells, one frozen isolated profile-remediation receipt, a corrected judge packet, local
   seeded-defect sensitivity tests, nested inner/outer target sandbox validation, a mandatory live

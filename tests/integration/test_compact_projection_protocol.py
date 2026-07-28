@@ -119,11 +119,11 @@ def _workspace(tmp_path: Path, task: CompactProjectionTask, source: str) -> Path
 def test_fresh_protocol_is_hash_frozen_and_unexecuted() -> None:
     root = _root()
     design = load_compact_projection_design(root)
-    expected = (root / "PREREGISTRATION-v1.18.sha256").read_text(encoding="ascii").split()[0]
+    expected = (root / "PREREGISTRATION-v1.19.sha256").read_text(encoding="ascii").split()[0]
 
-    assert sha256_file(root / "PREREGISTRATION-v1.18.json") == f"sha256:{expected}"
-    assert design.design_version == "1.18.0"
-    assert design.amendment_reason == "ephemeral_unified_exec_workspace_mount"
+    assert sha256_file(root / "PREREGISTRATION-v1.19.json") == f"sha256:{expected}"
+    assert design.design_version == "1.19.0"
+    assert design.amendment_reason == "ephemeral_codex_workspace_mount"
     assert design.prior_failed_profile_receipt_digest
     assert design.prior_failed_target_receipt_digest
     assert design.prior_failed_smoke_receipt_digest
