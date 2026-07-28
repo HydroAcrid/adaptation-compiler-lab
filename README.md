@@ -7,12 +7,22 @@ ordinary memory, and a strong static profile.
 
 Milestone 6A.1 implements a compact runtime projection without changing Milestone 6A's failed
 product result. The compiler now keeps complete governance, provenance, history, and rollback data
-in an external governed release while sending Codex only effective behavior, unresolved scope or
-precedence, and essential verification. The public three-stage engineering fixture renders 163,
-454, and 461 adaptation bytes, below the independently maintained profile sizes of 227, 508, and
-462 bytes. The current unexecuted v1.10 design also binds each compiled snapshot to the complete
-approved transition, enforces the selected Codex target profile, and evaluates generated benchmark
-policies through a capability-free Python subset so policy code cannot forge scorer channels.
+in an external governed release while sending Codex only effective behavior, necessary scope, and
+deduplicated verification. Compact renderer v1.1 produces 163, 297, and 304 target-visible bytes;
+every clause remains bound to external evidence and lifecycle state.
+
+The first v1.11 live comparison is preserved as a failed instrument result: all six records were
+invalid because the scorer invoked the wrong Python environment and target repository-state checks
+were contaminated by forbidden test or bytecode changes. It was not used to tune or rerun those
+tasks. The current v1.13 design uses entirely fresh tasks, documents their legal action vocabulary,
+keeps the full workspace read-only except the registered source file, invokes the scorer
+through the project virtual environment, and deterministically ignores interpreter-generated
+bytecode. V1.12 remains unexecuted pre-live registration history; v1.13 changes no task or
+target-visible condition material from v1.12.
+
+The design binds each compiled snapshot to the complete approved transition, enforces the selected
+Codex target profile, and evaluates generated benchmark policies through a capability-free Python
+subset so policy code cannot forge scorer channels.
 The Codex renderer independently rejects projections whose target-family dimension is unknown or
 not Codex. Active governance bindings must reproduce their lifecycle introductions exactly, and
 shared-envelope paths must be normalized safe relative target paths.
@@ -22,10 +32,9 @@ acceptance, allowed path collections are unique and canonically ordered, and the
 enforces each lifecycle transition's discriminated structural shape.
 This establishes compactness and lineage preservation, not a performance advantage.
 
-The next public comparison is frozen but unexecuted: three fresh tasks, two conditions, one
-repetition, one isolated profile-author session, one reviewer session, and one secondary blind
-judge require at most nine saved-ChatGPT Codex subscription sessions. No live session or
-provider-billed call occurred in Milestone 6A.1.
+The repaired public comparison is frozen but unexecuted: three fresh tasks, two conditions, one
+repetition, one isolated profile-remediation reviewer, and one secondary blind judge require at
+most eight saved-ChatGPT Codex subscription sessions. No provider-billed call or API key is used.
 
 Eight exact-consent Codex tasks remain only in the external encrypted raw boundary; eight
 Kevin-confirmed behaviors remain approved artifacts. Deterministic software custody still seals
@@ -79,9 +88,10 @@ worked; its current target-visible projection did not beat an excellent profile.
 - A target-independent canonical runtime representation, compact Codex renderer, external
   governed release, exact clause-to-provenance manifest, context resolution, and a separately
   measured condition-neutral execution envelope.
-- A frozen, unexecuted fresh compact-projection protocol with three new task fixtures, an
-  independent scorer, six target cells, isolated profile roles, a corrected judge packet, local
-  seeded-defect sensitivity tests, and a nine-session maximum.
+- An immutable failed v1.11 instrument result plus a frozen, unexecuted v1.13 compact-projection
+  protocol with three entirely fresh task fixtures, an independent scorer, six target cells, one
+  isolated profile-remediation role, a corrected judge packet, local seeded-defect sensitivity
+  tests, an outer read-only target sandbox, and an eight-session maximum.
 - Structural `SourceConnector`, `TargetRunner`, and condition-blind `Scorer` ports; a Codex
   app-server adapter pinned to CLI `0.145.0` and its version-generated `thread/list`/`thread/read`
   schemas.

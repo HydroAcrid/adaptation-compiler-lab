@@ -25,8 +25,10 @@ from adaptation_compiler_lab.benchmark.codex_development import (
 from adaptation_compiler_lab.benchmark.compact_execution import (
     CompactProfileReviewStage,
     CompactProjectionBlindReport,
+    is_interpreter_generated_path,
     load_compact_execution_contract,
     validate_compact_profile_stages,
+    validate_compact_remediated_profile_stages,
 )
 from adaptation_compiler_lab.benchmark.compact_projection import (
     CompactProjectionTask,
@@ -89,7 +91,17 @@ def _run(
     *,
     cwd: Path,
     timeout: int,
+    extra_environment: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
+    environment = {
+        "HOME": str(cwd),
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
+        "PATH": "/usr/bin:/bin",
+        "PYTHONDONTWRITEBYTECODE": "1",
+    }
+    if extra_environment:
+        environment.update(extra_environment)
     return subprocess.run(
         command,
         cwd=cwd,
@@ -98,13 +110,7 @@ def _run(
         text=True,
         encoding="utf-8",
         timeout=timeout,
-        env={
-            "HOME": str(cwd),
-            "LANG": "C.UTF-8",
-            "LC_ALL": "C.UTF-8",
-            "PATH": "/usr/bin:/bin",
-            "PYTHONDONTWRITEBYTECODE": "1",
-        },
+        env=environment,
     )
 
 
@@ -270,6 +276,7 @@ def _score(
     scorer: Path,
     manifest: Path,
     workspace: Path,
+    repo_source: Path,
 ) -> tuple[dict[str, object], subprocess.CompletedProcess[str]]:
     completed = _run(
         [
@@ -282,6 +289,7 @@ def _score(
         ],
         cwd=workspace,
         timeout=30,
+        extra_environment={"PYTHONPATH": str(repo_source)},
     )
     if completed.returncode != 0:
         return {}, completed
@@ -425,6 +433,7 @@ def main() -> None:
     parser.add_argument("--codex-executable", type=Path, required=True)
     parser.add_argument("--saved-auth", type=Path, required=True)
     parser.add_argument("--python", type=Path, required=True)
+    parser.add_argument("--bubblewrap", type=Path)
     parser.add_argument("--preflight-only", action="store_true")
     arguments = parser.parse_args()
 
@@ -434,14 +443,45 @@ def main() -> None:
     benchmark = repo / "development_benchmark_compact_projection"
     design = load_compact_projection_design(benchmark)
     contract = load_compact_execution_contract(benchmark, design=design)
-    runtime = benchmark / "runtime-fixture-v1.11"
-    profile_receipt_path = benchmark / "profile-construction-receipt.json"
+    iteration = design.design_version in {"1.12.0", "1.13.0"}
+    if iteration and arguments.bubblewrap is None:
+        raise RuntimeError("v1.13 target execution requires the pinned outer sandbox")
+    if arguments.preflight_only:
+        preflight_runner = CodexSubscriptionRunner(
+            executable=arguments.codex_executable,
+            saved_auth_file=arguments.saved_auth,
+            contract=CodexExecutionContract(
+                cli_version=contract.cli_version,
+                cli_digest=contract.cli_digest,
+                model=contract.model,
+                reasoning_effort=contract.reasoning_effort,
+                service_mode=contract.service_mode,
+                max_seconds=contract.max_seconds,
+            ),
+            bubblewrap=arguments.bubblewrap if iteration else None,
+        )
+        print(
+            canonical_json(
+                {
+                    "api_key_environment_present": False,
+                    "execution_contract_digest": contract.content_digest,
+                    **preflight_runner.verify_target_preconditions(),
+                }
+            )
+        )
+        return
+    runtime = benchmark / ("runtime-fixture-v1.12" if iteration else "runtime-fixture-v1.11")
+    profile_receipt_path = benchmark / (
+        "profile-remediation-receipt-v1.13.json"
+        if iteration
+        else "profile-construction-receipt.json"
+    )
     evidence_packets = load_evidence_packets(repo / "development_benchmark_longitudinal")
     profile_receipt = json.loads(profile_receipt_path.read_text(encoding="utf-8"))
     if (
         not isinstance(profile_receipt, dict)
-        or profile_receipt.get("total_sessions") != 2
-        or profile_receipt.get("profile_author_sessions") != 1
+        or profile_receipt.get("total_sessions") != (1 if iteration else 2)
+        or profile_receipt.get("profile_author_sessions") != (0 if iteration else 1)
         or profile_receipt.get("profile_review_sessions") != 1
         or profile_receipt.get("compiled_adaptation_access") is not False
         or profile_receipt.get("target_task_access") is not False
@@ -449,9 +489,11 @@ def main() -> None:
     ):
         raise RuntimeError("compact profile separation receipt is invalid")
     strong_texts = tuple(
-        (benchmark / "condition-materials" / f"strong-profile-stage-{stage}.md").read_text(
-            encoding="utf-8"
-        )
+        (
+            benchmark
+            / ("condition-materials-v1.13" if iteration else "condition-materials")
+            / f"strong-profile-stage-{stage}.md"
+        ).read_text(encoding="utf-8")
         for stage in (1, 2, 3)
     )
     strong_stages = tuple(
@@ -465,7 +507,13 @@ def main() -> None:
         )
         for stage, text in enumerate(strong_texts, start=1)
     )
-    validate_compact_profile_stages(stages=strong_stages, packets=evidence_packets)
+    if iteration:
+        validate_compact_remediated_profile_stages(
+            stages=strong_stages,
+            packets=evidence_packets,
+        )
+    else:
+        validate_compact_profile_stages(stages=strong_stages, packets=evidence_packets)
     compiled_texts = tuple(
         (runtime / f"codex-runtime-stage-{stage}.md").read_text(encoding="utf-8")
         for stage in (1, 2, 3)
@@ -473,9 +521,9 @@ def main() -> None:
     for text in (*strong_texts, *compiled_texts):
         assert_condition_material_safe(text)
     shared_envelope = (runtime / "shared-execution-envelope.md").read_text(encoding="utf-8")
-    if "Allowed paths: deployment_policy.py." not in shared_envelope:
+    expected_path = "src/transfer_policy.py" if iteration else "deployment_policy.py"
+    if f"Allowed paths: {expected_path}." not in shared_envelope:
         raise RuntimeError("shared execution envelope does not match the task path")
-
     runner = CodexSubscriptionRunner(
         executable=arguments.codex_executable,
         saved_auth_file=arguments.saved_auth,
@@ -487,20 +535,8 @@ def main() -> None:
             service_mode=contract.service_mode,
             max_seconds=contract.max_seconds,
         ),
+        bubblewrap=arguments.bubblewrap if iteration else None,
     )
-    if arguments.preflight_only:
-        print(
-            canonical_json(
-                {
-                    "api_key_environment_present": False,
-                    "authentication": runner.verify_chatgpt_authentication(),
-                    "execution_contract_digest": contract.content_digest,
-                    "model_catalog": runner.verify_model_availability(),
-                }
-            )
-        )
-        return
-
     source_status = _git(["status", "--porcelain"], cwd=repo)
     if source_status.returncode != 0 or source_status.stdout:
         raise RuntimeError("compact target execution requires a clean repository")
@@ -513,7 +549,7 @@ def main() -> None:
 
     output_root = arguments.output_root.resolve()
     config_root = arguments.config_root.resolve()
-    public_results = benchmark / "results"
+    public_results = benchmark / ("results-v1.13" if iteration else "results")
     if output_root.exists() or config_root.exists() or public_results.exists():
         raise RuntimeError("compact execution outputs already exist; refusing to overwrite")
     output_root.mkdir(parents=True, mode=0o700)
@@ -562,7 +598,9 @@ def main() -> None:
         "the experimental condition.\n\n" + shared_envelope
     )
     scorer = repo / "scripts" / "score_compact_projection_task.py"
-    python = arguments.python.resolve()
+    python = arguments.python.expanduser().absolute()
+    if not python.is_file():
+        raise RuntimeError("trusted scorer interpreter is unavailable")
 
     try:
         for cell_value in run_order_values:
@@ -625,10 +663,17 @@ def main() -> None:
                     scorer=scorer,
                     manifest=benchmark / task.fixture_directory.replace("/fixture", "/task.json"),
                     workspace=workspace,
+                    repo_source=repo / "src",
                 )
                 commands, command_violations = _command_audit(result)
                 try:
                     changes = parse_porcelain_v1_z(status_result.stdout)
+                    changes = tuple(
+                        change
+                        for change in changes
+                        if not is_interpreter_generated_path(change.path)
+                        and not is_interpreter_generated_path(change.original_path)
+                    )
                 except ValueError as error:
                     changes = ()
                     invalid.append(f"malformed Git status: {error}")
@@ -641,7 +686,7 @@ def main() -> None:
                         "workspace changed forbidden paths: " + ", ".join(unexpected_paths)
                     )
                 if not changes:
-                    invalid.append("target made no deployment_policy.py change")
+                    invalid.append(f"target made no {expected_path} change")
                 if scorer_process.returncode != 0 or not score_value:
                     invalid.append("independent scorer process failed")
                 invalid.extend(_scorer_failures(score_value))

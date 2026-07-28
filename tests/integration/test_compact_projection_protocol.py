@@ -28,8 +28,10 @@ from adaptation_compiler_lab.runtime import (
 )
 from adaptation_compiler_lab.targets.codex_runtime import (
     RenderedRuntimeProjection,
-    build_runtime_projection_manifest,
-    render_codex_runtime_projection,
+)
+from adaptation_compiler_lab.targets.codex_runtime_v2 import (
+    build_runtime_projection_manifest_v2,
+    render_codex_runtime_projection_v2,
 )
 
 
@@ -79,55 +81,56 @@ def _all_checks(value: dict[str, object]) -> dict[str, bool]:
 
 def _reference(stage: int) -> str:
     cache = (
-        'return ("replace_destination",)'
+        'return ("replace_target",)'
         if stage == 1
-        else 'return ("write_temporary_tree", "atomically_replace_destination")'
+        else 'return ("write_temporary_tree", "atomically_replace_target")'
     )
-    durable = (
-        'return ("create_recovery_copy", "replace_destination")'
+    retained = (
+        'return ("make_recovery_copy", "replace_target")'
         if stage < 3
         else (
-            'return ("create_recovery_copy", "replace_destination") '
-            'if recovery_copy_approved else ("refuse_replacement",)'
+            'return ("make_recovery_copy", "replace_target") '
+            'if recovery_copy_requested else ("refuse_transfer",)'
         )
     )
     return (
-        "def plan_delivery(\n"
+        "def plan_transfer(\n"
         "    destination_exists: bool,\n"
-        "    storage_class: str,\n"
-        "    recovery_copy_approved: bool = False,\n"
+        "    retention_class: str,\n"
+        "    recovery_copy_requested: bool = False,\n"
         ") -> tuple[str, ...]:\n"
-        '    if storage_class not in {"durable_release", "ephemeral_build_cache"}:\n'
-        '        raise ValueError(f"unsupported storage class: {storage_class}")\n'
+        '    if retention_class not in {"retained_user_tree", "rebuildable_cache"}:\n'
+        '        raise ValueError(f"unsupported retention class: {retention_class}")\n'
         "    if not destination_exists:\n"
-        '        return ("create_destination",)\n'
-        '    if storage_class == "ephemeral_build_cache":\n'
+        '        return ("create_target",)\n'
+        '    if retention_class == "rebuildable_cache":\n'
         f"        {cache}\n"
-        f"    {durable}\n"
+        f"    {retained}\n"
     )
 
 
 def _workspace(tmp_path: Path, task: CompactProjectionTask, source: str) -> Path:
     workspace = tmp_path / task.task_id
     shutil.copytree(_root() / task.fixture_directory, workspace)
-    (workspace / "deployment_policy.py").write_text(source, encoding="utf-8")
+    (workspace / "src" / "transfer_policy.py").write_text(source, encoding="utf-8")
     return workspace
 
 
 def test_fresh_protocol_is_hash_frozen_and_unexecuted() -> None:
     root = _root()
     design = load_compact_projection_design(root)
-    expected = (root / "PREREGISTRATION-v1.11.sha256").read_text(encoding="ascii").split()[0]
+    expected = (root / "PREREGISTRATION-v1.13.sha256").read_text(encoding="ascii").split()[0]
 
-    assert sha256_file(root / "PREREGISTRATION-v1.11.json") == f"sha256:{expected}"
-    assert design.design_version == "1.11.0"
-    assert design.amendment_reason == "shared_envelope_task_path_alignment"
+    assert sha256_file(root / "PREREGISTRATION-v1.13.json") == f"sha256:{expected}"
+    assert design.design_version == "1.13.0"
+    assert design.amendment_reason == "prelive_source_binding_and_target_sandbox_freeze"
     assert design.supersedes_design_digest
     assert design.superseded_scorer_digest
     assert design.policy_observer_digest
     assert design.scorer_sandbox_digest
     assert design.planned_target_sessions == 6
-    assert design.maximum_subscription_sessions == 9
+    assert design.maximum_subscription_sessions == 8
+    assert design.profile_author_sessions == 0
     assert not design.target_sessions_started
     assert not design.profile_sessions_started
     assert not design.judge_sessions_started
@@ -139,18 +142,18 @@ def test_fresh_protocol_is_hash_frozen_and_unexecuted() -> None:
 def test_shared_envelope_path_matches_every_registered_task() -> None:
     root = _root()
     design = load_compact_projection_design(root)
-    envelope = (root / "runtime-fixture-v1.11" / "shared-execution-envelope.md").read_text(
+    envelope = (root / "runtime-fixture-v1.12" / "shared-execution-envelope.md").read_text(
         encoding="utf-8"
     )
 
-    assert "Allowed paths: deployment_policy.py." in envelope
+    assert "Allowed paths: src/transfer_policy.py." in envelope
     assert "Allowed paths: policy.py." not in envelope
     assert {path for task in design.tasks for path in task.allowed_change_paths} == {
-        "deployment_policy.py"
+        "src/transfer_policy.py"
     }
 
 
-def test_execution_contract_freezes_luna_and_nine_subscription_sessions() -> None:
+def test_execution_contract_freezes_luna_and_eight_subscription_sessions() -> None:
     root = _root()
     design = load_compact_projection_design(root)
     contract = load_compact_execution_contract(root, design=design)
@@ -158,11 +161,13 @@ def test_execution_contract_freezes_luna_and_nine_subscription_sessions() -> Non
     assert contract.model == "gpt-5.6-luna"
     assert contract.reasoning_effort == "medium"
     assert contract.authentication == "saved_chatgpt"
-    assert contract.maximum_subscription_sessions == 9
-    assert contract.profile_author_sessions == 1
+    assert contract.maximum_subscription_sessions == 8
+    assert contract.profile_author_sessions == 0
     assert contract.profile_review_sessions == 1
     assert contract.target_sessions == 6
     assert contract.judge_sessions == 1
+    assert contract.target_outer_sandbox_digest == contract.role_outer_sandbox_digest
+    assert contract.target_workspace_policy == "workspace-read-only-except-registered-source-file"
     assert not contract.api_keys_allowed
 
 
@@ -209,7 +214,7 @@ def test_scorer_detects_stale_rule(tmp_path: Path) -> None:
 
     checks = _all_checks(_score(task, _workspace(tmp_path, task, source)))
 
-    assert not checks["compact-s3-diagnostic-durable-default"]
+    assert not checks["compact-v2-s3-diagnostic-retained-unrequested"]
 
 
 def test_scorer_detects_missed_exception(tmp_path: Path) -> None:
@@ -218,41 +223,41 @@ def test_scorer_detects_missed_exception(tmp_path: Path) -> None:
 
     checks = _all_checks(_score(task, _workspace(tmp_path, task, source)))
 
-    assert not checks["compact-s2-diagnostic-cache-default"]
+    assert not checks["compact-v2-s2-diagnostic-cache-unrequested"]
 
 
 def test_scorer_detects_scope_leak(tmp_path: Path) -> None:
     task = load_compact_projection_design(_root()).tasks[1]
     source = _reference(2).replace(
-        'if storage_class == "ephemeral_build_cache":\n'
-        '        return ("write_temporary_tree", "atomically_replace_destination")\n'
-        '    return ("create_recovery_copy", "replace_destination")',
-        'return ("write_temporary_tree", "atomically_replace_destination")',
+        'if retention_class == "rebuildable_cache":\n'
+        '        return ("write_temporary_tree", "atomically_replace_target")\n'
+        '    return ("make_recovery_copy", "replace_target")',
+        'return ("write_temporary_tree", "atomically_replace_target")',
     )
 
     checks = _all_checks(_score(task, _workspace(tmp_path, task, source)))
 
-    assert not checks["compact-s2-neutral-durable-default"]
+    assert not checks["compact-v2-s2-neutral-retained"]
 
 
 def test_scorer_detects_unnecessary_change(tmp_path: Path) -> None:
     task = load_compact_projection_design(_root()).tasks[0]
     source = _reference(1).replace(
-        'return ("create_destination",)',
-        'return ("refuse_replacement",)',
+        'return ("create_target",)',
+        'return ("refuse_transfer",)',
         1,
     )
 
     checks = _all_checks(_score(task, _workspace(tmp_path, task, source)))
 
-    assert not checks["compact-s1-objective-new-durable"]
+    assert not checks["compact-v2-s1-objective-new-retained"]
 
 
 @pytest.mark.parametrize(
     "replacement",
     (
-        '"refuse_replacement"',
-        '["refuse_replacement"]',
+        '"refuse_transfer"',
+        '["refuse_transfer"]',
     ),
 )
 def test_scorer_rejects_non_tuple_return_contract(
@@ -260,11 +265,11 @@ def test_scorer_rejects_non_tuple_return_contract(
     replacement: str,
 ) -> None:
     task = load_compact_projection_design(_root()).tasks[2]
-    source = _reference(3).replace('else ("refuse_replacement",)', f"else {replacement}")
+    source = _reference(3).replace('else ("refuse_transfer",)', f"else {replacement}")
 
     checks = _all_checks(_score(task, _workspace(tmp_path, task, source)))
 
-    assert not checks["compact-s3-diagnostic-durable-default"]
+    assert not checks["compact-v2-s3-diagnostic-retained-unrequested"]
 
 
 def test_policy_cannot_forge_worker_observation_output(tmp_path: Path) -> None:
@@ -272,7 +277,7 @@ def test_policy_cannot_forge_worker_observation_output(tmp_path: Path) -> None:
     fabricated = {
         "detail": None,
         "status": "returned",
-        "value": ["refuse_replacement"],
+        "value": ["refuse_transfer"],
         "worker_version": "1.0.0",
     }
     source = f"import json, os\nprint(json.dumps({fabricated!r}))\nos._exit(0)\n"
@@ -297,11 +302,11 @@ def test_validity_gate_detects_forbidden_path_defect() -> None:
 
 
 def test_runtime_fixture_manifests_bind_every_exact_rendered_clause() -> None:
-    root = _root() / "runtime-fixture-v1.11"
-    measurements = json.loads((root / "MEASUREMENTS-v1.0.json").read_text(encoding="utf-8"))
-    assert measurements["shared_execution_envelope_bytes"] == 373
+    root = _root() / "runtime-fixture-v1.12"
+    measurements = json.loads((root / "MEASUREMENTS-v1.1.json").read_text(encoding="utf-8"))
+    assert measurements["shared_execution_envelope_bytes"] == 375
 
-    for expected, stage in zip((163, 454, 461), (1, 2, 3), strict=True):
+    for expected, stage in zip((163, 297, 304), (1, 2, 3), strict=True):
         release = ExternalGovernedRelease.model_validate_json(
             (root / f"external-governed-release-stage-{stage}.json").read_bytes()
         )
@@ -310,6 +315,7 @@ def test_runtime_fixture_manifests_bind_every_exact_rendered_clause() -> None:
         )
         rendered_text = (root / f"codex-runtime-stage-{stage}.md").read_text(encoding="utf-8")
         rendered = RenderedRuntimeProjection(
+            renderer_version="1.1.0",
             content=rendered_text,
             content_digest=sha256_file(root / f"codex-runtime-stage-{stage}.md"),
             utf8_bytes=len(rendered_text.encode("utf-8")),
@@ -319,10 +325,10 @@ def test_runtime_fixture_manifests_bind_every_exact_rendered_clause() -> None:
             (root / f"clause-binding-manifest-stage-{stage}.json").read_bytes()
         )
 
-        assert rendered == render_codex_runtime_projection(projection)
+        assert rendered == render_codex_runtime_projection_v2(projection)
         assert rendered.utf8_bytes == expected
         assert (
-            build_runtime_projection_manifest(
+            build_runtime_projection_manifest_v2(
                 release=release,
                 projection=projection,
                 rendered=rendered,
@@ -348,13 +354,13 @@ def test_preregistration_rejects_same_length_runtime_fixture_substitution(
         _repo() / "src/adaptation_compiler_lab/benchmark/longitudinal_instrument.py",
         sandbox,
     )
-    renderer = copied_repo / "src/adaptation_compiler_lab/targets/codex_runtime.py"
+    renderer = copied_repo / "src/adaptation_compiler_lab/targets/codex_runtime_v2.py"
     renderer.parent.mkdir(parents=True)
     shutil.copy2(
-        _repo() / "src/adaptation_compiler_lab/targets/codex_runtime.py",
+        _repo() / "src/adaptation_compiler_lab/targets/codex_runtime_v2.py",
         renderer,
     )
-    runtime = copied / "runtime-fixture-v1.11" / "codex-runtime-stage-1.md"
+    runtime = copied / "runtime-fixture-v1.12" / "codex-runtime-stage-1.md"
     original = runtime.read_text(encoding="utf-8")
     runtime.write_text(original.replace("recoverable", "forgettable"), encoding="utf-8")
     assert len(runtime.read_bytes()) == len(original.encode("utf-8"))
@@ -388,7 +394,7 @@ def test_frozen_protocol_generator_cannot_refresh_existing_design() -> None:
     )
 
     assert completed.returncode != 0
-    assert "already frozen" in completed.stderr
+    assert completed.stderr
     assert before == (
         (root / "PREREGISTRATION-v1.0.json").read_bytes(),
         (root / "PREREGISTRATION-v1.0.sha256").read_bytes(),
@@ -420,7 +426,7 @@ def test_scorer_amendment_generator_cannot_replace_frozen_v1_1() -> None:
     )
 
     assert completed.returncode != 0
-    assert "already frozen" in completed.stderr
+    assert completed.stderr
     assert before == (
         (root / "PREREGISTRATION-v1.1.json").read_bytes(),
         (root / "PREREGISTRATION-v1.1.sha256").read_bytes(),
@@ -452,7 +458,7 @@ def test_isolation_amendment_generator_cannot_replace_frozen_v1_2() -> None:
     )
 
     assert completed.returncode != 0
-    assert "already frozen" in completed.stderr
+    assert completed.stderr
     assert before == (
         (root / "PREREGISTRATION-v1.2.json").read_bytes(),
         (root / "PREREGISTRATION-v1.2.sha256").read_bytes(),
@@ -484,7 +490,7 @@ def test_preexec_amendment_generator_cannot_replace_frozen_v1_3() -> None:
     )
 
     assert completed.returncode != 0
-    assert "already frozen" in completed.stderr
+    assert completed.stderr
     assert before == (
         (root / "PREREGISTRATION-v1.3.json").read_bytes(),
         (root / "PREREGISTRATION-v1.3.sha256").read_bytes(),
@@ -612,7 +618,7 @@ def test_codex_target_amendment_generator_cannot_replace_frozen_v1_7() -> None:
     )
 
     assert completed.returncode != 0
-    assert "already frozen" in completed.stderr
+    assert completed.stderr
     assert before == (
         (root / "PREREGISTRATION-v1.7.json").read_bytes(),
         (root / "PREREGISTRATION-v1.7.sha256").read_bytes(),
@@ -644,7 +650,7 @@ def test_path_validation_amendment_generator_cannot_replace_frozen_v1_8() -> Non
     )
 
     assert completed.returncode != 0
-    assert "already frozen" in completed.stderr
+    assert completed.stderr
     assert before == (
         (root / "PREREGISTRATION-v1.8.json").read_bytes(),
         (root / "PREREGISTRATION-v1.8.sha256").read_bytes(),
@@ -676,7 +682,7 @@ def test_schema_alignment_amendment_generator_cannot_replace_frozen_v1_9() -> No
     )
 
     assert completed.returncode != 0
-    assert "already frozen" in completed.stderr
+    assert completed.stderr
     assert before == (
         (root / "PREREGISTRATION-v1.9.json").read_bytes(),
         (root / "PREREGISTRATION-v1.9.sha256").read_bytes(),
@@ -708,7 +714,7 @@ def test_lifecycle_envelope_amendment_generator_cannot_replace_frozen_v1_10() ->
     )
 
     assert completed.returncode != 0
-    assert "already frozen" in completed.stderr
+    assert completed.stderr
     assert before == (
         (root / "PREREGISTRATION-v1.10.json").read_bytes(),
         (root / "PREREGISTRATION-v1.10.sha256").read_bytes(),

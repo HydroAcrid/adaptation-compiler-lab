@@ -38,10 +38,19 @@ RationaleText = Annotated[
 ]
 
 
+def is_interpreter_generated_path(path: str | None) -> bool:
+    """Return whether a changed path is Python bytecode rather than agent work."""
+
+    if path is None:
+        return False
+    parts = path.replace("\\", "/").split("/")
+    return "__pycache__" in parts or path.endswith((".pyc", ".pyo"))
+
+
 class CompactExecutionContract(FrozenModel):
     """Machine-validated identity and isolation settings frozen before live sessions."""
 
-    contract_version: Literal["1.0.0"] = "1.0.0"
+    contract_version: Literal["1.0.0", "1.1.0"] = "1.0.0"
     design_digest: Sha256Digest
     execution_protocol_digest: Sha256Digest
     cli_version: Literal["codex-cli 0.145.0"] = "codex-cli 0.145.0"
@@ -55,12 +64,20 @@ class CompactExecutionContract(FrozenModel):
     authentication: Literal["saved_chatgpt"] = "saved_chatgpt"
     api_keys_allowed: Literal[False] = False
     provider_billed_calls: Literal[0] = 0
-    maximum_subscription_sessions: Literal[9] = 9
-    profile_author_sessions: Literal[1] = 1
+    maximum_subscription_sessions: Literal[8, 9] = 9
+    profile_author_sessions: Literal[0, 1] = 1
     profile_review_sessions: Literal[1] = 1
     target_sessions: Literal[6] = 6
     judge_sessions: Literal[1] = 1
-    target_sandbox: Literal["workspace-write"] = "workspace-write"
+    target_sandbox: Literal[
+        "workspace-write",
+        "workspace-write-inside-read-only-outer-mount-namespace",
+    ] = "workspace-write"
+    target_outer_sandbox_digest: Sha256Digest | None = None
+    target_workspace_policy: Literal[
+        "workspace-writable",
+        "workspace-read-only-except-registered-source-file",
+    ] = "workspace-writable"
     target_web_search: Literal["disabled"] = "disabled"
     target_shell_environment_inherit: Literal["none"] = "none"
     target_ephemeral: Literal[True] = True
@@ -71,6 +88,27 @@ class CompactExecutionContract(FrozenModel):
         "sha256:d78807229d616606e339c5988392b9e0ab4a6a6998fa51e4590837f426a12fca"
     ] = "sha256:d78807229d616606e339c5988392b9e0ab4a6a6998fa51e4590837f426a12fca"
     sealed_external_validation_accessed: Literal[False] = False
+
+    @model_validator(mode="after")
+    def versioned_session_and_sandbox_contract_is_exact(self) -> Self:
+        if self.contract_version == "1.0.0":
+            if (
+                self.maximum_subscription_sessions != 9
+                or self.profile_author_sessions != 1
+                or self.target_sandbox != "workspace-write"
+                or self.target_outer_sandbox_digest is not None
+                or self.target_workspace_policy != "workspace-writable"
+            ):
+                raise ValueError("compact execution contract v1.0 settings drifted")
+        elif (
+            self.maximum_subscription_sessions != 8
+            or self.profile_author_sessions != 0
+            or self.target_sandbox != "workspace-write-inside-read-only-outer-mount-namespace"
+            or self.target_outer_sandbox_digest != self.role_outer_sandbox_digest
+            or self.target_workspace_policy != "workspace-read-only-except-registered-source-file"
+        ):
+            raise ValueError("compact execution contract v1.1 settings drifted")
+        return self
 
     @property
     def content_digest(self) -> Sha256Digest:
@@ -84,15 +122,22 @@ def load_compact_execution_contract(
 ) -> CompactExecutionContract:
     """Load the live contract and bind it to the exact design and protocol bytes."""
 
-    contract = CompactExecutionContract.model_validate_json(
-        (root / "EXECUTION_CONTRACT-v1.0.json").read_bytes()
+    contract_name = (
+        "EXECUTION_CONTRACT-v1.1.json"
+        if design.design_version in {"1.12.0", "1.13.0"}
+        else "EXECUTION_CONTRACT-v1.0.json"
     )
+    contract = CompactExecutionContract.model_validate_json((root / contract_name).read_bytes())
     if contract.design_digest != design.content_digest:
         raise ValueError("compact execution contract design binding drifted")
     if contract.execution_protocol_digest != sha256_file(root / "EXECUTION_PROTOCOL.md"):
         raise ValueError("compact execution protocol binding drifted")
     if contract.maximum_subscription_sessions != design.maximum_subscription_sessions:
         raise ValueError("compact execution session budget drifted")
+    if contract.profile_author_sessions != design.profile_author_sessions:
+        raise ValueError("compact profile-author session budget drifted")
+    if contract.profile_review_sessions != design.profile_review_sessions:
+        raise ValueError("compact profile-review session budget drifted")
     return contract
 
 
@@ -262,6 +307,32 @@ def validate_compact_profile_stages(
             profile_text=profile_text,
             packet=packet,
         )
+
+
+def validate_compact_remediated_profile_stages(
+    *,
+    stages: Sequence[CompactProfileReviewStage],
+    packets: tuple[
+        LongitudinalEvidencePacket,
+        LongitudinalEvidencePacket,
+        LongitudinalEvidencePacket,
+    ],
+) -> None:
+    """Apply the v1.12 baseline checks found missing before any v1.12 target run."""
+
+    validate_compact_profile_stages(stages=stages, packets=packets)
+    for stage in stages:
+        lowered = stage.approved_profile_text.casefold()
+        if not all(token in lowered for token in ("verify", "selected", "action")):
+            raise ValueError(
+                f"remediated profile Stage {stage.stage} omitted selected-action verification"
+            )
+        if stage.stage >= 2 and not all(
+            token in lowered for token in ("project", "generated-cache")
+        ):
+            raise ValueError(
+                f"remediated profile Stage {stage.stage} omitted the exact project scope"
+            )
 
 
 def compact_profile_author_schema() -> dict[str, object]:

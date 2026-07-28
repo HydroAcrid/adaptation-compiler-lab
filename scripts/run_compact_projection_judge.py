@@ -158,8 +158,10 @@ def main() -> None:
         raise RuntimeError("Codex/OpenAI API keys are forbidden for the isolated judge")
     repo = arguments.repo.resolve()
     benchmark = repo / "development_benchmark_compact_projection"
-    results = benchmark / "results"
     design = load_compact_projection_design(benchmark)
+    results = benchmark / (
+        "results-v1.13" if design.design_version in {"1.12.0", "1.13.0"} else "results"
+    )
     contract = load_compact_execution_contract(benchmark, design=design)
     runner = CodexStructuredRoleRunner(
         executable=arguments.codex_executable,

@@ -16,6 +16,7 @@ from adaptation_compiler_lab.benchmark.compact_execution import (
     compact_profile_review_schema,
     load_compact_execution_contract,
     validate_compact_profile_stages,
+    validate_compact_remediated_profile_stages,
 )
 from adaptation_compiler_lab.benchmark.compact_projection import (
     load_compact_projection_design,
@@ -197,8 +198,13 @@ def main() -> None:
     source_commit = _git(repo, "rev-parse", "HEAD")
     output_root = arguments.output_root.resolve()
     config_root = arguments.config_root.resolve()
-    materials = benchmark / "condition-materials"
-    public_receipt = benchmark / "profile-construction-receipt.json"
+    remediation = design.design_version in {"1.12.0", "1.13.0"}
+    materials = benchmark / ("condition-materials-v1.13" if remediation else "condition-materials")
+    public_receipt = benchmark / (
+        "profile-remediation-receipt-v1.13.json"
+        if remediation
+        else "profile-construction-receipt.json"
+    )
     public_profiles = tuple(materials / f"strong-profile-stage-{stage}.md" for stage in (1, 2, 3))
     if (
         output_root.exists()
@@ -222,56 +228,97 @@ def main() -> None:
         "stages": [packet.model_dump(mode="json", round_trip=True) for packet in packets]
     }
     evidence_text = canonical_json(evidence_payload)
-    author_contract = (benchmark / "PROFILE_AUTHOR_PACKET.md").read_text(encoding="utf-8")
     reviewer_contract = (benchmark / "PROFILE_REVIEWER_PACKET.md").read_text(encoding="utf-8")
     sessions_attempted = 0
     try:
-        author_prompt = (
-            "Return the required JSON object containing ordered Stages 1, 2, and 3. Each "
-            "profile_text must be standalone and contain only behavior active at that stage. "
-            "Copy each stage and evidence_ids exactly. Do not use tools. Do not include evidence "
-            "IDs in profile_text.\n\nEXACT APPROVED CUMULATIVE EVIDENCE\n"
-            f"{evidence_text}"
-        )
-        print("Starting isolated static-profile author (session 1/2).", flush=True)
-        sessions_attempted = 1
-        author_result = runner.run(
-            role_id="compact-profile-author",
-            developer_contract=author_contract,
-            prompt=author_prompt,
-            output_schema=compact_profile_author_schema(),
-        )
-        _assert_role_valid(author_result)
-        authored = CompactProfileAuthorOutput.model_validate_json(author_result.response)
-        validate_compact_profile_stages(stages=authored.stages, packets=packets)
-        for stage in authored.stages:
-            assert_condition_material_safe(stage.profile_text)
-        author_ref = raw_store.put(
-            _raw_bundle(author_result, authored),
-            media_type=("application/vnd.adaptation-compiler-lab.compact-profile-author+json"),
-        )
+        if remediation:
+            historical_materials = benchmark / "condition-materials"
+            inherited_receipt = benchmark / "profile-construction-receipt.json"
+            if not inherited_receipt.is_file():
+                raise RuntimeError("v1.12 remediation requires the frozen v1.11 profile receipt")
+            drafts = [
+                {
+                    "evidence_ids": list(packet.evidence_ids),
+                    "profile_text": (
+                        historical_materials / f"strong-profile-stage-{packet.stage}.md"
+                    ).read_text(encoding="utf-8"),
+                    "stage": packet.stage,
+                }
+                for packet in packets
+            ]
+            reviewer_prompt = (
+                "Return the required JSON object containing ordered Stages 1, 2, and 3. "
+                "This is a single isolated remediation review of an already frozen baseline. "
+                "Review against only the exact approved cumulative evidence and inherited "
+                "drafts below. Each approved_profile_text must be standalone, precise, compact, "
+                "and contain only behavior active at that stage. Preserve the exact applicable "
+                "project scope and every active verification requirement. Copy each stage and "
+                "evidence_ids exactly. Do not use tools. Do not include evidence IDs in "
+                "target-visible profile text.\n\nEXACT APPROVED CUMULATIVE EVIDENCE\n"
+                f"{evidence_text}\n\nINHERITED PROFILE DRAFTS\n{canonical_json({'stages': drafts})}"
+            )
+            print(
+                "Starting isolated static-profile remediation reviewer (session 1/1).", flush=True
+            )
+            sessions_attempted = 1
+        else:
+            author_contract = (benchmark / "PROFILE_AUTHOR_PACKET.md").read_text(encoding="utf-8")
+            author_prompt = (
+                "Return the required JSON object containing ordered Stages 1, 2, and 3. Each "
+                "profile_text must be standalone and contain only behavior active at that "
+                "stage. Copy each stage and evidence_ids exactly. Do not use tools. Do not "
+                "include evidence IDs in profile_text.\n\nEXACT APPROVED CUMULATIVE EVIDENCE\n"
+                f"{evidence_text}"
+            )
+            print("Starting isolated static-profile author (session 1/2).", flush=True)
+            sessions_attempted = 1
+            author_result = runner.run(
+                role_id="compact-profile-author",
+                developer_contract=author_contract,
+                prompt=author_prompt,
+                output_schema=compact_profile_author_schema(),
+            )
+            _assert_role_valid(author_result)
+            authored = CompactProfileAuthorOutput.model_validate_json(author_result.response)
+            validate_compact_profile_stages(stages=authored.stages, packets=packets)
+            for stage in authored.stages:
+                assert_condition_material_safe(stage.profile_text)
+            author_ref = raw_store.put(
+                _raw_bundle(author_result, authored),
+                media_type=("application/vnd.adaptation-compiler-lab.compact-profile-author+json"),
+            )
 
-        reviewer_prompt = (
-            "Return the required JSON object containing ordered Stages 1, 2, and 3. Review "
-            "against only the exact approved evidence and author drafts below. Each "
-            "approved_profile_text must be standalone, precise, compact, and contain only "
-            "behavior active at that stage. Copy each stage and evidence_ids exactly. Do not "
-            "use tools. Do not include evidence IDs in target-visible profile text.\n\n"
-            f"EXACT APPROVED CUMULATIVE EVIDENCE\n{evidence_text}\n\n"
-            "AUTHOR OUTPUT\n"
-            f"{canonical_json(authored)}"
-        )
-        print("Starting isolated static-profile reviewer (session 2/2).", flush=True)
-        sessions_attempted = 2
+            reviewer_prompt = (
+                "Return the required JSON object containing ordered Stages 1, 2, and 3. Review "
+                "against only the exact approved evidence and author drafts below. Each "
+                "approved_profile_text must be standalone, precise, compact, and contain only "
+                "behavior active at that stage. Copy each stage and evidence_ids exactly. Do "
+                "not use tools. Do not include evidence IDs in target-visible profile text.\n\n"
+                f"EXACT APPROVED CUMULATIVE EVIDENCE\n{evidence_text}\n\n"
+                "AUTHOR OUTPUT\n"
+                f"{canonical_json(authored)}"
+            )
+            print("Starting isolated static-profile reviewer (session 2/2).", flush=True)
+            sessions_attempted = 2
         review_result = runner.run(
-            role_id="compact-profile-reviewer",
+            role_id=(
+                "compact-profile-remediation-reviewer"
+                if remediation
+                else "compact-profile-reviewer"
+            ),
             developer_contract=reviewer_contract,
             prompt=reviewer_prompt,
             output_schema=compact_profile_review_schema(),
         )
         _assert_role_valid(review_result)
         reviewed = CompactProfileReviewOutput.model_validate_json(review_result.response)
-        validate_compact_profile_stages(stages=reviewed.stages, packets=packets)
+        if remediation:
+            validate_compact_remediated_profile_stages(
+                stages=reviewed.stages,
+                packets=packets,
+            )
+        else:
+            validate_compact_profile_stages(stages=reviewed.stages, packets=packets)
         for stage in reviewed.stages:
             assert_condition_material_safe(stage.approved_profile_text)
         review_ref = raw_store.put(
@@ -301,21 +348,16 @@ def main() -> None:
             (stage.approved_profile_text.rstrip() + "\n").encode("utf-8"),
             mode=0o644,
         )
-    receipt = {
+    receipt: dict[str, object] = {
         "api_key_environment_present": False,
         "authentication": "saved_chatgpt",
-        "author": _role_receipt(
-            author_result,
-            output_digest=canonical_digest(authored),
-            trace_ref_digest=f"sha256:{author_ref.sha256}",
-        ),
         "compiled_adaptation_access": False,
         "condition_assignment_access": False,
         "design_digest": design.content_digest,
         "evidence_packet_digests": [packet.content_digest for packet in packets],
         "execution_contract_digest": contract.content_digest,
         "external_validation_accessed": False,
-        "profile_author_sessions": 1,
+        "profile_author_sessions": 0 if remediation else 1,
         "profile_review_sessions": 1,
         "profiles": [
             {
@@ -336,8 +378,22 @@ def main() -> None:
         ),
         "source_commit": source_commit,
         "target_task_access": False,
-        "total_sessions": 2,
+        "total_sessions": 1 if remediation else 2,
     }
+    if remediation:
+        receipt["inherited_profile_construction_receipt_digest"] = sha256_file(
+            benchmark / "profile-construction-receipt.json"
+        )
+        receipt["remediation_reason"] = (
+            "Pre-target audit found that the inherited baseline omitted exact project scope "
+            "and selected-action verification."
+        )
+    else:
+        receipt["author"] = _role_receipt(
+            author_result,
+            output_digest=canonical_digest(authored),
+            trace_ref_digest=f"sha256:{author_ref.sha256}",
+        )
     _exclusive_write(public_receipt, _canonical_bytes(receipt), mode=0o644)
     _exclusive_write(
         output_root / "completion.json",
@@ -347,12 +403,19 @@ def main() -> None:
                 "profile_construction_receipt_digest": sha256_file(public_receipt),
                 "profile_digests": [sha256_file(path) for path in public_profiles],
                 "provider_billed_calls": 0,
-                "sessions": 2,
+                "sessions": 1 if remediation else 2,
                 "source_commit": source_commit,
             }
         ),
     )
-    print("Both isolated profile sessions completed and froze successfully.", flush=True)
+    print(
+        (
+            "The isolated profile remediation completed and froze successfully."
+            if remediation
+            else "Both isolated profile sessions completed and froze successfully."
+        ),
+        flush=True,
+    )
 
 
 if __name__ == "__main__":

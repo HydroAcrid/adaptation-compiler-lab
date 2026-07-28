@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -12,11 +13,15 @@ from adaptation_compiler_lab.benchmark.compact_execution import (
     CompactJudgeDecision,
     CompactProfileAuthorOutput,
     CompactProfileAuthorStage,
+    CompactProfileReviewStage,
     CompactProjectionBlindReport,
     compact_judge_schema,
     compact_profile_author_schema,
     compact_profile_review_schema,
+    is_interpreter_generated_path,
+    validate_compact_remediated_profile_stages,
 )
+from adaptation_compiler_lab.benchmark.longitudinal_execution import load_evidence_packets
 
 _DIGEST = "sha256:" + ("a" * 64)
 
@@ -169,3 +174,61 @@ def test_judge_rejects_preference_output_mismatch() -> None:
                 "evaluator_limitations": ("This is a secondary qualitative judgment only.",),
             }
         )
+
+
+def test_remediated_profile_requires_verification_and_exact_project_scope() -> None:
+    repo = Path(__file__).parents[3]
+    packets = load_evidence_packets(repo / "development_benchmark_longitudinal")
+    texts = (
+        "For persistent destinations, make a recoverable backup before replacement. "
+        "Verify the selected action.",
+        "For persistent destinations, make a recoverable backup before replacement. "
+        "For project generated-cache, atomically replace generated caches without a backup. "
+        "Verify the selected action.",
+        "For project generated-cache, atomically replace generated caches without a backup. "
+        "For persistent destinations, refuse overwrite unless a backup is explicitly requested. "
+        "Verify the selected action.",
+    )
+    stages = tuple(
+        CompactProfileReviewStage(
+            stage=stage,
+            evidence_ids=packet.evidence_ids,
+            approved_profile_text=text,
+            review_summary="Preserved exact active behavior, scope, and verification.",
+            intentional_edit_operations=1,
+            unsupported_content_removed=False,
+        )
+        for stage, (packet, text) in enumerate(zip(packets, texts, strict=True), start=1)
+    )
+
+    validate_compact_remediated_profile_stages(stages=stages, packets=packets)
+    missing_scope = stages[1].model_copy(
+        update={
+            "approved_profile_text": stages[1].approved_profile_text.replace(
+                "project generated-cache, ",
+                "",
+            )
+        }
+    )
+    with pytest.raises(ValueError, match="exact project scope"):
+        validate_compact_remediated_profile_stages(
+            stages=(stages[0], missing_scope, stages[2]),
+            packets=packets,
+        )
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    (
+        ("src/__pycache__/policy.cpython-312.pyc", True),
+        ("policy.pyc", True),
+        ("nested/policy.pyo", True),
+        ("src/policy.py", False),
+        (None, False),
+    ),
+)
+def test_interpreter_generated_repository_paths_are_deterministic(
+    path: str | None,
+    expected: bool,
+) -> None:
+    assert is_interpreter_generated_path(path) is expected

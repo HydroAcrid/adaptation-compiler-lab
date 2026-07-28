@@ -58,8 +58,9 @@ def main() -> None:
 
     repo = arguments.repo.resolve()
     benchmark = repo / "development_benchmark_compact_projection"
-    results = benchmark / "results"
     design = load_compact_projection_design(benchmark)
+    iteration = design.design_version in {"1.12.0", "1.13.0"}
+    results = benchmark / ("results-v1.13" if iteration else "results")
     contract = load_compact_execution_contract(benchmark, design=design)
     blind = CompactProjectionBlindReport.model_validate_json(
         (results / "blind-report.json").read_bytes()
@@ -189,11 +190,23 @@ def main() -> None:
         value["judge"] = judge_counts[condition]
 
     profile_sizes = [
-        (benchmark / "condition-materials" / f"strong-profile-stage-{stage}.md").stat().st_size
+        (
+            benchmark
+            / ("condition-materials-v1.13" if iteration else "condition-materials")
+            / f"strong-profile-stage-{stage}.md"
+        )
+        .stat()
+        .st_size
         for stage in (1, 2, 3)
     ]
     compiled_sizes = [
-        (benchmark / "runtime-fixture-v1.11" / f"codex-runtime-stage-{stage}.md").stat().st_size
+        (
+            benchmark
+            / ("runtime-fixture-v1.12" if iteration else "runtime-fixture-v1.11")
+            / f"codex-runtime-stage-{stage}.md"
+        )
+        .stat()
+        .st_size
         for stage in (1, 2, 3)
     ]
     profile = observations_by_condition[BenchmarkCondition.STRONG_STATIC_PROFILE]
@@ -265,7 +278,8 @@ def main() -> None:
         "provider_billed_calls": 0,
         "randomization_seed_commitment": private_plan["seed_commitment"],
         "source_commit": blind.source_commit,
-        "total_subscription_sessions": 9,
+        "prior_failed_result_digest": design.prior_failed_result_digest,
+        "total_subscription_sessions": design.maximum_subscription_sessions,
         "unblinded_at": datetime.now(UTC).isoformat(),
     }
     output_path = results / "unblinded-result.json"
@@ -310,7 +324,7 @@ def main() -> None:
             {
                 "gate": outcome,
                 "result_digest": sha256_file(output_path),
-                "sessions": 9,
+                "sessions": design.maximum_subscription_sessions,
             }
         )
     )

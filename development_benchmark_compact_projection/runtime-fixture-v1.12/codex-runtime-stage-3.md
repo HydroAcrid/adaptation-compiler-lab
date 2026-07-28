@@ -1,0 +1,3 @@
+- Project generated-cache — disposable generated-cache destinations: atomically replace existing content without creating a backup.
+- For persistent user-managed destinations, refuse overwrite unless a recoverable backup is explicitly requested.
+- Verify the selected publish action before completion.
