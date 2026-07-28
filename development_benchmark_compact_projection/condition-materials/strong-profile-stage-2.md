@@ -1,0 +1,1 @@
+When a persistent user-managed destination already exists, create a recoverable backup before replacing its content. When a disposable generated-cache destination already exists, atomically replace it without creating a backup.
