@@ -33,6 +33,7 @@ from adaptation_compiler_lab.targets.codex_runtime_v4 import (
     render_codex_runtime_projection_v4,
 )
 from scripts import run_compact_projection_comparison as comparison
+from scripts import run_durable_progress_comparison as durable_comparison
 
 
 def _repo() -> Path:
@@ -98,6 +99,36 @@ def _reference_v21(stage: int) -> str:
         '        raise ValueError(f"unsupported retention class: {retention_class}")\n'
         "    if not destination_exists:\n"
         '        return ("init_target",)\n'
+        '    if retention_class == "rebuildable_cache":\n'
+        f"        {preview}\n"
+        f"    {retained}\n"
+    )
+
+
+def _reference_v22(stage: int) -> str:
+    preview = (
+        'return ("apply_payload",)'
+        if stage == 1
+        else 'return ("assemble_preview", "activate_preview")'
+    )
+    retained = (
+        'return ("record_rollback", "apply_payload")'
+        if stage < 3
+        else (
+            'return ("record_rollback", "apply_payload") '
+            'if recovery_copy_requested else ("reject_apply",)'
+        )
+    )
+    return (
+        "def plan_transfer(\n"
+        "    destination_exists: bool,\n"
+        "    retention_class: str,\n"
+        "    recovery_copy_requested: bool = False,\n"
+        ") -> tuple[str, ...]:\n"
+        '    if retention_class not in {"retained_user_tree", "rebuildable_cache"}:\n'
+        '        raise ValueError(f"unsupported retention class: {retention_class}")\n'
+        "    if not destination_exists:\n"
+        '        return ("open_target",)\n'
         '    if retention_class == "rebuildable_cache":\n'
         f"        {preview}\n"
         f"    {retained}\n"
@@ -334,3 +365,61 @@ def test_v21_scorer_detects_stale_scope_and_supersession_errors(tmp_path: Path) 
 
     stale_stage_3 = _checks(_score(stage_3, _workspace(tmp_path, stage_3, _reference_v21(2))))
     assert not stale_stage_3["decision2-s3-diagnostic-retained-unrequested"]
+
+
+def test_v22_reference_passes_every_fresh_scenario(tmp_path: Path) -> None:
+    design = load_compact_projection_design(_root(), version="2.2")
+
+    for task in design.tasks:
+        result = _score(task, _workspace(tmp_path, task, _reference_v22(task.stage)))
+        assert all(_checks(result).values())
+
+
+def test_v22_design_and_durable_execution_contract_are_frozen() -> None:
+    design = load_compact_projection_design(_root(), version="2.2")
+    contract = load_compact_execution_contract(_root(), design=design)
+    checksum = (_root() / "PREREGISTRATION-v2.2.sha256").read_text(encoding="ascii").split()[0]
+
+    assert sha256_file(_root() / "PREREGISTRATION-v2.2.json") == f"sha256:{checksum}"
+    assert design.design_version == "2.2.0"
+    assert design.amendment_reason == "broken_pipe_resilience_and_fresh_tasks"
+    assert design.maximum_subscription_sessions == 7
+    assert design.instrument_smoke_sessions is None
+    assert contract.contract_version == "1.10.0"
+    assert contract.target_orchestrator_source_digest == sha256_file(
+        _repo() / "scripts/run_durable_progress_comparison.py"
+    )
+    assert contract.inherited_smoke_receipt_digest == sha256_file(
+        _root() / "INSTRUMENT_SMOKE-v2.1.json"
+    )
+    assert not design.target_sessions_started
+    assert not design.judge_sessions_started
+    assert not design.sealed_external_validation_accessed
+
+
+def test_v22_scorer_detects_stale_scope_and_supersession_errors(tmp_path: Path) -> None:
+    design = load_compact_projection_design(_root(), version="2.2")
+    stage_1, stage_2, stage_3 = design.tasks
+
+    stale_stage_1 = _checks(_score(stage_1, _workspace(tmp_path, stage_1, _reference_v22(3))))
+    assert not stale_stage_1["decision3-s1-diagnostic-retained-unrequested"]
+
+    scope_leak = _reference_v22(2).replace(
+        'if retention_class == "rebuildable_cache":\n'
+        '        return ("assemble_preview", "activate_preview")\n'
+        '    return ("record_rollback", "apply_payload")',
+        'return ("assemble_preview", "activate_preview")',
+    )
+    leaked = _checks(_score(stage_2, _workspace(tmp_path, stage_2, scope_leak)))
+    assert not leaked["decision3-s2-neutral-retained"]
+
+    stale_stage_3 = _checks(_score(stage_3, _workspace(tmp_path, stage_3, _reference_v22(2))))
+    assert not stale_stage_3["decision3-s3-diagnostic-retained-unrequested"]
+
+
+def test_progress_output_cannot_abort_execution(monkeypatch: Any) -> None:
+    def closed_stream(*_args: object, **_kwargs: object) -> None:
+        raise BrokenPipeError
+
+    monkeypatch.setattr("builtins.print", closed_stream)
+    durable_comparison._progress("diagnostic only")

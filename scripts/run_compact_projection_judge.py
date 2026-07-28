@@ -170,6 +170,7 @@ def main() -> None:
             "1.19.0",
             "2.0.0",
             "2.1.0",
+            "2.2.0",
         }
         else "results-v1.14"
         if design.design_version in {"1.12.0", "1.13.0", "1.14.0"}

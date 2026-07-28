@@ -67,6 +67,7 @@ def main() -> None:
         "1.19.0",
         "2.0.0",
         "2.1.0",
+        "2.2.0",
     }
     iteration = design.design_version in {
         "1.12.0",
@@ -79,6 +80,7 @@ def main() -> None:
         "1.19.0",
         "2.0.0",
         "2.1.0",
+        "2.2.0",
     }
     results = benchmark / (
         f"results-v{design.design_version.removesuffix('.0')}"
@@ -251,7 +253,7 @@ def main() -> None:
             benchmark
             / (
                 "runtime-fixture-v2.1"
-                if design.design_version == "2.1.0"
+                if design.design_version in {"2.1.0", "2.2.0"}
                 else "runtime-fixture-v2.0"
                 if design.design_version == "2.0.0"
                 else "runtime-fixture-v1.12"
