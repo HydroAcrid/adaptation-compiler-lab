@@ -190,7 +190,9 @@ def _score(
         repo_source=repo_source,
     )
     if process.returncode != 0:
-        raise RuntimeError("corrected trusted scorer process failed")
+        raise RuntimeError(
+            "corrected trusted scorer process failed: " + process.stderr.strip()
+        )
     value = json.loads(process.stdout)
     if not isinstance(value, dict) or not _receipts_succeeded(value):
         raise RuntimeError("corrected trusted scorer did not produce successful receipts")
