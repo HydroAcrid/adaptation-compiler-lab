@@ -284,10 +284,18 @@ def test_outer_target_sandbox_allows_source_edit_and_tests_but_denies_other_path
     host_probe = Path(__file__).parents[3] / "pyproject.toml"
     command = runner._outer_sandbox_command(
         inner_command=[
+            "/usr/bin/env",
+            "PATH=/opt/acl-codex-target:/usr/bin:/bin",
             "/bin/sh",
             "-c",
             (
                 "set -eu; "
+                'test "$(command -v bwrap)" = /opt/acl-codex-target/bwrap; '
+                "bwrap --unshare-all --share-net --die-with-parent --new-session "
+                "--ro-bind /usr /usr --symlink usr/bin /bin --symlink usr/lib /lib "
+                "--symlink usr/lib64 /lib64 --symlink usr/sbin /sbin "
+                "--ro-bind /etc /etc --proc /proc --dev /dev --tmpfs /tmp "
+                "-- /usr/bin/true; "
                 "getent hosts chatgpt.com >/dev/null; "
                 "printf 'def value() -> int:\\n    return 2\\n' "
                 "> /workspace/src/transfer_policy.py; "

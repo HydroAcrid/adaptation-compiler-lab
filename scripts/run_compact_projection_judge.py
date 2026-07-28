@@ -160,8 +160,8 @@ def main() -> None:
     benchmark = repo / "development_benchmark_compact_projection"
     design = load_compact_projection_design(benchmark)
     results = benchmark / (
-        "results-v1.15"
-        if design.design_version == "1.15.0"
+        f"results-v{design.design_version.removesuffix('.0')}"
+        if design.design_version in {"1.15.0", "1.16.0"}
         else "results-v1.14"
         if design.design_version in {"1.12.0", "1.13.0", "1.14.0"}
         else "results"

@@ -32,6 +32,7 @@ _EXPECTED_BWRAP_DIGEST: Final = (
 )
 _OUTER_RUNTIME_ROOT: Final = Path("/opt/acl-codex-target")
 _OUTER_CODEX: Final = _OUTER_RUNTIME_ROOT / "codex"
+_OUTER_BWRAP: Final = _OUTER_RUNTIME_ROOT / "bwrap"
 _OUTER_CODEX_HOME: Final = Path("/codex-home")
 _OUTER_WORKSPACE: Final = Path("/workspace")
 _WSL_RESOLV_CONF: Final = Path("/mnt/wsl/resolv.conf")
@@ -279,6 +280,50 @@ class CodexSubscriptionRunner:
         completed = subprocess.run(
             [
                 str(self._bubblewrap),
+                "--unshare-all",
+                "--share-net",
+                "--die-with-parent",
+                "--new-session",
+                "--ro-bind",
+                "/usr",
+                "/usr",
+                "--symlink",
+                "usr/bin",
+                "/bin",
+                "--symlink",
+                "usr/lib",
+                "/lib",
+                "--symlink",
+                "usr/lib64",
+                "/lib64",
+                "--symlink",
+                "usr/sbin",
+                "/sbin",
+                "--ro-bind",
+                "/etc",
+                "/etc",
+                "--proc",
+                "/proc",
+                "--dev",
+                "/dev",
+                "--tmpfs",
+                "/tmp",
+                "--dir",
+                "/mnt",
+                "--dir",
+                str(_WSL_RESOLV_CONF.parent),
+                "--ro-bind",
+                str(_WSL_RESOLV_CONF),
+                str(_WSL_RESOLV_CONF),
+                "--dir",
+                "/opt",
+                "--dir",
+                str(_OUTER_RUNTIME_ROOT),
+                "--ro-bind",
+                str(self._bubblewrap),
+                str(_OUTER_BWRAP),
+                "--",
+                str(_OUTER_BWRAP),
                 "--unshare-all",
                 "--share-net",
                 "--die-with-parent",
@@ -654,6 +699,9 @@ class CodexSubscriptionRunner:
             "--ro-bind",
             str(self._executable),
             str(_OUTER_CODEX),
+            "--ro-bind",
+            str(self._bubblewrap),
+            str(_OUTER_BWRAP),
             "--bind",
             str(codex_home),
             str(_OUTER_CODEX_HOME),
@@ -698,8 +746,12 @@ class CodexSubscriptionRunner:
         ).rstrip()
         feature_args = [value for name in _DISABLED_FEATURES for value in ("--disable", name)]
         execution_workspace = _OUTER_WORKSPACE if self._bubblewrap else resolved_workspace
+        execution_path = (
+            f"{_OUTER_RUNTIME_ROOT}:/usr/bin:/bin" if self._bubblewrap else "/usr/bin:/bin"
+        )
         shell_environment_set = (
-            f'{{ PATH = "/usr/bin:/bin", HOME = {json.dumps(str(execution_workspace))}, '
+            f"{{ PATH = {json.dumps(execution_path)}, "
+            f"HOME = {json.dumps(str(execution_workspace))}, "
             'PYTHONDONTWRITEBYTECODE = "1" }'
         )
         inner_command = [
@@ -770,6 +822,10 @@ class CodexSubscriptionRunner:
             "ignore_user_config": True,
             "isolated_codex_home": True,
             "model": self._contract.model,
+            "nested_sandbox_binary_digest": (
+                sha256_file(self._bubblewrap) if self._bubblewrap else None
+            ),
+            "nested_sandbox_binary_path": (str(_OUTER_BWRAP) if self._bubblewrap else None),
             "outer_minimal_mount_namespace": self._bubblewrap is not None,
             "outer_workspace_read_only_except_allowed_files": (self._bubblewrap is not None),
             "reasoning_effort": self._contract.reasoning_effort,
@@ -806,6 +862,8 @@ class CodexSubscriptionRunner:
             if observed_profile_digest != developer_profile_digest:
                 raise CodexSubscriptionError("isolated Codex profile digest changed")
             environment = self._environment(_OUTER_CODEX_HOME if self._bubblewrap else codex_home)
+            if self._bubblewrap:
+                environment["PATH"] = execution_path
             if any(name in environment for name in _FORBIDDEN_ENV_NAMES):
                 raise CodexSubscriptionError("API credential environment reached Codex")
             try:

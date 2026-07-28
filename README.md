@@ -24,7 +24,10 @@ against the active Stage 3 evidence and does not reuse the rejected response.
 V1.14's six target cells are also preserved as an unjudged pre-action infrastructure failure: the
 minimal namespace omitted the exact WSL DNS symlink target, so no model turn, tool call, or file
 change occurred. V1.15 adds the resolver mount and an in-namespace DNS preflight, reuses the valid
-v1.14 profile, and authorizes only the untouched six-cell target grid plus its blind judge.
+v1.14 profile, and reached all six model turns. They still made no tool call or file change because
+the outer namespace did not expose the pinned `bwrap` required by Codex's inner sandbox. V1.16
+mounts only that exact binary at a private runtime path, proves nested sandbox startup in preflight,
+and requires one successful neutral live edit-and-test smoke before the unchanged grid can run.
 
 The design binds each compiled snapshot to the complete approved transition, enforces the selected
 Codex target profile, and evaluates generated benchmark policies through a capability-free Python
@@ -38,9 +41,9 @@ acceptance, allowed path collections are unique and canonically ordered, and the
 enforces each lifecycle transition's discriminated structural shape.
 This establishes compactness and lineage preservation, not a performance advantage.
 
-The repaired public comparison is frozen but unexecuted: three fresh tasks, two conditions, one
-repetition, and one secondary blind judge require at most seven saved-ChatGPT Codex subscription
-sessions. No provider-billed call or API key is used.
+The v1.16 public comparison is designed but unexecuted: one instrument smoke, three unchanged
+tasks, two conditions, one repetition, and one secondary blind judge require at most eight
+saved-ChatGPT Codex subscription sessions. No provider-billed call or API key is used.
 
 Eight exact-consent Codex tasks remain only in the external encrypted raw boundary; eight
 Kevin-confirmed behaviors remain approved artifacts. Deterministic software custody still seals
@@ -94,10 +97,11 @@ worked; its current target-visible projection did not beat an excellent profile.
 - A target-independent canonical runtime representation, compact Codex renderer, external
   governed release, exact clause-to-provenance manifest, context resolution, and a separately
   measured condition-neutral execution envelope.
-- Immutable failed v1.11 instrument, v1.13 role, and v1.14 resolver results plus a frozen v1.15
-  compact-projection protocol with three entirely fresh task fixtures, an independent scorer, six
+- Immutable failed v1.11 instrument, v1.13 role, v1.14 resolver, and v1.15 inner-sandbox results
+  plus a v1.16 compact-projection protocol with three entirely fresh task fixtures, an independent scorer, six
   target cells, one frozen isolated profile-remediation receipt, a corrected judge packet, local
-  seeded-defect sensitivity tests, an outer read-only target sandbox, and a seven-session maximum.
+  seeded-defect sensitivity tests, nested inner/outer target sandbox validation, a mandatory live
+  instrument smoke, and an eight-session maximum.
 - Structural `SourceConnector`, `TargetRunner`, and condition-blind `Scorer` ports; a Codex
   app-server adapter pinned to CLI `0.145.0` and its version-generated `thread/list`/`thread/read`
   schemas.

@@ -50,7 +50,7 @@ def is_interpreter_generated_path(path: str | None) -> bool:
 class CompactExecutionContract(FrozenModel):
     """Machine-validated identity and isolation settings frozen before live sessions."""
 
-    contract_version: Literal["1.0.0", "1.1.0", "1.2.0", "1.3.0"] = "1.0.0"
+    contract_version: Literal["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0"] = "1.0.0"
     design_digest: Sha256Digest
     execution_protocol_digest: Sha256Digest
     cli_version: Literal["codex-cli 0.145.0"] = "codex-cli 0.145.0"
@@ -67,6 +67,7 @@ class CompactExecutionContract(FrozenModel):
     maximum_subscription_sessions: Literal[7, 8, 9] = 9
     profile_author_sessions: Literal[0, 1] = 1
     profile_review_sessions: Literal[0, 1] = 1
+    instrument_smoke_sessions: Literal[1] | None = None
     target_sessions: Literal[6] = 6
     judge_sessions: Literal[1] = 1
     target_sandbox: Literal[
@@ -97,6 +98,7 @@ class CompactExecutionContract(FrozenModel):
             if (
                 self.maximum_subscription_sessions != 9
                 or self.profile_author_sessions != 1
+                or self.instrument_smoke_sessions is not None
                 or self.target_sandbox != "workspace-write"
                 or self.target_outer_sandbox_digest is not None
                 or self.target_workspace_policy != "workspace-writable"
@@ -108,6 +110,7 @@ class CompactExecutionContract(FrozenModel):
             self.maximum_subscription_sessions != 8
             or self.profile_author_sessions != 0
             or self.profile_review_sessions != 1
+            or self.instrument_smoke_sessions is not None
             or self.target_sandbox != "workspace-write-inside-read-only-outer-mount-namespace"
             or self.target_outer_sandbox_digest != self.role_outer_sandbox_digest
             or self.target_workspace_policy != "workspace-read-only-except-registered-source-file"
@@ -119,6 +122,7 @@ class CompactExecutionContract(FrozenModel):
             self.maximum_subscription_sessions != 7
             or self.profile_author_sessions != 0
             or self.profile_review_sessions != 0
+            or self.instrument_smoke_sessions is not None
             or self.target_sandbox != "workspace-write-inside-read-only-outer-mount-namespace"
             or self.target_outer_sandbox_digest != self.role_outer_sandbox_digest
             or self.target_workspace_policy != "workspace-read-only-except-registered-source-file"
@@ -126,11 +130,26 @@ class CompactExecutionContract(FrozenModel):
             or self.inherited_profile_receipt_digest is None
         ):
             raise ValueError("compact execution contract v1.3 settings drifted")
+        elif self.contract_version == "1.4.0" and (
+            self.maximum_subscription_sessions != 8
+            or self.profile_author_sessions != 0
+            or self.profile_review_sessions != 0
+            or self.instrument_smoke_sessions != 1
+            or self.target_sandbox != "workspace-write-inside-read-only-outer-mount-namespace"
+            or self.target_outer_sandbox_digest != self.role_outer_sandbox_digest
+            or self.target_workspace_policy != "workspace-read-only-except-registered-source-file"
+            or self.target_runner_source_digest is None
+            or self.inherited_profile_receipt_digest is None
+        ):
+            raise ValueError("compact execution contract v1.4 settings drifted")
         return self
 
     @property
     def content_digest(self) -> Sha256Digest:
-        return canonical_digest(self)
+        payload = self.model_dump(mode="json", round_trip=True)
+        if self.instrument_smoke_sessions is None:
+            payload.pop("instrument_smoke_sessions")
+        return canonical_digest(payload)
 
 
 def load_compact_execution_contract(
@@ -145,6 +164,7 @@ def load_compact_execution_contract(
         "1.13.0": "EXECUTION_CONTRACT-v1.1.json",
         "1.14.0": "EXECUTION_CONTRACT-v1.2.json",
         "1.15.0": "EXECUTION_CONTRACT-v1.3.json",
+        "1.16.0": "EXECUTION_CONTRACT-v1.4.json",
     }.get(design.design_version, "EXECUTION_CONTRACT-v1.0.json")
     contract = CompactExecutionContract.model_validate_json((root / contract_name).read_bytes())
     if contract.design_digest != design.content_digest:
@@ -157,6 +177,8 @@ def load_compact_execution_contract(
         raise ValueError("compact profile-author session budget drifted")
     if contract.profile_review_sessions != design.profile_review_sessions:
         raise ValueError("compact profile-review session budget drifted")
+    if contract.instrument_smoke_sessions != design.instrument_smoke_sessions:
+        raise ValueError("compact instrument-smoke session budget drifted")
     if contract.target_runner_source_digest is not None and (
         contract.target_runner_source_digest
         != sha256_file(

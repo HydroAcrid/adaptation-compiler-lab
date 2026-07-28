@@ -1,6 +1,6 @@
 # Frozen execution protocol
 
-Status: v1.15 designed and frozen; no v1.15 target session has started. V1.11 remains an
+Status: v1.16 designed but not yet frozen; no v1.16 session has started. V1.11 remains an
 immutable failed result: all six records were invalid because the trusted scorer resolved the
 virtual-environment interpreter to its base executable, and five target workspaces contained
 forbidden test or bytecode changes. V1.12 introduced entirely fresh tasks, a semantics-preserving
@@ -22,6 +22,17 @@ V1.15 mounts that exact resolver file, fails preflight unless DNS works inside t
 namespace, reuses the already valid v1.14 profile receipt, and authorizes only six fresh target
 sessions plus one blind judge. It changes no task, condition material, scorer, model, or target
 write permission.
+
+All six v1.15 model turns then reached Codex but failed before any tool call or file change:
+Codex's inner workspace-write sandbox could not find `bwrap` because the minimal outer namespace
+intentionally exposed only `/usr/bin:/bin`, while the pinned binary lives in the external
+toolchain. Those invalid records and encrypted traces are preserved unchanged; the mapping remains
+sealed and no judge or unblinding occurred. V1.16 mounts only the same digest-pinned `bwrap` binary
+at `/opt/acl-codex-target/bwrap`, exposes that one private runtime directory on the target PATH,
+and requires the preflight to launch a nested sandbox successfully. Before the six-cell comparison,
+one neutral live smoke must edit its sole writable production file, execute the bounded local test,
+pass an independent post-run test, and freeze a valid receipt. V1.16 changes no experimental task,
+condition material, scorer, model, or target write permission.
 
 The v1.15 trusted scorer uses the project virtual environment without resolving its symlink and
 sets the repository `src` directory as `PYTHONPATH`. Python bytecode is disabled; any interpreter-
@@ -70,10 +81,11 @@ measurement, or envelope digest differs from v1.9.
    digest, the deterministic full runtime-fixture tree digest, and preregistration checksum.
 3. Prove local scorer sensitivity with reference, stale-rule, missed-exception, scope-leak,
    unnecessary-change, and forbidden-path implementations.
-4. Only then may one isolated remediation reviewer receive the approved evidence and the frozen
-   v1.11 profile drafts. It receives no compiled material, task, fixture, score, or result.
-5. Freeze the remediated three-stage profile before creating the private condition mapping.
-6. Create a fresh secret randomization seed and private six-cell run order.
+4. Reuse the already frozen valid v1.14 profile remediation receipt; no new profile session is
+   permitted.
+5. Run exactly one neutral live instrument smoke and freeze its validity receipt.
+6. Only after that receipt is committed, create a fresh secret randomization seed and private
+   six-cell run order.
 7. Run fresh isolated Codex sessions with identical model, reasoning, permissions, timeout,
    workspace state, and shared envelope.
 8. Persist automated records and validity receipts before creating an anonymous judge packet.
@@ -84,7 +96,7 @@ measurement, or envelope digest differs from v1.9.
 
 The frozen v1.14 remediation reviewer received the same eligible evidence as construction and only
 the frozen v1.11 profile drafts, but no projection, compiled pack, tasks, mappings, scores, target
-outputs, or prior target outputs. V1.15 creates no new profile role. Construction does not receive
+outputs, or prior target outputs. V1.16 creates no new profile role. Construction does not receive
 task fixtures or scorer outcomes. Targets receive one blinded condition and the identical shared
 envelope. The judge receives the exact allowed-path and neutral execution constraints but no
 condition identity.
@@ -95,16 +107,17 @@ The deferred external-validation study is outside this workspace and outside thi
 
 - new profile author: 0 sessions;
 - isolated remediation reviewer: 0 sessions (the valid v1.14 receipt is reused);
+- neutral live instrument smoke: 1 session;
 - targets: 3 tasks × 2 conditions × 1 repetition = 6 sessions; and
 - isolated judge: 1 session.
 
-Maximum: 7 saved-ChatGPT Codex subscription sessions. Provider-billed calls: 0. API keys: 0.
+Maximum: 8 saved-ChatGPT Codex subscription sessions. Provider-billed calls: 0. API keys: 0.
 No retry is allowed for an agent, validity, timeout, or post-action failure. A future amendment is
 required before any narrowly defined pre-action infrastructure retry.
 
 ## Frozen execution identity
 
-All seven sessions use the pinned Linux `codex-cli 0.145.0` binary with digest
+All eight sessions use the pinned Linux `codex-cli 0.145.0` binary with digest
 `sha256:a2a05dafaa1acb002a45eaec0a462de5b13694fcfcd7bc43305f14781ce7be14`,
 the exact `gpt-5.6-luna` model, medium reasoning, Standard service mode, saved ChatGPT
 authentication, and a 600-second limit. API-key environment variables are removed. Role sessions
@@ -131,8 +144,10 @@ quality or discipline regresses.
 
 ## Stopping and tuning
 
-Renderer version 1.1.0 and the v1.15 tasks are immutable once any target session starts. Observed
-live outputs may inform a later version and entirely new tasks,
-but they may not tune and rerun this version against the same tasks. Stop immediately on
+Renderer version 1.1.0 and the experimental tasks remain immutable. The v1.16 retry is allowed
+only because v1.15 ended before every tool call and file change, no condition was unblinded, and
+construction changed only the execution instrument. Observed task behavior may inform a later
+version and entirely new tasks, but it may not tune and rerun this version against the same tasks.
+Stop immediately on
 private-plan drift, condition leakage, workspace escape, missing receipt, API-key use,
 external-validation access, or scorer substitution.

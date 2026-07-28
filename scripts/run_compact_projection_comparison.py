@@ -443,12 +443,13 @@ def main() -> None:
     benchmark = repo / "development_benchmark_compact_projection"
     design = load_compact_projection_design(benchmark)
     contract = load_compact_execution_contract(benchmark, design=design)
-    retry_iteration = design.design_version == "1.15.0"
+    retry_iteration = design.design_version in {"1.15.0", "1.16.0"}
     iteration = design.design_version in {
         "1.12.0",
         "1.13.0",
         "1.14.0",
         "1.15.0",
+        "1.16.0",
     }
     if iteration and arguments.bubblewrap is None:
         raise RuntimeError("repaired target execution requires the pinned outer sandbox")
@@ -563,8 +564,22 @@ def main() -> None:
     output_root = arguments.output_root.resolve()
     config_root = arguments.config_root.resolve()
     public_results = benchmark / (
-        "results-v1.15" if retry_iteration else "results-v1.14" if iteration else "results"
+        f"results-v{design.design_version.removesuffix('.0')}"
+        if retry_iteration
+        else "results-v1.14"
+        if iteration
+        else "results"
     )
+    if design.design_version == "1.16.0":
+        smoke = json.loads((benchmark / "INSTRUMENT_SMOKE-v1.16.json").read_text(encoding="utf-8"))
+        if (
+            not isinstance(smoke, dict)
+            or smoke.get("valid") is not True
+            or smoke.get("design_digest") != design.content_digest
+            or smoke.get("execution_contract_digest") != contract.content_digest
+            or smoke.get("target_runner_source_digest") != contract.target_runner_source_digest
+        ):
+            raise RuntimeError("v1.16 target execution requires its valid live smoke receipt")
     if output_root.exists() or config_root.exists() or public_results.exists():
         raise RuntimeError("compact execution outputs already exist; refusing to overwrite")
     output_root.mkdir(parents=True, mode=0o700)
