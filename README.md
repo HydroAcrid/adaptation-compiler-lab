@@ -5,6 +5,15 @@ from completed coding work into typed external artifacts. Its research question 
 compiled adaptation pack can improve a target coding agent on unseen work beyond a base agent,
 ordinary memory, and a strong static profile.
 
+Milestone 6A.3 now provides a positive fair comparison against the strong static profile. On six
+fresh development tasks delivered through the same exact-once user-task channel, compiled
+adaptation won five automated task pairs and tied one. It passed 16/16 objective, 20/20 diagnostic,
+and 12/12 neutral checks versus 16/16, 14/20, and 11/12 for the profile, with all 12 runs valid.
+The compiled projection remained smaller at every evidence stage. This supports the bounded claim
+that lifecycle-aware compilation outperformed the cumulative static profile on this fresh suite;
+it is not a powered general claim or new cross-model proof. See
+[`development_benchmark_task_channel_comparison/results-v1/MILESTONE_6A3_RESULT.md`](development_benchmark_task_channel_comparison/results-v1/MILESTONE_6A3_RESULT.md).
+
 Milestone 6A.1 implements a compact runtime projection without changing Milestone 6A's failed
 product result. The compiler now keeps complete governance, provenance, history, and rollback data
 in an external governed release while sending Codex only effective behavior, necessary scope, and
@@ -135,7 +144,7 @@ remain encrypted outside Git and synchronized storage; only minimized signed met
 behavioral artifacts enter the compiler ledger. It has not exposed held-out work to construction
 or executed pilot trials. It never trains or modifies weights,
 automatically creates/installs tools, integrates with Kairn, provides a web UI, uses remote
-research-data storage, publishes publicly, or makes empirical claims. The private GitHub repository
+research-data storage, publishes publicly, or makes unbounded empirical claims. The private GitHub repository
 is the code/documentation system of record; raw research data, raw traces, and keys must never be
 committed or pushed. Repository text, webpages, retrieval, agent text, and tool output remain
 untrusted context rather than user instruction.

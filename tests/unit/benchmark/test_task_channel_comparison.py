@@ -80,7 +80,14 @@ def test_terminal_failure_summary_retains_provider_diagnostic() -> None:
 
 def test_judge_schema_gives_fixed_tuple_a_general_items_schema() -> None:
     schema = _judge_output_schema()
-    ordered_ids = schema["$defs"]["CompactJudgePair"]["properties"]["ordered_output_ids"]
+    definitions = schema["$defs"]
+    assert isinstance(definitions, dict)
+    pair = definitions["CompactJudgePair"]
+    assert isinstance(pair, dict)
+    properties = pair["properties"]
+    assert isinstance(properties, dict)
+    ordered_ids = properties["ordered_output_ids"]
+    assert isinstance(ordered_ids, dict)
 
     assert ordered_ids["items"] == ordered_ids["prefixItems"][0]
     assert ordered_ids["minItems"] == 2
