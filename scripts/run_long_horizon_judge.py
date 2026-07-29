@@ -116,13 +116,15 @@ def main() -> None:
     parser.add_argument("--codex-executable", type=Path, required=True)
     parser.add_argument("--saved-auth", type=Path, required=True)
     parser.add_argument("--bubblewrap", type=Path, required=True)
+    parser.add_argument("--results-version", choices=("v1", "v1.1"), default="v1")
     parser.add_argument("--preflight-only", action="store_true")
     arguments = parser.parse_args()
     if any(os.environ.get(name) for name in _FORBIDDEN_ENV):
         raise RuntimeError("API keys are forbidden for the long-horizon judge")
     repo = arguments.repo.expanduser().resolve()
     root = repo / "development_benchmark_long_horizon"
-    results = root / "results-v1"
+    version = arguments.results_version
+    results = root / f"results-{version}"
     runner = CodexStructuredRoleRunner(
         executable=arguments.codex_executable,
         saved_auth_file=arguments.saved_auth,
@@ -134,9 +136,9 @@ def main() -> None:
     if arguments.preflight_only:
         print(canonical_json(runner.verify_preconditions()))
         return
-    completion = json.loads((results / "BLIND_COMPLETION-v1.json").read_text())
-    bindings = json.loads((results / "JUDGE_BINDINGS-v1.json").read_text())
-    packet_path = results / "JUDGE_PACKET-v1.md"
+    completion = json.loads((results / f"BLIND_COMPLETION-{version}.json").read_text())
+    bindings = json.loads((results / f"JUDGE_BINDINGS-{version}.json").read_text())
+    packet_path = results / f"JUDGE_PACKET-{version}.md"
     if (
         completion.get("condition_mapping_withheld") is not True
         or completion.get("instrument_valid") is not True
@@ -167,7 +169,7 @@ def main() -> None:
     )
     output_root = arguments.output_root.expanduser().resolve()
     config_root = arguments.config_root.expanduser().resolve()
-    receipt_path = results / "JUDGE_RECEIPT-v1.json"
+    receipt_path = results / f"JUDGE_RECEIPT-{version}.json"
     if output_root.exists() or config_root.exists() or receipt_path.exists():
         raise RuntimeError("long-horizon judge outputs already exist")
     output_root.mkdir(parents=True, mode=0o700)
@@ -181,7 +183,7 @@ def main() -> None:
         ),
     )
     result = runner.run(
-        role_id="long-horizon-condition-blind-judge",
+        role_id=f"long-horizon-condition-blind-judge-{version}",
         developer_contract=(
             "You are a fresh condition-blind software-quality judge with no tools, repository, "
             "automated scores, condition material, condition mapping, external study, or prior "
@@ -237,7 +239,7 @@ def main() -> None:
         media_type="application/vnd.acl.long-horizon-judge+json",
     )
     receipt = {
-        "receipt_version": "1.0.0",
+        "receipt_version": "1.1.0" if version == "v1.1" else "1.0.0",
         "authentication": "saved_chatgpt",
         "model": result.model,
         "reasoning_effort": result.reasoning_effort,

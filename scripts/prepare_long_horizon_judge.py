@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import os
@@ -25,13 +26,19 @@ def _exclusive_write(path: Path, payload: bytes, *, mode: int = 0o644) -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--results-version", choices=("v1", "v1.1"), default="v1")
+    arguments = parser.parse_args()
+    version = arguments.results_version
     repo = Path(__file__).parents[1].resolve()
     root = repo / "development_benchmark_long_horizon"
-    results = root / "results-v1"
-    report_path = results / "BLIND_REPORT-v1.json"
+    results = root / f"results-{version}"
+    report_path = results / f"BLIND_REPORT-{version}.json"
     report = json.loads(report_path.read_text(encoding="utf-8"))
     design = LongHorizonDesign.model_validate_json((root / "PREREGISTRATION-v1.json").read_bytes())
-    public = LongHorizonPublicPlan.model_validate_json((root / "PUBLIC_PLAN-v1.json").read_bytes())
+    public = LongHorizonPublicPlan.model_validate_json(
+        (root / f"PUBLIC_PLAN-{version}.json").read_bytes()
+    )
     if (
         report.get("instrument_valid") is not True
         or report.get("condition_mapping_withheld") is not True
@@ -71,7 +78,7 @@ def main() -> None:
             f"### Second — {ordered[1]}\n\n```python\n{sources[1].rstrip()}\n```\n"
         )
     binding_value = {
-        "bindings_version": "1.0.0",
+        "bindings_version": "1.1.0" if version == "v1.1" else "1.0.0",
         "blind_report_digest": sha256_file(report_path),
         "condition_mapping_withheld": True,
         "automated_scores_included": False,
@@ -79,7 +86,7 @@ def main() -> None:
         "external_validation_accessed": False,
     }
     packet = (
-        "# Milestone 6A.5 condition-blind judge packet\n\n"
+        f"# Milestone 6A.5 condition-blind judge packet {version}\n\n"
         "Compare each First/Second implementation against the supplied task. Judge instruction "
         "adherence, implementation quality, maintainability, safety, and unsupported assumptions. "
         "Use a tie when there is no meaningful quality difference. Do not infer condition "
@@ -87,18 +94,18 @@ def main() -> None:
         "absent.\n\n" + "\n".join(sections)
     )
     _exclusive_write(
-        results / "JUDGE_BINDINGS-v1.json",
+        results / f"JUDGE_BINDINGS-{version}.json",
         (canonical_json(binding_value) + "\n").encode("utf-8"),
     )
     _exclusive_write(
-        results / "JUDGE_PACKET-v1.md",
+        results / f"JUDGE_PACKET-{version}.md",
         packet.encode("utf-8"),
     )
     completion = {
-        "completion_version": "1.0.0",
+        "completion_version": "1.1.0" if version == "v1.1" else "1.0.0",
         "blind_report_digest": sha256_file(report_path),
-        "judge_bindings_digest": sha256_file(results / "JUDGE_BINDINGS-v1.json"),
-        "judge_packet_digest": sha256_file(results / "JUDGE_PACKET-v1.md"),
+        "judge_bindings_digest": sha256_file(results / f"JUDGE_BINDINGS-{version}.json"),
+        "judge_packet_digest": sha256_file(results / f"JUDGE_PACKET-{version}.md"),
         "condition_mapping_withheld": True,
         "instrument_valid": True,
         "provider_billed_calls": 0,
@@ -106,7 +113,7 @@ def main() -> None:
         "external_validation_accessed": False,
     }
     _exclusive_write(
-        results / "BLIND_COMPLETION-v1.json",
+        results / f"BLIND_COMPLETION-{version}.json",
         (canonical_json(completion) + "\n").encode("utf-8"),
     )
     print(
