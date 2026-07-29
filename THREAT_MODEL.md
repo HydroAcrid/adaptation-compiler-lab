@@ -59,6 +59,13 @@ approval, or artifact promotion.
 | Feedback is rewritten or attached to the wrong pack | Helped/hurt/irrelevant events are append-only, subject-scoped, digest-bound to an exact stage pack, and rejected on conflicting ID reuse. | The owner supplies relevance and outcome judgments; this lightweight signal is not objective correctness evidence. |
 | Static-profile comparison receives unequal evidence | Each cumulative stage binds both conditions to the same eligible evidence, identical task budget, and isolated author/reviewer packets; automated task scenarios are primary evidence. | Context isolation is process-enforced and the one-repetition public comparison remains diagnostic, not a powered claim. |
 | Subscription comparison accidentally incurs provider charges or reaches sealed custody | The frozen design requires saved ChatGPT authentication, forbids API keys, contains no external-study locators, and caps execution at 19 subscription sessions / 12 target runs. | Live quota and authentication must be checked immediately before any separately authorized run. |
+| Automatic runtime learns an ordinary task request as a durable preference | Initial detection requires explicit feedback grammar; ordinary task text yields no capture and no candidate. Every admitted signal becomes an evaluation candidate before a transition. | Natural-language coverage is intentionally narrow until false-learning behavior is measured through a trusted host integration. |
+| Untrusted content imitates a user correction | Source authority is checked before grammar or capture. Agent, tool, repository, web, retrieval, and system sources produce no behavior or route even when property-generated text uses accepted prefixes. | A compromised host that falsely labels origin as the user remains inside the local trust boundary; host authentication is required next. |
+| Standing policy becomes blanket capability authority | The signed policy admits only bounded memory, preference, example, procedure, and prompt-rule routes. Secret, tool, plugin, MCP, network, credential, adapter, and preset changes block or enter a durable inactive review queue. | Review UX and authenticated concrete Codex pickup remain future increments. |
+| Host interruption duplicates learning or loses target delivery | Observation IDs are unique per subject, cycle/state/review/event appends are atomic, source pages replay until sink acknowledgement, historical deliveries reproduce exact receipts, and sinks are required to be idempotent. | The concrete Codex adapter must durably own its cursor and authenticate event origin; no background adapter is shipped yet. |
+| Revoked last rule survives as prompt boilerplate | Context projection may be empty; exact revocation creates a new release and delivery receipt whose target material is zero bytes and whose delivered task is unchanged. | Already-running third-party sessions cannot be remotely scrubbed; delivery applies at the next controlled session/task boundary. |
+| Concurrent automatic cycles overwrite one another | Append-only state generations and exact prior/result digests implement compare-and-swap; stale heads fail before state/cycle insertion. SQLite update/delete triggers protect states, cycles, and feedback. | Multi-device synchronization is not implemented or claimed. |
+| Capability preset contaminates permanent learning | Every active artifact has an external layer binding. Preset and personal-overlay layers require an exact preset identity; automatic feedback transitions reject both layers. | Source/license/security review, activation leases, progressive loading, and clean deactivation remain Milestone 6B work. |
 
 ## Privacy policy for this phase
 
@@ -113,6 +120,12 @@ unscheduled pilot execution.
     retains exact consent, capture, evidence, evaluation, and review lineage.
 21. A scoped correction may suppress a broader instruction only inside its registered scope.
 22. Milestone 6A execution cannot read or mutate the deferred external-validation custody boundary.
+23. Automatic detection checks authenticated source authority before inspecting adaptation grammar.
+24. A standing policy cannot auto-create skills, tools, integrations, adapter data, or presets.
+25. A correction cannot enter a runtime release without an immutable EvaluationCase candidate and
+    exact approved successor.
+26. Revoking the final applicable artifact produces zero target-visible adaptation bytes.
+27. Runtime state, cycle, and feedback histories are append-only and stale state heads fail closed.
 
 ## Incident posture
 

@@ -1,0 +1,104 @@
+{
+  "$defs": {
+    "RuntimeFeedbackOutcome": {
+      "enum": [
+        "helped",
+        "hurt",
+        "irrelevant"
+      ],
+      "title": "RuntimeFeedbackOutcome",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Append-only helped/hurt/irrelevant feedback for one exact runtime delivery.",
+  "properties": {
+    "activated_artifact_ids": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Activated Artifact Ids",
+      "type": "array"
+    },
+    "correction_key": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Correction Key"
+    },
+    "cycle_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Cycle Id",
+      "type": "string"
+    },
+    "delivery_receipt_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Delivery Receipt Digest",
+      "type": "string"
+    },
+    "feedback_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Feedback Id",
+      "type": "string"
+    },
+    "feedback_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Feedback Version",
+      "type": "string"
+    },
+    "outcome": {
+      "$ref": "#/$defs/RuntimeFeedbackOutcome"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "relevant_artifact_ids": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Relevant Artifact Ids",
+      "type": "array"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "feedback_id",
+    "subject_id",
+    "cycle_id",
+    "delivery_receipt_digest",
+    "outcome",
+    "relevant_artifact_ids",
+    "activated_artifact_ids",
+    "recorded_at"
+  ],
+  "title": "RuntimeActivationFeedback",
+  "type": "object"
+}

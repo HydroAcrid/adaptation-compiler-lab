@@ -1,0 +1,136 @@
+{
+  "$defs": {
+    "TaskRecordRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "const": null,
+          "default": null,
+          "title": "Content Digest",
+          "type": "null"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "task_record",
+          "default": "task_record",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version"
+      ],
+      "title": "TaskRecordRef",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Raw-free exact binding for one task-scoped runtime delivery.",
+  "properties": {
+    "composed_release_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Composed Release Digest",
+      "type": "string"
+    },
+    "delivered_at": {
+      "format": "date-time",
+      "title": "Delivered At",
+      "type": "string"
+    },
+    "delivered_task_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Delivered Task Digest",
+      "type": "string"
+    },
+    "external_release_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "External Release Digest",
+      "type": "string"
+    },
+    "material_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Material Digest",
+      "type": "string"
+    },
+    "material_occurrences": {
+      "enum": [
+        0,
+        1
+      ],
+      "title": "Material Occurrences",
+      "type": "integer"
+    },
+    "material_utf8_bytes": {
+      "minimum": 0,
+      "title": "Material Utf8 Bytes",
+      "type": "integer"
+    },
+    "original_task_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Original Task Digest",
+      "type": "string"
+    },
+    "projection_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Projection Digest",
+      "type": "string"
+    },
+    "projection_manifest_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Projection Manifest Digest",
+      "type": "string"
+    },
+    "receipt_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "receipt_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Receipt Version",
+      "type": "string"
+    },
+    "target_family": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Target Family",
+      "type": "string"
+    },
+    "task_ref": {
+      "$ref": "#/$defs/TaskRecordRef"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "task_ref",
+    "target_family",
+    "original_task_digest",
+    "external_release_digest",
+    "composed_release_digest",
+    "projection_digest",
+    "projection_manifest_digest",
+    "material_digest",
+    "material_utf8_bytes",
+    "delivered_task_digest",
+    "material_occurrences",
+    "delivered_at"
+  ],
+  "title": "RuntimeDeliveryReceipt",
+  "type": "object"
+}

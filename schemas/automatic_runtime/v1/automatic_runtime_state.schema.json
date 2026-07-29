@@ -1,0 +1,2974 @@
+{
+  "$defs": {
+    "ActorKind": {
+      "enum": [
+        "user",
+        "human_reviewer",
+        "agent",
+        "tool",
+        "system"
+      ],
+      "title": "ActorKind",
+      "type": "string"
+    },
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "display_name": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "kind": {
+          "$ref": "#/$defs/ActorKind"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "actor_id",
+        "kind"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "AdaptationLayer": {
+      "description": "Separately governed inputs combined by the future product runtime.",
+      "enum": [
+        "permanent_profile",
+        "current_context",
+        "temporary_capability_preset",
+        "personal_preset_overlay"
+      ],
+      "title": "AdaptationLayer",
+      "type": "string"
+    },
+    "Approval": {
+      "additionalProperties": false,
+      "properties": {
+        "approver": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "decided_at": {
+          "format": "date-time",
+          "title": "Decided At",
+          "type": "string"
+        },
+        "decision": {
+          "$ref": "#/$defs/ApprovalDecision"
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "rationale": {
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision",
+        "approver",
+        "decided_at",
+        "policy_version",
+        "rationale"
+      ],
+      "title": "Approval",
+      "type": "object"
+    },
+    "ApprovalDecision": {
+      "enum": [
+        "approved",
+        "rejected"
+      ],
+      "title": "ApprovalDecision",
+      "type": "string"
+    },
+    "ArtifactGovernanceBinding": {
+      "additionalProperties": false,
+      "description": "Complete active artifact lineage retained in the external release.",
+      "properties": {
+        "artifact_ref": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "capture_refs": {
+          "items": {
+            "$ref": "#/$defs/CaptureReceiptRef"
+          },
+          "minItems": 1,
+          "title": "Capture Refs",
+          "type": "array"
+        },
+        "consent_refs": {
+          "items": {
+            "$ref": "#/$defs/ConsentReceiptRef"
+          },
+          "minItems": 1,
+          "title": "Consent Refs",
+          "type": "array"
+        },
+        "evaluation_case_refs": {
+          "items": {
+            "$ref": "#/$defs/EvaluationCaseRef"
+          },
+          "minItems": 1,
+          "title": "Evaluation Case Refs",
+          "type": "array"
+        },
+        "evidence_links": {
+          "$ref": "#/$defs/EvidenceLinks"
+        },
+        "review_approver_ids": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Review Approver Ids",
+          "type": "array"
+        },
+        "review_policy_versions": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Review Policy Versions",
+          "type": "array"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        }
+      },
+      "required": [
+        "artifact_ref",
+        "scope",
+        "evidence_links",
+        "evaluation_case_refs",
+        "consent_refs",
+        "capture_refs",
+        "review_approver_ids",
+        "review_policy_versions"
+      ],
+      "title": "ArtifactGovernanceBinding",
+      "type": "object"
+    },
+    "ArtifactKind": {
+      "enum": [
+        "memory",
+        "preference",
+        "example",
+        "procedure",
+        "prompt_rule",
+        "skill",
+        "tool_recommendation"
+      ],
+      "title": "ArtifactKind",
+      "type": "string"
+    },
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "artifact",
+          "default": "artifact",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "ArtifactRenderProjection": {
+      "additionalProperties": false,
+      "description": "Minimum approved behavioral artifact accepted by file renderers.",
+      "properties": {
+        "artifact_ref": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "artifact_type": {
+          "$ref": "#/$defs/ArtifactKind"
+        },
+        "behavioral_contract": {
+          "$ref": "#/$defs/BehavioralContract"
+        },
+        "claim_authorities": {
+          "$ref": "#/$defs/ClaimAuthoritySet"
+        },
+        "evaluation_cases": {
+          "items": {
+            "$ref": "#/$defs/EvaluationCaseRef"
+          },
+          "minItems": 1,
+          "title": "Evaluation Cases",
+          "type": "array"
+        },
+        "evidence_links": {
+          "$ref": "#/$defs/EvidenceLinks"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires At"
+        },
+        "precedence": {
+          "default": 0,
+          "maximum": 10000,
+          "minimum": -10000,
+          "title": "Precedence",
+          "type": "integer"
+        },
+        "privacy": {
+          "$ref": "#/$defs/PrivacyContext"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "review_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Review At"
+        },
+        "revoked": {
+          "default": false,
+          "title": "Revoked",
+          "type": "boolean"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "source_partitions": {
+          "items": {
+            "$ref": "#/$defs/Partition"
+          },
+          "minItems": 1,
+          "title": "Source Partitions",
+          "type": "array"
+        },
+        "target_compatibility": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Target Compatibility",
+          "type": "array"
+        }
+      },
+      "required": [
+        "artifact_ref",
+        "artifact_type",
+        "behavioral_contract",
+        "scope",
+        "evidence_links",
+        "evaluation_cases",
+        "claim_authorities",
+        "privacy",
+        "source_partitions"
+      ],
+      "title": "ArtifactRenderProjection",
+      "type": "object"
+    },
+    "AuthorityClass": {
+      "enum": [
+        "user_normative",
+        "authorized_evaluator",
+        "project_policy",
+        "observational",
+        "proposal_only",
+        "untrusted_context",
+        "synthetic_only"
+      ],
+      "title": "AuthorityClass",
+      "type": "string"
+    },
+    "BehavioralContract": {
+      "additionalProperties": false,
+      "properties": {
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "non_goals": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Non Goals",
+          "type": "array"
+        },
+        "required_behaviors": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Required Behaviors",
+          "type": "array"
+        },
+        "verification_requirements": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Verification Requirements",
+          "type": "array"
+        }
+      },
+      "required": [
+        "intent",
+        "required_behaviors",
+        "verification_requirements"
+      ],
+      "title": "BehavioralContract",
+      "type": "object"
+    },
+    "CapabilityPresetRef": {
+      "additionalProperties": false,
+      "description": "Portable identity only; importing and evaluating presets belongs to Milestone 6B.",
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "preset_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Preset Id",
+          "type": "string"
+        },
+        "preset_version": {
+          "minLength": 1,
+          "title": "Preset Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "preset_id",
+        "preset_version",
+        "content_digest"
+      ],
+      "title": "CapabilityPresetRef",
+      "type": "object"
+    },
+    "CaptureReceipt": {
+      "additionalProperties": false,
+      "description": "Signed record of a payload capture or synthetic capture preview.",
+      "properties": {
+        "captured_at": {
+          "format": "date-time",
+          "title": "Captured At",
+          "type": "string"
+        },
+        "consent_ref": {
+          "$ref": "#/$defs/ConsentReceiptRef"
+        },
+        "governance_type": {
+          "const": "capture_receipt",
+          "default": "capture_receipt",
+          "title": "Governance Type",
+          "type": "string"
+        },
+        "payload_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Payload Digest",
+          "type": "string"
+        },
+        "receipt_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Receipt Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "signature": {
+          "$ref": "#/$defs/SignatureEnvelope"
+        },
+        "source_schema_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Source Schema Digest",
+          "type": "string"
+        },
+        "source_selector": {
+          "$ref": "#/$defs/SourceSelector"
+        },
+        "source_version": {
+          "minLength": 1,
+          "title": "Source Version",
+          "type": "string"
+        },
+        "subject_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "synthetic": {
+          "title": "Synthetic",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "receipt_id",
+        "subject_id",
+        "consent_ref",
+        "source_selector",
+        "source_version",
+        "source_schema_digest",
+        "payload_digest",
+        "captured_at",
+        "synthetic",
+        "signature"
+      ],
+      "title": "CaptureReceipt",
+      "type": "object"
+    },
+    "CaptureReceiptRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "governance_type": {
+          "const": "capture_receipt",
+          "default": "capture_receipt",
+          "title": "Governance Type",
+          "type": "string"
+        },
+        "object_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "content_digest"
+      ],
+      "title": "CaptureReceiptRef",
+      "type": "object"
+    },
+    "ClaimAuthority": {
+      "additionalProperties": false,
+      "description": "Claim-specific authority that a renderer must preserve without strengthening.",
+      "properties": {
+        "authority_class": {
+          "$ref": "#/$defs/AuthorityClass"
+        },
+        "claim_type": {
+          "$ref": "#/$defs/ClaimType"
+        },
+        "evidence_refs": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "minItems": 1,
+          "title": "Evidence Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "claim_type",
+        "authority_class",
+        "evidence_refs"
+      ],
+      "title": "ClaimAuthority",
+      "type": "object"
+    },
+    "ClaimAuthoritySet": {
+      "additionalProperties": false,
+      "properties": {
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/ClaimAuthority"
+          },
+          "minItems": 1,
+          "title": "Entries",
+          "type": "array"
+        }
+      },
+      "required": [
+        "entries"
+      ],
+      "title": "ClaimAuthoritySet",
+      "type": "object"
+    },
+    "ClaimType": {
+      "enum": [
+        "user_preference",
+        "user_correction",
+        "user_acceptance",
+        "project_requirement",
+        "task_outcome",
+        "behavioral_effectiveness",
+        "repository_fact",
+        "external_fact",
+        "proposed_lesson",
+        "synthetic_expectation"
+      ],
+      "title": "ClaimType",
+      "type": "string"
+    },
+    "ComposedRuntimeRelease": {
+      "additionalProperties": false,
+      "description": "Governed release plus non-target-visible ownership of each composition layer.",
+      "properties": {
+        "active_capability_presets": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/CapabilityPresetRef"
+          },
+          "title": "Active Capability Presets",
+          "type": "array"
+        },
+        "composition_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Composition Version",
+          "type": "string"
+        },
+        "governed_release": {
+          "$ref": "#/$defs/ExternalGovernedRelease"
+        },
+        "layer_bindings": {
+          "items": {
+            "$ref": "#/$defs/RuntimeLayerBinding"
+          },
+          "title": "Layer Bindings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "governed_release",
+        "layer_bindings"
+      ],
+      "title": "ComposedRuntimeRelease",
+      "type": "object"
+    },
+    "ConsentReceipt": {
+      "additionalProperties": false,
+      "description": "Signed permission for a subject, exact selector, uses, scope, and time bounds.",
+      "properties": {
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "governance_type": {
+          "const": "consent_receipt",
+          "default": "consent_receipt",
+          "title": "Governance Type",
+          "type": "string"
+        },
+        "issued_at": {
+          "format": "date-time",
+          "title": "Issued At",
+          "type": "string"
+        },
+        "permitted_uses": {
+          "items": {
+            "$ref": "#/$defs/PermittedUse"
+          },
+          "minItems": 1,
+          "title": "Permitted Uses",
+          "type": "array"
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "receipt_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Receipt Id",
+          "type": "string"
+        },
+        "retention_until": {
+          "format": "date-time",
+          "title": "Retention Until",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "signature": {
+          "$ref": "#/$defs/SignatureEnvelope"
+        },
+        "source_selector": {
+          "$ref": "#/$defs/SourceSelector"
+        },
+        "subject_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Subject Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "receipt_id",
+        "subject_id",
+        "source_selector",
+        "scope",
+        "permitted_uses",
+        "issued_at",
+        "expires_at",
+        "retention_until",
+        "policy_version",
+        "signature"
+      ],
+      "title": "ConsentReceipt",
+      "type": "object"
+    },
+    "ConsentReceiptRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "governance_type": {
+          "const": "consent_receipt",
+          "default": "consent_receipt",
+          "title": "Governance Type",
+          "type": "string"
+        },
+        "object_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "content_digest"
+      ],
+      "title": "ConsentReceiptRef",
+      "type": "object"
+    },
+    "EnvironmentFact": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "value": {
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "title": "EnvironmentFact",
+      "type": "object"
+    },
+    "EnvironmentSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_version": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "const": "unknown",
+              "type": "string"
+            }
+          ],
+          "default": "unknown",
+          "title": "Agent Version"
+        },
+        "environment_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Environment Id",
+          "type": "string"
+        },
+        "facts": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EnvironmentFact"
+          },
+          "title": "Facts",
+          "type": "array"
+        },
+        "harness_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Harness Version",
+          "type": "string"
+        },
+        "model_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "const": "unknown",
+              "type": "string"
+            }
+          ],
+          "default": "unknown",
+          "title": "Model Id"
+        },
+        "random_seed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "const": "unknown",
+              "type": "string"
+            }
+          ],
+          "default": "unknown",
+          "title": "Random Seed"
+        },
+        "repository_digest": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Repository Digest"
+        },
+        "tool_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Tool Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "environment_id",
+        "harness_version"
+      ],
+      "title": "EnvironmentSnapshot",
+      "type": "object"
+    },
+    "EvaluationCase": {
+      "additionalProperties": false,
+      "description": "Reviewable and replayable behavioral check.",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "environment": {
+          "$ref": "#/$defs/EnvironmentSnapshot"
+        },
+        "expected_behaviors": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Expected Behaviors",
+          "type": "array"
+        },
+        "failure_criteria": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Failure Criteria",
+          "type": "array"
+        },
+        "kind": {
+          "$ref": "#/$defs/EvaluationCaseKind"
+        },
+        "partition": {
+          "$ref": "#/$defs/Partition"
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "privacy": {
+          "$ref": "#/$defs/PrivacyContext"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "evaluation_case",
+          "default": "evaluation_case",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        },
+        "review": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Approval"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "scoring_rule": {
+          "$ref": "#/$defs/ScoringRule"
+        },
+        "setup": {
+          "$ref": "#/$defs/EvaluationSetup"
+        },
+        "source_evidence_refs": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "minItems": 1,
+          "title": "Source Evidence Refs",
+          "type": "array"
+        },
+        "source_outcome_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutcomeRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source_task_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TaskRecordRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "state": {
+          "$ref": "#/$defs/EvaluationCaseState"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "created_at",
+        "created_by",
+        "policy_version",
+        "state",
+        "kind",
+        "setup",
+        "expected_behaviors",
+        "failure_criteria",
+        "scoring_rule",
+        "environment",
+        "scope",
+        "source_evidence_refs",
+        "partition",
+        "privacy"
+      ],
+      "title": "EvaluationCase",
+      "type": "object"
+    },
+    "EvaluationCaseKind": {
+      "enum": [
+        "promotion",
+        "regression",
+        "development",
+        "benchmark"
+      ],
+      "title": "EvaluationCaseKind",
+      "type": "string"
+    },
+    "EvaluationCaseRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "evaluation_case",
+          "default": "evaluation_case",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "EvaluationCaseRef",
+      "type": "object"
+    },
+    "EvaluationCaseState": {
+      "enum": [
+        "candidate",
+        "reviewed",
+        "approved",
+        "rejected"
+      ],
+      "title": "EvaluationCaseState",
+      "type": "string"
+    },
+    "EvaluationSetup": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_context_refs": {
+          "default": [],
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TaskRecordRef"
+              },
+              {
+                "$ref": "#/$defs/OutcomeRef"
+              },
+              {
+                "$ref": "#/$defs/EvidenceRef"
+              },
+              {
+                "$ref": "#/$defs/EvaluationCaseRef"
+              },
+              {
+                "$ref": "#/$defs/LessonCandidateRef"
+              },
+              {
+                "$ref": "#/$defs/ArtifactRef"
+              },
+              {
+                "$ref": "#/$defs/ReleaseRef"
+              },
+              {
+                "$ref": "#/$defs/TargetPackRef"
+              }
+            ]
+          },
+          "title": "Allowed Context Refs",
+          "type": "array"
+        },
+        "allowed_tools": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Allowed Tools",
+          "type": "array"
+        },
+        "instructions": {
+          "minLength": 1,
+          "title": "Instructions",
+          "type": "string"
+        },
+        "stimulus": {
+          "minLength": 1,
+          "title": "Stimulus",
+          "type": "string"
+        }
+      },
+      "required": [
+        "instructions",
+        "stimulus"
+      ],
+      "title": "EvaluationSetup",
+      "type": "object"
+    },
+    "Evidence": {
+      "additionalProperties": false,
+      "description": "Evidence v1.0 compatibility plus exact signed-governance references in v1.1.",
+      "properties": {
+        "allowed_claim_types": {
+          "items": {
+            "$ref": "#/$defs/ClaimType"
+          },
+          "minItems": 1,
+          "title": "Allowed Claim Types",
+          "type": "array"
+        },
+        "authority_class": {
+          "$ref": "#/$defs/AuthorityClass"
+        },
+        "authority_reason": {
+          "minLength": 1,
+          "title": "Authority Reason",
+          "type": "string"
+        },
+        "capture_receipt_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CaptureReceiptRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "consent_receipt_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConsentReceiptRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "evaluation_case_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvaluationCaseRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "outcome_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutcomeRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "parent_evidence_refs": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Parent Evidence Refs",
+          "type": "array"
+        },
+        "partition": {
+          "$ref": "#/$defs/Partition"
+        },
+        "payload": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PayloadReference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "privacy": {
+          "$ref": "#/$defs/PrivacyContext"
+        },
+        "producer": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "evidence",
+          "default": "evidence",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        },
+        "redaction_state": {
+          "$ref": "#/$defs/RedactionState"
+        },
+        "schema_version": {
+          "default": "1.0",
+          "enum": [
+            "1.0",
+            "1.1"
+          ],
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "source_class": {
+          "$ref": "#/$defs/SourceClass"
+        },
+        "state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "synthetic_origin": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SyntheticOrigin"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "task_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TaskRecordRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "transformation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Transformation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "created_at",
+        "created_by",
+        "policy_version",
+        "observed_at",
+        "producer",
+        "source_class",
+        "authority_class",
+        "authority_reason",
+        "allowed_claim_types",
+        "state",
+        "redaction_state",
+        "payload",
+        "scope",
+        "privacy",
+        "partition"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "EvidenceLinks": {
+      "additionalProperties": false,
+      "description": "Direct evidence roles retained by every lesson and artifact.",
+      "properties": {
+        "contradicting": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Contradicting",
+          "type": "array"
+        },
+        "review_complete": {
+          "const": true,
+          "default": true,
+          "title": "Review Complete",
+          "type": "boolean"
+        },
+        "scope_limiting": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Scope Limiting",
+          "type": "array"
+        },
+        "supporting": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "minItems": 1,
+          "title": "Supporting",
+          "type": "array"
+        }
+      },
+      "required": [
+        "supporting"
+      ],
+      "title": "EvidenceLinks",
+      "type": "object"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "evidence",
+          "default": "evidence",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "EvidenceState": {
+      "enum": [
+        "raw",
+        "derived",
+        "tombstoned"
+      ],
+      "title": "EvidenceState",
+      "type": "string"
+    },
+    "ExternalGovernedRelease": {
+      "additionalProperties": false,
+      "description": "Portable user-owned release; complete for audit and rollback, not target-visible.",
+      "properties": {
+        "active_artifacts": {
+          "items": {
+            "$ref": "#/$defs/ArtifactRenderProjection"
+          },
+          "title": "Active Artifacts",
+          "type": "array"
+        },
+        "active_bindings": {
+          "items": {
+            "$ref": "#/$defs/ArtifactGovernanceBinding"
+          },
+          "title": "Active Bindings",
+          "type": "array"
+        },
+        "external_release_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "External Release Version",
+          "type": "string"
+        },
+        "lifecycle_history": {
+          "items": {
+            "$ref": "#/$defs/GovernedLifecycleEvent"
+          },
+          "minItems": 1,
+          "title": "Lifecycle History",
+          "type": "array"
+        },
+        "parent_release_digest": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Release Digest"
+        },
+        "release_ref": {
+          "$ref": "#/$defs/ReleaseRef"
+        },
+        "renderer_id": {
+          "const": "compact-runtime-projection",
+          "default": "compact-runtime-projection",
+          "title": "Renderer Id",
+          "type": "string"
+        },
+        "renderer_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Renderer Version",
+          "type": "string"
+        },
+        "revoked_artifact_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Revoked Artifact Ids",
+          "type": "array"
+        },
+        "scoped_supersessions": {
+          "default": [],
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+                "type": "string"
+              },
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+                "type": "string"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Scoped Supersessions",
+          "type": "array"
+        },
+        "source_snapshot_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Source Snapshot Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "release_ref",
+        "source_snapshot_digest",
+        "active_artifacts",
+        "active_bindings",
+        "lifecycle_history"
+      ],
+      "title": "ExternalGovernedRelease",
+      "type": "object"
+    },
+    "GovernanceEvent": {
+      "additionalProperties": false,
+      "description": "Signed review, release, activation, or custody action.",
+      "properties": {
+        "decision": {
+          "minLength": 1,
+          "title": "Decision",
+          "type": "string"
+        },
+        "event_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "event_type": {
+          "$ref": "#/$defs/GovernanceEventType"
+        },
+        "governance_type": {
+          "const": "governance_event",
+          "default": "governance_event",
+          "title": "Governance Type",
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "signature": {
+          "$ref": "#/$defs/SignatureEnvelope"
+        },
+        "subject_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "target_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Target Digest",
+          "type": "string"
+        },
+        "target_ref": {
+          "minLength": 1,
+          "title": "Target Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "subject_id",
+        "event_type",
+        "target_ref",
+        "target_digest",
+        "decision",
+        "reason",
+        "policy_version",
+        "occurred_at",
+        "signature"
+      ],
+      "title": "GovernanceEvent",
+      "type": "object"
+    },
+    "GovernanceEventType": {
+      "enum": [
+        "review_decision",
+        "release_decision",
+        "activation_decision",
+        "custody_action"
+      ],
+      "title": "GovernanceEventType",
+      "type": "string"
+    },
+    "GovernedLifecycleEvent": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "transition_kind": {
+                "const": "addition"
+              }
+            },
+            "required": [
+              "transition_kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "affected_artifact_id": {
+                "type": "null"
+              },
+              "introduced_artifact_ref": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "supersedes_artifact_ids": {
+                "maxItems": 0
+              }
+            },
+            "required": [
+              "introduced_artifact_ref"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "transition_kind": {
+                "enum": [
+                  "scoped_correction",
+                  "supersession"
+                ]
+              }
+            },
+            "required": [
+              "transition_kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "affected_artifact_id": {
+                "type": "string"
+              },
+              "introduced_artifact_ref": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "supersedes_artifact_ids": {
+                "maxItems": 1,
+                "minItems": 1
+              }
+            },
+            "required": [
+              "introduced_artifact_ref",
+              "affected_artifact_id",
+              "supersedes_artifact_ids"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "transition_kind": {
+                "const": "revocation"
+              }
+            },
+            "required": [
+              "transition_kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "affected_artifact_id": {
+                "type": "string"
+              },
+              "introduced_artifact_ref": {
+                "type": "null"
+              },
+              "supersedes_artifact_ids": {
+                "maxItems": 0
+              }
+            },
+            "required": [
+              "affected_artifact_id"
+            ]
+          }
+        }
+      ],
+      "description": "Content-addressed lifecycle history retained outside the target prompt.",
+      "properties": {
+        "activated_at": {
+          "format": "date-time",
+          "title": "Activated At",
+          "type": "string"
+        },
+        "affected_artifact_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Affected Artifact Id"
+        },
+        "capture_ref": {
+          "$ref": "#/$defs/CaptureReceiptRef"
+        },
+        "consent_ref": {
+          "$ref": "#/$defs/ConsentReceiptRef"
+        },
+        "evaluation_case_ref": {
+          "$ref": "#/$defs/EvaluationCaseRef"
+        },
+        "event_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "evidence_ref": {
+          "$ref": "#/$defs/EvidenceRef"
+        },
+        "introduced_artifact_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArtifactRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "released_at": {
+          "format": "date-time",
+          "title": "Released At",
+          "type": "string"
+        },
+        "review_approver_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Review Approver Id",
+          "type": "string"
+        },
+        "review_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Review Digest",
+          "type": "string"
+        },
+        "review_policy_version": {
+          "minLength": 1,
+          "title": "Review Policy Version",
+          "type": "string"
+        },
+        "stage": {
+          "minimum": 1,
+          "title": "Stage",
+          "type": "integer"
+        },
+        "supersedes_artifact_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Supersedes Artifact Ids",
+          "type": "array"
+        },
+        "transition_kind": {
+          "enum": [
+            "addition",
+            "scoped_correction",
+            "supersession",
+            "revocation"
+          ],
+          "title": "Transition Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "stage",
+        "transition_kind",
+        "evidence_ref",
+        "consent_ref",
+        "capture_ref",
+        "evaluation_case_ref",
+        "review_digest",
+        "review_approver_id",
+        "review_policy_version",
+        "released_at",
+        "activated_at"
+      ],
+      "title": "GovernedLifecycleEvent",
+      "type": "object"
+    },
+    "LessonCandidateRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "lesson_candidate",
+          "default": "lesson_candidate",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "LessonCandidateRef",
+      "type": "object"
+    },
+    "OutcomeRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "outcome",
+          "default": "outcome",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "OutcomeRef",
+      "type": "object"
+    },
+    "Partition": {
+      "enum": [
+        "construction",
+        "development",
+        "held_out",
+        "synthetic"
+      ],
+      "title": "Partition",
+      "type": "string"
+    },
+    "PayloadReference": {
+      "additionalProperties": false,
+      "description": "Reference to bytes retained in the segregated evidence store.",
+      "properties": {
+        "byte_length": {
+          "minimum": 0,
+          "title": "Byte Length",
+          "type": "integer"
+        },
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "locator": {
+          "minLength": 1,
+          "title": "Locator",
+          "type": "string"
+        },
+        "media_type": {
+          "minLength": 1,
+          "title": "Media Type",
+          "type": "string"
+        },
+        "span": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PayloadSpan"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "locator",
+        "content_digest",
+        "media_type",
+        "byte_length"
+      ],
+      "title": "PayloadReference",
+      "type": "object"
+    },
+    "PayloadSpan": {
+      "additionalProperties": false,
+      "properties": {
+        "end": {
+          "exclusiveMinimum": 0,
+          "title": "End",
+          "type": "integer"
+        },
+        "start": {
+          "minimum": 0,
+          "title": "Start",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "title": "PayloadSpan",
+      "type": "object"
+    },
+    "PermittedUse": {
+      "enum": [
+        "construction",
+        "development_evaluation",
+        "promotion",
+        "target_delivery",
+        "benchmark",
+        "audit"
+      ],
+      "title": "PermittedUse",
+      "type": "string"
+    },
+    "PrivacyContext": {
+      "additionalProperties": false,
+      "properties": {
+        "consent_basis": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Consent Basis",
+          "type": "string"
+        },
+        "consent_basis_refs": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Consent Basis Refs",
+          "type": "array"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        },
+        "permitted_uses": {
+          "items": {
+            "$ref": "#/$defs/PermittedUse"
+          },
+          "minItems": 1,
+          "title": "Permitted Uses",
+          "type": "array"
+        },
+        "review_state": {
+          "$ref": "#/$defs/PrivacyReviewState",
+          "default": "pending"
+        },
+        "reviewed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewed At"
+        },
+        "reviewed_by": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/SensitivityClass"
+        }
+      },
+      "required": [
+        "sensitivity",
+        "consent_basis",
+        "permitted_uses"
+      ],
+      "title": "PrivacyContext",
+      "type": "object"
+    },
+    "PrivacyReviewState": {
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "title": "PrivacyReviewState",
+      "type": "string"
+    },
+    "RedactionState": {
+      "enum": [
+        "none",
+        "redacted",
+        "tombstoned"
+      ],
+      "title": "RedactionState",
+      "type": "string"
+    },
+    "ReleaseRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "release",
+          "default": "release",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "ReleaseRef",
+      "type": "object"
+    },
+    "RuntimeEvaluationReceipt": {
+      "additionalProperties": false,
+      "description": "Deterministic evaluation-first record created before any promotion.",
+      "properties": {
+        "approved_case": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvaluationCase"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "candidate_case": {
+          "$ref": "#/$defs/EvaluationCase"
+        },
+        "candidate_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Candidate Digest",
+          "type": "string"
+        },
+        "checks": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Checks",
+          "type": "array"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        },
+        "receipt_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Receipt Id",
+          "type": "string"
+        },
+        "receipt_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Receipt Version",
+          "type": "string"
+        },
+        "review_required": {
+          "title": "Review Required",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "receipt_id",
+        "candidate_digest",
+        "candidate_case",
+        "approved_case",
+        "checks",
+        "passed",
+        "review_required",
+        "evaluated_at"
+      ],
+      "title": "RuntimeEvaluationReceipt",
+      "type": "object"
+    },
+    "RuntimeLayerBinding": {
+      "additionalProperties": false,
+      "description": "Exact layer ownership for one active artifact.",
+      "properties": {
+        "artifact_ref": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "capability_preset_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CapabilityPresetRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "layer": {
+          "$ref": "#/$defs/AdaptationLayer"
+        }
+      },
+      "required": [
+        "artifact_ref",
+        "layer"
+      ],
+      "title": "RuntimeLayerBinding",
+      "type": "object"
+    },
+    "RuntimeLearningTransition": {
+      "additionalProperties": false,
+      "description": "One evaluated and attributable change to the governed runtime release.",
+      "properties": {
+        "activated_at": {
+          "format": "date-time",
+          "title": "Activated At",
+          "type": "string"
+        },
+        "affected_artifact_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Affected Artifact Id"
+        },
+        "capture": {
+          "$ref": "#/$defs/CaptureReceipt"
+        },
+        "claim_key": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Claim Key"
+        },
+        "consent": {
+          "$ref": "#/$defs/ConsentReceipt"
+        },
+        "evaluation": {
+          "$ref": "#/$defs/RuntimeEvaluationReceipt"
+        },
+        "instruction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArtifactRenderProjection"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "kind": {
+          "$ref": "#/$defs/RuntimeTransitionKind"
+        },
+        "released_at": {
+          "format": "date-time",
+          "title": "Released At",
+          "type": "string"
+        },
+        "review": {
+          "$ref": "#/$defs/Approval"
+        },
+        "review_event": {
+          "$ref": "#/$defs/GovernanceEvent"
+        },
+        "sequence": {
+          "minimum": 1,
+          "title": "Sequence",
+          "type": "integer"
+        },
+        "signer_identity": {
+          "$ref": "#/$defs/SignerIdentity"
+        },
+        "source_evidence": {
+          "$ref": "#/$defs/Evidence"
+        },
+        "source_layer": {
+          "$ref": "#/$defs/AdaptationLayer"
+        },
+        "supersedes_artifact_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Supersedes Artifact Ids",
+          "type": "array"
+        },
+        "transition_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Transition Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "transition_id",
+        "sequence",
+        "kind",
+        "source_layer",
+        "source_evidence",
+        "consent",
+        "capture",
+        "signer_identity",
+        "evaluation",
+        "review",
+        "review_event",
+        "released_at",
+        "activated_at"
+      ],
+      "title": "RuntimeLearningTransition",
+      "type": "object"
+    },
+    "RuntimeTransitionKind": {
+      "enum": [
+        "addition",
+        "scoped_correction",
+        "supersession",
+        "revocation"
+      ],
+      "title": "RuntimeTransitionKind",
+      "type": "string"
+    },
+    "Scope": {
+      "additionalProperties": false,
+      "description": "Machine-comparable applicability bounds.\n\nEmpty optional dimensions mean unconstrained. Subjects are never unconstrained in this\nsingle-user prototype. A narrower scope may restrict a dimension, add exclusions or\nactivation conditions, and shrink the validity window.",
+      "properties": {
+        "activation_conditions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Activation Conditions",
+          "type": "array"
+        },
+        "environment_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Environment Ids",
+          "type": "array"
+        },
+        "exclusions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Exclusions",
+          "type": "array"
+        },
+        "project_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Project Ids",
+          "type": "array"
+        },
+        "repository_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Repository Ids",
+          "type": "array"
+        },
+        "subject_ids": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Subject Ids",
+          "type": "array"
+        },
+        "target_families": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Target Families",
+          "type": "array"
+        },
+        "task_classes": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Task Classes",
+          "type": "array"
+        },
+        "valid_from": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid From"
+        },
+        "valid_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid Until"
+        },
+        "workspace_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Workspace Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "subject_ids"
+      ],
+      "title": "Scope",
+      "type": "object"
+    },
+    "ScoringRule": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "pass_threshold": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pass Threshold"
+        },
+        "scoring_type": {
+          "$ref": "#/$defs/ScoringType"
+        }
+      },
+      "required": [
+        "scoring_type",
+        "description"
+      ],
+      "title": "ScoringRule",
+      "type": "object"
+    },
+    "ScoringType": {
+      "enum": [
+        "objective",
+        "subjective",
+        "hybrid"
+      ],
+      "title": "ScoringType",
+      "type": "string"
+    },
+    "SensitivityClass": {
+      "enum": [
+        "public",
+        "internal",
+        "private",
+        "confidential",
+        "restricted",
+        "prohibited_secret"
+      ],
+      "title": "SensitivityClass",
+      "type": "string"
+    },
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    },
+    "SignerIdentity": {
+      "additionalProperties": false,
+      "description": "Self-signed public identity for one dedicated local Ed25519 key.",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires At"
+        },
+        "governance_type": {
+          "const": "signer_identity",
+          "default": "signer_identity",
+          "title": "Governance Type",
+          "type": "string"
+        },
+        "identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Identity Id",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "public_key_base64": {
+          "minLength": 1,
+          "title": "Public Key Base64",
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "$ref": "#/$defs/SignerRole"
+          },
+          "minItems": 1,
+          "title": "Roles",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "signature": {
+          "$ref": "#/$defs/SignatureEnvelope"
+        },
+        "subject_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Subject Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "identity_id",
+        "subject_id",
+        "public_key_base64",
+        "key_fingerprint",
+        "roles",
+        "created_at",
+        "signature"
+      ],
+      "title": "SignerIdentity",
+      "type": "object"
+    },
+    "SignerRole": {
+      "enum": [
+        "consent",
+        "review",
+        "release",
+        "activation",
+        "custody"
+      ],
+      "title": "SignerRole",
+      "type": "string"
+    },
+    "SourceClass": {
+      "enum": [
+        "explicit_user_feedback",
+        "authorized_human_evaluation",
+        "deterministic_execution_observation",
+        "agent_generated",
+        "tool_output",
+        "repository_content",
+        "web_content",
+        "retrieved_document",
+        "system_policy",
+        "synthetic"
+      ],
+      "title": "SourceClass",
+      "type": "string"
+    },
+    "SourceSelector": {
+      "additionalProperties": false,
+      "description": "Explicit bounded source selection; content never widens this selector.",
+      "properties": {
+        "selection_method": {
+          "enum": [
+            "synthetic_fixture",
+            "explicit_task_ids"
+          ],
+          "title": "Selection Method",
+          "type": "string"
+        },
+        "source_ids": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "source_system": {
+          "enum": [
+            "synthetic_fixture",
+            "codex_app_server",
+            "local_interaction_runtime"
+          ],
+          "title": "Source System",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_system",
+        "selection_method",
+        "source_ids"
+      ],
+      "title": "SourceSelector",
+      "type": "object"
+    },
+    "SyntheticOrigin": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "fixture_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Fixture Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fixture_id",
+        "description"
+      ],
+      "title": "SyntheticOrigin",
+      "type": "object"
+    },
+    "TargetPackRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "target_pack",
+          "default": "target_pack",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "TargetPackRef",
+      "type": "object"
+    },
+    "TaskRecordRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "const": null,
+          "default": null,
+          "title": "Content Digest",
+          "type": "null"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "task_record",
+          "default": "task_record",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version"
+      ],
+      "title": "TaskRecordRef",
+      "type": "object"
+    },
+    "Transformation": {
+      "additionalProperties": false,
+      "properties": {
+        "actor": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "input_evidence_refs": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "minItems": 1,
+          "title": "Input Evidence Refs",
+          "type": "array"
+        },
+        "method": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Method",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "transformed_at": {
+          "format": "date-time",
+          "title": "Transformed At",
+          "type": "string"
+        },
+        "transformer_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Transformer Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "method",
+        "transformer_version",
+        "policy_version",
+        "actor",
+        "transformed_at",
+        "input_evidence_refs"
+      ],
+      "title": "Transformation",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Immutable state snapshot reproduced from its complete transition history.",
+  "properties": {
+    "generation": {
+      "minimum": 0,
+      "title": "Generation",
+      "type": "integer"
+    },
+    "previous_release_digests": {
+      "default": [],
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Previous Release Digests",
+      "type": "array"
+    },
+    "release": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ComposedRuntimeRelease"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "standing_policy_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Standing Policy Digest",
+      "type": "string"
+    },
+    "state_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "State Version",
+      "type": "string"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    },
+    "transitions": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/RuntimeLearningTransition"
+      },
+      "title": "Transitions",
+      "type": "array"
+    }
+  },
+  "required": [
+    "subject_id",
+    "standing_policy_digest",
+    "generation"
+  ],
+  "title": "AutomaticRuntimeState",
+  "type": "object"
+}

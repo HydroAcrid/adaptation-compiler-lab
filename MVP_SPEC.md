@@ -1,8 +1,8 @@
 # MVP Specification
 
-Status: **Milestone 6A active; paid external validation deferred**
-Implementation status: **longitudinal dogfood loop and public 12-cell Codex design implemented;
-comparison not executed**
+Status: **Milestone 6A.2 product track active; paid external validation deferred**
+Implementation status: **compact projection plus governed automatic runtime and generic host
+coordinator implemented; concrete Codex product adapters not yet implemented**
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** describe the
 implemented MVP contract unless explicitly marked as future work.
@@ -147,6 +147,25 @@ that binds non-synthetic observations to exact signed consent and capture receip
   encode one. An isolated AI judge MAY add secondary quality annotations but MUST NOT replace or
   override Kevin's ratings.
 
+### Automatic-runtime safeguards
+
+- A signed, expiring standing policy MAY authorize reversible low-risk memory, preference,
+  example, procedure, and prompt-rule promotion without repeated approval prompts. It MUST NOT
+  authorize skills, tools, plugins, MCP, credentials, network access, model changes, or capability
+  presets.
+- Authority MUST be checked before feedback grammar or raw capture. Ordinary task text and
+  agent/tool/repository/web/retrieved/system content MUST NOT become durable learning.
+- Every promoted transition MUST bind exact signed consent/capture, Evidence v1.1, an
+  `EvaluationCase` candidate and approved successor, review action, reproducible release, compact
+  projection, release action, activation action, and delivery receipt.
+- State, cycles, raw-free review work, signed runtime events, and outcome feedback MUST be
+  append-only. One observation ID MUST NOT fork into multiple histories.
+- A trusted host MAY retry an interrupted page. It MUST reproduce the exact historical delivery
+  receipt, use idempotent sinks, and advance its source cursor only after delivery/review/notice
+  acknowledgements.
+- Capability presets and personal overlays are first-class composition layers but MUST remain
+  separately sourced, evaluated, activated, and deactivated under Milestone 6B policy.
+
 ## 4. Local workflow
 
 The `adaptation-compiler-lab` CLI provides the following bounded workflow:
@@ -171,8 +190,10 @@ The `adaptation-compiler-lab` CLI provides the following bounded workflow:
 12. `export sanitized`, `benchmark validate`, and `schema export --version 1.0|1.1` produce bounded
     local outputs.
 
-All complex input is explicit JSON. The CLI does not provide arbitrary unreviewed record writes,
-automatic activation, target execution, or general-purpose data ingestion.
+All complex CLI input is explicit JSON. The CLI does not provide arbitrary unreviewed record
+writes, target execution, or general-purpose data ingestion. The library-only 6A.2 runtime may
+automatically activate low-risk scoped artifacts under an exact signed standing policy; there is
+no ambient Codex watcher or runtime CLI yet.
 
 The Claude runner remains library-only. The source CLI is deliberately narrow: inventory cannot
 return previews/paths, and capture cannot accept a selector wider than one signed task ID.
@@ -219,3 +240,10 @@ budgets, and complete software custody. It still does not provide an unconsented
 construction-facing held-out plaintext retrieval, paid live-pilot execution, human-rater
 substitution, benchmark scoring/statistics, a UI, or model adaptation. Consent, functional role
 separation, custody, paid-run authorization, and holdout gates cannot be waived by automation.
+
+The 6A.2 product track adds the separate rich-release/compact-projection boundary, standing-policy
+automation, authority-first explicit-feedback detection, encrypted runtime capture,
+evaluation-first sequential lifecycle compilation, exact scope/revocation behavior, zero-byte
+removal, append-only runtime metrics, raw-free review and signed-event persistence, and a
+replay-safe generic host coordinator. It does not yet provide a concrete Codex event adapter,
+background service, or user-facing notification/undo/feedback controls.

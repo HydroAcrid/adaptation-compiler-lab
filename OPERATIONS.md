@@ -97,6 +97,26 @@ digests, output digest, context identity, times, and prohibited-access flags. Ro
 receipts contain no raw payload. Construction receives only the software custody commitments and
 cannot open its external registry or sealed store.
 
+## Automatic runtime operation
+
+The 6A.2 runtime is local and library-only. Enabling it requires one exact signed, expiring
+`StandingAutomationPolicy`, the matching local Ed25519 identity, and the separate AES-256-GCM raw
+key. Missing or mismatched authority fails closed. The standing policy is not permission to inspect
+arbitrary host data and cannot authorize capability, tool, plugin, MCP, credential, or network
+changes.
+
+The host integration must provide only typed subject-owned interactions and explicit context
+through `RuntimeInteractionSource`. It must not infer user authority from repository files,
+webpages, tools, agents, retrieval, system instructions, or ambient Codex configuration. Delivery,
+review, and notice sinks must be idempotent by their exact receipt, queue, and notice IDs.
+
+The host advances its source cursor only after all sinks acknowledge a page. If it stops after the
+SQLite append, replaying the same observation reconstructs the historical delivery and does not
+create another transition. Review items and signed release/activation events remain in append-only
+tables; target and interaction text do not. No current command launches a background watcher or
+connects these ports to Codex, and the runtime must not access the sealed external-validation
+custody boundary.
+
 ## Paid-run and rating gates
 
 Preparing role packets, condition files, commitments, fixtures, and a run manifest does not

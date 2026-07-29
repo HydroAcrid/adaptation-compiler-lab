@@ -1,0 +1,30 @@
+{
+  "additionalProperties": false,
+  "description": "Portable identity only; importing and evaluating presets belongs to Milestone 6B.",
+  "properties": {
+    "content_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Content Digest",
+      "type": "string"
+    },
+    "preset_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Preset Id",
+      "type": "string"
+    },
+    "preset_version": {
+      "minLength": 1,
+      "title": "Preset Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "preset_id",
+    "preset_version",
+    "content_digest"
+  ],
+  "title": "CapabilityPresetRef",
+  "type": "object"
+}

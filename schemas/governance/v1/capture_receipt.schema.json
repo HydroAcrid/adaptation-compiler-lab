@@ -115,7 +115,8 @@
         "source_system": {
           "enum": [
             "synthetic_fixture",
-            "codex_app_server"
+            "codex_app_server",
+            "local_interaction_runtime"
           ],
           "title": "Source System",
           "type": "string"

@@ -5,6 +5,22 @@ from completed coding work into typed external artifacts. Its research question 
 compiled adaptation pack can improve a target coding agent on unseen work beyond a base agent,
 ordinary memory, and a strong static profile.
 
+The product direction is broader than portable memory: a user-owned layer combines a permanent
+personal profile, the current task/project/environment, and an optional temporary capability
+preset, then sends each assistant only the smallest applicable projection. Personal preset
+overlays can refine temporary expertise without changing either the imported preset or permanent
+profile.
+
+Milestone 6A.2 now includes a governed automatic-runtime core and restart-safe generic host
+coordinator. Under one signed bounded standing
+policy, explicit low-risk user feedback can be encrypted, turned into an evaluation candidate,
+promoted through addition/correction/supersession/revocation, compiled, scoped, delivered once to
+Codex, measured, notified, and undone by exact revocation. Untrusted content is rejected before
+capture; secrets are blocked; ambiguous or capability-changing proposals remain inactive in a
+durable raw-free review queue. The host loop persists signed actions and recovers interrupted
+idempotent delivery without learning twice. Concrete ambient Codex pickup and user controls are
+the next product increment, so this should not yet be described as a background memory service.
+
 Milestones 6A.3–6A.5 now provide positive, complementary comparisons against the strong static
 profile. Milestone 6A.3 showed lifecycle-aware compilation winning five of six fresh staged task
 pairs with one tie. Milestone 6A.4 replicated breadth across the four approved behavior families
@@ -132,6 +148,16 @@ worked; its current target-visible projection did not beat an excellent profile.
 - A target-independent canonical runtime representation, compact Codex renderer, external
   governed release, exact clause-to-provenance manifest, context resolution, and a separately
   measured condition-neutral execution envelope.
+- A signed-standing-policy automatic runtime core with authority-first feedback detection,
+  AES-256-GCM interaction capture, evaluation-first promotion, arbitrary-length governed
+  lifecycle compilation, permanent/context layer ownership, exact revocation including zero-byte
+  removal, compact task delivery, notifications, append-only state/cycle/outcome feedback, and
+  longitudinal activation/size/latency/maintenance metrics.
+- A generic replay-safe host coordinator with narrow interaction, delivery, review, and notice
+  ports; atomic raw-free review/signed-event persistence; duplicate-observation rejection; and
+  deterministic recovery after append-before-delivery interruption.
+- Typed capability-preset and personal-overlay composition seams. These are identity and layer
+  contracts only; no preset has been imported, activated, or evaluated.
 - Immutable failed v1.11 instrument, v1.13 role, v1.14 resolver, v1.15 inner-sandbox, v1.16
   pre-session smoke, and v1.17–v1.18 live-smoke results plus a v1.19 compact-projection protocol with
   three entirely fresh task fixtures, an independent scorer, six
@@ -238,6 +264,9 @@ after valid trials.
 - [`MILESTONE_6A5_ANALYSIS.md`](MILESTONE_6A5_ANALYSIS.md): persistent 15-turn instrument repair,
   cumulative 3/10/15 results, blind quality trajectory, compactness, scorer adjudication, and
   replication boundary.
+- [`MILESTONE_6A2_AUTOMATIC_RUNTIME.md`](MILESTONE_6A2_AUTOMATIC_RUNTIME.md): signed standing
+  policy, automatic capture/evaluation/compile/activate/deliver loop, layer model, notification,
+  undo, metrics, conformance result, and honest host-integration boundary.
 - [`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md): docs-only portable
   specialty preset composition and the proposed Frontend Studio demonstration.
 - [`development_benchmark_compact_projection`](development_benchmark_compact_projection): frozen
