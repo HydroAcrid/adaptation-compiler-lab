@@ -59,3 +59,19 @@ def test_rerun_binds_both_instruments_and_preserves_original_result() -> None:
     assert bindings["condition_mapping_withheld"]
     assert bindings["provider_billed_calls"] == 0
     assert not bindings["external_validation_accessed"]
+
+
+def test_v1_1_live_smoke_proves_resumed_write_and_test_execution() -> None:
+    smoke = json.loads((BENCHMARK / "SMOKE_RECEIPT-v1.1.json").read_text())
+
+    assert smoke["authentication"] == "saved_chatgpt"
+    assert smoke["model"] == "gpt-5.6-luna"
+    assert smoke["reasoning_effort"] == "medium"
+    assert smoke["one_thread"]
+    assert smoke["both_registered_files_changed"]
+    assert smoke["visible_tests_passed"]
+    assert smoke["turns_conformant"]
+    assert smoke["config_destroyed"]
+    assert smoke["session_destroyed"]
+    assert smoke["provider_billed_calls"] == 0
+    assert not smoke["external_validation_accessed"]
