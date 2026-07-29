@@ -34,7 +34,7 @@ def _create_key(path: Path) -> None:
     _exclusive_write(path, base64.b64encode(os.urandom(32)) + b"\n")
 
 
-def _schema() -> dict[str, object]:
+def _schema(output_ids: tuple[str, str]) -> dict[str, object]:
     rating = {
         "type": "object",
         "properties": {
@@ -46,12 +46,7 @@ def _schema() -> dict[str, object]:
                 "maxItems": 2,
                 "items": {"type": "string", "minLength": 1},
             },
-            "winner_output_id": {
-                "anyOf": [
-                    {"type": "string", "minLength": 1},
-                    {"type": "null"},
-                ]
-            },
+            "winner": {"enum": ["first", "second", "tie"]},
             "confidence": {"enum": ["low", "medium", "high"]},
             "rationale": {"type": "string", "minLength": 1},
         },
@@ -59,7 +54,7 @@ def _schema() -> dict[str, object]:
             "turn",
             "task_id",
             "ordered_output_ids",
-            "winner_output_id",
+            "winner",
             "confidence",
             "rationale",
         ],
@@ -75,12 +70,7 @@ def _schema() -> dict[str, object]:
                 "maxItems": 13,
                 "items": rating,
             },
-            "overall_winner_output_id": {
-                "anyOf": [
-                    {"type": "string", "minLength": 1},
-                    {"type": "null"},
-                ]
-            },
+            "overall_winner_output_id": {"enum": [*output_ids, "tie"]},
             "overall_rationale": {"type": "string", "minLength": 1},
         },
         "required": [
@@ -143,11 +133,23 @@ def main() -> None:
         or bindings.get("automated_scores_included") is not False
     ):
         raise RuntimeError("long-horizon judge requires a complete blind packet")
+    output_ids = tuple(
+        sorted(
+            {
+                output_id
+                for item in cast(list[dict[str, object]], bindings["task_ratings"])
+                for output_id in cast(list[str], item["ordered_output_ids"])
+            }
+        )
+    )
+    if len(output_ids) != 2:
+        raise RuntimeError("long-horizon judge bindings must contain two output IDs")
     prompt = (
         "Return exactly 13 task_ratings in the JUDGE BINDINGS order. Copy each turn, task_id, "
-        "and ordered_output_ids exactly. winner_output_id must be one of that task's two IDs, or "
-        "null for a genuine tie. Select an overall winner only if one anonymous output is "
-        "meaningfully stronger across the whole sequence. You have no tools and no other context."
+        "and ordered_output_ids exactly. Set winner to first, second, or tie relative to each "
+        "task's ordered_output_ids. Set overall_winner_output_id to one exact anonymous output ID "
+        "or tie. Select an overall winner only if one anonymous episode is meaningfully stronger "
+        "across the sequence. You have no tools and no other context."
         f"\n\nJUDGE BINDINGS\n{canonical_json(bindings)}\n\n"
         f"{packet_path.read_text(encoding='utf-8')}"
     )
@@ -174,11 +176,11 @@ def main() -> None:
             "context. Judge only the packet. Return only JSON matching the supplied schema."
         ),
         prompt=prompt,
-        output_schema=_schema(),
+        output_schema=_schema(output_ids),
     )
     _assert_valid(result)
     decision = json.loads(result.response)
-    jsonschema.validate(decision, _schema())
+    jsonschema.validate(decision, _schema(output_ids))
     expected: tuple[tuple[object, object, tuple[str, ...]], ...] = tuple(
         (
             item["turn"],
@@ -197,10 +199,6 @@ def main() -> None:
     )
     if observed != expected:
         raise RuntimeError("long-horizon judge changed anonymous bindings")
-    for item in cast(list[dict[str, object]], decision["task_ratings"]):
-        winner = item["winner_output_id"]
-        if winner is not None and winner not in cast(list[str], item["ordered_output_ids"]):
-            raise RuntimeError("long-horizon judge selected an unknown output")
     raw_payload = {
         "command_digest": result.command_digest,
         "decision": decision,
