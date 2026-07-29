@@ -1,10 +1,23 @@
 # Project Charter
 
-Status: **Milestone 6A active; paid external-validation study deferred**
+Status: **Milestone 6A.2 product track active; paid external-validation study deferred**
 Project: **adaptation-compiler-lab**
 Intended first source / target: **Codex / Claude Code**
 
-## Purpose
+## Product north star
+
+Build a user-owned adaptation layer between people and every AI they use. It learns from
+authorized interactions, converts feedback and selected external expertise into governed
+memories, rules, evaluations, workflows, skills, and temporary capability presets, then compiles
+the smallest relevant version for each assistant. It operates quietly, measures whether
+adaptations help, and keeps everything portable, inspectable, reversible, and under the user's
+control.
+
+The runtime composes three first-class inputs: the permanent personal profile, current
+project/task/environment context, and a temporary capability preset. A personal preset overlay
+can refine the preset without mutating either the permanent profile or imported preset.
+
+## Research purpose
 
 The project tests one hypothesis:
 
@@ -46,6 +59,16 @@ activation feedback. Its public Codex subscription comparison is preregistered b
 The frozen Claude study remains unchanged, sealed, and optional future research contingent on
 funding.
 
+Milestone 6A.1 separates the rich governed release from the compact runtime projection. The
+Milestone 6A.2 product track now adds a signed standing-policy runtime core for automatic
+low-risk capture, evaluation-first promotion, compilation, activation, exact-once task delivery,
+notification, undo-by-revocation, and helped/hurt/irrelevant feedback. It recognizes permanent
+profile, current context, capability preset, and personal-overlay layer ownership; preset import
+and activation remain reserved for Milestone 6B. The core is callable and fully local, while
+a restart-safe generic host coordinator now supplies durable review/event persistence and
+idempotent sink replay. Concrete ambient Codex pickup and user controls remain the next product
+increment.
+
 ## Governing principles
 
 1. Corrections and failures become evaluation candidates before durable learning.
@@ -58,8 +81,10 @@ funding.
 8. Held-out work and outcomes cannot influence construction, routing, approval, release, or pack
    rendering for the evaluated experiment.
 9. Data minimization and privacy restrictions take precedence over reproducibility convenience.
-10. Human-attributable approval is required for promotion, release, and activation; new governance
-    actions are represented as canonical Ed25519-signed objects.
+10. Human authority is required for promotion, release, and activation. A bounded signed standing
+    policy may authorize reversible low-risk automation without a repeated approval ceremony;
+    ambiguous, conflicting, secret-bearing, capability-changing, or high-impact changes pause.
+    Governance actions remain canonical Ed25519-signed objects.
 11. Consent is explicit and selector-bound. Non-synthetic Evidence v1.1 requires exact consent and
     capture references; unconsented source expansion is invalid.
 12. Raw payload confidentiality depends on a separate AES-256-GCM key outside the repository;
@@ -82,6 +107,10 @@ funding.
 20. Runtime capability does not grant data authority. Exact per-task consent, digest-bound
     functional role separation, sealed custody, paid-run authorization, and held-out separation
     remain mandatory operational gates.
+21. Rich governed records and compact target projections are separate. Automating delivery cannot
+    justify bloated audit material in the target context.
+22. Capability presets are temporary, source-pinned, evaluated inputs. They never silently become
+    permanent personal learning and cannot be auto-created from ordinary feedback.
 
 ## Fixed exclusions
 

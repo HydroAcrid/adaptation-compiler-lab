@@ -1,0 +1,104 @@
+{
+  "additionalProperties": false,
+  "description": "Longitudinal product measures derived from immutable cycles and feedback.",
+  "properties": {
+    "automatic_actions": {
+      "minimum": 0,
+      "title": "Automatic Actions",
+      "type": "integer"
+    },
+    "correct_activation_count": {
+      "minimum": 0,
+      "title": "Correct Activation Count",
+      "type": "integer"
+    },
+    "cycle_count": {
+      "minimum": 0,
+      "title": "Cycle Count",
+      "type": "integer"
+    },
+    "false_activation_count": {
+      "minimum": 0,
+      "title": "False Activation Count",
+      "type": "integer"
+    },
+    "helped_count": {
+      "minimum": 0,
+      "title": "Helped Count",
+      "type": "integer"
+    },
+    "hurt_count": {
+      "minimum": 0,
+      "title": "Hurt Count",
+      "type": "integer"
+    },
+    "irrelevant_count": {
+      "minimum": 0,
+      "title": "Irrelevant Count",
+      "type": "integer"
+    },
+    "manual_review_touches": {
+      "minimum": 0,
+      "title": "Manual Review Touches",
+      "type": "integer"
+    },
+    "missed_activation_count": {
+      "minimum": 0,
+      "title": "Missed Activation Count",
+      "type": "integer"
+    },
+    "pack_bytes_by_generation": {
+      "items": {
+        "type": "integer"
+      },
+      "title": "Pack Bytes By Generation",
+      "type": "array"
+    },
+    "promoted_count": {
+      "minimum": 0,
+      "title": "Promoted Count",
+      "type": "integer"
+    },
+    "repeated_correction_count": {
+      "minimum": 0,
+      "title": "Repeated Correction Count",
+      "type": "integer"
+    },
+    "review_queue_count": {
+      "minimum": 0,
+      "title": "Review Queue Count",
+      "type": "integer"
+    },
+    "revoked_count": {
+      "minimum": 0,
+      "title": "Revoked Count",
+      "type": "integer"
+    },
+    "update_latency_seconds": {
+      "items": {
+        "type": "number"
+      },
+      "title": "Update Latency Seconds",
+      "type": "array"
+    }
+  },
+  "required": [
+    "cycle_count",
+    "promoted_count",
+    "revoked_count",
+    "review_queue_count",
+    "helped_count",
+    "hurt_count",
+    "irrelevant_count",
+    "repeated_correction_count",
+    "correct_activation_count",
+    "false_activation_count",
+    "missed_activation_count",
+    "pack_bytes_by_generation",
+    "update_latency_seconds",
+    "automatic_actions",
+    "manual_review_touches"
+  ],
+  "title": "AutomaticRuntimeMetrics",
+  "type": "object"
+}

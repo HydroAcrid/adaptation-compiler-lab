@@ -178,7 +178,11 @@ class SignatureEnvelope(FrozenModel):
 class SourceSelector(FrozenModel):
     """Explicit bounded source selection; content never widens this selector."""
 
-    source_system: Literal["synthetic_fixture", "codex_app_server"]
+    source_system: Literal[
+        "synthetic_fixture",
+        "codex_app_server",
+        "local_interaction_runtime",
+    ]
     selection_method: Literal["synthetic_fixture", "explicit_task_ids"]
     source_ids: Annotated[tuple[Identifier, ...], Field(min_length=1)]
 

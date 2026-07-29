@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **Milestone 6A active; paid external-validation study deferred**
+Status: **Milestone 6A.2 product track active; paid external-validation study deferred**
 
 ## 1. System shape
 
@@ -43,6 +43,56 @@ flowchart LR
 The dotted edges mark deliberately constrained information flow. Construction receives only
 payload-free blinded split metadata, and the dormant trial-result path cannot retrieve held-out
 plaintext. Benchmark results and adjudications never alter the release they evaluate.
+
+### 1.1 Product runtime composition
+
+The product runtime composes three first-class inputs while keeping their ownership separate:
+
+```mermaid
+flowchart LR
+    U["Permanent personal profile"] --> C["Scoped composition and conflict resolution"]
+    X["Current project, task, and environment"] --> C
+    P["Temporary capability preset"] --> C
+    O["Personal preset overlay"] --> C
+    C --> G["Rich governed release and lineage"]
+    G --> R["Smallest applicable target projection"]
+    R --> A["Codex now; additional target adapters later"]
+```
+
+Explicit current user instructions and applicable project policy remain outside the adaptation
+asset and outrank it at use time. Permanent learning never silently absorbs a preset. A preset and
+its overlay require an exact source/version binding and explicit temporary activation; those
+operations remain reserved for Milestone 6B.
+
+The Milestone 6A.2 runtime core adds this automatic local flow:
+
+```mermaid
+flowchart LR
+    I["Trusted host interaction event"] --> D["Authority-first explicit-feedback detector"]
+    D -->|untrusted or ordinary task text| N["No capture / no learning"]
+    D -->|secret| B["Block"]
+    D -->|ambiguous or capability-changing| Q["Encrypted review queue candidate"]
+    D -->|eligible| E["AES-GCM capture + signed consent/capture"]
+    E --> V["EvaluationCase candidate"]
+    V --> L["Least-invasive typed transition"]
+    L --> F["Reproducible governed release"]
+    F --> S["Context and scope selector"]
+    S --> T["Exact-once task delivery or zero-byte removal"]
+    T --> O2["Notice, undo target, and outcome feedback"]
+```
+
+The standing policy is a signed target, not an instruction source. It authorizes only bounded
+memory, preference, example, procedure, and prompt-rule routes. Skills, tools, plugins, MCP,
+network/credential changes, adapters, and capability presets cannot be auto-created through this
+path. The runtime issues task-exact consent and capture receipts, stores raw text only in the
+encrypted raw store, and persists raw-free state/cycle/review/event/feedback rows with append-only
+triggers and compare-and-swap state heads.
+
+The generic host coordinator polls replayable typed pages and atomically appends state, cycle,
+raw-free review work, and signed runtime actions before dispatching idempotent delivery, review,
+and notice sinks. A replay after interruption reproduces the exact historical delivery receipt.
+Concrete ambient Codex pickup and notice/undo/feedback command surfaces are the next product
+increment.
 
 The runtime boundary is deliberately outside promotion and custody:
 
@@ -240,6 +290,7 @@ src/adaptation_compiler_lab/
   domain/           strict records, values, references, enums
   governance/       signed identity/receipt/event contracts and Ed25519 custody
   conflicts/        deterministic scoped conflict precedence
+  automatic_runtime/ governed detector/compiler/service, host ports, replay, metrics
   recall/           dependency impact analysis and confirmed recall execution
   provenance/       lineage, authority, scope/privacy policy
   evaluation/       evaluation-candidate extraction and policy
@@ -296,3 +347,9 @@ condition mapping, and the committed randomization seed; construction sees commi
 Kevin receives randomized, condition-free scoring packets. The custody registry and keys remain
 outside the compiler workspace. The four materials and complete custody bundle are now frozen;
 real target trials require explicit paid-run authorization.
+
+The 6A.2 product track adds a signed standing-policy runtime, deterministic explicit-feedback
+detector, encrypted task-exact capture, evaluation-first automatic promotion, arbitrary sequential
+scope/supersession/revocation compilation, compact Codex delivery, and longitudinal feedback. Its
+generic host coordinator makes the durable boundary restart-safe without claiming a shipped Codex
+integration: concrete event, delivery, notice, undo, and feedback adapters remain next.

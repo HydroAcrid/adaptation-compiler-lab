@@ -4,7 +4,28 @@ Last updated: 2026-07-29
 
 ## Current milestone
 
-**Milestone 6A.5 completed a valid 15-turn persistent-conversation canary.** The original run is
+**Milestone 6A.2 Product Track now has an implemented automatic-runtime core and generic local host
+coordinator.** A signed bounded
+standing policy can govern explicit low-risk user feedback through encrypted raw capture, exact
+Evidence v1.1 consent/capture lineage, an EvaluationCase candidate, deterministic promotion,
+arbitrary-length addition/correction/supersession/revocation compilation, compact Codex
+projection, signed release/activation events, exact-once task delivery, notification, undo, and
+helped/hurt/irrelevant measurement. Untrusted content is rejected before capture; secrets are
+blocked; ambiguous and capability-changing proposals remain inactive.
+
+Permanent-profile and current-context ownership is implemented. Capability-preset and personal
+overlay references are typed and composition-checked, but no preset is imported or active. The
+runtime correctly emits a zero-byte projection when no adaptation applies or the final rule is
+revoked, so revoked behavior cannot survive as target-visible boilerplate.
+
+The remaining 6A.2 product work is concrete product hookup: a trusted local Codex event source,
+next-session delivery adapter, durable host-cursor owner, and user-facing notice/undo/feedback
+commands. The generic coordinator already polls replayable pages, persists raw-free review work
+and signed runtime events atomically with cycle/state history, dispatches idempotent sinks, and
+recovers a crash between durable append and delivery. It still does not watch Codex in the
+background.
+
+**Milestone 6A.5 previously completed a valid 15-turn persistent-conversation canary.** The original run is
 preserved as instrument-invalid because resumed turns were read-only. A versioned runner repair
 reasserted `workspace-write` on every resume, passed a live two-turn edit-and-test smoke, and then
 produced 30/30 conformant target turns across the strong-profile and compiled conditions.
@@ -34,6 +55,25 @@ evaluated.
 
 ## Completed scope
 
+- Added typed standing-policy, interaction, capture, detection, evaluation, transition,
+  composition-layer, state, cycle, delivery, notification, activation-feedback, metrics, and
+  capability-preset-reference contracts for the automatic runtime.
+- Added authority-first explicit feedback detection. Ordinary task instructions are not durable;
+  agent/tool/repository/web/retrieval/system sources cannot acquire user authority by imitating
+  adaptation grammar.
+- Added automatic task-exact signed consent and capture receipts, encrypted local raw storage,
+  evaluation-first promotion, signed review/release/activation actions, reproducible release
+  history, compact context selection, exact revocation, zero-byte removal, and exact-once Codex
+  task delivery.
+- Added append-only automatic state/cycle/feedback tables in migration 0007, deterministic current
+  state derivation, compare-and-swap stale-head refusal, helped/hurt/irrelevant feedback, and
+  activation/pack-size/update-latency/maintenance metrics.
+- Added append-only review and signed-event persistence plus a typed host coordinator and narrow
+  interaction/delivery/review/notice ports. Duplicate observations cannot fork history; interrupted
+  deliveries reproduce the exact historical receipt and rely on idempotent sinks rather than
+  learning twice.
+- Added automatic-runtime and updated governance schema snapshots plus unit, security-property,
+  migration, scope, revocation, secret, tool, preset, signature-tamper, and persistence tests.
 - Added a typed 15-turn scenario grammar, deterministic within-stage task ordering, three
   cumulative snapshot deliveries, explicit feedback boundaries, 3/10/15 checkpoints, persistent
   Codex session isolation, independent per-task scoring, encrypted traces, anonymous outputs, and
