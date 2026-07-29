@@ -46,8 +46,14 @@ def _schema(output_ids: tuple[str, str]) -> dict[str, object]:
                 "maxItems": 2,
                 "items": {"type": "string", "minLength": 1},
             },
-            "winner": {"enum": ["first", "second", "tie"]},
-            "confidence": {"enum": ["low", "medium", "high"]},
+            "winner": {
+                "type": "string",
+                "enum": ["first", "second", "tie"],
+            },
+            "confidence": {
+                "type": "string",
+                "enum": ["low", "medium", "high"],
+            },
             "rationale": {"type": "string", "minLength": 1},
         },
         "required": [
@@ -63,14 +69,17 @@ def _schema(output_ids: tuple[str, str]) -> dict[str, object]:
     return {
         "type": "object",
         "properties": {
-            "judge_version": {"const": "1.0.0"},
+            "judge_version": {"type": "string", "const": "1.0.0"},
             "task_ratings": {
                 "type": "array",
                 "minItems": 13,
                 "maxItems": 13,
                 "items": rating,
             },
-            "overall_winner_output_id": {"enum": [*output_ids, "tie"]},
+            "overall_winner_output_id": {
+                "type": "string",
+                "enum": [*output_ids, "tie"],
+            },
             "overall_rationale": {"type": "string", "minLength": 1},
         },
         "required": [
@@ -86,7 +95,10 @@ def _schema(output_ids: tuple[str, str]) -> dict[str, object]:
 def _assert_valid(result: StructuredRoleRawResult) -> None:
     if not result.trace_conformant:
         raise RuntimeError(
-            f"long-horizon judge trace failed: {result.trace_validation_error or 'unknown error'}"
+            "long-horizon judge trace failed: "
+            f"{result.trace_validation_error or 'unknown error'}; "
+            f"exit_code={result.exit_code}; stderr={result.stderr[:1000]!r}; "
+            f"trace={result.trace_bytes[:1000]!r}"
         )
     if result.tool_use_observed or result.model_reroute_observed:
         raise RuntimeError("long-horizon judge used a tool or rerouted")
