@@ -41,6 +41,7 @@ addopts = ["-ra", "--strict-config", "--strict-markers"]
 testpaths = ["tests"]
 
 [tool.ruff]
+extend-exclude = ["**/anonymous-outputs/**"]
 line-length = 100
 target-version = "py312"
 

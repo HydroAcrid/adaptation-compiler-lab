@@ -1,6 +1,12 @@
 # Milestone 6A.5 — Long-Horizon Adaptation
 
-Status: **implementation and preregistration in progress**
+Status: **complete; repaired instrument valid, strict raw comparative gate not passed**
+
+The original v1 run is preserved as instrument-invalid because resumed turns were read-only.
+Version 1.1 reasserted write policy on every resume, passed a two-turn edit-and-test smoke, and
+completed both 15-turn episodes. See
+[`MILESTONE_6A5_ANALYSIS.md`](MILESTONE_6A5_ANALYSIS.md) for the immutable raw result, semantic
+adjudication, blind judgment, unblinded mapping, and bounded product interpretation.
 
 ## Product question
 
@@ -50,9 +56,12 @@ confounding horizon length with a different task sample.
 
 ## Evidence and update schedule
 
-Both conditions use the exact same three cumulative evidence stages frozen in Milestone 6A.4.
-Those materials already came from the same admissible behavioral evidence, and the strong profile
-was authored and reviewed in isolated AI contexts without compiled-material or task access.
+Both conditions use the exact same three cumulative evidence stages from the original Milestone
+6A.4 breadth registration. Those materials already came from the same admissible behavioral
+evidence, and the strong profile was authored and reviewed in isolated AI contexts without
+compiled-material or task access. They predate the later 974-byte communication-only expression
+repair. The frozen long-horizon run therefore tests staged lifecycle behavior, not that later final
+renderer revision; the materials cannot be swapped after preregistration.
 
 | Target turn | Event | Active snapshot |
 | ---: | --- | --- |

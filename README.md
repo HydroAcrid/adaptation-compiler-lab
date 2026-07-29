@@ -5,20 +5,25 @@ from completed coding work into typed external artifacts. Its research question 
 compiled adaptation pack can improve a target coding agent on unseen work beyond a base agent,
 ordinary memory, and a strong static profile.
 
-Milestones 6A.3 and 6A.4 now provide positive, complementary comparisons against the strong static
+Milestones 6A.3–6A.5 now provide positive, complementary comparisons against the strong static
 profile. Milestone 6A.3 showed lifecycle-aware compilation winning five of six fresh staged task
-pairs with one tie. Milestone 6A.4 then replicated breadth across the four approved behavior
-families: after a versioned communication-only expression repair, compiled won the fresh
-communication task 12–11, tied an unrelated research control 11–11, retained the prior
-debugging/environment/research ties, and remained smaller at 974 versus 986 bytes. All four final
-records were instrument-valid, and a condition-blind judge independently selected compiled on
-communication and tied research.
+pairs with one tie. Milestone 6A.4 replicated breadth across the four approved behavior families
+after a scoped communication-expression repair.
+
+Milestone 6A.5 added one persistent 15-turn conversation per condition with cumulative snapshots,
+explicit feedback, distractors, a neutral control, and checkpoints at Turns 3, 10, and 15. After
+preserving and repairing an initial read-only-resume failure, the valid rerun produced 30/30
+conformant turns and perfect equal objective and neutral results. A condition-blind judge selected
+compiled overall, five task wins to one with seven ties; the compiled staged pack was 18.2% smaller.
+The frozen raw scorer placed profile one check ahead at Turn 15 due to a documented keyword false
+negative, so the strict raw comparative gate remains failed and the original score is unchanged.
 
 This supports the bounded same-agent claim that the compiler matched or outperformed an excellent
 static profile in these development comparisons while retaining provenance, scoping,
-supersession, revocation, and rollback advantages. It is not a powered general claim or new
-cross-model proof. See
-[`MILESTONE_6A4_ANALYSIS.md`](MILESTONE_6A4_ANALYSIS.md).
+supersession, revocation, and rollback advantages. It is not a powered general claim, a proven
+long-term trend, or new cross-model proof. The 6A.5 staged materials also predate the final 6A.4
+expression repair. See [`MILESTONE_6A4_ANALYSIS.md`](MILESTONE_6A4_ANALYSIS.md) and
+[`MILESTONE_6A5_ANALYSIS.md`](MILESTONE_6A5_ANALYSIS.md).
 
 Milestone 6A.1 implements a compact runtime projection without changing Milestone 6A's failed
 product result. The compiler now keeps complete governance, provenance, history, and rollback data
@@ -230,6 +235,9 @@ after valid trials.
   measurements, and fresh comparison boundary.
 - [`MILESTONE_6A4_ANALYSIS.md`](MILESTONE_6A4_ANALYSIS.md): complete breadth-replication history,
   scoped expression repair, final blinded results, bounded product claim, and remaining limits.
+- [`MILESTONE_6A5_ANALYSIS.md`](MILESTONE_6A5_ANALYSIS.md): persistent 15-turn instrument repair,
+  cumulative 3/10/15 results, blind quality trajectory, compactness, scorer adjudication, and
+  replication boundary.
 - [`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md): docs-only portable
   specialty preset composition and the proposed Frontend Studio demonstration.
 - [`development_benchmark_compact_projection`](development_benchmark_compact_projection): frozen

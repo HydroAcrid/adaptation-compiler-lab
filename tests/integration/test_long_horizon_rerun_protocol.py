@@ -75,3 +75,23 @@ def test_v1_1_live_smoke_proves_resumed_write_and_test_execution() -> None:
     assert smoke["session_destroyed"]
     assert smoke["provider_billed_calls"] == 0
     assert not smoke["external_validation_accessed"]
+
+
+def test_v1_1_unblinding_preserves_raw_gate_and_lineage() -> None:
+    results = BENCHMARK / "results-v1.1"
+    value = json.loads((results / "UNBLINDED_RESULT-v1.1.json").read_text())
+    mapping = {item["condition"]: item["blind_output_id"] for item in value["conditions"]}
+
+    assert value["instrument_valid"]
+    assert not value["preregistered_comparative_gate_passed"]
+    assert mapping == {
+        "strong_static_profile": "output-f7e34355597d",
+        "compiled_adaptation": "output-c88699ac8077",
+    }
+    assert value["blind_report_digest"] == sha256_file(results / "BLIND_REPORT-v1.1.json")
+    assert value["judge_receipt_digest"] == sha256_file(results / "JUDGE_RECEIPT-v1.1.json")
+    assert value["judge_overall_winner"] == "compiled_adaptation"
+    assert value["material_lineage"].endswith("not_974_byte_scoped_expression_repair")
+    assert not value["posthoc_semantic_adjudication"]["changes_original_result"]
+    assert value["provider_billed_calls"] == 0
+    assert not value["external_validation_accessed"]
