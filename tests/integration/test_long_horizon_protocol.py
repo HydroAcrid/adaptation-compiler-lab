@@ -54,7 +54,9 @@ def test_materials_share_evidence_and_match_frozen_6a4_sources() -> None:
                 / "development_benchmark_breadth_replication"
                 / "condition-materials"
                 / f"{prefix}-stage-{stage}.md"
-            ).read_text(encoding="utf-8").strip()
+            )
+            .read_text(encoding="utf-8")
+            .strip()
             for stage in (1, 2, 3)
         )
         assert material.stages == expected
