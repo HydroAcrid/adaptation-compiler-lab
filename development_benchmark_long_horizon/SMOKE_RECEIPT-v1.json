@@ -1,0 +1,16 @@
+{
+  "receipt_version": "1.0.0",
+  "runner": "persistent_codex_conversation_v1",
+  "model": "gpt-5.6-luna",
+  "reasoning_effort": "medium",
+  "authentication": "saved_chatgpt",
+  "turns": 2,
+  "one_thread": true,
+  "turns_conformant": true,
+  "session_files_existed_during_smoke": true,
+  "config_destroyed": true,
+  "session_destroyed": true,
+  "synthetic_no_user_data": true,
+  "provider_billed_calls": 0,
+  "external_validation_accessed": false
+}

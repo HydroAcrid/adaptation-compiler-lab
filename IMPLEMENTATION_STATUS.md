@@ -1,50 +1,46 @@
 # Implementation Status
 
-Last updated: 2026-07-28
+Last updated: 2026-07-29
 
 ## Current milestone
 
-**Milestone 6A.4 passed its scoped breadth-replication gate.** The final answer-blind validation
-compared the unchanged strong static profile with a 974-byte compiled pack whose only change from
-the prior 885-byte version was a stronger communication clause. The profile remained 986 bytes.
-The non-communication compiled rules were byte-identical, the eligible evidence did not change,
-and no new user behavior was inferred.
+**Milestone 6A.5 completed a valid 15-turn persistent-conversation canary.** The original run is
+preserved as instrument-invalid because resumed turns were read-only. A versioned runner repair
+reasserted `workspace-write` on every resume, passed a live two-turn edit-and-test smoke, and then
+produced 30/30 conformant target turns across the strong-profile and compiled conditions.
 
-On two fresh tasks delivered through the same exact-once user-task adapter, all four Luna/medium
-records were instrument-valid and ran their tests. Compiled adaptation passed 12/12 communication
-checks and beat the profile's 11/12, then tied the profile 11/11 on an unrelated
-research-integrity control. The condition-blind Sol/xhigh judge independently preferred compiled
-on communication and tied the research outputs. The compiled condition was perfect on every
-fresh objective, diagnostic, neutral, and bounded-command check.
+Both conditions completed all 13 work tasks objectively, preserved the neutral control, and made
+no unsupported verification claims. Their automated behavior scores tied through Turn 10. The
+frozen scorer placed the profile one check ahead at Turn 15, but post-hoc review showed that the
+only difference was a narrow keyword false negative on a valid compiled purpose statement. The
+raw result remains unchanged and the literal preregistered comparative gate remains failed.
 
-The final gate also digest-bound the prior valid v3 comparison. Compiled and profile remained tied
-on debugging, environment safety, and research integrity; the final expression repair changed
-none of those rules. Together, the preregistered bounded claim is
-`compiled_matched_or_outperformed_profile_across_four_families_with_lifecycle_advantages`.
-This means no worse than the excellent profile on the four approved behavior families in this
-development evidence, not that every inherited implementation was perfect.
+The isolated condition-blind Sol/xhigh judge selected compiled adaptation overall: five compiled
+task wins, one profile win, and seven ties. Its cumulative preference moved from 0–1 at Turn 3 to
+3–1 at Turn 10 and 5–1 at Turn 15. The staged compiled material was 18.2% smaller at Stage 3 and
+used 9.7% less terminal cumulative input in this canary. This is favorable, hypothesis-generating
+longitudinal evidence—not a repeatable trend estimate or general superiority result.
 
-The path to this result is preserved rather than hidden. The original breadth run, scoring
-adjudication, oracle-remediation run, v2 sandbox failure, and valid v3 communication loss remain
-immutable. The v3 loss exposed a real compiler-expression defect: the compact rule said to match
-the shell and quote paths but omitted the need for real supported commands/options and honest
-verification claims. The least-invasive repair strengthened that one clause only and passed a
-fresh direct task plus an unrelated leakage control.
+The long-horizon registration bound the original Milestone 6A.4 staged snapshots, which predate
+the later 974-byte communication-only expression repair. It therefore tests staged lifecycle
+behavior, not the latest final renderer revision. A future replication must use fresh tasks,
+multiple seeds, semantic scorers, more neutral controls, and current-renderer snapshots.
 
-Milestones 6A.3 and 6A.4 now provide two complementary pieces of same-agent product evidence:
-6A.3 showed lifecycle-aware compilation outperforming a cumulative profile across sequential
-addition, exception, and revocation stages; 6A.4 showed the compact governed pack matching or
-beating the profile across the four approved behavior families after one scoped versioned repair.
-Both used saved ChatGPT authentication and zero provider-billed calls.
-
-The claim remains bounded: this is internally blinded Codex development evidence with one run per
-fresh condition/task cell, not a powered general result or new cross-model proof. The deferred
+The claim remains bounded: this is internally blinded Codex development evidence with one
+persistent episode per condition, not a powered general result or new cross-model proof. The deferred
 Milestone 6 Claude study remains sealed, unchanged, and optional. Portable Specialty Presets
 (Milestone 6B) remain a docs-only architecture draft; no preset has been imported, activated, or
 evaluated.
 
 ## Completed scope
 
+- Added a typed 15-turn scenario grammar, deterministic within-stage task ordering, three
+  cumulative snapshot deliveries, explicit feedback boundaries, 3/10/15 checkpoints, persistent
+  Codex session isolation, independent per-task scoring, encrypted traces, anonymous outputs, and
+  a condition-blind judge for Milestone 6A.5.
+- Preserved the invalid v1 long-horizon run, repaired resumed-turn write policy in a separate
+  runner, corrected cumulative-token accounting, passed a two-turn live resume smoke, and
+  completed the valid v1.1 two-condition comparison without accessing the deferred study.
 - Added portable external governed releases with cumulative lifecycle history, active artifact
   versions, exact lineage, scoped supersession/revocation, parent-release rollback, renderer
   identity, and reproducible digests.
@@ -237,8 +233,9 @@ uv run pytest
 uv build
 ```
 
-The current full suite checks formatting for 576 files, passes Ruff lint, passes strict typing
-across 257 source files, passes 683 tests, and builds both the source distribution and wheel.
+The current full suite checks formatting for 593 non-result files, passes Ruff lint, passes strict
+typing across 267 source files, passes 700 tests, and builds both the source distribution and
+wheel. Immutable anonymous target outputs are excluded from formatter/linter mutation.
 Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
 verifier matched its pinned binary and canonical generated-schema digest
@@ -273,15 +270,18 @@ quality; they do not establish powered general or held-out cross-model transfer.
 
 ## Gate result and next action
 
-Milestone 6A.4 is complete. Its exact tasks, public plan, condition materials, source digests,
-anonymous outputs, blind judge receipt, unblinded mapping, and result are durable. Raw traces,
-private mappings, and encryption material remain outside the workspace in owner-readable-only
-storage.
+Milestone 6A.5 is complete. Its original invalid run, versioned repair, frozen staged materials,
+valid 30-turn result, anonymous outputs, blind judge receipt, unblinded mapping, and semantic
+adjudication are durable. Raw traces, private mappings, and encryption material remain outside the
+workspace in owner-readable-only storage.
 
-The current bounded product answer is affirmative: compilation has now beaten the profile on
-lifecycle-stage scoping and matched or beaten it across the approved behavior families while
-remaining compact and governed. The project still must not claim universal superiority,
-independent replication, or held-out cross-model transfer.
+The current bounded product answer remains affirmative and is stronger longitudinally:
+compilation has beaten the profile on lifecycle-stage scoping, matched or beaten it across the
+approved behavior families, and now matched functional behavior while winning blind quality in
+one valid 15-turn canary with a smaller pack. The strict raw 6A.5 gate did not pass, the staged
+materials predate the final 6A.4 expression repair, and the project must not claim universal
+superiority, a repeatable widening trend, independent replication, or held-out cross-model
+transfer.
 
 No Portable Specialty Preset exists yet. Milestone 6B is the proposed next product milestone, but
 its current artifact is architecture documentation only. Implementation should begin with one
