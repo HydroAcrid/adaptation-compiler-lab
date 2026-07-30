@@ -28,6 +28,12 @@ DEFAULT_HAIKU_DEVELOPMENT_RUNTIME_LOCK: Final = (
 DEFAULT_SOURCE_RUNTIME_LOCK: Final = (
     Path(__file__).resolve().parent / "runtime_pins" / "milestone_5_source.json"
 )
+DEFAULT_DOGFOOD_RUNTIME_LOCK: Final = (
+    Path(__file__).resolve().parent / "runtime_pins" / "milestone_6a2b_codex_dogfood.json"
+)
+DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK: Final = (
+    Path(__file__).resolve().parent / "runtime_pins" / "milestone_6a2b_codex_dogfood_windows.json"
+)
 
 
 class RuntimeConformanceError(RuntimeError):
@@ -112,6 +118,13 @@ class SourceRuntimePinSet(FrozenModel):
 
     lock_version: SemVer
     codex_desktop: CodexAppServerPin
+
+
+class DogfoodRuntimePinSet(FrozenModel):
+    """Machine-readable current Codex runtime lock for the local product integration."""
+
+    lock_version: SemVer
+    codex: CodexAppServerPin
 
 
 @dataclass(frozen=True)
@@ -213,6 +226,20 @@ def load_source_runtime_pins(
         )
     except (OSError, ValueError) as exc:
         raise RuntimeConformanceError(f"invalid source runtime pin file: {path}") from exc
+
+
+def load_dogfood_runtime_pins(
+    path: Path = DEFAULT_DOGFOOD_RUNTIME_LOCK,
+) -> DogfoodRuntimePinSet:
+    """Load the separately versioned Codex dogfood runtime lock."""
+
+    try:
+        return DogfoodRuntimePinSet.model_validate_json(
+            path.read_text(encoding="utf-8"),
+            strict=True,
+        )
+    except (OSError, ValueError) as exc:
+        raise RuntimeConformanceError(f"invalid dogfood runtime pin file: {path}") from exc
 
 
 def _run_checked(

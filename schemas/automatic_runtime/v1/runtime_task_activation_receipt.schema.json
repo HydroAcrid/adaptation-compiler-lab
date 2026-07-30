@@ -1,0 +1,126 @@
+{
+  "$defs": {
+    "TaskRecordRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "const": null,
+          "default": null,
+          "title": "Content Digest",
+          "type": "null"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "task_record",
+          "default": "task_record",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version"
+      ],
+      "title": "TaskRecordRef",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Exact binding for one later task activation from an immutable runtime state.",
+  "properties": {
+    "activated_at": {
+      "format": "date-time",
+      "title": "Activated At",
+      "type": "string"
+    },
+    "activation_event_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Activation Event Digest",
+      "type": "string"
+    },
+    "activation_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Activation Id",
+      "type": "string"
+    },
+    "active_artifact_ids": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Active Artifact Ids",
+      "type": "array"
+    },
+    "composed_release_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Composed Release Digest",
+      "type": "string"
+    },
+    "delivery_receipt_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Delivery Receipt Digest",
+      "type": "string"
+    },
+    "external_release_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "External Release Digest",
+      "type": "string"
+    },
+    "projection_context_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Projection Context Digest",
+      "type": "string"
+    },
+    "receipt_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Receipt Version",
+      "type": "string"
+    },
+    "state_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "State Digest",
+      "type": "string"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    },
+    "task_ref": {
+      "$ref": "#/$defs/TaskRecordRef"
+    }
+  },
+  "required": [
+    "activation_id",
+    "subject_id",
+    "task_ref",
+    "state_digest",
+    "external_release_digest",
+    "composed_release_digest",
+    "projection_context_digest",
+    "delivery_receipt_digest",
+    "activation_event_digest",
+    "active_artifact_ids",
+    "activated_at"
+  ],
+  "title": "RuntimeTaskActivationReceipt",
+  "type": "object"
+}

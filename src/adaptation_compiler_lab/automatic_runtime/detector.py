@@ -56,6 +56,11 @@ _CORRECTION = re.compile(
     r"^(?:correction|instead)\s*:\s*(?P<body>.+)$",
     re.IGNORECASE | re.DOTALL,
 )
+_NATURAL_NEGATIVE = re.compile(
+    r"^i\s+(?:do not|don't)\s+want\s+(?:you|the agent)\s+to\s+"
+    r"(?P<body>.+?)(?:\s+again)?[.!]?\s*$",
+    re.IGNORECASE | re.DOTALL,
+)
 _REVOCATION = re.compile(
     r"^(?:revoke|forget|stop applying)\s*:\s*(?P<artifact>[A-Za-z0-9][A-Za-z0-9._:-]*)\s*$",
     re.IGNORECASE,
@@ -120,6 +125,72 @@ def _active_artifacts(state: AutomaticRuntimeState) -> dict[str, object]:
         item.artifact_ref.record_id: item
         for item in state.release.governed_release.active_artifacts
     }
+
+
+def _classify_behavior(
+    observation: InteractionObservation,
+    policy: StandingAutomationPolicy,
+    state: AutomaticRuntimeState,
+    *,
+    signal_kind: FeedbackSignalKind,
+    behavior: str,
+    route: ArtifactRoute,
+    eligible_reason: str,
+) -> DetectedFeedback:
+    normalized = _normalized_behavior(behavior)
+    byte_count = len(normalized.encode("utf-8"))
+    if byte_count > policy.maximum_behavior_utf8_bytes:
+        return _feedback(
+            observation,
+            signal_kind=signal_kind,
+            behavior=normalized,
+            route=route,
+            disposition=AutomationDisposition.REVIEW_REQUIRED,
+            reasons=("Behavior exceeds the standing-policy automatic size ceiling.",),
+        )
+    if route not in policy.allowed_routes:
+        return _feedback(
+            observation,
+            signal_kind=signal_kind,
+            behavior=normalized,
+            route=route,
+            disposition=AutomationDisposition.REVIEW_REQUIRED,
+            reasons=("The least-invasive route is not standing-policy authorized.",),
+        )
+    if _CAPABILITY_CHANGE.search(normalized):
+        return _feedback(
+            observation,
+            signal_kind=signal_kind,
+            behavior=normalized,
+            route=route,
+            disposition=AutomationDisposition.REVIEW_REQUIRED,
+            reasons=("Capability, credential, tool, or network changes require review.",),
+        )
+    if state.release is not None:
+        duplicates = tuple(
+            item
+            for item in state.release.governed_release.active_artifacts
+            if item.artifact_type.value == route.value
+            and item.scope == observation.scope
+            and item.behavioral_contract.required_behaviors == (normalized,)
+        )
+        if duplicates:
+            return _feedback(
+                observation,
+                signal_kind=signal_kind,
+                behavior=normalized,
+                route=route,
+                disposition=AutomationDisposition.DUPLICATE,
+                reasons=("An identical active adaptation already covers this exact scope.",),
+            )
+    return _feedback(
+        observation,
+        signal_kind=signal_kind,
+        behavior=normalized,
+        route=route,
+        disposition=AutomationDisposition.PROMOTED,
+        reasons=(eligible_reason,),
+    )
 
 
 def detect_explicit_feedback(
@@ -198,63 +269,33 @@ def detect_explicit_feedback(
             reasons=(reasons,),
         )
 
+    natural_negative = _NATURAL_NEGATIVE.fullmatch(stripped)
+    if natural_negative is not None:
+        return _classify_behavior(
+            observation,
+            policy,
+            state,
+            signal_kind=FeedbackSignalKind.PROMPT_RULE,
+            behavior=f"Do not {natural_negative.group('body')}",
+            route=ArtifactRoute.PROMPT_RULE,
+            eligible_reason=(
+                "Natural first-person negative preference is explicit user authority and "
+                "standing-policy eligible."
+            ),
+        )
+
     for pattern, signal_kind, route in _PREFIXES:
         match = pattern.fullmatch(stripped)
         if match is None:
             continue
-        behavior = _normalized_behavior(match.group("body"))
-        byte_count = len(behavior.encode("utf-8"))
-        if byte_count > policy.maximum_behavior_utf8_bytes:
-            return _feedback(
-                observation,
-                signal_kind=signal_kind,
-                behavior=behavior,
-                route=route,
-                disposition=AutomationDisposition.REVIEW_REQUIRED,
-                reasons=("Behavior exceeds the standing-policy automatic size ceiling.",),
-            )
-        if route not in policy.allowed_routes:
-            return _feedback(
-                observation,
-                signal_kind=signal_kind,
-                behavior=behavior,
-                route=route,
-                disposition=AutomationDisposition.REVIEW_REQUIRED,
-                reasons=("The least-invasive route is not standing-policy authorized.",),
-            )
-        if _CAPABILITY_CHANGE.search(behavior):
-            return _feedback(
-                observation,
-                signal_kind=signal_kind,
-                behavior=behavior,
-                route=route,
-                disposition=AutomationDisposition.REVIEW_REQUIRED,
-                reasons=("Capability, credential, tool, or network changes require review.",),
-            )
-        if state.release is not None:
-            duplicates = tuple(
-                item
-                for item in state.release.governed_release.active_artifacts
-                if item.artifact_type.value == route.value
-                and item.scope == observation.scope
-                and item.behavioral_contract.required_behaviors == (behavior,)
-            )
-            if duplicates:
-                return _feedback(
-                    observation,
-                    signal_kind=signal_kind,
-                    behavior=behavior,
-                    route=route,
-                    disposition=AutomationDisposition.DUPLICATE,
-                    reasons=("An identical active adaptation already covers this exact scope.",),
-                )
-        return _feedback(
+        return _classify_behavior(
             observation,
+            policy,
+            state,
             signal_kind=signal_kind,
-            behavior=behavior,
+            behavior=match.group("body"),
             route=route,
-            disposition=AutomationDisposition.PROMOTED,
-            reasons=("Explicit low-risk user signal is standing-policy eligible.",),
+            eligible_reason="Explicit low-risk user signal is standing-policy eligible.",
         )
 
     return _feedback(

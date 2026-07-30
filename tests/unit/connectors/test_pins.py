@@ -8,11 +8,16 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
+from adaptation_compiler_lab.automatic_runtime.codex_dogfood import (
+    DEFAULT_CODEX_DOGFOOD_SCHEMA_ROOT,
+)
 from adaptation_compiler_lab.connectors.codex_app_server import (
     DEFAULT_CODEX_DESKTOP_SCHEMA_ROOT,
     DEFAULT_CODEX_SCHEMA_ROOT,
 )
 from adaptation_compiler_lab.connectors.pins import (
+    DEFAULT_DOGFOOD_RUNTIME_LOCK,
+    DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK,
     DEFAULT_HAIKU_DEVELOPMENT_RUNTIME_LOCK,
     DEFAULT_RUNTIME_LOCK,
     DEFAULT_SOURCE_RUNTIME_LOCK,
@@ -20,6 +25,7 @@ from adaptation_compiler_lab.connectors.pins import (
     RuntimeConformanceError,
     _as_windows_interop_path,
     digest_tree,
+    load_dogfood_runtime_pins,
     load_runtime_pins,
     load_source_runtime_pins,
     sha256_file,
@@ -98,6 +104,26 @@ def test_checked_in_desktop_source_runtime_lock_is_strict_and_complete() -> None
     assert sha256_file(DEFAULT_SOURCE_RUNTIME_LOCK).startswith("sha256:")
 
 
+def test_checked_in_codex_dogfood_runtime_lock_is_separate_and_complete() -> None:
+    pins = load_dogfood_runtime_pins()
+
+    assert pins.codex.executable.version_stdout == "codex-cli 0.146.0"
+    assert set(pins.codex.schema_file_sha256) >= {
+        "v2/GetAccountResponse.json",
+        "v2/ThreadListResponse.json",
+        "v2/ThreadReadResponse.json",
+        "v2/ThreadStartResponse.json",
+        "v2/TurnStartResponse.json",
+        "v2/TurnCompletedNotification.json",
+    }
+    for relative, expected in pins.codex.schema_file_sha256.items():
+        assert sha256_file(DEFAULT_CODEX_DOGFOOD_SCHEMA_ROOT / relative) == expected
+    assert sha256_file(DEFAULT_DOGFOOD_RUNTIME_LOCK).startswith("sha256:")
+    windows = load_dogfood_runtime_pins(DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK)
+    assert windows.codex.executable.package == "@openai/codex Windows x64"
+    assert windows.codex.schema_bundle_sha256 == pins.codex.schema_bundle_sha256
+
+
 def test_windows_interop_path_conversion_is_narrow() -> None:
     assert (
         _as_windows_interop_path(Path("/mnt/c/Users/example/codex.exe"))
@@ -160,3 +186,6 @@ def test_missing_runtime_lock_fails_closed(tmp_path: Path) -> None:
 
     with pytest.raises(RuntimeConformanceError, match="invalid source runtime pin file"):
         load_source_runtime_pins(tmp_path / "missing-source.json")
+
+    with pytest.raises(RuntimeConformanceError, match="invalid dogfood runtime pin file"):
+        load_dogfood_runtime_pins(tmp_path / "missing-dogfood.json")

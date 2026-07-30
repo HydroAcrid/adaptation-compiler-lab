@@ -13,13 +13,17 @@ from adaptation_compiler_lab.automatic_runtime import (
     AutomaticRuntimeResult,
     RuntimeActivationFeedback,
     RuntimeFeedbackOutcome,
+    RuntimeSourceCheckpoint,
+    RuntimeTargetDeliveryAcknowledgement,
     initial_runtime_state,
     summarize_runtime,
 )
+from adaptation_compiler_lab.domain import TaskRecordRef
 from adaptation_compiler_lab.governance import GovernanceEvent
 from adaptation_compiler_lab.persistence.errors import HistoryConflictError
 from adaptation_compiler_lab.persistence.sqlite import SqliteUnitOfWorkFactory
 from adaptation_compiler_lab.serialization import canonical_digest
+from adaptation_compiler_lab.targets.base import sha256_text
 from tests.unit.automatic_runtime.test_runtime import NOW, _context, _observation, _runtime
 
 
@@ -31,7 +35,7 @@ def _events(result: AutomaticRuntimeResult) -> tuple[GovernanceEvent, ...]:
 
 def test_runtime_ledger_is_append_only_and_idempotent(tmp_path: Path) -> None:
     path = tmp_path / "ledger.sqlite3"
-    assert SqliteUnitOfWorkFactory(path).initialize() == 7
+    assert SqliteUnitOfWorkFactory(path).initialize() == 8
     runtime, policy = _runtime(tmp_path)
     initial = initial_runtime_state(policy)
     result = runtime.process(
@@ -102,6 +106,88 @@ def test_runtime_ledger_rejects_a_stale_state_head(tmp_path: Path) -> None:
 
     with pytest.raises(HistoryConflictError, match="head changed"):
         ledger.append(stale.cycle, stale.state, governance_events=_events(stale))
+
+
+def test_learning_checkpoint_activation_acknowledgement_and_feedback_are_separate(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "ledger.sqlite3"
+    SqliteUnitOfWorkFactory(path).initialize()
+    runtime, policy = _runtime(tmp_path)
+    initial = initial_runtime_state(policy)
+    learning = runtime.learn(
+        _observation(1, "I prefer purpose before commands"),
+        state=initial,
+        processed_at=NOW + timedelta(minutes=1, seconds=5),
+    )
+    ledger = AutomaticRuntimeLedger(path, subject_id="kevin")
+    ledger.initialize(initial)
+
+    assert ledger.append_learning(
+        learning.cycle,
+        learning.state,
+        release_event=learning.release_event,
+    )
+    assert not ledger.append_learning(
+        learning.cycle,
+        learning.state,
+        release_event=learning.release_event,
+    )
+    assert ledger.learning_cycle_for_observation("observation-1") == learning.cycle
+
+    cursor = '{"cursor":"hashed-only"}'
+    checkpoint = RuntimeSourceCheckpoint(
+        checkpoint_id="codex-checkpoint-1",
+        subject_id="kevin",
+        source_id="codex-dogfood-interactive",
+        sequence=1,
+        cursor_digest=sha256_text(cursor),
+        cursor_value=cursor,
+        committed_at=NOW + timedelta(minutes=2),
+    )
+    assert ledger.commit_checkpoint(checkpoint)
+    assert ledger.current_checkpoint("codex-dogfood-interactive") == checkpoint
+
+    prepared = runtime.activate(
+        activation_id="fresh-task-1",
+        task_ref=TaskRecordRef(record_id="fresh-task-1", record_version="1.0.0"),
+        state=learning.state,
+        context=_context(2, project_id="ordinary-project"),
+        target_task="Prepare the handoff.",
+        activated_at=NOW + timedelta(minutes=2),
+    )
+    assert ledger.append_activation(prepared)
+    assert ledger.activation("fresh-task-1") == prepared.activation
+
+    feedback = RuntimeActivationFeedback(
+        feedback_id="activation-feedback-1",
+        subject_id="kevin",
+        cycle_id="fresh-task-1",
+        delivery_receipt_digest=prepared.activation.delivery_receipt_digest,
+        outcome=RuntimeFeedbackOutcome.HELPED,
+        relevant_artifact_ids=prepared.activation.active_artifact_ids,
+        activated_artifact_ids=prepared.activation.active_artifact_ids,
+        recorded_at=NOW + timedelta(minutes=3),
+    )
+    with pytest.raises(HistoryConflictError, match="acknowledgement"):
+        ledger.add_feedback(feedback)
+
+    acknowledgement = RuntimeTargetDeliveryAcknowledgement(
+        acknowledgement_id="target-ack-fresh-task-1",
+        activation_id="fresh-task-1",
+        subject_id="kevin",
+        target_family="codex",
+        activation_digest=prepared.activation.content_digest,
+        external_session_digest=sha256_text("thread-1"),
+        external_turn_digest=sha256_text("turn-1"),
+        result_digest=sha256_text("completed"),
+        status="completed",
+        acknowledged_at=NOW + timedelta(minutes=2, seconds=30),
+    )
+    assert ledger.acknowledge_delivery(acknowledgement)
+    assert ledger.delivery_acknowledgement("fresh-task-1") == acknowledgement
+    assert ledger.add_feedback(feedback)
+    assert feedback in ledger.feedback()
 
 
 def test_runtime_ledger_rejects_a_tampered_signed_action(tmp_path: Path) -> None:

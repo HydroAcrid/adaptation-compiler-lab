@@ -90,9 +90,24 @@ triggers and compare-and-swap state heads.
 
 The generic host coordinator polls replayable typed pages and atomically appends state, cycle,
 raw-free review work, and signed runtime actions before dispatching idempotent delivery, review,
-and notice sinks. A replay after interruption reproduces the exact historical delivery receipt.
-Concrete ambient Codex pickup and notice/undo/feedback command surfaces are the next product
-increment.
+and notice sinks. Milestone 6A.2B adds a concrete Codex host that keeps post-task learning separate
+from later task activation. Its hashed prefix cursor commits after notice/review acknowledgement,
+and a replay after interruption reproduces the exact historical learning result. Local
+notice/review/undo/feedback commands are implemented; optional background pickup remains future
+work.
+
+The dogfood integration has a second, non-benchmark target boundary:
+
+```mermaid
+flowchart LR
+    C1["Completed interactive Codex user message"] --> P["Pinned list/read + cutoff + path allowlist"]
+    P --> L1["Learning-only receipt and governed release"]
+    L1 --> A1["Later signed task activation"]
+    A1 --> H["Fresh auth-only Codex home"]
+    H --> T1["One exact task projection"]
+    T1 --> K["Completed/failed delivery acknowledgement"]
+    K --> F1["Helped / hurt / irrelevant feedback"]
+```
 
 The runtime boundary is deliberately outside promotion and custody:
 
@@ -290,7 +305,7 @@ src/adaptation_compiler_lab/
   domain/           strict records, values, references, enums
   governance/       signed identity/receipt/event contracts and Ed25519 custody
   conflicts/        deterministic scoped conflict precedence
-  automatic_runtime/ governed detector/compiler/service, host ports, replay, metrics
+  automatic_runtime/ governed detector/compiler/service, Codex dogfood host, replay, metrics
   recall/           dependency impact analysis and confirmed recall execution
   provenance/       lineage, authority, scope/privacy policy
   evaluation/       evaluation-candidate extraction and policy
@@ -348,8 +363,10 @@ Kevin receives randomized, condition-free scoring packets. The custody registry 
 outside the compiler workspace. The four materials and complete custody bundle are now frozen;
 real target trials require explicit paid-run authorization.
 
-The 6A.2 product track adds a signed standing-policy runtime, deterministic explicit-feedback
-detector, encrypted task-exact capture, evaluation-first automatic promotion, arbitrary sequential
-scope/supersession/revocation compilation, compact Codex delivery, and longitudinal feedback. Its
-generic host coordinator makes the durable boundary restart-safe without claiming a shipped Codex
-integration: concrete event, delivery, notice, undo, and feedback adapters remain next.
+The 6A.2 product track adds a signed standing-policy runtime, deterministic feedback detector,
+encrypted task-exact capture, evaluation-first automatic promotion, arbitrary sequential
+scope/supersession/revocation compilation, compact Codex delivery, and longitudinal feedback.
+Milestone 6A.2B adds pinned Linux/Windows Codex pickup, hashed durable checkpoints, separate later
+activation and delivery acknowledgement, and local notice/review/undo/feedback commands. It is a
+working one-turn dogfood integration, not yet an ambient background service or persistent
+multi-turn gateway.
