@@ -7,6 +7,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from adaptation_compiler_lab.automatic_runtime.gate import CodexDogfoodGateReport
 from adaptation_compiler_lab.automatic_runtime.models import (
     AutomaticRenderedMaterial,
     AutomaticRuntimeMetrics,
@@ -16,6 +17,7 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     RuntimeActivationFeedback,
     RuntimeCycleReceipt,
     RuntimeDeliveryReceipt,
+    RuntimeLearningAssessment,
     RuntimeLearningCycleReceipt,
     RuntimeReviewQueueItem,
     RuntimeSourceCheckpoint,
@@ -29,9 +31,11 @@ _MODELS: dict[str, type[BaseModel]] = {
     "automatic_runtime_metrics": AutomaticRuntimeMetrics,
     "automatic_runtime_state": AutomaticRuntimeState,
     "capability_preset_ref": CapabilityPresetRef,
+    "codex_dogfood_gate_report": CodexDogfoodGateReport,
     "composed_runtime_release": ComposedRuntimeRelease,
     "runtime_cycle_receipt": RuntimeCycleReceipt,
     "runtime_delivery_receipt": RuntimeDeliveryReceipt,
+    "runtime_learning_assessment": RuntimeLearningAssessment,
     "runtime_learning_cycle_receipt": RuntimeLearningCycleReceipt,
     "runtime_review_queue_item": RuntimeReviewQueueItem,
     "runtime_source_checkpoint": RuntimeSourceCheckpoint,

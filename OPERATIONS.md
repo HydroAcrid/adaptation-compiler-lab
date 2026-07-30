@@ -117,12 +117,23 @@ Use `runtime poll` after completed ordinary Codex work. Pickup reads only pinned
 Use `runtime notices` and `runtime review` to inspect minimized local outcomes. Use `runtime undo`
 for exact artifact revocation.
 
+When source history and target work use different host surfaces, repeat `--source-root` for each
+trusted source CWD alias and configure the optional target executable/home/runtime lock as one
+complete endpoint. Partial target endpoints fail closed. On the active Windows/WSL topology,
+native Windows runs the CLI because WSL executable interoperability is disabled; the canonical WSL
+target root is supplied through its UNC path.
+
 Use `runtime run --workspace <allowlisted-root> --task <text>` to prepare a later activation and
 launch one fresh ephemeral Codex session through saved ChatGPT authentication. The command rejects
 unresolved prior activations, validates exact model/approval/workspace/network/instruction-source
 constraints, sends the applicable compact projection once, and appends a digest-only completion or
 failure acknowledgement. `runtime feedback` records helped, hurt, or irrelevant only for an exact
 completed activation.
+
+Use `runtime learning-feedback <cycle-id> correct|false_positive|missed` once per learning cycle.
+Use `runtime gate-report` for the raw-free 20-interaction/three-date/six-activation readiness
+report. Do not backdate interactions, alter the construction cutoff, or import pre-cutoff tasks to
+accelerate the gate.
 
 The host advances its source cursor only after all sinks acknowledge a page. If it stops after the
 SQLite append, replaying the same observation reconstructs the historical learning result and does

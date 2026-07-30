@@ -11,6 +11,7 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     PreparedRuntimeActivation,
     RuntimeActivationFeedback,
     RuntimeCycleReceipt,
+    RuntimeLearningAssessment,
     RuntimeLearningCycleReceipt,
     RuntimeReviewQueueItem,
     RuntimeSourceCheckpoint,
@@ -518,6 +519,25 @@ class AutomaticRuntimeLedger:
             result.append(cycle)
         return tuple(result)
 
+    def learning_cycle(self, cycle_id: str) -> RuntimeLearningCycleReceipt | None:
+        with sqlite3.connect(self._path) as connection:
+            row = connection.execute(
+                """
+                SELECT canonical_json, content_sha256
+                FROM automatic_runtime_learning_cycles
+                WHERE subject_id = ? AND cycle_id = ?
+                """,
+                (self._subject_id, cycle_id),
+            ).fetchone()
+        if row is None:
+            return None
+        cycle = RuntimeLearningCycleReceipt.model_validate_json(row[0])
+        if canonical_json(cycle) != row[0]:
+            raise ValueError("stored runtime learning cycle is not canonical")
+        if str(cycle.content_digest).removeprefix("sha256:") != row[1]:
+            raise ValueError("stored runtime learning cycle digest mismatch")
+        return cycle
+
     def activation(self, activation_id: str) -> RuntimeTaskActivationReceipt | None:
         with sqlite3.connect(self._path) as connection:
             row = connection.execute(
@@ -578,6 +598,29 @@ class AutomaticRuntimeLedger:
         if str(acknowledgement.content_digest).removeprefix("sha256:") != row[1]:
             raise ValueError("stored delivery acknowledgement digest mismatch")
         return acknowledgement
+
+    def delivery_acknowledgements(
+        self,
+    ) -> tuple[RuntimeTargetDeliveryAcknowledgement, ...]:
+        with sqlite3.connect(self._path) as connection:
+            rows = connection.execute(
+                """
+                SELECT canonical_json, content_sha256
+                FROM automatic_runtime_target_delivery_acknowledgements
+                WHERE subject_id = ?
+                ORDER BY acknowledged_at, acknowledgement_id
+                """,
+                (self._subject_id,),
+            ).fetchall()
+        result: list[RuntimeTargetDeliveryAcknowledgement] = []
+        for payload, digest in rows:
+            acknowledgement = RuntimeTargetDeliveryAcknowledgement.model_validate_json(payload)
+            if canonical_json(acknowledgement) != payload:
+                raise ValueError("stored delivery acknowledgement is not canonical")
+            if str(acknowledgement.content_digest).removeprefix("sha256:") != digest:
+                raise ValueError("stored delivery acknowledgement digest mismatch")
+            result.append(acknowledgement)
+        return tuple(result)
 
     def current_checkpoint(self, source_id: str) -> RuntimeSourceCheckpoint | None:
         with sqlite3.connect(self._path) as connection:
@@ -722,6 +765,95 @@ class AutomaticRuntimeLedger:
             result.append(event)
         return tuple(result)
 
+    def add_learning_assessment(self, assessment: RuntimeLearningAssessment) -> bool:
+        """Append one classification bound to an exact post-task learning cycle."""
+
+        if assessment.subject_id != self._subject_id:
+            raise ValueError("runtime learning assessment crossed the subject boundary")
+        payload = canonical_json(assessment)
+        digest = str(assessment.content_digest).removeprefix("sha256:")
+        with sqlite3.connect(self._path) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            existing = connection.execute(
+                """
+                SELECT canonical_json, content_sha256
+                FROM automatic_runtime_learning_assessments
+                WHERE assessment_id = ? OR cycle_id = ?
+                """,
+                (assessment.assessment_id, assessment.cycle_id),
+            ).fetchone()
+            if existing is not None:
+                if tuple(existing) == (payload, digest):
+                    connection.rollback()
+                    return False
+                connection.rollback()
+                raise RecordConflictError(
+                    "runtime learning cycle already has another immutable assessment"
+                )
+            cycle_row = connection.execute(
+                """
+                SELECT canonical_json, content_sha256
+                FROM automatic_runtime_learning_cycles
+                WHERE subject_id = ? AND cycle_id = ?
+                """,
+                (self._subject_id, assessment.cycle_id),
+            ).fetchone()
+            if cycle_row is None:
+                connection.rollback()
+                raise HistoryConflictError("runtime learning assessment cycle is unavailable")
+            cycle = RuntimeLearningCycleReceipt.model_validate_json(cycle_row[0])
+            if canonical_json(cycle) != cycle_row[0]:
+                connection.rollback()
+                raise ValueError("stored runtime learning cycle is not canonical")
+            if str(cycle.content_digest).removeprefix("sha256:") != cycle_row[1]:
+                connection.rollback()
+                raise ValueError("stored runtime learning cycle digest mismatch")
+            if assessment.cycle_digest != cycle.content_digest:
+                connection.rollback()
+                raise HistoryConflictError(
+                    "runtime learning assessment does not bind the exact cycle"
+                )
+            connection.execute(
+                """
+                INSERT INTO automatic_runtime_learning_assessments (
+                    assessment_id, subject_id, cycle_id, outcome,
+                    recorded_at, canonical_json, content_sha256
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    assessment.assessment_id,
+                    assessment.subject_id,
+                    assessment.cycle_id,
+                    assessment.outcome.value,
+                    assessment.recorded_at.isoformat(),
+                    payload,
+                    digest,
+                ),
+            )
+            connection.commit()
+        return True
+
+    def learning_assessments(self) -> tuple[RuntimeLearningAssessment, ...]:
+        with sqlite3.connect(self._path) as connection:
+            rows = connection.execute(
+                """
+                SELECT canonical_json, content_sha256
+                FROM automatic_runtime_learning_assessments
+                WHERE subject_id = ?
+                ORDER BY recorded_at, assessment_id
+                """,
+                (self._subject_id,),
+            ).fetchall()
+        result: list[RuntimeLearningAssessment] = []
+        for payload, digest in rows:
+            assessment = RuntimeLearningAssessment.model_validate_json(payload)
+            if canonical_json(assessment) != payload:
+                raise ValueError("stored runtime learning assessment is not canonical")
+            if str(assessment.content_digest).removeprefix("sha256:") != digest:
+                raise ValueError("stored runtime learning assessment digest mismatch")
+            result.append(assessment)
+        return tuple(result)
+
     def add_feedback(self, feedback: RuntimeActivationFeedback) -> bool:
         """Append feedback only when it binds an exact legacy cycle or later activation."""
 
@@ -797,6 +929,10 @@ class AutomaticRuntimeLedger:
                 if acknowledgement.status != "completed":
                     raise HistoryConflictError(
                         "runtime feedback cannot rate a failed target delivery"
+                    )
+                if feedback.activated_artifact_ids != activation.active_artifact_ids:
+                    raise HistoryConflictError(
+                        "runtime feedback changed the exact activated artifact set"
                     )
                 expected_delivery = activation.delivery_receipt_digest
                 destination = "automatic_runtime_activation_feedback"

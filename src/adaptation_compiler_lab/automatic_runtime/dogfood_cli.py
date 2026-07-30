@@ -21,6 +21,9 @@ from adaptation_compiler_lab.automatic_runtime.codex_dogfood import (
     open_codex_dogfood,
 )
 from adaptation_compiler_lab.automatic_runtime.codex_host import CodexDogfoodHost
+from adaptation_compiler_lab.automatic_runtime.gate import (
+    build_codex_dogfood_gate_report,
+)
 from adaptation_compiler_lab.automatic_runtime.host import (
     RuntimeNoticeSink,
     RuntimeReviewSink,
@@ -30,6 +33,8 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     InteractionObservation,
     RuntimeActivationFeedback,
     RuntimeFeedbackOutcome,
+    RuntimeLearningAssessment,
+    RuntimeLearningAssessmentOutcome,
     RuntimeNotice,
     RuntimeReviewQueueItem,
     StandingAutomationPolicy,
@@ -41,6 +46,7 @@ from adaptation_compiler_lab.automatic_runtime.service import (
 )
 from adaptation_compiler_lab.connectors.pins import (
     DEFAULT_DOGFOOD_RUNTIME_LOCK,
+    RuntimeConformanceError,
     load_dogfood_runtime_pins,
 )
 from adaptation_compiler_lab.domain import (
@@ -95,11 +101,20 @@ ConfigOption = Annotated[
 
 
 class CodexDogfoodProjectConfig(FrozenModel):
-    """One exact target path and its governed context scope."""
+    """One exact target path plus source-CWD aliases for the same governed project."""
 
     project_id: Identifier
     root: Path
     scope: Scope
+    source_roots: tuple[Path, ...] = ()
+
+    @field_validator("source_roots")
+    @classmethod
+    def source_roots_are_sorted_unique(cls, value: tuple[Path, ...]) -> tuple[Path, ...]:
+        rendered = tuple(str(item) for item in value)
+        if rendered != tuple(sorted(set(rendered))):
+            raise ValueError("dogfood source roots must be sorted and unique")
+        return value
 
     @model_validator(mode="after")
     def project_scope_is_exact(self) -> CodexDogfoodProjectConfig:
@@ -107,11 +122,15 @@ class CodexDogfoodProjectConfig(FrozenModel):
             raise ValueError("dogfood project scope must contain exactly its project ID")
         return self
 
+    @property
+    def effective_source_roots(self) -> tuple[Path, ...]:
+        return self.source_roots or (self.root,)
+
 
 class CodexDogfoodLocalConfig(FrozenModel):
     """No-secret local configuration; keys remain external environment dependencies."""
 
-    config_version: str = "1.0.0"
+    config_version: str = "1.1.0"
     subject_id: Identifier
     repository_root: Path
     state_root: Path
@@ -126,6 +145,10 @@ class CodexDogfoodLocalConfig(FrozenModel):
     policy_authorization: GovernanceEvent
     signer_identity: SignerIdentity
     projects: tuple[CodexDogfoodProjectConfig, ...]
+    target_codex_home: Path | None = None
+    target_codex_executable: Path | None = None
+    target_windows_interop: bool | None = None
+    target_runtime_pin_path: Path | None = None
 
     @field_validator("projects")
     @classmethod
@@ -149,7 +172,37 @@ class CodexDogfoodLocalConfig(FrozenModel):
             raise ValueError("dogfood database must remain directly below its state root")
         if self.raw_store_path.parent != self.state_root:
             raise ValueError("dogfood raw store must remain directly below its state root")
+        target_endpoint = (
+            self.target_codex_home,
+            self.target_codex_executable,
+            self.target_windows_interop,
+            self.target_runtime_pin_path,
+        )
+        if any(item is not None for item in target_endpoint) and not all(
+            item is not None for item in target_endpoint
+        ):
+            raise ValueError(
+                "dogfood target endpoint must be completely specified or inherit the source"
+            )
         return self
+
+    @property
+    def effective_target_codex_home(self) -> Path:
+        return self.target_codex_home or self.source_codex_home
+
+    @property
+    def effective_target_codex_executable(self) -> Path:
+        return self.target_codex_executable or self.codex_executable
+
+    @property
+    def effective_target_windows_interop(self) -> bool:
+        if self.target_windows_interop is None:
+            return self.windows_interop
+        return self.target_windows_interop
+
+    @property
+    def effective_target_runtime_pin_path(self) -> Path:
+        return self.target_runtime_pin_path or self.runtime_pin_path
 
 
 class _ConsoleNoticeSink(RuntimeNoticeSink):
@@ -275,7 +328,7 @@ def _context(
 
 @contextmanager
 def _isolated_target_home(config: CodexDogfoodLocalConfig) -> Iterator[Path]:
-    auth = config.source_codex_home / "auth.json"
+    auth = config.effective_target_codex_home / "auth.json"
     if not auth.is_file():
         raise AutomaticRuntimeError("saved ChatGPT auth file is unavailable")
     with tempfile.TemporaryDirectory(
@@ -334,6 +387,19 @@ def initialize_codex_dogfood(
     ],
     subject_id: Annotated[str, typer.Option("--subject-id")],
     project_id: Annotated[str, typer.Option("--project-id")],
+    source_roots: Annotated[
+        list[Path] | None,
+        typer.Option(
+            "--source-root",
+            exists=True,
+            file_okay=False,
+            resolve_path=True,
+            help=(
+                "Repeatable Codex source-CWD alias for the governed project; "
+                "defaults to --project-root."
+            ),
+        ),
+    ] = None,
     identity_id: Annotated[str, typer.Option("--identity-id")] = "acl-runtime-owner",
     runtime_pin: Annotated[
         Path,
@@ -349,6 +415,43 @@ def initialize_codex_dogfood(
         typer.Option(
             "--windows-interop",
             help="Launch a pinned Windows .exe from WSL and translate CODEX_HOME paths.",
+        ),
+    ] = False,
+    target_codex_executable: Annotated[
+        Path | None,
+        typer.Option(
+            "--target-codex-executable",
+            exists=True,
+            dir_okay=False,
+            resolve_path=True,
+            help="Optional separate pinned Codex executable for fresh target sessions.",
+        ),
+    ] = None,
+    target_codex_home: Annotated[
+        Path | None,
+        typer.Option(
+            "--target-codex-home",
+            exists=True,
+            file_okay=False,
+            resolve_path=True,
+            help="Saved ChatGPT-auth home for the optional separate target runtime.",
+        ),
+    ] = None,
+    target_runtime_pin: Annotated[
+        Path | None,
+        typer.Option(
+            "--target-runtime-pin",
+            exists=True,
+            dir_okay=False,
+            resolve_path=True,
+            help="Runtime lock for the optional separate target executable.",
+        ),
+    ] = None,
+    target_windows_interop: Annotated[
+        bool,
+        typer.Option(
+            "--target-windows-interop",
+            help="Launch the separately configured target as a Windows executable from WSL.",
         ),
     ] = False,
 ) -> None:
@@ -428,6 +531,37 @@ def initialize_codex_dogfood(
             windows_interop=windows_interop,
         ):
             pass
+        target_endpoint_parts = (
+            target_codex_executable,
+            target_codex_home,
+            target_runtime_pin,
+        )
+        if any(item is not None for item in target_endpoint_parts) and not all(
+            item is not None for item in target_endpoint_parts
+        ):
+            raise ValueError("separate target requires executable, Codex home, and runtime pin")
+        if target_windows_interop and target_codex_executable is None:
+            raise ValueError("--target-windows-interop requires a separate target executable")
+        if target_codex_executable is not None:
+            assert target_codex_home is not None
+            assert target_runtime_pin is not None
+            target_pins = load_dogfood_runtime_pins(target_runtime_pin)
+            with open_codex_dogfood(
+                executable=target_codex_executable,
+                codex_home=target_codex_home,
+                pin=target_pins.codex,
+                windows_interop=target_windows_interop,
+            ):
+                pass
+        normalized_source_roots = tuple(
+            sorted(
+                {
+                    item.resolve()
+                    for item in (source_roots if source_roots is not None else [project_root])
+                },
+                key=str,
+            )
+        )
         config = CodexDogfoodLocalConfig(
             subject_id=subject_id,
             repository_root=repository,
@@ -447,7 +581,18 @@ def initialize_codex_dogfood(
                     project_id=project_id,
                     root=project_root.resolve(),
                     scope=scope,
+                    source_roots=normalized_source_roots,
                 ),
+            ),
+            target_codex_home=(None if target_codex_home is None else target_codex_home.resolve()),
+            target_codex_executable=(
+                None if target_codex_executable is None else target_codex_executable.resolve()
+            ),
+            target_windows_interop=(
+                None if target_codex_executable is None else target_windows_interop
+            ),
+            target_runtime_pin_path=(
+                None if target_runtime_pin is None else target_runtime_pin.resolve()
             ),
         )
         config_path = state / "config.json"
@@ -455,7 +600,7 @@ def initialize_codex_dogfood(
         config_path.chmod(0o600)
         database = _ledger(config)
         database.initialize(initial_runtime_state(policy))
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
     typer.echo(str(config_path))
 
@@ -485,7 +630,9 @@ def poll_codex_feedback(
                 source_schema_digest=verified.schema_bundle_digest,
                 schemas=schemas,
                 projects=tuple(
-                    CodexProjectScope(root=item.root, scope=item.scope) for item in config.projects
+                    CodexProjectScope(root=root, scope=item.scope)
+                    for item in config.projects
+                    for root in item.effective_source_roots
                 ),
                 capture_after_epoch_seconds=config.capture_after_epoch_seconds,
             )
@@ -497,7 +644,7 @@ def poll_codex_feedback(
                 review_sink=_ConsoleReviewSink(),
                 notice_sink=_ConsoleNoticeSink(),
             ).run_once(limit=limit)
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
     typer.echo(canonical_json(asdict(receipt)))
 
@@ -559,14 +706,14 @@ def run_fresh_codex_task(
             target_task=normalized_task,
             activated_at=now,
         )
-        pins = load_dogfood_runtime_pins(config.runtime_pin_path)
+        pins = load_dogfood_runtime_pins(config.effective_target_runtime_pin_path)
         with (
             _isolated_target_home(config) as target_home,
             open_codex_dogfood(
-                executable=config.codex_executable,
+                executable=config.effective_target_codex_executable,
                 codex_home=target_home,
                 pin=pins.codex,
-                windows_interop=config.windows_interop,
+                windows_interop=config.effective_target_windows_interop,
             ) as (_verified, schemas, rpc),
         ):
             if not ledger.append_activation(prepared):
@@ -597,7 +744,7 @@ def run_fresh_codex_task(
             raise typer.Exit(code=1)
     except typer.Exit:
         raise
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
 
 
@@ -625,13 +772,14 @@ def show_codex_dogfood_status(config_path: ConfigOption) -> None:
             "feedback_count": len(ledger.feedback()),
             "generation": 0 if state is None else state.generation,
             "learning_cycle_count": len(ledger.learning_cycles()),
+            "learning_assessment_count": len(ledger.learning_assessments()),
             "review_count": len(ledger.learning_review_items()),
             "source_checkpointed": (
                 ledger.current_checkpoint("codex-dogfood-interactive") is not None
             ),
             "unresolved_activation_ids": unresolved,
         }
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
     typer.echo(canonical_json(payload))
 
@@ -643,7 +791,7 @@ def show_codex_dogfood_review(config_path: ConfigOption) -> None:
     try:
         config = _load_config(config_path)
         items = _ledger(config).learning_review_items()
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
     typer.echo(
         canonical_json(
@@ -673,7 +821,7 @@ def show_codex_dogfood_notices(config_path: ConfigOption) -> None:
     try:
         config = _load_config(config_path)
         cycles = _ledger(config).learning_cycles()
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
     typer.echo(
         canonical_json(
@@ -745,7 +893,7 @@ def undo_codex_adaptation(
             release_event=result.release_event,
         ):
             raise AutomaticRuntimeError("undo observation unexpectedly already exists")
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
     typer.echo(canonical_json(result.cycle.notice))
 
@@ -755,6 +903,23 @@ def record_codex_activation_feedback(
     config_path: ConfigOption,
     activation_id: Annotated[str, typer.Argument(help="Completed activation to rate.")],
     outcome: Annotated[RuntimeFeedbackOutcome, typer.Argument()],
+    relevant_artifact_ids: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--relevant-artifact-id",
+            help=(
+                "Repeatable artifact that should have applied. Defaults to the activated set "
+                "for helped/hurt and the empty set for irrelevant."
+            ),
+        ),
+    ] = None,
+    correction_key: Annotated[
+        str | None,
+        typer.Option(
+            "--correction-key",
+            help="Stable behavior key used to count repeated corrections.",
+        ),
+    ] = None,
 ) -> None:
     """Record whether one exact completed activation helped, hurt, or was irrelevant."""
 
@@ -768,6 +933,12 @@ def record_codex_activation_feedback(
                 "feedback requires an exact activation and delivery acknowledgement"
             )
         now = _now()
+        activated = activation.active_artifact_ids
+        relevant = (
+            tuple(sorted(set(relevant_artifact_ids)))
+            if relevant_artifact_ids is not None
+            else (() if outcome is RuntimeFeedbackOutcome.IRRELEVANT else activated)
+        )
         feedback = RuntimeActivationFeedback(
             feedback_id=(
                 f"feedback-{activation_id}-"
@@ -777,11 +948,62 @@ def record_codex_activation_feedback(
             cycle_id=activation_id,
             delivery_receipt_digest=activation.delivery_receipt_digest,
             outcome=outcome,
-            relevant_artifact_ids=activation.active_artifact_ids,
-            activated_artifact_ids=activation.active_artifact_ids,
+            relevant_artifact_ids=relevant,
+            activated_artifact_ids=activated,
+            correction_key=correction_key,
             recorded_at=now,
         )
         ledger.add_feedback(feedback)
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
     typer.echo(canonical_json(feedback))
+
+
+@dogfood_app.command("learning-feedback")
+def record_codex_learning_feedback(
+    config_path: ConfigOption,
+    cycle_id: Annotated[str, typer.Argument(help="Exact learning cycle to classify.")],
+    outcome: Annotated[RuntimeLearningAssessmentOutcome, typer.Argument()],
+) -> None:
+    """Classify an exact learning decision as correct, false-positive, or missed."""
+
+    try:
+        config = _load_config(config_path)
+        ledger = _ledger(config)
+        cycle = ledger.learning_cycle(cycle_id)
+        if cycle is None:
+            raise AutomaticRuntimeError("learning assessment requires an exact cycle")
+        now = _now()
+        assessment = RuntimeLearningAssessment(
+            assessment_id=f"learning-assessment-{cycle_id}",
+            subject_id=config.subject_id,
+            cycle_id=cycle_id,
+            cycle_digest=cycle.content_digest,
+            outcome=outcome,
+            recorded_at=now,
+        )
+        ledger.add_learning_assessment(assessment)
+    except (OSError, ValueError, RuntimeConformanceError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json(assessment))
+
+
+@dogfood_app.command("gate-report")
+def show_codex_dogfood_gate_report(config_path: ConfigOption) -> None:
+    """Report raw-free longitudinal readiness and product metrics."""
+
+    try:
+        config = _load_config(config_path)
+        ledger = _ledger(config)
+        report = build_codex_dogfood_gate_report(
+            subject_id=config.subject_id,
+            learning_cycles=ledger.learning_cycles(),
+            learning_assessments=ledger.learning_assessments(),
+            activations=ledger.activations(),
+            acknowledgements=ledger.delivery_acknowledgements(),
+            activation_feedback=ledger.feedback(),
+            generated_at=_now(),
+        )
+    except (OSError, ValueError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json(report))

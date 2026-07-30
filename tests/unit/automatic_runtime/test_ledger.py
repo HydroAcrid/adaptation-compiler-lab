@@ -13,6 +13,8 @@ from adaptation_compiler_lab.automatic_runtime import (
     AutomaticRuntimeResult,
     RuntimeActivationFeedback,
     RuntimeFeedbackOutcome,
+    RuntimeLearningAssessment,
+    RuntimeLearningAssessmentOutcome,
     RuntimeSourceCheckpoint,
     RuntimeTargetDeliveryAcknowledgement,
     initial_runtime_state,
@@ -35,7 +37,7 @@ def _events(result: AutomaticRuntimeResult) -> tuple[GovernanceEvent, ...]:
 
 def test_runtime_ledger_is_append_only_and_idempotent(tmp_path: Path) -> None:
     path = tmp_path / "ledger.sqlite3"
-    assert SqliteUnitOfWorkFactory(path).initialize() == 8
+    assert SqliteUnitOfWorkFactory(path).initialize() == 9
     runtime, policy = _runtime(tmp_path)
     initial = initial_runtime_state(policy)
     result = runtime.process(
@@ -148,6 +150,18 @@ def test_learning_checkpoint_activation_acknowledgement_and_feedback_are_separat
     assert ledger.commit_checkpoint(checkpoint)
     assert ledger.current_checkpoint("codex-dogfood-interactive") == checkpoint
 
+    assessment = RuntimeLearningAssessment(
+        assessment_id="learning-assessment-1",
+        subject_id="kevin",
+        cycle_id=learning.cycle.cycle_id,
+        cycle_digest=learning.cycle.content_digest,
+        outcome=RuntimeLearningAssessmentOutcome.CORRECT,
+        recorded_at=NOW + timedelta(minutes=2, seconds=5),
+    )
+    assert ledger.add_learning_assessment(assessment)
+    assert not ledger.add_learning_assessment(assessment)
+    assert ledger.learning_assessments() == (assessment,)
+
     prepared = runtime.activate(
         activation_id="fresh-task-1",
         task_ref=TaskRecordRef(record_id="fresh-task-1", record_version="1.0.0"),
@@ -186,6 +200,15 @@ def test_learning_checkpoint_activation_acknowledgement_and_feedback_are_separat
     )
     assert ledger.acknowledge_delivery(acknowledgement)
     assert ledger.delivery_acknowledgement("fresh-task-1") == acknowledgement
+    assert ledger.delivery_acknowledgements() == (acknowledgement,)
+    changed_activation = feedback.model_copy(
+        update={
+            "feedback_id": "activation-feedback-changed",
+            "activated_artifact_ids": (),
+        }
+    )
+    with pytest.raises(HistoryConflictError, match="activated artifact set"):
+        ledger.add_feedback(changed_activation)
     assert ledger.add_feedback(feedback)
     assert feedback in ledger.feedback()
 

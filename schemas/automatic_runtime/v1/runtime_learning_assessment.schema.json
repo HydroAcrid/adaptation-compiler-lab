@@ -1,0 +1,68 @@
+{
+  "$defs": {
+    "RuntimeLearningAssessmentOutcome": {
+      "description": "Owner/evaluator classification of one exact automatic learning decision.",
+      "enum": [
+        "correct",
+        "false_positive",
+        "missed"
+      ],
+      "title": "RuntimeLearningAssessmentOutcome",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Append-only classification used to measure false or missed automatic learning.",
+  "properties": {
+    "assessment_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Assessment Id",
+      "type": "string"
+    },
+    "assessment_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Assessment Version",
+      "type": "string"
+    },
+    "cycle_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Cycle Digest",
+      "type": "string"
+    },
+    "cycle_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Cycle Id",
+      "type": "string"
+    },
+    "outcome": {
+      "$ref": "#/$defs/RuntimeLearningAssessmentOutcome"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "assessment_id",
+    "subject_id",
+    "cycle_id",
+    "cycle_digest",
+    "outcome",
+    "recorded_at"
+  ],
+  "title": "RuntimeLearningAssessment",
+  "type": "object"
+}

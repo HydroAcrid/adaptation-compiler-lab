@@ -96,6 +96,18 @@ and a replay after interruption reproduces the exact historical learning result.
 notice/review/undo/feedback commands are implemented; optional background pickup remains future
 work.
 
+Milestone 6A.2C separates the source execution surface from the target surface at configuration
+time. One governed project has a canonical target root plus explicit source-CWD aliases; source
+and target may carry different executable, saved-auth-home, runtime-lock, and Windows-interoperability
+settings. This permits native Windows Codex Desktop history to map to a canonical WSL repository
+without inferring either path from unrelated ambient state.
+
+Each post-task learning cycle may receive exactly one append-only `RuntimeLearningAssessment`,
+bound to the cycle digest and classified as correct, false-positive, or missed. A typed
+`CodexDogfoodGateReport` combines those assessments with exact activations, acknowledgements,
+relevance feedback, pack bytes, latency, and maintenance counts. It reports evidence readiness
+without promoting learning or deciding product success.
+
 The dogfood integration has a second, non-benchmark target boundary:
 
 ```mermaid

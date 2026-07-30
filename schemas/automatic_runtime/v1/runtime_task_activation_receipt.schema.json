@@ -81,6 +81,11 @@
       "title": "External Release Digest",
       "type": "string"
     },
+    "material_utf8_bytes": {
+      "minimum": 0,
+      "title": "Material Utf8 Bytes",
+      "type": "integer"
+    },
     "projection_context_digest": {
       "pattern": "^sha256:[0-9a-f]{64}$",
       "title": "Projection Context Digest",
@@ -119,6 +124,7 @@
     "delivery_receipt_digest",
     "activation_event_digest",
     "active_artifact_ids",
+    "material_utf8_bytes",
     "activated_at"
   ],
   "title": "RuntimeTaskActivationReceipt",

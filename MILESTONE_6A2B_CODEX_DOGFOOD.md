@@ -1,7 +1,6 @@
 # Milestone 6A.2B — Codex Dogfood Integration
 
-Status: **implemented and read-only live-conformant; ordinary-use longitudinal dogfood remains
-the next evidence gate**
+Status: **complete; ordinary-use longitudinal gate activated by Milestone 6A.2C**
 
 Date: 2026-07-30
 
@@ -187,7 +186,7 @@ smoke read a private thread payload.
 This proves that the governed runtime can connect to real Codex authentication/history interfaces
 and has a concrete fresh-session delivery path. It does **not** yet prove quiet longitudinal use.
 
-The next gate is an ordinary-use dogfood period:
+Milestone 6A.2C activated the ordinary-use dogfood period:
 
 - initialize one local post-cutoff project;
 - run pickup periodically during real Codex work;
@@ -197,6 +196,7 @@ The next gate is an ordinary-use dogfood period:
   latency, pack growth, undo, and helped/hurt/irrelevant feedback; and
 - keep every capability preset inactive.
 
-Only after that gate should the product add an optional background watcher and persistent
+Its post-cutoff state and first zero-history poll are now initialized. Only after that gate should
+the product add an optional background watcher and persistent
 multi-turn gateway. Milestone 6B remains the separate Portable Specialty Presets implementation.
 The sealed deferred external-validation study was neither accessed nor modified.

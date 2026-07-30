@@ -4,8 +4,8 @@ Last updated: 2026-07-30
 
 ## Current milestone
 
-**Milestone 6A.2B now has an implemented automatic-runtime core plus concrete Codex dogfood
-pickup and fresh-session delivery.** A signed bounded
+**Milestone 6A.2C now has an active ordinary-use Codex dogfood state on top of the implemented
+6A.2B runtime.** A signed bounded
 standing policy can govern explicit low-risk user feedback through encrypted raw capture, exact
 Evidence v1.1 consent/capture lineage, an EvaluationCase candidate, deterministic promotion,
 arbitrary-length addition/correction/supersession/revocation compilation, compact Codex
@@ -26,6 +26,17 @@ fresh one-turn execution, status, review, notices, exact undo, and helped/hurt/i
 The target fails closed on model, approval, network, workspace, writable-root, or external
 instruction-source substitution. It still does not watch Codex in the background or maintain a
 persistent multi-turn product session.
+
+Configuration v1.1 separates source-CWD aliases, the canonical target root, and optional distinct
+source/target Codex endpoints. The active topology runs native Windows Codex with saved ChatGPT
+authentication, admits only the registered Desktop project CWD, and targets the canonical WSL
+repository through UNC. Its construction cutoff is frozen, the first poll imported zero historical
+messages, and the initial gate report correctly shows 20 interactions remaining.
+
+Migration 0009 adds immutable correct/false-positive/missed learning assessments. Activation
+feedback now retains meaningful relevant-versus-activated sets, and the typed gate report measures
+learning quality, activation correctness, repeated correction, pack size, latency, maintenance,
+and deterministic readiness across 20 interactions, three dates, and six activations.
 
 **Milestone 6A.5 previously completed a valid 15-turn persistent-conversation canary.** The original run is
 preserved as instrument-invalid because resumed turns were read-only. A versioned runner repair
@@ -335,11 +346,13 @@ materials predate the final 6A.4 expression repair, and the project must not cla
 superiority, a repeatable widening trend, independent replication, or held-out cross-model
 transfer.
 
-The next evidence gate is an ordinary-use 6A.2B dogfood period: at least 20 eligible interactions
-across several days, explicit polling, fresh-session task activation, and measurement of false
+The active evidence gate is the ordinary-use 6A.2C dogfood period: at least 20 eligible interactions
+across at least three dates, explicit polling, at least six fresh-session task activations, and
+measurement of false
 learning, review rate, correct/false activation, repeated correction, update latency, pack growth,
 undo, and helped/hurt/irrelevant feedback. Only after that gate should an optional background
-watcher and persistent multi-turn gateway be considered.
+watcher and persistent multi-turn gateway be considered. Existing pre-cutoff tasks and simulated
+dates do not count.
 
 No Portable Specialty Preset exists yet. Milestone 6B remains the following product milestone and
 is currently architecture documentation only. The sealed external-validation study is not

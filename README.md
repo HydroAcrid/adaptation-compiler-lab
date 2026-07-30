@@ -22,6 +22,13 @@ idempotent delivery without learning twice. Pickup and user controls are now con
 explicitly invoked; there is still no background watcher or persistent product conversation, so
 this should not yet be described as an ambient memory service.
 
+Milestone 6A.2C has started the real ordinary-use gate. Configuration v1.1 can map Windows Codex
+Desktop source CWDs to the canonical WSL project and can use a separately pinned target endpoint.
+The local post-cutoff state is initialized, its first raw-free poll passed with zero historical
+imports, and `gate-report` now measures immutable learning assessments, activation relevance,
+pack size, update latency, maintenance, and evidence readiness. Completion requires 20 genuine
+interactions across at least three dates and will not be simulated.
+
 Milestones 6A.3–6A.5 now provide positive, complementary comparisons against the strong static
 profile. Milestone 6A.3 showed lifecycle-aware compilation winning five of six fresh staged task
 pairs with one tie. Milestone 6A.4 replicated breadth across the four approved behavior families
@@ -276,6 +283,9 @@ after valid trials.
 - [`MILESTONE_6A2B_CODEX_DOGFOOD.md`](MILESTONE_6A2B_CODEX_DOGFOOD.md): pinned saved-auth Codex
   pickup, durable cursors, separate learning/activation receipts, fresh-session delivery, local
   controls, live no-model conformance, and the ordinary-use longitudinal evidence gate.
+- [`MILESTONE_6A2C_ORDINARY_USE_GATE.md`](MILESTONE_6A2C_ORDINARY_USE_GATE.md): active Windows
+  Desktop-to-WSL dogfood topology, immutable learning/activation assessments, preregistered
+  readiness and success criteria, initial zero-history poll, and exact longitudinal workflow.
 - [`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md): docs-only portable
   specialty preset composition and the proposed Frontend Studio demonstration.
 - [`development_benchmark_compact_projection`](development_benchmark_compact_projection): frozen

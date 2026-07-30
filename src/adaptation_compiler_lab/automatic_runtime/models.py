@@ -102,6 +102,14 @@ class RuntimeFeedbackOutcome(StrEnum):
     IRRELEVANT = "irrelevant"
 
 
+class RuntimeLearningAssessmentOutcome(StrEnum):
+    """Owner/evaluator classification of one exact automatic learning decision."""
+
+    CORRECT = "correct"
+    FALSE_POSITIVE = "false_positive"
+    MISSED = "missed"
+
+
 _AUTO_ROUTES = frozenset(
     {
         ArtifactRoute.MEMORY,
@@ -635,6 +643,7 @@ class RuntimeTaskActivationReceipt(FrozenModel):
     delivery_receipt_digest: Sha256Digest
     activation_event_digest: Sha256Digest
     active_artifact_ids: tuple[Identifier, ...]
+    material_utf8_bytes: int = Field(ge=0)
     activated_at: UtcDateTime
 
     @field_validator("active_artifact_ids")
@@ -875,6 +884,8 @@ class PreparedRuntimeActivation(FrozenModel):
     def activation_bindings_are_exact(self) -> Self:
         if self.activation.delivery_receipt_digest != canonical_digest(self.task.receipt):
             raise ValueError("runtime activation does not bind the exact delivery receipt")
+        if self.activation.material_utf8_bytes != self.task.receipt.material_utf8_bytes:
+            raise ValueError("runtime activation does not bind the exact material size")
         if self.activation.activation_event_digest != canonical_digest(self.activation_event):
             raise ValueError("runtime activation does not bind the exact signed event")
         if (
@@ -909,6 +920,22 @@ class RuntimeActivationFeedback(FrozenModel):
         if value != tuple(sorted(set(value))):
             raise ValueError("runtime feedback artifact IDs must be sorted and unique")
         return value
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class RuntimeLearningAssessment(FrozenModel):
+    """Append-only classification used to measure false or missed automatic learning."""
+
+    assessment_version: Literal["1.0.0"] = "1.0.0"
+    assessment_id: Identifier
+    subject_id: Identifier
+    cycle_id: Identifier
+    cycle_digest: Sha256Digest
+    outcome: RuntimeLearningAssessmentOutcome
+    recorded_at: UtcDateTime
 
     @property
     def content_digest(self) -> Sha256Digest:
