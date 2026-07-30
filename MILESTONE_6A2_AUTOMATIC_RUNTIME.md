@@ -54,41 +54,48 @@ suppresses its broader rule only where the correction applies.
 
 1. A trusted local host supplies a replayable page of typed `InteractionObservation` work through
    `RuntimeInteractionSource`. Interaction and target text remain transient.
-2. The deterministic detector rejects non-user sources before raw capture.
-3. Ordinary task text is not learned. The initial detector admits explicit signals such as
+2. The deterministic authority boundary rejects non-user sources before raw capture or semantic
+   interpretation.
+3. Ordinary task text is not learned. The compatibility detector admits explicit signals such as
    `Remember:`, `Preference:`, `Procedure:`, `Good example:`, `Rule:`, `From now on,`,
    `Correction:`, and `Revoke: <exact-artifact-id>`.
-4. Secret-like content is blocked without capture. Capability/tool/network/credential changes and
-   ambiguous corrections are encrypted and queued for review but not activated.
-5. For an eligible signal, the runtime verifies the signed standing-policy authorization, creates
+4. In semantic modes, unmatched messages enter one isolated schema-bound batch. The model proposes
+   zero or more typed candidates with exact supporting quotes; it cannot supply authority, scope,
+   consent, or promotion.
+5. Deterministic code validates the exact quote span, route coherence, registered scope, secret
+   safety, size, standing policy, duplicates, and active lifecycle targets. Immediate corrections
+   become evaluation candidates without becoming durable learning. Capability/tool/network/
+   credential changes and ambiguous or uncertain proposals are encrypted and queued for review
+   but not activated.
+6. For an eligible signal, the runtime verifies the signed standing-policy authorization, creates
    exact task-scoped signed consent and capture receipts, and writes the raw text only to the
    AES-256-GCM raw store.
-6. The metadata ledger and promoted models retain the observation digest and encrypted payload
+7. The metadata ledger and promoted models retain the observation digest and encrypted payload
    reference, never the raw interaction text.
-7. Every signal becomes an `EvaluationCase` candidate first. Low-risk deterministic checks cover
+8. Every signal becomes an `EvaluationCase` candidate first. Low-risk deterministic checks cover
    authority, signature/capture binding, secret safety, least-invasive routing, exact correction
    target, and scope monotonicity.
-8. A passing candidate receives an attributable user approval under the standing policy and a
+9. A passing candidate receives an attributable user approval under the standing policy and a
    signed review event. A correction or failure therefore cannot skip the evaluation-candidate
    state.
-9. The runtime emits one `RuntimeLearningTransition`: addition, narrower scoped correction,
+10. The runtime emits one `RuntimeLearningTransition`: addition, narrower scoped correction,
    equal-scope supersession, or exact revocation.
-10. The complete transition history deterministically reproduces an `ExternalGovernedRelease`,
+11. The complete transition history deterministically reproduces an `ExternalGovernedRelease`,
     exact evidence/consent/capture/evaluation/review bindings, layer ownership, supersession state,
     revoked identifiers, and parent-release digests.
-11. The existing compact projection resolves the current context. A signed release event and
+12. The existing compact projection resolves the current context. A signed release event and
     signed activation event bind the result.
-12. Non-empty Codex material is delivered exactly once ahead of the current user task. If no rule
+13. Non-empty Codex material is delivered exactly once ahead of the current user task. If no rule
     applies—or the last rule was revoked—the delivery is exactly the original task with a
     zero-byte adaptation projection.
-13. The append-only ledger atomically stores the resulting state/cycle, signed release/activation
+14. The append-only ledger atomically stores the resulting state/cycle, signed release/activation
     events, and any raw-free review item before a host sink receives work.
-14. Delivery, review, and notice sinks are idempotent by their exact receipt/queue/notice IDs. If
+15. Delivery, review, and notice sinks are idempotent by their exact receipt/queue/notice IDs. If
     the host stops after the durable append but before acknowledgement, the source replays the
     interaction and the host reproduces the exact historical delivery rather than learning twice.
-15. The user receives a small learned/updated/removed/review/blocked/unchanged notice. New rules
+16. The user receives a small learned/updated/removed/review/blocked/unchanged notice. New rules
     carry an exact artifact ID that can be revoked.
-16. `helped`, `hurt`, or `irrelevant` feedback can bind the exact cycle and delivery receipt.
+17. `helped`, `hurt`, or `irrelevant` feedback can bind the exact cycle and delivery receipt.
     Metrics derive repeated corrections, correct/false/missed activation, pack size, update
     latency, automatic actions, and manual review touches without rewriting history.
 
@@ -97,6 +104,10 @@ suppresses its broader rule only where the correction applies.
 - Only `SourceClass.EXPLICIT_USER_FEEDBACK` from the exact subject user is eligible.
 - Agent messages, repository content, webpages, retrieval, tool output, and system text remain
   untrusted even if they imitate the explicit feedback grammar.
+- The semantic model is proposal-only. It runs without tools, network, ambient instructions,
+  project files, memories, skills, plugins, or prior conversations. Every proposed support span
+  must reproduce exact authoritative user text, and any interpreter conformance failure occurs
+  before state or cursor writes.
 - A property test varies untrusted source classes and adaptation-like prefixes and proves that no
   behavior or route is produced.
 - Each eligible payload is encrypted before an Evidence v1.1 record is formed. Missing encryption,
@@ -175,7 +186,9 @@ access is part of this result.
 This document records the original automatic runtime **core and generic host coordinator**.
 Milestone 6A.2B subsequently added pinned ChatGPT-authenticated Codex pickup, durable hashed
 checkpoints, separate later-task activation and delivery acknowledgements, and local
-notice/review/undo/feedback commands. The remaining ambient-product gap is a background watcher,
+notice/review/undo/feedback commands. The semantic detector then added evaluated natural-language
+candidate generation while retaining deterministic governance. The remaining ambient-product gap
+is a background watcher,
 persistent multi-turn gateway, and real longitudinal false-learning evidence—not the absence of a
 concrete connector.
 

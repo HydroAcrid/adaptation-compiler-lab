@@ -1,0 +1,307 @@
+{
+  "$defs": {
+    "ArtifactRoute": {
+      "enum": [
+        "evaluation_only",
+        "memory",
+        "preference",
+        "example",
+        "procedure",
+        "prompt_rule",
+        "skill",
+        "tool_recommendation",
+        "inactive_tool_candidate",
+        "inactive_adapter_dataset_candidate"
+      ],
+      "title": "ArtifactRoute",
+      "type": "string"
+    },
+    "FeedbackSignalKind": {
+      "description": "User signals that may become governed adaptation candidates.",
+      "enum": [
+        "memory",
+        "preference",
+        "procedure",
+        "prompt_rule",
+        "positive_example",
+        "correction",
+        "revocation"
+      ],
+      "title": "FeedbackSignalKind",
+      "type": "string"
+    },
+    "SemanticCaseEvaluation": {
+      "additionalProperties": false,
+      "description": "Raw-free per-case classification used to diagnose calibration failures.",
+      "properties": {
+        "case_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "detection_correct": {
+          "title": "Detection Correct",
+          "type": "boolean"
+        },
+        "expected_durable": {
+          "title": "Expected Durable",
+          "type": "boolean"
+        },
+        "predicted_durable": {
+          "title": "Predicted Durable",
+          "type": "boolean"
+        },
+        "predicted_routes": {
+          "items": {
+            "$ref": "#/$defs/ArtifactRoute"
+          },
+          "title": "Predicted Routes",
+          "type": "array"
+        },
+        "predicted_scope_hints": {
+          "items": {
+            "$ref": "#/$defs/SemanticScopeHint"
+          },
+          "title": "Predicted Scope Hints",
+          "type": "array"
+        },
+        "predicted_signal_kinds": {
+          "items": {
+            "$ref": "#/$defs/FeedbackSignalKind"
+          },
+          "title": "Predicted Signal Kinds",
+          "type": "array"
+        },
+        "route_correct": {
+          "title": "Route Correct",
+          "type": "boolean"
+        },
+        "scope_correct": {
+          "title": "Scope Correct",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "case_id",
+        "expected_durable",
+        "predicted_durable",
+        "predicted_signal_kinds",
+        "predicted_routes",
+        "predicted_scope_hints",
+        "detection_correct",
+        "route_correct",
+        "scope_correct"
+      ],
+      "title": "SemanticCaseEvaluation",
+      "type": "object"
+    },
+    "SemanticEvaluationMetrics": {
+      "additionalProperties": false,
+      "description": "Behavior-level confusion matrix plus routing and scoping quality.",
+      "properties": {
+        "case_count": {
+          "minimum": 1,
+          "title": "Case Count",
+          "type": "integer"
+        },
+        "false_negative": {
+          "minimum": 0,
+          "title": "False Negative",
+          "type": "integer"
+        },
+        "false_positive": {
+          "minimum": 0,
+          "title": "False Positive",
+          "type": "integer"
+        },
+        "negative_specificity": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Negative Specificity",
+          "type": "number"
+        },
+        "precision": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Precision",
+          "type": "number"
+        },
+        "recall": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Recall",
+          "type": "number"
+        },
+        "route_accuracy": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Route Accuracy",
+          "type": "number"
+        },
+        "scope_accuracy": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Scope Accuracy",
+          "type": "number"
+        },
+        "true_negative": {
+          "minimum": 0,
+          "title": "True Negative",
+          "type": "integer"
+        },
+        "true_positive": {
+          "minimum": 0,
+          "title": "True Positive",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "case_count",
+        "true_positive",
+        "false_positive",
+        "true_negative",
+        "false_negative",
+        "precision",
+        "recall",
+        "negative_specificity",
+        "route_accuracy",
+        "scope_accuracy"
+      ],
+      "title": "SemanticEvaluationMetrics",
+      "type": "object"
+    },
+    "SemanticEvaluationThresholds": {
+      "additionalProperties": false,
+      "description": "Conservative gate for unattended low-risk promotion.",
+      "properties": {
+        "minimum_negative_specificity": {
+          "default": 0.98,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Minimum Negative Specificity",
+          "type": "number"
+        },
+        "minimum_precision": {
+          "default": 0.98,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Minimum Precision",
+          "type": "number"
+        },
+        "minimum_recall": {
+          "default": 0.9,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Minimum Recall",
+          "type": "number"
+        },
+        "minimum_route_accuracy": {
+          "default": 0.95,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Minimum Route Accuracy",
+          "type": "number"
+        }
+      },
+      "title": "SemanticEvaluationThresholds",
+      "type": "object"
+    },
+    "SemanticScopeHint": {
+      "description": "Non-authoritative scope hint emitted by semantic interpretation.",
+      "enum": [
+        "permanent_profile",
+        "current_context"
+      ],
+      "title": "SemanticScopeHint",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Raw-free, digest-bound result suitable for a detector serving gate.",
+  "properties": {
+    "adjudication_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Adjudication Digest"
+    },
+    "case_evaluations": {
+      "items": {
+        "$ref": "#/$defs/SemanticCaseEvaluation"
+      },
+      "title": "Case Evaluations",
+      "type": "array"
+    },
+    "effective_corpus_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Effective Corpus Digest",
+      "type": "string"
+    },
+    "failed_case_ids": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Failed Case Ids",
+      "type": "array"
+    },
+    "interpreter_receipt_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Interpreter Receipt Digest",
+      "type": "string"
+    },
+    "metrics": {
+      "$ref": "#/$defs/SemanticEvaluationMetrics"
+    },
+    "promotion_ready": {
+      "title": "Promotion Ready",
+      "type": "boolean"
+    },
+    "report_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Report Version",
+      "type": "string"
+    },
+    "source_corpus_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Corpus Digest",
+      "type": "string"
+    },
+    "split": {
+      "enum": [
+        "calibration",
+        "holdout"
+      ],
+      "title": "Split",
+      "type": "string"
+    },
+    "thresholds": {
+      "$ref": "#/$defs/SemanticEvaluationThresholds"
+    }
+  },
+  "required": [
+    "source_corpus_digest",
+    "effective_corpus_digest",
+    "split",
+    "interpreter_receipt_digest",
+    "metrics",
+    "case_evaluations",
+    "failed_case_ids",
+    "thresholds",
+    "promotion_ready"
+  ],
+  "title": "SemanticEvaluationReport",
+  "type": "object"
+}

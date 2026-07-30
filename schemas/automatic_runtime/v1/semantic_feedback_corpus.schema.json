@@ -1,0 +1,175 @@
+{
+  "$defs": {
+    "ArtifactRoute": {
+      "enum": [
+        "evaluation_only",
+        "memory",
+        "preference",
+        "example",
+        "procedure",
+        "prompt_rule",
+        "skill",
+        "tool_recommendation",
+        "inactive_tool_candidate",
+        "inactive_adapter_dataset_candidate"
+      ],
+      "title": "ArtifactRoute",
+      "type": "string"
+    },
+    "FeedbackSignalKind": {
+      "description": "User signals that may become governed adaptation candidates.",
+      "enum": [
+        "memory",
+        "preference",
+        "procedure",
+        "prompt_rule",
+        "positive_example",
+        "correction",
+        "revocation"
+      ],
+      "title": "FeedbackSignalKind",
+      "type": "string"
+    },
+    "SemanticFeedbackCase": {
+      "additionalProperties": false,
+      "description": "One public synthetic message and its behavior-level expectation.",
+      "properties": {
+        "case_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "expectation": {
+          "$ref": "#/$defs/SemanticFeedbackExpectation"
+        },
+        "split": {
+          "enum": [
+            "calibration",
+            "holdout"
+          ],
+          "title": "Split",
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Tags",
+          "type": "array"
+        },
+        "text": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_id",
+        "split",
+        "text",
+        "tags",
+        "expectation"
+      ],
+      "title": "SemanticFeedbackCase",
+      "type": "object"
+    },
+    "SemanticFeedbackExpectation": {
+      "additionalProperties": false,
+      "description": "Outcome dimensions that can be scored without matching generated prose.",
+      "properties": {
+        "accepted_routes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ArtifactRoute"
+          },
+          "title": "Accepted Routes",
+          "type": "array"
+        },
+        "accepted_signal_kinds": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/FeedbackSignalKind"
+          },
+          "title": "Accepted Signal Kinds",
+          "type": "array"
+        },
+        "durable_signal": {
+          "title": "Durable Signal",
+          "type": "boolean"
+        },
+        "scope_hint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SemanticScopeHint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "durable_signal"
+      ],
+      "title": "SemanticFeedbackExpectation",
+      "type": "object"
+    },
+    "SemanticScopeHint": {
+      "description": "Non-authoritative scope hint emitted by semantic interpretation.",
+      "enum": [
+        "permanent_profile",
+        "current_context"
+      ],
+      "title": "SemanticScopeHint",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Versioned public corpus with a frozen holdout split.",
+  "properties": {
+    "cases": {
+      "items": {
+        "$ref": "#/$defs/SemanticFeedbackCase"
+      },
+      "minItems": 40,
+      "title": "Cases",
+      "type": "array"
+    },
+    "corpus_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Corpus Id",
+      "type": "string"
+    },
+    "corpus_version": {
+      "default": "1.0.0",
+      "enum": [
+        "1.0.0",
+        "2.0.0"
+      ],
+      "title": "Corpus Version",
+      "type": "string"
+    },
+    "frozen_at": {
+      "format": "date-time",
+      "title": "Frozen At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "corpus_id",
+    "frozen_at",
+    "cases"
+  ],
+  "title": "SemanticFeedbackCorpus",
+  "type": "object"
+}

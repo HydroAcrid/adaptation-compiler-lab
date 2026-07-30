@@ -1,0 +1,157 @@
+{
+  "$defs": {
+    "ArtifactRoute": {
+      "enum": [
+        "evaluation_only",
+        "memory",
+        "preference",
+        "example",
+        "procedure",
+        "prompt_rule",
+        "skill",
+        "tool_recommendation",
+        "inactive_tool_candidate",
+        "inactive_adapter_dataset_candidate"
+      ],
+      "title": "ArtifactRoute",
+      "type": "string"
+    },
+    "FeedbackSignalKind": {
+      "description": "User signals that may become governed adaptation candidates.",
+      "enum": [
+        "memory",
+        "preference",
+        "procedure",
+        "prompt_rule",
+        "positive_example",
+        "correction",
+        "revocation"
+      ],
+      "title": "FeedbackSignalKind",
+      "type": "string"
+    },
+    "SemanticExpectationAdjudicationEntry": {
+      "additionalProperties": false,
+      "description": "Audited calibration-only correction to synthetic ground truth.",
+      "properties": {
+        "case_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "rationale": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "revised_expectation": {
+          "$ref": "#/$defs/SemanticFeedbackExpectation"
+        }
+      },
+      "required": [
+        "case_id",
+        "revised_expectation",
+        "rationale"
+      ],
+      "title": "SemanticExpectationAdjudicationEntry",
+      "type": "object"
+    },
+    "SemanticFeedbackExpectation": {
+      "additionalProperties": false,
+      "description": "Outcome dimensions that can be scored without matching generated prose.",
+      "properties": {
+        "accepted_routes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ArtifactRoute"
+          },
+          "title": "Accepted Routes",
+          "type": "array"
+        },
+        "accepted_signal_kinds": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/FeedbackSignalKind"
+          },
+          "title": "Accepted Signal Kinds",
+          "type": "array"
+        },
+        "durable_signal": {
+          "title": "Durable Signal",
+          "type": "boolean"
+        },
+        "scope_hint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SemanticScopeHint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "durable_signal"
+      ],
+      "title": "SemanticFeedbackExpectation",
+      "type": "object"
+    },
+    "SemanticScopeHint": {
+      "description": "Non-authoritative scope hint emitted by semantic interpretation.",
+      "enum": [
+        "permanent_profile",
+        "current_context"
+      ],
+      "title": "SemanticScopeHint",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Append-only correction layer; the frozen source corpus remains immutable.",
+  "properties": {
+    "adjudication_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Adjudication Id",
+      "type": "string"
+    },
+    "adjudication_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Adjudication Version",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "entries": {
+      "items": {
+        "$ref": "#/$defs/SemanticExpectationAdjudicationEntry"
+      },
+      "minItems": 1,
+      "title": "Entries",
+      "type": "array"
+    },
+    "source_corpus_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Corpus Digest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "adjudication_id",
+    "source_corpus_digest",
+    "created_at",
+    "entries"
+  ],
+  "title": "SemanticCorpusAdjudication",
+  "type": "object"
+}

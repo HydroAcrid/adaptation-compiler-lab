@@ -117,6 +117,23 @@ Use `runtime poll` after completed ordinary Codex work. Pickup reads only pinned
 Use `runtime notices` and `runtime review` to inspect minimized local outcomes. Use `runtime undo`
 for exact artifact revocation.
 
+Detector serving is explicit:
+
+- `runtime detector-mode shadow --expected-current grammar` observes semantic candidates without
+  serving them;
+- `runtime detector-mode review --expected-current grammar` places natural candidates in the
+  inactive governed review path; and
+- `runtime detector-mode calibrated --expected-current review --evaluation-digest <sha256:...>`
+  permits only the existing single-candidate low-risk automatic path.
+
+Run `runtime detector-evaluate <corpus.json> --split calibration` before any semantic serving
+change. A calibration-only adjudication may be supplied with `--adjudication`; the command rejects
+adjudications for holdout runs. The interpreter uses saved ChatGPT authentication and one empty,
+network-denied, read-only workspace. It exposes no dynamic tools or capability roots. Any model,
+tool, ambient instruction, schema, quote, batch, timeout, or temporary-workspace drift aborts
+without advancing the source cursor. Do not use API-key environment variables for this command.
+See `SEMANTIC_FEEDBACK_DETECTOR.md`.
+
 When source history and target work use different host surfaces, repeat `--source-root` for each
 trusted source CWD alias and configure the optional target executable/home/runtime lock as one
 complete endpoint. Partial target endpoints fail closed. On the active Windows/WSL topology,

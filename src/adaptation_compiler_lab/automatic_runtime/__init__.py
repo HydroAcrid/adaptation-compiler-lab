@@ -5,7 +5,10 @@ from adaptation_compiler_lab.automatic_runtime.compiler import (
     compile_runtime_release,
     compile_runtime_releases,
 )
-from adaptation_compiler_lab.automatic_runtime.detector import detect_explicit_feedback
+from adaptation_compiler_lab.automatic_runtime.detector import (
+    detect_explicit_feedback,
+    detect_feedback,
+)
 from adaptation_compiler_lab.automatic_runtime.feedback import summarize_runtime
 from adaptation_compiler_lab.automatic_runtime.gate import (
     CodexDogfoodGateReport,
@@ -32,6 +35,7 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     CapturedInteraction,
     ComposedRuntimeRelease,
     DetectedFeedback,
+    FeedbackDetectorMode,
     FeedbackSignalKind,
     InteractionObservation,
     PreparedRuntimeActivation,
@@ -53,6 +57,12 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     RuntimeTargetDeliveryAcknowledgement,
     RuntimeTaskActivationReceipt,
     RuntimeTransitionKind,
+    SemanticFeedbackInterpretation,
+    SemanticFeedbackSignal,
+    SemanticInterpreterReceipt,
+    SemanticScopeHint,
+    SemanticSignalClarity,
+    SemanticSignalDurability,
     StandingAutomationPolicy,
     infer_layer,
 )
@@ -82,6 +92,7 @@ __all__ = [
     "CodexDogfoodGateReport",
     "ComposedRuntimeRelease",
     "DetectedFeedback",
+    "FeedbackDetectorMode",
     "FeedbackSignalKind",
     "InteractionObservation",
     "PreparedRuntimeActivation",
@@ -110,11 +121,18 @@ __all__ = [
     "RuntimeTargetDeliveryAcknowledgement",
     "RuntimeTaskActivationReceipt",
     "RuntimeTransitionKind",
+    "SemanticFeedbackInterpretation",
+    "SemanticFeedbackSignal",
+    "SemanticInterpreterReceipt",
+    "SemanticScopeHint",
+    "SemanticSignalClarity",
+    "SemanticSignalDurability",
     "StandingAutomationPolicy",
     "build_codex_dogfood_gate_report",
     "compile_runtime_release",
     "compile_runtime_releases",
     "detect_explicit_feedback",
+    "detect_feedback",
     "infer_layer",
     "initial_runtime_state",
     "summarize_runtime",

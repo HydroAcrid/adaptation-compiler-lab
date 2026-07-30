@@ -71,9 +71,10 @@ evaluated.
 - Added typed standing-policy, interaction, capture, detection, evaluation, transition,
   composition-layer, state, cycle, delivery, notification, activation-feedback, metrics, and
   capability-preset-reference contracts for the automatic runtime.
-- Added authority-first explicit feedback detection. Ordinary task instructions are not durable;
-  agent/tool/repository/web/retrieval/system sources cannot acquire user authority by imitating
-  adaptation grammar.
+- Added authority-first feedback detection. Deterministic grammar remains available, while a
+  bounded semantic candidate generator covers natural phrasing without acquiring authority.
+  Ordinary task instructions are not durable; agent/tool/repository/web/retrieval/system sources
+  cannot acquire user authority by imitating feedback.
 - Added automatic task-exact signed consent and capture receipts, encrypted local raw storage,
   evaluation-first promotion, signed review/release/activation actions, reproducible release
   history, compact context selection, exact revocation, zero-byte removal, and exact-once Codex
@@ -345,6 +346,15 @@ one valid 15-turn canary with a smaller pack. The strict raw 6A.5 gate did not p
 materials predate the final 6A.4 expression repair, and the project must not claim universal
 superiority, a repeatable widening trend, independent replication, or held-out cross-model
 transfer.
+
+The automatic detector now has a schema-bound semantic interpretation port with grammar, shadow,
+review, and calibrated modes. A real grammar-only cycle that missed a natural naming preference is
+durably assessed as `missed`. The replacement runs one tool-free, network-denied, ephemeral Codex
+batch, requires exact user-text support, and leaves authority, secrets, route, registered scope,
+policy, corrections, promotion, and revocation deterministic. The first 48-case corpus failed its
+holdout and remains preserved. A fresh v2 corpus passed 20/20 calibration and 20/20 untouched
+holdout cases at 1.00 precision, recall, negative specificity, and route accuracy. This permits
+review-mode dogfood, not a universal language-understanding claim or automatic promotion claim.
 
 The active evidence gate is the ordinary-use 6A.2C dogfood period: at least 20 eligible interactions
 across at least three dates, explicit polling, at least six fresh-session task activations, and
