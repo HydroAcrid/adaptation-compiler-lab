@@ -7,6 +7,10 @@ from adaptation_compiler_lab.automatic_runtime.compiler import (
 )
 from adaptation_compiler_lab.automatic_runtime.detector import detect_explicit_feedback
 from adaptation_compiler_lab.automatic_runtime.feedback import summarize_runtime
+from adaptation_compiler_lab.automatic_runtime.gate import (
+    CodexDogfoodGateReport,
+    build_codex_dogfood_gate_report,
+)
 from adaptation_compiler_lab.automatic_runtime.host import (
     AutomaticRuntimeHost,
     RuntimeDeliverySink,
@@ -38,6 +42,8 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     RuntimeEvaluationReceipt,
     RuntimeFeedbackOutcome,
     RuntimeLayerBinding,
+    RuntimeLearningAssessment,
+    RuntimeLearningAssessmentOutcome,
     RuntimeLearningCycleReceipt,
     RuntimeLearningTransition,
     RuntimeNotice,
@@ -73,6 +79,7 @@ __all__ = [
     "AutomationDisposition",
     "CapabilityPresetRef",
     "CapturedInteraction",
+    "CodexDogfoodGateReport",
     "ComposedRuntimeRelease",
     "DetectedFeedback",
     "FeedbackSignalKind",
@@ -90,6 +97,8 @@ __all__ = [
     "RuntimeHostWorkItem",
     "RuntimeInteractionSource",
     "RuntimeLayerBinding",
+    "RuntimeLearningAssessment",
+    "RuntimeLearningAssessmentOutcome",
     "RuntimeLearningCycleReceipt",
     "RuntimeLearningTransition",
     "RuntimeNotice",
@@ -102,6 +111,7 @@ __all__ = [
     "RuntimeTaskActivationReceipt",
     "RuntimeTransitionKind",
     "StandingAutomationPolicy",
+    "build_codex_dogfood_gate_report",
     "compile_runtime_release",
     "compile_runtime_releases",
     "detect_explicit_feedback",

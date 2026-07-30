@@ -16,6 +16,7 @@ from typer.testing import CliRunner
 
 from adaptation_compiler_lab.automatic_runtime import dogfood_cli
 from adaptation_compiler_lab.cli import app
+from adaptation_compiler_lab.connectors.pins import DEFAULT_DOGFOOD_RUNTIME_LOCK
 from adaptation_compiler_lab.domain import (
     ActorKind,
     ActorRef,
@@ -127,9 +128,17 @@ def test_runtime_init_writes_no_secret_config_and_status_is_local(
     source_home = tmp_path / "source-codex-home"
     source_home.mkdir()
     (source_home / "auth.json").write_text("{}", encoding="utf-8")
+    target_home = tmp_path / "target-codex-home"
+    target_home.mkdir()
+    (target_home / "auth.json").write_text("{}", encoding="utf-8")
     executable = tmp_path / "codex"
     executable.write_text("#!/bin/sh\n", encoding="utf-8")
     executable.chmod(0o700)
+    target_executable = tmp_path / "target-codex"
+    target_executable.write_text("#!/bin/sh\n", encoding="utf-8")
+    target_executable.chmod(0o700)
+    desktop_source = tmp_path / "desktop-source"
+    desktop_source.mkdir()
     key_path = tmp_path / "governance.pem"
     passphrase = "correct horse battery staple"
     write_new_private_key(
@@ -144,8 +153,11 @@ def test_runtime_init_writes_no_secret_config_and_status_is_local(
     monkeypatch.setenv("ACLAB_SIGNING_KEY_PASSPHRASE", passphrase)
     monkeypatch.setenv("ACLAB_RAW_KEY_FILE", str(raw_key_path))
 
+    open_calls: list[dict[str, object]] = []
+
     @contextmanager
-    def fake_open_codex_dogfood(**_kwargs: object) -> Iterator[None]:
+    def fake_open_codex_dogfood(**kwargs: object) -> Iterator[None]:
+        open_calls.append(kwargs)
         yield None
 
     monkeypatch.setattr(
@@ -165,6 +177,10 @@ def test_runtime_init_writes_no_secret_config_and_status_is_local(
             str(repository),
             "--project-root",
             str(repository),
+            "--source-root",
+            str(repository),
+            "--source-root",
+            str(desktop_source),
             "--codex-executable",
             str(executable),
             "--source-codex-home",
@@ -173,6 +189,12 @@ def test_runtime_init_writes_no_secret_config_and_status_is_local(
             "kevin",
             "--project-id",
             "dogfood-project",
+            "--target-codex-executable",
+            str(target_executable),
+            "--target-codex-home",
+            str(target_home),
+            "--target-runtime-pin",
+            str(DEFAULT_DOGFOOD_RUNTIME_LOCK),
         ],
     )
 
@@ -182,6 +204,17 @@ def test_runtime_init_writes_no_secret_config_and_status_is_local(
     assert passphrase not in text
     assert raw_key not in text
     assert "PRIVATE KEY" not in text
+    config = dogfood_cli.CodexDogfoodLocalConfig.model_validate_json(text)
+    assert config.effective_target_codex_executable == target_executable
+    assert config.effective_target_codex_home == target_home
+    assert set(config.projects[0].effective_source_roots) == {
+        desktop_source,
+        repository,
+    }
+    assert [call["executable"] for call in open_calls] == [
+        executable,
+        target_executable,
+    ]
 
     status = runner.invoke(
         app,
@@ -189,6 +222,15 @@ def test_runtime_init_writes_no_secret_config_and_status_is_local(
     )
     assert status.exit_code == 0, status.output
     assert json.loads(status.stdout)["generation"] == 0
+
+    gate = runner.invoke(
+        app,
+        ["runtime", "gate-report", "--config", str(config_path)],
+    )
+    assert gate.exit_code == 0, gate.output
+    gate_payload = json.loads(gate.stdout)
+    assert gate_payload["evidence_ready"] is False
+    assert gate_payload["remaining_interactions"] == 20
 
 
 def test_synthetic_identity_consent_and_capture_preview_cli(

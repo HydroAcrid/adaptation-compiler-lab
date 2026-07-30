@@ -1,0 +1,231 @@
+{
+  "additionalProperties": false,
+  "description": "Raw-free longitudinal measures and deterministic evidence-readiness state.",
+  "properties": {
+    "activation_count": {
+      "minimum": 0,
+      "title": "Activation Count",
+      "type": "integer"
+    },
+    "active_date_count": {
+      "minimum": 0,
+      "title": "Active Date Count",
+      "type": "integer"
+    },
+    "assessed_interaction_count": {
+      "minimum": 0,
+      "title": "Assessed Interaction Count",
+      "type": "integer"
+    },
+    "automatic_actions": {
+      "minimum": 0,
+      "title": "Automatic Actions",
+      "type": "integer"
+    },
+    "blocked_count": {
+      "minimum": 0,
+      "title": "Blocked Count",
+      "type": "integer"
+    },
+    "completed_activation_count": {
+      "minimum": 0,
+      "title": "Completed Activation Count",
+      "type": "integer"
+    },
+    "correct_activation_count": {
+      "minimum": 0,
+      "title": "Correct Activation Count",
+      "type": "integer"
+    },
+    "correct_learning_count": {
+      "minimum": 0,
+      "title": "Correct Learning Count",
+      "type": "integer"
+    },
+    "duplicate_count": {
+      "minimum": 0,
+      "title": "Duplicate Count",
+      "type": "integer"
+    },
+    "eligible_interaction_count": {
+      "minimum": 0,
+      "title": "Eligible Interaction Count",
+      "type": "integer"
+    },
+    "evidence_ready": {
+      "title": "Evidence Ready",
+      "type": "boolean"
+    },
+    "failed_activation_count": {
+      "minimum": 0,
+      "title": "Failed Activation Count",
+      "type": "integer"
+    },
+    "false_activation_count": {
+      "minimum": 0,
+      "title": "False Activation Count",
+      "type": "integer"
+    },
+    "false_learning_count": {
+      "minimum": 0,
+      "title": "False Learning Count",
+      "type": "integer"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "goal_interaction_count": {
+      "minimum": 1,
+      "title": "Goal Interaction Count",
+      "type": "integer"
+    },
+    "helped_count": {
+      "minimum": 0,
+      "title": "Helped Count",
+      "type": "integer"
+    },
+    "hurt_count": {
+      "minimum": 0,
+      "title": "Hurt Count",
+      "type": "integer"
+    },
+    "irrelevant_count": {
+      "minimum": 0,
+      "title": "Irrelevant Count",
+      "type": "integer"
+    },
+    "manual_review_touches": {
+      "minimum": 0,
+      "title": "Manual Review Touches",
+      "type": "integer"
+    },
+    "minimum_activation_count": {
+      "minimum": 1,
+      "title": "Minimum Activation Count",
+      "type": "integer"
+    },
+    "minimum_active_dates": {
+      "minimum": 1,
+      "title": "Minimum Active Dates",
+      "type": "integer"
+    },
+    "missed_activation_count": {
+      "minimum": 0,
+      "title": "Missed Activation Count",
+      "type": "integer"
+    },
+    "missed_learning_count": {
+      "minimum": 0,
+      "title": "Missed Learning Count",
+      "type": "integer"
+    },
+    "no_explicit_signal_count": {
+      "minimum": 0,
+      "title": "No Explicit Signal Count",
+      "type": "integer"
+    },
+    "pack_bytes_by_activation": {
+      "items": {
+        "type": "integer"
+      },
+      "title": "Pack Bytes By Activation",
+      "type": "array"
+    },
+    "promoted_count": {
+      "minimum": 0,
+      "title": "Promoted Count",
+      "type": "integer"
+    },
+    "rated_activation_count": {
+      "minimum": 0,
+      "title": "Rated Activation Count",
+      "type": "integer"
+    },
+    "remaining_interactions": {
+      "minimum": 0,
+      "title": "Remaining Interactions",
+      "type": "integer"
+    },
+    "repeated_correction_count": {
+      "minimum": 0,
+      "title": "Repeated Correction Count",
+      "type": "integer"
+    },
+    "report_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Report Version",
+      "type": "string"
+    },
+    "review_required_count": {
+      "minimum": 0,
+      "title": "Review Required Count",
+      "type": "integer"
+    },
+    "revoked_count": {
+      "minimum": 0,
+      "title": "Revoked Count",
+      "type": "integer"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    },
+    "unresolved_activation_count": {
+      "minimum": 0,
+      "title": "Unresolved Activation Count",
+      "type": "integer"
+    },
+    "update_latency_seconds": {
+      "items": {
+        "type": "number"
+      },
+      "title": "Update Latency Seconds",
+      "type": "array"
+    }
+  },
+  "required": [
+    "subject_id",
+    "generated_at",
+    "goal_interaction_count",
+    "minimum_active_dates",
+    "minimum_activation_count",
+    "eligible_interaction_count",
+    "active_date_count",
+    "assessed_interaction_count",
+    "correct_learning_count",
+    "false_learning_count",
+    "missed_learning_count",
+    "promoted_count",
+    "revoked_count",
+    "review_required_count",
+    "blocked_count",
+    "no_explicit_signal_count",
+    "duplicate_count",
+    "activation_count",
+    "completed_activation_count",
+    "failed_activation_count",
+    "unresolved_activation_count",
+    "rated_activation_count",
+    "helped_count",
+    "hurt_count",
+    "irrelevant_count",
+    "correct_activation_count",
+    "false_activation_count",
+    "missed_activation_count",
+    "repeated_correction_count",
+    "pack_bytes_by_activation",
+    "update_latency_seconds",
+    "automatic_actions",
+    "manual_review_touches",
+    "remaining_interactions",
+    "evidence_ready"
+  ],
+  "title": "CodexDogfoodGateReport",
+  "type": "object"
+}

@@ -378,6 +378,7 @@ class AutomaticAdaptationRuntime:
                 item.artifact_ref.record_id
                 for item in state.release.governed_release.active_artifacts
             ),
+            material_utf8_bytes=prepared.receipt.material_utf8_bytes,
             activated_at=activated_at,
         )
         return PreparedRuntimeActivation(
