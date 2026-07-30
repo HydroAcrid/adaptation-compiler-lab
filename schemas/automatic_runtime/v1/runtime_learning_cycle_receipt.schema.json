@@ -1,0 +1,259 @@
+{
+  "$defs": {
+    "AutomationDisposition": {
+      "description": "Outcome of one automatic-runtime cycle.",
+      "enum": [
+        "ignored_untrusted",
+        "no_explicit_signal",
+        "review_required",
+        "blocked",
+        "promoted",
+        "revoked",
+        "duplicate"
+      ],
+      "title": "AutomationDisposition",
+      "type": "string"
+    },
+    "RuntimeNotice": {
+      "additionalProperties": false,
+      "description": "Small user-visible notification with an exact undo target where applicable.",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/RuntimeNoticeKind"
+        },
+        "notice_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Notice Id",
+          "type": "string"
+        },
+        "summary": {
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "transition_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transition Id"
+        },
+        "undo_artifact_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Undo Artifact Id"
+        }
+      },
+      "required": [
+        "notice_id",
+        "kind",
+        "summary",
+        "created_at"
+      ],
+      "title": "RuntimeNotice",
+      "type": "object"
+    },
+    "RuntimeNoticeKind": {
+      "enum": [
+        "learned",
+        "updated",
+        "removed",
+        "needs_review",
+        "blocked",
+        "ignored",
+        "unchanged"
+      ],
+      "title": "RuntimeNoticeKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Append-only raw-free account of learning that is not yet a task delivery.\n\nCodex pickup happens after a persisted user interaction. A successful pickup may therefore\nrelease new governed learning, but it must not claim that a target task received that release.\nA later :class:`RuntimeTaskActivationReceipt` records the separate next-session delivery.",
+  "properties": {
+    "active_artifact_ids": {
+      "default": [],
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Active Artifact Ids",
+      "type": "array"
+    },
+    "automatic_actions": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Automatic Actions",
+      "type": "integer"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "cycle_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Cycle Id",
+      "type": "string"
+    },
+    "detected_feedback_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Detected Feedback Digest"
+    },
+    "disposition": {
+      "$ref": "#/$defs/AutomationDisposition"
+    },
+    "evaluation_receipt_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Evaluation Receipt Digest"
+    },
+    "manual_review_touches": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Manual Review Touches",
+      "type": "integer"
+    },
+    "notice": {
+      "$ref": "#/$defs/RuntimeNotice"
+    },
+    "observation_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Observation Digest",
+      "type": "string"
+    },
+    "observation_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Observation Id",
+      "type": "string"
+    },
+    "prior_state_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Prior State Digest",
+      "type": "string"
+    },
+    "receipt_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Receipt Version",
+      "type": "string"
+    },
+    "release_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Release Digest"
+    },
+    "release_event_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Release Event Digest"
+    },
+    "resulting_state_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Resulting State Digest",
+      "type": "string"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    },
+    "transition_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Transition Digest"
+    },
+    "update_latency_seconds": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Update Latency Seconds",
+      "type": "number"
+    }
+  },
+  "required": [
+    "cycle_id",
+    "subject_id",
+    "observation_id",
+    "observation_digest",
+    "prior_state_digest",
+    "resulting_state_digest",
+    "disposition",
+    "notice",
+    "created_at"
+  ],
+  "title": "RuntimeLearningCycleReceipt",
+  "type": "object"
+}

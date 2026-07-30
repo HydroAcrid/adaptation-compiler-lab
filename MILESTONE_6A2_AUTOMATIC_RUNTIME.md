@@ -1,7 +1,7 @@
 # Milestone 6A.2 Product Track — Automatic Adaptation Runtime
 
-Status: **runtime core and restart-safe host coordinator implemented; concrete Codex event and
-user-notice adapters remain the next product increment**
+Status: **runtime core and restart-safe generic host implemented; concrete Codex dogfood adapter
+completed in `MILESTONE_6A2B_CODEX_DOGFOOD.md`**
 
 Date: 2026-07-29
 
@@ -172,21 +172,22 @@ access is part of this result.
 
 ## Honest boundary and next increment
 
-This is a real automatic runtime **core and generic host coordinator**, not yet an ambient end-user
-integration. The coordinator now polls replayable typed pages, persists review and governance
-records, advances immutable state, recovers interrupted delivery, and dispatches idempotent target,
-review, and notice work. The repository still has no concrete Codex interaction-source adapter,
-background process, or user-facing notice/undo/feedback surface.
+This document records the original automatic runtime **core and generic host coordinator**.
+Milestone 6A.2B subsequently added pinned ChatGPT-authenticated Codex pickup, durable hashed
+checkpoints, separate later-task activation and delivery acknowledgements, and local
+notice/review/undo/feedback commands. The remaining ambient-product gap is a background watcher,
+persistent multi-turn gateway, and real longitudinal false-learning evidence—not the absence of a
+concrete connector.
 
-The next increment must connect these ports to a local Codex interaction stream and fresh-session
-delivery without reading ambient instructions or credentials. It must prove that:
+The next evidence increment must dogfood the 6A.2B adapter during ordinary work. It must prove that:
 
 - the user does not need explicit grammar for every naturally phrased correction;
 - false learning remains acceptably low;
-- host cursors and review-required items survive a real process restart;
+- false learning and review volume remain acceptable over several days;
 - exact undo is reachable from the notification;
-- no ambient instructions, memories, plugins, skills, MCP servers, or host credentials leak into
-  detection or delivery; and
+- the one-turn adapter can safely evolve into persistent multi-turn delivery without ambient
+  instructions, memories, plugins, skills, MCP servers, or host credentials leaking into the
+  target; and
 - the runtime remains compact as learning accumulates.
 
 Milestone 6B begins only after this host loop is reliable. Presets remain a first-class runtime

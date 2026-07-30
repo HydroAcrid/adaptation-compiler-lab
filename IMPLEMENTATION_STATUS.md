@@ -1,11 +1,11 @@
 # Implementation Status
 
-Last updated: 2026-07-29
+Last updated: 2026-07-30
 
 ## Current milestone
 
-**Milestone 6A.2 Product Track now has an implemented automatic-runtime core and generic local host
-coordinator.** A signed bounded
+**Milestone 6A.2B now has an implemented automatic-runtime core plus concrete Codex dogfood
+pickup and fresh-session delivery.** A signed bounded
 standing policy can govern explicit low-risk user feedback through encrypted raw capture, exact
 Evidence v1.1 consent/capture lineage, an EvaluationCase candidate, deterministic promotion,
 arbitrary-length addition/correction/supersession/revocation compilation, compact Codex
@@ -18,12 +18,14 @@ overlay references are typed and composition-checked, but no preset is imported 
 runtime correctly emits a zero-byte projection when no adaptation applies or the final rule is
 revoked, so revoked behavior cannot survive as target-visible boilerplate.
 
-The remaining 6A.2 product work is concrete product hookup: a trusted local Codex event source,
-next-session delivery adapter, durable host-cursor owner, and user-facing notice/undo/feedback
-commands. The generic coordinator already polls replayable pages, persists raw-free review work
-and signed runtime events atomically with cycle/state history, dispatches idempotent sinks, and
-recovers a crash between durable append and delivery. It still does not watch Codex in the
-background.
+The concrete adapter pins Codex 0.146.0 on Linux and Windows, requires saved ChatGPT
+authentication, reads only post-cutoff user-authored messages from allowlisted completed
+interactive tasks, durably checkpoints hashed prefixes, and keeps post-task learning separate from
+later task activation and acknowledgement. Local `runtime` commands expose initialization, poll,
+fresh one-turn execution, status, review, notices, exact undo, and helped/hurt/irrelevant feedback.
+The target fails closed on model, approval, network, workspace, writable-root, or external
+instruction-source substitution. It still does not watch Codex in the background or maintain a
+persistent multi-turn product session.
 
 **Milestone 6A.5 previously completed a valid 15-turn persistent-conversation canary.** The original run is
 preserved as instrument-invalid because resumed turns were read-only. A versioned runner repair
@@ -72,6 +74,14 @@ evaluated.
   interaction/delivery/review/notice ports. Duplicate observations cannot fork history; interrupted
   deliveries reproduce the exact historical receipt and rely on idempotent sinks rather than
   learning twice.
+- Added a pinned Codex 0.146.0 product connector, Linux and Windows runtime locks, exact generated
+  schemas, saved-ChatGPT-auth enforcement, post-cutoff project scoping, user-message-only pickup,
+  hashed durable cursors, and a fresh one-turn target launcher.
+- Added separate append-only learning-cycle, activation, target-acknowledgement, source-checkpoint,
+  and activation-feedback records in migration 0008; completed source work never receives a
+  retroactive delivery claim.
+- Added local `runtime init|poll|run|status|review|notices|undo|feedback` controls and live
+  read-only Linux/Windows connection smokes with zero model/provider-billed calls.
 - Added automatic-runtime and updated governance schema snapshots plus unit, security-property,
   migration, scope, revocation, secret, tool, preset, signature-tamper, and persistence tests.
 - Added a typed 15-turn scenario grammar, deterministic within-stage task ordering, three
@@ -310,10 +320,12 @@ quality; they do not establish powered general or held-out cross-model transfer.
 
 ## Gate result and next action
 
-Milestone 6A.5 is complete. Its original invalid run, versioned repair, frozen staged materials,
-valid 30-turn result, anonymous outputs, blind judge receipt, unblinded mapping, and semantic
-adjudication are durable. Raw traces, private mappings, and encryption material remain outside the
-workspace in owner-readable-only storage.
+Milestone 6A.2B is implemented and read-only live-conformant. Linux/WSL and Windows Codex 0.146.0
+both verified the exact generated schema digest and saved ChatGPT account, then performed
+post-cutoff list-only pickup with no model or provider-billed call and no private thread read.
+Focused tests cover cursor replay/tamper, origin filtering, project/cutoff scope, separate
+learning/activation/acknowledgement, append-only persistence, credential scrubbing, and target
+sandbox/ambient-state substitution.
 
 The current bounded product answer remains affirmative and is stronger longitudinally:
 compilation has beaten the profile on lifecycle-stage scoping, matched or beaten it across the
@@ -323,9 +335,12 @@ materials predate the final 6A.4 expression repair, and the project must not cla
 superiority, a repeatable widening trend, independent replication, or held-out cross-model
 transfer.
 
-No Portable Specialty Preset exists yet. Milestone 6B is the proposed next product milestone, but
-its current artifact is architecture documentation only. Implementation should begin with one
-versioned `CapabilityPreset` contract, source/license/trust admission, temporary activation,
-personal overlay composition, exact deactivation/rollback, and a zero-provider-billed Frontend
-Studio development comparison. The sealed external-validation study is not required for 6B and
-must remain untouched unless separately revived with funding.
+The next evidence gate is an ordinary-use 6A.2B dogfood period: at least 20 eligible interactions
+across several days, explicit polling, fresh-session task activation, and measurement of false
+learning, review rate, correct/false activation, repeated correction, update latency, pack growth,
+undo, and helped/hurt/irrelevant feedback. Only after that gate should an optional background
+watcher and persistent multi-turn gateway be considered.
+
+No Portable Specialty Preset exists yet. Milestone 6B remains the following product milestone and
+is currently architecture documentation only. The sealed external-validation study is not
+required for either milestone and must remain untouched unless separately revived with funding.

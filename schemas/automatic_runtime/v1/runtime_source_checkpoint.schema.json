@@ -1,0 +1,77 @@
+{
+  "additionalProperties": false,
+  "description": "Durable raw-free cursor committed only after one source page is acknowledged.",
+  "properties": {
+    "checkpoint_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Checkpoint Id",
+      "type": "string"
+    },
+    "checkpoint_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Checkpoint Version",
+      "type": "string"
+    },
+    "committed_at": {
+      "format": "date-time",
+      "title": "Committed At",
+      "type": "string"
+    },
+    "cursor_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Cursor Digest",
+      "type": "string"
+    },
+    "cursor_value": {
+      "minLength": 1,
+      "title": "Cursor Value",
+      "type": "string"
+    },
+    "prior_cursor_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Prior Cursor Digest"
+    },
+    "sequence": {
+      "minimum": 1,
+      "title": "Sequence",
+      "type": "integer"
+    },
+    "source_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Source Id",
+      "type": "string"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "checkpoint_id",
+    "subject_id",
+    "source_id",
+    "sequence",
+    "cursor_digest",
+    "cursor_value",
+    "committed_at"
+  ],
+  "title": "RuntimeSourceCheckpoint",
+  "type": "object"
+}

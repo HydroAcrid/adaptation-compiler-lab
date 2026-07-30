@@ -41,6 +41,7 @@ from adaptation_compiler_lab.governance.signing import (
 )
 from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore, RawEncryptionKey
 from adaptation_compiler_lab.runtime import RuntimeProjectionContext
+from adaptation_compiler_lab.serialization import canonical_digest
 from adaptation_compiler_lab.targets.models import ScopeDimension
 
 NOW = datetime(2026, 7, 29, 14, 0, tzinfo=UTC)
@@ -252,6 +253,66 @@ def test_add_correct_revoke_and_remove_last_instruction(tmp_path: Path) -> None:
         narrow_id,
     }
     assert len(revoke_last.state.transitions) == 4
+
+
+def test_learning_and_next_task_activation_are_separate_receipts(
+    tmp_path: Path,
+) -> None:
+    runtime, policy = _runtime(tmp_path)
+    observation = _observation(
+        1,
+        "I prefer concise handoffs with the purpose before commands",
+    )
+
+    learning = runtime.learn(
+        observation,
+        state=initial_runtime_state(policy),
+        processed_at=NOW + timedelta(minutes=1, seconds=5),
+    )
+
+    assert learning.cycle.disposition is AutomationDisposition.PROMOTED
+    assert learning.cycle.release_event_digest is not None
+    assert not hasattr(learning.cycle, "delivery_receipt_digest")
+    assert not hasattr(learning.cycle, "activation_event_digest")
+
+    activation = runtime.activate(
+        activation_id="next-task-1",
+        task_ref=TaskRecordRef(record_id="fresh-task-1", record_version="1.0.0"),
+        state=learning.state,
+        context=_context(2, project_id="ordinary-project"),
+        target_task="Prepare the release handoff.",
+        activated_at=NOW + timedelta(minutes=2),
+    )
+
+    assert activation.task.receipt.task_ref.record_id == "fresh-task-1"
+    assert activation.activation.state_digest == learning.state.content_digest
+    assert activation.activation.activation_event_digest == canonical_digest(
+        activation.activation_event
+    )
+    assert "Concise handoffs with the purpose before commands." in (activation.task.delivered_task)
+
+
+def test_natural_first_person_negative_preference_is_learned_without_prefix(
+    tmp_path: Path,
+) -> None:
+    runtime, policy = _runtime(tmp_path)
+
+    result = runtime.learn(
+        _observation(
+            1,
+            "I don't want you to overclaim verification again.",
+            project_id="ordinary-project",
+        ),
+        state=initial_runtime_state(policy),
+        processed_at=NOW + timedelta(minutes=1, seconds=5),
+    )
+
+    assert result.cycle.disposition is AutomationDisposition.PROMOTED
+    assert result.detection.normalized_behavior == "Do not overclaim verification."
+    assert result.state.release is not None
+    assert result.state.release.governed_release.active_artifacts[
+        0
+    ].behavioral_contract.required_behaviors == ("Do not overclaim verification.",)
 
 
 def test_untrusted_and_ordinary_text_are_not_captured(tmp_path: Path) -> None:

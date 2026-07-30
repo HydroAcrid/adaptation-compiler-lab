@@ -11,11 +11,12 @@ import os
 import queue
 import subprocess
 import threading
+from collections import deque
 from collections.abc import Iterator
 from contextlib import contextmanager, suppress
 from pathlib import Path
 from types import TracebackType
-from typing import Final, Literal, Protocol, cast
+from typing import ClassVar, Final, Literal, Protocol, cast
 
 from jsonschema import Draft7Validator
 from jsonschema.exceptions import SchemaError, ValidationError
@@ -64,7 +65,7 @@ class CodexProtocolError(RuntimeConformanceError):
 class CodexSchemaSet:
     """Exact generated request/response validators used by the connector."""
 
-    _FILES: Final = {
+    _FILES: ClassVar[dict[str, str]] = {
         "initialize_params": "v1/InitializeParams.json",
         "initialize_response": "v1/InitializeResponse.json",
         "thread_list_params": "v2/ThreadListParams.json",
@@ -123,6 +124,7 @@ class CodexAppServerProcess:
         self._messages: queue.Queue[JsonObject | object] = queue.Queue()
         self._reader_error: BaseException | None = None
         self._stderr_chunks: list[str] = []
+        self._pending_notifications: deque[JsonObject] = deque()
         self._request_id = 0
         self._write_lock = threading.Lock()
 
@@ -134,6 +136,10 @@ class CodexAppServerProcess:
             else str(self._codex_home)
         )
         environment["CODEX_ANALYTICS_ENABLED"] = "false"
+        environment.pop("CODEX_API_KEY", None)
+        environment.pop("CODEX_ACCESS_TOKEN", None)
+        environment.pop("OPENAI_API_KEY", None)
+        environment.pop("OPENAI_ACCESS_TOKEN", None)
         try:
             process = subprocess.Popen(
                 [
@@ -254,7 +260,7 @@ class CodexAppServerProcess:
             payload = cast(JsonObject, message)
             response_id = payload.get("id")
             if response_id is None:
-                # Read-only connector notifications are observational and never treated as data.
+                self._pending_notifications.append(payload)
                 continue
             if response_id != request_id:
                 raise CodexProtocolError("Codex app server returned an unexpected response ID")
@@ -264,6 +270,34 @@ class CodexAppServerProcess:
             if not isinstance(result, dict) or not all(isinstance(key, str) for key in result):
                 raise CodexProtocolError("Codex app-server result must be a JSON object")
             return result
+
+    def next_notification(self, *, timeout_seconds: float | None = None) -> JsonObject:
+        """Return the next notification while refusing unhandled server requests."""
+
+        timeout = self._request_timeout_seconds if timeout_seconds is None else timeout_seconds
+        if timeout <= 0:
+            raise ValueError("notification timeout must be positive")
+        if self._pending_notifications:
+            return self._pending_notifications.popleft()
+        try:
+            message = self._messages.get(timeout=timeout)
+        except queue.Empty as exc:
+            raise CodexProtocolError("Codex app-server notification timed out") from exc
+        if message is _EOF:
+            if self._reader_error is not None:
+                raise CodexProtocolError("Codex app-server output reader failed") from (
+                    self._reader_error
+                )
+            diagnostic = "".join(self._stderr_chunks).strip()[:500]
+            raise CodexProtocolError(f"Codex app server closed before notification: {diagnostic}")
+        payload = cast(JsonObject, message)
+        if payload.get("id") is not None:
+            raise CodexProtocolError("unhandled Codex server request or out-of-order response")
+        method = payload.get("method")
+        params = payload.get("params")
+        if not isinstance(method, str) or not isinstance(params, dict):
+            raise CodexProtocolError("Codex notification must contain method and object params")
+        return payload
 
     def close(self) -> None:
         process = self._process

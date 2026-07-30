@@ -554,6 +554,162 @@ class RuntimeDeliveryReceipt(FrozenModel):
     delivered_at: UtcDateTime
 
 
+class RuntimeLearningCycleReceipt(FrozenModel):
+    """Append-only raw-free account of learning that is not yet a task delivery.
+
+    Codex pickup happens after a persisted user interaction. A successful pickup may therefore
+    release new governed learning, but it must not claim that a target task received that release.
+    A later :class:`RuntimeTaskActivationReceipt` records the separate next-session delivery.
+    """
+
+    receipt_version: Literal["1.0.0"] = "1.0.0"
+    cycle_id: Identifier
+    subject_id: Identifier
+    observation_id: Identifier
+    observation_digest: Sha256Digest
+    prior_state_digest: Sha256Digest
+    resulting_state_digest: Sha256Digest
+    disposition: AutomationDisposition
+    detected_feedback_digest: Sha256Digest | None = None
+    evaluation_receipt_digest: Sha256Digest | None = None
+    transition_digest: Sha256Digest | None = None
+    release_digest: Sha256Digest | None = None
+    release_event_digest: Sha256Digest | None = None
+    active_artifact_ids: tuple[Identifier, ...] = ()
+    update_latency_seconds: float = Field(default=0, ge=0, allow_inf_nan=False)
+    automatic_actions: int = Field(default=0, ge=0)
+    manual_review_touches: int = Field(default=0, ge=0)
+    notice: RuntimeNotice
+    created_at: UtcDateTime
+
+    @model_validator(mode="after")
+    def learning_outputs_match_disposition(self) -> Self:
+        changed = self.disposition in {
+            AutomationDisposition.PROMOTED,
+            AutomationDisposition.REVOKED,
+        }
+        changed_outputs = (
+            self.evaluation_receipt_digest,
+            self.transition_digest,
+            self.release_digest,
+            self.release_event_digest,
+        )
+        if changed and any(item is None for item in changed_outputs):
+            raise ValueError("changed learning cycle must bind evaluation and release outputs")
+        if not changed and any(
+            item is not None
+            for item in (
+                self.transition_digest,
+                self.release_digest,
+                self.release_event_digest,
+            )
+        ):
+            raise ValueError("unchanged learning cycle cannot claim release outputs")
+        if self.active_artifact_ids != tuple(sorted(set(self.active_artifact_ids))):
+            raise ValueError("learning-cycle active artifact IDs must be sorted and unique")
+        if changed and self.automatic_actions < 1:
+            raise ValueError("changed learning cycle must record automatic work")
+        if (
+            self.disposition is AutomationDisposition.REVIEW_REQUIRED
+            and self.manual_review_touches != 0
+        ):
+            raise ValueError("queued review is not a completed manual review touch")
+        return self
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class RuntimeTaskActivationReceipt(FrozenModel):
+    """Exact binding for one later task activation from an immutable runtime state."""
+
+    receipt_version: Literal["1.0.0"] = "1.0.0"
+    activation_id: Identifier
+    subject_id: Identifier
+    task_ref: TaskRecordRef
+    state_digest: Sha256Digest
+    external_release_digest: Sha256Digest
+    composed_release_digest: Sha256Digest
+    projection_context_digest: Sha256Digest
+    delivery_receipt_digest: Sha256Digest
+    activation_event_digest: Sha256Digest
+    active_artifact_ids: tuple[Identifier, ...]
+    activated_at: UtcDateTime
+
+    @field_validator("active_artifact_ids")
+    @classmethod
+    def active_ids_are_sorted_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if value != tuple(sorted(set(value))):
+            raise ValueError("activation artifact IDs must be sorted and unique")
+        return value
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class RuntimeSourceCheckpoint(FrozenModel):
+    """Durable raw-free cursor committed only after one source page is acknowledged."""
+
+    checkpoint_version: Literal["1.0.0"] = "1.0.0"
+    checkpoint_id: Identifier
+    subject_id: Identifier
+    source_id: Identifier
+    sequence: int = Field(ge=1)
+    prior_cursor_digest: Sha256Digest | None = None
+    cursor_digest: Sha256Digest
+    cursor_value: NonEmptyStr
+    committed_at: UtcDateTime
+
+    @model_validator(mode="after")
+    def cursor_digest_is_exact(self) -> Self:
+        from adaptation_compiler_lab.targets.base import sha256_text
+
+        if self.cursor_digest != sha256_text(self.cursor_value):
+            raise ValueError("runtime source checkpoint cursor digest is inconsistent")
+        return self
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class RuntimeTargetDeliveryAcknowledgement(FrozenModel):
+    """Raw-free result proving whether an authorized target activation actually ran."""
+
+    acknowledgement_version: Literal["1.0.0"] = "1.0.0"
+    acknowledgement_id: Identifier
+    activation_id: Identifier
+    subject_id: Identifier
+    target_family: Identifier
+    activation_digest: Sha256Digest
+    external_session_digest: Sha256Digest | None = None
+    external_turn_digest: Sha256Digest | None = None
+    result_digest: Sha256Digest | None = None
+    status: Literal["completed", "failed"]
+    failure_class: NonEmptyStr | None = None
+    acknowledged_at: UtcDateTime
+
+    @model_validator(mode="after")
+    def acknowledgement_shape_matches_status(self) -> Self:
+        if self.status == "completed":
+            if (
+                self.external_session_digest is None
+                or self.external_turn_digest is None
+                or self.result_digest is None
+                or self.failure_class is not None
+            ):
+                raise ValueError("completed delivery requires exact external result bindings")
+        elif self.failure_class is None:
+            raise ValueError("failed delivery requires one bounded failure class")
+        return self
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
 class AutomaticRenderedMaterial(FrozenModel):
     """Codex material that may be empty after the final active rule is revoked."""
 
@@ -705,6 +861,31 @@ class PreparedRuntimeTask(FrozenModel):
         actual = 0 if not material else self.delivered_task.count(material)
         if actual != expected or self.receipt.material_occurrences != expected:
             raise ValueError("runtime material must occur exactly once in the delivered task")
+        return self
+
+
+class PreparedRuntimeActivation(FrozenModel):
+    """Transient task plus its durable activation and signed governance bindings."""
+
+    task: PreparedRuntimeTask
+    activation: RuntimeTaskActivationReceipt
+    activation_event: GovernanceEvent
+
+    @model_validator(mode="after")
+    def activation_bindings_are_exact(self) -> Self:
+        if self.activation.delivery_receipt_digest != canonical_digest(self.task.receipt):
+            raise ValueError("runtime activation does not bind the exact delivery receipt")
+        if self.activation.activation_event_digest != canonical_digest(self.activation_event):
+            raise ValueError("runtime activation does not bind the exact signed event")
+        if (
+            self.activation_event.event_type is not GovernanceEventType.ACTIVATION_DECISION
+            or self.activation_event.target_ref
+            != f"runtime-delivery:{self.task.receipt.receipt_id}"
+            or self.activation_event.target_digest != canonical_digest(self.task.receipt)
+            or self.activation_event.decision != "activated"
+            or self.activation_event.subject_id != self.activation.subject_id
+        ):
+            raise ValueError("runtime activation event does not authorize the exact task")
         return self
 
 

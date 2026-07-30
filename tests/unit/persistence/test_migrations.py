@@ -25,10 +25,10 @@ def test_bundled_migrations_are_idempotent(tmp_path: Path) -> None:
     first = factory.initialize()
     second = factory.initialize()
 
-    assert first == second == 7
+    assert first == second == 8
     with sqlite3.connect(path) as connection:
         count = connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0]
-        assert count == 7
+        assert count == 8
 
 
 def test_governance_ledger_is_append_only(tmp_path: Path) -> None:
@@ -73,7 +73,7 @@ def test_existing_v2_ledger_upgrades_without_rewriting_records(tmp_path: Path) -
         )
         connection.commit()
 
-    assert factory.initialize() == 7
+    assert factory.initialize() == 8
     with sqlite3.connect(path) as connection:
         row = connection.execute(
             "SELECT record_id, schema_version FROM records WHERE record_id = 'legacy-synthetic'"
@@ -102,7 +102,7 @@ def test_existing_v3_governance_objects_survive_recall_migration(tmp_path: Path)
     ledger = GovernanceLedger(path, subject_id="kevin")
     assert ledger.add(identity)
 
-    assert factory.initialize() == 7
+    assert factory.initialize() == 8
     assert ledger.get(GovernanceObjectKind.SIGNER_IDENTITY, identity.identity_id) == identity
 
 
@@ -132,7 +132,7 @@ def test_existing_v4_recall_objects_survive_benchmark_registry_migration(tmp_pat
     assert ledger.add(consent)
     assert ledger.add(impact)
 
-    assert factory.initialize() == 7
+    assert factory.initialize() == 8
     assert ledger.get(GovernanceObjectKind.DEPENDENCY_IMPACT, impact.impact_id) == impact
 
 
@@ -213,15 +213,31 @@ def test_automatic_runtime_tables_are_append_only(tmp_path: Path) -> None:
             )
         }
 
-    assert triggers == {
-        "automatic_runtime_cycles_reject_delete",
-        "automatic_runtime_cycles_reject_update",
-        "automatic_runtime_feedback_reject_delete",
-        "automatic_runtime_feedback_reject_update",
-        "automatic_runtime_governance_events_reject_delete",
-        "automatic_runtime_governance_events_reject_update",
-        "automatic_runtime_review_queue_reject_delete",
-        "automatic_runtime_review_queue_reject_update",
-        "automatic_runtime_states_reject_delete",
-        "automatic_runtime_states_reject_update",
-    }
+        assert triggers == {
+            "automatic_runtime_activation_events_reject_delete",
+            "automatic_runtime_activation_events_reject_update",
+            "automatic_runtime_activation_feedback_reject_delete",
+            "automatic_runtime_activation_feedback_reject_update",
+            "automatic_runtime_cycles_reject_delete",
+            "automatic_runtime_cycles_reject_update",
+            "automatic_runtime_delivery_acknowledgements_reject_delete",
+            "automatic_runtime_delivery_acknowledgements_reject_update",
+            "automatic_runtime_feedback_reject_delete",
+            "automatic_runtime_feedback_reject_update",
+            "automatic_runtime_governance_events_reject_delete",
+            "automatic_runtime_governance_events_reject_update",
+            "automatic_runtime_learning_cycles_reject_delete",
+            "automatic_runtime_learning_cycles_reject_update",
+            "automatic_runtime_learning_events_reject_delete",
+            "automatic_runtime_learning_events_reject_update",
+            "automatic_runtime_learning_review_queue_reject_delete",
+            "automatic_runtime_learning_review_queue_reject_update",
+            "automatic_runtime_review_queue_reject_delete",
+            "automatic_runtime_review_queue_reject_update",
+            "automatic_runtime_source_checkpoints_reject_delete",
+            "automatic_runtime_source_checkpoints_reject_update",
+            "automatic_runtime_states_reject_delete",
+            "automatic_runtime_states_reject_update",
+            "automatic_runtime_task_activations_reject_delete",
+            "automatic_runtime_task_activations_reject_update",
+        }

@@ -44,6 +44,7 @@ from adaptation_compiler_lab.application.targeting import (
     build_release_render_projection,
     build_validated_target_pack,
 )
+from adaptation_compiler_lab.automatic_runtime.dogfood_cli import dogfood_app
 from adaptation_compiler_lab.benchmark import (
     BenchmarkConfig,
     BenchmarkOutcomeRecord,
@@ -190,6 +191,7 @@ app.add_typer(consent_app, name="consent")
 app.add_typer(capture_preview_app, name="capture-preview")
 app.add_typer(source_app, name="source")
 app.add_typer(recall_app, name="recall")
+app.add_typer(dogfood_app, name="runtime")
 
 WorkspaceOption = Annotated[
     Path,

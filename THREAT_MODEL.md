@@ -63,6 +63,8 @@ approval, or artifact promotion.
 | Untrusted content imitates a user correction | Source authority is checked before grammar or capture. Agent, tool, repository, web, retrieval, and system sources produce no behavior or route even when property-generated text uses accepted prefixes. | A compromised host that falsely labels origin as the user remains inside the local trust boundary; host authentication is required next. |
 | Standing policy becomes blanket capability authority | The signed policy admits only bounded memory, preference, example, procedure, and prompt-rule routes. Secret, tool, plugin, MCP, network, credential, adapter, and preset changes block or enter a durable inactive review queue. | Review UX and authenticated concrete Codex pickup remain future increments. |
 | Host interruption duplicates learning or loses target delivery | Observation IDs are unique per subject, cycle/state/review/event appends are atomic, source pages replay until sink acknowledgement, historical deliveries reproduce exact receipts, and sinks are required to be idempotent. | The concrete Codex adapter must durably own its cursor and authenticate event origin; no background adapter is shipped yet. |
+| Codex pickup assigns authority to the wrong origin or historical work | The pinned app server admits only post-cutoff, non-ephemeral, terminal interactive threads inside exact project roots and converts only all-text `userMessage` items. Agent/tool/hook/repository/web content never becomes user authority. | A compromised local Codex database or host can forge origin metadata; host compromise remains inside the owner-controlled trust boundary. |
+| Codex target silently widens its sandbox or ambient state | Every fresh session revalidates ChatGPT account type, exact model, approval policy, CWD, one runtime root, one writable root, network denial, and instruction-source containment before task delivery. API-key and bearer-token environment variables are removed; only saved auth is copied into an ephemeral home. | Repository-local instructions inside the explicitly selected workspace remain intentional current context. Codex process and host compromise remain outside application-level isolation. |
 | Revoked last rule survives as prompt boilerplate | Context projection may be empty; exact revocation creates a new release and delivery receipt whose target material is zero bytes and whose delivered task is unchanged. | Already-running third-party sessions cannot be remotely scrubbed; delivery applies at the next controlled session/task boundary. |
 | Concurrent automatic cycles overwrite one another | Append-only state generations and exact prior/result digests implement compare-and-swap; stale heads fail before state/cycle insertion. SQLite update/delete triggers protect states, cycles, and feedback. | Multi-device synchronization is not implemented or claimed. |
 | Capability preset contaminates permanent learning | Every active artifact has an external layer binding. Preset and personal-overlay layers require an exact preset identity; automatic feedback transitions reject both layers. | Source/license/security review, activation leases, progressive loading, and clean deactivation remain Milestone 6B work. |
@@ -126,6 +128,10 @@ unscheduled pilot execution.
     exact approved successor.
 26. Revoking the final applicable artifact produces zero target-visible adaptation bytes.
 27. Runtime state, cycle, and feedback histories are append-only and stale state heads fail closed.
+28. Codex learning and later target activation are separate receipts; completed source work never
+    receives a retroactive delivery claim.
+29. A Codex target task is not sent until returned sandbox, network, workspace, instruction-source,
+    model, approval, and saved-ChatGPT-auth constraints have been verified.
 
 ## Incident posture
 

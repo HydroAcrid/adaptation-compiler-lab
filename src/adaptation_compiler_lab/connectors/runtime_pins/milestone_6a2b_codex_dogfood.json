@@ -1,0 +1,42 @@
+{
+  "lock_version": "1.0.0",
+  "codex": {
+    "executable": {
+      "package": "@openai/codex Linux x64",
+      "package_version": "0.146.0",
+      "package_integrity": "wrapper sha512-yG3sPWNda/2YAIQIDq9MrrjoCTIQ7rxYM5IasrG3VBcuhCLTkgeg/JzqmJq1V98RE4MJ5jCxDXXQlOjrditFRw==; linux-x64 sha512-fswvyGprAPCMiOEue/7MKMk7pCjh9kZIJfJX5i9atmfnmGYbYCcUhZsEH9LEP0+0t5xyPqDbfNXY7NSxIVuXxA==",
+      "executable_sha256": "sha256:2e863156ed35ecc5253b1e2f907a9143077b9f7cb51942070c61996471ff6e04",
+      "version_args": [
+        "--version"
+      ],
+      "version_stdout": "codex-cli 0.146.0",
+      "required_help_flags": [
+        "app-server"
+      ]
+    },
+    "schema_generation_args": [
+      "app-server",
+      "generate-json-schema",
+      "--out",
+      "{output}",
+      "--experimental"
+    ],
+    "schema_bundle_sha256": "sha256:1af35d724750f55eebc5e76d1ce7a86e6024d5b31360137894f2f6b6ee7924ba",
+    "schema_file_sha256": {
+      "v1/InitializeParams.json": "sha256:4f576f99e285beb28f71f48a72b887c1f517dada86fee348fe2af0a35511de23",
+      "v1/InitializeResponse.json": "sha256:86dcd236d0576a82c85b933586dc45731260eab1b6edb3447b03f790277322b1",
+      "v2/GetAccountParams.json": "sha256:d0dc3c0d428d37b1ec7887fa6b044244e6474578e1ff397c0872b2a6292073db",
+      "v2/GetAccountResponse.json": "sha256:a8b27a203541460d6593723f646900e1df4417e0de43dfc36c485643810e1f1a",
+      "v2/ItemCompletedNotification.json": "sha256:49ef255afe401aaeff455f99175532cbc5ff948f2055e5bde68792953a010252",
+      "v2/ThreadListParams.json": "sha256:ccc09fa6d5d89fa76afd474f6d7ef8cf14edbe0e037d8a52aebf5bd14f435c5b",
+      "v2/ThreadListResponse.json": "sha256:0c12f87cf3ab2c5fed95152a1e36873e6e56dadae39f46096267371ad65d1321",
+      "v2/ThreadReadParams.json": "sha256:db97080f82facc3259dbb9404e9f0df81e360619f4cd73983a9d99d25f5089ee",
+      "v2/ThreadReadResponse.json": "sha256:605e850635bd834685f5f22910ed344f30a674cd8ed88e03b979afcf42404263",
+      "v2/ThreadStartParams.json": "sha256:b3685411ceb8ad264a1920e8facd66301e5280948ef9c2a6871b95d4c19da639",
+      "v2/ThreadStartResponse.json": "sha256:c2899f35029734ed42c3d3b02b6077f0bebaf7724cbc655aead83bb1aa2adadf",
+      "v2/TurnCompletedNotification.json": "sha256:5b5f2ca515658ea6fcce7e961d1c3feddb3f48c0dcc813260c7ccf77a2d016af",
+      "v2/TurnStartParams.json": "sha256:f23021c02d28b60fccb6dcaaace9ff676127065f8254537265d6622656860dca",
+      "v2/TurnStartResponse.json": "sha256:099184dc9d6195cd965b8a90ee5d1cb05c87d9b329acecdfbd63f358e660d568"
+    }
+  }
+}

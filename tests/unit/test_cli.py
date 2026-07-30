@@ -6,12 +6,15 @@ import base64
 import hashlib
 import json
 import os
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
+from adaptation_compiler_lab.automatic_runtime import dogfood_cli
 from adaptation_compiler_lab.cli import app
 from adaptation_compiler_lab.domain import (
     ActorKind,
@@ -30,6 +33,7 @@ from adaptation_compiler_lab.domain import (
     SourceClass,
     SyntheticOrigin,
 )
+from adaptation_compiler_lab.governance.signing import write_new_private_key
 
 runner = CliRunner()
 NOW = datetime(2026, 7, 22, 16, 0, tzinfo=UTC)
@@ -108,8 +112,83 @@ def test_help_exposes_named_fail_closed_workflows() -> None:
         "identity",
         "consent",
         "capture-preview",
+        "runtime",
     ):
         assert command in result.output
+
+
+def test_runtime_init_writes_no_secret_config_and_status_is_local(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    (repository / ".git").mkdir()
+    source_home = tmp_path / "source-codex-home"
+    source_home.mkdir()
+    (source_home / "auth.json").write_text("{}", encoding="utf-8")
+    executable = tmp_path / "codex"
+    executable.write_text("#!/bin/sh\n", encoding="utf-8")
+    executable.chmod(0o700)
+    key_path = tmp_path / "governance.pem"
+    passphrase = "correct horse battery staple"
+    write_new_private_key(
+        key_path,
+        passphrase=passphrase,
+        workspace_root=repository,
+    )
+    raw_key_path = tmp_path / "raw.key"
+    raw_key = base64.b64encode(b"r" * 32).decode("ascii")
+    raw_key_path.write_text(raw_key, encoding="ascii")
+    monkeypatch.setenv("ACLAB_SIGNING_KEY_FILE", str(key_path))
+    monkeypatch.setenv("ACLAB_SIGNING_KEY_PASSPHRASE", passphrase)
+    monkeypatch.setenv("ACLAB_RAW_KEY_FILE", str(raw_key_path))
+
+    @contextmanager
+    def fake_open_codex_dogfood(**_kwargs: object) -> Iterator[None]:
+        yield None
+
+    monkeypatch.setattr(
+        dogfood_cli,
+        "open_codex_dogfood",
+        fake_open_codex_dogfood,
+    )
+    state = tmp_path / "dogfood-state"
+    initialized = runner.invoke(
+        app,
+        [
+            "runtime",
+            "init",
+            "--state-root",
+            str(state),
+            "--repository-root",
+            str(repository),
+            "--project-root",
+            str(repository),
+            "--codex-executable",
+            str(executable),
+            "--source-codex-home",
+            str(source_home),
+            "--subject-id",
+            "kevin",
+            "--project-id",
+            "dogfood-project",
+        ],
+    )
+
+    assert initialized.exit_code == 0, initialized.output
+    config_path = state / "config.json"
+    text = config_path.read_text(encoding="utf-8")
+    assert passphrase not in text
+    assert raw_key not in text
+    assert "PRIVATE KEY" not in text
+
+    status = runner.invoke(
+        app,
+        ["runtime", "status", "--config", str(config_path)],
+    )
+    assert status.exit_code == 0, status.output
+    assert json.loads(status.stdout)["generation"] == 0
 
 
 def test_synthetic_identity_consent_and_capture_preview_cli(

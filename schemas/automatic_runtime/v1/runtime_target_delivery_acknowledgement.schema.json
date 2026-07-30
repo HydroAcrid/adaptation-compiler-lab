@@ -1,0 +1,121 @@
+{
+  "additionalProperties": false,
+  "description": "Raw-free result proving whether an authorized target activation actually ran.",
+  "properties": {
+    "acknowledged_at": {
+      "format": "date-time",
+      "title": "Acknowledged At",
+      "type": "string"
+    },
+    "acknowledgement_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Acknowledgement Id",
+      "type": "string"
+    },
+    "acknowledgement_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Acknowledgement Version",
+      "type": "string"
+    },
+    "activation_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Activation Digest",
+      "type": "string"
+    },
+    "activation_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Activation Id",
+      "type": "string"
+    },
+    "external_session_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "External Session Digest"
+    },
+    "external_turn_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "External Turn Digest"
+    },
+    "failure_class": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Failure Class"
+    },
+    "result_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Result Digest"
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    },
+    "target_family": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Target Family",
+      "type": "string"
+    }
+  },
+  "required": [
+    "acknowledgement_id",
+    "activation_id",
+    "subject_id",
+    "target_family",
+    "activation_digest",
+    "status",
+    "acknowledged_at"
+  ],
+  "title": "RuntimeTargetDeliveryAcknowledgement",
+  "type": "object"
+}

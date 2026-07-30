@@ -11,15 +11,16 @@ preset, then sends each assistant only the smallest applicable projection. Perso
 overlays can refine temporary expertise without changing either the imported preset or permanent
 profile.
 
-Milestone 6A.2 now includes a governed automatic-runtime core and restart-safe generic host
-coordinator. Under one signed bounded standing
+Milestone 6A.2B now includes a governed automatic-runtime core, restart-safe host coordinator, and
+concrete pinned Codex dogfood integration. Under one signed bounded standing
 policy, explicit low-risk user feedback can be encrypted, turned into an evaluation candidate,
 promoted through addition/correction/supersession/revocation, compiled, scoped, delivered once to
 Codex, measured, notified, and undone by exact revocation. Untrusted content is rejected before
 capture; secrets are blocked; ambiguous or capability-changing proposals remain inactive in a
 durable raw-free review queue. The host loop persists signed actions and recovers interrupted
-idempotent delivery without learning twice. Concrete ambient Codex pickup and user controls are
-the next product increment, so this should not yet be described as a background memory service.
+idempotent delivery without learning twice. Pickup and user controls are now concrete but
+explicitly invoked; there is still no background watcher or persistent product conversation, so
+this should not yet be described as an ambient memory service.
 
 Milestones 6A.3–6A.5 now provide positive, complementary comparisons against the strong static
 profile. Milestone 6A.3 showed lifecycle-aware compilation winning five of six fresh staged task
@@ -153,6 +154,11 @@ worked; its current target-visible projection did not beat an excellent profile.
   lifecycle compilation, permanent/context layer ownership, exact revocation including zero-byte
   removal, compact task delivery, notifications, append-only state/cycle/outcome feedback, and
   longitudinal activation/size/latency/maintenance metrics.
+- A pinned Codex 0.146.0 pickup and fresh-session target integration that requires saved ChatGPT
+  authentication, admits only post-cutoff user-authored text from allowlisted completed interactive
+  tasks, checkpoints hashed prefixes, separates learning from later activation, validates the
+  returned network/workspace/instruction boundary, and exposes local poll, review, notice, undo,
+  feedback, and one-turn run commands.
 - A generic replay-safe host coordinator with narrow interaction, delivery, review, and notice
   ports; atomic raw-free review/signed-event persistence; duplicate-observation rejection; and
   deterministic recovery after append-before-delivery interruption.
@@ -267,6 +273,9 @@ after valid trials.
 - [`MILESTONE_6A2_AUTOMATIC_RUNTIME.md`](MILESTONE_6A2_AUTOMATIC_RUNTIME.md): signed standing
   policy, automatic capture/evaluation/compile/activate/deliver loop, layer model, notification,
   undo, metrics, conformance result, and honest host-integration boundary.
+- [`MILESTONE_6A2B_CODEX_DOGFOOD.md`](MILESTONE_6A2B_CODEX_DOGFOOD.md): pinned saved-auth Codex
+  pickup, durable cursors, separate learning/activation receipts, fresh-session delivery, local
+  controls, live no-model conformance, and the ordinary-use longitudinal evidence gate.
 - [`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md): docs-only portable
   specialty preset composition and the proposed Frontend Studio demonstration.
 - [`development_benchmark_compact_projection`](development_benchmark_compact_projection): frozen

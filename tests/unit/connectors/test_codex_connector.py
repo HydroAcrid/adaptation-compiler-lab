@@ -130,11 +130,15 @@ def test_generated_schema_rejects_substituted_response() -> None:
         _connector(rpc).list_completed_tasks()
 
 
-def test_fake_stdio_app_server_conforms_and_tears_down(tmp_path: Path) -> None:
+def test_fake_stdio_app_server_conforms_tears_down_and_scrubs_api_keys(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     executable = tmp_path / "fake-codex"
     executable.write_text(
         """#!/usr/bin/env python3
 import json
+import os
 import sys
 
 for line in sys.stdin:
@@ -150,7 +154,22 @@ for line in sys.stdin:
             "userAgent": "fake-codex",
         }
     elif method == "thread/list":
-        result = {"data": [], "nextCursor": None}
+        result = {
+            "data": [],
+            "nextCursor": (
+                "api-key-leaked"
+                if any(
+                    os.environ.get(name)
+                    for name in (
+                        "CODEX_API_KEY",
+                        "CODEX_ACCESS_TOKEN",
+                        "OPENAI_API_KEY",
+                        "OPENAI_ACCESS_TOKEN",
+                    )
+                )
+                else None
+            ),
+        }
     else:
         result = {}
     print(json.dumps({"id": message["id"], "result": result}), flush=True)
@@ -166,6 +185,10 @@ for line in sys.stdin:
         schema_bundle_digest=SCHEMA_DIGEST,
     )
     schemas = CodexSchemaSet()
+    monkeypatch.setenv("CODEX_API_KEY", "must-not-reach-child")
+    monkeypatch.setenv("CODEX_ACCESS_TOKEN", "must-not-reach-child")
+    monkeypatch.setenv("OPENAI_API_KEY", "must-not-reach-child")
+    monkeypatch.setenv("OPENAI_ACCESS_TOKEN", "must-not-reach-child")
 
     with CodexAppServerProcess(
         runtime,
@@ -178,4 +201,6 @@ for line in sys.stdin:
             source_schema_digest=runtime.schema_bundle_digest,
             schemas=schemas,
         )
-        assert connector.list_completed_tasks(limit=1).tasks == ()
+        page = connector.list_completed_tasks(limit=1)
+        assert page.tasks == ()
+        assert page.next_cursor is None

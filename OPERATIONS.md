@@ -99,23 +99,37 @@ cannot open its external registry or sealed store.
 
 ## Automatic runtime operation
 
-The 6A.2 runtime is local and library-only. Enabling it requires one exact signed, expiring
+The 6A.2B runtime has a concrete explicit-poll Codex integration. Enabling it requires one exact
+signed, expiring
 `StandingAutomationPolicy`, the matching local Ed25519 identity, and the separate AES-256-GCM raw
 key. Missing or mismatched authority fails closed. The standing policy is not permission to inspect
 arbitrary host data and cannot authorize capability, tool, plugin, MCP, credential, or network
 changes.
 
-The host integration must provide only typed subject-owned interactions and explicit context
-through `RuntimeInteractionSource`. It must not infer user authority from repository files,
-webpages, tools, agents, retrieval, system instructions, or ambient Codex configuration. Delivery,
-review, and notice sinks must be idempotent by their exact receipt, queue, and notice IDs.
+Initialize with `adaptation-compiler-lab runtime init`, using an exact project root, an external
+state root, the pinned Codex executable/lock, saved Codex home, subject, and project ID. Initialization
+requires both external keys, verifies saved ChatGPT authentication, creates a signed 30-day policy,
+and writes only a no-secret configuration outside every Git repository. It sets the capture cutoff
+to initialization time, so historical tasks are excluded.
+
+Use `runtime poll` after completed ordinary Codex work. Pickup reads only pinned app-server
+`userMessage` text in post-cutoff, terminal, non-ephemeral interactive threads under the allowlist.
+Use `runtime notices` and `runtime review` to inspect minimized local outcomes. Use `runtime undo`
+for exact artifact revocation.
+
+Use `runtime run --workspace <allowlisted-root> --task <text>` to prepare a later activation and
+launch one fresh ephemeral Codex session through saved ChatGPT authentication. The command rejects
+unresolved prior activations, validates exact model/approval/workspace/network/instruction-source
+constraints, sends the applicable compact projection once, and appends a digest-only completion or
+failure acknowledgement. `runtime feedback` records helped, hurt, or irrelevant only for an exact
+completed activation.
 
 The host advances its source cursor only after all sinks acknowledge a page. If it stops after the
-SQLite append, replaying the same observation reconstructs the historical delivery and does not
-create another transition. Review items and signed release/activation events remain in append-only
-tables; target and interaction text do not. No current command launches a background watcher or
-connects these ports to Codex, and the runtime must not access the sealed external-validation
-custody boundary.
+SQLite append, replaying the same observation reconstructs the historical learning result and does
+not create another transition. Review items and signed release/activation events remain in
+append-only tables; target and interaction text do not. No current command launches a background
+watcher or maintains a multi-turn target session. The runtime must not access the sealed
+external-validation custody boundary.
 
 ## Paid-run and rating gates
 

@@ -21,13 +21,16 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     DetectedFeedback,
     FeedbackSignalKind,
     InteractionObservation,
+    PreparedRuntimeActivation,
     PreparedRuntimeTask,
     RuntimeCycleReceipt,
     RuntimeDeliveryReceipt,
     RuntimeEvaluationReceipt,
+    RuntimeLearningCycleReceipt,
     RuntimeLearningTransition,
     RuntimeNotice,
     RuntimeNoticeKind,
+    RuntimeTaskActivationReceipt,
     RuntimeTransitionKind,
     StandingAutomationPolicy,
 )
@@ -63,6 +66,7 @@ from adaptation_compiler_lab.domain import (
     ScoringType,
     SensitivityClass,
     SourceClass,
+    TaskRecordRef,
 )
 from adaptation_compiler_lab.governance import (
     GovernanceEvent,
@@ -113,6 +117,19 @@ class AutomaticRuntimeResult:
     prepared_task: PreparedRuntimeTask | None = None
     release_event: GovernanceEvent | None = None
     activation_event: GovernanceEvent | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AutomaticLearningResult:
+    """Learning-only result produced after a persisted Codex interaction."""
+
+    state: AutomaticRuntimeState
+    cycle: RuntimeLearningCycleReceipt
+    detection: DetectedFeedback
+    captured: CapturedInteraction | None = None
+    evaluation: RuntimeEvaluationReceipt | None = None
+    release: ComposedRuntimeRelease | None = None
+    release_event: GovernanceEvent | None = None
 
 
 _ROUTE_TO_KIND = {
@@ -166,6 +183,209 @@ class AutomaticAdaptationRuntime:
         self._raw_store = raw_store
         self._verify_policy(policy.effective_at)
 
+    def learn(
+        self,
+        observation: InteractionObservation,
+        *,
+        state: AutomaticRuntimeState,
+        processed_at: datetime,
+    ) -> AutomaticLearningResult:
+        """Capture and release eligible learning without claiming target delivery."""
+
+        if processed_at.tzinfo is None or processed_at.utcoffset() is None:
+            raise AutomaticRuntimeError("processed_at must be timezone-aware")
+        if processed_at < observation.observed_at:
+            raise AutomaticRuntimeError("automatic processing cannot predate the interaction")
+        self._verify_policy(processed_at)
+        self._validate_state(state)
+        detection = detect_explicit_feedback(observation, self._policy, state)
+
+        if detection.disposition in {
+            AutomationDisposition.IGNORED_UNTRUSTED,
+            AutomationDisposition.NO_EXPLICIT_SIGNAL,
+            AutomationDisposition.BLOCKED,
+            AutomationDisposition.DUPLICATE,
+        }:
+            notice = self._notice(detection, processed_at)
+            cycle = RuntimeLearningCycleReceipt(
+                cycle_id=f"learning-cycle-{observation.observation_id}",
+                subject_id=observation.subject_id,
+                observation_id=observation.observation_id,
+                observation_digest=observation.content_digest,
+                prior_state_digest=state.content_digest,
+                resulting_state_digest=state.content_digest,
+                disposition=detection.disposition,
+                detected_feedback_digest=detection.content_digest,
+                automatic_actions=1,
+                notice=notice,
+                created_at=processed_at,
+            )
+            return AutomaticLearningResult(
+                state=state,
+                cycle=cycle,
+                detection=detection,
+            )
+
+        captured = self._capture(observation, detection, processed_at)
+        evaluation = self._evaluate(
+            detection,
+            captured,
+            state=state,
+            processed_at=processed_at,
+        )
+        if not evaluation.passed:
+            review_detection = detection.model_copy(
+                update={"disposition": AutomationDisposition.REVIEW_REQUIRED}
+            )
+            notice = self._notice(review_detection, processed_at)
+            cycle = RuntimeLearningCycleReceipt(
+                cycle_id=f"learning-cycle-{observation.observation_id}",
+                subject_id=observation.subject_id,
+                observation_id=observation.observation_id,
+                observation_digest=observation.content_digest,
+                prior_state_digest=state.content_digest,
+                resulting_state_digest=state.content_digest,
+                disposition=AutomationDisposition.REVIEW_REQUIRED,
+                detected_feedback_digest=detection.content_digest,
+                evaluation_receipt_digest=evaluation.content_digest,
+                update_latency_seconds=(processed_at - observation.observed_at).total_seconds(),
+                automatic_actions=3,
+                notice=notice,
+                created_at=processed_at,
+            )
+            return AutomaticLearningResult(
+                state=state,
+                cycle=cycle,
+                detection=detection,
+                captured=captured,
+                evaluation=evaluation,
+            )
+
+        transition = self._transition(
+            detection,
+            captured,
+            evaluation,
+            state=state,
+            processed_at=processed_at,
+        )
+        transitions = (*state.transitions, transition)
+        release = compile_runtime_release(transitions, subject_id=state.subject_id)
+        prior_releases = compile_runtime_releases(state.transitions, subject_id=state.subject_id)
+        new_state = AutomaticRuntimeState(
+            subject_id=state.subject_id,
+            standing_policy_digest=state.standing_policy_digest,
+            generation=len(transitions),
+            transitions=transitions,
+            release=release,
+            previous_release_digests=tuple(
+                sorted({item.content_digest for item in prior_releases})
+            ),
+        )
+        release_event = self._governance_event(
+            event_id=f"runtime-release-event-{observation.observation_id}",
+            event_type=GovernanceEventType.RELEASE_DECISION,
+            target_ref=f"composed-runtime-release:{release.governed_release.release_ref.record_id}",
+            target_digest=release.content_digest,
+            decision="released",
+            reason="Automatically release evaluated low-risk learning under the standing policy.",
+            occurred_at=processed_at,
+        )
+        notice = self._notice(detection, processed_at, transition=transition)
+        cycle = RuntimeLearningCycleReceipt(
+            cycle_id=f"learning-cycle-{observation.observation_id}",
+            subject_id=observation.subject_id,
+            observation_id=observation.observation_id,
+            observation_digest=observation.content_digest,
+            prior_state_digest=state.content_digest,
+            resulting_state_digest=new_state.content_digest,
+            disposition=detection.disposition,
+            detected_feedback_digest=detection.content_digest,
+            evaluation_receipt_digest=evaluation.content_digest,
+            transition_digest=transition.content_digest,
+            release_digest=release.content_digest,
+            release_event_digest=canonical_digest(release_event),
+            active_artifact_ids=tuple(
+                item.artifact_ref.record_id for item in release.governed_release.active_artifacts
+            ),
+            update_latency_seconds=(processed_at - observation.observed_at).total_seconds(),
+            automatic_actions=5,
+            notice=notice,
+            created_at=processed_at,
+        )
+        return AutomaticLearningResult(
+            state=new_state,
+            cycle=cycle,
+            detection=detection,
+            captured=captured,
+            evaluation=evaluation,
+            release=release,
+            release_event=release_event,
+        )
+
+    def activate(
+        self,
+        *,
+        activation_id: str,
+        task_ref: TaskRecordRef,
+        state: AutomaticRuntimeState,
+        context: RuntimeProjectionContext,
+        target_task: str,
+        activated_at: datetime,
+    ) -> PreparedRuntimeActivation:
+        """Prepare a later task from current state and sign its separate activation."""
+
+        if not activation_id.strip():
+            raise AutomaticRuntimeError("runtime activation ID must not be empty")
+        if activated_at.tzinfo is None or activated_at.utcoffset() is None:
+            raise AutomaticRuntimeError("activated_at must be timezone-aware")
+        self._verify_policy(activated_at)
+        self._validate_state(state)
+        self._validate_context(context, subject_id=state.subject_id)
+        if state.release is None:
+            raise AutomaticRuntimeError("runtime activation requires a governed release")
+        projection = build_runtime_projection(state.release.governed_release, context)
+        rendered, manifest = self._render(state.release, projection)
+        prepared = self._deliver(
+            task_ref=task_ref,
+            receipt_id=f"runtime-delivery-{activation_id}",
+            release=state.release,
+            projection=projection,
+            manifest=manifest,
+            rendered=rendered,
+            target_task=target_task,
+            delivered_at=activated_at,
+        )
+        activation_event = self._governance_event(
+            event_id=f"runtime-activation-event-{activation_id}",
+            event_type=GovernanceEventType.ACTIVATION_DECISION,
+            target_ref=f"runtime-delivery:{prepared.receipt.receipt_id}",
+            target_digest=canonical_digest(prepared.receipt),
+            decision="activated",
+            reason="Activate the exact scoped projection for the next Codex task.",
+            occurred_at=activated_at,
+        )
+        activation = RuntimeTaskActivationReceipt(
+            activation_id=activation_id,
+            subject_id=state.subject_id,
+            task_ref=task_ref,
+            state_digest=state.content_digest,
+            external_release_digest=state.release.governed_release.content_digest,
+            composed_release_digest=state.release.content_digest,
+            projection_context_digest=canonical_digest(context),
+            delivery_receipt_digest=canonical_digest(prepared.receipt),
+            activation_event_digest=canonical_digest(activation_event),
+            active_artifact_ids=tuple(
+                item.artifact_ref.record_id
+                for item in state.release.governed_release.active_artifacts
+            ),
+            activated_at=activated_at,
+        )
+        return PreparedRuntimeActivation(
+            task=prepared,
+            activation=activation,
+            activation_event=activation_event,
+        )
+
     def prepare_task(
         self,
         observation: InteractionObservation,
@@ -187,13 +407,14 @@ class AutomaticAdaptationRuntime:
             raise AutomaticRuntimeError("runtime delivery cannot predate the interaction")
         self._verify_policy(delivered_at)
         self._validate_state(state)
-        self._validate_context(context, observation)
+        self._validate_context(context, subject_id=observation.subject_id)
         if state.release is None:
             raise AutomaticRuntimeError("runtime delivery requires a governed release")
         projection = build_runtime_projection(state.release.governed_release, context)
         rendered, manifest = self._render(state.release, projection)
         return self._deliver(
-            observation=observation,
+            task_ref=observation.task_ref,
+            receipt_id=f"runtime-delivery-{observation.observation_id}",
             release=state.release,
             projection=projection,
             manifest=manifest,
@@ -219,7 +440,7 @@ class AutomaticAdaptationRuntime:
             raise AutomaticRuntimeError("automatic processing cannot predate the interaction")
         self._verify_policy(processed_at)
         self._validate_state(state)
-        self._validate_context(context, observation)
+        self._validate_context(context, subject_id=observation.subject_id)
         detection = detect_explicit_feedback(observation, self._policy, state)
 
         if detection.disposition in {
@@ -300,7 +521,8 @@ class AutomaticAdaptationRuntime:
         projection = build_runtime_projection(release.governed_release, context)
         rendered, manifest = self._render(release, projection)
         prepared = self._deliver(
-            observation=observation,
+            task_ref=observation.task_ref,
+            receipt_id=f"runtime-delivery-{observation.observation_id}",
             release=release,
             projection=projection,
             manifest=manifest,
@@ -407,9 +629,10 @@ class AutomaticAdaptationRuntime:
     def _validate_context(
         self,
         context: RuntimeProjectionContext,
-        observation: InteractionObservation,
+        *,
+        subject_id: str,
     ) -> None:
-        if context.subject_id != observation.subject_id:
+        if context.subject_id != subject_id:
             raise AutomaticRuntimeError("runtime context crossed its subject boundary")
         if context.target_family not in self._policy.allowed_target_families:
             raise AutomaticRuntimeError("target family is outside the standing policy")
@@ -812,7 +1035,8 @@ class AutomaticAdaptationRuntime:
     def _deliver(
         self,
         *,
-        observation: InteractionObservation,
+        task_ref: TaskRecordRef,
+        receipt_id: str,
         release: ComposedRuntimeRelease,
         projection: CanonicalRuntimeProjection,
         manifest: RuntimeProjectionManifest,
@@ -835,8 +1059,8 @@ class AutomaticAdaptationRuntime:
         if material and delivered_task.count(material) != 1:
             raise AutomaticRuntimeError("runtime material delivery is duplicated")
         receipt = RuntimeDeliveryReceipt(
-            receipt_id=f"runtime-delivery-{observation.observation_id}",
-            task_ref=observation.task_ref,
+            receipt_id=receipt_id,
+            task_ref=task_ref,
             target_family=TargetKind.CODEX.value,
             original_task_digest=sha256_text(normalized_task),
             external_release_digest=release.governed_release.content_digest,

@@ -16,7 +16,11 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     RuntimeActivationFeedback,
     RuntimeCycleReceipt,
     RuntimeDeliveryReceipt,
+    RuntimeLearningCycleReceipt,
     RuntimeReviewQueueItem,
+    RuntimeSourceCheckpoint,
+    RuntimeTargetDeliveryAcknowledgement,
+    RuntimeTaskActivationReceipt,
     StandingAutomationPolicy,
 )
 
@@ -28,7 +32,11 @@ _MODELS: dict[str, type[BaseModel]] = {
     "composed_runtime_release": ComposedRuntimeRelease,
     "runtime_cycle_receipt": RuntimeCycleReceipt,
     "runtime_delivery_receipt": RuntimeDeliveryReceipt,
+    "runtime_learning_cycle_receipt": RuntimeLearningCycleReceipt,
     "runtime_review_queue_item": RuntimeReviewQueueItem,
+    "runtime_source_checkpoint": RuntimeSourceCheckpoint,
+    "runtime_target_delivery_acknowledgement": RuntimeTargetDeliveryAcknowledgement,
+    "runtime_task_activation_receipt": RuntimeTaskActivationReceipt,
     "runtime_activation_feedback": RuntimeActivationFeedback,
     "standing_automation_policy": StandingAutomationPolicy,
 }
