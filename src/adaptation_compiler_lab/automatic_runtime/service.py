@@ -10,7 +10,10 @@ from adaptation_compiler_lab.automatic_runtime.compiler import (
     compile_runtime_release,
     compile_runtime_releases,
 )
-from adaptation_compiler_lab.automatic_runtime.detector import detect_explicit_feedback
+from adaptation_compiler_lab.automatic_runtime.detector import (
+    detect_explicit_feedback,
+    detect_feedback,
+)
 from adaptation_compiler_lab.automatic_runtime.models import (
     AdaptationLayer,
     AutomaticRenderedMaterial,
@@ -19,6 +22,7 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     CapturedInteraction,
     ComposedRuntimeRelease,
     DetectedFeedback,
+    FeedbackDetectorMode,
     FeedbackSignalKind,
     InteractionObservation,
     PreparedRuntimeActivation,
@@ -32,6 +36,7 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     RuntimeNoticeKind,
     RuntimeTaskActivationReceipt,
     RuntimeTransitionKind,
+    SemanticFeedbackInterpretation,
     StandingAutomationPolicy,
 )
 from adaptation_compiler_lab.domain import (
@@ -189,6 +194,8 @@ class AutomaticAdaptationRuntime:
         *,
         state: AutomaticRuntimeState,
         processed_at: datetime,
+        detector_mode: FeedbackDetectorMode = FeedbackDetectorMode.GRAMMAR,
+        semantic_interpretation: SemanticFeedbackInterpretation | None = None,
     ) -> AutomaticLearningResult:
         """Capture and release eligible learning without claiming target delivery."""
 
@@ -198,7 +205,13 @@ class AutomaticAdaptationRuntime:
             raise AutomaticRuntimeError("automatic processing cannot predate the interaction")
         self._verify_policy(processed_at)
         self._validate_state(state)
-        detection = detect_explicit_feedback(observation, self._policy, state)
+        detection = detect_feedback(
+            observation,
+            self._policy,
+            state,
+            mode=detector_mode,
+            semantic_interpretation=semantic_interpretation,
+        )
 
         if detection.disposition in {
             AutomationDisposition.IGNORED_UNTRUSTED,

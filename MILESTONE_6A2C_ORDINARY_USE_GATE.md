@@ -21,7 +21,7 @@ The owner's ordinary Codex history is maintained by Codex Desktop on Windows whi
 repository lives in WSL. Treating one executable and one path as both source and target would miss
 normal Desktop work.
 
-Configuration v1.1 therefore separates:
+Configuration v1.2 therefore separates:
 
 - the source Codex executable, saved-auth home, runtime lock, and one or more source-CWD aliases;
 - the canonical governed project/target root; and
@@ -31,6 +31,14 @@ The active gate uses native Windows Codex `0.146.0` with saved ChatGPT authentic
 source tasks are admitted only from the registered Windows project CWD. Fresh target sessions are
 bound to the canonical WSL repository through its Windows UNC representation. No API key is used.
 All raw state, SQLite metadata, and configuration remain local and outside every Git repository.
+
+Configuration v1.2 also selects one explicit detector mode. The initial grammar-only poll produced
+three valid cycles but missed a naturally phrased naming preference. That exact cycle is now
+append-only assessed as `missed`; it was not rewritten or reprocessed. A schema-bound semantic
+detector was added in response and passed a new 20-case calibration plus an untouched 20-case
+holdout with zero false positives, zero false negatives, and correct routes. Serving begins in
+`review` mode despite that synthetic pass, so normal-use false-learning and review-volume evidence
+can accumulate before unattended semantic promotion is considered.
 
 WSL executable interoperability is disabled on this host. Two failed initialization probes were
 therefore rejected before configuration, database, cursor, or evidence creation. Native Windows
@@ -82,6 +90,18 @@ authority, or promote an artifact. The owner does not need to complete a rating 
 cases may be classified from deterministic provenance and lifecycle evidence; ambiguous cases use
 one fresh isolated Codex review context at the reporting boundary. That review may evaluate the
 decision but cannot invent a preference or modify the cycle.
+
+## Natural-language detector gate
+
+The detector no longer depends on phrases such as `I prefer`. The grammar remains as a
+high-precision compatibility path, while an isolated semantic session proposes candidates for
+fillers, misspellings, slang, acronyms, fragments, indirect dislike, procedures, examples, and
+scoped project rules. Exact user-text support, source authority, route, scope, standing policy,
+and lifecycle validity remain deterministic.
+
+The current synthetic result is a detector-development gate, not ordinary-use evidence. The v1
+holdout failed and is preserved. The v2 holdout passed 20/20, but a single stochastic synthetic
+pass does not replace the multi-day 6A.2C thresholds. See `SEMANTIC_FEEDBACK_DETECTOR.md`.
 
 ## Activation feedback
 

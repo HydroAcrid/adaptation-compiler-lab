@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import tempfile
 from collections.abc import Iterator
@@ -9,7 +10,7 @@ from contextlib import contextmanager
 from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, cast
 
 import typer
 from pydantic import field_validator, model_validator
@@ -30,6 +31,7 @@ from adaptation_compiler_lab.automatic_runtime.host import (
 )
 from adaptation_compiler_lab.automatic_runtime.ledger import AutomaticRuntimeLedger
 from adaptation_compiler_lab.automatic_runtime.models import (
+    FeedbackDetectorMode,
     InteractionObservation,
     RuntimeActivationFeedback,
     RuntimeFeedbackOutcome,
@@ -38,6 +40,16 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     RuntimeNotice,
     RuntimeReviewQueueItem,
     StandingAutomationPolicy,
+)
+from adaptation_compiler_lab.automatic_runtime.semantic_evaluation import (
+    SemanticEvaluationSplit,
+    apply_semantic_corpus_adjudication,
+    evaluate_semantic_feedback,
+    load_semantic_corpus_adjudication,
+    load_semantic_feedback_corpus,
+)
+from adaptation_compiler_lab.automatic_runtime.semantic_interpreter import (
+    CodexSemanticFeedbackInterpreter,
 )
 from adaptation_compiler_lab.automatic_runtime.service import (
     AutomaticAdaptationRuntime,
@@ -57,6 +69,7 @@ from adaptation_compiler_lab.domain import (
     Identifier,
     PermittedUse,
     Scope,
+    Sha256Digest,
     SourceClass,
     TaskRecordRef,
 )
@@ -130,7 +143,7 @@ class CodexDogfoodProjectConfig(FrozenModel):
 class CodexDogfoodLocalConfig(FrozenModel):
     """No-secret local configuration; keys remain external environment dependencies."""
 
-    config_version: str = "1.1.0"
+    config_version: str = "1.2.0"
     subject_id: Identifier
     repository_root: Path
     state_root: Path
@@ -149,6 +162,10 @@ class CodexDogfoodLocalConfig(FrozenModel):
     target_codex_executable: Path | None = None
     target_windows_interop: bool | None = None
     target_runtime_pin_path: Path | None = None
+    feedback_detector_mode: FeedbackDetectorMode = FeedbackDetectorMode.GRAMMAR
+    semantic_model: str = "gpt-5.6-luna"
+    semantic_reasoning_effort: str = "medium"
+    semantic_promotion_evaluation_digest: Sha256Digest | None = None
 
     @field_validator("projects")
     @classmethod
@@ -162,6 +179,20 @@ class CodexDogfoodLocalConfig(FrozenModel):
 
     @model_validator(mode="after")
     def paths_and_subject_are_consistent(self) -> CodexDogfoodLocalConfig:
+        if self.config_version not in {"1.1.0", "1.2.0"}:
+            raise ValueError("unsupported dogfood config version")
+        if self.config_version == "1.1.0" and (
+            self.feedback_detector_mode is not FeedbackDetectorMode.GRAMMAR
+            or self.semantic_promotion_evaluation_digest is not None
+        ):
+            raise ValueError("dogfood config v1.1 is grammar-only")
+        if (
+            self.feedback_detector_mode is FeedbackDetectorMode.CALIBRATED
+            and self.semantic_promotion_evaluation_digest is None
+        ):
+            raise ValueError("calibrated semantic serving requires an evaluation digest")
+        if not self.semantic_model.strip() or not self.semantic_reasoning_effort.strip():
+            raise ValueError("semantic model and reasoning effort must not be empty")
         if (
             self.policy.subject_id != self.subject_id
             or self.policy_authorization.subject_id != self.subject_id
@@ -263,6 +294,26 @@ def _load_config(path: Path) -> CodexDogfoodLocalConfig:
         raise AutomaticRuntimeError("Codex dogfood config is invalid") from error
     _outside_git(config.state_root, repository_root=config.repository_root)
     return config
+
+
+def _write_config(path: Path, config: CodexDogfoodLocalConfig) -> None:
+    payload = (canonical_json(config) + "\n").encode("utf-8")
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        dir=path.parent,
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.chmod(0o600)
+        os.replace(temporary, path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
 
 
 def _ledger(config: CodexDogfoodLocalConfig) -> AutomaticRuntimeLedger:
@@ -617,12 +668,21 @@ def poll_codex_feedback(
         runtime = _runtime(config)
         ledger = _ledger(config)
         pins = load_dogfood_runtime_pins(config.runtime_pin_path)
-        with open_codex_dogfood(
-            executable=config.codex_executable,
-            codex_home=config.source_codex_home,
-            pin=pins.codex,
-            windows_interop=config.windows_interop,
-        ) as (verified, schemas, rpc):
+        with (
+            tempfile.TemporaryDirectory(
+                prefix="semantic-feedback-",
+                dir=config.state_root,
+            ) as semantic_workspace,
+            open_codex_dogfood(
+                executable=config.codex_executable,
+                codex_home=config.source_codex_home,
+                pin=pins.codex,
+                windows_interop=config.windows_interop,
+                experimental_api=(
+                    config.feedback_detector_mode is not FeedbackDetectorMode.GRAMMAR
+                ),
+            ) as (verified, schemas, rpc),
+        ):
             source = CodexDogfoodInteractionSource(
                 rpc,
                 subject_id=config.subject_id,
@@ -643,6 +703,19 @@ def poll_codex_feedback(
                 source=source,
                 review_sink=_ConsoleReviewSink(),
                 notice_sink=_ConsoleNoticeSink(),
+                detector_mode=config.feedback_detector_mode,
+                semantic_interpreter=(
+                    None
+                    if config.feedback_detector_mode is FeedbackDetectorMode.GRAMMAR
+                    else CodexSemanticFeedbackInterpreter(
+                        rpc,
+                        schemas=schemas,
+                        runtime=verified,
+                        workspace_root=Path(semantic_workspace),
+                        model=config.semantic_model,
+                        reasoning_effort=config.semantic_reasoning_effort,
+                    )
+                ),
             ).run_once(limit=limit)
     except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
@@ -714,6 +787,7 @@ def run_fresh_codex_task(
                 codex_home=target_home,
                 pin=pins.codex,
                 windows_interop=config.effective_target_windows_interop,
+                experimental_api=True,
             ) as (_verified, schemas, rpc),
         ):
             if not ledger.append_activation(prepared):
@@ -748,6 +822,177 @@ def run_fresh_codex_task(
         _fail(str(error))
 
 
+@dogfood_app.command("detector-mode")
+def configure_feedback_detector(
+    config_path: ConfigOption,
+    mode: Annotated[FeedbackDetectorMode, typer.Argument()],
+    expected_current: Annotated[
+        FeedbackDetectorMode,
+        typer.Option(
+            "--expected-current",
+            help="Fail if another process or operator already changed the serving mode.",
+        ),
+    ],
+    evaluation_digest: Annotated[
+        str | None,
+        typer.Option(
+            "--evaluation-digest",
+            help="Required frozen semantic evaluation digest for calibrated promotion.",
+        ),
+    ] = None,
+) -> None:
+    """Atomically change grammar/shadow/review/calibrated semantic serving."""
+
+    try:
+        config = _load_config(config_path)
+        if config.feedback_detector_mode is not expected_current:
+            raise AutomaticRuntimeError("feedback detector serving mode changed concurrently")
+        if mode is FeedbackDetectorMode.CALIBRATED and evaluation_digest is None:
+            raise AutomaticRuntimeError(
+                "calibrated semantic serving requires a frozen evaluation digest"
+            )
+        if mode is not FeedbackDetectorMode.CALIBRATED and evaluation_digest is not None:
+            raise AutomaticRuntimeError(
+                "evaluation digest is accepted only for calibrated semantic serving"
+            )
+        updated = config.model_copy(
+            update={
+                "config_version": "1.2.0",
+                "feedback_detector_mode": mode,
+                "semantic_promotion_evaluation_digest": evaluation_digest,
+            }
+        )
+        updated = CodexDogfoodLocalConfig.model_validate(
+            updated.model_dump(mode="python"),
+            strict=True,
+        )
+        _write_config(config_path, updated)
+    except (OSError, ValueError, RuntimeConformanceError) as error:
+        _fail(str(error))
+    typer.echo(
+        canonical_json(
+            {
+                "feedback_detector_mode": updated.feedback_detector_mode.value,
+                "semantic_model": updated.semantic_model,
+                "semantic_promotion_evaluation_digest": (
+                    updated.semantic_promotion_evaluation_digest
+                ),
+            }
+        )
+    )
+
+
+@dogfood_app.command("detector-evaluate")
+def evaluate_feedback_detector(
+    config_path: ConfigOption,
+    corpus_path: Annotated[
+        Path,
+        typer.Argument(
+            help="Frozen public synthetic semantic-feedback corpus.",
+            exists=True,
+            dir_okay=False,
+            resolve_path=True,
+        ),
+    ],
+    split: Annotated[
+        str,
+        typer.Option("--split", help="Evaluate calibration or holdout cases."),
+    ] = "calibration",
+    adjudication_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--adjudication",
+            help="Calibration-only ground-truth adjudication bound to the source corpus.",
+            exists=True,
+            dir_okay=False,
+            resolve_path=True,
+        ),
+    ] = None,
+) -> None:
+    """Run one isolated subscription-backed semantic batch and emit a raw-free report."""
+
+    try:
+        if split not in {"calibration", "holdout"}:
+            raise AutomaticRuntimeError("semantic evaluation split must be calibration or holdout")
+        selected_split = cast(SemanticEvaluationSplit, split)
+        config = _load_config(config_path)
+        source_corpus = load_semantic_feedback_corpus(corpus_path)
+        adjudication = (
+            None
+            if adjudication_path is None
+            else load_semantic_corpus_adjudication(adjudication_path)
+        )
+        corpus = (
+            source_corpus
+            if adjudication is None
+            else apply_semantic_corpus_adjudication(source_corpus, adjudication)
+        )
+        if adjudication is not None and selected_split == "holdout":
+            raise AutomaticRuntimeError(
+                "calibration adjudication cannot be supplied to a holdout evaluation"
+            )
+        cases = corpus.select(selected_split)
+        observations = tuple(
+            InteractionObservation(
+                observation_id=case.case_id,
+                subject_id=config.subject_id,
+                task_ref=TaskRecordRef(
+                    record_id=f"semantic-evaluation-{case.case_id}",
+                    record_version="1.0.0",
+                ),
+                turn_id=f"semantic-evaluation-turn-{case.case_id}",
+                actor=ActorRef(actor_id=config.subject_id, kind=ActorKind.USER),
+                source_class=SourceClass.SYNTHETIC,
+                text=case.text,
+                scope=config.policy.scope,
+                observed_at=corpus.frozen_at,
+                source_system="local_interaction_runtime",
+                source_version=corpus.corpus_version,
+                source_schema_digest=corpus.content_digest,
+            )
+            for case in cases
+        )
+        pins = load_dogfood_runtime_pins(config.runtime_pin_path)
+        with (
+            tempfile.TemporaryDirectory(
+                prefix="semantic-evaluation-",
+                dir=config.state_root,
+            ) as semantic_workspace,
+            open_codex_dogfood(
+                executable=config.codex_executable,
+                codex_home=config.source_codex_home,
+                pin=pins.codex,
+                windows_interop=config.windows_interop,
+                experimental_api=True,
+            ) as (verified, schemas, rpc),
+        ):
+            interpretations = CodexSemanticFeedbackInterpreter(
+                rpc,
+                schemas=schemas,
+                runtime=verified,
+                workspace_root=Path(semantic_workspace),
+                model=config.semantic_model,
+                reasoning_effort=config.semantic_reasoning_effort,
+            ).interpret_batch(observations)
+        report = evaluate_semantic_feedback(
+            corpus,
+            split=selected_split,
+            interpretations=interpretations,
+            source_corpus_digest=source_corpus.content_digest,
+            adjudication_digest=(None if adjudication is None else adjudication.content_digest),
+        )
+    except (OSError, ValueError, RuntimeConformanceError) as error:
+        _fail(str(error))
+    typer.echo(
+        canonical_json(
+            {
+                "report": report.model_dump(mode="json"),
+                "report_digest": report.content_digest,
+            }
+        )
+    )
+
+
 @dogfood_app.command("status")
 def show_codex_dogfood_status(config_path: ConfigOption) -> None:
     """Show state, review, activation, cursor, and feedback counts without raw payloads."""
@@ -770,6 +1015,7 @@ def show_codex_dogfood_status(config_path: ConfigOption) -> None:
             ),
             "activation_count": len(activations),
             "feedback_count": len(ledger.feedback()),
+            "feedback_detector_mode": config.feedback_detector_mode.value,
             "generation": 0 if state is None else state.generation,
             "learning_cycle_count": len(ledger.learning_cycles()),
             "learning_assessment_count": len(ledger.learning_assessments()),

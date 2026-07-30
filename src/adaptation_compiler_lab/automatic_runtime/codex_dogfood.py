@@ -659,6 +659,7 @@ def open_codex_dogfood(
     pin: CodexAppServerPin,
     schema_root: Path = DEFAULT_CODEX_DOGFOOD_SCHEMA_ROOT,
     windows_interop: bool = False,
+    experimental_api: bool = False,
 ) -> Iterator[tuple[VerifiedCodexRuntime, CodexDogfoodSchemaSet, CodexAppServerProcess]]:
     """Verify, authenticate, and expose one pinned local Codex app-server connection."""
 
@@ -672,6 +673,7 @@ def open_codex_dogfood(
         runtime,
         codex_home=codex_home,
         schemas=schemas,
+        experimental_api=experimental_api,
     ) as rpc:
         require_chatgpt_account(rpc, schemas=schemas)
         yield runtime, schemas, rpc

@@ -13,21 +13,26 @@ profile.
 
 Milestone 6A.2B now includes a governed automatic-runtime core, restart-safe host coordinator, and
 concrete pinned Codex dogfood integration. Under one signed bounded standing
-policy, explicit low-risk user feedback can be encrypted, turned into an evaluation candidate,
+policy, low-risk user feedback can be encrypted, turned into an evaluation candidate,
 promoted through addition/correction/supersession/revocation, compiled, scoped, delivered once to
 Codex, measured, notified, and undone by exact revocation. Untrusted content is rejected before
 capture; secrets are blocked; ambiguous or capability-changing proposals remain inactive in a
 durable raw-free review queue. The host loop persists signed actions and recovers interrupted
 idempotent delivery without learning twice. Pickup and user controls are now concrete but
 explicitly invoked; there is still no background watcher or persistent product conversation, so
-this should not yet be described as an ambient memory service.
+this should not yet be described as an ambient memory service. Natural feedback now uses a
+proposal-only semantic detector behind exact-quote, authority, secret, scope, route, policy, and
+lifecycle checks; deterministic grammar remains available as a compatibility mode.
 
-Milestone 6A.2C has started the real ordinary-use gate. Configuration v1.1 can map Windows Codex
+Milestone 6A.2C has started the real ordinary-use gate. Configuration v1.2 can map Windows Codex
 Desktop source CWDs to the canonical WSL project and can use a separately pinned target endpoint.
-The local post-cutoff state is initialized, its first raw-free poll passed with zero historical
-imports, and `gate-report` now measures immutable learning assessments, activation relevance,
-pack size, update latency, maintenance, and evidence readiness. Completion requires 20 genuine
-interactions across at least three dates and will not be simulated.
+The local post-cutoff state is initialized. A real grammar-only missed preference is durably
+recorded, and a new semantic detector passed a 20-case calibration plus an untouched 20-case
+holdout after preserving its earlier v1 holdout failure. Dogfood starts semantic serving in
+review mode. `gate-report` measures immutable learning assessments, activation relevance, pack
+size, update latency, maintenance, and evidence readiness. Completion requires 20 genuine
+interactions across at least three dates and will not be simulated. See
+[`SEMANTIC_FEEDBACK_DETECTOR.md`](SEMANTIC_FEEDBACK_DETECTOR.md).
 
 Milestones 6A.3–6A.5 now provide positive, complementary comparisons against the strong static
 profile. Milestone 6A.3 showed lifecycle-aware compilation winning five of six fresh staged task
@@ -157,6 +162,7 @@ worked; its current target-visible projection did not beat an excellent profile.
   governed release, exact clause-to-provenance manifest, context resolution, and a separately
   measured condition-neutral execution envelope.
 - A signed-standing-policy automatic runtime core with authority-first feedback detection,
+  isolated schema-bound semantic candidate generation,
   AES-256-GCM interaction capture, evaluation-first promotion, arbitrary-length governed
   lifecycle compilation, permanent/context layer ownership, exact revocation including zero-byte
   removal, compact task delivery, notifications, append-only state/cycle/outcome feedback, and

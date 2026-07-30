@@ -1,0 +1,119 @@
+{
+  "additionalProperties": false,
+  "description": "Raw-free provenance for one isolated, schema-bound semantic batch.",
+  "properties": {
+    "batch_input_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Batch Input Digest",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "external_session_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "External Session Digest",
+      "type": "string"
+    },
+    "external_turn_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "External Turn Digest",
+      "type": "string"
+    },
+    "input_count": {
+      "maximum": 100,
+      "minimum": 1,
+      "title": "Input Count",
+      "type": "integer"
+    },
+    "interpreter_id": {
+      "const": "codex-semantic-feedback",
+      "default": "codex-semantic-feedback",
+      "title": "Interpreter Id",
+      "type": "string"
+    },
+    "interpreter_version": {
+      "const": "1.1.0",
+      "default": "1.1.0",
+      "title": "Interpreter Version",
+      "type": "string"
+    },
+    "model": {
+      "minLength": 1,
+      "title": "Model",
+      "type": "string"
+    },
+    "model_reroute_observed": {
+      "const": false,
+      "default": false,
+      "title": "Model Reroute Observed",
+      "type": "boolean"
+    },
+    "output_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Output Digest",
+      "type": "string"
+    },
+    "output_schema_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Output Schema Digest",
+      "type": "string"
+    },
+    "prompt_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Prompt Digest",
+      "type": "string"
+    },
+    "reasoning_effort": {
+      "minLength": 1,
+      "title": "Reasoning Effort",
+      "type": "string"
+    },
+    "receipt_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Receipt Version",
+      "type": "string"
+    },
+    "source_runtime_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Runtime Digest",
+      "type": "string"
+    },
+    "source_runtime_version": {
+      "minLength": 1,
+      "title": "Source Runtime Version",
+      "type": "string"
+    },
+    "tool_use_observed": {
+      "const": false,
+      "default": false,
+      "title": "Tool Use Observed",
+      "type": "boolean"
+    },
+    "trace_conformant": {
+      "const": true,
+      "default": true,
+      "title": "Trace Conformant",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "model",
+    "reasoning_effort",
+    "source_runtime_version",
+    "source_runtime_digest",
+    "prompt_digest",
+    "output_schema_digest",
+    "batch_input_digest",
+    "output_digest",
+    "external_session_digest",
+    "external_turn_digest",
+    "input_count",
+    "created_at"
+  ],
+  "title": "SemanticInterpreterReceipt",
+  "type": "object"
+}

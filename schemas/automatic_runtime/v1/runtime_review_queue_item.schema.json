@@ -476,7 +476,7 @@
     },
     "DetectedFeedback": {
       "additionalProperties": false,
-      "description": "Raw-free deterministic interpretation of an explicit user signal.",
+      "description": "Raw-free governed interpretation of an explicit user signal.",
       "properties": {
         "affected_artifact_id": {
           "anyOf": [
@@ -520,6 +520,22 @@
           "title": "Detected At",
           "type": "string"
         },
+        "detector_id": {
+          "default": "explicit-feedback-grammar",
+          "minLength": 1,
+          "title": "Detector Id",
+          "type": "string"
+        },
+        "detector_mode": {
+          "$ref": "#/$defs/FeedbackDetectorMode",
+          "default": "grammar"
+        },
+        "detector_version": {
+          "default": "1.0.0",
+          "minLength": 1,
+          "title": "Detector Version",
+          "type": "string"
+        },
         "disposition": {
           "$ref": "#/$defs/AutomationDisposition"
         },
@@ -528,6 +544,19 @@
           "default": true,
           "title": "Evaluation Required",
           "type": "boolean"
+        },
+        "interpreter_receipt_digest": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interpreter Receipt Digest"
         },
         "layer": {
           "$ref": "#/$defs/AdaptationLayer"
@@ -573,6 +602,13 @@
         "scope": {
           "$ref": "#/$defs/Scope"
         },
+        "semantic_candidate_count": {
+          "default": 0,
+          "maximum": 4,
+          "minimum": 0,
+          "title": "Semantic Candidate Count",
+          "type": "integer"
+        },
         "signal_kind": {
           "anyOf": [
             {
@@ -583,6 +619,15 @@
             }
           ],
           "default": null
+        },
+        "supporting_span_digests": {
+          "default": [],
+          "items": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Supporting Span Digests",
+          "type": "array"
         }
       },
       "required": [
@@ -1230,8 +1275,19 @@
       "title": "EvidenceState",
       "type": "string"
     },
+    "FeedbackDetectorMode": {
+      "description": "Serving mode for the semantic feedback interpreter.",
+      "enum": [
+        "grammar",
+        "shadow",
+        "review",
+        "calibrated"
+      ],
+      "title": "FeedbackDetectorMode",
+      "type": "string"
+    },
     "FeedbackSignalKind": {
-      "description": "Explicit user signals admitted by the deterministic first detector.",
+      "description": "User signals that may become governed adaptation candidates.",
       "enum": [
         "memory",
         "preference",

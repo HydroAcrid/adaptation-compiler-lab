@@ -17,9 +17,14 @@ from adaptation_compiler_lab.automatic_runtime.ledger import AutomaticRuntimeLed
 from adaptation_compiler_lab.automatic_runtime.models import (
     AutomaticRuntimeState,
     AutomationDisposition,
+    FeedbackDetectorMode,
     InteractionObservation,
     RuntimeReviewQueueItem,
     RuntimeSourceCheckpoint,
+    SemanticFeedbackInterpretation,
+)
+from adaptation_compiler_lab.automatic_runtime.semantic_interpreter import (
+    SemanticFeedbackInterpreter,
 )
 from adaptation_compiler_lab.automatic_runtime.service import (
     AutomaticAdaptationRuntime,
@@ -55,6 +60,8 @@ class CodexDogfoodHost:
         source: CodexDogfoodInteractionSource,
         review_sink: RuntimeReviewSink,
         notice_sink: RuntimeNoticeSink,
+        detector_mode: FeedbackDetectorMode = FeedbackDetectorMode.GRAMMAR,
+        semantic_interpreter: SemanticFeedbackInterpreter | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         if initial_state.generation != 0:
@@ -65,6 +72,12 @@ class CodexDogfoodHost:
         self._source = source
         self._review_sink = review_sink
         self._notice_sink = notice_sink
+        if (detector_mode is FeedbackDetectorMode.GRAMMAR) != (semantic_interpreter is None):
+            raise ValueError(
+                "semantic interpreter is required exactly when detector mode is semantic"
+            )
+        self._detector_mode = detector_mode
+        self._semantic_interpreter = semantic_interpreter
         self._clock = clock or (lambda: datetime.now(UTC))
 
     def run_once(self, *, limit: int = 25) -> CodexDogfoodPickupReceipt:
@@ -74,6 +87,25 @@ class CodexDogfoodHost:
         checkpoint = self._ledger.current_checkpoint(self._source.source_id)
         prior_cursor = None if checkpoint is None else checkpoint.cursor_value
         batch = self._source.poll(after_cursor=prior_cursor, limit=limit)
+        priors = {
+            item.observation.observation_id: self._ledger.learning_cycle_for_observation(
+                item.observation.observation_id
+            )
+            for item in batch.items
+        }
+        new_observations = tuple(
+            item.observation
+            for item in batch.items
+            if priors[item.observation.observation_id] is None
+        )
+        interpretations: dict[str, SemanticFeedbackInterpretation] = {}
+        if self._semantic_interpreter is not None and new_observations:
+            interpretations = dict(self._semantic_interpreter.interpret_batch(new_observations))
+            expected = tuple(item.observation_id for item in new_observations)
+            if tuple(interpretations) != expected:
+                raise AutomaticRuntimeError(
+                    "semantic interpreter returned an incomplete or reordered batch"
+                )
         appended = 0
         replayed = 0
         reviews = 0
@@ -81,11 +113,12 @@ class CodexDogfoodHost:
 
         for item in batch.items:
             observation = item.observation
-            prior = self._ledger.learning_cycle_for_observation(observation.observation_id)
+            prior = priors[observation.observation_id]
             if prior is None:
                 result = self._learn_new(
                     observation=observation,
                     processed_at=item.processed_at,
+                    semantic_interpretation=interpretations.get(observation.observation_id),
                 )
                 appended += 1
                 review_item = self._review_item(result)
@@ -148,6 +181,7 @@ class CodexDogfoodHost:
         *,
         observation: InteractionObservation,
         processed_at: datetime,
+        semantic_interpretation: SemanticFeedbackInterpretation | None,
     ) -> AutomaticLearningResult:
         state = self._ledger.current()
         if state is None:
@@ -156,6 +190,8 @@ class CodexDogfoodHost:
             observation,
             state=state,
             processed_at=processed_at,
+            detector_mode=self._detector_mode,
+            semantic_interpretation=semantic_interpretation,
         )
         review_item = self._review_item(result)
         if not self._ledger.append_learning(

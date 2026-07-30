@@ -1,0 +1,18 @@
+{
+  "adjudication_version": "1.0.0",
+  "adjudication_id": "semantic-feedback-v2-calibration-adjudication-1",
+  "source_corpus_digest": "sha256:71a38cd1e7461feae6b2a166b0db586a77025644c6998cabe9b34587a2aab1de",
+  "created_at": "2026-07-30T20:30:00Z",
+  "entries": [
+    {
+      "case_id": "v2c019",
+      "revised_expectation": {
+        "durable_signal": true,
+        "accepted_signal_kinds": ["procedure", "prompt_rule"],
+        "accepted_routes": ["procedure", "prompt_rule"],
+        "scope_hint": "permanent_profile"
+      },
+      "rationale": "Although conditional, the message gives a standing future verification procedure. It is not merely a hypothetical preference claim."
+    }
+  ]
+}

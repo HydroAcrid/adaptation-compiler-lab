@@ -112,6 +112,7 @@ class CodexAppServerProcess:
         codex_home: Path,
         schemas: CodexSchemaSet,
         request_timeout_seconds: float = 30.0,
+        experimental_api: bool = False,
     ) -> None:
         resolved_home = codex_home.expanduser().resolve()
         if not resolved_home.is_dir():
@@ -120,6 +121,7 @@ class CodexAppServerProcess:
         self._codex_home = resolved_home
         self._schemas = schemas
         self._request_timeout_seconds = request_timeout_seconds
+        self._experimental_api = experimental_api
         self._process: subprocess.Popen[str] | None = None
         self._messages: queue.Queue[JsonObject | object] = queue.Queue()
         self._reader_error: BaseException | None = None
@@ -172,7 +174,7 @@ class CodexAppServerProcess:
                     "title": "Adaptation Compiler Lab",
                     "version": "0.1.0",
                 },
-                "capabilities": {"experimentalApi": False},
+                "capabilities": {"experimentalApi": self._experimental_api},
             }
             self._schemas.validate("initialize_params", initialize)
             response = self.request("initialize", initialize)
@@ -265,7 +267,21 @@ class CodexAppServerProcess:
             if response_id != request_id:
                 raise CodexProtocolError("Codex app server returned an unexpected response ID")
             if "error" in payload:
-                raise CodexProtocolError("Codex app server returned an RPC error")
+                error = payload.get("error")
+                code: object = None
+                error_message: object = None
+                if isinstance(error, dict):
+                    code = error.get("code")
+                    error_message = error.get("message")
+                safe_code = code if isinstance(code, int | str) else "unknown"
+                safe_message = (
+                    "unspecified"
+                    if not isinstance(error_message, str)
+                    else " ".join(error_message.split())[:240]
+                )
+                raise CodexProtocolError(
+                    f"Codex app server returned RPC error {safe_code}: {safe_message}"
+                )
             result = payload.get("result")
             if not isinstance(result, dict) or not all(isinstance(key, str) for key in result):
                 raise CodexProtocolError("Codex app-server result must be a JSON object")

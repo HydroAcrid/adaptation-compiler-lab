@@ -56,7 +56,7 @@ class AdaptationLayer(StrEnum):
 
 
 class FeedbackSignalKind(StrEnum):
-    """Explicit user signals admitted by the deterministic first detector."""
+    """User signals that may become governed adaptation candidates."""
 
     MEMORY = "memory"
     PREFERENCE = "preference"
@@ -65,6 +65,37 @@ class FeedbackSignalKind(StrEnum):
     POSITIVE_EXAMPLE = "positive_example"
     CORRECTION = "correction"
     REVOCATION = "revocation"
+
+
+class FeedbackDetectorMode(StrEnum):
+    """Serving mode for the semantic feedback interpreter."""
+
+    GRAMMAR = "grammar"
+    SHADOW = "shadow"
+    REVIEW = "review"
+    CALIBRATED = "calibrated"
+
+
+class SemanticSignalDurability(StrEnum):
+    """Whether a proposed signal extends beyond the immediate task."""
+
+    DURABLE = "durable"
+    TASK_ONLY = "task_only"
+    UNCERTAIN = "uncertain"
+
+
+class SemanticSignalClarity(StrEnum):
+    """Structural clarity reported by the semantic candidate generator."""
+
+    CLEAR = "clear"
+    AMBIGUOUS = "ambiguous"
+
+
+class SemanticScopeHint(StrEnum):
+    """Non-authoritative scope hint emitted by semantic interpretation."""
+
+    PERMANENT_PROFILE = "permanent_profile"
+    CURRENT_CONTEXT = "current_context"
 
 
 class AutomationDisposition(StrEnum):
@@ -255,8 +286,99 @@ class CapturedInteraction(FrozenModel):
         return self
 
 
+class SemanticFeedbackSignal(FrozenModel):
+    """Transient model proposal whose supporting quote must match the user text exactly."""
+
+    signal_kind: FeedbackSignalKind
+    normalized_behavior: NonEmptyStr | None = None
+    requested_route: ArtifactRoute | None = None
+    affected_artifact_id: Identifier | None = None
+    supporting_quote: NonEmptyStr
+    support_start: int = Field(ge=0)
+    support_end: int = Field(gt=0)
+    durability: SemanticSignalDurability
+    clarity: SemanticSignalClarity
+    scope_hint: SemanticScopeHint
+
+    @model_validator(mode="after")
+    def signal_shape_is_coherent(self) -> Self:
+        if self.support_end <= self.support_start:
+            raise ValueError("semantic support end must follow its start")
+        if self.signal_kind is FeedbackSignalKind.REVOCATION:
+            if (
+                self.affected_artifact_id is None
+                or self.normalized_behavior is not None
+                or self.requested_route is not None
+            ):
+                raise ValueError("semantic revocation must name one artifact and no behavior")
+        elif (
+            self.normalized_behavior is None
+            or self.requested_route is None
+            or self.affected_artifact_id is not None
+        ):
+            raise ValueError(
+                "non-revocation semantic signals require behavior and route but no artifact"
+            )
+        return self
+
+
+class SemanticInterpreterReceipt(FrozenModel):
+    """Raw-free provenance for one isolated, schema-bound semantic batch."""
+
+    receipt_version: Literal["1.0.0"] = "1.0.0"
+    interpreter_id: Literal["codex-semantic-feedback"] = "codex-semantic-feedback"
+    interpreter_version: Literal["1.1.0"] = "1.1.0"
+    model: NonEmptyStr
+    reasoning_effort: NonEmptyStr
+    source_runtime_version: NonEmptyStr
+    source_runtime_digest: Sha256Digest
+    prompt_digest: Sha256Digest
+    output_schema_digest: Sha256Digest
+    batch_input_digest: Sha256Digest
+    output_digest: Sha256Digest
+    external_session_digest: Sha256Digest
+    external_turn_digest: Sha256Digest
+    input_count: int = Field(ge=1, le=100)
+    tool_use_observed: Literal[False] = False
+    model_reroute_observed: Literal[False] = False
+    trace_conformant: Literal[True] = True
+    created_at: UtcDateTime
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class SemanticFeedbackInterpretation(FrozenModel):
+    """Transient semantic proposals for one exact interaction."""
+
+    observation_id: Identifier
+    observation_digest: Sha256Digest
+    signals: Annotated[tuple[SemanticFeedbackSignal, ...], Field(max_length=4)] = ()
+    receipt: SemanticInterpreterReceipt
+
+    @field_validator("signals")
+    @classmethod
+    def signals_are_unique(
+        cls, value: tuple[SemanticFeedbackSignal, ...]
+    ) -> tuple[SemanticFeedbackSignal, ...]:
+        identities = tuple(
+            (
+                item.signal_kind.value,
+                item.support_start,
+                item.support_end,
+                item.normalized_behavior,
+                item.affected_artifact_id,
+            )
+            for item in value
+        )
+        if len(identities) != len(set(identities)):
+            raise ValueError("semantic interpretation contains duplicate signals")
+        return value
+
+
 class DetectedFeedback(FrozenModel):
-    """Raw-free deterministic interpretation of an explicit user signal."""
+    """Raw-free governed interpretation of an explicit user signal."""
 
     candidate_id: Identifier
     observation_digest: Sha256Digest
@@ -270,6 +392,12 @@ class DetectedFeedback(FrozenModel):
     disposition: AutomationDisposition
     reasons: Annotated[tuple[NonEmptyStr, ...], Field(min_length=1)]
     detected_at: UtcDateTime
+    detector_id: NonEmptyStr = "explicit-feedback-grammar"
+    detector_version: NonEmptyStr = "1.0.0"
+    detector_mode: FeedbackDetectorMode = FeedbackDetectorMode.GRAMMAR
+    interpreter_receipt_digest: Sha256Digest | None = None
+    semantic_candidate_count: int = Field(default=0, ge=0, le=4)
+    supporting_span_digests: tuple[Sha256Digest, ...] = ()
     evaluation_required: Literal[True] = True
 
     @field_validator("reasons")
@@ -298,6 +426,15 @@ class DetectedFeedback(FrozenModel):
             or self.claim_key is None
         ):
             raise ValueError("non-revocation signals require behavior, route, and claim key")
+        semantic = self.detector_mode is not FeedbackDetectorMode.GRAMMAR
+        if semantic != (self.interpreter_receipt_digest is not None):
+            raise ValueError("semantic detector mode requires one interpreter receipt")
+        if semantic != (self.detector_id == "codex-semantic-feedback"):
+            raise ValueError("semantic detector mode requires the semantic detector identity")
+        if self.semantic_candidate_count == 0 and self.supporting_span_digests:
+            raise ValueError("semantic support spans require at least one candidate")
+        if len(self.supporting_span_digests) > self.semantic_candidate_count:
+            raise ValueError("semantic support spans exceed the candidate count")
         return self
 
     @property

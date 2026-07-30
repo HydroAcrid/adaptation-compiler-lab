@@ -23,7 +23,13 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     RuntimeSourceCheckpoint,
     RuntimeTargetDeliveryAcknowledgement,
     RuntimeTaskActivationReceipt,
+    SemanticInterpreterReceipt,
     StandingAutomationPolicy,
+)
+from adaptation_compiler_lab.automatic_runtime.semantic_evaluation import (
+    SemanticCorpusAdjudication,
+    SemanticEvaluationReport,
+    SemanticFeedbackCorpus,
 )
 
 _MODELS: dict[str, type[BaseModel]] = {
@@ -38,6 +44,10 @@ _MODELS: dict[str, type[BaseModel]] = {
     "runtime_learning_assessment": RuntimeLearningAssessment,
     "runtime_learning_cycle_receipt": RuntimeLearningCycleReceipt,
     "runtime_review_queue_item": RuntimeReviewQueueItem,
+    "semantic_interpreter_receipt": SemanticInterpreterReceipt,
+    "semantic_corpus_adjudication": SemanticCorpusAdjudication,
+    "semantic_evaluation_report": SemanticEvaluationReport,
+    "semantic_feedback_corpus": SemanticFeedbackCorpus,
     "runtime_source_checkpoint": RuntimeSourceCheckpoint,
     "runtime_target_delivery_acknowledgement": RuntimeTargetDeliveryAcknowledgement,
     "runtime_task_activation_receipt": RuntimeTaskActivationReceipt,

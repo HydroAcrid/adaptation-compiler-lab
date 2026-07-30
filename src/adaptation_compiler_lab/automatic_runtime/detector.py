@@ -10,15 +10,22 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     AutomaticRuntimeState,
     AutomationDisposition,
     DetectedFeedback,
+    FeedbackDetectorMode,
     FeedbackSignalKind,
     InteractionObservation,
+    SemanticFeedbackInterpretation,
+    SemanticFeedbackSignal,
+    SemanticSignalClarity,
+    SemanticSignalDurability,
     StandingAutomationPolicy,
     infer_layer,
     require_policy_scope,
 )
 from adaptation_compiler_lab.domain import ArtifactRoute, SourceClass
 from adaptation_compiler_lab.sanitization import scan_text
+from adaptation_compiler_lab.targets.base import sha256_text
 
+_SEMANTIC_DETECTOR_VERSION = "1.1.0"
 _PREFIXES: tuple[tuple[re.Pattern[str], FeedbackSignalKind, ArtifactRoute], ...] = (
     (
         re.compile(r"^(?:remember|memory)\s*:\s*(?P<body>.+)$", re.IGNORECASE | re.DOTALL),
@@ -70,6 +77,27 @@ _CAPABILITY_CHANGE = re.compile(
     r"\b(?:api key|credential|password|secret|network access)\b",
     re.IGNORECASE | re.DOTALL,
 )
+_SEMANTIC_ROUTES: dict[FeedbackSignalKind, frozenset[ArtifactRoute | None]] = {
+    FeedbackSignalKind.MEMORY: frozenset({ArtifactRoute.MEMORY}),
+    FeedbackSignalKind.PREFERENCE: frozenset({ArtifactRoute.PREFERENCE}),
+    FeedbackSignalKind.PROCEDURE: frozenset({ArtifactRoute.PROCEDURE}),
+    FeedbackSignalKind.PROMPT_RULE: frozenset({ArtifactRoute.PROMPT_RULE}),
+    FeedbackSignalKind.POSITIVE_EXAMPLE: frozenset({ArtifactRoute.EXAMPLE}),
+    FeedbackSignalKind.CORRECTION: frozenset(
+        {
+            ArtifactRoute.MEMORY,
+            ArtifactRoute.PREFERENCE,
+            ArtifactRoute.EXAMPLE,
+            ArtifactRoute.PROCEDURE,
+            ArtifactRoute.PROMPT_RULE,
+        }
+    ),
+    FeedbackSignalKind.REVOCATION: frozenset({None}),
+}
+
+
+class SemanticInterpretationError(ValueError):
+    """The model-assisted detector returned an unsafe or incoherent interpretation."""
 
 
 def _normalized_behavior(value: str) -> str:
@@ -96,6 +124,10 @@ def _feedback(
     reasons: tuple[str, ...],
     affected_artifact_id: str | None = None,
     layer: AdaptationLayer | None = None,
+    detector_mode: FeedbackDetectorMode = FeedbackDetectorMode.GRAMMAR,
+    interpreter_receipt_digest: str | None = None,
+    semantic_candidate_count: int = 0,
+    supporting_span_digests: tuple[str, ...] = (),
 ) -> DetectedFeedback:
     normalized = None if behavior is None else _normalized_behavior(behavior)
     return DetectedFeedback(
@@ -115,6 +147,18 @@ def _feedback(
         disposition=disposition,
         reasons=tuple(sorted(set(reasons))),
         detected_at=observation.observed_at,
+        detector_id=(
+            "explicit-feedback-grammar"
+            if detector_mode is FeedbackDetectorMode.GRAMMAR
+            else "codex-semantic-feedback"
+        ),
+        detector_version=(
+            "1.0.0" if detector_mode is FeedbackDetectorMode.GRAMMAR else _SEMANTIC_DETECTOR_VERSION
+        ),
+        detector_mode=detector_mode,
+        interpreter_receipt_digest=interpreter_receipt_digest,
+        semantic_candidate_count=semantic_candidate_count,
+        supporting_span_digests=supporting_span_digests,
     )
 
 
@@ -307,4 +351,231 @@ def detect_explicit_feedback(
         reasons=(
             "Ordinary task text is not durable learning without an explicit feedback signal.",
         ),
+    )
+
+
+def _validate_semantic_interpretation(
+    observation: InteractionObservation,
+    interpretation: SemanticFeedbackInterpretation,
+) -> None:
+    if (
+        interpretation.observation_id != observation.observation_id
+        or interpretation.observation_digest != observation.content_digest
+    ):
+        raise SemanticInterpretationError(
+            "semantic interpretation does not bind the exact interaction"
+        )
+    for signal in interpretation.signals:
+        if observation.text[signal.support_start : signal.support_end] != signal.supporting_quote:
+            raise SemanticInterpretationError(
+                "semantic interpretation support does not match the exact user text"
+            )
+        expected_routes = _SEMANTIC_ROUTES[signal.signal_kind]
+        if signal.requested_route not in expected_routes:
+            raise SemanticInterpretationError(
+                "semantic interpretation selected an incoherent artifact route"
+            )
+
+
+def _semantic_revocation(
+    observation: InteractionObservation,
+    state: AutomaticRuntimeState,
+    interpretation: SemanticFeedbackInterpretation,
+    signal: SemanticFeedbackSignal,
+    *,
+    mode: FeedbackDetectorMode,
+    force_review: bool,
+) -> DetectedFeedback:
+    artifact_id = signal.affected_artifact_id
+    if artifact_id is None:
+        raise SemanticInterpretationError("semantic revocation lacks an artifact target")
+    active = _active_artifacts(state)
+    eligible = artifact_id in active and not force_review
+    reason = (
+        "Semantic revocation names one exact active artifact and is calibrated "
+        "for reversible removal."
+        if eligible
+        else "Semantic revocation requires review before changing active learning."
+    )
+    return _feedback(
+        observation,
+        signal_kind=FeedbackSignalKind.REVOCATION,
+        behavior=None,
+        route=None,
+        affected_artifact_id=artifact_id,
+        disposition=(
+            AutomationDisposition.REVOKED if eligible else AutomationDisposition.REVIEW_REQUIRED
+        ),
+        reasons=(reason,),
+        detector_mode=mode,
+        interpreter_receipt_digest=interpretation.receipt.content_digest,
+        semantic_candidate_count=len(interpretation.signals),
+        supporting_span_digests=tuple(
+            sha256_text(item.supporting_quote) for item in interpretation.signals
+        ),
+    )
+
+
+def detect_feedback(
+    observation: InteractionObservation,
+    policy: StandingAutomationPolicy,
+    state: AutomaticRuntimeState,
+    *,
+    mode: FeedbackDetectorMode = FeedbackDetectorMode.GRAMMAR,
+    semantic_interpretation: SemanticFeedbackInterpretation | None = None,
+) -> DetectedFeedback:
+    """Combine a high-precision grammar with constrained semantic candidate generation."""
+
+    deterministic = detect_explicit_feedback(observation, policy, state)
+    if mode is FeedbackDetectorMode.GRAMMAR:
+        if semantic_interpretation is not None:
+            raise SemanticInterpretationError(
+                "grammar-only detection cannot consume semantic interpretation"
+            )
+        return deterministic
+    if semantic_interpretation is None:
+        raise SemanticInterpretationError(
+            "semantic detector mode requires one exact interpretation"
+        )
+    _validate_semantic_interpretation(observation, semantic_interpretation)
+
+    if deterministic.disposition is not AutomationDisposition.NO_EXPLICIT_SIGNAL:
+        return deterministic
+
+    receipt_digest = semantic_interpretation.receipt.content_digest
+    signals = semantic_interpretation.signals
+    span_digests = tuple(sha256_text(item.supporting_quote) for item in signals)
+    if mode is FeedbackDetectorMode.SHADOW:
+        return deterministic.model_copy(
+            update={
+                "detector_id": "codex-semantic-feedback",
+                "detector_mode": mode,
+                "interpreter_receipt_digest": receipt_digest,
+                "semantic_candidate_count": len(signals),
+                "supporting_span_digests": span_digests,
+                "reasons": tuple(
+                    sorted(
+                        {
+                            *deterministic.reasons,
+                            (
+                                "Semantic shadow detected no durable candidate."
+                                if not signals
+                                else "Semantic candidates were observed in shadow and not served."
+                            ),
+                        }
+                    )
+                ),
+            }
+        )
+
+    durable = tuple(
+        item for item in signals if item.durability is not SemanticSignalDurability.TASK_ONLY
+    )
+    if not durable:
+        task_corrections = tuple(
+            item
+            for item in signals
+            if item.signal_kind is FeedbackSignalKind.CORRECTION
+            and item.durability is SemanticSignalDurability.TASK_ONLY
+        )
+        if task_corrections:
+            primary = task_corrections[0]
+            if primary.normalized_behavior is None or primary.requested_route is None:
+                raise SemanticInterpretationError(
+                    "task correction lacks behavior or artifact route"
+                )
+            return _feedback(
+                observation,
+                signal_kind=FeedbackSignalKind.CORRECTION,
+                behavior=primary.normalized_behavior,
+                route=primary.requested_route,
+                disposition=AutomationDisposition.REVIEW_REQUIRED,
+                reasons=(
+                    "Immediate user correction becomes an evaluation candidate but is not "
+                    "durable learning.",
+                ),
+                detector_mode=mode,
+                interpreter_receipt_digest=receipt_digest,
+                semantic_candidate_count=len(signals),
+                supporting_span_digests=span_digests,
+            )
+        return _feedback(
+            observation,
+            signal_kind=None,
+            behavior=None,
+            route=None,
+            disposition=AutomationDisposition.NO_EXPLICIT_SIGNAL,
+            reasons=(
+                "Semantic interpretation found no feedback intended beyond the immediate task.",
+            ),
+            detector_mode=mode,
+            interpreter_receipt_digest=receipt_digest,
+            semantic_candidate_count=len(signals),
+            supporting_span_digests=span_digests,
+        )
+
+    primary = durable[0]
+    force_review = (
+        mode is FeedbackDetectorMode.REVIEW
+        or len(durable) != 1
+        or primary.durability is SemanticSignalDurability.UNCERTAIN
+        or primary.clarity is SemanticSignalClarity.AMBIGUOUS
+    )
+    if primary.signal_kind is FeedbackSignalKind.REVOCATION:
+        return _semantic_revocation(
+            observation,
+            state,
+            semantic_interpretation,
+            primary,
+            mode=mode,
+            force_review=force_review,
+        )
+
+    behavior = primary.normalized_behavior
+    route = primary.requested_route
+    if behavior is None or route is None:
+        raise SemanticInterpretationError("semantic candidate lacks behavior or route")
+    if primary.signal_kind is FeedbackSignalKind.CORRECTION:
+        return _feedback(
+            observation,
+            signal_kind=primary.signal_kind,
+            behavior=behavior,
+            route=route,
+            disposition=AutomationDisposition.REVIEW_REQUIRED,
+            reasons=(
+                "Natural-language correction requires one exact active target before supersession.",
+            ),
+            detector_mode=mode,
+            interpreter_receipt_digest=receipt_digest,
+            semantic_candidate_count=len(signals),
+            supporting_span_digests=span_digests,
+        )
+
+    classified = _classify_behavior(
+        observation,
+        policy,
+        state,
+        signal_kind=primary.signal_kind,
+        behavior=behavior,
+        route=route,
+        eligible_reason=(
+            "One clear durable semantic signal has exact user-text support and passed "
+            "the calibrated low-risk policy."
+        ),
+    )
+    if classified.disposition is AutomationDisposition.PROMOTED and force_review:
+        classified = classified.model_copy(
+            update={
+                "disposition": AutomationDisposition.REVIEW_REQUIRED,
+                "reasons": ("Semantic candidate is retained for review and is not active.",),
+            }
+        )
+    return classified.model_copy(
+        update={
+            "detector_id": "codex-semantic-feedback",
+            "detector_mode": mode,
+            "interpreter_receipt_digest": receipt_digest,
+            "semantic_candidate_count": len(signals),
+            "supporting_span_digests": span_digests,
+        }
     )

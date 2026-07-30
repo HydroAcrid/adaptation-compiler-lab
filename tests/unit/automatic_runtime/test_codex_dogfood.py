@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -17,7 +18,12 @@ from adaptation_compiler_lab.automatic_runtime.codex_dogfood import (
 )
 from adaptation_compiler_lab.automatic_runtime.codex_host import CodexDogfoodHost
 from adaptation_compiler_lab.automatic_runtime.ledger import AutomaticRuntimeLedger
-from adaptation_compiler_lab.automatic_runtime.models import RuntimeNotice
+from adaptation_compiler_lab.automatic_runtime.models import (
+    FeedbackDetectorMode,
+    InteractionObservation,
+    RuntimeNotice,
+    SemanticFeedbackInterpretation,
+)
 from adaptation_compiler_lab.connectors.codex_app_server import CodexProtocolError
 from adaptation_compiler_lab.connectors.models import JsonObject, JsonValue
 from adaptation_compiler_lab.domain import Scope, TaskRecordRef
@@ -198,6 +204,18 @@ class FailOnceNoticeSink(IdempotentNoticeSink):
             self.fail_once = False
             raise RuntimeError("simulated notice interruption")
         super().publish(notice)
+
+
+@dataclass
+class FailingSemanticInterpreter:
+    batches: list[tuple[str, ...]] = field(default_factory=list)
+
+    def interpret_batch(
+        self,
+        observations: Sequence[InteractionObservation],
+    ) -> Mapping[str, SemanticFeedbackInterpretation]:
+        self.batches.append(tuple(item.observation_id for item in observations))
+        raise RuntimeError("simulated semantic failure")
 
 
 def _source(rpc: FakeRpc, root: Path) -> CodexDogfoodInteractionSource:
@@ -484,3 +502,46 @@ def test_pickup_host_replays_after_append_and_commits_cursor_last(
     assert replay.checkpoint_advanced is True
     assert ledger.current_checkpoint(source.source_id) is not None
     assert len(ledger.learning_cycles()) == 1
+
+
+def test_semantic_pickup_batches_once_and_fails_before_any_durable_write(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "runtime.sqlite3"
+    SqliteUnitOfWorkFactory(database).initialize()
+    runtime, policy = _runtime(tmp_path / "runtime")
+    source = _source(
+        FakeRpc(
+            _thread(
+                tmp_path,
+                turns=[
+                    _turn(
+                        _user("user-1", "I like concrete names."),
+                        _user("user-2", "Keep status updates compact."),
+                    )
+                ],
+            )
+        ),
+        tmp_path,
+    )
+    ledger = AutomaticRuntimeLedger(database, subject_id="kevin")
+    interpreter = FailingSemanticInterpreter()
+    host = CodexDogfoodHost(
+        runtime=runtime,
+        initial_state=initial_runtime_state(policy),
+        ledger=ledger,
+        source=source,
+        review_sink=IdempotentReviewSink(),
+        notice_sink=IdempotentNoticeSink(),
+        detector_mode=FeedbackDetectorMode.REVIEW,
+        semantic_interpreter=interpreter,
+        clock=lambda: NOW,
+    )
+
+    with pytest.raises(RuntimeError, match="semantic failure"):
+        host.run_once()
+
+    assert len(interpreter.batches) == 1
+    assert len(interpreter.batches[0]) == 2
+    assert ledger.learning_cycles() == ()
+    assert ledger.current_checkpoint(source.source_id) is None

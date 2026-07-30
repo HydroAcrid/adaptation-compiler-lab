@@ -68,11 +68,16 @@ The Milestone 6A.2 runtime core adds this automatic local flow:
 
 ```mermaid
 flowchart LR
-    I["Trusted host interaction event"] --> D["Authority-first explicit-feedback detector"]
-    D -->|untrusted or ordinary task text| N["No capture / no learning"]
-    D -->|secret| B["Block"]
-    D -->|ambiguous or capability-changing| Q["Encrypted review queue candidate"]
-    D -->|eligible| E["AES-GCM capture + signed consent/capture"]
+    I["Trusted host interaction event"] --> A["Authority and secret boundary"]
+    A -->|untrusted| N["No capture / no learning"]
+    A --> G["Deterministic high-precision grammar"]
+    G -->|no explicit grammar match| M["Isolated schema-bound semantic candidate generator"]
+    M --> P["Deterministic quote, route, scope, and policy validation"]
+    P -->|ordinary task only| N
+    P -->|secret or unsafe| B["Block"]
+    P -->|correction, ambiguous, or capability-changing| Q["Encrypted review queue candidate"]
+    G -->|eligible| E["AES-GCM capture + signed consent/capture"]
+    P -->|single calibrated low-risk candidate| E
     E --> V["EvaluationCase candidate"]
     V --> L["Least-invasive typed transition"]
     L --> F["Reproducible governed release"]
@@ -95,6 +100,15 @@ from later task activation. Its hashed prefix cursor commits after notice/review
 and a replay after interruption reproduces the exact historical learning result. Local
 notice/review/undo/feedback commands are implemented; optional background pickup remains future
 work.
+
+The semantic detector is an optional interpretation port, not a replacement trust boundary.
+`grammar`, `shadow`, `review`, and `calibrated` modes are explicit. One fresh ephemeral Codex
+session receives only the ordered authoritative user-message batch in an empty network-denied
+read-only workspace and must return a strict schema with exact supporting quotes. Tool use,
+ambient instructions, model rerouting, malformed output, missing observations, or interpreter
+failure aborts the whole page before state or cursor writes. Deterministic code still controls
+origin, secrets, route coherence, registered scope, standing policy, review, promotion,
+supersession, revocation, and release construction. See `SEMANTIC_FEEDBACK_DETECTOR.md`.
 
 Milestone 6A.2C separates the source execution surface from the target surface at configuration
 time. One governed project has a canonical target root plus explicit source-CWD aliases; source
