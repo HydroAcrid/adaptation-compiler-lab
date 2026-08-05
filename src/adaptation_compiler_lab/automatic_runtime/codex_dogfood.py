@@ -205,6 +205,16 @@ def _prefix_digest(items: list[tuple[str, JsonObject]], count: int) -> Sha256Dig
     return canonical_digest({"items": items[:count]})
 
 
+def _epoch_seconds_to_utc(value: object, *, field: str) -> datetime:
+    """Convert one schema-validated source timestamp without consulting the poll clock."""
+
+    timestamp = _integer(value, field=field)
+    try:
+        return datetime.fromtimestamp(timestamp, UTC)
+    except (OSError, OverflowError, ValueError) as error:
+        raise CodexProtocolError(f"{field} is outside the supported timestamp range") from error
+
+
 def _text_user_message(item: JsonObject) -> str | None:
     if item.get("type") != "userMessage":
         return None
@@ -313,6 +323,7 @@ class CodexDogfoodInteractionSource:
                 continue
             thread = self._read_thread(thread_id)
             flattened = self._flatten_terminal_items(thread)
+            turn_observed_at = self._turn_observation_times(thread)
             digest = _thread_digest(thread_id)
             prior = heads.get(digest)
             consumed = 0 if prior is None else prior.item_count
@@ -353,7 +364,7 @@ class CodexDogfoodInteractionSource:
                     source_class=SourceClass.EXPLICIT_USER_FEEDBACK,
                     text=text,
                     scope=project.scope,
-                    observed_at=polled_at,
+                    observed_at=turn_observed_at[turn_id],
                     source_system="codex_app_server",
                     source_version=self._source_version,
                     source_schema_digest=self._source_schema_digest,
@@ -420,6 +431,35 @@ class CodexDogfoodInteractionSource:
         if _string(thread.get("id"), field="thread id") != thread_id:
             raise CodexProtocolError("Codex thread/read returned another thread")
         return thread
+
+    @staticmethod
+    def _turn_observation_times(thread: JsonObject) -> dict[str, datetime]:
+        """Return stable source times without changing the v1 cursor prefix representation."""
+
+        turns = thread.get("turns")
+        if not isinstance(turns, list):
+            raise CodexProtocolError("Codex thread turns must be an array")
+        thread_created_at = _epoch_seconds_to_utc(
+            thread.get("createdAt"),
+            field="thread createdAt",
+        )
+        observed_at: dict[str, datetime] = {}
+        for raw_turn in turns:
+            turn = _object(raw_turn, field="turn")
+            turn_id = _string(turn.get("id"), field="turn id")
+            if turn_id in observed_at:
+                raise CodexProtocolError("Codex thread contains a duplicate turn ID")
+            raw_timestamp = turn.get("startedAt")
+            timestamp_field = "turn startedAt"
+            if raw_timestamp is None:
+                raw_timestamp = turn.get("completedAt")
+                timestamp_field = "turn completedAt"
+            observed_at[turn_id] = (
+                thread_created_at
+                if raw_timestamp is None
+                else _epoch_seconds_to_utc(raw_timestamp, field=timestamp_field)
+            )
+        return observed_at
 
     @staticmethod
     def _flatten_terminal_items(thread: JsonObject) -> list[tuple[str, JsonObject]]:

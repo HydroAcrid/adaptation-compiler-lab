@@ -118,6 +118,19 @@ def test_help_exposes_named_fail_closed_workflows() -> None:
         assert command in result.output
 
 
+def test_runtime_review_scope_payload_is_json_serializable() -> None:
+    scope = Scope(
+        subject_ids=("kevin",),
+        project_ids=("adaptation-compiler-lab",),
+    )
+
+    encoded = json.dumps({"scope": dogfood_cli._json_scope(scope)})
+
+    decoded = json.loads(encoded)["scope"]
+    assert decoded["subject_ids"] == ["kevin"]
+    assert decoded["project_ids"] == ["adaptation-compiler-lab"]
+
+
 def test_runtime_init_writes_no_secret_config_and_status_is_local(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
