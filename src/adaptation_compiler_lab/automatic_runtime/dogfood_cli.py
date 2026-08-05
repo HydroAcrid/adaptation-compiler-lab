@@ -239,16 +239,19 @@ class CodexDogfoodLocalConfig(FrozenModel):
 
 class _ConsoleNoticeSink(RuntimeNoticeSink):
     def publish(self, notice: RuntimeNotice) -> None:
-        typer.echo(
-            canonical_json(
-                {
-                    "kind": notice.kind.value,
-                    "notice_id": notice.notice_id,
-                    "summary": notice.summary,
-                    "undo_artifact_id": notice.undo_artifact_id,
-                }
-            )
-        )
+        typer.echo(canonical_json(_json_notice(notice)))
+
+
+def _json_notice(notice: RuntimeNotice) -> dict[str, object]:
+    """Render one raw-free notice with JSON-safe typed values."""
+
+    return {
+        "created_at": notice.created_at.isoformat().replace("+00:00", "Z"),
+        "kind": notice.kind.value,
+        "notice_id": notice.notice_id,
+        "summary": notice.summary,
+        "undo_artifact_id": notice.undo_artifact_id,
+    }
 
 
 def _json_scope(scope: Scope) -> dict[str, object]:
@@ -264,11 +267,35 @@ def _json_review_proposal(item: RuntimeReviewQueueItem) -> dict[str, object]:
     return {
         "affected_artifact_id": detection.affected_artifact_id,
         "behavior": detection.normalized_behavior,
+        "context_only_action": "rejected",
+        "future_use_confirmation_required": True,
+        "owner_question": (
+            "Should this behavior influence future sessions within the shown scope?"
+        ),
         "proposal_digest": str(detection.content_digest),
+        "proposal_purpose": "future_sessions",
         "route": None if detection.requested_route is None else detection.requested_route.value,
         "scope": _json_scope(detection.scope),
         "signal_kind": None if detection.signal_kind is None else detection.signal_kind.value,
     }
+
+
+def _validate_review_decision_intent(
+    decision: ApprovalDecision,
+    *,
+    confirm_future_use: bool,
+) -> None:
+    """Keep current-chat accuracy separate from authorization for future sessions."""
+
+    if decision is ApprovalDecision.APPROVED and not confirm_future_use:
+        raise AutomaticRuntimeError(
+            "approval requires --confirm-future-use; current-chat accuracy alone is not "
+            "durable authorization"
+        )
+    if decision is ApprovalDecision.REJECTED and confirm_future_use:
+        raise AutomaticRuntimeError(
+            "--confirm-future-use is valid only with an approved review decision"
+        )
 
 
 class _ConsoleReviewSink(RuntimeReviewSink):
@@ -1097,10 +1124,24 @@ def decide_codex_dogfood_review(
             help="Exact proposal digest shown by `runtime review`.",
         ),
     ],
+    confirm_future_use: Annotated[
+        bool,
+        typer.Option(
+            "--confirm-future-use",
+            help=(
+                "Required for approval: explicitly authorize this behavior for later sessions, "
+                "not only the current chat."
+            ),
+        ),
+    ] = False,
 ) -> None:
-    """Append one exact owner decision; approval may compile a new inactive release."""
+    """Decide whether one proposal is authorized to influence future sessions."""
 
     try:
+        _validate_review_decision_intent(
+            decision,
+            confirm_future_use=confirm_future_use,
+        )
         config = _load_config(config_path)
         ledger = _ledger(config)
         matches = tuple(
@@ -1152,6 +1193,7 @@ def decide_codex_dogfood_review(
             "active_artifact_ids": active_artifact_ids,
             "assessment": resolution.assessment.outcome.value,
             "decision": resolution.decision.value,
+            "future_use_authorized": resolution.decision is ApprovalDecision.APPROVED,
             "generation": state.generation,
             "queue_id": resolution.queue_id,
             "resolution_digest": str(resolution.content_digest),
@@ -1171,22 +1213,7 @@ def show_codex_dogfood_notices(config_path: ConfigOption) -> None:
         cycles = _ledger(config).learning_cycles()
     except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
-    typer.echo(
-        canonical_json(
-            {
-                "notices": [
-                    {
-                        "created_at": item.notice.created_at,
-                        "kind": item.notice.kind.value,
-                        "notice_id": item.notice.notice_id,
-                        "summary": item.notice.summary,
-                        "undo_artifact_id": item.notice.undo_artifact_id,
-                    }
-                    for item in cycles
-                ]
-            }
-        )
-    )
+    typer.echo(canonical_json({"notices": [_json_notice(item.notice) for item in cycles]}))
 
 
 @dogfood_app.command("undo")

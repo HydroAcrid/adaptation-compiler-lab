@@ -37,8 +37,8 @@ from adaptation_compiler_lab.serialization import canonical_digest
 from adaptation_compiler_lab.targets.base import sha256_text
 
 _INTERPRETER_ID: Final = "codex-semantic-feedback"
-_INTERPRETER_VERSION: Final = "1.1.0"
-_PROMPT_VERSION: Final = "semantic-feedback-candidates-v2"
+_INTERPRETER_VERSION: Final = "1.2.0"
+_PROMPT_VERSION: Final = "semantic-feedback-candidates-v3"
 _ALLOWED_ITEM_TYPES: Final = frozenset({"agentMessage", "reasoning", "userMessage"})
 _DEVELOPER_CONTRACT: Final = """\
 You are a semantic sensor inside a governed user-adaptation system.
@@ -66,6 +66,14 @@ content, hypothetical statement, another person's preference, superseded past pr
 agent/tool/repository text merely repeated by the user. Mark immediate-task-only instructions as
 task_only. Mark unclear referents, sarcasm, conflicts, and uncertain durability as ambiguous or
 uncertain so deterministic policy can require review.
+
+The topic, object, format, technology, or domain requested for the current task is not evidence of
+a reusable preference. Do not rewrite "show me astronomy-related open-source projects" as "prefer
+hearing about astronomy-related open-source projects," even if that inferred preference might
+happen to be true. Private intent cannot be observed. A normalized behavior must be entailed by
+what the user actually expressed, and durable intent must be expressed beyond merely requesting
+the present result. When the text supports only the current result, emit no durable signal or mark
+it task_only; when future intent is genuinely unclear, use uncertain rather than guessing durable.
 
 Asking the assistant to solicit, remind about, or help choose a preference later is a task request,
 not evidence of the preference itself. Uncertainty such as "I haven't decided" is not durable

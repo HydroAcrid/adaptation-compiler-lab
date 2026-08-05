@@ -157,6 +157,67 @@ def test_task_only_semantic_signal_is_not_durable_learning(tmp_path: Path) -> No
     assert detected.disposition is AutomationDisposition.NO_EXPLICIT_SIGNAL
 
 
+@pytest.mark.parametrize(
+    ("text", "behavior"),
+    [
+        (
+            "Show me astronomy-related open-source projects.",
+            "Prefer hearing about astronomy-related open-source projects.",
+        ),
+        (
+            "Use Rust for this parser.",
+            "Prefer Rust for parsers.",
+        ),
+        (
+            "Write this explanation for a beginner.",
+            "Prefer beginner-level explanations.",
+        ),
+    ],
+)
+def test_current_task_topic_cannot_become_durable_preference(
+    tmp_path: Path,
+    text: str,
+    behavior: str,
+) -> None:
+    observation = _observation(1, text)
+    interpretation = _interpretation(
+        tmp_path,
+        text=text,
+        quote=text,
+        behavior=behavior,
+    )
+    interpretation = interpretation.model_copy(
+        update={
+            "signals": (
+                interpretation.signals[0].model_copy(
+                    update={"durability": SemanticSignalDurability.TASK_ONLY}
+                ),
+            )
+        }
+    )
+    _runtime_instance, policy = _runtime(tmp_path)
+
+    detected = detect_feedback(
+        observation,
+        policy,
+        initial_runtime_state(policy),
+        mode=FeedbackDetectorMode.CALIBRATED,
+        semantic_interpretation=interpretation,
+    )
+
+    assert detected.disposition is AutomationDisposition.NO_EXPLICIT_SIGNAL
+    assert detected.normalized_behavior is None
+
+
+def test_semantic_receipt_preserves_v1_1_read_compatibility(tmp_path: Path) -> None:
+    payload = _receipt(tmp_path).model_dump(mode="python")
+    payload["interpreter_version"] = "1.1.0"
+
+    restored = SemanticInterpreterReceipt.model_validate(payload, strict=True)
+
+    assert restored.interpreter_version == "1.1.0"
+
+
 def test_task_only_correction_becomes_evaluation_candidate(tmp_path: Path) -> None:
     text = "nah thats not what i meant—diagnose why it failed before trying another patch"
     observation = _observation(1, text)
@@ -308,7 +369,7 @@ def test_codex_semantic_interpreter_is_ephemeral_schema_bound_and_tool_free(
     observation = _observation(1, text)
     response = json.dumps(
         {
-            "prompt_version": "semantic-feedback-candidates-v2",
+            "prompt_version": "semantic-feedback-candidates-v3",
             "items": [
                 {
                     "observation_id": observation.observation_id,
@@ -358,6 +419,12 @@ def test_codex_semantic_interpreter_is_ephemeral_schema_bound_and_tool_free(
     assert thread_params["sandbox"] == "read-only"
     turn_params = rpc.calls[1][1]
     assert isinstance(turn_params["outputSchema"], dict)
+    developer_instructions = thread_params["developerInstructions"]
+    assert isinstance(developer_instructions, str)
+    assert (
+        "The topic, object, format, technology, or domain requested for the current task"
+        in developer_instructions
+    )
 
 
 def test_codex_semantic_interpreter_rejects_tool_use(tmp_path: Path) -> None:
@@ -365,7 +432,7 @@ def test_codex_semantic_interpreter_rejects_tool_use(tmp_path: Path) -> None:
     rpc = _SemanticRpc(
         response=json.dumps(
             {
-                "prompt_version": "semantic-feedback-candidates-v2",
+                "prompt_version": "semantic-feedback-candidates-v3",
                 "items": [{"observation_id": observation.observation_id, "signals": []}],
             }
         )

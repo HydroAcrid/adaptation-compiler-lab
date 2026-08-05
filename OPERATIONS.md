@@ -117,12 +117,14 @@ Use `runtime poll` after completed ordinary Codex work. Pickup reads only pinned
 Use `runtime notices` and `runtime review` to inspect minimized local outcomes. Review output shows
 the normalized proposed behavior, route, scope, and proposal digest, but never the supporting raw
 message or quote. Resolve one exact item with
-`runtime review-decide <queue-id> approved|rejected --proposal-digest <sha256:...>`. Approval
-rechecks current policy, expiry, scope, evaluation, conflict, signature, and release invariants
-before advancing one generation; it does not deliver the release to an agent until a later
-`runtime run`. Rejection preserves the current state. Both decisions append a signed resolution
-and the corresponding correct/false-positive assessment. Use `runtime undo` for exact artifact
-revocation after approval.
+`runtime review-decide <queue-id> approved --proposal-digest <sha256:...>
+--confirm-future-use` only when the behavior should influence later sessions inside the displayed
+scope. Accuracy for the current chat is not sufficient. Use `rejected` without the confirmation
+flag when the proposal is context-only or inaccurate. Approval rechecks current policy, expiry,
+scope, evaluation, conflict, signature, and release invariants before advancing one generation; it
+does not deliver the release to an agent until a later `runtime run`. Rejection preserves the
+current state. Both decisions append a signed resolution and the corresponding
+correct/false-positive assessment. Use `runtime undo` for exact artifact revocation after approval.
 
 Detector serving is explicit:
 

@@ -32,7 +32,9 @@ does not become an authority, policy engine, scope resolver, or release manager.
    is written.
 5. The response is schema-bound and limited to four proposals per message. Every proposal must
    quote one exact, unique, contiguous span of the user message. Deterministic code computes and
-   verifies the offsets.
+   verifies the offsets. Prompt v3 explicitly prohibits converting a requested task topic, format,
+   technology, domain, or audience into a reusable preference; unexpressed private intent cannot
+   become evidence even when an inference happens to be true.
 6. Deterministic code rechecks source authority, secrets, route coherence, size, standing-policy
    scope, duplicates, active revocation targets, and capability changes. The model's scope is only
    diagnostic; the registered project scope controls activation.
@@ -116,6 +118,14 @@ typed proposal validation before an accepted report was emitted.
 The synthetic gate makes semantic review-mode dogfood reasonable. It does not by itself justify
 unattended calibrated promotion in the product. That decision depends on the existing 6A.2C
 multi-day learning assessments and false-activation evidence.
+
+The first live review-mode candidate exposed a separate durability-authority failure: its wording
+accurately described what Kevin wanted in one chat, but the reusable preference had never been
+expressed. The resulting activation is preserved as irrelevant and the artifact is revoked. After
+freezing prompt v3, a targeted subscription-backed smoke classified four ordinary task topics as
+non-durable and four explicit future/general statements as durable. This focused eight-case pass
+directly covers the observed failure mode; it does not replace or rewrite the v1/v2 corpus results
+and is not presented as a new held-out benchmark.
 
 ## Kairn influence
 
