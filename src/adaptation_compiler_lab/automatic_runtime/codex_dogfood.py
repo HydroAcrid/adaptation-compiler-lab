@@ -548,30 +548,41 @@ class CodexDogfoodSessionLauncher:
                 != root
             ):
                 raise CodexProtocolError("Codex changed the target working directory")
-            runtime_roots = thread_response.get("runtimeWorkspaceRoots", [])
-            if not isinstance(runtime_roots, list) or len(runtime_roots) != 1:
-                raise CodexProtocolError("Codex changed the target runtime workspace roots")
-            if (
-                _resolved_runtime_path(_string(runtime_roots[0], field="runtime workspace root"))
-                != root
-            ):
-                raise CodexProtocolError("Codex changed the target runtime workspace roots")
             sandbox = _object(thread_response.get("sandbox"), field="target sandbox")
-            if (
-                sandbox.get("type") != "workspaceWrite"
-                or sandbox.get("networkAccess", False) is not False
-            ):
+            sandbox_type = sandbox.get("type")
+            if sandbox_type not in {"workspaceWrite", "readOnly"}:
                 raise CodexProtocolError(
                     "Codex did not establish the required network-denied workspace sandbox"
                 )
+            if sandbox.get("networkAccess", False) is not False:
+                raise CodexProtocolError(
+                    "Codex did not establish the required network-denied workspace sandbox"
+                )
+            runtime_roots = thread_response.get("runtimeWorkspaceRoots", [])
+            if not isinstance(runtime_roots, list):
+                raise CodexProtocolError("Codex changed the target runtime workspace roots")
             writable_roots = sandbox.get("writableRoots", [])
-            if not isinstance(writable_roots, list) or len(writable_roots) != 1:
+            if not isinstance(writable_roots, list):
                 raise CodexProtocolError("Codex changed the sandbox writable roots")
-            if (
-                _resolved_runtime_path(_string(writable_roots[0], field="sandbox writable root"))
-                != root
-            ):
-                raise CodexProtocolError("Codex changed the sandbox writable roots")
+            if sandbox_type == "workspaceWrite":
+                if len(runtime_roots) != 1 or (
+                    _resolved_runtime_path(
+                        _string(runtime_roots[0], field="runtime workspace root")
+                    )
+                    != root
+                ):
+                    raise CodexProtocolError("Codex changed the target runtime workspace roots")
+                if len(writable_roots) != 1 or (
+                    _resolved_runtime_path(
+                        _string(writable_roots[0], field="sandbox writable root")
+                    )
+                    != root
+                ):
+                    raise CodexProtocolError("Codex changed the sandbox writable roots")
+            elif runtime_roots or writable_roots:
+                raise CodexProtocolError(
+                    "Codex read-only sandbox unexpectedly exposed workspace roots"
+                )
             instruction_sources = thread_response.get("instructionSources", [])
             if not isinstance(instruction_sources, list):
                 raise CodexProtocolError("Codex instruction sources must be an array")

@@ -154,6 +154,14 @@ constraints, sends the applicable compact projection once, and appends a digest-
 failure acknowledgement. `runtime feedback` records helped, hurt, or irrelevant only for an exact
 completed activation.
 
+The target may return a network-denied `readOnly` sandbox when the allowlisted workspace is a WSL
+UNC path. Treat this only as a safe authority reduction: runtime and writable root lists must both
+be empty, and network access must remain disabled. Preserve the failed acknowledgement if a turn
+was attempted before this condition was supported, then use a new activation ID after repair.
+Read-only delivery is suitable only for tasks that require no file changes. Editable work requires
+an explicitly allowlisted writable target topology; do not broaden roots or relax the sandbox to
+work around a filesystem limitation.
+
 Use `runtime learning-feedback <cycle-id> correct|false_positive|missed` once for learning cycles
 that were not resolved through `runtime review-decide`; review decisions record their assessment
 atomically.

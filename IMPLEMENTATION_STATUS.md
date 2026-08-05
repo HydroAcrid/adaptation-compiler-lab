@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: 2026-08-04
+Last updated: 2026-08-05
 
 ## Current milestone
 
@@ -24,8 +24,10 @@ interactive tasks, durably checkpoints hashed prefixes, and keeps post-task lear
 later task activation and acknowledgement. Local `runtime` commands expose initialization, poll,
 fresh one-turn execution, status, review, notices, exact undo, and helped/hurt/irrelevant feedback.
 The target fails closed on model, approval, network, workspace, writable-root, or external
-instruction-source substitution. It still does not watch Codex in the background or maintain a
-persistent multi-turn product session.
+instruction-source substitution. A network-denied, rootless `readOnly` response is accepted as a
+strict reduction from requested workspace-write authority; any network or root expansion remains
+forbidden. It still does not watch Codex in the background or maintain a persistent multi-turn
+product session.
 
 The first genuine post-cutoff semantic pickup is now durably checkpointed. It produced one
 inactive project-scoped preference proposal and zero active artifacts. The interrupted first
@@ -37,14 +39,18 @@ boundary. `runtime review` shows the normalized proposal, route, scope, and exac
 support remains encrypted. Approval or rejection appends one signed immutable resolution and
 correct/false-positive assessment. Approval rechecks current governance and compiler invariants,
 advances one release generation, and still requires a later explicit target activation; rejection
-leaves state unchanged. The genuine proposal remains unresolved and inactive pending owner
-confirmation of its normalized meaning.
+leaves state unchanged. The first genuine proposal was owner-approved on 2026-08-05, advanced the
+runtime to generation one, and left zero unresolved reviews. Its first target attempt failed before
+turn start when Windows Codex safely reduced the WSL UNC workspace to read-only. The failure remains
+immutable. After the stricter-sandbox conformance repair, a new activation completed in a fresh
+ephemeral Codex session and followed the compact preference on a neutral recommendation task.
 
 Configuration v1.1 separates source-CWD aliases, the canonical target root, and optional distinct
 source/target Codex endpoints. The active topology runs native Windows Codex with saved ChatGPT
 authentication, admits only the registered Desktop project CWD, and targets the canonical WSL
-repository through UNC. Its construction cutoff is frozen, the first poll imported zero historical
-messages, and the initial gate report correctly shows 20 interactions remaining.
+repository through UNC. Windows Codex exposes that UNC workspace read-only, which is sufficient for
+inspection-only activations but not editable target tasks; those require a future writable,
+allowlisted target mirror. The construction cutoff remains frozen.
 
 Migration 0009 adds immutable correct/false-positive/missed learning assessments. Activation
 feedback now retains meaningful relevant-versus-activated sets, and the typed gate report measures
