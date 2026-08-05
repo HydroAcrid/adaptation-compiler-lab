@@ -432,6 +432,121 @@ def test_next_session_launcher_delivers_one_projection_and_returns_raw_free_ack(
     assert thread_params["approvalPolicy"] == "never"
 
 
+def test_next_session_launcher_accepts_network_denied_read_only_downgrade(
+    tmp_path: Path,
+) -> None:
+    runtime, policy = _runtime(tmp_path / "runtime")
+    learning = runtime.learn(
+        _observation(1, "I prefer purpose before procedural detail"),
+        state=initial_runtime_state(policy),
+        processed_at=NOW,
+    )
+    prepared = runtime.activate(
+        activation_id="dogfood-target-read-only",
+        task_ref=TaskRecordRef(
+            record_id="dogfood-target-task-read-only",
+            record_version="1.0.0",
+        ),
+        state=learning.state,
+        context=_context(2, project_id="ordinary-project"),
+        target_task="Inspect the project without changing files.",
+        activated_at=NOW,
+    )
+    target = tmp_path / "target"
+    target.mkdir()
+
+    @dataclass
+    class ReadOnlyRpc(FakeLaunchRpc):
+        def request(self, method: str, params: JsonObject) -> JsonObject:
+            response = super().request(method, params)
+            if method == "thread/start":
+                response["runtimeWorkspaceRoots"] = []
+                response["sandbox"] = {
+                    "type": "readOnly",
+                    "networkAccess": False,
+                }
+            return response
+
+    result = CodexDogfoodSessionLauncher(
+        ReadOnlyRpc(target),
+        schemas=CodexDogfoodSchemaSet(),
+        clock=lambda: NOW,
+    ).launch(prepared, workspace=target, ephemeral=True)
+
+    assert result.acknowledgement.status == "completed"
+    assert result.final_message == "Completed the adapted task."
+
+
+@pytest.mark.parametrize(
+    "response_change",
+    [
+        {
+            "sandbox": {
+                "type": "readOnly",
+                "networkAccess": True,
+            },
+            "runtimeWorkspaceRoots": [],
+        },
+        {
+            "sandbox": {
+                "type": "readOnly",
+                "networkAccess": False,
+                "writableRoots": ["/outside"],
+            },
+            "runtimeWorkspaceRoots": [],
+        },
+        {
+            "sandbox": {
+                "type": "readOnly",
+                "networkAccess": False,
+            },
+            "runtimeWorkspaceRoots": ["/outside"],
+        },
+    ],
+)
+def test_next_session_launcher_rejects_unsafe_read_only_substitution(
+    tmp_path: Path,
+    response_change: JsonObject,
+) -> None:
+    runtime, policy = _runtime(tmp_path / "runtime")
+    learning = runtime.learn(
+        _observation(1, "I prefer purpose before procedural detail"),
+        state=initial_runtime_state(policy),
+        processed_at=NOW,
+    )
+    prepared = runtime.activate(
+        activation_id="dogfood-target-unsafe-read-only",
+        task_ref=TaskRecordRef(
+            record_id="dogfood-target-task-unsafe-read-only",
+            record_version="1.0.0",
+        ),
+        state=learning.state,
+        context=_context(2, project_id="ordinary-project"),
+        target_task="Inspect the project without changing files.",
+        activated_at=NOW,
+    )
+    target = tmp_path / "target"
+    target.mkdir()
+
+    @dataclass
+    class SubstitutingRpc(FakeLaunchRpc):
+        def request(self, method: str, params: JsonObject) -> JsonObject:
+            response = super().request(method, params)
+            if method == "thread/start":
+                response.update(response_change)
+            return response
+
+    result = CodexDogfoodSessionLauncher(
+        SubstitutingRpc(target),
+        schemas=CodexDogfoodSchemaSet(),
+        clock=lambda: NOW,
+    ).launch(prepared, workspace=target, ephemeral=True)
+
+    assert result.acknowledgement.status == "failed"
+    assert result.acknowledgement.failure_class == "CodexProtocolError"
+    assert result.final_message is None
+
+
 @pytest.mark.parametrize(
     "response_change",
     [
