@@ -14,6 +14,7 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     RuntimeLearningAssessment,
     RuntimeLearningAssessmentOutcome,
     RuntimeLearningCycleReceipt,
+    RuntimeLearningReviewResolution,
     RuntimeTargetDeliveryAcknowledgement,
     RuntimeTaskActivationReceipt,
 )
@@ -24,7 +25,7 @@ from adaptation_compiler_lab.serialization import canonical_digest
 class CodexDogfoodGateReport(FrozenModel):
     """Raw-free longitudinal measures and deterministic evidence-readiness state."""
 
-    report_version: Literal["1.0.0"] = "1.0.0"
+    report_version: Literal["1.1.0"] = "1.1.0"
     subject_id: Identifier
     generated_at: UtcDateTime
     goal_interaction_count: int = Field(ge=1)
@@ -39,6 +40,10 @@ class CodexDogfoodGateReport(FrozenModel):
     promoted_count: int = Field(ge=0)
     revoked_count: int = Field(ge=0)
     review_required_count: int = Field(ge=0)
+    resolved_review_count: int = Field(ge=0)
+    approved_review_count: int = Field(ge=0)
+    rejected_review_count: int = Field(ge=0)
+    unresolved_review_count: int = Field(ge=0)
     blocked_count: int = Field(ge=0)
     no_explicit_signal_count: int = Field(ge=0)
     duplicate_count: int = Field(ge=0)
@@ -69,6 +74,12 @@ class CodexDogfoodGateReport(FrozenModel):
         ):
             raise ValueError("dogfood learning-assessment totals are inconsistent")
         if (
+            self.approved_review_count + self.rejected_review_count != self.resolved_review_count
+            or self.resolved_review_count + self.unresolved_review_count
+            != self.review_required_count
+        ):
+            raise ValueError("dogfood review-resolution totals are inconsistent")
+        if (
             self.completed_activation_count
             + self.failed_activation_count
             + self.unresolved_activation_count
@@ -91,6 +102,7 @@ class CodexDogfoodGateReport(FrozenModel):
             and self.active_date_count >= self.minimum_active_dates
             and self.activation_count >= self.minimum_activation_count
             and self.assessed_interaction_count == self.eligible_interaction_count
+            and self.unresolved_review_count == 0
             and self.unresolved_activation_count == 0
             and self.rated_activation_count == self.completed_activation_count
         )
@@ -112,6 +124,7 @@ def build_codex_dogfood_gate_report(
     acknowledgements: tuple[RuntimeTargetDeliveryAcknowledgement, ...],
     activation_feedback: tuple[RuntimeActivationFeedback, ...],
     generated_at: datetime,
+    learning_review_resolutions: tuple[RuntimeLearningReviewResolution, ...] = (),
     goal_interaction_count: int = 20,
     minimum_active_dates: int = 3,
     minimum_activation_count: int = 6,
@@ -133,6 +146,21 @@ def build_codex_dogfood_gate_report(
         if assessment.cycle_id in assessment_by_cycle:
             raise ValueError("dogfood report received duplicate learning assessments")
         assessment_by_cycle[assessment.cycle_id] = assessment
+
+    resolution_by_cycle: dict[str, RuntimeLearningReviewResolution] = {}
+    for resolution in learning_review_resolutions:
+        cycle = cycle_by_id.get(resolution.cycle_id)
+        if (
+            cycle is None
+            or cycle.disposition is not AutomationDisposition.REVIEW_REQUIRED
+            or resolution.subject_id != subject_id
+            or resolution.cycle_digest != cycle.content_digest
+            or resolution.assessment != assessment_by_cycle.get(resolution.cycle_id)
+        ):
+            raise ValueError("dogfood review resolution crossed or changed its learning cycle")
+        if resolution.cycle_id in resolution_by_cycle:
+            raise ValueError("dogfood report received duplicate review resolutions")
+        resolution_by_cycle[resolution.cycle_id] = resolution
 
     activation_by_id = {item.activation_id: item for item in activations}
     if len(activation_by_id) != len(activations):
@@ -174,6 +202,16 @@ def build_codex_dogfood_gate_report(
             )
 
     dispositions = tuple(item.disposition for item in learning_cycles)
+    review_required_count = dispositions.count(AutomationDisposition.REVIEW_REQUIRED)
+    approved_resolutions = tuple(
+        item for item in resolution_by_cycle.values() if item.decision.value == "approved"
+    )
+    rejected_resolutions = tuple(
+        item for item in resolution_by_cycle.values() if item.decision.value == "rejected"
+    )
+    unresolved_review_count = review_required_count - len(resolution_by_cycle)
+    if unresolved_review_count < 0:
+        raise ValueError("dogfood review resolutions exceed queued review cycles")
     completed = tuple(item for item in acknowledgements if item.status == "completed")
     failed = tuple(item for item in acknowledgements if item.status == "failed")
     feedback_values = tuple(feedback_by_activation.values())
@@ -192,6 +230,7 @@ def build_codex_dogfood_gate_report(
         and len(assessment_values) == len(learning_cycles)
         and len(acknowledgements) == len(activations)
         and len(feedback_values) == len(completed)
+        and unresolved_review_count == 0
     )
     return CodexDogfoodGateReport(
         subject_id=subject_id,
@@ -212,9 +251,15 @@ def build_codex_dogfood_gate_report(
         missed_learning_count=sum(
             item.outcome is RuntimeLearningAssessmentOutcome.MISSED for item in assessment_values
         ),
-        promoted_count=dispositions.count(AutomationDisposition.PROMOTED),
+        promoted_count=(
+            dispositions.count(AutomationDisposition.PROMOTED) + len(approved_resolutions)
+        ),
         revoked_count=dispositions.count(AutomationDisposition.REVOKED),
-        review_required_count=dispositions.count(AutomationDisposition.REVIEW_REQUIRED),
+        review_required_count=review_required_count,
+        resolved_review_count=len(resolution_by_cycle),
+        approved_review_count=len(approved_resolutions),
+        rejected_review_count=len(rejected_resolutions),
+        unresolved_review_count=unresolved_review_count,
         blocked_count=dispositions.count(AutomationDisposition.BLOCKED),
         no_explicit_signal_count=dispositions.count(AutomationDisposition.NO_EXPLICIT_SIGNAL),
         duplicate_count=dispositions.count(AutomationDisposition.DUPLICATE),
@@ -237,9 +282,16 @@ def build_codex_dogfood_gate_report(
             item.update_latency_seconds
             for item in learning_cycles
             if item.disposition in {AutomationDisposition.PROMOTED, AutomationDisposition.REVOKED}
+        )
+        + tuple(
+            (resolution.resolved_at - cycle_by_id[resolution.cycle_id].created_at).total_seconds()
+            + cycle_by_id[resolution.cycle_id].update_latency_seconds
+            for resolution in approved_resolutions
         ),
         automatic_actions=sum(item.automatic_actions for item in learning_cycles),
-        manual_review_touches=sum(item.manual_review_touches for item in learning_cycles),
+        manual_review_touches=(
+            sum(item.manual_review_touches for item in learning_cycles) + len(resolution_by_cycle)
+        ),
         remaining_interactions=max(0, goal_interaction_count - len(learning_cycles)),
         evidence_ready=evidence_ready,
     )

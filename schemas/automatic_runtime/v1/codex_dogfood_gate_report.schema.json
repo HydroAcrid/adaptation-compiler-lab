@@ -12,6 +12,11 @@
       "title": "Active Date Count",
       "type": "integer"
     },
+    "approved_review_count": {
+      "minimum": 0,
+      "title": "Approved Review Count",
+      "type": "integer"
+    },
     "assessed_interaction_count": {
       "minimum": 0,
       "title": "Assessed Interaction Count",
@@ -143,6 +148,11 @@
       "title": "Rated Activation Count",
       "type": "integer"
     },
+    "rejected_review_count": {
+      "minimum": 0,
+      "title": "Rejected Review Count",
+      "type": "integer"
+    },
     "remaining_interactions": {
       "minimum": 0,
       "title": "Remaining Interactions",
@@ -154,10 +164,15 @@
       "type": "integer"
     },
     "report_version": {
-      "const": "1.0.0",
-      "default": "1.0.0",
+      "const": "1.1.0",
+      "default": "1.1.0",
       "title": "Report Version",
       "type": "string"
+    },
+    "resolved_review_count": {
+      "minimum": 0,
+      "title": "Resolved Review Count",
+      "type": "integer"
     },
     "review_required_count": {
       "minimum": 0,
@@ -179,6 +194,11 @@
     "unresolved_activation_count": {
       "minimum": 0,
       "title": "Unresolved Activation Count",
+      "type": "integer"
+    },
+    "unresolved_review_count": {
+      "minimum": 0,
+      "title": "Unresolved Review Count",
       "type": "integer"
     },
     "update_latency_seconds": {
@@ -204,6 +224,10 @@
     "promoted_count",
     "revoked_count",
     "review_required_count",
+    "resolved_review_count",
+    "approved_review_count",
+    "rejected_review_count",
+    "unresolved_review_count",
     "blocked_count",
     "no_explicit_signal_count",
     "duplicate_count",

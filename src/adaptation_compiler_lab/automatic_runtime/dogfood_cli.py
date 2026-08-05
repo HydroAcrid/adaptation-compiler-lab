@@ -64,6 +64,7 @@ from adaptation_compiler_lab.connectors.pins import (
 from adaptation_compiler_lab.domain import (
     ActorKind,
     ActorRef,
+    ApprovalDecision,
     ArtifactRoute,
     FrozenModel,
     Identifier,
@@ -256,11 +257,26 @@ def _json_scope(scope: Scope) -> dict[str, object]:
     return scope.model_dump(mode="json")
 
 
+def _json_review_proposal(item: RuntimeReviewQueueItem) -> dict[str, object]:
+    """Render the normalized proposal while keeping supporting raw text encrypted."""
+
+    detection = item.detection
+    return {
+        "affected_artifact_id": detection.affected_artifact_id,
+        "behavior": detection.normalized_behavior,
+        "proposal_digest": str(detection.content_digest),
+        "route": None if detection.requested_route is None else detection.requested_route.value,
+        "scope": _json_scope(detection.scope),
+        "signal_kind": None if detection.signal_kind is None else detection.signal_kind.value,
+    }
+
+
 class _ConsoleReviewSink(RuntimeReviewSink):
     def enqueue(self, item: RuntimeReviewQueueItem) -> None:
         typer.echo(
             canonical_json(
                 {
+                    "proposal": _json_review_proposal(item),
                     "queue_id": item.queue_id,
                     "reasons": item.detection.reasons,
                     "scope": _json_scope(item.detection.scope),
@@ -1026,6 +1042,8 @@ def show_codex_dogfood_status(config_path: ConfigOption) -> None:
             "learning_cycle_count": len(ledger.learning_cycles()),
             "learning_assessment_count": len(ledger.learning_assessments()),
             "review_count": len(ledger.learning_review_items()),
+            "resolved_review_count": len(ledger.learning_review_resolutions()),
+            "unresolved_review_count": len(ledger.unresolved_learning_review_items()),
             "source_checkpointed": (
                 ledger.current_checkpoint("codex-dogfood-interactive") is not None
             ),
@@ -1038,11 +1056,13 @@ def show_codex_dogfood_status(config_path: ConfigOption) -> None:
 
 @dogfood_app.command("review")
 def show_codex_dogfood_review(config_path: ConfigOption) -> None:
-    """List raw-free review-required adaptations; this command does not approve them."""
+    """List unresolved normalized proposals without exposing supporting raw text."""
 
     try:
         config = _load_config(config_path)
-        items = _ledger(config).learning_review_items()
+        ledger = _ledger(config)
+        items = ledger.unresolved_learning_review_items()
+        resolved_count = len(ledger.learning_review_resolutions())
     except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
     typer.echo(
@@ -1051,19 +1071,95 @@ def show_codex_dogfood_review(config_path: ConfigOption) -> None:
                 "items": [
                     {
                         "queue_id": item.queue_id,
+                        "cycle_id": item.cycle_id,
+                        "proposal": _json_review_proposal(item),
                         "reasons": item.detection.reasons,
-                        "route": (
-                            None
-                            if item.detection.requested_route is None
-                            else item.detection.requested_route.value
-                        ),
-                        "scope": _json_scope(item.detection.scope),
+                        "status": "unresolved",
                     }
                     for item in items
-                ]
+                ],
+                "resolved_count": resolved_count,
+                "unresolved_count": len(items),
             }
         )
     )
+
+
+@dogfood_app.command("review-decide")
+def decide_codex_dogfood_review(
+    config_path: ConfigOption,
+    queue_id: Annotated[str, typer.Argument(help="Exact unresolved review queue item.")],
+    decision: Annotated[ApprovalDecision, typer.Argument()],
+    proposal_digest: Annotated[
+        str,
+        typer.Option(
+            "--proposal-digest",
+            help="Exact proposal digest shown by `runtime review`.",
+        ),
+    ],
+) -> None:
+    """Append one exact owner decision; approval may compile a new inactive release."""
+
+    try:
+        config = _load_config(config_path)
+        ledger = _ledger(config)
+        matches = tuple(
+            item for item in ledger.learning_review_items() if item.queue_id == queue_id
+        )
+        if len(matches) != 1:
+            raise AutomaticRuntimeError("review decision requires one exact queue item")
+        item = matches[0]
+        if proposal_digest != str(item.detection.content_digest):
+            raise AutomaticRuntimeError("review proposal digest changed")
+        existing = ledger.learning_review_resolution(queue_id)
+        if existing is not None:
+            if existing.decision is not decision or existing.queue_digest != item.content_digest:
+                raise AutomaticRuntimeError("review item already has another immutable decision")
+            resolution = existing
+            state = ledger.current()
+            if state is None:
+                raise AutomaticRuntimeError("review decision state is unavailable")
+        else:
+            cycle = ledger.learning_cycle(item.cycle_id)
+            state = ledger.current()
+            if cycle is None or state is None:
+                raise AutomaticRuntimeError("review decision source state is unavailable")
+            result = _runtime(config).resolve_review(
+                item,
+                cycle,
+                state=state,
+                decision=decision,
+                resolved_at=_now(),
+            )
+            ledger.append_learning_review_resolution(
+                result.resolution,
+                result.state,
+                release_event=result.release_event,
+            )
+            resolution = result.resolution
+            state = result.state
+        if state is None:
+            raise AutomaticRuntimeError("review decision state is unavailable")
+        active_artifact_ids = (
+            ()
+            if state.release is None
+            else tuple(
+                artifact.artifact_ref.record_id
+                for artifact in state.release.governed_release.active_artifacts
+            )
+        )
+        response = {
+            "active_artifact_ids": active_artifact_ids,
+            "assessment": resolution.assessment.outcome.value,
+            "decision": resolution.decision.value,
+            "generation": state.generation,
+            "queue_id": resolution.queue_id,
+            "resolution_digest": str(resolution.content_digest),
+            "resolution_id": resolution.resolution_id,
+        }
+    except (OSError, ValueError, RuntimeConformanceError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json(response))
 
 
 @dogfood_app.command("notices")
@@ -1225,6 +1321,10 @@ def record_codex_learning_feedback(
         cycle = ledger.learning_cycle(cycle_id)
         if cycle is None:
             raise AutomaticRuntimeError("learning assessment requires an exact cycle")
+        if ledger.learning_review_item_for_cycle(cycle_id) is not None:
+            raise AutomaticRuntimeError(
+                "review-required learning must be assessed through runtime review-decide"
+            )
         now = _now()
         assessment = RuntimeLearningAssessment(
             assessment_id=f"learning-assessment-{cycle_id}",
@@ -1251,6 +1351,7 @@ def show_codex_dogfood_gate_report(config_path: ConfigOption) -> None:
             subject_id=config.subject_id,
             learning_cycles=ledger.learning_cycles(),
             learning_assessments=ledger.learning_assessments(),
+            learning_review_resolutions=ledger.learning_review_resolutions(),
             activations=ledger.activations(),
             acknowledgements=ledger.delivery_acknowledgements(),
             activation_feedback=ledger.feedback(),

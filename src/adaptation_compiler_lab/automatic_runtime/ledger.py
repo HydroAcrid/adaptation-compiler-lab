@@ -13,11 +13,13 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     RuntimeCycleReceipt,
     RuntimeLearningAssessment,
     RuntimeLearningCycleReceipt,
+    RuntimeLearningReviewResolution,
     RuntimeReviewQueueItem,
     RuntimeSourceCheckpoint,
     RuntimeTargetDeliveryAcknowledgement,
     RuntimeTaskActivationReceipt,
 )
+from adaptation_compiler_lab.domain import ApprovalDecision
 from adaptation_compiler_lab.governance import GovernanceEvent
 from adaptation_compiler_lab.governance.signing import verify_signed_governance
 from adaptation_compiler_lab.persistence.errors import (
@@ -225,6 +227,165 @@ class AutomaticRuntimeLedger:
                 self._insert_learning_review_item(connection, review_item)
             if release_event is not None:
                 self._insert_learning_event(connection, cycle.cycle_id, release_event)
+            connection.commit()
+        return True
+
+    def append_learning_review_resolution(
+        self,
+        resolution: RuntimeLearningReviewResolution,
+        state: AutomaticRuntimeState,
+        *,
+        release_event: GovernanceEvent | None = None,
+    ) -> bool:
+        """Atomically resolve one queued proposal and append any approved release."""
+
+        self._validate_state_subject(state)
+        if resolution.subject_id != self._subject_id:
+            raise ValueError("runtime review resolution crossed the subject boundary")
+        if resolution.resulting_state_digest != state.content_digest:
+            raise ValueError("runtime review resolution does not bind its resulting state")
+        actual_release_event = None if release_event is None else canonical_digest(release_event)
+        if actual_release_event != resolution.release_event_digest:
+            raise ValueError("runtime review resolution release event binding changed")
+        payload = canonical_json(resolution)
+        digest = str(resolution.content_digest).removeprefix("sha256:")
+        with sqlite3.connect(self._path) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            existing = connection.execute(
+                """
+                SELECT canonical_json, content_sha256
+                FROM automatic_runtime_learning_review_resolutions
+                WHERE resolution_id = ? OR queue_id = ? OR cycle_id = ?
+                """,
+                (resolution.resolution_id, resolution.queue_id, resolution.cycle_id),
+            ).fetchone()
+            if existing is not None:
+                if tuple(existing) == (payload, digest):
+                    connection.rollback()
+                    return False
+                connection.rollback()
+                raise RecordConflictError(
+                    "runtime learning review already has another immutable resolution"
+                )
+            queue_row = connection.execute(
+                """
+                SELECT canonical_json, content_sha256
+                FROM automatic_runtime_learning_review_queue
+                WHERE subject_id = ? AND queue_id = ? AND cycle_id = ?
+                """,
+                (self._subject_id, resolution.queue_id, resolution.cycle_id),
+            ).fetchone()
+            cycle_row = connection.execute(
+                """
+                SELECT canonical_json, content_sha256
+                FROM automatic_runtime_learning_cycles
+                WHERE subject_id = ? AND cycle_id = ?
+                """,
+                (self._subject_id, resolution.cycle_id),
+            ).fetchone()
+            if queue_row is None or cycle_row is None:
+                connection.rollback()
+                raise HistoryConflictError("runtime learning review source is unavailable")
+            item = RuntimeReviewQueueItem.model_validate_json(str(queue_row[0]))
+            cycle = RuntimeLearningCycleReceipt.model_validate_json(str(cycle_row[0]))
+            if (
+                canonical_json(item) != queue_row[0]
+                or str(item.content_digest).removeprefix("sha256:") != queue_row[1]
+                or canonical_json(cycle) != cycle_row[0]
+                or str(cycle.content_digest).removeprefix("sha256:") != cycle_row[1]
+                or resolution.queue_digest != item.content_digest
+                or resolution.cycle_digest != cycle.content_digest
+                or resolution.assessment.cycle_digest != cycle.content_digest
+            ):
+                connection.rollback()
+                raise HistoryConflictError("runtime learning review source binding changed")
+            current_row = self._current_row(connection)
+            if current_row is None:
+                connection.rollback()
+                raise HistoryConflictError("automatic runtime ledger is not initialized")
+            current = self._decode_state(current_row[0], current_row[1])
+            if resolution.prior_state_digest != current.content_digest:
+                connection.rollback()
+                raise HistoryConflictError("runtime review resolution state head changed")
+            try:
+                verify_signed_governance(
+                    resolution.review_event,
+                    item.captured.signer_identity,
+                    effective_at=resolution.resolved_at,
+                )
+            except ValueError as error:
+                connection.rollback()
+                raise ValueError("runtime review resolution signature is invalid") from error
+
+            if resolution.decision is ApprovalDecision.APPROVED:
+                if state.generation != current.generation + 1 or not state.transitions:
+                    connection.rollback()
+                    raise HistoryConflictError(
+                        "approved runtime review must advance exactly one generation"
+                    )
+                transition = state.transitions[-1]
+                if (
+                    transition.content_digest != resolution.transition_digest
+                    or transition.evaluation.content_digest != resolution.evaluation_digest
+                    or transition.review != resolution.review
+                    or transition.review_event != resolution.review_event
+                    or state.release is None
+                    or state.release.content_digest != resolution.release_digest
+                    or release_event is None
+                ):
+                    connection.rollback()
+                    raise HistoryConflictError("approved runtime review outputs changed")
+                try:
+                    verify_signed_governance(
+                        release_event,
+                        item.captured.signer_identity,
+                        effective_at=resolution.resolved_at,
+                    )
+                except ValueError as error:
+                    connection.rollback()
+                    raise ValueError("runtime reviewed release signature is invalid") from error
+                self._insert_state(connection, state)
+            elif state != current or release_event is not None:
+                connection.rollback()
+                raise HistoryConflictError("rejected runtime review changed governed state")
+
+            assessment_row = connection.execute(
+                """
+                SELECT canonical_json, content_sha256
+                FROM automatic_runtime_learning_assessments
+                WHERE assessment_id = ? OR cycle_id = ?
+                """,
+                (resolution.assessment.assessment_id, resolution.cycle_id),
+            ).fetchone()
+            if assessment_row is not None:
+                connection.rollback()
+                raise RecordConflictError("runtime review cycle already has an assessment")
+            connection.execute(
+                """
+                INSERT INTO automatic_runtime_learning_review_resolutions (
+                    resolution_id, queue_id, subject_id, cycle_id, decision,
+                    resolved_at, canonical_json, content_sha256
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    resolution.resolution_id,
+                    resolution.queue_id,
+                    resolution.subject_id,
+                    resolution.cycle_id,
+                    resolution.decision.value,
+                    resolution.resolved_at.isoformat(),
+                    payload,
+                    digest,
+                ),
+            )
+            self._insert_learning_assessment(connection, resolution.assessment)
+            self._insert_learning_event(
+                connection,
+                resolution.cycle_id,
+                resolution.review_event,
+            )
+            if release_event is not None:
+                self._insert_learning_event(connection, resolution.cycle_id, release_event)
             connection.commit()
         return True
 
@@ -742,6 +903,55 @@ class AutomaticRuntimeLedger:
             raise ValueError("stored runtime learning review digest mismatch")
         return item
 
+    def learning_review_resolutions(self) -> tuple[RuntimeLearningReviewResolution, ...]:
+        """Return immutable owner decisions in resolution order."""
+
+        with sqlite3.connect(self._path) as connection:
+            rows = connection.execute(
+                """
+                SELECT canonical_json, content_sha256
+                FROM automatic_runtime_learning_review_resolutions
+                WHERE subject_id = ?
+                ORDER BY resolved_at, resolution_id
+                """,
+                (self._subject_id,),
+            ).fetchall()
+        result: list[RuntimeLearningReviewResolution] = []
+        for payload, digest in rows:
+            resolution = RuntimeLearningReviewResolution.model_validate_json(payload)
+            if canonical_json(resolution) != payload:
+                raise ValueError("stored runtime learning review resolution is not canonical")
+            if str(resolution.content_digest).removeprefix("sha256:") != digest:
+                raise ValueError("stored runtime learning review resolution digest mismatch")
+            result.append(resolution)
+        return tuple(result)
+
+    def learning_review_resolution(
+        self,
+        queue_id: str,
+    ) -> RuntimeLearningReviewResolution | None:
+        with sqlite3.connect(self._path) as connection:
+            row = connection.execute(
+                """
+                SELECT canonical_json, content_sha256
+                FROM automatic_runtime_learning_review_resolutions
+                WHERE subject_id = ? AND queue_id = ?
+                """,
+                (self._subject_id, queue_id),
+            ).fetchone()
+        if row is None:
+            return None
+        resolution = RuntimeLearningReviewResolution.model_validate_json(row[0])
+        if canonical_json(resolution) != row[0]:
+            raise ValueError("stored runtime learning review resolution is not canonical")
+        if str(resolution.content_digest).removeprefix("sha256:") != row[1]:
+            raise ValueError("stored runtime learning review resolution digest mismatch")
+        return resolution
+
+    def unresolved_learning_review_items(self) -> tuple[RuntimeReviewQueueItem, ...]:
+        resolved = {item.queue_id for item in self.learning_review_resolutions()}
+        return tuple(item for item in self.learning_review_items() if item.queue_id not in resolved)
+
     def governance_events(self) -> tuple[GovernanceEvent, ...]:
         """Return signed release and activation actions in append order."""
 
@@ -1160,6 +1370,31 @@ class AutomaticRuntimeLedger:
                 activation_id,
                 event.event_type.value,
                 event.occurred_at.isoformat(),
+                payload,
+                digest,
+            ),
+        )
+
+    def _insert_learning_assessment(
+        self,
+        connection: sqlite3.Connection,
+        assessment: RuntimeLearningAssessment,
+    ) -> None:
+        payload = canonical_json(assessment)
+        digest = str(assessment.content_digest).removeprefix("sha256:")
+        connection.execute(
+            """
+            INSERT INTO automatic_runtime_learning_assessments (
+                assessment_id, subject_id, cycle_id, outcome,
+                recorded_at, canonical_json, content_sha256
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                assessment.assessment_id,
+                assessment.subject_id,
+                assessment.cycle_id,
+                assessment.outcome.value,
+                assessment.recorded_at.isoformat(),
                 payload,
                 digest,
             ),

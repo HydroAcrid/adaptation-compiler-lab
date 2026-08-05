@@ -134,8 +134,9 @@ initial gate report has 20 interactions remaining and `evidence_ready=false`.
 1. Use a newly created Codex Desktop task in the registered project. Threads created before the
    cutoff are intentionally excluded, even when they receive later turns.
 2. After the task is terminal, run `runtime poll`.
-3. Inspect raw-free `runtime notices` and `runtime review`.
-4. Record the exact learning decision with `runtime learning-feedback`.
+3. Inspect `runtime notices` and the raw-message-free normalized proposal from `runtime review`.
+4. Resolve an inactive proposal with its exact displayed digest through `runtime review-decide`,
+   or record a non-review learning decision with `runtime learning-feedback`.
 5. Route a later real task through `runtime run`; do not use a synthetic task as longitudinal
    evidence.
 6. Record helped, hurt, or irrelevant with `runtime feedback`, including a correction key when a
