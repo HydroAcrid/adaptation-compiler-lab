@@ -250,6 +250,12 @@ class _ConsoleNoticeSink(RuntimeNoticeSink):
         )
 
 
+def _json_scope(scope: Scope) -> dict[str, object]:
+    """Render one typed scope at the raw-free CLI boundary."""
+
+    return scope.model_dump(mode="json")
+
+
 class _ConsoleReviewSink(RuntimeReviewSink):
     def enqueue(self, item: RuntimeReviewQueueItem) -> None:
         typer.echo(
@@ -257,7 +263,7 @@ class _ConsoleReviewSink(RuntimeReviewSink):
                 {
                     "queue_id": item.queue_id,
                     "reasons": item.detection.reasons,
-                    "scope": item.detection.scope,
+                    "scope": _json_scope(item.detection.scope),
                     "status": "review_required",
                 }
             )
@@ -1051,7 +1057,7 @@ def show_codex_dogfood_review(config_path: ConfigOption) -> None:
                             if item.detection.requested_route is None
                             else item.detection.requested_route.value
                         ),
-                        "scope": item.detection.scope,
+                        "scope": _json_scope(item.detection.scope),
                     }
                     for item in items
                 ]

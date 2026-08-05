@@ -19,6 +19,7 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     AutomationDisposition,
     FeedbackDetectorMode,
     InteractionObservation,
+    RuntimeLearningCycleReceipt,
     RuntimeReviewQueueItem,
     RuntimeSourceCheckpoint,
     SemanticFeedbackInterpretation,
@@ -127,14 +128,25 @@ class CodexDogfoodHost:
                     reviews += 1
                 self._notice_sink.publish(result.cycle.notice)
             else:
-                if prior.observation_digest != observation.content_digest:
-                    raise AutomaticRuntimeError(
-                        "replayed Codex observation changed after durable pickup"
-                    )
+                review_item = None
                 if prior.disposition is AutomationDisposition.REVIEW_REQUIRED:
                     review_item = self._ledger.learning_review_item_for_cycle(prior.cycle_id)
                     if review_item is None:
                         raise AutomaticRuntimeError("replayed Codex review item is unavailable")
+                if (
+                    prior.observation_digest != observation.content_digest
+                    and review_item is not None
+                ):
+                    observation = self._normalize_legacy_review_replay(
+                        observation=observation,
+                        prior=prior,
+                        review_item=review_item,
+                    )
+                if prior.observation_digest != observation.content_digest:
+                    raise AutomaticRuntimeError(
+                        "replayed Codex observation changed after durable pickup"
+                    )
+                if review_item is not None:
                     self._review_sink.enqueue(review_item)
                     reviews += 1
                 self._notice_sink.publish(prior.notice)
@@ -202,6 +214,54 @@ class CodexDogfoodHost:
         ):
             raise AutomaticRuntimeError("new Codex observation unexpectedly already exists")
         return result
+
+    @staticmethod
+    def _normalize_legacy_review_replay(
+        *,
+        observation: InteractionObservation,
+        prior: RuntimeLearningCycleReceipt,
+        review_item: RuntimeReviewQueueItem,
+    ) -> InteractionObservation:
+        """Recover an interrupted review written before source timestamps were stable.
+
+        The former pickup implementation used its poll time as ``observed_at``. Recovery is
+        limited to an incomplete review whose signed capture proves that legacy shape, and every
+        source/content binding must still match before only that timestamp is reconstructed.
+        """
+
+        captured = review_item.captured
+        evidence = captured.evidence
+        capture = captured.capture
+        payload = evidence.payload
+        legacy_time = evidence.observed_at
+        legacy_shape = (
+            capture.captured_at == legacy_time
+            and captured.consent.issued_at == legacy_time
+            and prior.created_at == legacy_time
+        )
+        payload_digest = sha256_text(observation.text)
+        source_matches = (
+            observation.observation_id == prior.observation_id
+            and observation.subject_id == review_item.subject_id
+            and evidence.task_ref == observation.task_ref
+            and evidence.producer == observation.actor
+            and evidence.source_class == observation.source_class
+            and evidence.scope == observation.scope
+            and capture.subject_id == observation.subject_id
+            and capture.source_selector.source_system == observation.source_system
+            and capture.source_selector.source_ids == (observation.task_ref.record_id,)
+            and capture.source_version == observation.source_version
+            and capture.source_schema_digest == observation.source_schema_digest
+            and payload is not None
+            and payload.content_digest == payload_digest
+            and capture.payload_digest == payload_digest
+        )
+        if not legacy_shape or not source_matches:
+            return observation
+        restored = observation.model_copy(update={"observed_at": legacy_time})
+        if restored.content_digest != prior.observation_digest:
+            return observation
+        return restored
 
     @staticmethod
     def _review_item(result: AutomaticLearningResult) -> RuntimeReviewQueueItem | None:

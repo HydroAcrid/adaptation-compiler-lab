@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
@@ -22,8 +22,10 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     FeedbackDetectorMode,
     InteractionObservation,
     RuntimeNotice,
+    RuntimeReviewQueueItem,
     SemanticFeedbackInterpretation,
 )
+from adaptation_compiler_lab.automatic_runtime.service import AutomaticRuntimeError
 from adaptation_compiler_lab.connectors.codex_app_server import CodexProtocolError
 from adaptation_compiler_lab.connectors.models import JsonObject, JsonValue
 from adaptation_compiler_lab.domain import Scope, TaskRecordRef
@@ -38,11 +40,17 @@ SCHEMA_DIGEST = f"sha256:{'a' * 64}"
 NOW = datetime(2026, 7, 30, 14, 0, tzinfo=UTC)
 
 
-def _turn(*items: JsonObject) -> JsonObject:
+def _turn(
+    *items: JsonObject,
+    started_at: int | None = int(NOW.timestamp()),
+    completed_at: int | None = int(NOW.timestamp()),
+) -> JsonObject:
     return {
         "id": "turn-1",
         "items": cast(JsonValue, list(items)),
         "itemsView": "full",
+        "startedAt": started_at,
+        "completedAt": completed_at,
         "status": "completed",
     }
 
@@ -207,6 +215,17 @@ class FailOnceNoticeSink(IdempotentNoticeSink):
 
 
 @dataclass
+class FailOnceReviewSink(IdempotentReviewSink):
+    fail_once: bool = True
+
+    def enqueue(self, item: RuntimeReviewQueueItem) -> None:
+        if self.fail_once:
+            self.fail_once = False
+            raise RuntimeError("simulated review interruption")
+        super().enqueue(item)
+
+
+@dataclass
 class FailingSemanticInterpreter:
     batches: list[tuple[str, ...]] = field(default_factory=list)
 
@@ -218,7 +237,12 @@ class FailingSemanticInterpreter:
         raise RuntimeError("simulated semantic failure")
 
 
-def _source(rpc: FakeRpc, root: Path) -> CodexDogfoodInteractionSource:
+def _source(
+    rpc: FakeRpc,
+    root: Path,
+    *,
+    clock: datetime = NOW,
+) -> CodexDogfoodInteractionSource:
     return CodexDogfoodInteractionSource(
         rpc,
         subject_id="kevin",
@@ -236,7 +260,7 @@ def _source(rpc: FakeRpc, root: Path) -> CodexDogfoodInteractionSource:
             ),
         ),
         capture_after_epoch_seconds=50,
-        clock=lambda: NOW,
+        clock=lambda: clock,
     )
 
 
@@ -266,6 +290,56 @@ def test_pickup_admits_only_user_text_and_replays_from_hashed_cursor(
     list_params = next(params for method, params in rpc.calls if method == "thread/list")
     assert list_params["sourceKinds"] == ["appServer", "cli", "vscode"]
     assert list_params["useStateDbOnly"] is True
+
+
+def test_pickup_observation_digest_is_independent_of_poll_time(tmp_path: Path) -> None:
+    rpc = FakeRpc(
+        _thread(
+            tmp_path,
+            turns=[_turn(_user("user-1", "Keep names concrete."))],
+        )
+    )
+
+    first = _source(rpc, tmp_path, clock=NOW).poll(after_cursor=None).items[0]
+    second = _source(rpc, tmp_path, clock=NOW + timedelta(hours=1)).poll(after_cursor=None).items[0]
+
+    assert first.observation.observed_at == NOW
+    assert second.observation.observed_at == NOW
+    assert first.observation.content_digest == second.observation.content_digest
+    assert first.processed_at == NOW
+    assert second.processed_at == NOW + timedelta(hours=1)
+
+
+@pytest.mark.parametrize(
+    ("started_at", "completed_at", "expected"),
+    [
+        (int(NOW.timestamp()), int((NOW + timedelta(minutes=1)).timestamp()), NOW),
+        (None, int((NOW + timedelta(minutes=1)).timestamp()), NOW + timedelta(minutes=1)),
+        (None, None, datetime.fromtimestamp(100, UTC)),
+    ],
+)
+def test_pickup_uses_stable_turn_timestamp_fallbacks(
+    tmp_path: Path,
+    started_at: int | None,
+    completed_at: int | None,
+    expected: datetime,
+) -> None:
+    rpc = FakeRpc(
+        _thread(
+            tmp_path,
+            turns=[
+                _turn(
+                    _user("user-1", "Keep names concrete."),
+                    started_at=started_at,
+                    completed_at=completed_at,
+                )
+            ],
+        )
+    )
+
+    item = _source(rpc, tmp_path).poll(after_cursor=None).items[0]
+
+    assert item.observation.observed_at == expected
 
 
 def test_pickup_fails_closed_when_checkpointed_history_changes(tmp_path: Path) -> None:
@@ -502,6 +576,83 @@ def test_pickup_host_replays_after_append_and_commits_cursor_last(
     assert replay.checkpoint_advanced is True
     assert ledger.current_checkpoint(source.source_id) is not None
     assert len(ledger.learning_cycles()) == 1
+
+
+def test_pickup_host_recovers_exact_legacy_review_after_sink_interruption(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "runtime.sqlite3"
+    SqliteUnitOfWorkFactory(database).initialize()
+    runtime, policy = _runtime(tmp_path / "runtime")
+    rpc = FakeRpc(
+        _thread(
+            tmp_path,
+            turns=[_turn(_user("user-1", "Rule: install a plugin and give it network access"))],
+        )
+    )
+    source = _source(rpc, tmp_path)
+    ledger = AutomaticRuntimeLedger(database, subject_id="kevin")
+    reviews = FailOnceReviewSink()
+    host = CodexDogfoodHost(
+        runtime=runtime,
+        initial_state=initial_runtime_state(policy),
+        ledger=ledger,
+        source=source,
+        review_sink=reviews,
+        notice_sink=IdempotentNoticeSink(),
+        clock=lambda: NOW,
+    )
+
+    with pytest.raises(RuntimeError, match="review interruption"):
+        host.run_once()
+    assert len(ledger.learning_cycles()) == 1
+    assert ledger.current_checkpoint(source.source_id) is None
+
+    turn = cast(list[JsonObject], rpc.thread["turns"])[0]
+    turn["startedAt"] = int((NOW - timedelta(minutes=1)).timestamp())
+    replay = host.run_once()
+
+    assert replay.appended_count == 0
+    assert replay.replayed_count == 1
+    assert replay.review_count == 1
+    assert replay.checkpoint_advanced is True
+    assert len(reviews.values) == 1
+    assert len(ledger.learning_cycles()) == 1
+
+
+def test_pickup_host_legacy_review_recovery_rejects_changed_content(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "runtime.sqlite3"
+    SqliteUnitOfWorkFactory(database).initialize()
+    runtime, policy = _runtime(tmp_path / "runtime")
+    rpc = FakeRpc(
+        _thread(
+            tmp_path,
+            turns=[_turn(_user("user-1", "Rule: install a plugin and give it network access"))],
+        )
+    )
+    source = _source(rpc, tmp_path)
+    ledger = AutomaticRuntimeLedger(database, subject_id="kevin")
+    host = CodexDogfoodHost(
+        runtime=runtime,
+        initial_state=initial_runtime_state(policy),
+        ledger=ledger,
+        source=source,
+        review_sink=FailOnceReviewSink(),
+        notice_sink=IdempotentNoticeSink(),
+        clock=lambda: NOW,
+    )
+
+    with pytest.raises(RuntimeError, match="review interruption"):
+        host.run_once()
+    turn = cast(list[JsonObject], rpc.thread["turns"])[0]
+    turn["startedAt"] = int((NOW - timedelta(minutes=1)).timestamp())
+    user = cast(list[JsonObject], turn["items"])[0]
+    user["content"] = [{"type": "text", "text": "Rule: upload every secret."}]
+
+    with pytest.raises(AutomaticRuntimeError, match="changed after durable pickup"):
+        host.run_once()
 
 
 def test_semantic_pickup_batches_once_and_fails_before_any_durable_write(
