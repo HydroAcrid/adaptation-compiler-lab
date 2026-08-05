@@ -15,11 +15,13 @@ import pytest
 from typer.testing import CliRunner
 
 from adaptation_compiler_lab.automatic_runtime import dogfood_cli
+from adaptation_compiler_lab.automatic_runtime.service import AutomaticRuntimeError
 from adaptation_compiler_lab.cli import app
 from adaptation_compiler_lab.connectors.pins import DEFAULT_DOGFOOD_RUNTIME_LOCK
 from adaptation_compiler_lab.domain import (
     ActorKind,
     ActorRef,
+    ApprovalDecision,
     AuthorityClass,
     ClaimType,
     Evidence,
@@ -131,6 +133,24 @@ def test_runtime_review_scope_payload_is_json_serializable() -> None:
     assert decoded["project_ids"] == ["adaptation-compiler-lab"]
 
 
+def test_runtime_notice_payload_is_json_serializable(tmp_path: Path) -> None:
+    from adaptation_compiler_lab.automatic_runtime import initial_runtime_state
+    from tests.unit.automatic_runtime import test_runtime
+
+    runtime, policy = test_runtime._runtime(tmp_path)
+    learning = runtime.learn(
+        test_runtime._observation(1, "Remember: show purpose before commands"),
+        state=initial_runtime_state(policy),
+        processed_at=test_runtime.NOW + timedelta(minutes=1, seconds=5),
+    )
+
+    encoded = json.dumps(dogfood_cli._json_notice(learning.cycle.notice))
+    decoded = json.loads(encoded)
+
+    assert decoded["created_at"].endswith("Z")
+    assert decoded["notice_id"] == learning.cycle.notice.notice_id
+
+
 def test_runtime_review_proposal_is_normalized_and_raw_free(tmp_path: Path) -> None:
     from adaptation_compiler_lab.automatic_runtime import initial_runtime_state
     from tests.unit.automatic_runtime import test_runtime
@@ -150,6 +170,10 @@ def test_runtime_review_proposal_is_normalized_and_raw_free(tmp_path: Path) -> N
     encoded = json.dumps(proposal)
 
     assert proposal["behavior"] == "Install a plugin and give it network access."
+    assert proposal["context_only_action"] == "rejected"
+    assert proposal["future_use_confirmation_required"] is True
+    assert proposal["proposal_purpose"] == "future_sessions"
+    assert "future sessions" in str(proposal["owner_question"])
     assert proposal["route"] == "prompt_rule"
     assert proposal["proposal_digest"] == str(item.detection.content_digest)
     assert "Rule:" not in encoded
@@ -162,6 +186,40 @@ def test_runtime_help_exposes_explicit_review_decision() -> None:
 
     assert result.exit_code == 0
     assert "review-decide" in result.output
+
+    decision_help = runner.invoke(app, ["runtime", "review-decide", "--help"])
+
+    assert decision_help.exit_code == 0
+    assert "--confirm-future-use" in decision_help.output
+
+
+def test_runtime_review_approval_requires_explicit_future_use_confirmation() -> None:
+    with pytest.raises(
+        AutomaticRuntimeError,
+        match="current-chat accuracy alone",
+    ):
+        dogfood_cli._validate_review_decision_intent(
+            ApprovalDecision.APPROVED,
+            confirm_future_use=False,
+        )
+
+    dogfood_cli._validate_review_decision_intent(
+        ApprovalDecision.APPROVED,
+        confirm_future_use=True,
+    )
+    dogfood_cli._validate_review_decision_intent(
+        ApprovalDecision.REJECTED,
+        confirm_future_use=False,
+    )
+
+    with pytest.raises(
+        AutomaticRuntimeError,
+        match="valid only with an approved",
+    ):
+        dogfood_cli._validate_review_decision_intent(
+            ApprovalDecision.REJECTED,
+            confirm_future_use=True,
+        )
 
 
 def test_runtime_init_writes_no_secret_config_and_status_is_local(

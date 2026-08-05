@@ -29,21 +29,30 @@ strict reduction from requested workspace-write authority; any network or root e
 forbidden. It still does not watch Codex in the background or maintain a persistent multi-turn
 product session.
 
-The first genuine post-cutoff semantic pickup is now durably checkpointed. It produced one
-inactive project-scoped preference proposal and zero active artifacts. The interrupted first
-handoff exposed and repaired typed-scope JSON serialization and poll-time-dependent observation
-digests; exact replay appended no duplicate and advanced the source checkpoint once.
+The first genuine post-cutoff semantic pickup is durably checkpointed. Its interrupted handoff
+exposed and repaired typed-scope JSON serialization and poll-time-dependent observation digests;
+exact replay appended no duplicate and advanced the source checkpoint once. The proposal's wording
+accurately described the topic Kevin wanted in that chat, and Kevin approved it on that basis, but
+the underlying reusable preference was never expressed. It therefore became the gate's first
+false activation rather than positive product evidence.
 
 Migration 0010 and `runtime review-decide` close the local review loop without weakening the raw
 boundary. `runtime review` shows the normalized proposal, route, scope, and exact digest while raw
 support remains encrypted. Approval or rejection appends one signed immutable resolution and
 correct/false-positive assessment. Approval rechecks current governance and compiler invariants,
 advances one release generation, and still requires a later explicit target activation; rejection
-leaves state unchanged. The first genuine proposal was owner-approved on 2026-08-05, advanced the
-runtime to generation one, and left zero unresolved reviews. Its first target attempt failed before
-turn start when Windows Codex safely reduced the WSL UNC workspace to read-only. The failure remains
-immutable. After the stricter-sandbox conformance repair, a new activation completed in a fresh
-ephemeral Codex session and followed the compact preference on a neutral recommendation task.
+leaves state unchanged. Review output now asks whether the behavior should influence future
+sessions, identifies rejection as the context-only action, and requires `--confirm-future-use` for
+approval. Accuracy for the present chat is no longer sufficient authorization.
+
+The original approval advanced the runtime to generation one. Its first target attempt failed
+before turn start when Windows Codex safely reduced the WSL UNC workspace to read-only; the failure
+remains immutable. After the sandbox repair, a new activation completed and followed the injected
+preference, proving delivery but not learning validity. Kevin then clarified that the preference
+was unexpressed and current-chat-only. The completed activation is append-only `irrelevant`
+feedback, the artifact is revoked, and generation two has zero active artifacts. Prompt v3 now
+forbids task-topic-to-preference inference. A targeted live eight-case ChatGPT-subscription smoke
+correctly rejected four ordinary task topics and retained four explicitly durable statements.
 
 Configuration v1.1 separates source-CWD aliases, the canonical target root, and optional distinct
 source/target Codex endpoints. The active topology runs native Windows Codex with saved ChatGPT

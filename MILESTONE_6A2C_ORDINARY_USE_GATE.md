@@ -135,8 +135,10 @@ initial gate report has 20 interactions remaining and `evidence_ready=false`.
    cutoff are intentionally excluded, even when they receive later turns.
 2. After the task is terminal, run `runtime poll`.
 3. Inspect `runtime notices` and the raw-message-free normalized proposal from `runtime review`.
-4. Resolve an inactive proposal with its exact displayed digest through `runtime review-decide`,
-   or record a non-review learning decision with `runtime learning-feedback`.
+4. Resolve an inactive proposal with its exact displayed digest through `runtime review-decide`.
+   Approval additionally requires explicit confirmation that the behavior should influence future
+   sessions; reject a context-only proposal even when its wording is accurate for the current
+   chat. Record a non-review learning decision with `runtime learning-feedback`.
 5. Route a later real task through `runtime run`; do not use a synthetic task as longitudinal
    evidence.
 6. Record helped, hurt, or irrelevant with `runtime feedback`, including a correction key when a
