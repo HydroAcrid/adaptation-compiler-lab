@@ -114,8 +114,15 @@ to initialization time, so historical tasks are excluded.
 
 Use `runtime poll` after completed ordinary Codex work. Pickup reads only pinned app-server
 `userMessage` text in post-cutoff, terminal, non-ephemeral interactive threads under the allowlist.
-Use `runtime notices` and `runtime review` to inspect minimized local outcomes. Use `runtime undo`
-for exact artifact revocation.
+Use `runtime notices` and `runtime review` to inspect minimized local outcomes. Review output shows
+the normalized proposed behavior, route, scope, and proposal digest, but never the supporting raw
+message or quote. Resolve one exact item with
+`runtime review-decide <queue-id> approved|rejected --proposal-digest <sha256:...>`. Approval
+rechecks current policy, expiry, scope, evaluation, conflict, signature, and release invariants
+before advancing one generation; it does not deliver the release to an agent until a later
+`runtime run`. Rejection preserves the current state. Both decisions append a signed resolution
+and the corresponding correct/false-positive assessment. Use `runtime undo` for exact artifact
+revocation after approval.
 
 Detector serving is explicit:
 
@@ -147,7 +154,9 @@ constraints, sends the applicable compact projection once, and appends a digest-
 failure acknowledgement. `runtime feedback` records helped, hurt, or irrelevant only for an exact
 completed activation.
 
-Use `runtime learning-feedback <cycle-id> correct|false_positive|missed` once per learning cycle.
+Use `runtime learning-feedback <cycle-id> correct|false_positive|missed` once for learning cycles
+that were not resolved through `runtime review-decide`; review decisions record their assessment
+atomically.
 Use `runtime gate-report` for the raw-free 20-interaction/three-date/six-activation readiness
 report. Do not backdate interactions, alter the construction cutoff, or import pre-cutoff tasks to
 accelerate the gate.

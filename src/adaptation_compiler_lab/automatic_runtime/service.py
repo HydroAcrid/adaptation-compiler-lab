@@ -30,10 +30,14 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     RuntimeCycleReceipt,
     RuntimeDeliveryReceipt,
     RuntimeEvaluationReceipt,
+    RuntimeLearningAssessment,
+    RuntimeLearningAssessmentOutcome,
     RuntimeLearningCycleReceipt,
+    RuntimeLearningReviewResolution,
     RuntimeLearningTransition,
     RuntimeNotice,
     RuntimeNoticeKind,
+    RuntimeReviewQueueItem,
     RuntimeTaskActivationReceipt,
     RuntimeTransitionKind,
     SemanticFeedbackInterpretation,
@@ -134,6 +138,15 @@ class AutomaticLearningResult:
     captured: CapturedInteraction | None = None
     evaluation: RuntimeEvaluationReceipt | None = None
     release: ComposedRuntimeRelease | None = None
+    release_event: GovernanceEvent | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AutomaticReviewResolutionResult:
+    """Owner resolution plus the exact resulting governed state."""
+
+    state: AutomaticRuntimeState
+    resolution: RuntimeLearningReviewResolution
     release_event: GovernanceEvent | None = None
 
 
@@ -332,6 +345,174 @@ class AutomaticAdaptationRuntime:
             captured=captured,
             evaluation=evaluation,
             release=release,
+            release_event=release_event,
+        )
+
+    def resolve_review(
+        self,
+        review_item: RuntimeReviewQueueItem,
+        cycle: RuntimeLearningCycleReceipt,
+        *,
+        state: AutomaticRuntimeState,
+        decision: ApprovalDecision,
+        resolved_at: datetime,
+    ) -> AutomaticReviewResolutionResult:
+        """Approve or reject one exact inactive proposal without rewriting its source cycle."""
+
+        if resolved_at.tzinfo is None or resolved_at.utcoffset() is None:
+            raise AutomaticRuntimeError("review resolution time must be timezone-aware")
+        self._verify_policy(resolved_at)
+        self._validate_state(state)
+        if (
+            review_item.subject_id != state.subject_id
+            or review_item.cycle_id != cycle.cycle_id
+            or cycle.subject_id != state.subject_id
+            or cycle.disposition is not AutomationDisposition.REVIEW_REQUIRED
+            or cycle.detected_feedback_digest != review_item.detection.content_digest
+            or cycle.evaluation_receipt_digest != review_item.evaluation.content_digest
+            or cycle.observation_digest != review_item.captured.observation_digest
+        ):
+            raise AutomaticRuntimeError("review resolution does not bind the exact queued cycle")
+        review = Approval(
+            decision=decision,
+            approver=self._user_actor,
+            decided_at=resolved_at,
+            policy_version=self._policy.policy_version,
+            rationale=(
+                "The owner approved the exact normalized proposal after local review."
+                if decision is ApprovalDecision.APPROVED
+                else "The owner rejected the exact normalized proposal after local review."
+            ),
+        )
+        assessment = RuntimeLearningAssessment(
+            assessment_id=f"learning-assessment-{cycle.cycle_id}",
+            subject_id=state.subject_id,
+            cycle_id=cycle.cycle_id,
+            cycle_digest=cycle.content_digest,
+            outcome=(
+                RuntimeLearningAssessmentOutcome.CORRECT
+                if decision is ApprovalDecision.APPROVED
+                else RuntimeLearningAssessmentOutcome.FALSE_POSITIVE
+            ),
+            recorded_at=resolved_at,
+        )
+
+        if decision is ApprovalDecision.REJECTED:
+            review_event = self._governance_event(
+                event_id=f"runtime-manual-review-event-{review_item.detection.candidate_id}",
+                event_type=GovernanceEventType.REVIEW_DECISION,
+                target_ref=f"runtime-review-queue:{review_item.queue_id}",
+                target_digest=review_item.content_digest,
+                decision=decision.value,
+                reason="Reject the exact inactive proposal after owner review.",
+                occurred_at=resolved_at,
+            )
+            resolution = RuntimeLearningReviewResolution(
+                resolution_id=f"runtime-review-resolution-{review_item.queue_id}",
+                queue_id=review_item.queue_id,
+                queue_digest=review_item.content_digest,
+                subject_id=state.subject_id,
+                cycle_id=cycle.cycle_id,
+                cycle_digest=cycle.content_digest,
+                decision=decision,
+                review=review,
+                review_event=review_event,
+                assessment=assessment,
+                prior_state_digest=state.content_digest,
+                resulting_state_digest=state.content_digest,
+                resolved_at=resolved_at,
+            )
+            return AutomaticReviewResolutionResult(state=state, resolution=resolution)
+
+        candidate = review_item.evaluation.candidate_case
+        approved_case = EvaluationCase.model_validate(
+            {
+                **candidate.model_dump(mode="python"),
+                "record_version": "1.1.0",
+                "created_at": resolved_at,
+                "state": EvaluationCaseState.APPROVED,
+                "review": review,
+            }
+        )
+        evaluation = RuntimeEvaluationReceipt(
+            receipt_id=f"runtime-reviewed-evaluation-{review_item.detection.candidate_id}",
+            candidate_digest=review_item.detection.content_digest,
+            candidate_case=candidate,
+            approved_case=approved_case,
+            checks=tuple(
+                sorted(
+                    {
+                        *review_item.evaluation.checks,
+                        "Owner approved the exact normalized proposal after local review.",
+                    }
+                )
+            ),
+            passed=True,
+            review_required=False,
+            evaluated_at=resolved_at,
+        )
+        review_event = self._governance_event(
+            event_id=f"runtime-manual-review-event-{review_item.detection.candidate_id}",
+            event_type=GovernanceEventType.REVIEW_DECISION,
+            target_ref=f"runtime-evaluation:{evaluation.receipt_id}",
+            target_digest=evaluation.content_digest,
+            decision=decision.value,
+            reason="Approve the exact normalized proposal after owner review.",
+            occurred_at=resolved_at,
+        )
+        transition = self._transition(
+            review_item.detection,
+            review_item.captured,
+            evaluation,
+            state=state,
+            processed_at=resolved_at,
+            review=review,
+            review_event=review_event,
+        )
+        transitions = (*state.transitions, transition)
+        release = compile_runtime_release(transitions, subject_id=state.subject_id)
+        prior_releases = compile_runtime_releases(state.transitions, subject_id=state.subject_id)
+        new_state = AutomaticRuntimeState(
+            subject_id=state.subject_id,
+            standing_policy_digest=state.standing_policy_digest,
+            generation=len(transitions),
+            transitions=transitions,
+            release=release,
+            previous_release_digests=tuple(
+                sorted({item.content_digest for item in prior_releases})
+            ),
+        )
+        release_event = self._governance_event(
+            event_id=f"runtime-reviewed-release-event-{review_item.detection.candidate_id}",
+            event_type=GovernanceEventType.RELEASE_DECISION,
+            target_ref=f"composed-runtime-release:{release.governed_release.release_ref.record_id}",
+            target_digest=release.content_digest,
+            decision="released",
+            reason="Release the exact owner-approved proposal after deterministic gates pass.",
+            occurred_at=resolved_at,
+        )
+        resolution = RuntimeLearningReviewResolution(
+            resolution_id=f"runtime-review-resolution-{review_item.queue_id}",
+            queue_id=review_item.queue_id,
+            queue_digest=review_item.content_digest,
+            subject_id=state.subject_id,
+            cycle_id=cycle.cycle_id,
+            cycle_digest=cycle.content_digest,
+            decision=decision,
+            review=review,
+            review_event=review_event,
+            assessment=assessment,
+            prior_state_digest=state.content_digest,
+            resulting_state_digest=new_state.content_digest,
+            evaluation_digest=evaluation.content_digest,
+            transition_digest=transition.content_digest,
+            release_digest=release.content_digest,
+            release_event_digest=canonical_digest(release_event),
+            resolved_at=resolved_at,
+        )
+        return AutomaticReviewResolutionResult(
+            state=new_state,
+            resolution=resolution,
             release_event=release_event,
         )
 
@@ -856,26 +1037,33 @@ class AutomaticAdaptationRuntime:
         *,
         state: AutomaticRuntimeState,
         processed_at: datetime,
+        review: Approval | None = None,
+        review_event: GovernanceEvent | None = None,
     ) -> RuntimeLearningTransition:
         sequence = state.generation + 1
-        review = Approval(
-            decision=ApprovalDecision.APPROVED,
-            approver=self._user_actor,
-            decided_at=processed_at,
-            policy_version=self._policy.policy_version,
-            rationale=(
-                "Explicit feedback auto-promoted under the signed standing automation policy."
-            ),
-        )
-        review_event = self._governance_event(
-            event_id=f"runtime-review-event-{detection.candidate_id}",
-            event_type=GovernanceEventType.REVIEW_DECISION,
-            target_ref=f"runtime-evaluation:{evaluation.receipt_id}",
-            target_digest=evaluation.content_digest,
-            decision="approved",
-            reason="Approve the exact low-risk evaluation under the standing policy.",
-            occurred_at=processed_at,
-        )
+        if (review is None) != (review_event is None):
+            raise AutomaticRuntimeError(
+                "runtime transition review inputs must be supplied together"
+            )
+        if review is None or review_event is None:
+            review = Approval(
+                decision=ApprovalDecision.APPROVED,
+                approver=self._user_actor,
+                decided_at=processed_at,
+                policy_version=self._policy.policy_version,
+                rationale=(
+                    "Explicit feedback auto-promoted under the signed standing automation policy."
+                ),
+            )
+            review_event = self._governance_event(
+                event_id=f"runtime-review-event-{detection.candidate_id}",
+                event_type=GovernanceEventType.REVIEW_DECISION,
+                target_ref=f"runtime-evaluation:{evaluation.receipt_id}",
+                target_digest=evaluation.content_digest,
+                decision="approved",
+                reason="Approve the exact low-risk evaluation under the standing policy.",
+                occurred_at=processed_at,
+            )
         instruction = None
         affected_id = detection.affected_artifact_id
         supersedes: tuple[str, ...] = ()

@@ -17,7 +17,9 @@ policy, low-risk user feedback can be encrypted, turned into an evaluation candi
 promoted through addition/correction/supersession/revocation, compiled, scoped, delivered once to
 Codex, measured, notified, and undone by exact revocation. Untrusted content is rejected before
 capture; secrets are blocked; ambiguous or capability-changing proposals remain inactive in a
-durable raw-free review queue. The host loop persists signed actions and recovers interrupted
+durable raw-message-free review queue. Owners can inspect the normalized behavior, route, and
+scope, then append an exact signed approval or rejection without rewriting the source cycle. The
+host loop persists signed actions and recovers interrupted
 idempotent delivery without learning twice. Pickup and user controls are now concrete but
 explicitly invoked; there is still no background watcher or persistent product conversation, so
 this should not yet be described as an ambient memory service. Natural feedback now uses a

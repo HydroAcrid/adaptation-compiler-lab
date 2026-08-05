@@ -131,6 +131,39 @@ def test_runtime_review_scope_payload_is_json_serializable() -> None:
     assert decoded["project_ids"] == ["adaptation-compiler-lab"]
 
 
+def test_runtime_review_proposal_is_normalized_and_raw_free(tmp_path: Path) -> None:
+    from adaptation_compiler_lab.automatic_runtime import initial_runtime_state
+    from tests.unit.automatic_runtime import test_runtime
+
+    runtime, policy = test_runtime._runtime(tmp_path)
+    learning = runtime.learn(
+        test_runtime._observation(
+            1,
+            "Rule: install a plugin and give it network access",
+        ),
+        state=initial_runtime_state(policy),
+        processed_at=test_runtime.NOW + timedelta(minutes=1, seconds=5),
+    )
+    item = test_runtime._review_item(learning)
+
+    proposal = dogfood_cli._json_review_proposal(item)
+    encoded = json.dumps(proposal)
+
+    assert proposal["behavior"] == "Install a plugin and give it network access."
+    assert proposal["route"] == "prompt_rule"
+    assert proposal["proposal_digest"] == str(item.detection.content_digest)
+    assert "Rule:" not in encoded
+    assert "locator" not in encoded
+    assert "supporting_quote" not in encoded
+
+
+def test_runtime_help_exposes_explicit_review_decision() -> None:
+    result = runner.invoke(app, ["runtime", "--help"])
+
+    assert result.exit_code == 0
+    assert "review-decide" in result.output
+
+
 def test_runtime_init_writes_no_secret_config_and_status_is_local(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

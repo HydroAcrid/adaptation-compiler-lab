@@ -16,12 +16,13 @@ from adaptation_compiler_lab.automatic_runtime import (
     build_codex_dogfood_gate_report,
     initial_runtime_state,
 )
-from adaptation_compiler_lab.domain import TaskRecordRef
+from adaptation_compiler_lab.domain import ApprovalDecision, TaskRecordRef
 from adaptation_compiler_lab.targets.base import sha256_text
 from tests.unit.automatic_runtime.test_runtime import (
     NOW,
     _context,
     _observation,
+    _review_item,
     _runtime,
 )
 
@@ -122,3 +123,42 @@ def test_gate_report_rejects_assessment_for_another_cycle(tmp_path: Path) -> Non
             activation_feedback=(),
             generated_at=NOW + timedelta(minutes=2, seconds=2),
         )
+
+
+def test_gate_report_counts_owner_approved_review_as_promoted_and_resolved(
+    tmp_path: Path,
+) -> None:
+    runtime, policy = _runtime(tmp_path)
+    initial = initial_runtime_state(policy)
+    learning = runtime.learn(
+        _observation(1, "Rule: install a plugin and give it network access"),
+        state=initial,
+        processed_at=NOW + timedelta(minutes=1, seconds=5),
+    )
+    resolution = runtime.resolve_review(
+        _review_item(learning),
+        learning.cycle,
+        state=initial,
+        decision=ApprovalDecision.APPROVED,
+        resolved_at=NOW + timedelta(minutes=2),
+    ).resolution
+
+    report = build_codex_dogfood_gate_report(
+        subject_id="kevin",
+        learning_cycles=(learning.cycle,),
+        learning_assessments=(resolution.assessment,),
+        learning_review_resolutions=(resolution,),
+        activations=(),
+        acknowledgements=(),
+        activation_feedback=(),
+        generated_at=NOW + timedelta(minutes=3),
+    )
+
+    assert report.review_required_count == 1
+    assert report.resolved_review_count == 1
+    assert report.approved_review_count == 1
+    assert report.rejected_review_count == 0
+    assert report.unresolved_review_count == 0
+    assert report.promoted_count == 1
+    assert report.manual_review_touches == 1
+    assert report.update_latency_seconds == (60.0,)

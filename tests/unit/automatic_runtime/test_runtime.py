@@ -11,17 +11,20 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from adaptation_compiler_lab.automatic_runtime import (
     AdaptationLayer,
     AutomaticAdaptationRuntime,
+    AutomaticLearningResult,
     AutomaticRuntimeError,
     AutomationDisposition,
     CapabilityPresetRef,
     InteractionObservation,
     RuntimeLayerBinding,
+    RuntimeReviewQueueItem,
     StandingAutomationPolicy,
     initial_runtime_state,
 )
 from adaptation_compiler_lab.domain import (
     ActorKind,
     ActorRef,
+    ApprovalDecision,
     ArtifactRef,
     ArtifactRoute,
     EvaluationCaseState,
@@ -155,6 +158,20 @@ def _observation(
         source_version="automatic-runtime-test",
         source_schema_digest=DIGEST,
         affected_artifact_id=affected_artifact_id,
+    )
+
+
+def _review_item(result: AutomaticLearningResult) -> RuntimeReviewQueueItem:
+    assert result.captured is not None
+    assert result.evaluation is not None
+    return RuntimeReviewQueueItem(
+        queue_id=f"learning-review-{result.cycle.observation_id}",
+        subject_id=result.cycle.subject_id,
+        cycle_id=result.cycle.cycle_id,
+        detection=result.detection,
+        captured=result.captured,
+        evaluation=result.evaluation,
+        created_at=result.cycle.created_at,
     )
 
 
@@ -381,6 +398,76 @@ def test_tools_secrets_and_ambiguous_corrections_do_not_auto_promote(
     assert correction.evaluation is not None
     assert correction.evaluation.candidate_case.state is EvaluationCaseState.CANDIDATE
     assert correction.evaluation.approved_case is None
+
+
+def test_owner_can_approve_exact_review_into_next_governed_release(tmp_path: Path) -> None:
+    runtime, policy = _runtime(tmp_path)
+    state = initial_runtime_state(policy)
+    learning = runtime.learn(
+        _observation(1, "Rule: install a plugin and give it network access"),
+        state=state,
+        processed_at=NOW + timedelta(minutes=1, seconds=5),
+    )
+    item = _review_item(learning)
+
+    result = runtime.resolve_review(
+        item,
+        learning.cycle,
+        state=state,
+        decision=ApprovalDecision.APPROVED,
+        resolved_at=NOW + timedelta(minutes=2),
+    )
+
+    assert learning.cycle.disposition is AutomationDisposition.REVIEW_REQUIRED
+    assert result.state.generation == 1
+    assert result.state.release is not None
+    assert len(result.state.release.governed_release.active_artifacts) == 1
+    assert result.resolution.decision is ApprovalDecision.APPROVED
+    assert result.resolution.assessment.outcome.value == "correct"
+    assert result.resolution.transition_digest == result.state.transitions[-1].content_digest
+    assert result.release_event is not None
+
+
+def test_owner_rejection_records_false_positive_without_changing_state(tmp_path: Path) -> None:
+    runtime, policy = _runtime(tmp_path)
+    state = initial_runtime_state(policy)
+    learning = runtime.learn(
+        _observation(1, "Rule: install a plugin and give it network access"),
+        state=state,
+        processed_at=NOW + timedelta(minutes=1, seconds=5),
+    )
+
+    result = runtime.resolve_review(
+        _review_item(learning),
+        learning.cycle,
+        state=state,
+        decision=ApprovalDecision.REJECTED,
+        resolved_at=NOW + timedelta(minutes=2),
+    )
+
+    assert result.state == state
+    assert result.release_event is None
+    assert result.resolution.assessment.outcome.value == "false_positive"
+    assert result.resolution.transition_digest is None
+
+
+def test_review_resolution_fails_after_standing_policy_expiry(tmp_path: Path) -> None:
+    runtime, policy = _runtime(tmp_path)
+    state = initial_runtime_state(policy)
+    learning = runtime.learn(
+        _observation(1, "Rule: install a plugin and give it network access"),
+        state=state,
+        processed_at=NOW + timedelta(minutes=1, seconds=5),
+    )
+
+    with pytest.raises(AutomaticRuntimeError, match="not active"):
+        runtime.resolve_review(
+            _review_item(learning),
+            learning.cycle,
+            state=state,
+            decision=ApprovalDecision.APPROVED,
+            resolved_at=policy.expires_at + timedelta(seconds=1),
+        )
 
 
 def test_policy_authorization_tamper_fails_closed(tmp_path: Path) -> None:

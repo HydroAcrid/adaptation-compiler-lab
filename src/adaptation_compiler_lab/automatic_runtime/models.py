@@ -16,6 +16,7 @@ from adaptation_compiler_lab.domain import (
     ActorKind,
     ActorRef,
     Approval,
+    ApprovalDecision,
     ArtifactRef,
     ArtifactRoute,
     CaptureReceiptRef,
@@ -1073,6 +1074,81 @@ class RuntimeLearningAssessment(FrozenModel):
     cycle_digest: Sha256Digest
     outcome: RuntimeLearningAssessmentOutcome
     recorded_at: UtcDateTime
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class RuntimeLearningReviewResolution(FrozenModel):
+    """Signed append-only owner decision for one exact inactive learning proposal."""
+
+    resolution_version: Literal["1.0.0"] = "1.0.0"
+    resolution_id: Identifier
+    queue_id: Identifier
+    queue_digest: Sha256Digest
+    subject_id: Identifier
+    cycle_id: Identifier
+    cycle_digest: Sha256Digest
+    decision: ApprovalDecision
+    review: Approval
+    review_event: GovernanceEvent
+    assessment: RuntimeLearningAssessment
+    prior_state_digest: Sha256Digest
+    resulting_state_digest: Sha256Digest
+    evaluation_digest: Sha256Digest | None = None
+    transition_digest: Sha256Digest | None = None
+    release_digest: Sha256Digest | None = None
+    release_event_digest: Sha256Digest | None = None
+    resolved_at: UtcDateTime
+
+    @model_validator(mode="after")
+    def decision_is_exact_and_append_only(self) -> Self:
+        if (
+            self.review.decision is not self.decision
+            or self.review.approver.kind is not ActorKind.USER
+            or self.review.approver.actor_id != self.subject_id
+            or self.review.decided_at != self.resolved_at
+        ):
+            raise ValueError("runtime review resolution requires the exact subject decision")
+        if (
+            self.review_event.event_type is not GovernanceEventType.REVIEW_DECISION
+            or self.review_event.subject_id != self.subject_id
+            or self.review_event.decision != self.decision.value
+            or self.review_event.occurred_at != self.resolved_at
+        ):
+            raise ValueError("runtime review resolution event does not match its decision")
+        if (
+            self.assessment.subject_id != self.subject_id
+            or self.assessment.cycle_id != self.cycle_id
+            or self.assessment.cycle_digest != self.cycle_digest
+            or self.assessment.recorded_at != self.resolved_at
+        ):
+            raise ValueError("runtime review resolution assessment lost its cycle binding")
+        outputs = (
+            self.evaluation_digest,
+            self.transition_digest,
+            self.release_digest,
+            self.release_event_digest,
+        )
+        if self.decision is ApprovalDecision.APPROVED:
+            if (
+                self.assessment.outcome is not RuntimeLearningAssessmentOutcome.CORRECT
+                or self.prior_state_digest == self.resulting_state_digest
+                or any(item is None for item in outputs)
+                or not self.review_event.target_ref.startswith("runtime-evaluation:")
+                or self.review_event.target_digest != self.evaluation_digest
+            ):
+                raise ValueError("approved runtime review must bind every promoted output")
+        elif (
+            self.assessment.outcome is not RuntimeLearningAssessmentOutcome.FALSE_POSITIVE
+            or self.prior_state_digest != self.resulting_state_digest
+            or any(item is not None for item in outputs)
+            or self.review_event.target_ref != f"runtime-review-queue:{self.queue_id}"
+            or self.review_event.target_digest != self.queue_digest
+        ):
+            raise ValueError("rejected runtime review must preserve state and bind its queue item")
+        return self
 
     @property
     def content_digest(self) -> Sha256Digest:

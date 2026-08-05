@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: 2026-07-30
+Last updated: 2026-08-04
 
 ## Current milestone
 
@@ -26,6 +26,19 @@ fresh one-turn execution, status, review, notices, exact undo, and helped/hurt/i
 The target fails closed on model, approval, network, workspace, writable-root, or external
 instruction-source substitution. It still does not watch Codex in the background or maintain a
 persistent multi-turn product session.
+
+The first genuine post-cutoff semantic pickup is now durably checkpointed. It produced one
+inactive project-scoped preference proposal and zero active artifacts. The interrupted first
+handoff exposed and repaired typed-scope JSON serialization and poll-time-dependent observation
+digests; exact replay appended no duplicate and advanced the source checkpoint once.
+
+Migration 0010 and `runtime review-decide` close the local review loop without weakening the raw
+boundary. `runtime review` shows the normalized proposal, route, scope, and exact digest while raw
+support remains encrypted. Approval or rejection appends one signed immutable resolution and
+correct/false-positive assessment. Approval rechecks current governance and compiler invariants,
+advances one release generation, and still requires a later explicit target activation; rejection
+leaves state unchanged. The genuine proposal remains unresolved and inactive pending owner
+confirmation of its normalized meaning.
 
 Configuration v1.1 separates source-CWD aliases, the canonical target root, and optional distinct
 source/target Codex endpoints. The active topology runs native Windows Codex with saved ChatGPT
@@ -92,7 +105,7 @@ evaluated.
 - Added separate append-only learning-cycle, activation, target-acknowledgement, source-checkpoint,
   and activation-feedback records in migration 0008; completed source work never receives a
   retroactive delivery claim.
-- Added local `runtime init|poll|run|status|review|notices|undo|feedback` controls and live
+- Added local `runtime init|poll|run|status|review|review-decide|notices|undo|feedback` controls and live
   read-only Linux/Windows connection smokes with zero model/provider-billed calls.
 - Added automatic-runtime and updated governance schema snapshots plus unit, security-property,
   migration, scope, revocation, secret, tool, preset, signature-tamper, and persistence tests.

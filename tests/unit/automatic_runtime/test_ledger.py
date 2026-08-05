@@ -20,13 +20,19 @@ from adaptation_compiler_lab.automatic_runtime import (
     initial_runtime_state,
     summarize_runtime,
 )
-from adaptation_compiler_lab.domain import TaskRecordRef
+from adaptation_compiler_lab.domain import ApprovalDecision, TaskRecordRef
 from adaptation_compiler_lab.governance import GovernanceEvent
-from adaptation_compiler_lab.persistence.errors import HistoryConflictError
+from adaptation_compiler_lab.persistence.errors import HistoryConflictError, RecordConflictError
 from adaptation_compiler_lab.persistence.sqlite import SqliteUnitOfWorkFactory
 from adaptation_compiler_lab.serialization import canonical_digest
 from adaptation_compiler_lab.targets.base import sha256_text
-from tests.unit.automatic_runtime.test_runtime import NOW, _context, _observation, _runtime
+from tests.unit.automatic_runtime.test_runtime import (
+    NOW,
+    _context,
+    _observation,
+    _review_item,
+    _runtime,
+)
 
 
 def _events(result: AutomaticRuntimeResult) -> tuple[GovernanceEvent, ...]:
@@ -37,7 +43,7 @@ def _events(result: AutomaticRuntimeResult) -> tuple[GovernanceEvent, ...]:
 
 def test_runtime_ledger_is_append_only_and_idempotent(tmp_path: Path) -> None:
     path = tmp_path / "ledger.sqlite3"
-    assert SqliteUnitOfWorkFactory(path).initialize() == 9
+    assert SqliteUnitOfWorkFactory(path).initialize() == 10
     runtime, policy = _runtime(tmp_path)
     initial = initial_runtime_state(policy)
     result = runtime.process(
@@ -211,6 +217,125 @@ def test_learning_checkpoint_activation_acknowledgement_and_feedback_are_separat
         ledger.add_feedback(changed_activation)
     assert ledger.add_feedback(feedback)
     assert feedback in ledger.feedback()
+
+
+def test_learning_review_resolution_is_atomic_append_only_and_idempotent(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "ledger.sqlite3"
+    SqliteUnitOfWorkFactory(path).initialize()
+    runtime, policy = _runtime(tmp_path)
+    initial = initial_runtime_state(policy)
+    learning = runtime.learn(
+        _observation(1, "Rule: install a plugin and give it network access"),
+        state=initial,
+        processed_at=NOW + timedelta(minutes=1, seconds=5),
+    )
+    item = _review_item(learning)
+    ledger = AutomaticRuntimeLedger(path, subject_id="kevin")
+    ledger.initialize(initial)
+    ledger.append_learning(learning.cycle, initial, review_item=item)
+    approved = runtime.resolve_review(
+        item,
+        learning.cycle,
+        state=initial,
+        decision=ApprovalDecision.APPROVED,
+        resolved_at=NOW + timedelta(minutes=2),
+    )
+
+    assert ledger.append_learning_review_resolution(
+        approved.resolution,
+        approved.state,
+        release_event=approved.release_event,
+    )
+    assert not ledger.append_learning_review_resolution(
+        approved.resolution,
+        approved.state,
+        release_event=approved.release_event,
+    )
+    assert ledger.learning_review_resolutions() == (approved.resolution,)
+    assert ledger.learning_review_resolution(item.queue_id) == approved.resolution
+    assert ledger.unresolved_learning_review_items() == ()
+    assert ledger.learning_assessments() == (approved.resolution.assessment,)
+    assert ledger.current() == approved.state
+
+    rejected = runtime.resolve_review(
+        item,
+        learning.cycle,
+        state=initial,
+        decision=ApprovalDecision.REJECTED,
+        resolved_at=NOW + timedelta(minutes=3),
+    )
+    with pytest.raises(RecordConflictError, match="another immutable resolution"):
+        ledger.append_learning_review_resolution(rejected.resolution, rejected.state)
+
+
+def test_learning_review_resolution_rejects_a_tampered_signature(tmp_path: Path) -> None:
+    path = tmp_path / "ledger.sqlite3"
+    SqliteUnitOfWorkFactory(path).initialize()
+    runtime, policy = _runtime(tmp_path)
+    initial = initial_runtime_state(policy)
+    learning = runtime.learn(
+        _observation(1, "Rule: install a plugin and give it network access"),
+        state=initial,
+        processed_at=NOW + timedelta(minutes=1, seconds=5),
+    )
+    item = _review_item(learning)
+    ledger = AutomaticRuntimeLedger(path, subject_id="kevin")
+    ledger.initialize(initial)
+    ledger.append_learning(learning.cycle, initial, review_item=item)
+    approved = runtime.resolve_review(
+        item,
+        learning.cycle,
+        state=initial,
+        decision=ApprovalDecision.APPROVED,
+        resolved_at=NOW + timedelta(minutes=2),
+    )
+    tampered_event = approved.resolution.review_event.model_copy(
+        update={"reason": "Tampered after signature."}
+    )
+    tampered = approved.resolution.model_copy(update={"review_event": tampered_event})
+
+    with pytest.raises(ValueError, match="signature is invalid"):
+        ledger.append_learning_review_resolution(
+            tampered,
+            approved.state,
+            release_event=approved.release_event,
+        )
+    assert ledger.learning_review_resolutions() == ()
+    assert ledger.current() == initial
+
+
+def test_rejected_learning_review_remains_in_history_but_not_unresolved(tmp_path: Path) -> None:
+    path = tmp_path / "ledger.sqlite3"
+    SqliteUnitOfWorkFactory(path).initialize()
+    runtime, policy = _runtime(tmp_path)
+    initial = initial_runtime_state(policy)
+    learning = runtime.learn(
+        _observation(1, "Rule: install a plugin and give it network access"),
+        state=initial,
+        processed_at=NOW + timedelta(minutes=1, seconds=5),
+    )
+    item = _review_item(learning)
+    ledger = AutomaticRuntimeLedger(path, subject_id="kevin")
+    ledger.initialize(initial)
+    ledger.append_learning(learning.cycle, initial, review_item=item)
+    rejected = runtime.resolve_review(
+        item,
+        learning.cycle,
+        state=initial,
+        decision=ApprovalDecision.REJECTED,
+        resolved_at=NOW + timedelta(minutes=2),
+    )
+
+    ledger.append_learning_review_resolution(rejected.resolution, rejected.state)
+
+    assert ledger.learning_review_items() == (item,)
+    assert ledger.unresolved_learning_review_items() == ()
+    assert ledger.current() == initial
+    assert (
+        ledger.learning_assessments()[0].outcome is RuntimeLearningAssessmentOutcome.FALSE_POSITIVE
+    )
 
 
 def test_runtime_ledger_rejects_a_tampered_signed_action(tmp_path: Path) -> None:
