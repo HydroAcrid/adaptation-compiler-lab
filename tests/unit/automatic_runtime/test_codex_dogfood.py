@@ -16,6 +16,7 @@ from adaptation_compiler_lab.automatic_runtime.codex_dogfood import (
     CodexProjectScope,
     require_chatgpt_account,
 )
+from adaptation_compiler_lab.automatic_runtime.codex_gateway import CodexGatewayConversation
 from adaptation_compiler_lab.automatic_runtime.codex_host import CodexDogfoodHost
 from adaptation_compiler_lab.automatic_runtime.ledger import AutomaticRuntimeLedger
 from adaptation_compiler_lab.automatic_runtime.models import (
@@ -201,6 +202,49 @@ class FakeLaunchRpc:
     def next_notification(self, *, timeout_seconds: float | None = None) -> JsonObject:
         assert timeout_seconds is not None and timeout_seconds > 0
         return self.notifications.pop(0)
+
+
+def test_gateway_conversation_requires_writable_network_denied_sandbox(tmp_path: Path) -> None:
+    rpc = FakeLaunchRpc(tmp_path)
+    conversation = CodexGatewayConversation(
+        rpc,
+        schemas=CodexDogfoodSchemaSet(),
+        workspace=tmp_path,
+    )
+
+    conversation.start()
+    result = conversation.turn("Do the bounded edit.", client_message_id="message-1")
+
+    assert result.status == "completed"
+    assert result.final_message == "Completed the adapted task."
+    thread_params = next(params for method, params in rpc.calls if method == "thread/start")
+    assert thread_params["ephemeral"] is True
+    assert thread_params["dynamicTools"] == []
+    assert thread_params["selectedCapabilityRoots"] == []
+    assert thread_params["sandbox"] == "workspace-write"
+
+
+def test_gateway_conversation_refuses_read_only_downgrade(tmp_path: Path) -> None:
+    class ReadOnlyRpc(FakeLaunchRpc):
+        def request(self, method: str, params: JsonObject) -> JsonObject:
+            response = super().request(method, params)
+            if method == "thread/start":
+                response["runtimeWorkspaceRoots"] = []
+                response["sandbox"] = {
+                    "type": "readOnly",
+                    "networkAccess": False,
+                    "writableRoots": [],
+                }
+            return response
+
+    conversation = CodexGatewayConversation(
+        ReadOnlyRpc(tmp_path),
+        schemas=CodexDogfoodSchemaSet(),
+        workspace=tmp_path,
+    )
+
+    with pytest.raises(CodexProtocolError, match="workspace-write"):
+        conversation.start()
 
 
 @dataclass

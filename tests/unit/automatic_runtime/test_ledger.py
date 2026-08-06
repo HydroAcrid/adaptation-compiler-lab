@@ -43,7 +43,7 @@ def _events(result: AutomaticRuntimeResult) -> tuple[GovernanceEvent, ...]:
 
 def test_runtime_ledger_is_append_only_and_idempotent(tmp_path: Path) -> None:
     path = tmp_path / "ledger.sqlite3"
-    assert SqliteUnitOfWorkFactory(path).initialize() == 10
+    assert SqliteUnitOfWorkFactory(path).initialize() == 11
     runtime, policy = _runtime(tmp_path)
     initial = initial_runtime_state(policy)
     result = runtime.process(

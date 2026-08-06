@@ -1,0 +1,89 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "applied_count": {
+      "minimum": 0,
+      "title": "Applied Count",
+      "type": "integer"
+    },
+    "captured_bundle_count": {
+      "minimum": 0,
+      "title": "Captured Bundle Count",
+      "type": "integer"
+    },
+    "discarded_count": {
+      "minimum": 0,
+      "title": "Discarded Count",
+      "type": "integer"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "instrument_version": {
+      "const": "6A.2D-v1",
+      "default": "6A.2D-v1",
+      "title": "Instrument Version",
+      "type": "string"
+    },
+    "notification_count": {
+      "minimum": 0,
+      "title": "Notification Count",
+      "type": "integer"
+    },
+    "refused_count": {
+      "minimum": 0,
+      "title": "Refused Count",
+      "type": "integer"
+    },
+    "rolled_back_count": {
+      "minimum": 0,
+      "title": "Rolled Back Count",
+      "type": "integer"
+    },
+    "session_count": {
+      "minimum": 0,
+      "title": "Session Count",
+      "type": "integer"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    },
+    "total_projection_utf8_bytes": {
+      "minimum": 0,
+      "title": "Total Projection Utf8 Bytes",
+      "type": "integer"
+    },
+    "turn_count": {
+      "minimum": 0,
+      "title": "Turn Count",
+      "type": "integer"
+    },
+    "watcher_heartbeat_count": {
+      "minimum": 0,
+      "title": "Watcher Heartbeat Count",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "subject_id",
+    "session_count",
+    "turn_count",
+    "notification_count",
+    "watcher_heartbeat_count",
+    "captured_bundle_count",
+    "applied_count",
+    "rolled_back_count",
+    "discarded_count",
+    "refused_count",
+    "total_projection_utf8_bytes",
+    "generated_at"
+  ],
+  "title": "GatewayInstrumentMetrics",
+  "type": "object"
+}

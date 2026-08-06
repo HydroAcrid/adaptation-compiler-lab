@@ -2,18 +2,23 @@
 
 from __future__ import annotations
 
+import base64
+import difflib
 import os
 import shutil
+import subprocess
 import tempfile
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
+from itertools import chain
 from pathlib import Path
-from typing import Annotated, cast
+from time import monotonic
+from typing import Annotated, Literal, NoReturn, cast
 
 import typer
-from pydantic import field_validator, model_validator
+from pydantic import TypeAdapter, field_validator, model_validator
 
 from adaptation_compiler_lab.automatic_runtime.codex_dogfood import (
     CodexDogfoodInteractionSource,
@@ -21,9 +26,26 @@ from adaptation_compiler_lab.automatic_runtime.codex_dogfood import (
     CodexProjectScope,
     open_codex_dogfood,
 )
-from adaptation_compiler_lab.automatic_runtime.codex_host import CodexDogfoodHost
+from adaptation_compiler_lab.automatic_runtime.codex_gateway import CodexGatewayConversation
+from adaptation_compiler_lab.automatic_runtime.codex_host import (
+    CodexDogfoodHost,
+    CodexDogfoodPickupReceipt,
+)
+from adaptation_compiler_lab.automatic_runtime.credentials import (
+    CredentialStoreError,
+    DpapiCredentialStore,
+    RuntimeSecrets,
+)
 from adaptation_compiler_lab.automatic_runtime.gate import (
     build_codex_dogfood_gate_report,
+)
+from adaptation_compiler_lab.automatic_runtime.gateway_ledger import GatewayLedger
+from adaptation_compiler_lab.automatic_runtime.gateway_models import (
+    GatewaySession,
+    GatewaySessionStatus,
+    GatewayTurnReceipt,
+    VerificationCommandSpec,
+    VerificationReceipt,
 )
 from adaptation_compiler_lab.automatic_runtime.host import (
     RuntimeNoticeSink,
@@ -39,6 +61,7 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     RuntimeLearningAssessmentOutcome,
     RuntimeNotice,
     RuntimeReviewQueueItem,
+    RuntimeTargetDeliveryAcknowledgement,
     StandingAutomationPolicy,
 )
 from adaptation_compiler_lab.automatic_runtime.semantic_evaluation import (
@@ -55,6 +78,21 @@ from adaptation_compiler_lab.automatic_runtime.service import (
     AutomaticAdaptationRuntime,
     AutomaticRuntimeError,
     initial_runtime_state,
+)
+from adaptation_compiler_lab.automatic_runtime.watcher import (
+    AutomaticRuntimeWatcher,
+    DurableNotificationSink,
+    FileWatcherLease,
+    WindowsTaskScheduler,
+    WindowsToastPublisher,
+)
+from adaptation_compiler_lab.automatic_runtime.workspace_gateway import (
+    CapturedChangeBundle,
+    EncryptedChangeBundleStore,
+    GitWorktreeProvider,
+    IndependentVerifier,
+    RecoverableChangeApplier,
+    require_protected_paths_unchanged,
 )
 from adaptation_compiler_lab.connectors.pins import (
     DEFAULT_DOGFOOD_RUNTIME_LOCK,
@@ -83,6 +121,7 @@ from adaptation_compiler_lab.governance import (
 from adaptation_compiler_lab.governance.signing import (
     GovernanceSigner,
     create_signer_identity,
+    load_private_key,
     load_private_key_from_environment,
     sign_governance_event,
 )
@@ -92,7 +131,7 @@ from adaptation_compiler_lab.persistence.raw import (
 )
 from adaptation_compiler_lab.persistence.sqlite import SqliteUnitOfWorkFactory
 from adaptation_compiler_lab.runtime import RuntimeProjectionContext
-from adaptation_compiler_lab.serialization import canonical_json
+from adaptation_compiler_lab.serialization import canonical_digest, canonical_json
 from adaptation_compiler_lab.targets.base import sha256_text
 from adaptation_compiler_lab.targets.models import ScopeDimension
 
@@ -101,6 +140,16 @@ dogfood_app = typer.Typer(
     no_args_is_help=True,
     pretty_exceptions_enable=False,
 )
+credentials_app = typer.Typer(help="Enroll or revoke same-user unattended runtime unlock.")
+watcher_app = typer.Typer(help="Operate the restart-safe local Codex feedback watcher.")
+inbox_app = typer.Typer(help="Inspect raw-free durable runtime notifications.")
+session_app = typer.Typer(help="Run governed Codex sessions in disposable writable workspaces.")
+changes_app = typer.Typer(help="Inspect, apply, or discard encrypted session change bundles.")
+dogfood_app.add_typer(credentials_app, name="credentials")
+dogfood_app.add_typer(watcher_app, name="watcher")
+dogfood_app.add_typer(inbox_app, name="inbox")
+dogfood_app.add_typer(session_app, name="session")
+dogfood_app.add_typer(changes_app, name="changes")
 
 ConfigOption = Annotated[
     Path,
@@ -121,6 +170,8 @@ class CodexDogfoodProjectConfig(FrozenModel):
     root: Path
     scope: Scope
     source_roots: tuple[Path, ...] = ()
+    verification_commands: tuple[VerificationCommandSpec, ...] = ()
+    protected_verification_paths: tuple[str, ...] = ("pyproject.toml", "tests", "uv.lock")
 
     @field_validator("source_roots")
     @classmethod
@@ -129,6 +180,21 @@ class CodexDogfoodProjectConfig(FrozenModel):
         if rendered != tuple(sorted(set(rendered))):
             raise ValueError("dogfood source roots must be sorted and unique")
         return value
+
+    @field_validator("protected_verification_paths")
+    @classmethod
+    def protected_paths_are_safe(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized = tuple(item.replace("\\", "/").rstrip("/") for item in value)
+        if normalized != tuple(sorted(set(normalized))):
+            raise ValueError("protected verification paths must be sorted and unique")
+        if any(
+            not item
+            or item.startswith("/")
+            or any(part in {"", ".", ".."} for part in item.split("/"))
+            for item in normalized
+        ):
+            raise ValueError("protected verification paths must be safe relative paths")
+        return normalized
 
     @model_validator(mode="after")
     def project_scope_is_exact(self) -> CodexDogfoodProjectConfig:
@@ -144,7 +210,7 @@ class CodexDogfoodProjectConfig(FrozenModel):
 class CodexDogfoodLocalConfig(FrozenModel):
     """No-secret local configuration; keys remain external environment dependencies."""
 
-    config_version: str = "1.2.0"
+    config_version: str = "1.3.0"
     subject_id: Identifier
     repository_root: Path
     state_root: Path
@@ -167,6 +233,16 @@ class CodexDogfoodLocalConfig(FrozenModel):
     semantic_model: str = "gpt-5.6-luna"
     semantic_reasoning_effort: str = "medium"
     semantic_promotion_evaluation_digest: Sha256Digest | None = None
+    gateway_workspace_root: Path | None = None
+    wsl_distribution: str = "Ubuntu"
+    watcher_idle_seconds: int = 60
+    watcher_maximum_backoff_seconds: int = 900
+    notification_mode: Literal["inbox", "toast_and_inbox"] = "toast_and_inbox"
+    gateway_model: str = "gpt-5.6-luna"
+    gateway_reasoning_effort: str = "medium"
+    gateway_maximum_turns: int = 15
+    gateway_maximum_session_seconds: int = 3_600
+    gateway_maximum_turn_seconds: int = 600
 
     @field_validator("projects")
     @classmethod
@@ -180,7 +256,7 @@ class CodexDogfoodLocalConfig(FrozenModel):
 
     @model_validator(mode="after")
     def paths_and_subject_are_consistent(self) -> CodexDogfoodLocalConfig:
-        if self.config_version not in {"1.1.0", "1.2.0"}:
+        if self.config_version not in {"1.1.0", "1.2.0", "1.3.0"}:
             raise ValueError("unsupported dogfood config version")
         if self.config_version == "1.1.0" and (
             self.feedback_detector_mode is not FeedbackDetectorMode.GRAMMAR
@@ -194,6 +270,18 @@ class CodexDogfoodLocalConfig(FrozenModel):
             raise ValueError("calibrated semantic serving requires an evaluation digest")
         if not self.semantic_model.strip() or not self.semantic_reasoning_effort.strip():
             raise ValueError("semantic model and reasoning effort must not be empty")
+        if not self.wsl_distribution.strip() or not self.gateway_model.strip():
+            raise ValueError("gateway distribution and model must not be empty")
+        if not 1 <= self.watcher_idle_seconds <= 300:
+            raise ValueError("watcher idle cadence must be between 1 and 300 seconds")
+        if self.watcher_maximum_backoff_seconds < self.watcher_idle_seconds:
+            raise ValueError("watcher backoff must not be shorter than its idle cadence")
+        if not 1 <= self.gateway_maximum_turns <= 15:
+            raise ValueError("gateway maximum turns must be between 1 and 15")
+        if not 1 <= self.gateway_maximum_session_seconds <= 3_600:
+            raise ValueError("gateway session timeout must be between 1 and 3600 seconds")
+        if not 1 <= self.gateway_maximum_turn_seconds <= 600:
+            raise ValueError("gateway turn timeout must be between 1 and 600 seconds")
         if (
             self.policy.subject_id != self.subject_id
             or self.policy_authorization.subject_id != self.subject_id
@@ -217,6 +305,22 @@ class CodexDogfoodLocalConfig(FrozenModel):
                 "dogfood target endpoint must be completely specified or inherit the source"
             )
         return self
+
+    @property
+    def credential_binding_digest(self) -> Sha256Digest:
+        """Bind DPAPI enrollment to security-relevant configuration without self-reference."""
+
+        return canonical_digest(
+            {
+                "config_version": self.config_version,
+                "database_path": str(self.database_path),
+                "policy_digest": str(self.policy.content_digest),
+                "raw_store_path": str(self.raw_store_path),
+                "repository_root": str(self.repository_root),
+                "state_root": str(self.state_root),
+                "subject_id": self.subject_id,
+            }
+        )
 
     @property
     def effective_target_codex_home(self) -> Path:
@@ -317,7 +421,7 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
-def _fail(message: str) -> None:
+def _fail(message: str) -> NoReturn:
     typer.echo(message, err=True)
     raise typer.Exit(code=1)
 
@@ -370,10 +474,51 @@ def _ledger(config: CodexDogfoodLocalConfig) -> AutomaticRuntimeLedger:
     return AutomaticRuntimeLedger(config.database_path, subject_id=config.subject_id)
 
 
-def _runtime(config: CodexDogfoodLocalConfig) -> AutomaticAdaptationRuntime:
-    private_key = load_private_key_from_environment(
+def _gateway_ledger(config: CodexDogfoodLocalConfig) -> GatewayLedger:
+    SqliteUnitOfWorkFactory(config.database_path).initialize()
+    return GatewayLedger(config.database_path, subject_id=config.subject_id)
+
+
+def _runtime_secrets(config: CodexDogfoodLocalConfig) -> RuntimeSecrets:
+    store = DpapiCredentialStore(config.state_root)
+    if store.status() is None:
+        return RuntimeSecrets.from_environment()
+    return store.unlock(
+        subject_id=config.subject_id,
+        config_digest=config.credential_binding_digest,
+        signer_fingerprint=config.signer_identity.key_fingerprint,
+    )
+
+
+def _raw_store(config: CodexDogfoodLocalConfig) -> LocalRawPayloadStore:
+    secrets = _runtime_secrets(config)
+    key = RawEncryptionKey.from_file(
+        secrets.raw_key_file,
         workspace_root=config.repository_root,
     )
+    return LocalRawPayloadStore(config.raw_store_path, encryption_key=key)
+
+
+def _runtime(config: CodexDogfoodLocalConfig) -> AutomaticAdaptationRuntime:
+    credential_store = DpapiCredentialStore(config.state_root)
+    if credential_store.status() is None:
+        private_key = load_private_key_from_environment(workspace_root=config.repository_root)
+        raw_key = RawEncryptionKey.from_environment(workspace_root=config.repository_root)
+    else:
+        secrets = credential_store.unlock(
+            subject_id=config.subject_id,
+            config_digest=config.credential_binding_digest,
+            signer_fingerprint=config.signer_identity.key_fingerprint,
+        )
+        private_key = load_private_key(
+            secrets.signing_key_file,
+            passphrase=secrets.signing_key_passphrase,
+            workspace_root=config.repository_root,
+        )
+        raw_key = RawEncryptionKey.from_file(
+            secrets.raw_key_file,
+            workspace_root=config.repository_root,
+        )
     signer = GovernanceSigner(
         private_key,
         identity_id=config.signer_identity.identity_id,
@@ -381,7 +526,6 @@ def _runtime(config: CodexDogfoodLocalConfig) -> AutomaticAdaptationRuntime:
     )
     if signer.fingerprint != config.signer_identity.key_fingerprint:
         raise AutomaticRuntimeError("configured signing identity does not match the external key")
-    raw_key = RawEncryptionKey.from_environment(workspace_root=config.repository_root)
     return AutomaticAdaptationRuntime(
         policy=config.policy,
         policy_authorization=config.policy_authorization,
@@ -705,6 +849,65 @@ def initialize_codex_dogfood(
     typer.echo(str(config_path))
 
 
+def _execute_poll(
+    config: CodexDogfoodLocalConfig,
+    *,
+    limit: int,
+    review_sink: RuntimeReviewSink,
+    notice_sink: RuntimeNoticeSink,
+) -> CodexDogfoodPickupReceipt:
+    runtime = _runtime(config)
+    ledger = _ledger(config)
+    pins = load_dogfood_runtime_pins(config.runtime_pin_path)
+    with (
+        tempfile.TemporaryDirectory(
+            prefix="semantic-feedback-",
+            dir=config.state_root,
+        ) as semantic_workspace,
+        open_codex_dogfood(
+            executable=config.codex_executable,
+            codex_home=config.source_codex_home,
+            pin=pins.codex,
+            windows_interop=config.windows_interop,
+            experimental_api=(config.feedback_detector_mode is not FeedbackDetectorMode.GRAMMAR),
+        ) as (verified, schemas, rpc),
+    ):
+        source = CodexDogfoodInteractionSource(
+            rpc,
+            subject_id=config.subject_id,
+            source_version=verified.version,
+            source_schema_digest=verified.schema_bundle_digest,
+            schemas=schemas,
+            projects=tuple(
+                CodexProjectScope(root=root, scope=item.scope)
+                for item in config.projects
+                for root in item.effective_source_roots
+            ),
+            capture_after_epoch_seconds=config.capture_after_epoch_seconds,
+        )
+        return CodexDogfoodHost(
+            runtime=runtime,
+            initial_state=initial_runtime_state(config.policy),
+            ledger=ledger,
+            source=source,
+            review_sink=review_sink,
+            notice_sink=notice_sink,
+            detector_mode=config.feedback_detector_mode,
+            semantic_interpreter=(
+                None
+                if config.feedback_detector_mode is FeedbackDetectorMode.GRAMMAR
+                else CodexSemanticFeedbackInterpreter(
+                    rpc,
+                    schemas=schemas,
+                    runtime=verified,
+                    workspace_root=Path(semantic_workspace),
+                    model=config.semantic_model,
+                    reasoning_effort=config.semantic_reasoning_effort,
+                )
+            ),
+        ).run_once(limit=limit)
+
+
 @dogfood_app.command("poll")
 def poll_codex_feedback(
     config_path: ConfigOption,
@@ -714,58 +917,12 @@ def poll_codex_feedback(
 
     try:
         config = _load_config(config_path)
-        runtime = _runtime(config)
-        ledger = _ledger(config)
-        pins = load_dogfood_runtime_pins(config.runtime_pin_path)
-        with (
-            tempfile.TemporaryDirectory(
-                prefix="semantic-feedback-",
-                dir=config.state_root,
-            ) as semantic_workspace,
-            open_codex_dogfood(
-                executable=config.codex_executable,
-                codex_home=config.source_codex_home,
-                pin=pins.codex,
-                windows_interop=config.windows_interop,
-                experimental_api=(
-                    config.feedback_detector_mode is not FeedbackDetectorMode.GRAMMAR
-                ),
-            ) as (verified, schemas, rpc),
-        ):
-            source = CodexDogfoodInteractionSource(
-                rpc,
-                subject_id=config.subject_id,
-                source_version=verified.version,
-                source_schema_digest=verified.schema_bundle_digest,
-                schemas=schemas,
-                projects=tuple(
-                    CodexProjectScope(root=root, scope=item.scope)
-                    for item in config.projects
-                    for root in item.effective_source_roots
-                ),
-                capture_after_epoch_seconds=config.capture_after_epoch_seconds,
-            )
-            receipt = CodexDogfoodHost(
-                runtime=runtime,
-                initial_state=initial_runtime_state(config.policy),
-                ledger=ledger,
-                source=source,
-                review_sink=_ConsoleReviewSink(),
-                notice_sink=_ConsoleNoticeSink(),
-                detector_mode=config.feedback_detector_mode,
-                semantic_interpreter=(
-                    None
-                    if config.feedback_detector_mode is FeedbackDetectorMode.GRAMMAR
-                    else CodexSemanticFeedbackInterpreter(
-                        rpc,
-                        schemas=schemas,
-                        runtime=verified,
-                        workspace_root=Path(semantic_workspace),
-                        model=config.semantic_model,
-                        reasoning_effort=config.semantic_reasoning_effort,
-                    )
-                ),
-            ).run_once(limit=limit)
+        receipt = _execute_poll(
+            config,
+            limit=limit,
+            review_sink=_ConsoleReviewSink(),
+            notice_sink=_ConsoleNoticeSink(),
+        )
     except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
     typer.echo(canonical_json(asdict(receipt)))
@@ -1384,6 +1541,826 @@ def show_codex_dogfood_gate_report(config_path: ConfigOption) -> None:
             activation_feedback=ledger.feedback(),
             generated_at=_now(),
         )
-    except (OSError, ValueError) as error:
+    except (AutomaticRuntimeError, OSError, ValueError) as error:
         _fail(str(error))
     typer.echo(canonical_json(report))
+
+
+@dogfood_app.command("gateway-report")
+def show_gateway_instrument_report(config_path: ConfigOption) -> None:
+    """Report 6A.2D instrument metrics without rewriting the longitudinal gate."""
+
+    try:
+        config = _load_config(config_path)
+        metrics = _gateway_ledger(config).metrics(generated_at=_now())
+    except (OSError, ValueError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json(metrics))
+
+
+@dogfood_app.command("configure-gateway")
+def configure_gateway(
+    config_path: ConfigOption,
+    gateway_workspace_root: Annotated[
+        Path,
+        typer.Option("--gateway-workspace-root", file_okay=False, resolve_path=True),
+    ],
+    project_id: Annotated[str, typer.Option("--project-id")],
+    verification_specs: Annotated[
+        Path,
+        typer.Option(
+            "--verification-specs",
+            exists=True,
+            dir_okay=False,
+            resolve_path=True,
+            help="JSON array of bounded VerificationCommandSpec objects.",
+        ),
+    ],
+) -> None:
+    """Upgrade a v1.1/v1.2 config and explicitly enable the writable v1.3 gateway."""
+
+    try:
+        config = _load_config(config_path)
+        workspace_root = _outside_git(
+            gateway_workspace_root,
+            repository_root=config.repository_root,
+        )
+        specs = TypeAdapter(tuple[VerificationCommandSpec, ...]).validate_json(
+            verification_specs.read_text(encoding="utf-8"),
+            strict=True,
+        )
+        if not specs:
+            raise AutomaticRuntimeError("gateway requires at least one verification command")
+        found = False
+        projects: list[CodexDogfoodProjectConfig] = []
+        for project in config.projects:
+            if project.project_id == project_id:
+                project = project.model_copy(update={"verification_commands": specs})
+                found = True
+            projects.append(project)
+        if not found:
+            raise AutomaticRuntimeError("gateway project ID is not configured")
+        upgraded = config.model_copy(
+            update={
+                "config_version": "1.3.0",
+                "gateway_workspace_root": workspace_root,
+                "projects": tuple(projects),
+            }
+        )
+        validated = CodexDogfoodLocalConfig.model_validate(upgraded.model_dump(), strict=True)
+        _write_config(config_path, validated)
+    except (OSError, ValueError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json({"config_version": "1.3.0", "status": "configured"}))
+
+
+@credentials_app.command("enroll")
+def enroll_runtime_credentials(config_path: ConfigOption) -> None:
+    """Protect current external-key references for same-user unattended operation."""
+
+    try:
+        config = _load_config(config_path)
+        if config.config_version != "1.3.0":
+            raise CredentialStoreError("credential enrollment requires dogfood config v1.3")
+        secrets = RuntimeSecrets.from_environment()
+        # Validate every external dependency before protecting its locator and passphrase.
+        load_private_key(
+            secrets.signing_key_file,
+            passphrase=secrets.signing_key_passphrase,
+            workspace_root=config.repository_root,
+        )
+        RawEncryptionKey.from_file(secrets.raw_key_file, workspace_root=config.repository_root)
+        metadata = DpapiCredentialStore(config.state_root).enroll(
+            secrets,
+            subject_id=config.subject_id,
+            config_digest=config.credential_binding_digest,
+            signer_fingerprint=config.signer_identity.key_fingerprint,
+        )
+    except (OSError, ValueError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json(metadata))
+
+
+@credentials_app.command("status")
+def show_runtime_credential_status(config_path: ConfigOption) -> None:
+    """Show only non-secret enrollment metadata."""
+
+    try:
+        config = _load_config(config_path)
+        metadata = DpapiCredentialStore(config.state_root).status()
+    except (OSError, ValueError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json({"enrolled": metadata is not None, "metadata": metadata}))
+
+
+@credentials_app.command("revoke")
+def revoke_runtime_credentials(config_path: ConfigOption) -> None:
+    """Delete the recoverable local enrollment envelope."""
+
+    try:
+        config = _load_config(config_path)
+        removed = DpapiCredentialStore(config.state_root).revoke()
+    except (OSError, ValueError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json({"revoked": removed}))
+
+
+def _durable_notice_sink(config: CodexDogfoodLocalConfig) -> DurableNotificationSink:
+    toast = WindowsToastPublisher() if config.notification_mode == "toast_and_inbox" else None
+    return DurableNotificationSink(
+        _gateway_ledger(config),
+        subject_id=config.subject_id,
+        toast=toast,
+    )
+
+
+@watcher_app.command("run")
+def run_runtime_watcher(
+    config_path: ConfigOption,
+    maximum_polls: Annotated[
+        int | None,
+        typer.Option("--maximum-polls", min=1, help="Test-only bounded watcher run."),
+    ] = None,
+) -> None:
+    """Run the foreground watcher; use install for user-login startup."""
+
+    try:
+        config = _load_config(config_path)
+        if DpapiCredentialStore(config.state_root).status() is None:
+            raise CredentialStoreError("watcher requires explicit DPAPI credential enrollment")
+        watcher = AutomaticRuntimeWatcher(
+            poll=lambda: _execute_poll(
+                config,
+                limit=25,
+                review_sink=_ConsoleReviewSink(),
+                notice_sink=_durable_notice_sink(config),
+            ),
+            ledger=_gateway_ledger(config),
+            lease=FileWatcherLease(config.state_root, subject_id=config.subject_id),
+            state_root=config.state_root,
+            idle_seconds=config.watcher_idle_seconds,
+            maximum_backoff_seconds=config.watcher_maximum_backoff_seconds,
+        )
+        watcher.run(maximum_polls=maximum_polls)
+    except (OSError, ValueError, RuntimeConformanceError) as error:
+        _fail(str(error))
+
+
+def _watcher_task_name(config: CodexDogfoodLocalConfig) -> str:
+    return f"AdaptationCompilerLab-{config.subject_id}"
+
+
+@watcher_app.command("install")
+def install_runtime_watcher(config_path: ConfigOption) -> None:
+    """Install an explicit limited same-user login task; never enroll credentials implicitly."""
+
+    try:
+        config = _load_config(config_path)
+        if DpapiCredentialStore(config.state_root).status() is None:
+            raise CredentialStoreError("watcher installation requires credential enrollment")
+        runtime_python = (config.repository_root / ".venv" / "bin" / "python3").resolve()
+        if not runtime_python.is_file():
+            raise AutomaticRuntimeError("locked project Python is unavailable; run uv sync first")
+        action = subprocess.list2cmdline(
+            [
+                "wsl.exe",
+                "-d",
+                config.wsl_distribution,
+                "--cd",
+                str(config.repository_root),
+                str(runtime_python),
+                "-m",
+                "adaptation_compiler_lab.cli",
+                "runtime",
+                "watcher",
+                "run",
+                "--config",
+                str(config_path),
+            ]
+        )
+        WindowsTaskScheduler().install(task_name=_watcher_task_name(config), action=action)
+    except (OSError, ValueError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json({"installed": True, "task": _watcher_task_name(config)}))
+
+
+@watcher_app.command("uninstall")
+def uninstall_runtime_watcher(config_path: ConfigOption) -> None:
+    """Remove the same-user startup task without deleting evidence or credentials."""
+
+    try:
+        config = _load_config(config_path)
+        WindowsTaskScheduler().uninstall(task_name=_watcher_task_name(config))
+    except (OSError, ValueError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json({"installed": False, "task": _watcher_task_name(config)}))
+
+
+@watcher_app.command("start")
+def start_runtime_watcher(config_path: ConfigOption) -> None:
+    """Start the already-installed same-user watcher task."""
+
+    try:
+        config = _load_config(config_path)
+        result = subprocess.run(
+            ["schtasks.exe", "/Run", "/TN", _watcher_task_name(config)],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise AutomaticRuntimeError("installed Windows watcher task could not be started")
+    except (OSError, ValueError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json({"started": True, "task": _watcher_task_name(config)}))
+
+
+@watcher_app.command("stop")
+def stop_runtime_watcher(config_path: ConfigOption) -> None:
+    """Ask the watcher to stop at its next bounded poll boundary."""
+
+    try:
+        config = _load_config(config_path)
+        (config.state_root / "watcher-stop").touch(exist_ok=True)
+    except OSError as error:
+        _fail(str(error))
+    typer.echo(canonical_json({"stop_requested": True}))
+
+
+@watcher_app.command("status")
+def show_runtime_watcher_status(config_path: ConfigOption) -> None:
+    """Show raw-free local watcher state."""
+
+    try:
+        config = _load_config(config_path)
+        lease_path = config.state_root / "watcher-lease.json"
+        lease = None if not lease_path.is_file() else lease_path.read_text(encoding="utf-8")
+    except OSError as error:
+        _fail(str(error))
+    typer.echo(canonical_json({"lease": None if lease is None else "active"}))
+
+
+@inbox_app.command("list")
+def list_runtime_inbox(config_path: ConfigOption) -> None:
+    """List durable raw-free notification summaries."""
+
+    try:
+        config = _load_config(config_path)
+        entries = _gateway_ledger(config).inbox()
+    except (OSError, ValueError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json({"entries": entries}))
+
+
+@inbox_app.command("show")
+def show_runtime_inbox_entry(
+    config_path: ConfigOption,
+    entry_id: Annotated[str, typer.Argument()],
+) -> None:
+    """Show one exact raw-free notification entry."""
+
+    try:
+        config = _load_config(config_path)
+        matches = tuple(
+            item for item in _gateway_ledger(config).inbox() if item.entry_id == entry_id
+        )
+        if len(matches) != 1:
+            raise AutomaticRuntimeError("notification entry is unavailable")
+    except (OSError, ValueError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json(matches[0]))
+
+
+@inbox_app.command("acknowledge")
+def acknowledge_runtime_inbox_entry(
+    config_path: ConfigOption,
+    entry_id: Annotated[str, typer.Argument()],
+) -> None:
+    """Append an acknowledgement without changing the original inbox entry."""
+
+    try:
+        config = _load_config(config_path)
+        ledger = _gateway_ledger(config)
+        matches = tuple(item for item in ledger.inbox() if item.entry_id == entry_id)
+        if len(matches) != 1:
+            raise AutomaticRuntimeError("notification entry is unavailable")
+        from adaptation_compiler_lab.automatic_runtime.gateway_models import (
+            RuntimeNotificationReceipt,
+        )
+
+        receipt = RuntimeNotificationReceipt(
+            receipt_id=f"notice-ack-{entry_id}",
+            entry_id=entry_id,
+            channel="local_inbox",
+            status="acknowledged",
+            recorded_at=_now(),
+        )
+        ledger.append_notification_receipt(receipt)
+    except (OSError, ValueError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json(receipt))
+
+
+def _gateway_project(config: CodexDogfoodLocalConfig, project_id: str) -> CodexDogfoodProjectConfig:
+    matches = tuple(item for item in config.projects if item.project_id == project_id)
+    if len(matches) != 1:
+        raise AutomaticRuntimeError("gateway requires one exact configured project")
+    if not matches[0].verification_commands:
+        raise AutomaticRuntimeError("gateway project has no independent verification commands")
+    return matches[0]
+
+
+def _rpc_workspace(path: Path, *, windows_interop: bool) -> str:
+    if not windows_interop:
+        return str(path)
+    result = subprocess.run(
+        ["wslpath", "-w", str(path)],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        raise AutomaticRuntimeError("gateway workspace could not be mapped to Windows")
+    return result.stdout.strip()
+
+
+def _execute_gateway_session(
+    config: CodexDogfoodLocalConfig,
+    *,
+    project: CodexDogfoodProjectConfig,
+    initial_task: str,
+    followups: Iterable[str],
+) -> str:
+    if config.config_version != "1.3.0" or config.gateway_workspace_root is None:
+        raise AutomaticRuntimeError("writable gateway requires configured dogfood v1.3")
+    if config.effective_target_windows_interop:
+        parts = config.gateway_workspace_root.expanduser().resolve().parts
+        if len(parts) < 4 or parts[:2] != ("/", "mnt"):
+            raise AutomaticRuntimeError(
+                "Windows target gateway workspaces must be on a local /mnt/<drive> volume"
+            )
+    runtime = _runtime(config)
+    runtime_ledger = _ledger(config)
+    runtime_ledger.initialize(initial_runtime_state(config.policy))
+    state = runtime_ledger.current()
+    if state is None or state.release is None:
+        raise AutomaticRuntimeError("no governed adaptation release is available")
+    unresolved = tuple(
+        item.activation_id
+        for item in runtime_ledger.activations()
+        if runtime_ledger.delivery_acknowledgement(item.activation_id) is None
+    )
+    if unresolved:
+        raise AutomaticRuntimeError("an earlier activation lacks acknowledgement")
+    started = _now()
+    normalized = initial_task.strip()
+    if not normalized:
+        raise AutomaticRuntimeError("gateway task must not be empty")
+    session_id = (
+        f"gateway-{started.strftime('%Y%m%dT%H%M%S')}-"
+        f"{str(sha256_text(normalized)).removeprefix('sha256:')[:12]}"
+    )
+    prepared = runtime.activate(
+        activation_id=session_id,
+        task_ref=TaskRecordRef(record_id=f"task-{session_id}", record_version="1.0.0"),
+        state=state,
+        context=_context(config, project, evaluated_at=started),
+        target_task=normalized,
+        activated_at=started,
+    )
+    provider = GitWorktreeProvider(config.gateway_workspace_root)
+    workspace = provider.create(
+        canonical_root=project.root,
+        project_id=project.project_id,
+        session_id=session_id,
+        created_at=started,
+    )
+    verifier = IndependentVerifier()
+    preflight = verifier.run(
+        session_id=f"preflight-{session_id}",
+        workspace=workspace.root,
+        specs=project.verification_commands,
+    )
+    if any(item.exit_code != 0 or item.timed_out for item in preflight):
+        provider.teardown(canonical_root=project.root, workspace=workspace.root)
+        raise AutomaticRuntimeError("gateway baseline failed independent verification")
+    runtime_ledger.append_activation(prepared)
+    turns: list[GatewayTurnReceipt] = []
+    transcript: list[dict[str, object]] = []
+    target_thread_id: str | None = None
+    last_turn_id: str | None = None
+    captured: CapturedChangeBundle | None = None
+    postflight: tuple[VerificationReceipt, ...] = ()
+    try:
+        pins = load_dogfood_runtime_pins(config.effective_target_runtime_pin_path)
+        with (
+            _isolated_target_home(config) as target_home,
+            open_codex_dogfood(
+                executable=config.effective_target_codex_executable,
+                codex_home=target_home,
+                pin=pins.codex,
+                windows_interop=config.effective_target_windows_interop,
+                experimental_api=True,
+            ) as (_verified, schemas, rpc),
+        ):
+            conversation = CodexGatewayConversation(
+                rpc,
+                schemas=schemas,
+                workspace=workspace.root,
+                rpc_workspace=_rpc_workspace(
+                    workspace.root,
+                    windows_interop=config.effective_target_windows_interop,
+                ),
+                model=config.gateway_model,
+                reasoning_effort=config.gateway_reasoning_effort,
+                maximum_turns=config.gateway_maximum_turns,
+                turn_timeout_seconds=config.gateway_maximum_turn_seconds,
+            )
+            conversation.start()
+            target_thread_id = conversation.thread_id
+            messages = chain((prepared.task.delivered_task,), followups)
+            session_deadline = monotonic() + config.gateway_maximum_session_seconds
+            for sequence, message in enumerate(messages, start=1):
+                if monotonic() >= session_deadline:
+                    raise AutomaticRuntimeError("gateway session reached its time limit")
+                turn_started = _now()
+                result = conversation.turn(
+                    message,
+                    client_message_id=f"{session_id}-turn-{sequence}",
+                )
+                last_turn_id = result.turn_id
+                turn_completed = _now()
+                turns.append(
+                    GatewayTurnReceipt(
+                        receipt_id=f"turn-{session_id}-{sequence}",
+                        session_id=session_id,
+                        sequence=sequence,
+                        user_message_digest=sha256_text(message),
+                        agent_message_digest=(
+                            None if not result.final_message else sha256_text(result.final_message)
+                        ),
+                        status=cast(Literal["completed", "failed", "interrupted"], result.status),
+                        started_at=turn_started,
+                        completed_at=turn_completed,
+                    )
+                )
+                transcript.append(
+                    {"agent": result.final_message, "sequence": sequence, "user": message}
+                )
+                if result.final_message:
+                    typer.echo(result.final_message)
+                if result.status != "completed":
+                    raise AutomaticRuntimeError(f"gateway target turn ended as {result.status}")
+        bundle_store = EncryptedChangeBundleStore(_raw_store(config))
+        unverified_bundle = bundle_store.capture(
+            session_id=session_id,
+            subject_id=config.subject_id,
+            workspace=workspace.root,
+            baseline=workspace.baseline,
+            release_digest=prepared.activation.external_release_digest,
+            projection_digest=canonical_digest(prepared.task.rendered_material),
+            verification_receipts=(),
+        )
+        require_protected_paths_unchanged(
+            unverified_bundle.receipt,
+            protected_paths=project.protected_verification_paths,
+        )
+        verification_workspace = provider.create(
+            canonical_root=project.root,
+            project_id=project.project_id,
+            session_id=f"{session_id}-verify",
+        )
+        try:
+            verification_application, postflight = RecoverableChangeApplier(bundle_store).apply(
+                unverified_bundle,
+                canonical_root=verification_workspace.root,
+                expected_head=workspace.baseline.commit_sha,
+                verification_specs=project.verification_commands,
+                verifier=verifier,
+            )
+            if verification_application.status.value != "applied":
+                raise AutomaticRuntimeError("clean independent verification failed")
+        finally:
+            provider.teardown(
+                canonical_root=project.root,
+                workspace=verification_workspace.root,
+            )
+        trace_reference = _raw_store(config).put(
+            (canonical_json({"session_id": session_id, "turns": transcript}) + "\n").encode(),
+            media_type="application/vnd.adaptation-compiler.gateway-trace+json",
+        )
+        completed = _now()
+        session = GatewaySession(
+            session_id=session_id,
+            subject_id=config.subject_id,
+            project_id=project.project_id,
+            activation_id=prepared.activation.activation_id,
+            release_digest=prepared.activation.external_release_digest,
+            projection_digest=canonical_digest(prepared.task.rendered_material),
+            baseline_digest=canonical_digest(workspace.baseline),
+            model=config.gateway_model,
+            reasoning_effort=config.gateway_reasoning_effort,
+            maximum_turns=config.gateway_maximum_turns,
+            maximum_session_seconds=config.gateway_maximum_session_seconds,
+            maximum_turn_seconds=config.gateway_maximum_turn_seconds,
+            projection_utf8_bytes=prepared.task.receipt.material_utf8_bytes,
+            encrypted_trace_digest=Sha256Digest(f"sha256:{trace_reference.sha256}"),
+            started_at=started,
+            completed_at=completed,
+            status=GatewaySessionStatus.COMPLETED,
+        )
+        gateway_ledger = _gateway_ledger(config)
+        gateway_ledger.append_session(session)
+        for turn in turns:
+            gateway_ledger.append_turn(turn)
+        for receipt in postflight:
+            gateway_ledger.append_verification(receipt)
+        captured = bundle_store.capture(
+            session_id=session_id,
+            subject_id=config.subject_id,
+            workspace=workspace.root,
+            baseline=workspace.baseline,
+            release_digest=prepared.activation.external_release_digest,
+            projection_digest=canonical_digest(prepared.task.rendered_material),
+            verification_receipts=postflight,
+        )
+        gateway_ledger.append_change_bundle(captured)
+        acknowledgement = RuntimeTargetDeliveryAcknowledgement(
+            acknowledgement_id=f"target-ack-{session_id}",
+            activation_id=session_id,
+            subject_id=config.subject_id,
+            target_family="codex",
+            activation_digest=prepared.activation.content_digest,
+            external_session_digest=(
+                None if target_thread_id is None else sha256_text(target_thread_id)
+            ),
+            external_turn_digest=None if last_turn_id is None else sha256_text(last_turn_id),
+            result_digest=canonical_digest(
+                {"status": "completed", "trace_digest": str(session.encrypted_trace_digest)}
+            ),
+            status="completed",
+            acknowledged_at=completed,
+        )
+        runtime_ledger.acknowledge_delivery(acknowledgement)
+    except BaseException as error:
+        gateway_ledger = _gateway_ledger(config)
+        if gateway_ledger.session(session_id) is None:
+            try:
+                failed_trace = _raw_store(config).put(
+                    (
+                        canonical_json(
+                            {
+                                "failure_class": type(error).__name__,
+                                "session_id": session_id,
+                                "turns": transcript,
+                            }
+                        )
+                        + "\n"
+                    ).encode(),
+                    media_type="application/vnd.adaptation-compiler.gateway-trace+json",
+                )
+                failed_session = GatewaySession(
+                    session_id=session_id,
+                    subject_id=config.subject_id,
+                    project_id=project.project_id,
+                    activation_id=prepared.activation.activation_id,
+                    release_digest=prepared.activation.external_release_digest,
+                    projection_digest=canonical_digest(prepared.task.rendered_material),
+                    baseline_digest=canonical_digest(workspace.baseline),
+                    model=config.gateway_model,
+                    reasoning_effort=config.gateway_reasoning_effort,
+                    maximum_turns=config.gateway_maximum_turns,
+                    maximum_session_seconds=config.gateway_maximum_session_seconds,
+                    maximum_turn_seconds=config.gateway_maximum_turn_seconds,
+                    projection_utf8_bytes=prepared.task.receipt.material_utf8_bytes,
+                    encrypted_trace_digest=Sha256Digest(f"sha256:{failed_trace.sha256}"),
+                    started_at=started,
+                    completed_at=_now(),
+                    status=GatewaySessionStatus.FAILED,
+                    failure_class=type(error).__name__,
+                )
+                gateway_ledger.append_session(failed_session)
+                for turn in turns:
+                    gateway_ledger.append_turn(turn)
+                for receipt in postflight:
+                    gateway_ledger.append_verification(receipt)
+                try:
+                    failed_bundle = EncryptedChangeBundleStore(_raw_store(config)).capture(
+                        session_id=session_id,
+                        subject_id=config.subject_id,
+                        workspace=workspace.root,
+                        baseline=workspace.baseline,
+                        release_digest=prepared.activation.external_release_digest,
+                        projection_digest=canonical_digest(prepared.task.rendered_material),
+                        verification_receipts=postflight,
+                    )
+                    gateway_ledger.append_change_bundle(failed_bundle)
+                except (OSError, ValueError):
+                    pass
+            except (OSError, ValueError):
+                pass
+        if runtime_ledger.delivery_acknowledgement(session_id) is None:
+            runtime_ledger.acknowledge_delivery(
+                RuntimeTargetDeliveryAcknowledgement(
+                    acknowledgement_id=f"target-ack-{session_id}",
+                    activation_id=session_id,
+                    subject_id=config.subject_id,
+                    target_family="codex",
+                    activation_digest=prepared.activation.content_digest,
+                    external_session_digest=(
+                        None if target_thread_id is None else sha256_text(target_thread_id)
+                    ),
+                    external_turn_digest=(
+                        None if last_turn_id is None else sha256_text(last_turn_id)
+                    ),
+                    status="failed",
+                    failure_class=type(error).__name__,
+                    acknowledged_at=_now(),
+                )
+            )
+        raise
+    finally:
+        provider.teardown(canonical_root=project.root, workspace=workspace.root)
+    if captured is None:
+        raise AutomaticRuntimeError("gateway did not capture its change bundle")
+    return session_id
+
+
+@session_app.command("run")
+def run_gateway_task(
+    config_path: ConfigOption,
+    task: Annotated[str, typer.Argument(help="Exact task for the governed fresh session.")],
+    project_id: Annotated[str, typer.Option("--project")],
+) -> None:
+    """Run one writable, independently verified Codex task and preserve its review bundle."""
+
+    try:
+        config = _load_config(config_path)
+        session_id = _execute_gateway_session(
+            config,
+            project=_gateway_project(config, project_id),
+            initial_task=task,
+            followups=(),
+        )
+    except (OSError, ValueError, RuntimeConformanceError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json({"session_id": session_id, "status": "review_available"}))
+
+
+@session_app.command("chat")
+def run_gateway_chat(
+    config_path: ConfigOption,
+    project_id: Annotated[str, typer.Option("--project")],
+) -> None:
+    """Run an interactive multi-turn gateway session with a frozen adaptation projection."""
+
+    try:
+        config = _load_config(config_path)
+        initial = typer.prompt("Task").strip()
+
+        def followups() -> Iterator[str]:
+            for _ in range(config.gateway_maximum_turns - 1):
+                value = typer.prompt("You (/finish, /status)").strip()
+                if value == "/finish":
+                    return
+                if value == "/status":
+                    typer.echo("Projection is frozen; workspace is isolated; network is denied.")
+                    continue
+                if value == "/abort":
+                    raise AutomaticRuntimeError("gateway session aborted by the user")
+                yield value
+
+        session_id = _execute_gateway_session(
+            config,
+            project=_gateway_project(config, project_id),
+            initial_task=initial,
+            followups=followups(),
+        )
+    except (OSError, ValueError, RuntimeConformanceError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json({"session_id": session_id, "status": "review_available"}))
+
+
+@changes_app.command("show")
+def show_gateway_changes(
+    config_path: ConfigOption,
+    session_id: Annotated[str, typer.Argument()],
+) -> None:
+    """Decrypt and show a locally authorized review diff plus its governed metadata."""
+
+    try:
+        config = _load_config(config_path)
+        bundle = _gateway_ledger(config).change_bundle(session_id)
+        if bundle is None:
+            raise AutomaticRuntimeError("gateway change bundle is unavailable")
+        value = EncryptedChangeBundleStore(_raw_store(config)).load(bundle)
+        raw_changes = value.get("changes")
+        if not isinstance(raw_changes, list):
+            raise AutomaticRuntimeError("gateway change bundle is invalid")
+    except (OSError, ValueError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json(bundle.receipt))
+    for raw in raw_changes:
+        if not isinstance(raw, dict):
+            _fail("gateway change bundle contains an invalid entry")
+        path = str(raw.get("path", ""))
+        before = raw.get("before")
+        after = raw.get("after")
+        if before is not None and not isinstance(before, str):
+            _fail("gateway change bundle contains invalid before-bytes")
+        if after is not None and not isinstance(after, str):
+            _fail("gateway change bundle contains invalid after-bytes")
+        try:
+            before_bytes = b"" if before is None else base64.b64decode(before, validate=True)
+            after_bytes = b"" if after is None else base64.b64decode(after, validate=True)
+        except ValueError as error:
+            _fail(f"gateway change bundle contains invalid bytes: {error}")
+        if b"\x00" in before_bytes or b"\x00" in after_bytes:
+            typer.echo(f"Binary change: {path}")
+            continue
+        try:
+            before_text = before_bytes.decode("utf-8")
+            after_text = after_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            typer.echo(f"Binary change: {path}")
+            continue
+        typer.echo(
+            "".join(
+                difflib.unified_diff(
+                    before_text.splitlines(keepends=True),
+                    after_text.splitlines(keepends=True),
+                    fromfile=f"a/{path}",
+                    tofile=f"b/{path}",
+                )
+            )
+        )
+
+
+@changes_app.command("discard")
+def discard_gateway_changes(
+    config_path: ConfigOption,
+    session_id: Annotated[str, typer.Argument()],
+) -> None:
+    """Record an explicit discard without modifying the canonical repository."""
+
+    try:
+        config = _load_config(config_path)
+        ledger = _gateway_ledger(config)
+        bundle = ledger.change_bundle(session_id)
+        if bundle is None:
+            raise AutomaticRuntimeError("gateway change bundle is unavailable")
+        from adaptation_compiler_lab.automatic_runtime.gateway_models import (
+            ChangeApplicationReceipt,
+            ChangeApplicationStatus,
+        )
+
+        receipt = ChangeApplicationReceipt(
+            receipt_id=f"apply-{session_id}",
+            session_id=session_id,
+            change_receipt_digest=bundle.receipt.content_digest,
+            expected_head="0" * 40,
+            status=ChangeApplicationStatus.DISCARDED,
+            verification_receipt_digests=(),
+            recorded_at=_now(),
+        )
+        ledger.append_application(receipt)
+    except (OSError, ValueError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json(receipt))
+
+
+@changes_app.command("apply")
+def apply_gateway_changes(
+    config_path: ConfigOption,
+    session_id: Annotated[str, typer.Argument()],
+    expected_head: Annotated[str, typer.Option("--expected-head")],
+) -> None:
+    """Apply an entire reviewed bundle only to its unchanged clean canonical project."""
+
+    try:
+        config = _load_config(config_path)
+        ledger = _gateway_ledger(config)
+        session = ledger.session(session_id)
+        bundle = ledger.change_bundle(session_id)
+        if session is None or bundle is None:
+            raise AutomaticRuntimeError("gateway session or change bundle is unavailable")
+        project = _gateway_project(config, session.project_id)
+        receipt, verifications = RecoverableChangeApplier(
+            EncryptedChangeBundleStore(_raw_store(config))
+        ).apply(
+            bundle,
+            canonical_root=project.root,
+            expected_head=expected_head,
+            verification_specs=project.verification_commands,
+            verifier=IndependentVerifier(),
+        )
+        for verification in verifications:
+            ledger.append_verification(verification)
+        ledger.append_application(receipt)
+    except (OSError, ValueError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json(receipt))
+    if receipt.status.value != "applied":
+        raise typer.Exit(code=1)

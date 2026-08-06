@@ -98,8 +98,9 @@ raw-free review work, and signed runtime actions before dispatching idempotent d
 and notice sinks. Milestone 6A.2B adds a concrete Codex host that keeps post-task learning separate
 from later task activation. Its hashed prefix cursor commits after notice/review acknowledgement,
 and a replay after interruption reproduces the exact historical learning result. Local
-notice/review/undo/feedback commands are implemented; optional background pickup remains future
-work.
+notice/review/undo/feedback commands are implemented. Milestone 6A.2D adds a renewable single-owner
+watcher lease, jittered retry, raw-free durable inbox, and generic Windows toasts. The watcher is
+installed only by an explicit same-user command and semantic serving remains review-only.
 
 The semantic detector is an optional interpretation port, not a replacement trust boundary.
 `grammar`, `shadow`, `review`, and `calibrated` modes are explicit. One fresh ephemeral Codex
@@ -134,6 +135,28 @@ flowchart LR
     T1 --> K["Completed/failed delivery acknowledgement"]
     K --> F1["Helped / hurt / irrelevant feedback"]
 ```
+
+Milestone 6A.2D adds a writable gateway after activation:
+
+```mermaid
+flowchart LR
+    A["Frozen release + compact projection"] --> W["Exact detached writable worktree"]
+    W --> C["Fresh auth-only multi-turn Codex session"]
+    C --> B["Encrypted complete change bundle"]
+    B --> V["Second clean worktree + protected independent tests"]
+    V --> R["Local diff review"]
+    R -->|explicit apply| G["Unchanged canonical Git tree"]
+    G --> T["Independent post-apply tests"]
+    T -->|failure| X["Automatic byte-and-mode rollback"]
+```
+
+The rich release, session transcript, and code bytes stay outside target-visible material. Each
+gateway session freezes one release generation and never hot-reloads learning. Windows target
+execution requires a local `/mnt/<drive>` worktree and rejects the safe read-only downgrade used
+by the older UNC inspection path. Verification commands are configuration-bound argv arrays;
+their trusted inputs are protected from agent edits and rerun in a separate clean worktree.
+Canonical application requires an exact expected HEAD, clean status, matching before digests and
+modes, a valid encrypted bundle, and all-or-nothing rollback. It never commits or pushes.
 
 The runtime boundary is deliberately outside promotion and custody:
 
@@ -393,6 +416,7 @@ The 6A.2 product track adds a signed standing-policy runtime, deterministic feed
 encrypted task-exact capture, evaluation-first automatic promotion, arbitrary sequential
 scope/supersession/revocation compilation, compact Codex delivery, and longitudinal feedback.
 Milestone 6A.2B adds pinned Linux/Windows Codex pickup, hashed durable checkpoints, separate later
-activation and delivery acknowledgement, and local notice/review/undo/feedback commands. It is a
-working one-turn dogfood integration, not yet an ambient background service or persistent
-multi-turn gateway.
+activation and delivery acknowledgement, and local notice/review/undo/feedback commands.
+Milestone 6A.2D adds explicit same-user background startup and a persistent multi-turn writable
+gateway without injecting into unsupported ordinary Desktop sessions. It is ambient pickup with a
+governed session entrypoint, not an unrestricted operating-system-wide memory hook.

@@ -174,9 +174,43 @@ accelerate the gate.
 The host advances its source cursor only after all sinks acknowledge a page. If it stops after the
 SQLite append, replaying the same observation reconstructs the historical learning result and does
 not create another transition. Review items and signed release/activation events remain in
-append-only tables; target and interaction text do not. No current command launches a background
-watcher or maintains a multi-turn target session. The runtime must not access the sealed
+append-only tables; target and interaction text do not. The runtime must not access the sealed
 external-validation custody boundary.
+
+Milestone 6A.2D adds an optional governed writable gateway without changing the preceding explicit
+commands. Upgrade a compatible 1.1/1.2 configuration with `runtime configure-gateway`, registering
+one local disposable-worktree root, exact verification argv arrays, protected verifier inputs,
+watcher cadence, notification mode, and fixed model/effort/turn limits. Configuration alone does
+not enroll credentials, install startup behavior, or launch an agent.
+
+On Windows, use `runtime credentials enroll` as an explicit one-time action. It validates the
+existing external signing and raw-store secrets and stores only a Windows CurrentUser DPAPI
+envelope outside Git. `credentials status` exposes metadata only, and `credentials revoke` removes
+the envelope. An account, machine, signer, subject, or security-configuration mismatch fails
+closed. Never put API keys in the configuration or watcher environment.
+
+Use `runtime watcher run` interactively before choosing `watcher install`. The watcher performs an
+immediate poll, then uses a renewable single-instance lease, bounded retry/backoff, raw-free
+heartbeats, and an append-only local inbox. Optional Windows toasts contain only generic fixed
+text. `watcher stop` requests cooperative shutdown; `watcher status` reports lease/heartbeat state.
+Task Scheduler installation and removal are always explicit owner actions.
+
+Use `runtime inbox list|show|acknowledge` for durable notices. Start governed editable work with
+`runtime session run` for one turn or `runtime session chat` for up to the configured limit. The
+canonical repository must be clean. The gateway freezes the release and compact projection,
+creates a detached disposable worktree, requires network-denied `workspaceWrite`, and refuses any
+sandbox, writable-root, CWD, model, effort, or instruction-source drift. It never silently accepts
+a read-only downgrade for an editing session.
+
+Agent changes are captured into an encrypted digest-bound bundle; they are not copied into the
+canonical repository. Independent verification runs in a second clean worktree using only the
+registered argv arrays, with environment scrubbing, timeouts, output and process/resource limits.
+Changes to protected verifier inputs, symlinks, `.git`, secret paths, oversized files/bundles, or
+paths outside the worktree fail closed. Inspect with `runtime changes show`, then explicitly
+`changes apply <session-id>` or `changes discard <session-id>`. Apply requires the original clean
+HEAD and matching before-bytes/modes, is all-or-nothing, reruns verification, and rolls back on
+failure. Use `runtime gateway-report` for raw-free instrument metrics. Full workflow and remaining
+evidence limits are documented in `MILESTONE_6A2D_WRITABLE_GATEWAY.md`.
 
 ## Paid-run and rating gates
 

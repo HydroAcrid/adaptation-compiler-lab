@@ -1,0 +1,42 @@
+{
+  "additionalProperties": false,
+  "description": "One bounded argv command; shell interpretation is intentionally impossible.",
+  "properties": {
+    "argv": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 32,
+      "minItems": 1,
+      "title": "Argv",
+      "type": "array"
+    },
+    "command_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Command Id",
+      "type": "string"
+    },
+    "maximum_output_bytes": {
+      "default": 1000000,
+      "maximum": 10000000,
+      "minimum": 1024,
+      "title": "Maximum Output Bytes",
+      "type": "integer"
+    },
+    "timeout_seconds": {
+      "default": 600,
+      "maximum": 1800,
+      "minimum": 1,
+      "title": "Timeout Seconds",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "command_id",
+    "argv"
+  ],
+  "title": "VerificationCommandSpec",
+  "type": "object"
+}

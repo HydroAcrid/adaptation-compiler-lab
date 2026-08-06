@@ -1,0 +1,53 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "baseline_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Baseline Id",
+      "type": "string"
+    },
+    "canonical_root_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Canonical Root Digest",
+      "type": "string"
+    },
+    "commit_sha": {
+      "title": "Commit Sha",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "tree_sha": {
+      "title": "Tree Sha",
+      "type": "string"
+    },
+    "workspace_root_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Workspace Root Digest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "baseline_id",
+    "project_id",
+    "canonical_root_digest",
+    "commit_sha",
+    "tree_sha",
+    "workspace_root_digest",
+    "created_at"
+  ],
+  "title": "WorkspaceBaseline",
+  "type": "object"
+}

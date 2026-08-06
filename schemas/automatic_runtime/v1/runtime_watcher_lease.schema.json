@@ -1,0 +1,43 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "acquired_at": {
+      "format": "date-time",
+      "title": "Acquired At",
+      "type": "string"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "lease_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Lease Id",
+      "type": "string"
+    },
+    "owner_pid": {
+      "minimum": 1,
+      "title": "Owner Pid",
+      "type": "integer"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "lease_id",
+    "subject_id",
+    "owner_pid",
+    "acquired_at",
+    "expires_at"
+  ],
+  "title": "RuntimeWatcherLease",
+  "type": "object"
+}
