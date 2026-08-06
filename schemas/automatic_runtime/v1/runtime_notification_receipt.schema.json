@@ -1,0 +1,62 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "channel": {
+      "enum": [
+        "local_inbox",
+        "windows_toast"
+      ],
+      "title": "Channel",
+      "type": "string"
+    },
+    "entry_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Entry Id",
+      "type": "string"
+    },
+    "failure_class": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Failure Class"
+    },
+    "receipt_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "published",
+        "failed",
+        "acknowledged"
+      ],
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "entry_id",
+    "channel",
+    "status",
+    "recorded_at"
+  ],
+  "title": "RuntimeNotificationReceipt",
+  "type": "object"
+}

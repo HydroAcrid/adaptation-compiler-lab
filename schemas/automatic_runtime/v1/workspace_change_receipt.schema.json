@@ -1,0 +1,178 @@
+{
+  "$defs": {
+    "WorkspaceFileChange": {
+      "additionalProperties": false,
+      "properties": {
+        "after_digest": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "After Digest"
+        },
+        "after_mode": {
+          "anyOf": [
+            {
+              "maximum": 511,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "After Mode"
+        },
+        "before_digest": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Before Digest"
+        },
+        "before_mode": {
+          "anyOf": [
+            {
+              "maximum": 511,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Before Mode"
+        },
+        "binary": {
+          "title": "Binary",
+          "type": "boolean"
+        },
+        "operation": {
+          "enum": [
+            "add",
+            "modify",
+            "delete"
+          ],
+          "title": "Operation",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "size_bytes": {
+          "minimum": 0,
+          "title": "Size Bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "operation",
+        "size_bytes",
+        "binary"
+      ],
+      "title": "WorkspaceFileChange",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "baseline_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Baseline Digest",
+      "type": "string"
+    },
+    "captured_at": {
+      "format": "date-time",
+      "title": "Captured At",
+      "type": "string"
+    },
+    "changes": {
+      "items": {
+        "$ref": "#/$defs/WorkspaceFileChange"
+      },
+      "title": "Changes",
+      "type": "array"
+    },
+    "encrypted_bundle_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Encrypted Bundle Digest",
+      "type": "string"
+    },
+    "projection_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Projection Digest",
+      "type": "string"
+    },
+    "receipt_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "release_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Release Digest",
+      "type": "string"
+    },
+    "session_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Session Id",
+      "type": "string"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    },
+    "total_bytes": {
+      "maximum": 25000000,
+      "minimum": 0,
+      "title": "Total Bytes",
+      "type": "integer"
+    },
+    "verification_receipt_digests": {
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Verification Receipt Digests",
+      "type": "array"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "session_id",
+    "subject_id",
+    "baseline_digest",
+    "release_digest",
+    "projection_digest",
+    "encrypted_bundle_digest",
+    "changes",
+    "total_bytes",
+    "verification_receipt_digests",
+    "captured_at"
+  ],
+  "title": "WorkspaceChangeReceipt",
+  "type": "object"
+}

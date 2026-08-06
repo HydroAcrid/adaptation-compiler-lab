@@ -11,30 +11,34 @@ preset, then sends each assistant only the smallest applicable projection. Perso
 overlays can refine temporary expertise without changing either the imported preset or permanent
 profile.
 
-Milestone 6A.2B now includes a governed automatic-runtime core, restart-safe host coordinator, and
-concrete pinned Codex dogfood integration. Under one signed bounded standing
+Milestone 6A.2D now includes a governed automatic-runtime core, restart-safe host coordinator,
+concrete pinned Codex dogfood integration, a same-user background watcher, and a writable
+multi-turn gateway. Under one signed bounded standing
 policy, low-risk user feedback can be encrypted, turned into an evaluation candidate,
 promoted through addition/correction/supersession/revocation, compiled, scoped, delivered once to
 Codex, measured, notified, and undone by exact revocation. Untrusted content is rejected before
 capture; secrets are blocked; ambiguous or capability-changing proposals remain inactive in a
 durable raw-message-free review queue. Owners can inspect the normalized behavior, route, and
 scope, then append an exact signed approval or rejection without rewriting the source cycle. The
-host loop persists signed actions and recovers interrupted
-idempotent delivery without learning twice. Pickup and user controls are now concrete but
-explicitly invoked; there is still no background watcher or persistent product conversation, so
-this should not yet be described as an ambient memory service. Natural feedback now uses a
+host loop persists signed actions and recovers interrupted idempotent delivery without learning
+twice. Approved learning can now enter later one-shot or multi-turn sessions through the governed
+gateway. Those sessions use disposable writable worktrees, protected independent verification,
+encrypted review bundles, and explicit recoverable application. Natural feedback uses a
 proposal-only semantic detector behind exact-quote, authority, secret, scope, route, policy, and
 lifecycle checks; deterministic grammar remains available as a compatibility mode.
 
-Milestone 6A.2C has started the real ordinary-use gate. Configuration v1.2 can map Windows Codex
+Milestone 6A.2C remains the real ordinary-use evidence gate. Configuration v1.3 can map Windows Codex
 Desktop source CWDs to the canonical WSL project and can use a separately pinned target endpoint.
 The local post-cutoff state is initialized. A real grammar-only missed preference is durably
 recorded, and a new semantic detector passed a 20-case calibration plus an untouched 20-case
 holdout after preserving its earlier v1 holdout failure. Dogfood starts semantic serving in
 review mode. `gate-report` measures immutable learning assessments, activation relevance, pack
 size, update latency, maintenance, and evidence readiness. Completion requires 20 genuine
-interactions across at least three dates and will not be simulated. See
-[`SEMANTIC_FEEDBACK_DETECTOR.md`](SEMANTIC_FEEDBACK_DETECTOR.md).
+interactions across at least three dates and will not be simulated. DPAPI auto-unlock, raw-free
+Windows notifications, fixed verification commands, and gateway metrics are implemented, while
+credential enrollment, watcher installation, and canonical change application remain explicit
+owner actions. See [`SEMANTIC_FEEDBACK_DETECTOR.md`](SEMANTIC_FEEDBACK_DETECTOR.md) and
+[`MILESTONE_6A2D_WRITABLE_GATEWAY.md`](MILESTONE_6A2D_WRITABLE_GATEWAY.md).
 
 Milestones 6A.3–6A.5 now provide positive, complementary comparisons against the strong static
 profile. Milestone 6A.3 showed lifecycle-aware compilation winning five of six fresh staged task

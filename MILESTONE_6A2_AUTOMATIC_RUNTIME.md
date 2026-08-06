@@ -1,7 +1,7 @@
 # Milestone 6A.2 Product Track — Automatic Adaptation Runtime
 
-Status: **runtime core and restart-safe generic host implemented; concrete Codex dogfood adapter
-completed in `MILESTONE_6A2B_CODEX_DOGFOOD.md`**
+Status: **runtime core, concrete Codex dogfood adapter, and writable automatic gateway implemented;
+see `MILESTONE_6A2B_CODEX_DOGFOOD.md` and `MILESTONE_6A2D_WRITABLE_GATEWAY.md`**
 
 Date: 2026-07-29
 
@@ -187,20 +187,19 @@ This document records the original automatic runtime **core and generic host coo
 Milestone 6A.2B subsequently added pinned ChatGPT-authenticated Codex pickup, durable hashed
 checkpoints, separate later-task activation and delivery acknowledgements, and local
 notice/review/undo/feedback commands. The semantic detector then added evaluated natural-language
-candidate generation while retaining deterministic governance. The remaining ambient-product gap
-is a background watcher,
-persistent multi-turn gateway, and real longitudinal false-learning evidence—not the absence of a
-concrete connector.
+candidate generation while retaining deterministic governance. Milestone 6A.2D closes the
+background-watcher and writable multi-turn gateway instrument gaps. The remaining product gate is
+real longitudinal false-learning, activation, maintenance, and scope evidence—not the absence of a
+concrete connector or delivery mechanism.
 
-The next evidence increment must dogfood the 6A.2B adapter during ordinary work. It must prove that:
+The next evidence increment must dogfood the 6A.2D gateway during ordinary work. It must prove that:
 
 - the user does not need explicit grammar for every naturally phrased correction;
 - false learning remains acceptably low;
 - false learning and review volume remain acceptable over several days;
 - exact undo is reachable from the notification;
-- the one-turn adapter can safely evolve into persistent multi-turn delivery without ambient
-  instructions, memories, plugins, skills, MCP servers, or host credentials leaking into the
-  target; and
+- the implemented multi-turn gateway continues to exclude ambient instructions, memories,
+  plugins, skills, MCP servers, host credentials, and unrelated scopes during ordinary use; and
 - the runtime remains compact as learning accumulates.
 
 Milestone 6B begins only after this host loop is reliable. Presets remain a first-class runtime

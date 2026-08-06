@@ -1,0 +1,89 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "after_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "After Digest"
+    },
+    "after_mode": {
+      "anyOf": [
+        {
+          "maximum": 511,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "After Mode"
+    },
+    "before_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Before Digest"
+    },
+    "before_mode": {
+      "anyOf": [
+        {
+          "maximum": 511,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Before Mode"
+    },
+    "binary": {
+      "title": "Binary",
+      "type": "boolean"
+    },
+    "operation": {
+      "enum": [
+        "add",
+        "modify",
+        "delete"
+      ],
+      "title": "Operation",
+      "type": "string"
+    },
+    "path": {
+      "title": "Path",
+      "type": "string"
+    },
+    "size_bytes": {
+      "minimum": 0,
+      "title": "Size Bytes",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "path",
+    "operation",
+    "size_bytes",
+    "binary"
+  ],
+  "title": "WorkspaceFileChange",
+  "type": "object"
+}

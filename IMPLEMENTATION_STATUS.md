@@ -1,11 +1,11 @@
 # Implementation Status
 
-Last updated: 2026-08-05
+Last updated: 2026-08-06
 
 ## Current milestone
 
-**Milestone 6A.2C now has an active ordinary-use Codex dogfood state on top of the implemented
-6A.2B runtime.** A signed bounded
+**Milestone 6A.2C remains the active ordinary-use evidence gate, now running on the implemented
+6A.2D writable automatic gateway instrument.** A signed bounded
 standing policy can govern explicit low-risk user feedback through encrypted raw capture, exact
 Evidence v1.1 consent/capture lineage, an EvaluationCase candidate, deterministic promotion,
 arbitrary-length addition/correction/supersession/revocation compilation, compact Codex
@@ -25,9 +25,17 @@ later task activation and acknowledgement. Local `runtime` commands expose initi
 fresh one-turn execution, status, review, notices, exact undo, and helped/hurt/irrelevant feedback.
 The target fails closed on model, approval, network, workspace, writable-root, or external
 instruction-source substitution. A network-denied, rootless `readOnly` response is accepted as a
-strict reduction from requested workspace-write authority; any network or root expansion remains
-forbidden. It still does not watch Codex in the background or maintain a persistent multi-turn
-product session.
+strict reduction from requested workspace-write authority for the legacy inspection command; any
+network or root expansion remains forbidden.
+
+Milestone 6A.2D adds explicit DPAPI same-user unlock, a renewable background watcher, generic
+Windows toasts plus an append-only local inbox, v1.3 project verification configuration, and a
+one-shot/multi-turn governed gateway. Editable sessions use an exact detached worktree on a local
+Windows-mounted volume and refuse read-only fallback. The agent cannot change protected verifier
+inputs; candidate changes are encrypted, replayed into a second clean worktree for independent
+testing, and shown locally before an explicit all-or-nothing canonical apply. Stale/dirty targets
+are refused and failed post-apply checks restore touched bytes and modes. No gateway action commits
+or pushes. Enrollment, watcher installation, and canonical application remain explicit.
 
 The first genuine post-cutoff semantic pickup is durably checkpointed. Its interrupted handoff
 exposed and repaired typed-scope JSON serialization and poll-time-dependent observation digests;

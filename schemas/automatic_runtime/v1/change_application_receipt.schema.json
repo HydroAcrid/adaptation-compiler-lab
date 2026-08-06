@@ -1,0 +1,79 @@
+{
+  "$defs": {
+    "ChangeApplicationStatus": {
+      "enum": [
+        "applied",
+        "discarded",
+        "refused",
+        "rolled_back"
+      ],
+      "title": "ChangeApplicationStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "change_receipt_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Change Receipt Digest",
+      "type": "string"
+    },
+    "expected_head": {
+      "title": "Expected Head",
+      "type": "string"
+    },
+    "failure_class": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Failure Class"
+    },
+    "receipt_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "session_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Session Id",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/ChangeApplicationStatus"
+    },
+    "verification_receipt_digests": {
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Verification Receipt Digests",
+      "type": "array"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "session_id",
+    "change_receipt_digest",
+    "expected_head",
+    "status",
+    "verification_receipt_digests",
+    "recorded_at"
+  ],
+  "title": "ChangeApplicationReceipt",
+  "type": "object"
+}

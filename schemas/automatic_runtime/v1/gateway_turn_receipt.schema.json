@@ -1,0 +1,73 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "agent_message_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Agent Message Digest"
+    },
+    "completed_at": {
+      "format": "date-time",
+      "title": "Completed At",
+      "type": "string"
+    },
+    "receipt_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "sequence": {
+      "maximum": 15,
+      "minimum": 1,
+      "title": "Sequence",
+      "type": "integer"
+    },
+    "session_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Session Id",
+      "type": "string"
+    },
+    "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "failed",
+        "interrupted"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "user_message_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "User Message Digest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "session_id",
+    "sequence",
+    "user_message_digest",
+    "status",
+    "started_at",
+    "completed_at"
+  ],
+  "title": "GatewayTurnReceipt",
+  "type": "object"
+}

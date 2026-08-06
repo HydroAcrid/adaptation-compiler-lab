@@ -1,0 +1,162 @@
+{
+  "$defs": {
+    "GatewaySessionStatus": {
+      "enum": [
+        "active",
+        "completed",
+        "aborted",
+        "failed"
+      ],
+      "title": "GatewaySessionStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "activation_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Activation Id",
+      "type": "string"
+    },
+    "baseline_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Baseline Digest",
+      "type": "string"
+    },
+    "completed_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Completed At"
+    },
+    "encrypted_trace_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Encrypted Trace Digest"
+    },
+    "failure_class": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Failure Class"
+    },
+    "instrument_version": {
+      "const": "6A.2D-v1",
+      "default": "6A.2D-v1",
+      "title": "Instrument Version",
+      "type": "string"
+    },
+    "maximum_session_seconds": {
+      "default": 3600,
+      "maximum": 3600,
+      "minimum": 1,
+      "title": "Maximum Session Seconds",
+      "type": "integer"
+    },
+    "maximum_turn_seconds": {
+      "default": 600,
+      "maximum": 600,
+      "minimum": 1,
+      "title": "Maximum Turn Seconds",
+      "type": "integer"
+    },
+    "maximum_turns": {
+      "default": 15,
+      "maximum": 15,
+      "minimum": 1,
+      "title": "Maximum Turns",
+      "type": "integer"
+    },
+    "model": {
+      "title": "Model",
+      "type": "string"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "projection_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Projection Digest",
+      "type": "string"
+    },
+    "projection_utf8_bytes": {
+      "minimum": 0,
+      "title": "Projection Utf8 Bytes",
+      "type": "integer"
+    },
+    "reasoning_effort": {
+      "title": "Reasoning Effort",
+      "type": "string"
+    },
+    "release_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Release Digest",
+      "type": "string"
+    },
+    "session_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Session Id",
+      "type": "string"
+    },
+    "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/GatewaySessionStatus",
+      "default": "active"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "session_id",
+    "subject_id",
+    "project_id",
+    "activation_id",
+    "release_digest",
+    "projection_digest",
+    "baseline_digest",
+    "model",
+    "reasoning_effort",
+    "projection_utf8_bytes",
+    "started_at"
+  ],
+  "title": "GatewaySession",
+  "type": "object"
+}

@@ -1,0 +1,59 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "failure_class": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Failure Class"
+    },
+    "heartbeat_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Heartbeat Id",
+      "type": "string"
+    },
+    "lease_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Lease Id",
+      "type": "string"
+    },
+    "observed_at": {
+      "format": "date-time",
+      "title": "Observed At",
+      "type": "string"
+    },
+    "sequence": {
+      "minimum": 1,
+      "title": "Sequence",
+      "type": "integer"
+    },
+    "status": {
+      "enum": [
+        "healthy",
+        "backing_off",
+        "stopping"
+      ],
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "heartbeat_id",
+    "lease_id",
+    "sequence",
+    "observed_at",
+    "status"
+  ],
+  "title": "RuntimeWatcherHeartbeat",
+  "type": "object"
+}

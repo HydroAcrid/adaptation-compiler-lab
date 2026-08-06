@@ -1,0 +1,47 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "entry_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Entry Id",
+      "type": "string"
+    },
+    "kind": {
+      "title": "Kind",
+      "type": "string"
+    },
+    "notice_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Notice Digest",
+      "type": "string"
+    },
+    "public_summary": {
+      "title": "Public Summary",
+      "type": "string"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "entry_id",
+    "subject_id",
+    "notice_digest",
+    "kind",
+    "public_summary",
+    "created_at"
+  ],
+  "title": "NotificationInboxEntry",
+  "type": "object"
+}
