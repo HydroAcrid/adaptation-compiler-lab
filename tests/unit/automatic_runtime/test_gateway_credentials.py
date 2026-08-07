@@ -113,6 +113,40 @@ def test_tamper_and_revocation_fail_closed(tmp_path: Path) -> None:
     assert store.status() is None
 
 
+def test_rebind_atomically_moves_enrollment_to_new_configuration(tmp_path: Path) -> None:
+    store = DpapiCredentialStore(tmp_path / "state", protector=FakeProtector())
+    secrets = _secrets(tmp_path)
+    store.enroll(
+        secrets,
+        subject_id="kevin",
+        config_digest=DIGEST,
+        signer_fingerprint=OTHER_DIGEST,
+    )
+
+    metadata = store.rebind(
+        subject_id="kevin",
+        current_config_digest=DIGEST,
+        new_config_digest=OTHER_DIGEST,
+        signer_fingerprint=OTHER_DIGEST,
+    )
+
+    assert metadata.config_digest == OTHER_DIGEST
+    assert (
+        store.unlock(
+            subject_id="kevin",
+            config_digest=OTHER_DIGEST,
+            signer_fingerprint=OTHER_DIGEST,
+        )
+        == secrets
+    )
+    with pytest.raises(CredentialStoreError):
+        store.unlock(
+            subject_id="kevin",
+            config_digest=DIGEST,
+            signer_fingerprint=OTHER_DIGEST,
+        )
+
+
 def _windows_interop_available() -> bool:
     executable = shutil.which("powershell.exe")
     if executable is None:

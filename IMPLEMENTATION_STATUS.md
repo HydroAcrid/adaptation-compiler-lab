@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: 2026-08-06
+Last updated: 2026-08-07
 
 ## Current milestone
 
@@ -36,6 +36,14 @@ inputs; candidate changes are encrypted, replayed into a second clean worktree f
 testing, and shown locally before an explicit all-or-nothing canonical apply. Stale/dirty targets
 are refused and failed post-apply checks restore touched bytes and modes. No gateway action commits
 or pushes. Enrollment, watcher installation, and canonical application remain explicit.
+
+An isolated saved-ChatGPT development canary now proves the exact Windows gateway path rather than
+only its synthetic fakes. A fresh pinned Luna session used an auth-only home and network-denied
+native sandbox, created exactly one requested file in a disposable worktree, passed independent
+postflight verification, produced an encrypted one-file review bundle, and applied it only after
+an explicit exact-HEAD decision. Duplicate application was refused. Production dogfood state and
+the sealed external-validation study were not used. This is instrument conformance, not completion
+of the multi-day longitudinal evidence gate or proof of general superiority.
 
 The first genuine post-cutoff semantic pickup is durably checkpointed. Its interrupted handoff
 exposed and repaired typed-scope JSON serialization and poll-time-dependent observation digests;

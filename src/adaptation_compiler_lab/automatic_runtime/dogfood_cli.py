@@ -41,6 +41,7 @@ from adaptation_compiler_lab.automatic_runtime.gate import (
 )
 from adaptation_compiler_lab.automatic_runtime.gateway_ledger import GatewayLedger
 from adaptation_compiler_lab.automatic_runtime.gateway_models import (
+    CredentialEnvelopeMetadata,
     GatewaySession,
     GatewaySessionStatus,
     GatewayTurnReceipt,
@@ -240,6 +241,7 @@ class CodexDogfoodLocalConfig(FrozenModel):
     notification_mode: Literal["inbox", "toast_and_inbox"] = "toast_and_inbox"
     gateway_model: str = "gpt-5.6-luna"
     gateway_reasoning_effort: str = "medium"
+    gateway_windows_sandbox: Literal["elevated", "unelevated"] = "elevated"
     gateway_maximum_turns: int = 15
     gateway_maximum_session_seconds: int = 3_600
     gateway_maximum_turn_seconds: int = 600
@@ -308,7 +310,13 @@ class CodexDogfoodLocalConfig(FrozenModel):
 
     @property
     def credential_binding_digest(self) -> Sha256Digest:
-        """Bind DPAPI enrollment to security-relevant configuration without self-reference."""
+        """Bind DPAPI enrollment to the complete no-secret runtime configuration."""
+
+        return canonical_digest(self.model_dump(mode="json"))
+
+    @property
+    def legacy_credential_binding_digest(self) -> Sha256Digest:
+        """Read compatibility for the first v1.3 enrollment binding."""
 
         return canonical_digest(
             {
@@ -321,6 +329,12 @@ class CodexDogfoodLocalConfig(FrozenModel):
                 "subject_id": self.subject_id,
             }
         )
+
+    @property
+    def prior_full_credential_binding_digest(self) -> Sha256Digest:
+        """Read compatibility for v1.3 before the Windows sandbox selector existed."""
+
+        return canonical_digest(self.model_dump(mode="json", exclude={"gateway_windows_sandbox"}))
 
     @property
     def effective_target_codex_home(self) -> Path:
@@ -481,13 +495,27 @@ def _gateway_ledger(config: CodexDogfoodLocalConfig) -> GatewayLedger:
 
 def _runtime_secrets(config: CodexDogfoodLocalConfig) -> RuntimeSecrets:
     store = DpapiCredentialStore(config.state_root)
-    if store.status() is None:
+    metadata = store.status()
+    if metadata is None:
         return RuntimeSecrets.from_environment()
     return store.unlock(
         subject_id=config.subject_id,
-        config_digest=config.credential_binding_digest,
+        config_digest=_enrollment_binding_digest(config, metadata),
         signer_fingerprint=config.signer_identity.key_fingerprint,
     )
+
+
+def _enrollment_binding_digest(
+    config: CodexDogfoodLocalConfig,
+    metadata: CredentialEnvelopeMetadata,
+) -> Sha256Digest:
+    if metadata.config_digest == config.credential_binding_digest:
+        return config.credential_binding_digest
+    if metadata.config_digest == config.legacy_credential_binding_digest:
+        return config.legacy_credential_binding_digest
+    if metadata.config_digest == config.prior_full_credential_binding_digest:
+        return config.prior_full_credential_binding_digest
+    return config.credential_binding_digest
 
 
 def _raw_store(config: CodexDogfoodLocalConfig) -> LocalRawPayloadStore:
@@ -500,25 +528,16 @@ def _raw_store(config: CodexDogfoodLocalConfig) -> LocalRawPayloadStore:
 
 
 def _runtime(config: CodexDogfoodLocalConfig) -> AutomaticAdaptationRuntime:
-    credential_store = DpapiCredentialStore(config.state_root)
-    if credential_store.status() is None:
-        private_key = load_private_key_from_environment(workspace_root=config.repository_root)
-        raw_key = RawEncryptionKey.from_environment(workspace_root=config.repository_root)
-    else:
-        secrets = credential_store.unlock(
-            subject_id=config.subject_id,
-            config_digest=config.credential_binding_digest,
-            signer_fingerprint=config.signer_identity.key_fingerprint,
-        )
-        private_key = load_private_key(
-            secrets.signing_key_file,
-            passphrase=secrets.signing_key_passphrase,
-            workspace_root=config.repository_root,
-        )
-        raw_key = RawEncryptionKey.from_file(
-            secrets.raw_key_file,
-            workspace_root=config.repository_root,
-        )
+    secrets = _runtime_secrets(config)
+    private_key = load_private_key(
+        secrets.signing_key_file,
+        passphrase=secrets.signing_key_passphrase,
+        workspace_root=config.repository_root,
+    )
+    raw_key = RawEncryptionKey.from_file(
+        secrets.raw_key_file,
+        workspace_root=config.repository_root,
+    )
     signer = GovernanceSigner(
         private_key,
         identity_id=config.signer_identity.identity_id,
@@ -584,6 +603,15 @@ def _isolated_target_home(config: CodexDogfoodLocalConfig) -> Iterator[Path]:
         target = root / "auth.json"
         shutil.copyfile(auth, target)
         target.chmod(0o600)
+        (root / "config.toml").write_text(
+            (
+                'approval_policy = "never"\n'
+                'sandbox_mode = "workspace-write"\n\n'
+                "[windows]\n"
+                f'sandbox = "{config.gateway_windows_sandbox}"\n'
+            ),
+            encoding="utf-8",
+        )
         yield root
 
 
@@ -1576,6 +1604,13 @@ def configure_gateway(
             help="JSON array of bounded VerificationCommandSpec objects.",
         ),
     ],
+    windows_sandbox: Annotated[
+        Literal["elevated", "unelevated"],
+        typer.Option(
+            "--windows-sandbox",
+            help="Explicit native Windows sandbox implementation for isolated target homes.",
+        ),
+    ] = "elevated",
 ) -> None:
     """Upgrade a v1.1/v1.2 config and explicitly enable the writable v1.3 gateway."""
 
@@ -1591,6 +1626,10 @@ def configure_gateway(
         )
         if not specs:
             raise AutomaticRuntimeError("gateway requires at least one verification command")
+        if not any(item.runs_during("preflight") for item in specs):
+            raise AutomaticRuntimeError("gateway requires a preflight verification command")
+        if not any(item.runs_during("postflight") for item in specs):
+            raise AutomaticRuntimeError("gateway requires a postflight verification command")
         found = False
         projects: list[CodexDogfoodProjectConfig] = []
         for project in config.projects:
@@ -1604,11 +1643,25 @@ def configure_gateway(
             update={
                 "config_version": "1.3.0",
                 "gateway_workspace_root": workspace_root,
+                "gateway_windows_sandbox": windows_sandbox,
                 "projects": tuple(projects),
             }
         )
         validated = CodexDogfoodLocalConfig.model_validate(upgraded.model_dump(), strict=True)
+        credential_store = DpapiCredentialStore(config.state_root)
+        enrolled = credential_store.status()
         _write_config(config_path, validated)
+        if enrolled is not None:
+            try:
+                credential_store.rebind(
+                    subject_id=config.subject_id,
+                    current_config_digest=_enrollment_binding_digest(config, enrolled),
+                    new_config_digest=validated.credential_binding_digest,
+                    signer_fingerprint=config.signer_identity.key_fingerprint,
+                )
+            except BaseException:
+                _write_config(config_path, config)
+                raise
     except (OSError, ValueError) as error:
         _fail(str(error))
     typer.echo(canonical_json({"config_version": "1.3.0", "status": "configured"}))
@@ -1650,7 +1703,14 @@ def show_runtime_credential_status(config_path: ConfigOption) -> None:
         metadata = DpapiCredentialStore(config.state_root).status()
     except (OSError, ValueError) as error:
         _fail(str(error))
-    typer.echo(canonical_json({"enrolled": metadata is not None, "metadata": metadata}))
+    typer.echo(
+        canonical_json(
+            {
+                "enrolled": metadata is not None,
+                "metadata": None if metadata is None else metadata.model_dump(mode="json"),
+            }
+        )
+    )
 
 
 @credentials_app.command("revoke")
@@ -1868,7 +1928,18 @@ def _gateway_project(config: CodexDogfoodLocalConfig, project_id: str) -> CodexD
         raise AutomaticRuntimeError("gateway requires one exact configured project")
     if not matches[0].verification_commands:
         raise AutomaticRuntimeError("gateway project has no independent verification commands")
+    if not any(item.runs_during("preflight") for item in matches[0].verification_commands):
+        raise AutomaticRuntimeError("gateway project has no preflight verification command")
+    if not any(item.runs_during("postflight") for item in matches[0].verification_commands):
+        raise AutomaticRuntimeError("gateway project has no postflight verification command")
     return matches[0]
+
+
+def _verification_specs(
+    project: CodexDogfoodProjectConfig,
+    phase: Literal["preflight", "postflight"],
+) -> tuple[VerificationCommandSpec, ...]:
+    return tuple(item for item in project.verification_commands if item.runs_during(phase))
 
 
 def _rpc_workspace(path: Path, *, windows_interop: bool) -> str:
@@ -1941,11 +2012,19 @@ def _execute_gateway_session(
     preflight = verifier.run(
         session_id=f"preflight-{session_id}",
         workspace=workspace.root,
-        specs=project.verification_commands,
+        specs=_verification_specs(project, "preflight"),
     )
-    if any(item.exit_code != 0 or item.timed_out for item in preflight):
+    gateway_ledger = _gateway_ledger(config)
+    for receipt in preflight:
+        gateway_ledger.append_verification(receipt)
+    failed_preflight = tuple(
+        item.command_id for item in preflight if item.exit_code != 0 or item.timed_out
+    )
+    if failed_preflight:
         provider.teardown(canonical_root=project.root, workspace=workspace.root)
-        raise AutomaticRuntimeError("gateway baseline failed independent verification")
+        raise AutomaticRuntimeError(
+            "gateway baseline failed independent verification: " + ", ".join(failed_preflight)
+        )
     runtime_ledger.append_activation(prepared)
     turns: list[GatewayTurnReceipt] = []
     transcript: list[dict[str, object]] = []
@@ -2007,7 +2086,14 @@ def _execute_gateway_session(
                     )
                 )
                 transcript.append(
-                    {"agent": result.final_message, "sequence": sequence, "user": message}
+                    {
+                        "agent": result.final_message,
+                        "events": result.events,
+                        "sequence": sequence,
+                        "status": result.status,
+                        "turn_id": result.turn_id,
+                        "user": message,
+                    }
                 )
                 if result.final_message:
                     typer.echo(result.final_message)
@@ -2037,8 +2123,9 @@ def _execute_gateway_session(
                 unverified_bundle,
                 canonical_root=verification_workspace.root,
                 expected_head=workspace.baseline.commit_sha,
-                verification_specs=project.verification_commands,
+                verification_specs=_verification_specs(project, "postflight"),
                 verifier=verifier,
+                verification_session_id=f"validation-{session_id}",
             )
             if verification_application.status.value != "applied":
                 raise AutomaticRuntimeError("clean independent verification failed")
@@ -2071,7 +2158,6 @@ def _execute_gateway_session(
             completed_at=completed,
             status=GatewaySessionStatus.COMPLETED,
         )
-        gateway_ledger = _gateway_ledger(config)
         gateway_ledger.append_session(session)
         for turn in turns:
             gateway_ledger.append_turn(turn)
@@ -2311,6 +2397,11 @@ def discard_gateway_changes(
         bundle = ledger.change_bundle(session_id)
         if bundle is None:
             raise AutomaticRuntimeError("gateway change bundle is unavailable")
+        existing = ledger.application(session_id)
+        if existing is not None:
+            raise AutomaticRuntimeError(
+                f"gateway changes already have a recorded {existing.status.value} decision"
+            )
         from adaptation_compiler_lab.automatic_runtime.gateway_models import (
             ChangeApplicationReceipt,
             ChangeApplicationStatus,
@@ -2325,7 +2416,7 @@ def discard_gateway_changes(
             verification_receipt_digests=(),
             recorded_at=_now(),
         )
-        ledger.append_application(receipt)
+        ledger.append_application_outcome(receipt, ())
     except (OSError, ValueError) as error:
         _fail(str(error))
     typer.echo(canonical_json(receipt))
@@ -2346,6 +2437,11 @@ def apply_gateway_changes(
         bundle = ledger.change_bundle(session_id)
         if session is None or bundle is None:
             raise AutomaticRuntimeError("gateway session or change bundle is unavailable")
+        existing = ledger.application(session_id)
+        if existing is not None:
+            raise AutomaticRuntimeError(
+                f"gateway changes already have a recorded {existing.status.value} decision"
+            )
         project = _gateway_project(config, session.project_id)
         receipt, verifications = RecoverableChangeApplier(
             EncryptedChangeBundleStore(_raw_store(config))
@@ -2353,12 +2449,13 @@ def apply_gateway_changes(
             bundle,
             canonical_root=project.root,
             expected_head=expected_head,
-            verification_specs=project.verification_commands,
+            verification_specs=_verification_specs(project, "postflight"),
             verifier=IndependentVerifier(),
+            verification_session_id=f"application-{session_id}",
+            on_applied=ledger.append_application_outcome,
         )
-        for verification in verifications:
-            ledger.append_verification(verification)
-        ledger.append_application(receipt)
+        if receipt.status.value != "applied":
+            ledger.append_application_outcome(receipt, verifications)
     except (OSError, ValueError) as error:
         _fail(str(error))
     typer.echo(canonical_json(receipt))

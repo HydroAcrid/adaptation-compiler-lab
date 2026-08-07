@@ -37,7 +37,9 @@ size, update latency, maintenance, and evidence readiness. Completion requires 2
 interactions across at least three dates and will not be simulated. DPAPI auto-unlock, raw-free
 Windows notifications, fixed verification commands, and gateway metrics are implemented, while
 credential enrollment, watcher installation, and canonical change application remain explicit
-owner actions. See [`SEMANTIC_FEEDBACK_DETECTOR.md`](SEMANTIC_FEEDBACK_DETECTOR.md) and
+owner actions. The full Windows edit/review/apply path has passed one isolated saved-ChatGPT live
+canary; production enrollment and genuine longitudinal evidence remain separate. See
+[`SEMANTIC_FEEDBACK_DETECTOR.md`](SEMANTIC_FEEDBACK_DETECTOR.md) and
 [`MILESTONE_6A2D_WRITABLE_GATEWAY.md`](MILESTONE_6A2D_WRITABLE_GATEWAY.md).
 
 Milestones 6A.3–6A.5 now provide positive, complementary comparisons against the strong static

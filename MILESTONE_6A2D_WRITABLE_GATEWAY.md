@@ -1,8 +1,8 @@
 # Milestone 6A.2D — Writable Automatic Adaptation Gateway
 
-Status: **implemented and synthetic-conformant; ordinary-use evidence gate remains active**
+Status: **implemented and live-conformant in an isolated development canary; ordinary-use evidence gate remains active**
 
-Date: 2026-08-06
+Date: 2026-08-07
 
 ## Outcome
 
@@ -42,11 +42,14 @@ ordinary-use learning. The deferred external Claude study remains sealed and opt
    one explicit runtime root. A Windows target requires that root on a local `/mnt/<drive>` volume;
    it may not fall back to the read-only WSL UNC topology.
 7. Codex receives a fresh auth-only home, saved ChatGPT authentication, no API keys, no dynamic
-   tools or capability roots, `approvalPolicy=never`, one exact writable root, and network denial.
-   Any model, CWD, sandbox, root, network, or instruction-source drift fails before a turn.
-8. Verification commands are fixed argv arrays with time, output, address-space, process, CPU, and
-   file limits. API-key and research-key environment variables are scrubbed. The baseline is
-   checked before execution.
+   tools or capability roots, `approvalPolicy=never`, an implicitly writable exact CWD, no extra
+   writable roots, and network denial. The thread request omits `environments`: in the pinned
+   protocol, an empty array disables the execution environment rather than removing ambient
+   integrations. Any model, CWD, sandbox, root, network, or instruction-source drift fails before
+   a turn.
+8. Verification commands are fixed, phase-scoped argv arrays with time, output, address-space,
+   process, CPU, and file limits. API-key and research-key environment variables are scrubbed. A
+   baseline-safe subset runs before execution and task-result checks run only after the edit.
 9. After the agent exits, all file changes are captured with add/modify/delete operation, before
    and after digests, modes, binary status, exact base commit/tree, projection/release bindings,
    and encrypted full bytes. Symlink changes, `.git`, secret/config roots, traversal, submodule
@@ -58,11 +61,13 @@ ordinary-use learning. The deferred external Claude study remains sealed and opt
 11. `runtime changes show` decrypts the local bundle for explicit review. `runtime changes apply`
     requires the exact expected HEAD, a clean canonical tree, matching before-bytes and modes, and
     a valid encrypted bundle. Application is all-or-nothing, reruns independent verification, and
-    restores every touched file on failure. `discard` records a durable no-change decision.
-12. Session traces and change bytes remain AES-256-GCM encrypted outside Git for the existing
-    30-day raw retention window. The ledger stores only typed receipts, digests, counts, and raw
-    references. Temporary homes and worktrees must be torn down after success, failure, timeout,
-    or interruption.
+    restores every touched file on failure. Verification receipts and the application decision
+    commit atomically; a recording failure also restores the files. A second apply/discard decision
+    is refused. `discard` records a durable no-change decision.
+12. Structured session events, user/agent turns, and change bytes remain AES-256-GCM encrypted
+    outside Git for the existing 30-day raw retention window. The ledger stores only typed
+    receipts, digests, counts, and raw references. Temporary homes and worktrees must be torn down
+    after success, failure, timeout, or interruption.
 
 ## Credential boundary
 
@@ -114,11 +119,19 @@ Automated coverage includes:
 - clean detached worktree creation, exact baseline binding, dirty-tree refusal, symlink and path
   escape rejection, add/modify/delete/mode/binary capture, and size ceilings;
 - protected-verifier input rejection, clean independent execution, command timeouts/resource
-  limits, failing-result preservation, stale-head refusal, all-or-nothing apply, and rollback;
+  limits on POSIX and Windows, failing-result preservation, phase-specific receipt identity,
+  stale-head and duplicate-decision refusal, atomic application evidence, all-or-nothing apply,
+  and rollback;
 - schema snapshots, migration drift/idempotency, and compatibility with the existing runtime.
 
-No provider-billed API call, automatic tool creation, persistent `AGENTS.md`, preset activation,
-sealed benchmark access, canonical-repository apply, commit, or push occurs through a gateway smoke.
+The live development canary used the saved ChatGPT subscription and pinned Luna target with no API
+key. A fresh session created exactly one requested JSON file in a disposable worktree; independent
+postflight checks passed; the encrypted bundle exposed the exact one-file diff; and explicit apply
+to the isolated canary repository succeeded. A duplicate apply was refused. The canary also exposed
+and drove repairs for a Windows-only import, disabled environment access, verification phase
+conflation, configuration-binding drift, and application-receipt collision. No user project,
+provider-billed API call, automatic tool, persistent `AGENTS.md`, preset, or sealed benchmark
+material was used or changed.
 
 ## Remaining evidence work
 

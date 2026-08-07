@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -59,6 +60,23 @@ def _spec(expected: str = "after\n") -> tuple[VerificationCommandSpec, ...]:
             timeout_seconds=10,
         ),
     )
+
+
+def test_verification_commands_are_explicitly_phase_scoped() -> None:
+    postflight = VerificationCommandSpec(
+        command_id="created-output",
+        argv=(sys.executable, "-c", "raise SystemExit(0)"),
+        applies_to="postflight",
+    )
+    shared = VerificationCommandSpec(
+        command_id="shared",
+        argv=(sys.executable, "-c", "raise SystemExit(0)"),
+    )
+
+    assert postflight.runs_during("preflight") is False
+    assert postflight.runs_during("postflight") is True
+    assert shared.runs_during("preflight") is True
+    assert shared.runs_during("postflight") is True
 
 
 def test_capture_apply_and_independent_verification(tmp_path: Path) -> None:
@@ -141,6 +159,49 @@ def test_failed_post_apply_verification_rolls_back(tmp_path: Path) -> None:
     )
 
     assert receipt.status is ChangeApplicationStatus.ROLLED_BACK
+    assert (canonical / "kept.txt").read_text() == "before\n"
+    assert _git(canonical, "status", "--porcelain") == ""
+
+
+def test_failed_application_recording_rolls_back_verified_changes(tmp_path: Path) -> None:
+    canonical = _repository(tmp_path)
+    provider = GitWorktreeProvider(tmp_path / "workspaces")
+    workspace = provider.create(
+        canonical_root=canonical,
+        project_id="fixture",
+        session_id="session-recording-failure",
+    )
+    (workspace.root / "kept.txt").write_text("after\n")
+    store = EncryptedChangeBundleStore(
+        LocalRawPayloadStore(tmp_path / "raw", encryption_key=RawEncryptionKey(b"r" * 32))
+    )
+    bundle = store.capture(
+        session_id="session-recording-failure",
+        subject_id="kevin",
+        workspace=workspace.root,
+        baseline=workspace.baseline,
+        release_digest=DIGEST,
+        projection_digest=DIGEST,
+        verification_receipts=(),
+    )
+    provider.teardown(canonical_root=canonical, workspace=workspace.root)
+
+    def reject_recording(*_args: object) -> None:
+        raise RuntimeError("ledger unavailable")
+
+    receipt, verification = RecoverableChangeApplier(store).apply(
+        bundle,
+        canonical_root=canonical,
+        expected_head=workspace.baseline.commit_sha,
+        verification_specs=_spec(),
+        verifier=IndependentVerifier(),
+        verification_session_id="application-session-recording-failure",
+        on_applied=reject_recording,
+    )
+
+    assert receipt.status is ChangeApplicationStatus.ROLLED_BACK
+    assert receipt.failure_class == "RuntimeError"
+    assert verification[0].session_id == "application-session-recording-failure"
     assert (canonical / "kept.txt").read_text() == "before\n"
     assert _git(canonical, "status", "--porcelain") == ""
 
@@ -282,6 +343,32 @@ def test_independent_verifier_scrubs_keys_and_times_out_process_group(tmp_path: 
     )
 
     receipts = verifier.run(session_id="limits", workspace=tmp_path, specs=specs)
+
+    assert receipts[0].exit_code == 0
+    assert receipts[0].timed_out is False
+    assert receipts[1].timed_out is True
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows Job Object coverage")
+def test_windows_verifier_uses_bounded_job_object(tmp_path: Path) -> None:
+    specs = (
+        VerificationCommandSpec(
+            command_id="windows-pass",
+            argv=(sys.executable, "-c", "print('ok')"),
+            timeout_seconds=5,
+        ),
+        VerificationCommandSpec(
+            command_id="windows-timeout",
+            argv=(sys.executable, "-c", "import time; time.sleep(10)"),
+            timeout_seconds=1,
+        ),
+    )
+
+    receipts = IndependentVerifier().run(
+        session_id="windows-job-object",
+        workspace=tmp_path,
+        specs=specs,
+    )
 
     assert receipts[0].exit_code == 0
     assert receipts[0].timed_out is False

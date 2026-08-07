@@ -25,6 +25,7 @@ class GatewayTurnResult:
     turn_id: str
     status: str
     final_message: str
+    events: tuple[JsonObject, ...]
 
 
 class CodexGatewayConversation:
@@ -77,11 +78,9 @@ class CodexGatewayConversation:
             "approvalPolicy": "never",
             "cwd": self._rpc_workspace,
             "dynamicTools": [],
-            "environments": [],
             "ephemeral": True,
             "model": self._model,
             "personality": "none",
-            "runtimeWorkspaceRoots": [self._rpc_workspace],
             "sandbox": "workspace-write",
             "selectedCapabilityRoots": [],
             "threadSource": "adaptationCompilerLab",
@@ -109,10 +108,10 @@ class CodexGatewayConversation:
         if not isinstance(writable, list) or not isinstance(roots, list):
             raise CodexProtocolError("Codex returned invalid gateway workspace roots")
         for values in (writable, roots):
-            if (
-                len(values) != 1
-                or _resolved_runtime_path(_string(values[0], field="gateway workspace root"))
+            if len(values) > 1 or any(
+                _resolved_runtime_path(_string(value, field="gateway workspace root"))
                 != self._workspace
+                for value in values
             ):
                 raise CodexProtocolError("Codex widened or changed the gateway workspace roots")
         sources = response.get("instructionSources", [])
@@ -146,12 +145,14 @@ class CodexGatewayConversation:
         turn = _object(response.get("turn"), field="started turn")
         turn_id = _string(turn.get("id"), field="started turn id")
         messages: list[str] = []
+        events: list[JsonObject] = []
         deadline = monotonic() + self._timeout
         while True:
             remaining = deadline - monotonic()
             if remaining <= 0:
                 raise CodexProtocolError("gateway turn timed out")
             notification = self._rpc.next_notification(timeout_seconds=min(remaining, 30.0))
+            events.append(dict(notification))
             method = notification.get("method")
             notification_params = _object(notification.get("params"), field="notification params")
             if method == "item/completed":
@@ -172,6 +173,7 @@ class CodexGatewayConversation:
                     turn_id=turn_id,
                     status=_string(completed.get("status"), field="turn status"),
                     final_message="\n".join(messages).strip(),
+                    events=tuple(events),
                 )
 
     def _assert_notification_ids(self, params: JsonObject, *, turn_id: str) -> None:

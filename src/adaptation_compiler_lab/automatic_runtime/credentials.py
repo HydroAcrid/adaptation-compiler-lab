@@ -6,6 +6,7 @@ import base64
 import json
 import os
 import subprocess
+import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -248,6 +249,58 @@ class DpapiCredentialStore:
             return False
         self._path.unlink()
         return True
+
+    def rebind(
+        self,
+        *,
+        subject_id: str,
+        current_config_digest: Sha256Digest,
+        new_config_digest: Sha256Digest,
+        signer_fingerprint: Sha256Digest,
+        enrolled_at: datetime | None = None,
+    ) -> CredentialEnvelopeMetadata:
+        """Atomically bind an existing same-user enrollment to an explicit config update."""
+
+        secrets = self.unlock(
+            subject_id=subject_id,
+            config_digest=current_config_digest,
+            signer_fingerprint=signer_fingerprint,
+        )
+        entropy = self._entropy(
+            subject_id=subject_id,
+            config_digest=new_config_digest,
+            signer_fingerprint=signer_fingerprint,
+        )
+        ciphertext = self._protector.protect(secrets.to_bytes(), entropy=entropy)
+        metadata = CredentialEnvelopeMetadata(
+            envelope_id=f"credentials-{subject_id}",
+            subject_id=subject_id,
+            config_digest=new_config_digest,
+            signer_fingerprint=signer_fingerprint,
+            protector="windows-dpapi-current-user",
+            ciphertext_digest=Sha256Digest(f"sha256:{sha256(ciphertext).hexdigest()}"),
+            enrolled_at=enrolled_at or datetime.now(UTC),
+        )
+        payload = {
+            "ciphertext": base64.b64encode(ciphertext).decode("ascii"),
+            "metadata": metadata.model_dump(mode="json"),
+        }
+        descriptor, temporary_name = tempfile.mkstemp(
+            prefix=f".{_ENVELOPE_FILE}.",
+            suffix=".tmp",
+            dir=self._root,
+        )
+        temporary = Path(temporary_name)
+        try:
+            with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+                stream.write(canonical_json(payload) + "\n")
+                stream.flush()
+                os.fsync(stream.fileno())
+            temporary.chmod(0o600)
+            os.replace(temporary, self._path)
+        finally:
+            temporary.unlink(missing_ok=True)
+        return metadata
 
     def _read(self) -> tuple[CredentialEnvelopeMetadata, bytes]:
         try:
