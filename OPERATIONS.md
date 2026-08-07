@@ -179,9 +179,10 @@ external-validation custody boundary.
 
 Milestone 6A.2D adds an optional governed writable gateway without changing the preceding explicit
 commands. Upgrade a compatible 1.1/1.2 configuration with `runtime configure-gateway`, registering
-one local disposable-worktree root, exact verification argv arrays, protected verifier inputs,
-watcher cadence, notification mode, and fixed model/effort/turn limits. Configuration alone does
-not enroll credentials, install startup behavior, or launch an agent.
+one local disposable-worktree root, exact phase-scoped verification argv arrays, protected verifier
+inputs, watcher cadence, notification mode, and fixed model/effort/turn limits. Choose the native
+Windows sandbox explicitly; use `unelevated` only when elevated setup has failed on that host.
+Configuration alone does not enroll credentials, install startup behavior, or launch an agent.
 
 On Windows, use `runtime credentials enroll` as an explicit one-time action. It validates the
 existing external signing and raw-store secrets and stores only a Windows CurrentUser DPAPI
@@ -200,7 +201,9 @@ Use `runtime inbox list|show|acknowledge` for durable notices. Start governed ed
 canonical repository must be clean. The gateway freezes the release and compact projection,
 creates a detached disposable worktree, requires network-denied `workspaceWrite`, and refuses any
 sandbox, writable-root, CWD, model, effort, or instruction-source drift. It never silently accepts
-a read-only downgrade for an editing session.
+a read-only downgrade for an editing session. Do not pass `environments=[]` to the pinned app
+server: that disables execution access. Omission selects its default isolated turn environment;
+empty dynamic tools and capability roots still exclude external integrations.
 
 Agent changes are captured into an encrypted digest-bound bundle; they are not copied into the
 canonical repository. Independent verification runs in a second clean worktree using only the
@@ -209,8 +212,10 @@ Changes to protected verifier inputs, symlinks, `.git`, secret paths, oversized 
 paths outside the worktree fail closed. Inspect with `runtime changes show`, then explicitly
 `changes apply <session-id>` or `changes discard <session-id>`. Apply requires the original clean
 HEAD and matching before-bytes/modes, is all-or-nothing, reruns verification, and rolls back on
-failure. Use `runtime gateway-report` for raw-free instrument metrics. Full workflow and remaining
-evidence limits are documented in `MILESTONE_6A2D_WRITABLE_GATEWAY.md`.
+failure or audit-recording failure. The verification receipts and application decision commit
+atomically, and duplicate apply/discard decisions fail closed. Use `runtime gateway-report` for
+raw-free instrument metrics. Full workflow and remaining evidence limits are documented in
+`MILESTONE_6A2D_WRITABLE_GATEWAY.md`.
 
 ## Paid-run and rating gates
 

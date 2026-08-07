@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import base64
+import ctypes
 import json
 import os
-import resource
 import signal
 import stat
 import subprocess
@@ -17,6 +17,11 @@ from functools import partial
 from hashlib import sha256
 from pathlib import Path
 from typing import Final, Literal
+
+if os.name == "posix":
+    import resource
+else:  # pragma: no cover - imported and exercised by the Windows host smoke
+    resource = None  # type: ignore[assignment]
 
 from adaptation_compiler_lab.automatic_runtime.gateway_models import (
     ChangeApplicationReceipt,
@@ -35,6 +40,7 @@ from adaptation_compiler_lab.serialization import canonical_digest, canonical_js
 
 MAXIMUM_FILE_BYTES: Final = 5_000_000
 MAXIMUM_BUNDLE_BYTES: Final = 25_000_000
+WINDOWS_CREATE_NEW_PROCESS_GROUP: Final = 0x00000200
 _FORBIDDEN_PARTS: Final = frozenset({".git"})
 
 
@@ -228,25 +234,48 @@ class IndependentVerifier:
             exit_code = -1
             output = b""
             process: subprocess.Popen[bytes] | None = None
+            windows_job: _WindowsJobObject | None = None
             try:
-                process = subprocess.Popen(
-                    list(spec.argv),
-                    cwd=root,
-                    env=self._environment,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    start_new_session=True,
-                    preexec_fn=partial(self._set_resource_limits, spec.timeout_seconds),
-                )
+                if os.name == "nt":
+                    process = subprocess.Popen(
+                        list(spec.argv),
+                        cwd=root,
+                        env=self._environment,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        creationflags=WINDOWS_CREATE_NEW_PROCESS_GROUP,
+                    )
+                    windows_job = _WindowsJobObject(
+                        process,
+                        timeout_seconds=spec.timeout_seconds,
+                    )
+                else:
+                    process = subprocess.Popen(
+                        list(spec.argv),
+                        cwd=root,
+                        env=self._environment,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        start_new_session=True,
+                        preexec_fn=partial(self._set_posix_resource_limits, spec.timeout_seconds),
+                    )
                 stdout, _ = process.communicate(timeout=spec.timeout_seconds)
                 exit_code = process.returncode
                 output = stdout[: spec.maximum_output_bytes]
             except subprocess.TimeoutExpired:
                 timed_out = True
                 if process is not None:
-                    os.killpg(process.pid, signal.SIGKILL)
+                    if windows_job is not None:
+                        windows_job.terminate()
+                    elif os.name == "posix":
+                        os.killpg(process.pid, signal.SIGKILL)
+                    else:  # pragma: no cover - defensive fallback for an unknown platform
+                        process.kill()
                     stdout, _ = process.communicate()
                     output = stdout[: spec.maximum_output_bytes]
+            finally:
+                if windows_job is not None:
+                    windows_job.close()
             completed_at = now()
             receipts.append(
                 VerificationReceipt(
@@ -265,7 +294,9 @@ class IndependentVerifier:
         return tuple(receipts)
 
     @staticmethod
-    def _set_resource_limits(timeout_seconds: int) -> None:
+    def _set_posix_resource_limits(timeout_seconds: int) -> None:
+        if resource is None:  # pragma: no cover - guarded by the caller
+            raise WorkspaceGatewayError("POSIX resource limits are unavailable")
         limits = (
             (resource.RLIMIT_CPU, timeout_seconds + 1),
             (resource.RLIMIT_AS, 2_000_000_000),
@@ -280,6 +311,111 @@ class IndependentVerifier:
             if current_soft != resource.RLIM_INFINITY:
                 bounded = min(bounded, current_soft)
             resource.setrlimit(kind, (bounded, current_hard))
+
+
+class _WindowsJobObject:
+    """Bind a verifier process tree to Windows memory, CPU, and process-count limits."""
+
+    _JOB_OBJECT_LIMIT_PROCESS_TIME: Final = 0x00000002
+    _JOB_OBJECT_LIMIT_ACTIVE_PROCESS: Final = 0x00000008
+    _JOB_OBJECT_LIMIT_PROCESS_MEMORY: Final = 0x00000100
+    _JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE: Final = 0x00002000
+    _JOB_OBJECT_EXTENDED_LIMIT_INFORMATION: Final = 9
+
+    def __init__(self, process: subprocess.Popen[bytes], *, timeout_seconds: int) -> None:
+        if os.name != "nt":  # pragma: no cover - construction is Windows-only
+            raise WorkspaceGatewayError("Windows job objects are unavailable")
+        from ctypes import wintypes
+
+        class IoCounters(ctypes.Structure):
+            _fields_ = [
+                ("ReadOperationCount", ctypes.c_uint64),
+                ("WriteOperationCount", ctypes.c_uint64),
+                ("OtherOperationCount", ctypes.c_uint64),
+                ("ReadTransferCount", ctypes.c_uint64),
+                ("WriteTransferCount", ctypes.c_uint64),
+                ("OtherTransferCount", ctypes.c_uint64),
+            ]
+
+        class BasicLimitInformation(ctypes.Structure):
+            _fields_ = [
+                ("PerProcessUserTimeLimit", ctypes.c_int64),
+                ("PerJobUserTimeLimit", ctypes.c_int64),
+                ("LimitFlags", wintypes.DWORD),
+                ("MinimumWorkingSetSize", ctypes.c_size_t),
+                ("MaximumWorkingSetSize", ctypes.c_size_t),
+                ("ActiveProcessLimit", wintypes.DWORD),
+                ("Affinity", ctypes.c_size_t),
+                ("PriorityClass", wintypes.DWORD),
+                ("SchedulingClass", wintypes.DWORD),
+            ]
+
+        class ExtendedLimitInformation(ctypes.Structure):
+            _fields_ = [
+                ("BasicLimitInformation", BasicLimitInformation),
+                ("IoInfo", IoCounters),
+                ("ProcessMemoryLimit", ctypes.c_size_t),
+                ("JobMemoryLimit", ctypes.c_size_t),
+                ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                ("PeakJobMemoryUsed", ctypes.c_size_t),
+            ]
+
+        win_dll = getattr(ctypes, "WinDLL")  # noqa: B009 -- Windows-only attribute
+        self._kernel32 = win_dll("kernel32", use_last_error=True)
+        self._kernel32.CreateJobObjectW.argtypes = (ctypes.c_void_p, wintypes.LPCWSTR)
+        self._kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+        self._kernel32.SetInformationJobObject.argtypes = (
+            wintypes.HANDLE,
+            ctypes.c_int,
+            ctypes.c_void_p,
+            wintypes.DWORD,
+        )
+        self._kernel32.SetInformationJobObject.restype = wintypes.BOOL
+        self._kernel32.AssignProcessToJobObject.argtypes = (wintypes.HANDLE, wintypes.HANDLE)
+        self._kernel32.AssignProcessToJobObject.restype = wintypes.BOOL
+        self._kernel32.TerminateJobObject.argtypes = (wintypes.HANDLE, wintypes.UINT)
+        self._kernel32.TerminateJobObject.restype = wintypes.BOOL
+        self._kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+        self._kernel32.CloseHandle.restype = wintypes.BOOL
+
+        handle = self._kernel32.CreateJobObjectW(None, None)
+        if not handle:
+            process.kill()
+            raise WorkspaceGatewayError("Windows verifier job could not be created")
+        self._handle = handle
+        limits = ExtendedLimitInformation()
+        limits.BasicLimitInformation.LimitFlags = (
+            self._JOB_OBJECT_LIMIT_PROCESS_TIME
+            | self._JOB_OBJECT_LIMIT_ACTIVE_PROCESS
+            | self._JOB_OBJECT_LIMIT_PROCESS_MEMORY
+            | self._JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        )
+        limits.BasicLimitInformation.PerProcessUserTimeLimit = (timeout_seconds + 1) * 10_000_000
+        limits.BasicLimitInformation.ActiveProcessLimit = 128
+        limits.ProcessMemoryLimit = 2_000_000_000
+        configured = self._kernel32.SetInformationJobObject(
+            self._handle,
+            self._JOB_OBJECT_EXTENDED_LIMIT_INFORMATION,
+            ctypes.byref(limits),
+            ctypes.sizeof(limits),
+        )
+        process_handle = getattr(process, "_handle", None)
+        assigned = process_handle is not None and self._kernel32.AssignProcessToJobObject(
+            self._handle, process_handle
+        )
+        if not configured or not assigned:
+            process.kill()
+            self.close()
+            raise WorkspaceGatewayError("Windows verifier process could not be contained")
+
+    def terminate(self) -> None:
+        if self._handle is not None and not self._kernel32.TerminateJobObject(self._handle, 1):
+            raise WorkspaceGatewayError("Windows verifier process tree could not be terminated")
+
+    def close(self) -> None:
+        if self._handle is not None:
+            self._kernel32.CloseHandle(self._handle)
+            self._handle = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -515,6 +651,10 @@ class RecoverableChangeApplier:
         expected_head: str,
         verification_specs: tuple[VerificationCommandSpec, ...],
         verifier: IndependentVerifier,
+        verification_session_id: str | None = None,
+        on_applied: (
+            Callable[[ChangeApplicationReceipt, tuple[VerificationReceipt, ...]], None] | None
+        ) = None,
         recorded_at: datetime | None = None,
     ) -> tuple[ChangeApplicationReceipt, tuple[VerificationReceipt, ...]]:
         root = canonical_root.expanduser().resolve()
@@ -555,12 +695,23 @@ class RecoverableChangeApplier:
                 backups[target] = (actual, actual_mode)
                 self._write_or_delete(target, after, mode=after_mode)
             receipts = verifier.run(
-                session_id=f"apply-{bundle.receipt.session_id}",
+                session_id=(verification_session_id or f"application-{bundle.receipt.session_id}"),
                 workspace=root,
                 specs=verification_specs,
             )
             if any(item.exit_code != 0 or item.timed_out for item in receipts):
                 raise WorkspaceGatewayError("independent post-apply verification failed")
+            applied = ChangeApplicationReceipt(
+                receipt_id=f"apply-{bundle.receipt.session_id}",
+                session_id=bundle.receipt.session_id,
+                change_receipt_digest=bundle.receipt.content_digest,
+                expected_head=expected_head,
+                status=ChangeApplicationStatus.APPLIED,
+                verification_receipt_digests=tuple(canonical_digest(item) for item in receipts),
+                recorded_at=now,
+            )
+            if on_applied is not None:
+                on_applied(applied, receipts)
         except BaseException as error:
             for target, (before, before_mode) in backups.items():
                 self._write_or_delete(target, before, mode=before_mode)
@@ -577,18 +728,7 @@ class RecoverableChangeApplier:
                 ),
                 receipts,
             )
-        return (
-            ChangeApplicationReceipt(
-                receipt_id=f"apply-{bundle.receipt.session_id}",
-                session_id=bundle.receipt.session_id,
-                change_receipt_digest=bundle.receipt.content_digest,
-                expected_head=expected_head,
-                status=ChangeApplicationStatus.APPLIED,
-                verification_receipt_digests=tuple(canonical_digest(item) for item in receipts),
-                recorded_at=now,
-            ),
-            receipts,
-        )
+        return applied, receipts
 
     @staticmethod
     def _decode_optional(value: object) -> bytes | None:

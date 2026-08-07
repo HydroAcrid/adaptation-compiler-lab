@@ -45,24 +45,46 @@ class GatewayLedger:
         values: tuple[object, ...],
         model: BaseModel,
     ) -> bool:
-        payload = canonical_json(model)
-        digest = str(canonical_digest(model)).removeprefix("sha256:")
         with sqlite3.connect(self._path) as connection:
-            existing = connection.execute(
-                f"SELECT canonical_json, content_sha256 FROM {table} WHERE {key_column} = ?",
-                (key,),
-            ).fetchone()
-            if existing is not None:
-                if tuple(existing) == (payload, digest):
-                    return False
-                raise RecordConflictError(f"{table} identifier names different immutable content")
-            names = (*columns, "canonical_json", "content_sha256")
-            placeholders = ", ".join("?" for _ in names)
-            connection.execute(
-                f"INSERT INTO {table} ({', '.join(names)}) VALUES ({placeholders})",
-                (*values, payload, digest),
+            inserted = self._insert(
+                connection,
+                table=table,
+                key_column=key_column,
+                key=key,
+                columns=columns,
+                values=values,
+                model=model,
             )
             connection.commit()
+        return inserted
+
+    @staticmethod
+    def _insert(
+        connection: sqlite3.Connection,
+        *,
+        table: str,
+        key_column: str,
+        key: str,
+        columns: tuple[str, ...],
+        values: tuple[object, ...],
+        model: BaseModel,
+    ) -> bool:
+        payload = canonical_json(model)
+        digest = str(canonical_digest(model)).removeprefix("sha256:")
+        existing = connection.execute(
+            f"SELECT canonical_json, content_sha256 FROM {table} WHERE {key_column} = ?",
+            (key,),
+        ).fetchone()
+        if existing is not None:
+            if tuple(existing) == (payload, digest):
+                return False
+            raise RecordConflictError(f"{table} identifier names different immutable content")
+        names = (*columns, "canonical_json", "content_sha256")
+        placeholders = ", ".join("?" for _ in names)
+        connection.execute(
+            f"INSERT INTO {table} ({', '.join(names)}) VALUES ({placeholders})",
+            (*values, payload, digest),
+        )
         return True
 
     def append_inbox(self, entry: NotificationInboxEntry) -> bool:
@@ -189,20 +211,46 @@ class GatewayLedger:
             model=receipt,
         )
 
-    def append_application(self, receipt: ChangeApplicationReceipt) -> bool:
-        return self._append(
-            table="runtime_change_application_receipts",
-            key_column="receipt_id",
-            key=receipt.receipt_id,
-            columns=("receipt_id", "session_id", "status", "recorded_at"),
-            values=(
-                receipt.receipt_id,
-                receipt.session_id,
-                receipt.status.value,
-                receipt.recorded_at.isoformat(),
-            ),
-            model=receipt,
-        )
+    def append_application_outcome(
+        self,
+        receipt: ChangeApplicationReceipt,
+        verifications: tuple[VerificationReceipt, ...],
+    ) -> None:
+        """Atomically persist one application decision and all supporting checks."""
+
+        if self.session(receipt.session_id) is None:
+            raise ValueError("change application crossed the ledger subject")
+        with sqlite3.connect(self._path) as connection:
+            for verification in verifications:
+                self._insert(
+                    connection,
+                    table="runtime_verification_receipts",
+                    key_column="receipt_id",
+                    key=verification.receipt_id,
+                    columns=("receipt_id", "session_id", "command_id", "completed_at"),
+                    values=(
+                        verification.receipt_id,
+                        verification.session_id,
+                        verification.command_id,
+                        verification.completed_at.isoformat(),
+                    ),
+                    model=verification,
+                )
+            self._insert(
+                connection,
+                table="runtime_change_application_receipts",
+                key_column="receipt_id",
+                key=receipt.receipt_id,
+                columns=("receipt_id", "session_id", "status", "recorded_at"),
+                values=(
+                    receipt.receipt_id,
+                    receipt.session_id,
+                    receipt.status.value,
+                    receipt.recorded_at.isoformat(),
+                ),
+                model=receipt,
+            )
+            connection.commit()
 
     def inbox(self) -> tuple[NotificationInboxEntry, ...]:
         return self._read_many(
@@ -225,6 +273,20 @@ class GatewayLedger:
         if len(sessions) > 1:
             raise ValueError("gateway session identity is ambiguous")
         return None if not sessions else sessions[0]
+
+    def application(self, session_id: str) -> ChangeApplicationReceipt | None:
+        applications = self._read_many(
+            "SELECT application.canonical_json, application.content_sha256 "
+            "FROM runtime_change_application_receipts AS application "
+            "JOIN runtime_gateway_sessions AS session "
+            "ON session.session_id = application.session_id "
+            "WHERE session.subject_id = ? AND application.session_id = ?",
+            (self._subject_id, session_id),
+            ChangeApplicationReceipt,
+        )
+        if len(applications) > 1:
+            raise ValueError("gateway application identity is ambiguous")
+        return None if not applications else applications[0]
 
     def change_bundle(self, session_id: str) -> CapturedChangeBundle | None:
         with sqlite3.connect(self._path) as connection:

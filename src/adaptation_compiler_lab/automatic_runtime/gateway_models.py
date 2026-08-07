@@ -32,6 +32,7 @@ class VerificationCommandSpec(FrozenModel):
     argv: Annotated[tuple[str, ...], Field(min_length=1, max_length=32)]
     timeout_seconds: int = Field(default=600, ge=1, le=1_800)
     maximum_output_bytes: int = Field(default=1_000_000, ge=1_024, le=10_000_000)
+    applies_to: Literal["preflight", "postflight", "both"] = "both"
 
     @field_validator("argv")
     @classmethod
@@ -49,6 +50,9 @@ class VerificationCommandSpec(FrozenModel):
         }:
             raise ValueError("verification commands must not invoke a general-purpose shell")
         return value
+
+    def runs_during(self, phase: Literal["preflight", "postflight"]) -> bool:
+        return self.applies_to == "both" or self.applies_to == phase
 
 
 class CredentialEnvelopeMetadata(FrozenModel):

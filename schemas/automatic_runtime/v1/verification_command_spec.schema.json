@@ -2,6 +2,16 @@
   "additionalProperties": false,
   "description": "One bounded argv command; shell interpretation is intentionally impossible.",
   "properties": {
+    "applies_to": {
+      "default": "both",
+      "enum": [
+        "preflight",
+        "postflight",
+        "both"
+      ],
+      "title": "Applies To",
+      "type": "string"
+    },
     "argv": {
       "items": {
         "type": "string"

@@ -156,7 +156,12 @@ execution requires a local `/mnt/<drive>` worktree and rejects the safe read-onl
 by the older UNC inspection path. Verification commands are configuration-bound argv arrays;
 their trusted inputs are protected from agent edits and rerun in a separate clean worktree.
 Canonical application requires an exact expected HEAD, clean status, matching before digests and
-modes, a valid encrypted bundle, and all-or-nothing rollback. It never commits or pushes.
+modes, a valid encrypted bundle, and all-or-nothing rollback. Phase-specific verification IDs
+prevent validation and application evidence from colliding; application checks and the decision
+are written atomically before filesystem success is accepted. The pinned Windows request omits an
+empty `environments` field because that value disables execution access; isolation instead comes
+from a fresh auth-only home, empty dynamic/capability inputs, network denial, and the exact sandbox
+CWD. It never commits or pushes.
 
 The runtime boundary is deliberately outside promotion and custody:
 

@@ -15,6 +15,9 @@ import pytest
 from typer.testing import CliRunner
 
 from adaptation_compiler_lab.automatic_runtime import dogfood_cli
+from adaptation_compiler_lab.automatic_runtime.gateway_models import (
+    CredentialEnvelopeMetadata,
+)
 from adaptation_compiler_lab.automatic_runtime.service import AutomaticRuntimeError
 from adaptation_compiler_lab.cli import app
 from adaptation_compiler_lab.connectors.pins import DEFAULT_DOGFOOD_RUNTIME_LOCK
@@ -309,8 +312,13 @@ def test_runtime_init_writes_no_secret_config_and_status_is_local(
     assert raw_key not in text
     assert "PRIVATE KEY" not in text
     config = dogfood_cli.CodexDogfoodLocalConfig.model_validate_json(text)
+    assert (
+        config.credential_binding_digest
+        != config.model_copy(update={"gateway_model": "different-model"}).credential_binding_digest
+    )
     assert config.effective_target_codex_executable == target_executable
     assert config.effective_target_codex_home == target_home
+    assert config.gateway_windows_sandbox == "elevated"
     assert set(config.projects[0].effective_source_roots) == {
         desktop_source,
         repository,
@@ -319,6 +327,11 @@ def test_runtime_init_writes_no_secret_config_and_status_is_local(
         executable,
         target_executable,
     ]
+    with dogfood_cli._isolated_target_home(config) as isolated_home:
+        isolated_config = (isolated_home / "config.toml").read_text(encoding="utf-8")
+        assert 'sandbox_mode = "workspace-write"' in isolated_config
+        assert 'sandbox = "elevated"' in isolated_config
+        assert (isolated_home / "auth.json").is_file()
 
     status = runner.invoke(
         app,
@@ -335,6 +348,33 @@ def test_runtime_init_writes_no_secret_config_and_status_is_local(
     gate_payload = json.loads(gate.stdout)
     assert gate_payload["evidence_ready"] is False
     assert gate_payload["remaining_interactions"] == 20
+
+    metadata = CredentialEnvelopeMetadata(
+        envelope_id="credentials-kevin",
+        subject_id="kevin",
+        config_digest=f"sha256:{'a' * 64}",
+        signer_fingerprint=f"sha256:{'b' * 64}",
+        protector="windows-dpapi-current-user",
+        ciphertext_digest=f"sha256:{'c' * 64}",
+        enrolled_at=NOW,
+    )
+
+    class FakeCredentialStore:
+        def __init__(self, _state_root: Path) -> None:
+            pass
+
+        def status(self) -> CredentialEnvelopeMetadata:
+            return metadata
+
+    monkeypatch.setattr(dogfood_cli, "DpapiCredentialStore", FakeCredentialStore)
+    credential_status = runner.invoke(
+        app,
+        ["runtime", "credentials", "status", "--config", str(config_path)],
+    )
+    assert credential_status.exit_code == 0, credential_status.output
+    credential_payload = json.loads(credential_status.stdout)
+    assert credential_payload["enrolled"] is True
+    assert credential_payload["metadata"]["envelope_id"] == "credentials-kevin"
 
 
 def test_synthetic_identity_consent_and_capture_preview_cli(

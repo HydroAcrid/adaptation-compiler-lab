@@ -217,10 +217,16 @@ def test_gateway_conversation_requires_writable_network_denied_sandbox(tmp_path:
 
     assert result.status == "completed"
     assert result.final_message == "Completed the adapted task."
+    assert tuple(event["method"] for event in result.events) == (
+        "item/completed",
+        "turn/completed",
+    )
     thread_params = next(params for method, params in rpc.calls if method == "thread/start")
     assert thread_params["ephemeral"] is True
     assert thread_params["dynamicTools"] == []
     assert thread_params["selectedCapabilityRoots"] == []
+    assert "environments" not in thread_params
+    assert "runtimeWorkspaceRoots" not in thread_params
     assert thread_params["sandbox"] == "workspace-write"
 
 
@@ -245,6 +251,29 @@ def test_gateway_conversation_refuses_read_only_downgrade(tmp_path: Path) -> Non
 
     with pytest.raises(CodexProtocolError, match="workspace-write"):
         conversation.start()
+
+
+def test_gateway_accepts_implicit_cwd_without_extra_writable_roots(tmp_path: Path) -> None:
+    class ImplicitCwdRpc(FakeLaunchRpc):
+        def request(self, method: str, params: JsonObject) -> JsonObject:
+            response = super().request(method, params)
+            if method == "thread/start":
+                response["runtimeWorkspaceRoots"] = []
+                response["sandbox"] = {
+                    "type": "workspaceWrite",
+                    "networkAccess": False,
+                    "writableRoots": [],
+                }
+            return response
+
+    conversation = CodexGatewayConversation(
+        ImplicitCwdRpc(tmp_path),
+        schemas=CodexDogfoodSchemaSet(),
+        workspace=tmp_path,
+    )
+
+    conversation.start()
+    assert conversation.thread_id == "target-thread-1"
 
 
 @dataclass
