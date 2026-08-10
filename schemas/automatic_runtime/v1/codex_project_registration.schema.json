@@ -1,0 +1,92 @@
+{
+  "additionalProperties": false,
+  "description": "Raw-free project/cutoff binding authorized by a signed governance event.",
+  "properties": {
+    "capture_after_epoch_seconds": {
+      "minimum": 0,
+      "title": "Capture After Epoch Seconds",
+      "type": "integer"
+    },
+    "modifies_existing_threads": {
+      "const": false,
+      "default": false,
+      "title": "Modifies Existing Threads",
+      "type": "boolean"
+    },
+    "modifies_source_repository": {
+      "const": false,
+      "default": false,
+      "title": "Modifies Source Repository",
+      "type": "boolean"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "project_root": {
+      "minLength": 1,
+      "title": "Project Root",
+      "type": "string"
+    },
+    "registered_at": {
+      "format": "date-time",
+      "title": "Registered At",
+      "type": "string"
+    },
+    "registration_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Registration Id",
+      "type": "string"
+    },
+    "registration_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Registration Version",
+      "type": "string"
+    },
+    "source_access": {
+      "const": "read_only_completed_tasks",
+      "default": "read_only_completed_tasks",
+      "title": "Source Access",
+      "type": "string"
+    },
+    "source_roots": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Source Roots",
+      "type": "array"
+    },
+    "standing_policy_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Standing Policy Digest",
+      "type": "string"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "registration_id",
+    "subject_id",
+    "project_id",
+    "project_root",
+    "source_roots",
+    "capture_after_epoch_seconds",
+    "standing_policy_digest",
+    "registered_at"
+  ],
+  "title": "CodexProjectRegistration",
+  "type": "object"
+}

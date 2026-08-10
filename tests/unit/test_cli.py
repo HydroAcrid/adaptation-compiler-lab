@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from adaptation_compiler_lab.automatic_runtime import dogfood_cli
+from adaptation_compiler_lab.automatic_runtime import dogfood_cli, initial_runtime_state
 from adaptation_compiler_lab.automatic_runtime.gateway_models import (
     CredentialEnvelopeMetadata,
 )
@@ -348,6 +348,90 @@ def test_runtime_init_writes_no_secret_config_and_status_is_local(
     gate_payload = json.loads(gate.stdout)
     assert gate_payload["evidence_ready"] is False
     assert gate_payload["remaining_interactions"] == 20
+
+    additional_project = tmp_path / "additional-project"
+    additional_project.mkdir()
+
+    class NoEnrollmentCredentialStore:
+        def __init__(self, _state_root: Path) -> None:
+            pass
+
+        def status(self) -> None:
+            return None
+
+    monkeypatch.setattr(dogfood_cli, "DpapiCredentialStore", NoEnrollmentCredentialStore)
+    before_registration = config_path.read_text(encoding="utf-8")
+    refused_registration = runner.invoke(
+        app,
+        [
+            "runtime",
+            "project",
+            "register",
+            "--config",
+            str(config_path),
+            "--project-id",
+            "second-project",
+            "--project-root",
+            str(additional_project),
+        ],
+    )
+    assert refused_registration.exit_code == 1
+    assert "--confirm-prospective" in refused_registration.output
+    assert config_path.read_text(encoding="utf-8") == before_registration
+
+    registered = runner.invoke(
+        app,
+        [
+            "runtime",
+            "project",
+            "register",
+            "--config",
+            str(config_path),
+            "--project-id",
+            "second-project",
+            "--project-root",
+            str(additional_project),
+            "--confirm-prospective",
+        ],
+    )
+    assert registered.exit_code == 0, registered.output
+    registration_payload = json.loads(registered.stdout)
+    assert registration_payload["status"] == "registered_read_only"
+    assert registration_payload["modifies_existing_threads"] is False
+    assert registration_payload["modifies_source_repository"] is False
+
+    registered_config = dogfood_cli.CodexDogfoodLocalConfig.model_validate_json(
+        config_path.read_text(encoding="utf-8"),
+        strict=True,
+    )
+    assert registered_config.config_version == "1.4.0"
+    assert registered_config.policy.previous_policy == config.policy
+    assert initial_runtime_state(registered_config.policy) == initial_runtime_state(config.policy)
+    second_project = registered_config.projects[1]
+    assert second_project.project_id == "second-project"
+    assert second_project.capture_after_epoch_seconds is not None
+    assert second_project.capture_after_epoch_seconds >= config.capture_after_epoch_seconds
+    assert second_project.registration is not None
+    assert second_project.registration.modifies_existing_threads is False
+    assert second_project.registration.modifies_source_repository is False
+
+    tampered = registered_config.model_dump(mode="python")
+    tampered["projects"][1]["registration_authorization"]["signature"]["signature_base64"] = (
+        base64.b64encode(b"x" * 64).decode("ascii")
+    )
+    with pytest.raises(ValueError, match="project-registration authorization is invalid"):
+        dogfood_cli.CodexDogfoodLocalConfig.model_validate(tampered, strict=True)
+
+    listed = runner.invoke(
+        app,
+        ["runtime", "project", "list", "--config", str(config_path)],
+    )
+    assert listed.exit_code == 0, listed.output
+    listed_payload = json.loads(listed.stdout)
+    assert [item["project_id"] for item in listed_payload["projects"]] == [
+        "dogfood-project",
+        "second-project",
+    ]
 
     metadata = CredentialEnvelopeMetadata(
         envelope_id="credentials-kevin",

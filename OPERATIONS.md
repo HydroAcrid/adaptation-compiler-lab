@@ -149,6 +149,22 @@ complete endpoint. Partial target endpoints fail closed. On the active Windows/W
 native Windows runs the CLI because WSL executable interoperability is disabled; the canonical WSL
 target root is supplied through its UNC path.
 
+For an additional real project, first run `runtime project preview --project-root <path>`. Preview
+uses saved ChatGPT authentication but only invokes `account/read` and `thread/list`; it reports
+content-free counts and never reads a turn, message, task name, or preview. Then run `runtime project
+register --project-id <id> --project-root <path> --confirm-prospective` with the external signing
+credential available. Registration is local, signed, and prospective: all tasks created before its
+recorded cutoff remain ineligible. It does not install the watcher, read historical content, modify
+an existing Codex task, write to the source repository, launch an agent, or activate an adaptation.
+
+Use `runtime project list` to audit exact roots, cutoffs, and registration digests. Each new project
+creates one additive signed standing-policy amendment; non-project authority and the original state
+binding cannot change. Duplicate IDs, missing signatures, tampering, and roots that overlap another
+project fail closed. After registration, create new ordinary Codex tasks in that project. Poll only
+after those tasks complete, inspect/reject/approve proposals through the existing review flow, and
+deliver approved material only to a fresh isolated target task. Keep source observation and target
+editing as separate operations.
+
 Use `runtime run --workspace <allowlisted-root> --task <text>` to prepare a later activation and
 launch one fresh ephemeral Codex session through saved ChatGPT authentication. The command rejects
 unresolved prior activations, validates exact model/approval/workspace/network/instruction-source

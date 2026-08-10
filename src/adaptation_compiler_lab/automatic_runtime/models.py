@@ -29,6 +29,7 @@ from adaptation_compiler_lab.domain import (
     Identifier,
     NonEmptyStr,
     PermittedUse,
+    SemVer,
     Sha256Digest,
     SourceClass,
     TaskRecordRef,
@@ -165,7 +166,7 @@ class StandingAutomationPolicy(FrozenModel):
     """One signed-policy target authorizing low-risk, reversible automatic adaptation."""
 
     policy_id: Identifier
-    policy_version: Literal["1.0.0"] = "1.0.0"
+    policy_version: SemVer = "1.0.0"
     subject_id: Identifier
     scope: Scope
     permitted_uses: tuple[PermittedUse, ...]
@@ -177,6 +178,7 @@ class StandingAutomationPolicy(FrozenModel):
     notify_on_change: Literal[True] = True
     effective_at: UtcDateTime
     expires_at: UtcDateTime
+    previous_policy: StandingAutomationPolicy | None = None
 
     @field_validator("permitted_uses")
     @classmethod
@@ -221,6 +223,37 @@ class StandingAutomationPolicy(FrozenModel):
             self.scope.target_families
         ):
             raise ValueError("standing-policy targets exceed its scope")
+        previous = self.previous_policy
+        if previous is not None:
+            unchanged = (
+                self.policy_id == previous.policy_id
+                and self.subject_id == previous.subject_id
+                and self.permitted_uses == previous.permitted_uses
+                and self.allowed_routes == previous.allowed_routes
+                and self.allowed_target_families == previous.allowed_target_families
+                and self.maximum_behavior_utf8_bytes == previous.maximum_behavior_utf8_bytes
+                and self.retention_days == previous.retention_days
+                and self.auto_activate == previous.auto_activate
+                and self.notify_on_change == previous.notify_on_change
+                and self.expires_at == previous.expires_at
+            )
+            if not unchanged:
+                raise ValueError(
+                    "standing-policy project amendment changed a non-project authorization"
+                )
+            current_scope = self.scope.model_dump()
+            previous_scope = previous.scope.model_dump()
+            current_projects = set(self.scope.project_ids)
+            previous_projects = set(previous.scope.project_ids)
+            current_scope["project_ids"] = ()
+            previous_scope["project_ids"] = ()
+            if (
+                current_scope != previous_scope
+                or not current_projects > previous_projects
+                or self.effective_at < previous.effective_at
+                or self.effective_at >= self.expires_at
+            ):
+                raise ValueError("standing-policy amendment must only add projects prospectively")
         return self
 
     @property
@@ -230,6 +263,53 @@ class StandingAutomationPolicy(FrozenModel):
     @property
     def authorization_target_ref(self) -> str:
         return f"standing-automation-policy:{self.policy_id}"
+
+    @property
+    def state_binding_digest(self) -> Sha256Digest:
+        """Keep append-only runtime state bound to the first authorized policy."""
+
+        policy = self
+        while policy.previous_policy is not None:
+            policy = policy.previous_policy
+        return policy.content_digest
+
+    def policy_for_digest(self, digest: Sha256Digest) -> StandingAutomationPolicy | None:
+        """Return the exact signed amendment in this lineage, if present."""
+
+        policy: StandingAutomationPolicy | None = self
+        while policy is not None:
+            if policy.content_digest == digest:
+                return policy
+            policy = policy.previous_policy
+        return None
+
+
+class CodexProjectRegistration(FrozenModel):
+    """Raw-free project/cutoff binding authorized by a signed governance event."""
+
+    registration_version: Literal["1.0.0"] = "1.0.0"
+    registration_id: Identifier
+    subject_id: Identifier
+    project_id: Identifier
+    project_root: NonEmptyStr
+    source_roots: Annotated[tuple[NonEmptyStr, ...], Field(min_length=1)]
+    capture_after_epoch_seconds: int = Field(ge=0)
+    standing_policy_digest: Sha256Digest
+    source_access: Literal["read_only_completed_tasks"] = "read_only_completed_tasks"
+    modifies_existing_threads: Literal[False] = False
+    modifies_source_repository: Literal[False] = False
+    registered_at: UtcDateTime
+
+    @field_validator("source_roots")
+    @classmethod
+    def source_roots_are_sorted_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if not strings_are_sorted_unique(value):
+            raise ValueError("project-registration source roots must be sorted and unique")
+        return value
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
 
 
 class InteractionObservation(FrozenModel):

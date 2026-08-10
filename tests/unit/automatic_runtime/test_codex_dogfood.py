@@ -14,6 +14,7 @@ from adaptation_compiler_lab.automatic_runtime.codex_dogfood import (
     CodexDogfoodSchemaSet,
     CodexDogfoodSessionLauncher,
     CodexProjectScope,
+    preview_codex_project,
     require_chatgpt_account,
 )
 from adaptation_compiler_lab.automatic_runtime.codex_gateway import CodexGatewayConversation
@@ -452,6 +453,79 @@ def test_pickup_excludes_unmapped_projects_and_pre_cutoff_threads(
     )
     old_thread["createdAt"] = 1
     assert _source(FakeRpc(old_thread), tmp_path).poll(after_cursor=None).items == ()
+
+
+def test_project_cutoff_overrides_legacy_global_cutoff(tmp_path: Path) -> None:
+    rpc = FakeRpc(
+        _thread(
+            tmp_path,
+            turns=[_turn(_user("user-1", "Never import pre-registration history."))],
+        )
+    )
+    source = CodexDogfoodInteractionSource(
+        rpc,
+        subject_id="kevin",
+        source_version="0.146.0",
+        source_schema_digest=SCHEMA_DIGEST,
+        schemas=CodexDogfoodSchemaSet(),
+        projects=(
+            CodexProjectScope(
+                root=tmp_path,
+                scope=Scope(
+                    subject_ids=("kevin",),
+                    project_ids=("new-project",),
+                    target_families=("codex",),
+                ),
+                capture_after_epoch_seconds=101,
+            ),
+        ),
+        capture_after_epoch_seconds=50,
+    )
+
+    assert source.poll(after_cursor=None).items == ()
+    assert all(method != "thread/read" for method, _params in rpc.calls)
+
+
+def test_pickup_refuses_ambiguous_project_roots(tmp_path: Path) -> None:
+    rpc = FakeRpc(_thread(tmp_path, turns=[_turn(_user("user-1", "Keep this scoped."))]))
+    source = CodexDogfoodInteractionSource(
+        rpc,
+        subject_id="kevin",
+        source_version="0.146.0",
+        source_schema_digest=SCHEMA_DIGEST,
+        schemas=CodexDogfoodSchemaSet(),
+        projects=(
+            CodexProjectScope(
+                root=tmp_path,
+                scope=Scope(subject_ids=("kevin",), project_ids=("project-a",)),
+                capture_after_epoch_seconds=50,
+            ),
+            CodexProjectScope(
+                root=tmp_path,
+                scope=Scope(subject_ids=("kevin",), project_ids=("project-b",)),
+                capture_after_epoch_seconds=50,
+            ),
+        ),
+    )
+
+    with pytest.raises(CodexProtocolError, match="multiple project scopes"):
+        source.poll(after_cursor=None)
+
+
+def test_project_preview_is_metadata_only_and_prospective(tmp_path: Path) -> None:
+    rpc = FakeRpc(_thread(tmp_path, turns=[_turn(_user("user-1", "Private content."))]))
+
+    preview = preview_codex_project(
+        rpc,
+        schemas=CodexDogfoodSchemaSet(),
+        source_roots=(tmp_path,),
+        capture_after_epoch_seconds=101,
+    )
+
+    assert preview.historical_completed_thread_count == 1
+    assert preview.prospective_completed_thread_count == 0
+    assert preview.thread_read_count == 0
+    assert tuple(method for method, _params in rpc.calls) == ("account/read", "thread/list")
 
 
 def test_chatgpt_auth_is_required_exactly(tmp_path: Path) -> None:

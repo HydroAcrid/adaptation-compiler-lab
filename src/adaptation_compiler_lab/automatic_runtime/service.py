@@ -168,7 +168,7 @@ def initial_runtime_state(policy: StandingAutomationPolicy) -> AutomaticRuntimeS
 
     return AutomaticRuntimeState(
         subject_id=policy.subject_id,
-        standing_policy_digest=policy.content_digest,
+        standing_policy_digest=policy.state_binding_digest,
         generation=0,
     )
 
@@ -810,7 +810,7 @@ class AutomaticAdaptationRuntime:
     def _validate_state(self, state: AutomaticRuntimeState) -> None:
         if (
             state.subject_id != self._policy.subject_id
-            or state.standing_policy_digest != self._policy.content_digest
+            or state.standing_policy_digest != self._policy.state_binding_digest
         ):
             raise AutomaticRuntimeError("runtime state is bound to another policy or subject")
         if state.transitions:
