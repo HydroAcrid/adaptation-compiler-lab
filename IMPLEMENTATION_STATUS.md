@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: 2026-08-07
+Last updated: 2026-08-09
 
 ## Current milestone
 
@@ -27,6 +27,18 @@ The target fails closed on model, approval, network, workspace, writable-root, o
 instruction-source substitution. A network-denied, rootless `readOnly` response is accepted as a
 strict reduction from requested workspace-write authority for the legacy inspection command; any
 network or root expansion remains forbidden.
+
+Milestone 6A.2E adds prospective multi-project dogfood onboarding without widening source access.
+Config v1.4 gives each newly registered project its own signed creation-time cutoff and retains the
+complete additive standing-policy lineage. Existing append-only runtime state remains bound to the
+original policy digest. Registration may add exactly one project and cannot change routes, uses,
+targets, limits, retention, expiry, or any non-project scope. Overlapping project roots fail closed.
+`runtime project preview` uses only `account/read` and `thread/list`; it cannot read turns or message
+content. Live metadata-only previews found two historical completed tasks in Green Meadow and two
+in Kairn, with zero prospectively eligible tasks and zero `thread/read` calls. Those four historical
+tasks remain excluded. The signed registrations themselves await the existing external signing
+credential; the watcher is not installed and neither repository nor any existing Codex task has
+been modified.
 
 Milestone 6A.2D adds explicit DPAPI same-user unlock, a renewable background watcher, generic
 Windows toasts plus an append-only local inbox, v1.3 project verification configuration, and a

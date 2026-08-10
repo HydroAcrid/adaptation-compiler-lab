@@ -23,8 +23,10 @@ from pydantic import TypeAdapter, field_validator, model_validator
 from adaptation_compiler_lab.automatic_runtime.codex_dogfood import (
     CodexDogfoodInteractionSource,
     CodexDogfoodSessionLauncher,
+    CodexProjectPreview,
     CodexProjectScope,
     open_codex_dogfood,
+    preview_codex_project,
 )
 from adaptation_compiler_lab.automatic_runtime.codex_gateway import CodexGatewayConversation
 from adaptation_compiler_lab.automatic_runtime.codex_host import (
@@ -54,6 +56,7 @@ from adaptation_compiler_lab.automatic_runtime.host import (
 )
 from adaptation_compiler_lab.automatic_runtime.ledger import AutomaticRuntimeLedger
 from adaptation_compiler_lab.automatic_runtime.models import (
+    CodexProjectRegistration,
     FeedbackDetectorMode,
     InteractionObservation,
     RuntimeActivationFeedback,
@@ -125,6 +128,7 @@ from adaptation_compiler_lab.governance.signing import (
     load_private_key,
     load_private_key_from_environment,
     sign_governance_event,
+    verify_signed_governance,
 )
 from adaptation_compiler_lab.persistence.raw import (
     LocalRawPayloadStore,
@@ -146,11 +150,13 @@ watcher_app = typer.Typer(help="Operate the restart-safe local Codex feedback wa
 inbox_app = typer.Typer(help="Inspect raw-free durable runtime notifications.")
 session_app = typer.Typer(help="Run governed Codex sessions in disposable writable workspaces.")
 changes_app = typer.Typer(help="Inspect, apply, or discard encrypted session change bundles.")
+project_app = typer.Typer(help="Preview and register prospective read-only Codex projects.")
 dogfood_app.add_typer(credentials_app, name="credentials")
 dogfood_app.add_typer(watcher_app, name="watcher")
 dogfood_app.add_typer(inbox_app, name="inbox")
 dogfood_app.add_typer(session_app, name="session")
 dogfood_app.add_typer(changes_app, name="changes")
+dogfood_app.add_typer(project_app, name="project")
 
 ConfigOption = Annotated[
     Path,
@@ -173,6 +179,9 @@ class CodexDogfoodProjectConfig(FrozenModel):
     source_roots: tuple[Path, ...] = ()
     verification_commands: tuple[VerificationCommandSpec, ...] = ()
     protected_verification_paths: tuple[str, ...] = ("pyproject.toml", "tests", "uv.lock")
+    capture_after_epoch_seconds: int | None = None
+    registration: CodexProjectRegistration | None = None
+    registration_authorization: GovernanceEvent | None = None
 
     @field_validator("source_roots")
     @classmethod
@@ -201,6 +210,20 @@ class CodexDogfoodProjectConfig(FrozenModel):
     def project_scope_is_exact(self) -> CodexDogfoodProjectConfig:
         if self.scope.project_ids != (self.project_id,):
             raise ValueError("dogfood project scope must contain exactly its project ID")
+        if (self.registration is None) != (self.registration_authorization is None):
+            raise ValueError("project registration and authorization must be supplied together")
+        if self.registration is None:
+            if self.capture_after_epoch_seconds is not None:
+                raise ValueError("legacy project cutoff must come from the root config")
+        else:
+            expected_roots = tuple(str(item) for item in self.effective_source_roots)
+            if (
+                self.registration.project_id != self.project_id
+                or self.registration.project_root != str(self.root)
+                or self.registration.source_roots != expected_roots
+                or self.registration.capture_after_epoch_seconds != self.capture_after_epoch_seconds
+            ):
+                raise ValueError("project registration does not bind the exact project config")
         return self
 
     @property
@@ -211,7 +234,7 @@ class CodexDogfoodProjectConfig(FrozenModel):
 class CodexDogfoodLocalConfig(FrozenModel):
     """No-secret local configuration; keys remain external environment dependencies."""
 
-    config_version: str = "1.3.0"
+    config_version: str = "1.4.0"
     subject_id: Identifier
     repository_root: Path
     state_root: Path
@@ -258,7 +281,7 @@ class CodexDogfoodLocalConfig(FrozenModel):
 
     @model_validator(mode="after")
     def paths_and_subject_are_consistent(self) -> CodexDogfoodLocalConfig:
-        if self.config_version not in {"1.1.0", "1.2.0", "1.3.0"}:
+        if self.config_version not in {"1.1.0", "1.2.0", "1.3.0", "1.4.0"}:
             raise ValueError("unsupported dogfood config version")
         if self.config_version == "1.1.0" and (
             self.feedback_detector_mode is not FeedbackDetectorMode.GRAMMAR
@@ -290,6 +313,66 @@ class CodexDogfoodLocalConfig(FrozenModel):
             or self.signer_identity.subject_id != self.subject_id
         ):
             raise ValueError("dogfood config crossed its subject boundary")
+        configured_project_ids = tuple(item.project_id for item in self.projects)
+        if configured_project_ids != self.policy.scope.project_ids:
+            raise ValueError("configured projects must equal the standing-policy project scope")
+        root_policy = self.policy
+        while root_policy.previous_policy is not None:
+            root_policy = root_policy.previous_policy
+        legacy_project_ids = tuple(
+            item.project_id for item in self.projects if item.registration is None
+        )
+        if legacy_project_ids != root_policy.scope.project_ids:
+            raise ValueError("unsigned project configs must equal the original signed policy")
+        for project in self.projects:
+            registration = project.registration
+            authorization = project.registration_authorization
+            if registration is None or authorization is None:
+                continue
+            if registration.subject_id != self.subject_id:
+                raise ValueError("project registration crossed its subject boundary")
+            try:
+                verify_signed_governance(
+                    authorization,
+                    self.signer_identity,
+                    effective_at=registration.registered_at,
+                )
+            except ValueError as error:
+                raise ValueError("project-registration authorization is invalid") from error
+            amendment = self.policy.policy_for_digest(registration.standing_policy_digest)
+            if amendment is None or amendment.previous_policy is None:
+                raise ValueError("project registration names no policy amendment")
+            newly_authorized = set(amendment.scope.project_ids) - set(
+                amendment.previous_policy.scope.project_ids
+            )
+            if newly_authorized != {project.project_id}:
+                raise ValueError("project registration must bind one newly authorized project")
+            if (
+                authorization.event_type is not GovernanceEventType.ACTIVATION_DECISION
+                or authorization.subject_id != self.subject_id
+                or authorization.target_ref
+                != f"codex-project-registration:{registration.registration_id}"
+                or authorization.target_digest != registration.content_digest
+                or authorization.decision != "registered_read_only"
+                or authorization.policy_version != amendment.policy_version
+                or authorization.occurred_at != registration.registered_at
+            ):
+                raise ValueError("project-registration authorization binding changed")
+        mapped_roots = tuple(
+            (project.project_id, root.expanduser().resolve())
+            for project in self.projects
+            for root in project.effective_source_roots
+        )
+        for index, (project_id, root) in enumerate(mapped_roots):
+            for other_project_id, other_root in mapped_roots[index + 1 :]:
+                if project_id == other_project_id:
+                    continue
+                if (
+                    root == other_root
+                    or root.is_relative_to(other_root)
+                    or other_root.is_relative_to(root)
+                ):
+                    raise ValueError("dogfood source roots overlap across project scopes")
         if self.database_path.parent != self.state_root:
             raise ValueError("dogfood database must remain directly below its state root")
         if self.raw_store_path.parent != self.state_root:
@@ -483,6 +566,29 @@ def _write_config(path: Path, config: CodexDogfoodLocalConfig) -> None:
             temporary.unlink()
 
 
+def _replace_config_with_credential_rebind(
+    path: Path,
+    current: CodexDogfoodLocalConfig,
+    updated: CodexDogfoodLocalConfig,
+) -> None:
+    """Atomically replace config and roll back if an enrolled envelope cannot rebind."""
+
+    credential_store = DpapiCredentialStore(current.state_root)
+    enrolled = credential_store.status()
+    _write_config(path, updated)
+    if enrolled is not None:
+        try:
+            credential_store.rebind(
+                subject_id=current.subject_id,
+                current_config_digest=_enrollment_binding_digest(current, enrolled),
+                new_config_digest=updated.credential_binding_digest,
+                signer_fingerprint=current.signer_identity.key_fingerprint,
+            )
+        except BaseException:
+            _write_config(path, current)
+            raise
+
+
 def _ledger(config: CodexDogfoodLocalConfig) -> AutomaticRuntimeLedger:
     SqliteUnitOfWorkFactory(config.database_path).initialize()
     return AutomaticRuntimeLedger(config.database_path, subject_id=config.subject_id)
@@ -555,6 +661,46 @@ def _runtime(config: CodexDogfoodLocalConfig) -> AutomaticAdaptationRuntime:
             encryption_key=raw_key,
         ),
     )
+
+
+def _registration_signer(config: CodexDogfoodLocalConfig) -> GovernanceSigner:
+    secrets = _runtime_secrets(config)
+    signer = GovernanceSigner(
+        load_private_key(
+            secrets.signing_key_file,
+            passphrase=secrets.signing_key_passphrase,
+            workspace_root=config.repository_root,
+        ),
+        identity_id=config.signer_identity.identity_id,
+        subject_id=config.subject_id,
+    )
+    if signer.fingerprint != config.signer_identity.key_fingerprint:
+        raise AutomaticRuntimeError("configured signing identity does not match the external key")
+    return signer
+
+
+def _verify_current_policy(config: CodexDogfoodLocalConfig, *, effective_at: datetime) -> None:
+    verify_signed_governance(
+        config.policy_authorization,
+        config.signer_identity,
+        effective_at=effective_at,
+    )
+    event = config.policy_authorization
+    if (
+        event.event_type is not GovernanceEventType.ACTIVATION_DECISION
+        or event.target_ref != config.policy.authorization_target_ref
+        or event.target_digest != config.policy.content_digest
+        or event.decision != "enabled"
+        or event.policy_version != config.policy.policy_version
+    ):
+        raise AutomaticRuntimeError("configured policy authorization binding changed")
+    if effective_at < config.policy.effective_at or effective_at >= config.policy.expires_at:
+        raise AutomaticRuntimeError("standing policy is not active")
+
+
+def _next_policy_version(current: str) -> str:
+    major, minor, _patch = (int(item) for item in current.split("."))
+    return f"{major}.{minor + 1}.0"
 
 
 def _project(
@@ -877,6 +1023,243 @@ def initialize_codex_dogfood(
     typer.echo(str(config_path))
 
 
+@project_app.command("list")
+def list_codex_dogfood_projects(config_path: ConfigOption) -> None:
+    """List exact project boundaries and prospective cutoffs without reading Codex tasks."""
+
+    try:
+        config = _load_config(config_path)
+        payload = {
+            "access_mode": "read_only_completed_tasks",
+            "modifies_existing_threads": False,
+            "modifies_source_repositories": False,
+            "projects": [
+                {
+                    "capture_after_epoch_seconds": (
+                        config.capture_after_epoch_seconds
+                        if project.capture_after_epoch_seconds is None
+                        else project.capture_after_epoch_seconds
+                    ),
+                    "project_id": project.project_id,
+                    "project_root": str(project.root),
+                    "registration_digest": (
+                        None
+                        if project.registration is None
+                        else str(project.registration.content_digest)
+                    ),
+                    "source_roots": [str(item) for item in project.effective_source_roots],
+                }
+                for project in config.projects
+            ],
+        }
+    except (OSError, ValueError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json(payload))
+
+
+@project_app.command("preview")
+def preview_codex_dogfood_project(
+    config_path: ConfigOption,
+    project_root: Annotated[
+        Path,
+        typer.Option("--project-root", exists=True, file_okay=False, resolve_path=True),
+    ],
+    source_roots: Annotated[
+        list[Path] | None,
+        typer.Option(
+            "--source-root",
+            exists=True,
+            file_okay=False,
+            resolve_path=True,
+            help="Repeatable exact Codex CWD root; defaults to --project-root.",
+        ),
+    ] = None,
+) -> None:
+    """Preview content-free thread counts at a prospective cutoff using only thread/list."""
+
+    try:
+        config = _load_config(config_path)
+        cutoff = int(_now().timestamp())
+        roots = tuple(
+            sorted(
+                {
+                    item.resolve()
+                    for item in (source_roots if source_roots is not None else [project_root])
+                },
+                key=str,
+            )
+        )
+        pins = load_dogfood_runtime_pins(config.runtime_pin_path)
+        with open_codex_dogfood(
+            executable=config.codex_executable,
+            codex_home=config.source_codex_home,
+            pin=pins.codex,
+            windows_interop=config.windows_interop,
+        ) as (_verified, schemas, rpc):
+            preview: CodexProjectPreview = preview_codex_project(
+                rpc,
+                schemas=schemas,
+                source_roots=roots,
+                capture_after_epoch_seconds=cutoff,
+            )
+        payload = {
+            **asdict(preview),
+            "access_mode": "metadata_only_thread_list",
+            "modifies_existing_threads": False,
+            "modifies_source_repository": False,
+            "project_root": str(project_root.resolve()),
+            "source_roots": [str(item) for item in roots],
+        }
+    except (OSError, ValueError, RuntimeConformanceError) as error:
+        _fail(str(error))
+    typer.echo(canonical_json(payload))
+
+
+@project_app.command("register")
+def register_codex_dogfood_project(
+    config_path: ConfigOption,
+    project_id: Annotated[str, typer.Option("--project-id")],
+    project_root: Annotated[
+        Path,
+        typer.Option("--project-root", exists=True, file_okay=False, resolve_path=True),
+    ],
+    source_roots: Annotated[
+        list[Path] | None,
+        typer.Option(
+            "--source-root",
+            exists=True,
+            file_okay=False,
+            resolve_path=True,
+            help="Repeatable exact Codex CWD root; defaults to --project-root.",
+        ),
+    ] = None,
+    confirm_prospective: Annotated[
+        bool,
+        typer.Option(
+            "--confirm-prospective",
+            help="Confirm that all tasks created before registration remain ineligible.",
+        ),
+    ] = False,
+) -> None:
+    """Append one signed read-only project registration without reading task content."""
+
+    try:
+        if not confirm_prospective:
+            raise AutomaticRuntimeError("registration requires --confirm-prospective")
+        config = _load_config(config_path)
+        if project_id in {item.project_id for item in config.projects}:
+            raise AutomaticRuntimeError("project ID is already registered")
+        now = _now()
+        _verify_current_policy(config, effective_at=now)
+        roots = tuple(
+            sorted(
+                {
+                    item.resolve()
+                    for item in (source_roots if source_roots is not None else [project_root])
+                },
+                key=str,
+            )
+        )
+        expanded_scope = config.policy.scope.model_copy(
+            update={"project_ids": tuple(sorted((*config.policy.scope.project_ids, project_id)))}
+        )
+        amended_policy = StandingAutomationPolicy.model_validate(
+            config.policy.model_copy(
+                update={
+                    "policy_version": _next_policy_version(config.policy.policy_version),
+                    "scope": expanded_scope,
+                    "effective_at": now,
+                    "previous_policy": config.policy,
+                }
+            ).model_dump(mode="python"),
+            strict=True,
+        )
+        signer = _registration_signer(config)
+        policy_authorization = sign_governance_event(
+            {
+                "event_id": f"enable-{project_id}-{int(now.timestamp())}",
+                "subject_id": config.subject_id,
+                "event_type": GovernanceEventType.ACTIVATION_DECISION.value,
+                "target_ref": amended_policy.authorization_target_ref,
+                "target_digest": amended_policy.content_digest,
+                "decision": "enabled",
+                "reason": "Add one prospective read-only Codex evidence project.",
+                "policy_version": amended_policy.policy_version,
+                "occurred_at": now.isoformat(),
+            },
+            signer,
+        )
+        cutoff = int(now.timestamp())
+        registration_id = f"project-registration-{project_id}-{cutoff}"
+        registration = CodexProjectRegistration(
+            registration_id=registration_id,
+            subject_id=config.subject_id,
+            project_id=project_id,
+            project_root=str(project_root.resolve()),
+            source_roots=tuple(str(item) for item in roots),
+            capture_after_epoch_seconds=cutoff,
+            standing_policy_digest=amended_policy.content_digest,
+            registered_at=now,
+        )
+        registration_authorization = sign_governance_event(
+            {
+                "event_id": f"authorize-{registration_id}",
+                "subject_id": config.subject_id,
+                "event_type": GovernanceEventType.ACTIVATION_DECISION.value,
+                "target_ref": f"codex-project-registration:{registration_id}",
+                "target_digest": registration.content_digest,
+                "decision": "registered_read_only",
+                "reason": "Authorize prospective read-only capture without modifying source tasks.",
+                "policy_version": amended_policy.policy_version,
+                "occurred_at": now.isoformat(),
+            },
+            signer,
+        )
+        project_scope = Scope(
+            subject_ids=(config.subject_id,),
+            project_ids=(project_id,),
+            target_families=("codex",),
+        )
+        project = CodexDogfoodProjectConfig(
+            project_id=project_id,
+            root=project_root.resolve(),
+            scope=project_scope,
+            source_roots=roots,
+            capture_after_epoch_seconds=cutoff,
+            registration=registration,
+            registration_authorization=registration_authorization,
+        )
+        updated = CodexDogfoodLocalConfig.model_validate(
+            config.model_copy(
+                update={
+                    "config_version": "1.4.0",
+                    "policy": amended_policy,
+                    "policy_authorization": policy_authorization,
+                    "projects": tuple(
+                        sorted((*config.projects, project), key=lambda item: item.project_id)
+                    ),
+                }
+            ).model_dump(mode="python"),
+            strict=True,
+        )
+        _replace_config_with_credential_rebind(config_path, config, updated)
+    except (OSError, ValueError, RuntimeConformanceError) as error:
+        _fail(str(error))
+    typer.echo(
+        canonical_json(
+            {
+                "capture_after_epoch_seconds": cutoff,
+                "modifies_existing_threads": False,
+                "modifies_source_repository": False,
+                "policy_digest": str(amended_policy.content_digest),
+                "project_id": project_id,
+                "registration_digest": str(registration.content_digest),
+                "status": "registered_read_only",
+            }
+        )
+    )
+
+
 def _execute_poll(
     config: CodexDogfoodLocalConfig,
     *,
@@ -907,11 +1290,18 @@ def _execute_poll(
             source_schema_digest=verified.schema_bundle_digest,
             schemas=schemas,
             projects=tuple(
-                CodexProjectScope(root=root, scope=item.scope)
+                CodexProjectScope(
+                    root=root,
+                    scope=item.scope,
+                    capture_after_epoch_seconds=(
+                        config.capture_after_epoch_seconds
+                        if item.capture_after_epoch_seconds is None
+                        else item.capture_after_epoch_seconds
+                    ),
+                )
                 for item in config.projects
                 for root in item.effective_source_roots
             ),
-            capture_after_epoch_seconds=config.capture_after_epoch_seconds,
         )
         return CodexDogfoodHost(
             runtime=runtime,
@@ -1091,7 +1481,11 @@ def configure_feedback_detector(
             )
         updated = config.model_copy(
             update={
-                "config_version": "1.2.0",
+                "config_version": (
+                    config.config_version
+                    if config.config_version in {"1.3.0", "1.4.0"}
+                    else "1.2.0"
+                ),
                 "feedback_detector_mode": mode,
                 "semantic_promotion_evaluation_digest": evaluation_digest,
             }
@@ -1639,32 +2033,20 @@ def configure_gateway(
             projects.append(project)
         if not found:
             raise AutomaticRuntimeError("gateway project ID is not configured")
+        upgraded_version = "1.4.0" if config.config_version == "1.4.0" else "1.3.0"
         upgraded = config.model_copy(
             update={
-                "config_version": "1.3.0",
+                "config_version": upgraded_version,
                 "gateway_workspace_root": workspace_root,
                 "gateway_windows_sandbox": windows_sandbox,
                 "projects": tuple(projects),
             }
         )
         validated = CodexDogfoodLocalConfig.model_validate(upgraded.model_dump(), strict=True)
-        credential_store = DpapiCredentialStore(config.state_root)
-        enrolled = credential_store.status()
-        _write_config(config_path, validated)
-        if enrolled is not None:
-            try:
-                credential_store.rebind(
-                    subject_id=config.subject_id,
-                    current_config_digest=_enrollment_binding_digest(config, enrolled),
-                    new_config_digest=validated.credential_binding_digest,
-                    signer_fingerprint=config.signer_identity.key_fingerprint,
-                )
-            except BaseException:
-                _write_config(config_path, config)
-                raise
+        _replace_config_with_credential_rebind(config_path, config, validated)
     except (OSError, ValueError) as error:
         _fail(str(error))
-    typer.echo(canonical_json({"config_version": "1.3.0", "status": "configured"}))
+    typer.echo(canonical_json({"config_version": upgraded_version, "status": "configured"}))
 
 
 @credentials_app.command("enroll")
@@ -1673,8 +2055,8 @@ def enroll_runtime_credentials(config_path: ConfigOption) -> None:
 
     try:
         config = _load_config(config_path)
-        if config.config_version != "1.3.0":
-            raise CredentialStoreError("credential enrollment requires dogfood config v1.3")
+        if config.config_version not in {"1.3.0", "1.4.0"}:
+            raise CredentialStoreError("credential enrollment requires dogfood config v1.3+")
         secrets = RuntimeSecrets.from_environment()
         # Validate every external dependency before protecting its locator and passphrase.
         load_private_key(
@@ -1964,8 +2346,8 @@ def _execute_gateway_session(
     initial_task: str,
     followups: Iterable[str],
 ) -> str:
-    if config.config_version != "1.3.0" or config.gateway_workspace_root is None:
-        raise AutomaticRuntimeError("writable gateway requires configured dogfood v1.3")
+    if config.config_version not in {"1.3.0", "1.4.0"} or config.gateway_workspace_root is None:
+        raise AutomaticRuntimeError("writable gateway requires configured dogfood v1.3+")
     if config.effective_target_windows_interop:
         parts = config.gateway_workspace_root.expanduser().resolve().parts
         if len(parts) < 4 or parts[:2] != ("/", "mnt"):

@@ -117,6 +117,21 @@ and target may carry different executable, saved-auth-home, runtime-lock, and Wi
 settings. This permits native Windows Codex Desktop history to map to a canonical WSL repository
 without inferring either path from unrelated ambient state.
 
+Milestone 6A.2E extends that mapping prospectively across projects. The original policy remains the
+append-only state binding. Every project addition creates a new owner-signed policy whose embedded
+predecessor may differ only by a strict project-ID addition, plus a separately signed
+`CodexProjectRegistration` binding the exact project root, source roots, policy digest, registration
+time, and per-project capture cutoff. Legacy projects retain the initialization cutoff; later
+projects cannot inherit it. Polling resolves the source CWD to exactly one project before applying
+that project's cutoff and refuses ambiguous overlapping matches. Preview is a separate metadata-only
+path built on `thread/list`; only an actual later poll may call `thread/read`, and then only for a
+completed, non-ephemeral, post-registration task in one exact registered scope.
+
+Completed source tasks are evidence inputs, not mutable integration targets. Registration, preview,
+and polling never resume, inject into, or edit those tasks and never write to their repositories.
+Adapted work begins only in a fresh isolated target task. Editable target output stays in a disposable
+worktree and encrypted review bundle until a separate explicit apply decision.
+
 Each post-task learning cycle may receive exactly one append-only `RuntimeLearningAssessment`,
 bound to the cycle digest and classified as correct, false-positive, or missed. A typed
 `CodexDogfoodGateReport` combines those assessments with exact activations, acknowledgements,

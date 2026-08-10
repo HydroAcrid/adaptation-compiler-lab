@@ -122,6 +122,43 @@ def _runtime(tmp_path: Path) -> tuple[AutomaticAdaptationRuntime, StandingAutoma
     return runtime, policy
 
 
+def test_additive_project_policy_preserves_original_state_binding(tmp_path: Path) -> None:
+    _service, policy = _runtime(tmp_path)
+    amended = StandingAutomationPolicy.model_validate(
+        policy.model_copy(
+            update={
+                "policy_version": "1.1.0",
+                "scope": policy.scope.model_copy(update={"project_ids": ("project-a",)}),
+                "effective_at": NOW + timedelta(minutes=1),
+                "previous_policy": policy,
+            }
+        ).model_dump(mode="python"),
+        strict=True,
+    )
+
+    assert amended.state_binding_digest == policy.content_digest
+    assert initial_runtime_state(amended) == initial_runtime_state(policy)
+    assert amended.policy_for_digest(policy.content_digest) == policy
+
+
+def test_project_policy_amendment_cannot_expand_other_authority(tmp_path: Path) -> None:
+    _service, policy = _runtime(tmp_path)
+
+    with pytest.raises(ValueError, match="non-project authorization"):
+        StandingAutomationPolicy.model_validate(
+            policy.model_copy(
+                update={
+                    "policy_version": "1.1.0",
+                    "scope": policy.scope.model_copy(update={"project_ids": ("project-a",)}),
+                    "maximum_behavior_utf8_bytes": policy.maximum_behavior_utf8_bytes + 1,
+                    "effective_at": NOW + timedelta(minutes=1),
+                    "previous_policy": policy,
+                }
+            ).model_dump(mode="python"),
+            strict=True,
+        )
+
+
 def _observation(
     number: int,
     text: str,

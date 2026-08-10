@@ -141,6 +141,7 @@ class CodexProjectScope:
 
     root: Path
     scope: Scope
+    capture_after_epoch_seconds: int | None = None
 
     def __post_init__(self) -> None:
         resolved = self.root.expanduser().resolve()
@@ -148,11 +149,27 @@ class CodexProjectScope:
             raise ValueError(f"Codex dogfood project root is unavailable: {resolved}")
         if not self.scope.project_ids:
             raise ValueError("Codex dogfood project mapping requires one project scope")
+        if self.capture_after_epoch_seconds is not None and self.capture_after_epoch_seconds < 0:
+            raise ValueError("Codex dogfood project cutoff must not be negative")
         object.__setattr__(self, "root", resolved)
 
     def contains(self, cwd: str) -> bool:
         candidate = _resolved_runtime_path(cwd)
         return candidate == self.root or candidate.is_relative_to(self.root)
+
+
+@dataclass(frozen=True, slots=True)
+class CodexProjectPreview:
+    """Content-free thread/list counts for one prospective project registration."""
+
+    scanned_thread_count: int
+    matched_thread_count: int
+    historical_completed_thread_count: int
+    prospective_completed_thread_count: int
+    excluded_ephemeral_thread_count: int
+    excluded_nonterminal_thread_count: int
+    capture_after_epoch_seconds: int
+    thread_read_count: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -245,13 +262,13 @@ class CodexDogfoodInteractionSource:
         source_schema_digest: Sha256Digest,
         schemas: CodexDogfoodSchemaSet,
         projects: tuple[CodexProjectScope, ...],
-        capture_after_epoch_seconds: int,
+        capture_after_epoch_seconds: int | None = None,
         clock: Callable[[], datetime] | None = None,
         maximum_threads: int = 250,
     ) -> None:
         if not projects:
             raise ValueError("Codex dogfood source requires an explicit project allowlist")
-        if capture_after_epoch_seconds < 0:
+        if capture_after_epoch_seconds is not None and capture_after_epoch_seconds < 0:
             raise ValueError("Codex dogfood construction cutoff must not be negative")
         if not 1 <= maximum_threads <= 1_000:
             raise ValueError("Codex dogfood maximum threads must be between 1 and 1000")
@@ -306,8 +323,6 @@ class CodexDogfoodInteractionSource:
                 break
             thread_id = _string(summary.get("id"), field="thread id")
             created_at = _integer(summary.get("createdAt"), field="thread createdAt")
-            if created_at < self._capture_after:
-                continue
             status = _object(summary.get("status"), field="thread status")
             if (
                 status.get("type") not in _TERMINAL_THREAD_STATUSES
@@ -315,11 +330,18 @@ class CodexDogfoodInteractionSource:
             ):
                 continue
             cwd = _string(summary.get("cwd"), field="thread cwd")
-            project = next(
-                (candidate for candidate in self._projects if candidate.contains(cwd)),
-                None,
-            )
-            if project is None:
+            matches = tuple(candidate for candidate in self._projects if candidate.contains(cwd))
+            if len(matches) > 1:
+                raise CodexProtocolError("Codex thread CWD matches multiple project scopes")
+            if not matches:
+                continue
+            project = matches[0]
+            cutoff = project.capture_after_epoch_seconds
+            if cutoff is None:
+                cutoff = self._capture_after
+            if cutoff is None:
+                raise CodexProtocolError("Codex dogfood project has no prospective cutoff")
+            if created_at < cutoff:
                 continue
             thread = self._read_thread(thread_id)
             flattened = self._flatten_terminal_items(thread)
@@ -393,34 +415,11 @@ class CodexDogfoodInteractionSource:
         return CodexLearningBatch(items=tuple(work), cursor=cursor)
 
     def _list_threads(self) -> tuple[JsonObject, ...]:
-        cursor: str | None = None
-        result: list[JsonObject] = []
-        while True:
-            params: JsonObject = {
-                "archived": False,
-                "cursor": cursor,
-                "limit": min(100, self._maximum_threads - len(result) + 1),
-                "sortDirection": "asc",
-                "sortKey": "updated_at",
-                "sourceKinds": list(_INTERACTIVE_SOURCE_KINDS),
-                "useStateDbOnly": True,
-            }
-            self._schemas.validate("thread_list_params", params)
-            response = self._rpc.request("thread/list", params)
-            self._schemas.validate("thread_list_response", response)
-            data = response.get("data")
-            if not isinstance(data, list):
-                raise CodexProtocolError("Codex thread/list data must be an array")
-            result.extend(_object(item, field="thread") for item in data)
-            if len(result) > self._maximum_threads:
-                raise CodexProtocolError("Codex dogfood source exceeded its thread ceiling")
-            next_cursor = response.get("nextCursor")
-            if next_cursor is None:
-                break
-            if not isinstance(next_cursor, str) or not next_cursor:
-                raise CodexProtocolError("Codex thread/list cursor must be non-empty or null")
-            cursor = next_cursor
-        return tuple(result)
+        return _list_codex_threads(
+            self._rpc,
+            schemas=self._schemas,
+            maximum_threads=self._maximum_threads,
+        )
 
     def _read_thread(self, thread_id: str) -> JsonObject:
         params: JsonObject = {"threadId": thread_id, "includeTurns": True}
@@ -479,6 +478,105 @@ class CodexDogfoodInteractionSource:
                 raise CodexProtocolError("Codex turn items must be an array")
             flattened.extend((turn_id, _object(item, field="turn item")) for item in items)
         return flattened
+
+
+def _list_codex_threads(
+    rpc: RpcClient,
+    *,
+    schemas: CodexDogfoodSchemaSet,
+    maximum_threads: int,
+) -> tuple[JsonObject, ...]:
+    """List only schema-validated metadata; this helper never calls thread/read."""
+
+    cursor: str | None = None
+    result: list[JsonObject] = []
+    while True:
+        params: JsonObject = {
+            "archived": False,
+            "cursor": cursor,
+            "limit": min(100, maximum_threads - len(result) + 1),
+            "sortDirection": "asc",
+            "sortKey": "updated_at",
+            "sourceKinds": list(_INTERACTIVE_SOURCE_KINDS),
+            "useStateDbOnly": True,
+        }
+        schemas.validate("thread_list_params", params)
+        response = rpc.request("thread/list", params)
+        schemas.validate("thread_list_response", response)
+        data = response.get("data")
+        if not isinstance(data, list):
+            raise CodexProtocolError("Codex thread/list data must be an array")
+        result.extend(_object(item, field="thread") for item in data)
+        if len(result) > maximum_threads:
+            raise CodexProtocolError("Codex dogfood source exceeded its thread ceiling")
+        next_cursor = response.get("nextCursor")
+        if next_cursor is None:
+            break
+        if not isinstance(next_cursor, str) or not next_cursor:
+            raise CodexProtocolError("Codex thread/list cursor must be non-empty or null")
+        cursor = next_cursor
+    return tuple(result)
+
+
+def preview_codex_project(
+    rpc: RpcClient,
+    *,
+    schemas: CodexDogfoodSchemaSet,
+    source_roots: tuple[Path, ...],
+    capture_after_epoch_seconds: int,
+    maximum_threads: int = 250,
+) -> CodexProjectPreview:
+    """Count eligible stored tasks without reading turns, messages, names, or previews."""
+
+    if not source_roots:
+        raise ValueError("Codex project preview requires at least one source root")
+    if capture_after_epoch_seconds < 0:
+        raise ValueError("Codex project preview cutoff must not be negative")
+    if not 1 <= maximum_threads <= 1_000:
+        raise ValueError("Codex project preview maximum threads must be between 1 and 1000")
+    scopes = tuple(
+        CodexProjectScope(
+            root=root,
+            scope=Scope(
+                subject_ids=("preview-subject",),
+                project_ids=("preview-project",),
+            ),
+            capture_after_epoch_seconds=capture_after_epoch_seconds,
+        )
+        for root in source_roots
+    )
+    require_chatgpt_account(rpc, schemas=schemas)
+    summaries = _list_codex_threads(
+        rpc,
+        schemas=schemas,
+        maximum_threads=maximum_threads,
+    )
+    matched = historical = prospective = ephemeral = nonterminal = 0
+    for summary in summaries:
+        cwd = _string(summary.get("cwd"), field="thread cwd")
+        if not any(scope.contains(cwd) for scope in scopes):
+            continue
+        matched += 1
+        if summary.get("ephemeral") is not False:
+            ephemeral += 1
+            continue
+        status = _object(summary.get("status"), field="thread status")
+        if status.get("type") not in _TERMINAL_THREAD_STATUSES:
+            nonterminal += 1
+            continue
+        historical += 1
+        created_at = _integer(summary.get("createdAt"), field="thread createdAt")
+        if created_at >= capture_after_epoch_seconds:
+            prospective += 1
+    return CodexProjectPreview(
+        scanned_thread_count=len(summaries),
+        matched_thread_count=matched,
+        historical_completed_thread_count=historical,
+        prospective_completed_thread_count=prospective,
+        excluded_ephemeral_thread_count=ephemeral,
+        excluded_nonterminal_thread_count=nonterminal,
+        capture_after_epoch_seconds=capture_after_epoch_seconds,
+    )
 
 
 class CodexDogfoodSessionLauncher:

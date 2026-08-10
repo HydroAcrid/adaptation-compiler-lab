@@ -159,107 +159,121 @@
       ],
       "title": "Scope",
       "type": "object"
+    },
+    "StandingAutomationPolicy": {
+      "additionalProperties": false,
+      "description": "One signed-policy target authorizing low-risk, reversible automatic adaptation.",
+      "properties": {
+        "allowed_routes": {
+          "items": {
+            "$ref": "#/$defs/ArtifactRoute"
+          },
+          "minItems": 1,
+          "title": "Allowed Routes",
+          "type": "array"
+        },
+        "allowed_target_families": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Allowed Target Families",
+          "type": "array"
+        },
+        "auto_activate": {
+          "const": true,
+          "default": true,
+          "title": "Auto Activate",
+          "type": "boolean"
+        },
+        "effective_at": {
+          "format": "date-time",
+          "title": "Effective At",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "maximum_behavior_utf8_bytes": {
+          "default": 800,
+          "maximum": 4000,
+          "minimum": 1,
+          "title": "Maximum Behavior Utf8 Bytes",
+          "type": "integer"
+        },
+        "notify_on_change": {
+          "const": true,
+          "default": true,
+          "title": "Notify On Change",
+          "type": "boolean"
+        },
+        "permitted_uses": {
+          "items": {
+            "$ref": "#/$defs/PermittedUse"
+          },
+          "title": "Permitted Uses",
+          "type": "array"
+        },
+        "policy_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "policy_version": {
+          "default": "1.0.0",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "previous_policy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StandingAutomationPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retention_days": {
+          "default": 30,
+          "maximum": 30,
+          "minimum": 1,
+          "title": "Retention Days",
+          "type": "integer"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "subject_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Subject Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy_id",
+        "subject_id",
+        "scope",
+        "permitted_uses",
+        "allowed_routes",
+        "allowed_target_families",
+        "effective_at",
+        "expires_at"
+      ],
+      "title": "StandingAutomationPolicy",
+      "type": "object"
     }
   },
-  "additionalProperties": false,
-  "description": "One signed-policy target authorizing low-risk, reversible automatic adaptation.",
-  "properties": {
-    "allowed_routes": {
-      "items": {
-        "$ref": "#/$defs/ArtifactRoute"
-      },
-      "minItems": 1,
-      "title": "Allowed Routes",
-      "type": "array"
-    },
-    "allowed_target_families": {
-      "items": {
-        "maxLength": 200,
-        "minLength": 1,
-        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
-        "type": "string"
-      },
-      "minItems": 1,
-      "title": "Allowed Target Families",
-      "type": "array"
-    },
-    "auto_activate": {
-      "const": true,
-      "default": true,
-      "title": "Auto Activate",
-      "type": "boolean"
-    },
-    "effective_at": {
-      "format": "date-time",
-      "title": "Effective At",
-      "type": "string"
-    },
-    "expires_at": {
-      "format": "date-time",
-      "title": "Expires At",
-      "type": "string"
-    },
-    "maximum_behavior_utf8_bytes": {
-      "default": 800,
-      "maximum": 4000,
-      "minimum": 1,
-      "title": "Maximum Behavior Utf8 Bytes",
-      "type": "integer"
-    },
-    "notify_on_change": {
-      "const": true,
-      "default": true,
-      "title": "Notify On Change",
-      "type": "boolean"
-    },
-    "permitted_uses": {
-      "items": {
-        "$ref": "#/$defs/PermittedUse"
-      },
-      "title": "Permitted Uses",
-      "type": "array"
-    },
-    "policy_id": {
-      "maxLength": 200,
-      "minLength": 1,
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
-      "title": "Policy Id",
-      "type": "string"
-    },
-    "policy_version": {
-      "const": "1.0.0",
-      "default": "1.0.0",
-      "title": "Policy Version",
-      "type": "string"
-    },
-    "retention_days": {
-      "default": 30,
-      "maximum": 30,
-      "minimum": 1,
-      "title": "Retention Days",
-      "type": "integer"
-    },
-    "scope": {
-      "$ref": "#/$defs/Scope"
-    },
-    "subject_id": {
-      "maxLength": 200,
-      "minLength": 1,
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
-      "title": "Subject Id",
-      "type": "string"
-    }
-  },
-  "required": [
-    "policy_id",
-    "subject_id",
-    "scope",
-    "permitted_uses",
-    "allowed_routes",
-    "allowed_target_families",
-    "effective_at",
-    "expires_at"
-  ],
-  "title": "StandingAutomationPolicy",
-  "type": "object"
+  "$ref": "#/$defs/StandingAutomationPolicy"
 }

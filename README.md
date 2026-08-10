@@ -11,7 +11,7 @@ preset, then sends each assistant only the smallest applicable projection. Perso
 overlays can refine temporary expertise without changing either the imported preset or permanent
 profile.
 
-Milestone 6A.2D now includes a governed automatic-runtime core, restart-safe host coordinator,
+Milestones 6A.2D–6A.2E now include a governed automatic-runtime core, restart-safe host coordinator,
 concrete pinned Codex dogfood integration, a same-user background watcher, and a writable
 multi-turn gateway. Under one signed bounded standing
 policy, low-risk user feedback can be encrypted, turned into an evaluation candidate,
@@ -40,7 +40,11 @@ credential enrollment, watcher installation, and canonical change application re
 owner actions. The full Windows edit/review/apply path has passed one isolated saved-ChatGPT live
 canary; production enrollment and genuine longitudinal evidence remain separate. See
 [`SEMANTIC_FEEDBACK_DETECTOR.md`](SEMANTIC_FEEDBACK_DETECTOR.md) and
-[`MILESTONE_6A2D_WRITABLE_GATEWAY.md`](MILESTONE_6A2D_WRITABLE_GATEWAY.md).
+[`MILESTONE_6A2D_WRITABLE_GATEWAY.md`](MILESTONE_6A2D_WRITABLE_GATEWAY.md). Config v1.4 additionally
+supports signed prospective project registration with a per-project cutoff and metadata-only
+preview. Green Meadow and Kairn previews verified that existing completed tasks stay excluded and
+that preview performs no content reads. See
+[`MILESTONE_6A2E_MULTIPROJECT_DOGFOOD.md`](MILESTONE_6A2E_MULTIPROJECT_DOGFOOD.md).
 
 Milestones 6A.3–6A.5 now provide positive, complementary comparisons against the strong static
 profile. Milestone 6A.3 showed lifecycle-aware compilation winning five of six fresh staged task
