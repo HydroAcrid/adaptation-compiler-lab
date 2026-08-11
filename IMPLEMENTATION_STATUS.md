@@ -363,9 +363,10 @@ uv run pytest
 uv build
 ```
 
-The current full suite checks formatting for 593 non-result files, passes Ruff lint, passes strict
-typing across 267 source files, passes 700 tests, and builds both the source distribution and
-wheel. Immutable anonymous target outputs are excluded from formatter/linter mutation.
+The current full suite checks formatting for 632 files, passes Ruff lint, passes strict typing
+across 303 source files, passes 814 tests with one Windows-only check skipped under WSL, and builds
+both the source distribution and wheel. Immutable anonymous target outputs are excluded from
+formatter/linter mutation.
 Wheel inspection confirms the ports, adapters, runner, both
 runtime locks, and both six-schema Codex snapshot sets are packaged. The original Codex runtime
 verifier matched its pinned binary and canonical generated-schema digest
@@ -435,3 +436,14 @@ dates do not count.
 No Portable Specialty Preset exists yet. Milestone 6B remains the following product milestone and
 is currently architecture documentation only. The sealed external-validation study is not
 required for either milestone and must remain untouched unless separately revived with funding.
+
+Milestone 6A.2G now adds an accelerated synthetic-only calibration lane without changing that
+ordinary-use gate. Five repositories were abstracted under read-only Luna sessions into external
+anonymous archetypes; no source content or path entered Git. A label-first 100-case corpus then
+measured natural semantic selection across five contexts, ten wording styles, and synthetic turn
+positions 1/3/5/10/15. The exact combined result was 49 true positives, zero false positives, 50
+true negatives, and one false negative: precision 1.00, recall 0.98, specificity 1.00, route
+accuracy 0.755, and scope accuracy 0.959. The calibrated gate remains closed because routing did
+not meet threshold. Synthetic materials cannot enter the production ledger or count toward 6A.2C.
+The next bounded detector step is a fresh route-specific corpus with blind label classification;
+real dogfood remains in review mode.

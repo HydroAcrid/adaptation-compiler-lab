@@ -1,0 +1,95 @@
+{
+  "$defs": {
+    "SemanticStimulationAuditEntry": {
+      "additionalProperties": false,
+      "description": "Raw-free audit verdict for one generated case.",
+      "properties": {
+        "case_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "reason": {
+          "$ref": "#/$defs/StimulationAuditReason"
+        },
+        "verdict": {
+          "$ref": "#/$defs/StimulationAuditVerdict"
+        }
+      },
+      "required": [
+        "case_id",
+        "verdict",
+        "reason"
+      ],
+      "title": "SemanticStimulationAuditEntry",
+      "type": "object"
+    },
+    "StimulationAuditReason": {
+      "description": "Bounded audit findings that cannot carry repository content.",
+      "enum": [
+        "clean",
+        "durability_mismatch",
+        "identifying_detail",
+        "label_mismatch",
+        "scope_mismatch",
+        "unexpressed_assumption"
+      ],
+      "title": "StimulationAuditReason",
+      "type": "string"
+    },
+    "StimulationAuditVerdict": {
+      "description": "Whether generated wording cleanly realizes its frozen label.",
+      "enum": [
+        "ambiguous",
+        "fail",
+        "pass"
+      ],
+      "title": "StimulationAuditVerdict",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Schema-bound output from a separate isolated audit context.",
+  "properties": {
+    "audit_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Audit Version",
+      "type": "string"
+    },
+    "entries": {
+      "items": {
+        "$ref": "#/$defs/SemanticStimulationAuditEntry"
+      },
+      "maxItems": 100,
+      "minItems": 100,
+      "title": "Entries",
+      "type": "array"
+    },
+    "model": {
+      "const": "gpt-5.6-luna",
+      "default": "gpt-5.6-luna",
+      "title": "Model",
+      "type": "string"
+    },
+    "reasoning_effort": {
+      "const": "low",
+      "default": "low",
+      "title": "Reasoning Effort",
+      "type": "string"
+    },
+    "source_generation_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Generation Digest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_generation_digest",
+    "entries"
+  ],
+  "title": "SemanticStimulationAuditProposal",
+  "type": "object"
+}

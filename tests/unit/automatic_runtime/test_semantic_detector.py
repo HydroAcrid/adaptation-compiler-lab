@@ -27,6 +27,7 @@ from adaptation_compiler_lab.automatic_runtime.detector import (
 from adaptation_compiler_lab.automatic_runtime.semantic_interpreter import (
     CodexSemanticFeedbackInterpreter,
     SemanticInterpreterError,
+    semantic_feedback_output_schema,
 )
 from adaptation_compiler_lab.connectors.models import JsonObject
 from adaptation_compiler_lab.connectors.pins import VerifiedCodexRuntime
@@ -369,7 +370,7 @@ def test_codex_semantic_interpreter_is_ephemeral_schema_bound_and_tool_free(
     observation = _observation(1, text)
     response = json.dumps(
         {
-            "prompt_version": "semantic-feedback-candidates-v3",
+            "prompt_version": "semantic-feedback-candidates-v4",
             "items": [
                 {
                     "observation_id": observation.observation_id,
@@ -427,12 +428,21 @@ def test_codex_semantic_interpreter_is_ephemeral_schema_bound_and_tool_free(
     )
 
 
+def test_semantic_output_schema_requires_complete_learning_or_revocation_shape() -> None:
+    encoded = json.dumps(semantic_feedback_output_schema(), sort_keys=True)
+
+    assert '"const": "revocation"' in encoded
+    assert '"affected_artifact_id": {"type": "null"}' in encoded
+    assert '"normalized_behavior": {"minLength": 1, "type": "string"}' in encoded
+    assert '"requested_route": {"enum":' in encoded
+
+
 def test_codex_semantic_interpreter_rejects_tool_use(tmp_path: Path) -> None:
     observation = _observation(1, "I prefer descriptive names")
     rpc = _SemanticRpc(
         response=json.dumps(
             {
-                "prompt_version": "semantic-feedback-candidates-v3",
+                "prompt_version": "semantic-feedback-candidates-v4",
                 "items": [{"observation_id": observation.observation_id, "signals": []}],
             }
         )

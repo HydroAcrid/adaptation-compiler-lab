@@ -51,6 +51,15 @@ from adaptation_compiler_lab.automatic_runtime.semantic_evaluation import (
     SemanticEvaluationReport,
     SemanticFeedbackCorpus,
 )
+from adaptation_compiler_lab.automatic_runtime.semantic_stimulation import (
+    SemanticStimulationAuditProposal,
+    SemanticStimulationGeneration,
+    SemanticStimulationIncrementalAudit,
+    SemanticStimulationPlan,
+    SemanticStimulationProtocol,
+    SemanticStimulationRemediation,
+    SemanticStimulationSummary,
+)
 
 _MODELS: dict[str, type[BaseModel]] = {
     "automatic_rendered_material": AutomaticRenderedMaterial,
@@ -80,6 +89,13 @@ _MODELS: dict[str, type[BaseModel]] = {
     "semantic_corpus_adjudication": SemanticCorpusAdjudication,
     "semantic_evaluation_report": SemanticEvaluationReport,
     "semantic_feedback_corpus": SemanticFeedbackCorpus,
+    "semantic_stimulation_audit_proposal": SemanticStimulationAuditProposal,
+    "semantic_stimulation_generation": SemanticStimulationGeneration,
+    "semantic_stimulation_incremental_audit": SemanticStimulationIncrementalAudit,
+    "semantic_stimulation_plan": SemanticStimulationPlan,
+    "semantic_stimulation_protocol": SemanticStimulationProtocol,
+    "semantic_stimulation_remediation": SemanticStimulationRemediation,
+    "semantic_stimulation_summary": SemanticStimulationSummary,
     "runtime_source_checkpoint": RuntimeSourceCheckpoint,
     "runtime_target_delivery_acknowledgement": RuntimeTargetDeliveryAcknowledgement,
     "runtime_task_activation_receipt": RuntimeTaskActivationReceipt,

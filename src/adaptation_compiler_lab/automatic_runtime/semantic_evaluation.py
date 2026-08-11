@@ -51,8 +51,15 @@ class SemanticFeedbackExpectation(FrozenModel):
     def positive_shape_is_complete(self) -> SemanticFeedbackExpectation:
         if self.durable_signal != bool(self.accepted_signal_kinds):
             raise ValueError("durable expectation must specify accepted signal kinds")
-        if self.durable_signal != bool(self.accepted_routes):
-            raise ValueError("durable expectation must specify accepted routes")
+        revocation_only = self.accepted_signal_kinds == (FeedbackSignalKind.REVOCATION,)
+        if revocation_only and self.accepted_routes:
+            raise ValueError("revocation expectations cannot specify artifact routes")
+        if self.durable_signal and not revocation_only and not self.accepted_routes:
+            raise ValueError("non-revocation durable expectation must specify accepted routes")
+        if not self.durable_signal and self.accepted_routes:
+            raise ValueError("negative expectation cannot specify accepted routes")
+        if FeedbackSignalKind.REVOCATION in self.accepted_signal_kinds and not revocation_only:
+            raise ValueError("revocation cannot be combined with learning signal kinds")
         if self.durable_signal != (self.scope_hint is not None):
             raise ValueError("durable expectation must specify a scope hint")
         return self
@@ -78,7 +85,7 @@ class SemanticFeedbackCase(FrozenModel):
 class SemanticFeedbackCorpus(FrozenModel):
     """Versioned public corpus with a frozen holdout split."""
 
-    corpus_version: Literal["1.0.0", "2.0.0"] = "1.0.0"
+    corpus_version: Literal["1.0.0", "2.0.0", "3.0.0"] = "1.0.0"
     corpus_id: Identifier
     frozen_at: UtcDateTime
     cases: Annotated[tuple[SemanticFeedbackCase, ...], Field(min_length=40)]
@@ -213,7 +220,7 @@ class SemanticCaseEvaluation(FrozenModel):
 class SemanticEvaluationReport(FrozenModel):
     """Raw-free, digest-bound result suitable for a detector serving gate."""
 
-    report_version: Literal["1.0.0"] = "1.0.0"
+    report_version: Literal["1.0.0", "1.1.0"] = "1.1.0"
     source_corpus_digest: Sha256Digest
     effective_corpus_digest: Sha256Digest
     adjudication_digest: Sha256Digest | None = None
@@ -373,6 +380,11 @@ def evaluate_semantic_feedback(
             and (
                 signal.requested_route in case.expectation.accepted_routes
                 or (
+                    signal.signal_kind is FeedbackSignalKind.REVOCATION
+                    and not case.expectation.accepted_routes
+                    and signal.requested_route is None
+                )
+                or (
                     signal.signal_kind is FeedbackSignalKind.CORRECTION
                     and FeedbackSignalKind.CORRECTION in case.expectation.accepted_signal_kinds
                     and signal.requested_route is not None
@@ -384,6 +396,8 @@ def evaluate_semantic_feedback(
         route_correct += int(route_match)
         scope_correct += int(scope_match)
         if not route_match:
+            failures.add(case.case_id)
+        if not scope_match:
             failures.add(case.case_id)
         case_evaluations.append(
             SemanticCaseEvaluation(
@@ -442,4 +456,24 @@ def evaluate_semantic_feedback(
         failed_case_ids=tuple(sorted(failures)),
         thresholds=gate,
         promotion_ready=ready,
+    )
+
+
+def repair_semantic_evaluation_failures(
+    report: SemanticEvaluationReport,
+) -> SemanticEvaluationReport:
+    """Upgrade v1.0 reports whose failure index omitted scope-only mismatches."""
+
+    failures = tuple(
+        sorted(
+            item.case_id
+            for item in report.case_evaluations
+            if not (item.detection_correct and item.route_correct and item.scope_correct)
+        )
+    )
+    return report.model_copy(
+        update={
+            "report_version": "1.1.0",
+            "failed_case_ids": failures,
+        }
     )

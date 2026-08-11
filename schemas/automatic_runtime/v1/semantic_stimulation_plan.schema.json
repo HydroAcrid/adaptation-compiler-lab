@@ -1,0 +1,252 @@
+{
+  "$defs": {
+    "ArtifactRoute": {
+      "enum": [
+        "evaluation_only",
+        "memory",
+        "preference",
+        "example",
+        "procedure",
+        "prompt_rule",
+        "skill",
+        "tool_recommendation",
+        "inactive_tool_candidate",
+        "inactive_adapter_dataset_candidate"
+      ],
+      "title": "ArtifactRoute",
+      "type": "string"
+    },
+    "FeedbackSignalKind": {
+      "description": "User signals that may become governed adaptation candidates.",
+      "enum": [
+        "memory",
+        "preference",
+        "procedure",
+        "prompt_rule",
+        "positive_example",
+        "correction",
+        "revocation"
+      ],
+      "title": "FeedbackSignalKind",
+      "type": "string"
+    },
+    "SemanticFeedbackExpectation": {
+      "additionalProperties": false,
+      "description": "Outcome dimensions that can be scored without matching generated prose.",
+      "properties": {
+        "accepted_routes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ArtifactRoute"
+          },
+          "title": "Accepted Routes",
+          "type": "array"
+        },
+        "accepted_signal_kinds": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/FeedbackSignalKind"
+          },
+          "title": "Accepted Signal Kinds",
+          "type": "array"
+        },
+        "durable_signal": {
+          "title": "Durable Signal",
+          "type": "boolean"
+        },
+        "scope_hint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SemanticScopeHint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "durable_signal"
+      ],
+      "title": "SemanticFeedbackExpectation",
+      "type": "object"
+    },
+    "SemanticScopeHint": {
+      "description": "Non-authoritative scope hint emitted by semantic interpretation.",
+      "enum": [
+        "permanent_profile",
+        "current_context"
+      ],
+      "title": "SemanticScopeHint",
+      "type": "string"
+    },
+    "SemanticStimulationScenario": {
+      "additionalProperties": false,
+      "description": "A label-first scenario whose wording is generated only after labels are frozen.",
+      "properties": {
+        "case_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "context_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Context Id",
+          "type": "string"
+        },
+        "expectation": {
+          "$ref": "#/$defs/SemanticFeedbackExpectation"
+        },
+        "generation_brief": {
+          "minLength": 1,
+          "title": "Generation Brief",
+          "type": "string"
+        },
+        "polarity": {
+          "$ref": "#/$defs/StimulationPolarity"
+        },
+        "semantic_class": {
+          "$ref": "#/$defs/StimulationSemanticClass"
+        },
+        "split": {
+          "enum": [
+            "calibration",
+            "holdout"
+          ],
+          "title": "Split",
+          "type": "string"
+        },
+        "style": {
+          "$ref": "#/$defs/StimulationStyle"
+        },
+        "tags": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Tags",
+          "type": "array"
+        },
+        "turn_index": {
+          "enum": [
+            1,
+            3,
+            5,
+            10,
+            15
+          ],
+          "title": "Turn Index",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "case_id",
+        "split",
+        "context_id",
+        "turn_index",
+        "polarity",
+        "semantic_class",
+        "style",
+        "generation_brief",
+        "tags",
+        "expectation"
+      ],
+      "title": "SemanticStimulationScenario",
+      "type": "object"
+    },
+    "StimulationPolarity": {
+      "description": "Whether one case should or should not yield an evaluation candidate.",
+      "enum": [
+        "positive",
+        "negative"
+      ],
+      "title": "StimulationPolarity",
+      "type": "string"
+    },
+    "StimulationSemanticClass": {
+      "description": "Controlled behavioral distinction a scenario is intended to exercise.",
+      "enum": [
+        "correction",
+        "hypothetical",
+        "immediate_task",
+        "inferred_topic",
+        "memory",
+        "past_preference",
+        "positive_example",
+        "preference",
+        "prompt_injection_quote",
+        "prompt_rule",
+        "procedure",
+        "quoted_authority",
+        "revocation",
+        "task_request",
+        "undecided"
+      ],
+      "title": "StimulationSemanticClass",
+      "type": "string"
+    },
+    "StimulationStyle": {
+      "description": "Controlled surface-form variations used across the corpus.",
+      "enum": [
+        "acronym",
+        "bad_grammar",
+        "clean",
+        "emphatic",
+        "fragment",
+        "indirect",
+        "mixed_intent",
+        "negation",
+        "slang",
+        "typo"
+      ],
+      "title": "StimulationStyle",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Frozen balanced design for repository-informed synthetic calibration.",
+  "properties": {
+    "cases": {
+      "items": {
+        "$ref": "#/$defs/SemanticStimulationScenario"
+      },
+      "maxItems": 100,
+      "minItems": 100,
+      "title": "Cases",
+      "type": "array"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "plan_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Plan Id",
+      "type": "string"
+    },
+    "plan_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Plan Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "plan_id",
+    "created_at",
+    "cases"
+  ],
+  "title": "SemanticStimulationPlan",
+  "type": "object"
+}

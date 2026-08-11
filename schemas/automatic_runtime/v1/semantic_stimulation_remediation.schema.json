@@ -1,0 +1,83 @@
+{
+  "$defs": {
+    "SemanticStimulationGeneratedItem": {
+      "additionalProperties": false,
+      "description": "Synthetic wording for one already-labeled scenario.",
+      "properties": {
+        "case_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_id",
+        "text"
+      ],
+      "title": "SemanticStimulationGeneratedItem",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Replacement wording for exactly the cases rejected by an independent audit.",
+  "properties": {
+    "items": {
+      "items": {
+        "$ref": "#/$defs/SemanticStimulationGeneratedItem"
+      },
+      "maxItems": 100,
+      "minItems": 1,
+      "title": "Items",
+      "type": "array"
+    },
+    "model": {
+      "const": "gpt-5.6-luna",
+      "default": "gpt-5.6-luna",
+      "title": "Model",
+      "type": "string"
+    },
+    "reasoning_effort": {
+      "const": "low",
+      "default": "low",
+      "title": "Reasoning Effort",
+      "type": "string"
+    },
+    "remediation_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Remediation Version",
+      "type": "string"
+    },
+    "source_audit_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Audit Digest",
+      "type": "string"
+    },
+    "source_generation_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Generation Digest",
+      "type": "string"
+    },
+    "synthetic_only": {
+      "const": true,
+      "default": true,
+      "title": "Synthetic Only",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "source_generation_digest",
+    "source_audit_digest",
+    "items"
+  ],
+  "title": "SemanticStimulationRemediation",
+  "type": "object"
+}
