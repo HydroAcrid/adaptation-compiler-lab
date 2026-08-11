@@ -200,6 +200,7 @@ def test_revocation_expectation_scores_without_an_artifact_route() -> None:
                 update={
                     "accepted_signal_kinds": (FeedbackSignalKind.REVOCATION,),
                     "accepted_routes": (),
+                    "affected_artifact_id": "artifact-naming-style",
                 }
             ),
         }
@@ -227,6 +228,24 @@ def test_revocation_expectation_scores_without_an_artifact_route() -> None:
     result = next(item for item in report.case_evaluations if item.case_id == source_case.case_id)
     assert result.route_correct
     assert result.predicted_routes == ()
+    assert result.predicted_affected_artifact_ids == ("artifact-naming-style",)
+
+    interpretation = interpretations[source_case.case_id]
+    wrong_target = interpretation.signals[0].model_copy(
+        update={"affected_artifact_id": "artifact-wrong-target"}
+    )
+    interpretations[source_case.case_id] = interpretation.model_copy(
+        update={"signals": (wrong_target,)}
+    )
+    wrong_report = evaluate_semantic_feedback(
+        evaluation_corpus,
+        split=source_case.split,
+        interpretations=interpretations,
+    )
+    wrong_result = next(
+        item for item in wrong_report.case_evaluations if item.case_id == source_case.case_id
+    )
+    assert not wrong_result.route_correct
 
 
 def test_scope_only_mismatch_is_included_in_the_failure_index() -> None:

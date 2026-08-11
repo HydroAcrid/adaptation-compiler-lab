@@ -38,6 +38,10 @@ class SemanticFeedbackExpectation(FrozenModel):
     accepted_signal_kinds: tuple[FeedbackSignalKind, ...] = ()
     accepted_routes: tuple[ArtifactRoute, ...] = ()
     scope_hint: SemanticScopeHint | None = None
+    affected_artifact_id: Identifier | None = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+    )
 
     @field_validator("accepted_signal_kinds", "accepted_routes")
     @classmethod
@@ -60,6 +64,8 @@ class SemanticFeedbackExpectation(FrozenModel):
             raise ValueError("negative expectation cannot specify accepted routes")
         if FeedbackSignalKind.REVOCATION in self.accepted_signal_kinds and not revocation_only:
             raise ValueError("revocation cannot be combined with learning signal kinds")
+        if not revocation_only and self.affected_artifact_id is not None:
+            raise ValueError("only revocation expectations may name an affected artifact")
         if self.durable_signal != (self.scope_hint is not None):
             raise ValueError("durable expectation must specify a scope hint")
         return self
@@ -85,7 +91,14 @@ class SemanticFeedbackCase(FrozenModel):
 class SemanticFeedbackCorpus(FrozenModel):
     """Versioned public corpus with a frozen holdout split."""
 
-    corpus_version: Literal["1.0.0", "2.0.0", "3.0.0"] = "1.0.0"
+    corpus_version: Literal[
+        "1.0.0",
+        "2.0.0",
+        "3.0.0",
+        "4.0.0",
+        "5.0.0",
+        "6.0.0",
+    ] = "1.0.0"
     corpus_id: Identifier
     frozen_at: UtcDateTime
     cases: Annotated[tuple[SemanticFeedbackCase, ...], Field(min_length=40)]
@@ -107,10 +120,15 @@ class SemanticFeedbackCorpus(FrozenModel):
             selected = tuple(item for item in self.cases if item.split == split)
             positives = tuple(item for item in selected if item.expectation.durable_signal)
             negatives = tuple(item for item in selected if not item.expectation.durable_signal)
-            if len(selected) < 20 or len(positives) < 10 or len(negatives) < 10:
+            route_only = self.corpus_version in {"4.0.0", "5.0.0", "6.0.0"}
+            if (
+                len(selected) < 20
+                or len(positives) < 10
+                or (not route_only and len(negatives) < 10)
+            ):
+                composition = "10 positives" if route_only else "10 positives, and 10 negatives"
                 raise ValueError(
-                    f"semantic {split} split requires at least 20 cases, "
-                    "10 positives, and 10 negatives"
+                    f"semantic {split} split requires at least 20 cases, {composition}"
                 )
         return self
 
@@ -199,6 +217,10 @@ class SemanticCaseEvaluation(FrozenModel):
     predicted_durable: bool
     predicted_signal_kinds: tuple[FeedbackSignalKind, ...]
     predicted_routes: tuple[ArtifactRoute, ...]
+    predicted_affected_artifact_ids: tuple[Identifier, ...] = Field(
+        default=(),
+        exclude_if=lambda value: not value,
+    )
     predicted_scope_hints: tuple[SemanticScopeHint, ...]
     detection_correct: bool
     route_correct: bool
@@ -207,6 +229,7 @@ class SemanticCaseEvaluation(FrozenModel):
     @field_validator(
         "predicted_signal_kinds",
         "predicted_routes",
+        "predicted_affected_artifact_ids",
         "predicted_scope_hints",
     )
     @classmethod
@@ -220,7 +243,7 @@ class SemanticCaseEvaluation(FrozenModel):
 class SemanticEvaluationReport(FrozenModel):
     """Raw-free, digest-bound result suitable for a detector serving gate."""
 
-    report_version: Literal["1.0.0", "1.1.0"] = "1.1.0"
+    report_version: Literal["1.0.0", "1.1.0", "1.2.0"] = "1.2.0"
     source_corpus_digest: Sha256Digest
     effective_corpus_digest: Sha256Digest
     adjudication_digest: Sha256Digest | None = None
@@ -383,6 +406,10 @@ def evaluate_semantic_feedback(
                     signal.signal_kind is FeedbackSignalKind.REVOCATION
                     and not case.expectation.accepted_routes
                     and signal.requested_route is None
+                    and (
+                        case.expectation.affected_artifact_id is None
+                        or signal.affected_artifact_id == case.expectation.affected_artifact_id
+                    )
                 )
                 or (
                     signal.signal_kind is FeedbackSignalKind.CORRECTION
@@ -415,6 +442,15 @@ def evaluate_semantic_feedback(
                             if item.requested_route is not None
                         },
                         key=lambda item: item.value,
+                    )
+                ),
+                predicted_affected_artifact_ids=tuple(
+                    sorted(
+                        {
+                            item.affected_artifact_id
+                            for item in candidates
+                            if item.affected_artifact_id is not None
+                        }
                     )
                 ),
                 predicted_scope_hints=tuple(

@@ -79,6 +79,21 @@
           "title": "Accepted Signal Kinds",
           "type": "array"
         },
+        "affected_artifact_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Affected Artifact Id"
+        },
         "durable_signal": {
           "title": "Durable Signal",
           "type": "boolean"
