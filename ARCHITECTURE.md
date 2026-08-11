@@ -12,7 +12,7 @@ runtime adapters are separately pinned and fail closed.
 
 ```mermaid
 flowchart LR
-    K["External Ed25519 and AES keys"] --> G["Signed governance ledger"]
+    K["Separate Ed25519 and AES keys<br/>external custody or same-user DPAPI"] --> G["Signed governance ledger"]
     G --> I["Typed synthetic import"]
     I --> R["Task / Outcome / Evidence ledger"]
     R --> E["Evaluation candidate and review"]
@@ -126,6 +126,14 @@ projects cannot inherit it. Polling resolves the source CWD to exactly one proje
 that project's cutoff and refuses ambiguous overlapping matches. Preview is a separate metadata-only
 path built on `thread/list`; only an actual later poll may call `thread/read`, and then only for a
 completed, non-ephemeral, post-registration task in one exact registered scope.
+
+Milestone 6A.2F removes manual key handling from the local dogfood path. New Ed25519 and AES-256
+material is generated in process memory and sealed directly into a Windows CurrentUser DPAPI
+envelope bound to subject, signer, and complete config. Config, receipts, child environments, and
+logs remain secret-free. If predecessor keys are lost, succession creates a new empty ledger and
+new prospective cutoff. A new-key-signed `RuntimeSuccessorReceipt` binds both config digests and
+fingerprints and explicitly records that old payload recovery is unavailable, history was not
+mutated, and evidence was not copied. This is a successor lineage, not old-key rotation.
 
 Completed source tasks are evidence inputs, not mutable integration targets. Registration, preview,
 and polling never resume, inject into, or edit those tasks and never write to their repositories.
@@ -277,8 +285,10 @@ Promotion and release validation enforce:
 
 Source raw payload bytes reside in a separate AES-256-GCM content-addressed raw store. The address is the
 plaintext SHA-256; ciphertext uses a fresh 96-bit nonce and authenticates digest, media type, and
-plaintext size. The 32-byte AES key and encrypted Ed25519 private key are separate and external to
-the workspace/repository. Missing key, wrong fingerprint, malformed envelope, or failed tag
+plaintext size. The 32-byte AES key and Ed25519 private key are separate and never enter the
+workspace/repository. Research custody uses external files; the automatic local runtime may keep
+the key bytes only inside a subject/config/signer-bound Windows CurrentUser DPAPI envelope. Missing
+or wrong account binding, missing key, wrong fingerprint, malformed envelope, or failed tag
 verification stops access. The metadata ledger and all pack renderers use minimized promoted
 records; raw data is neither an artifact body nor target instruction. Restriction or withdrawal
 marks every transitive dependency unusable, revokes artifacts, retires releases, invalidates packs,

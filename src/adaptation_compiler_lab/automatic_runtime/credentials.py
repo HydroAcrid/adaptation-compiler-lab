@@ -14,13 +14,17 @@ from hashlib import sha256
 from pathlib import Path
 from typing import Final, Protocol
 
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
 from adaptation_compiler_lab.automatic_runtime.gateway_models import CredentialEnvelopeMetadata
 from adaptation_compiler_lab.domain import Sha256Digest
 from adaptation_compiler_lab.governance.signing import (
     SIGNING_KEY_FILE_ENV,
     SIGNING_KEY_PASSPHRASE_ENV,
+    load_private_key,
 )
-from adaptation_compiler_lab.persistence.raw import RAW_KEY_FILE_ENV
+from adaptation_compiler_lab.persistence.raw import RAW_KEY_FILE_ENV, RawEncryptionKey
 from adaptation_compiler_lab.serialization import canonical_json
 
 _ENVELOPE_FILE: Final = "credential-envelope.json"
@@ -102,15 +106,90 @@ if ($inputJson.operation -eq 'protect') {
 
 @dataclass(frozen=True, slots=True)
 class RuntimeSecrets:
-    signing_key_file: Path
-    signing_key_passphrase: str
-    raw_key_file: Path
+    """Either legacy external locators or key bytes sealed inside the DPAPI envelope."""
+
+    signing_key_file: Path | None = None
+    signing_key_passphrase: str | None = None
+    raw_key_file: Path | None = None
+    managed_signing_key: bytes | None = None
+    managed_raw_key: bytes | None = None
 
     def __post_init__(self) -> None:
-        if not self.signing_key_passphrase:
-            raise CredentialStoreError("signing-key passphrase is unavailable")
+        external = (
+            self.signing_key_file is not None,
+            bool(self.signing_key_passphrase),
+            self.raw_key_file is not None,
+        )
+        managed = (
+            self.managed_signing_key is not None,
+            self.managed_raw_key is not None,
+        )
+        if all(external) and not any(managed):
+            return
+        if all(managed) and not any(external):
+            if len(self.managed_signing_key or b"") != 32:
+                raise CredentialStoreError("managed Ed25519 key must contain exactly 32 bytes")
+            if len(self.managed_raw_key or b"") != 32:
+                raise CredentialStoreError("managed raw key must contain exactly 32 bytes")
+            return
+        raise CredentialStoreError(
+            "runtime secrets must be either complete external references or complete managed keys"
+        )
+
+    @property
+    def managed(self) -> bool:
+        return self.managed_signing_key is not None
+
+    @classmethod
+    def generate_managed(cls) -> RuntimeSecrets:
+        private_key = Ed25519PrivateKey.generate()
+        private_bytes = private_key.private_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PrivateFormat.Raw,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        return cls(
+            managed_signing_key=private_bytes,
+            managed_raw_key=os.urandom(32),
+        )
+
+    def private_key(self, *, workspace_root: Path) -> Ed25519PrivateKey:
+        if self.managed:
+            assert self.managed_signing_key is not None
+            return Ed25519PrivateKey.from_private_bytes(self.managed_signing_key)
+        assert self.signing_key_file is not None
+        assert self.signing_key_passphrase is not None
+        return load_private_key(
+            self.signing_key_file,
+            passphrase=self.signing_key_passphrase,
+            workspace_root=workspace_root,
+        )
+
+    def raw_encryption_key(self, *, workspace_root: Path) -> RawEncryptionKey:
+        if self.managed:
+            assert self.managed_raw_key is not None
+            return RawEncryptionKey(self.managed_raw_key)
+        assert self.raw_key_file is not None
+        return RawEncryptionKey.from_file(self.raw_key_file, workspace_root=workspace_root)
 
     def to_bytes(self) -> bytes:
+        if self.managed:
+            assert self.managed_signing_key is not None
+            assert self.managed_raw_key is not None
+            return canonical_json(
+                {
+                    "managed_raw_key_base64": base64.b64encode(self.managed_raw_key).decode(
+                        "ascii"
+                    ),
+                    "managed_signing_key_base64": base64.b64encode(self.managed_signing_key).decode(
+                        "ascii"
+                    ),
+                    "version": 2,
+                }
+            ).encode("utf-8")
+        assert self.raw_key_file is not None
+        assert self.signing_key_file is not None
+        assert self.signing_key_passphrase is not None
         return canonical_json(
             {
                 "raw_key_file": str(self.raw_key_file),
@@ -126,15 +205,24 @@ class RuntimeSecrets:
             value = json.loads(payload)
         except (UnicodeDecodeError, json.JSONDecodeError) as error:
             raise CredentialStoreError("decrypted credential payload is invalid") from error
-        if not isinstance(value, dict) or value.get("version") != 1:
+        if not isinstance(value, dict) or value.get("version") not in {1, 2}:
             raise CredentialStoreError("decrypted credential payload version is unsupported")
         try:
+            if value["version"] == 2:
+                return cls(
+                    managed_signing_key=base64.b64decode(
+                        value["managed_signing_key_base64"], validate=True
+                    ),
+                    managed_raw_key=base64.b64decode(
+                        value["managed_raw_key_base64"], validate=True
+                    ),
+                )
             return cls(
                 signing_key_file=Path(str(value["signing_key_file"])),
                 signing_key_passphrase=str(value["signing_key_passphrase"]),
                 raw_key_file=Path(str(value["raw_key_file"])),
             )
-        except KeyError as error:
+        except (KeyError, ValueError) as error:
             raise CredentialStoreError("decrypted credential payload is incomplete") from error
 
     @classmethod

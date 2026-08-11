@@ -1,7 +1,7 @@
 # Milestone 6A.2E — Prospective Multi-Project Dogfood
 
-Status: implementation and metadata-only live preview complete; signed local registration pending
-the existing external signing credential.
+Status: implementation, metadata-only preview, managed succession, and signed prospective local
+registration complete; ordinary post-registration evidence remains to accumulate naturally.
 
 ## Product question
 
@@ -51,9 +51,14 @@ used saved ChatGPT authentication:
 The four historical tasks were counted from list metadata only and remain excluded. No task name,
 preview, turn, or message content was printed or captured.
 
+On 2026-08-11, Milestone 6A.2F created a fresh managed successor and signed the Green Meadow and
+Kairn registrations. A subsequent three-project poll appended zero items and advanced only the
+raw-free checkpoint, confirming that the four historical tasks did not cross the new cutoffs.
+
 ## Exact dogfood workflow
 
-1. Make the external signing credential available to the local native runtime.
+1. Bootstrap a managed successor when the predecessor credential is unavailable; verify its signed
+   successor receipt and new prospective cutoff.
 2. Register Green Meadow, then Kairn, with `--confirm-prospective`.
 3. Audit `runtime project list`; preserve both signed digests and cutoffs.
 4. Create new ordinary Codex tasks naturally in each project. Do not manufacture old timestamps or
@@ -90,6 +95,6 @@ Success requires:
 
 ## Current stop boundary
 
-Code, tests, schema snapshots, and metadata-only live previews are complete. Registration is not
-performed without the existing external Ed25519 credential. This fail-closed pause is the intended
-governance boundary, not a reason to loosen signing or import historical work.
+Code, tests, schema snapshots, and metadata-only live previews are complete. Milestone 6A.2F removes
+the manual credential ceremony without loosening signing or encryption: it preserves this state as
+history, starts an empty managed lineage, and keeps every pre-successor task ineligible.

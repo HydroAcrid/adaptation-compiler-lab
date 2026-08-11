@@ -107,10 +107,13 @@ arbitrary host data and cannot authorize capability, tool, plugin, MCP, credenti
 changes.
 
 Initialize with `adaptation-compiler-lab runtime init`, using an exact project root, an external
-state root, the pinned Codex executable/lock, saved Codex home, subject, and project ID. Initialization
-requires both external keys, verifies saved ChatGPT authentication, creates a signed 30-day policy,
+state root, the pinned Codex executable/lock, saved Codex home, subject, and project ID. On Windows,
+the default managed mode generates independent signing and raw-encryption keys in memory and seals
+them directly into a CurrentUser DPAPI envelope; no key file, passphrase, or environment setup is
+required. Initialization verifies saved ChatGPT authentication, creates a signed 30-day policy,
 and writes only a no-secret configuration outside every Git repository. It sets the capture cutoff
-to initialization time, so historical tasks are excluded.
+to initialization time, so historical tasks are excluded. Use `--credential-mode external` only
+for the legacy or deliberately externally custodied workflow.
 
 Use `runtime poll` after completed ordinary Codex work. Pickup reads only pinned app-server
 `userMessage` text in post-cutoff, terminal, non-ephemeral interactive threads under the allowlist.
@@ -152,8 +155,8 @@ target root is supplied through its UNC path.
 For an additional real project, first run `runtime project preview --project-root <path>`. Preview
 uses saved ChatGPT authentication but only invokes `account/read` and `thread/list`; it reports
 content-free counts and never reads a turn, message, task name, or preview. Then run `runtime project
-register --project-id <id> --project-root <path> --confirm-prospective` with the external signing
-credential available. Registration is local, signed, and prospective: all tasks created before its
+register --project-id <id> --project-root <path> --confirm-prospective` with the managed envelope
+available to the same Windows account. Registration is local, signed, and prospective: all tasks created before its
 recorded cutoff remain ineligible. It does not install the watcher, read historical content, modify
 an existing Codex task, write to the source repository, launch an agent, or activate an adaptation.
 
@@ -200,11 +203,19 @@ inputs, watcher cadence, notification mode, and fixed model/effort/turn limits. 
 Windows sandbox explicitly; use `unelevated` only when elevated setup has failed on that host.
 Configuration alone does not enroll credentials, install startup behavior, or launch an agent.
 
-On Windows, use `runtime credentials enroll` as an explicit one-time action. It validates the
-existing external signing and raw-store secrets and stores only a Windows CurrentUser DPAPI
-envelope outside Git. `credentials status` exposes metadata only, and `credentials revoke` removes
-the envelope. An account, machine, signer, subject, or security-configuration mismatch fails
-closed. Never put API keys in the configuration or watcher environment.
+New Windows runtimes enroll managed credentials during `runtime init`. `credentials status`
+exposes metadata only, and `credentials revoke` removes the envelope. The explicit `credentials
+enroll` command remains for legacy external signing/raw-store references. An account, machine,
+signer, subject, or security-configuration mismatch fails closed. Never put API keys in the
+configuration or watcher environment.
+
+If an older runtime has neither an external key nor an enrolled envelope, use `runtime credentials
+rebootstrap --config <old>/config.json --successor-state-root <new-empty-root>
+--confirm-lost-credentials`. This creates a new managed signer, encryption key, root policy,
+prospective cutoff, empty ledger, and signed `successor-receipt.json`. It leaves the predecessor
+untouched and copies no evidence. The receipt truthfully marks old payload recovery unavailable;
+the command is not key rotation and does not make old ciphertext readable. Audit both configs and
+the receipt before registering projects. Never reuse the predecessor state root.
 
 Use `runtime watcher run` interactively before choosing `watcher install`. The watcher performs an
 immediate poll, then uses a renewable single-instance lease, bounded retry/backoff, raw-free

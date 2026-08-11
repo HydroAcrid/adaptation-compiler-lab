@@ -47,6 +47,7 @@ from adaptation_compiler_lab.automatic_runtime.gateway_models import (
     GatewaySession,
     GatewaySessionStatus,
     GatewayTurnReceipt,
+    RuntimeSuccessorReceipt,
     VerificationCommandSpec,
     VerificationReceipt,
 )
@@ -125,15 +126,10 @@ from adaptation_compiler_lab.governance import (
 from adaptation_compiler_lab.governance.signing import (
     GovernanceSigner,
     create_signer_identity,
-    load_private_key,
-    load_private_key_from_environment,
     sign_governance_event,
     verify_signed_governance,
 )
-from adaptation_compiler_lab.persistence.raw import (
-    LocalRawPayloadStore,
-    RawEncryptionKey,
-)
+from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore
 from adaptation_compiler_lab.persistence.sqlite import SqliteUnitOfWorkFactory
 from adaptation_compiler_lab.runtime import RuntimeProjectionContext
 from adaptation_compiler_lab.serialization import canonical_digest, canonical_json
@@ -145,7 +141,9 @@ dogfood_app = typer.Typer(
     no_args_is_help=True,
     pretty_exceptions_enable=False,
 )
-credentials_app = typer.Typer(help="Enroll or revoke same-user unattended runtime unlock.")
+credentials_app = typer.Typer(
+    help="Manage automatic same-user runtime unlock and lost-credential succession."
+)
 watcher_app = typer.Typer(help="Operate the restart-safe local Codex feedback watcher.")
 inbox_app = typer.Typer(help="Inspect raw-free durable runtime notifications.")
 session_app = typer.Typer(help="Run governed Codex sessions in disposable writable workspaces.")
@@ -232,7 +230,7 @@ class CodexDogfoodProjectConfig(FrozenModel):
 
 
 class CodexDogfoodLocalConfig(FrozenModel):
-    """No-secret local configuration; keys remain external environment dependencies."""
+    """No-secret local configuration; keys are DPAPI-managed or externally supplied."""
 
     config_version: str = "1.4.0"
     subject_id: Identifier
@@ -626,24 +624,14 @@ def _enrollment_binding_digest(
 
 def _raw_store(config: CodexDogfoodLocalConfig) -> LocalRawPayloadStore:
     secrets = _runtime_secrets(config)
-    key = RawEncryptionKey.from_file(
-        secrets.raw_key_file,
-        workspace_root=config.repository_root,
-    )
+    key = secrets.raw_encryption_key(workspace_root=config.repository_root)
     return LocalRawPayloadStore(config.raw_store_path, encryption_key=key)
 
 
 def _runtime(config: CodexDogfoodLocalConfig) -> AutomaticAdaptationRuntime:
     secrets = _runtime_secrets(config)
-    private_key = load_private_key(
-        secrets.signing_key_file,
-        passphrase=secrets.signing_key_passphrase,
-        workspace_root=config.repository_root,
-    )
-    raw_key = RawEncryptionKey.from_file(
-        secrets.raw_key_file,
-        workspace_root=config.repository_root,
-    )
+    private_key = secrets.private_key(workspace_root=config.repository_root)
+    raw_key = secrets.raw_encryption_key(workspace_root=config.repository_root)
     signer = GovernanceSigner(
         private_key,
         identity_id=config.signer_identity.identity_id,
@@ -666,11 +654,7 @@ def _runtime(config: CodexDogfoodLocalConfig) -> AutomaticAdaptationRuntime:
 def _registration_signer(config: CodexDogfoodLocalConfig) -> GovernanceSigner:
     secrets = _runtime_secrets(config)
     signer = GovernanceSigner(
-        load_private_key(
-            secrets.signing_key_file,
-            passphrase=secrets.signing_key_passphrase,
-            workspace_root=config.repository_root,
-        ),
+        secrets.private_key(workspace_root=config.repository_root),
         identity_id=config.signer_identity.identity_id,
         subject_id=config.subject_id,
     )
@@ -819,6 +803,16 @@ def initialize_codex_dogfood(
         ),
     ] = None,
     identity_id: Annotated[str, typer.Option("--identity-id")] = "acl-runtime-owner",
+    credential_mode: Annotated[
+        Literal["managed", "external"],
+        typer.Option(
+            "--credential-mode",
+            help=(
+                "managed generates invisible same-user DPAPI credentials; external preserves "
+                "the legacy ACLAB_* environment workflow."
+            ),
+        ),
+    ] = "managed",
     runtime_pin: Annotated[
         Path,
         typer.Option(
@@ -873,7 +867,7 @@ def initialize_codex_dogfood(
         ),
     ] = False,
 ) -> None:
-    """Create one bounded signed policy and no-secret local dogfood configuration."""
+    """Create one bounded policy with automatic same-user credentials by default."""
 
     try:
         repository = repository_root.resolve()
@@ -883,8 +877,13 @@ def initialize_codex_dogfood(
         state.mkdir(parents=True, exist_ok=True)
         state.chmod(0o700)
         now = _now()
-        private_key = load_private_key_from_environment(workspace_root=repository)
-        RawEncryptionKey.from_environment(workspace_root=repository)
+        secrets = (
+            RuntimeSecrets.generate_managed()
+            if credential_mode == "managed"
+            else RuntimeSecrets.from_environment()
+        )
+        private_key = secrets.private_key(workspace_root=repository)
+        secrets.raw_encryption_key(workspace_root=repository)
         signer = GovernanceSigner(
             private_key,
             identity_id=identity_id,
@@ -895,6 +894,7 @@ def initialize_codex_dogfood(
             roles=(
                 SignerRole.ACTIVATION,
                 SignerRole.CONSENT,
+                SignerRole.CUSTODY,
                 SignerRole.RELEASE,
                 SignerRole.REVIEW,
             ),
@@ -1016,6 +1016,13 @@ def initialize_codex_dogfood(
         config_path = state / "config.json"
         config_path.write_text(canonical_json(config) + "\n", encoding="utf-8")
         config_path.chmod(0o600)
+        if credential_mode == "managed":
+            DpapiCredentialStore(config.state_root).enroll(
+                secrets,
+                subject_id=config.subject_id,
+                config_digest=config.credential_binding_digest,
+                signer_fingerprint=config.signer_identity.key_fingerprint,
+            )
         database = _ledger(config)
         database.initialize(initial_runtime_state(policy))
     except (OSError, ValueError, RuntimeConformanceError) as error:
@@ -2049,6 +2056,199 @@ def configure_gateway(
     typer.echo(canonical_json({"config_version": upgraded_version, "status": "configured"}))
 
 
+@credentials_app.command("rebootstrap")
+def rebootstrap_runtime_credentials(
+    config_path: ConfigOption,
+    successor_state_root: Annotated[
+        Path,
+        typer.Option(
+            "--successor-state-root",
+            file_okay=False,
+            resolve_path=True,
+            help="New empty state root; the predecessor remains immutable and separate.",
+        ),
+    ],
+    confirm_lost_credentials: Annotated[
+        bool,
+        typer.Option(
+            "--confirm-lost-credentials",
+            help="Confirm that the predecessor keys are unavailable and old ciphertext is lost.",
+        ),
+    ] = False,
+) -> None:
+    """Start a fresh DPAPI-managed lineage without rewriting unavailable-key history."""
+
+    try:
+        predecessor = _load_config(config_path)
+        if not confirm_lost_credentials:
+            raise CredentialStoreError(
+                "rebootstrap requires --confirm-lost-credentials because prior ciphertext "
+                "will not be copied or recoverable"
+            )
+        if DpapiCredentialStore(predecessor.state_root).status() is not None:
+            raise CredentialStoreError(
+                "predecessor credential enrollment still exists; unlock or revoke it explicitly"
+            )
+        state = _outside_git(
+            successor_state_root,
+            repository_root=predecessor.repository_root,
+        )
+        if state == predecessor.state_root:
+            raise CredentialStoreError("successor state root must differ from the predecessor")
+        if state.exists() and any(state.iterdir()):
+            raise CredentialStoreError("successor state root already contains files")
+        state.mkdir(parents=True, exist_ok=True)
+        state.chmod(0o700)
+
+        now = _now()
+        cutoff = int(now.timestamp())
+        suffix = sha256_text(f"{predecessor.credential_binding_digest}:{cutoff}")[7:19]
+        secrets = RuntimeSecrets.generate_managed()
+        signer = GovernanceSigner(
+            secrets.private_key(workspace_root=predecessor.repository_root),
+            identity_id=f"{predecessor.signer_identity.identity_id}-successor-{suffix}",
+            subject_id=predecessor.subject_id,
+        )
+        identity = create_signer_identity(
+            signer,
+            roles=(
+                SignerRole.ACTIVATION,
+                SignerRole.CONSENT,
+                SignerRole.CUSTODY,
+                SignerRole.RELEASE,
+                SignerRole.REVIEW,
+            ),
+            created_at=now,
+            expires_at=now + timedelta(days=31),
+        )
+        scope = predecessor.policy.scope.model_copy(
+            update={
+                "project_ids": tuple(project.project_id for project in predecessor.projects),
+            }
+        )
+        policy = StandingAutomationPolicy(
+            policy_id=f"{predecessor.policy.policy_id}-successor-{suffix}",
+            subject_id=predecessor.subject_id,
+            scope=scope,
+            permitted_uses=predecessor.policy.permitted_uses,
+            allowed_routes=predecessor.policy.allowed_routes,
+            allowed_target_families=predecessor.policy.allowed_target_families,
+            maximum_behavior_utf8_bytes=predecessor.policy.maximum_behavior_utf8_bytes,
+            retention_days=predecessor.policy.retention_days,
+            effective_at=now,
+            expires_at=now + timedelta(days=predecessor.policy.retention_days),
+        )
+        policy_authorization = sign_governance_event(
+            {
+                "event_id": f"enable-successor-{suffix}",
+                "subject_id": predecessor.subject_id,
+                "event_type": GovernanceEventType.ACTIVATION_DECISION.value,
+                "target_ref": policy.authorization_target_ref,
+                "target_digest": policy.content_digest,
+                "decision": "enabled",
+                "reason": "Start a fresh local lineage after confirmed credential loss.",
+                "policy_version": policy.policy_version,
+                "occurred_at": now.isoformat(),
+            },
+            signer,
+        )
+        projects = tuple(
+            project.model_copy(
+                update={
+                    "capture_after_epoch_seconds": None,
+                    "registration": None,
+                    "registration_authorization": None,
+                }
+            )
+            for project in predecessor.projects
+        )
+        successor = CodexDogfoodLocalConfig.model_validate(
+            predecessor.model_copy(
+                update={
+                    "config_version": "1.4.0",
+                    "state_root": state,
+                    "database_path": state / "runtime.sqlite3",
+                    "raw_store_path": state / "raw",
+                    "capture_after_epoch_seconds": cutoff,
+                    "policy": policy,
+                    "policy_authorization": policy_authorization,
+                    "signer_identity": identity,
+                    "projects": projects,
+                }
+            ).model_dump(),
+            strict=True,
+        )
+        successor_config_path = state / "config.json"
+        _write_config(successor_config_path, successor)
+        DpapiCredentialStore(state).enroll(
+            secrets,
+            subject_id=successor.subject_id,
+            config_digest=successor.credential_binding_digest,
+            signer_fingerprint=successor.signer_identity.key_fingerprint,
+        )
+        _ledger(successor).initialize(initial_runtime_state(policy))
+
+        receipt_id = f"runtime-successor-{suffix}"
+        receipt_digest = RuntimeSuccessorReceipt.model_construct(
+            receipt_id=receipt_id,
+            subject_id=predecessor.subject_id,
+            predecessor_config_digest=predecessor.credential_binding_digest,
+            predecessor_signer_fingerprint=predecessor.signer_identity.key_fingerprint,
+            successor_config_digest=successor.credential_binding_digest,
+            successor_signer_fingerprint=successor.signer_identity.key_fingerprint,
+            capture_after_epoch_seconds=cutoff,
+            created_at=now,
+            authorization=policy_authorization,
+        ).authorization_digest
+        recovery_authorization = sign_governance_event(
+            {
+                "event_id": f"authorize-successor-{suffix}",
+                "subject_id": predecessor.subject_id,
+                "event_type": GovernanceEventType.CUSTODY_ACTION.value,
+                "target_ref": f"runtime-successor:{receipt_id}",
+                "target_digest": receipt_digest,
+                "decision": "created_after_lost_credentials",
+                "reason": (
+                    "Preserve the prior ledger without copying evidence; old encrypted "
+                    "payloads remain unavailable."
+                ),
+                "policy_version": policy.policy_version,
+                "occurred_at": now.isoformat(),
+            },
+            signer,
+        )
+        receipt = RuntimeSuccessorReceipt(
+            receipt_id=receipt_id,
+            subject_id=predecessor.subject_id,
+            predecessor_config_digest=predecessor.credential_binding_digest,
+            predecessor_signer_fingerprint=predecessor.signer_identity.key_fingerprint,
+            successor_config_digest=successor.credential_binding_digest,
+            successor_signer_fingerprint=successor.signer_identity.key_fingerprint,
+            capture_after_epoch_seconds=cutoff,
+            created_at=now,
+            authorization=recovery_authorization,
+        )
+        verify_signed_governance(receipt.authorization, identity, effective_at=now)
+        receipt_path = state / "successor-receipt.json"
+        receipt_path.write_text(canonical_json(receipt) + "\n", encoding="utf-8")
+        receipt_path.chmod(0o600)
+    except (OSError, ValueError) as error:
+        _fail(str(error))
+    typer.echo(
+        canonical_json(
+            {
+                "capture_after_epoch_seconds": cutoff,
+                "config": str(successor_config_path),
+                "evidence_copied": False,
+                "historical_state_mutated": False,
+                "prior_payload_recovery": "unavailable",
+                "receipt": str(receipt_path),
+                "status": "successor_ready",
+            }
+        )
+    )
+
+
 @credentials_app.command("enroll")
 def enroll_runtime_credentials(config_path: ConfigOption) -> None:
     """Protect current external-key references for same-user unattended operation."""
@@ -2059,12 +2259,8 @@ def enroll_runtime_credentials(config_path: ConfigOption) -> None:
             raise CredentialStoreError("credential enrollment requires dogfood config v1.3+")
         secrets = RuntimeSecrets.from_environment()
         # Validate every external dependency before protecting its locator and passphrase.
-        load_private_key(
-            secrets.signing_key_file,
-            passphrase=secrets.signing_key_passphrase,
-            workspace_root=config.repository_root,
-        )
-        RawEncryptionKey.from_file(secrets.raw_key_file, workspace_root=config.repository_root)
+        secrets.private_key(workspace_root=config.repository_root)
+        secrets.raw_encryption_key(workspace_root=config.repository_root)
         metadata = DpapiCredentialStore(config.state_root).enroll(
             secrets,
             subject_id=config.subject_id,

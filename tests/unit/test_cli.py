@@ -10,13 +10,16 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 from typer.testing import CliRunner
 
 from adaptation_compiler_lab.automatic_runtime import dogfood_cli, initial_runtime_state
+from adaptation_compiler_lab.automatic_runtime.credentials import RuntimeSecrets
 from adaptation_compiler_lab.automatic_runtime.gateway_models import (
     CredentialEnvelopeMetadata,
+    RuntimeSuccessorReceipt,
 )
 from adaptation_compiler_lab.automatic_runtime.service import AutomaticRuntimeError
 from adaptation_compiler_lab.cli import app
@@ -39,7 +42,10 @@ from adaptation_compiler_lab.domain import (
     SourceClass,
     SyntheticOrigin,
 )
-from adaptation_compiler_lab.governance.signing import write_new_private_key
+from adaptation_compiler_lab.governance.signing import (
+    verify_signed_governance,
+    write_new_private_key,
+)
 
 runner = CliRunner()
 NOW = datetime(2026, 7, 22, 16, 0, tzinfo=UTC)
@@ -225,6 +231,85 @@ def test_runtime_review_approval_requires_explicit_future_use_confirmation() -> 
         )
 
 
+def test_runtime_init_defaults_to_invisible_managed_credentials(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    (repository / ".git").mkdir()
+    source_home = tmp_path / "codex-home"
+    source_home.mkdir()
+    executable = tmp_path / "codex"
+    executable.write_text("#!/bin/sh\n", encoding="utf-8")
+    executable.chmod(0o700)
+    enrolled: list[object] = []
+
+    class CapturingCredentialStore:
+        def __init__(self, _state_root: Path) -> None:
+            pass
+
+        def enroll(
+            self,
+            secrets: object,
+            *,
+            subject_id: str,
+            config_digest: str,
+            signer_fingerprint: str,
+        ) -> CredentialEnvelopeMetadata:
+            enrolled.append(secrets)
+            return CredentialEnvelopeMetadata(
+                envelope_id=f"credentials-{subject_id}",
+                subject_id=subject_id,
+                config_digest=config_digest,
+                signer_fingerprint=signer_fingerprint,
+                protector="windows-dpapi-current-user",
+                ciphertext_digest=f"sha256:{'e' * 64}",
+                enrolled_at=NOW,
+            )
+
+    @contextmanager
+    def fake_open_codex_dogfood(**_kwargs: object) -> Iterator[None]:
+        yield None
+
+    monkeypatch.setattr(dogfood_cli, "DpapiCredentialStore", CapturingCredentialStore)
+    monkeypatch.setattr(dogfood_cli, "open_codex_dogfood", fake_open_codex_dogfood)
+    monkeypatch.delenv("ACLAB_SIGNING_KEY_FILE", raising=False)
+    monkeypatch.delenv("ACLAB_SIGNING_KEY_PASSPHRASE", raising=False)
+    monkeypatch.delenv("ACLAB_RAW_KEY_FILE", raising=False)
+    state = tmp_path / "state"
+
+    result = runner.invoke(
+        app,
+        [
+            "runtime",
+            "init",
+            "--state-root",
+            str(state),
+            "--repository-root",
+            str(repository),
+            "--project-root",
+            str(repository),
+            "--codex-executable",
+            str(executable),
+            "--source-codex-home",
+            str(source_home),
+            "--subject-id",
+            "kevin",
+            "--project-id",
+            "dogfood-project",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert len(enrolled) == 1
+    assert isinstance(enrolled[0], RuntimeSecrets)
+    assert enrolled[0].managed is True
+    config_text = (state / "config.json").read_text(encoding="utf-8")
+    assert "managed_signing_key" not in config_text
+    assert "managed_raw_key" not in config_text
+
+
 def test_runtime_init_writes_no_secret_config_and_status_is_local(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -296,6 +381,8 @@ def test_runtime_init_writes_no_secret_config_and_status_is_local(
             "kevin",
             "--project-id",
             "dogfood-project",
+            "--credential-mode",
+            "external",
             "--target-codex-executable",
             str(target_executable),
             "--target-codex-home",
@@ -353,11 +440,34 @@ def test_runtime_init_writes_no_secret_config_and_status_is_local(
     additional_project.mkdir()
 
     class NoEnrollmentCredentialStore:
-        def __init__(self, _state_root: Path) -> None:
-            pass
+        enrollments: ClassVar[dict[Path, tuple[object, CredentialEnvelopeMetadata]]] = {}
 
-        def status(self) -> None:
-            return None
+        def __init__(self, _state_root: Path) -> None:
+            self.state_root = _state_root.resolve()
+
+        def status(self) -> CredentialEnvelopeMetadata | None:
+            stored = self.enrollments.get(self.state_root)
+            return None if stored is None else stored[1]
+
+        def enroll(
+            self,
+            secrets: object,
+            *,
+            subject_id: str,
+            config_digest: str,
+            signer_fingerprint: str,
+        ) -> CredentialEnvelopeMetadata:
+            metadata = CredentialEnvelopeMetadata(
+                envelope_id=f"credentials-{subject_id}",
+                subject_id=subject_id,
+                config_digest=config_digest,
+                signer_fingerprint=signer_fingerprint,
+                protector="windows-dpapi-current-user",
+                ciphertext_digest=f"sha256:{'d' * 64}",
+                enrolled_at=NOW,
+            )
+            self.enrollments[self.state_root] = (secrets, metadata)
+            return metadata
 
     monkeypatch.setattr(dogfood_cli, "DpapiCredentialStore", NoEnrollmentCredentialStore)
     before_registration = config_path.read_text(encoding="utf-8")
@@ -414,6 +524,82 @@ def test_runtime_init_writes_no_secret_config_and_status_is_local(
     assert second_project.registration is not None
     assert second_project.registration.modifies_existing_threads is False
     assert second_project.registration.modifies_source_repository is False
+
+    predecessor_text = config_path.read_text(encoding="utf-8")
+    successor_state = tmp_path / "dogfood-successor"
+    refused_successor = runner.invoke(
+        app,
+        [
+            "runtime",
+            "credentials",
+            "rebootstrap",
+            "--config",
+            str(config_path),
+            "--successor-state-root",
+            str(successor_state),
+        ],
+    )
+    assert refused_successor.exit_code == 1
+    assert "--confirm-lost-credentials" in refused_successor.output
+
+    successor_result = runner.invoke(
+        app,
+        [
+            "runtime",
+            "credentials",
+            "rebootstrap",
+            "--config",
+            str(config_path),
+            "--successor-state-root",
+            str(successor_state),
+            "--confirm-lost-credentials",
+        ],
+    )
+    assert successor_result.exit_code == 0, successor_result.output
+    successor_payload = json.loads(successor_result.stdout)
+    assert successor_payload["status"] == "successor_ready"
+    assert successor_payload["evidence_copied"] is False
+    assert successor_payload["historical_state_mutated"] is False
+    assert config_path.read_text(encoding="utf-8") == predecessor_text
+
+    successor_config = dogfood_cli.CodexDogfoodLocalConfig.model_validate_json(
+        (successor_state / "config.json").read_text(encoding="utf-8"),
+        strict=True,
+    )
+    assert successor_config.signer_identity.key_fingerprint != (
+        registered_config.signer_identity.key_fingerprint
+    )
+    assert all(project.registration is None for project in successor_config.projects)
+    assert all(project.capture_after_epoch_seconds is None for project in successor_config.projects)
+    receipt = RuntimeSuccessorReceipt.model_validate_json(
+        (successor_state / "successor-receipt.json").read_text(encoding="utf-8"),
+        strict=True,
+    )
+    assert receipt.predecessor_config_digest == registered_config.credential_binding_digest
+    assert receipt.prior_payload_recovery == "unavailable"
+    verify_signed_governance(
+        receipt.authorization,
+        successor_config.signer_identity,
+        effective_at=receipt.created_at,
+    )
+    tampered_receipt = receipt.model_dump(mode="python")
+    tampered_receipt["predecessor_config_digest"] = f"sha256:{'f' * 64}"
+    with pytest.raises(ValueError, match="authorization binding changed"):
+        RuntimeSuccessorReceipt.model_validate(tampered_receipt, strict=True)
+
+    tampered_event = receipt.authorization.model_copy(
+        update={
+            "signature": receipt.authorization.signature.model_copy(
+                update={"signature_base64": base64.b64encode(b"x" * 64).decode("ascii")}
+            )
+        }
+    )
+    with pytest.raises(ValueError, match="signature verification failed"):
+        verify_signed_governance(
+            tampered_event,
+            successor_config.signer_identity,
+            effective_at=receipt.created_at,
+        )
 
     tampered = registered_config.model_dump(mode="python")
     tampered["projects"][1]["registration_authorization"]["signature"]["signature_base64"] = (
