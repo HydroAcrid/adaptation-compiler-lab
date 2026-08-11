@@ -1,0 +1,140 @@
+{
+  "additionalProperties": false,
+  "description": "Fail-closed protocol for subscription-only synthetic route testing.",
+  "properties": {
+    "authentication": {
+      "const": "saved_chatgpt_subscription",
+      "default": "saved_chatgpt_subscription",
+      "title": "Authentication",
+      "type": "string"
+    },
+    "blind_audit_model": {
+      "const": "gpt-5.6-luna",
+      "default": "gpt-5.6-luna",
+      "title": "Blind Audit Model",
+      "type": "string"
+    },
+    "blind_audit_reasoning_effort": {
+      "const": "low",
+      "default": "low",
+      "title": "Blind Audit Reasoning Effort",
+      "type": "string"
+    },
+    "blind_auditors_receive_labels": {
+      "const": false,
+      "default": false,
+      "title": "Blind Auditors Receive Labels",
+      "type": "boolean"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "detector_model": {
+      "const": "gpt-5.6-luna",
+      "default": "gpt-5.6-luna",
+      "title": "Detector Model",
+      "type": "string"
+    },
+    "detector_reasoning_effort": {
+      "const": "medium",
+      "default": "medium",
+      "title": "Detector Reasoning Effort",
+      "type": "string"
+    },
+    "generation_model": {
+      "const": "gpt-5.6-luna",
+      "default": "gpt-5.6-luna",
+      "title": "Generation Model",
+      "type": "string"
+    },
+    "generation_reasoning_effort": {
+      "const": "low",
+      "default": "low",
+      "title": "Generation Reasoning Effort",
+      "type": "string"
+    },
+    "holdout_used_for_prompt_revision": {
+      "const": false,
+      "default": false,
+      "title": "Holdout Used For Prompt Revision",
+      "type": "boolean"
+    },
+    "labels_frozen_before_generation": {
+      "const": true,
+      "default": true,
+      "title": "Labels Frozen Before Generation",
+      "type": "boolean"
+    },
+    "plan_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Plan Digest",
+      "type": "string"
+    },
+    "production_promotion_permitted": {
+      "const": false,
+      "default": false,
+      "title": "Production Promotion Permitted",
+      "type": "boolean"
+    },
+    "production_state_mutation_permitted": {
+      "const": false,
+      "default": false,
+      "title": "Production State Mutation Permitted",
+      "type": "boolean"
+    },
+    "protocol_id": {
+      "default": "semantic-route-protocol-v1",
+      "enum": [
+        "semantic-route-protocol-v1",
+        "semantic-route-protocol-v2",
+        "semantic-route-protocol-v3",
+        "semantic-route-protocol-v4"
+      ],
+      "title": "Protocol Id",
+      "type": "string"
+    },
+    "protocol_version": {
+      "default": "1.0.0",
+      "enum": [
+        "1.0.0",
+        "2.0.0",
+        "3.0.0",
+        "4.0.0"
+      ],
+      "title": "Protocol Version",
+      "type": "string"
+    },
+    "provider_billed_cost_usd": {
+      "const": 0,
+      "default": 0,
+      "title": "Provider Billed Cost Usd",
+      "type": "integer"
+    },
+    "sealed_external_validation_access_permitted": {
+      "const": false,
+      "default": false,
+      "title": "Sealed External Validation Access Permitted",
+      "type": "boolean"
+    },
+    "synthetic_is_user_authority": {
+      "const": false,
+      "default": false,
+      "title": "Synthetic Is User Authority",
+      "type": "boolean"
+    },
+    "synthetic_only": {
+      "const": true,
+      "default": true,
+      "title": "Synthetic Only",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "created_at",
+    "plan_digest"
+  ],
+  "title": "SemanticRouteProtocol",
+  "type": "object"
+}

@@ -18,6 +18,18 @@ overlay references are typed and composition-checked, but no preset is imported 
 runtime correctly emits a zero-byte projection when no adaptation applies or the final rule is
 revoked, so revoked behavior cannot survive as target-visible boilerplate.
 
+Milestone 6A.2H has completed a blind 120-case semantic route-discrimination benchmark through
+four immutable synthetic revisions. The final fresh split reached 100% durable detection, 100%
+scope accuracy, and 100% exact-target revocation, but only 85% exact route accuracy. Calibration
+route accuracy was 90%. Two isolated blind auditors each matched 116/120 planned labels, agreed
+with each other on all labels, and identified four intended-memory labels as corpus defects.
+Auditor-consensus scoring would raise holdout routing only to 88.3%, still below the 90% gate.
+Calibrated unattended promotion therefore remains disabled and review-mode dogfood is unchanged.
+The bounded next design is schema-bound extraction of orthogonal semantic properties followed by
+deterministic least-invasive routing; embeddings remain retrieval-only future work, not an
+authority or promotion mechanism. No source repository, production state, or sealed external
+study was accessed.
+
 The concrete adapter pins Codex 0.146.0 on Linux and Windows, requires saved ChatGPT
 authentication, reads only post-cutoff user-authored messages from allowlisted completed
 interactive tasks, durably checkpoints hashed prefixes, and keeps post-task learning separate from
@@ -437,7 +449,7 @@ No Portable Specialty Preset exists yet. Milestone 6B remains the following prod
 is currently architecture documentation only. The sealed external-validation study is not
 required for either milestone and must remain untouched unless separately revived with funding.
 
-Milestone 6A.2G now adds an accelerated synthetic-only calibration lane without changing that
+Milestone 6A.2G adds an accelerated synthetic-only calibration lane without changing that
 ordinary-use gate. Five repositories were abstracted under read-only Luna sessions into external
 anonymous archetypes; no source content or path entered Git. A label-first 100-case corpus then
 measured natural semantic selection across five contexts, ten wording styles, and synthetic turn
@@ -445,5 +457,9 @@ positions 1/3/5/10/15. The exact combined result was 49 true positives, zero fal
 true negatives, and one false negative: precision 1.00, recall 0.98, specificity 1.00, route
 accuracy 0.755, and scope accuracy 0.959. The calibrated gate remains closed because routing did
 not meet threshold. Synthetic materials cannot enter the production ledger or count toward 6A.2C.
-The next bounded detector step is a fresh route-specific corpus with blind label classification;
-real dogfood remains in review mode.
+Milestone 6A.2H completed that next bounded step with six matched route classes, blind labels, two
+independent auditors, exact revocation targets, and a fresh holdout. Final-v4 detection and scope
+were perfect, but route accuracy was 90% on calibration and 85% on holdout. The flat-label route
+gate remains closed. The next detector iteration must decompose meaning into evidence-bound
+features and let deterministic policy choose the least invasive route; real dogfood remains in
+review mode.

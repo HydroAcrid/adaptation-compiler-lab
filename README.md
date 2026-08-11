@@ -51,6 +51,17 @@ When predecessor credentials are unavailable, 6A.2F creates a fresh prospective 
 rewriting history or claiming old-payload recovery. See
 [`MILESTONE_6A2F_MANAGED_BOOTSTRAP.md`](MILESTONE_6A2F_MANAGED_BOOTSTRAP.md).
 
+Milestone 6A.2H isolates semantic artifact routing in a 120-case blind-label benchmark across six
+matched meanings and four immutable synthetic revisions. In the final fresh split, the unchanged
+semantic sensor achieved 100% durable detection, 100% scope accuracy, and 100% exact-target
+revocation, but only 85% route accuracy. Two blind auditors agreed on every label and exposed four
+answer-key defects; scoring against their consensus would still reach only 88.3%. The calibrated
+promotion gate therefore remains closed and ordinary-use dogfood stays in review mode. The
+language model is a proposal-only semantic sensor, not an authority mechanism or embedding
+classifier; deterministic policy still controls provenance, consent, scope, conflicts,
+revocation, and promotion. See
+[`MILESTONE_6A2H_BLIND_ROUTE_DISCRIMINATION.md`](MILESTONE_6A2H_BLIND_ROUTE_DISCRIMINATION.md).
+
 Milestones 6A.3–6A.5 now provide positive, complementary comparisons against the strong static
 profile. Milestone 6A.3 showed lifecycle-aware compilation winning five of six fresh staged task
 pairs with one tie. Milestone 6A.4 replicated breadth across the four approved behavior families

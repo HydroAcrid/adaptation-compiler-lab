@@ -1,0 +1,260 @@
+{
+  "$defs": {
+    "ArtifactRoute": {
+      "enum": [
+        "evaluation_only",
+        "memory",
+        "preference",
+        "example",
+        "procedure",
+        "prompt_rule",
+        "skill",
+        "tool_recommendation",
+        "inactive_tool_candidate",
+        "inactive_adapter_dataset_candidate"
+      ],
+      "title": "ArtifactRoute",
+      "type": "string"
+    },
+    "FeedbackSignalKind": {
+      "description": "User signals that may become governed adaptation candidates.",
+      "enum": [
+        "memory",
+        "preference",
+        "procedure",
+        "prompt_rule",
+        "positive_example",
+        "correction",
+        "revocation"
+      ],
+      "title": "FeedbackSignalKind",
+      "type": "string"
+    },
+    "SemanticFeedbackExpectation": {
+      "additionalProperties": false,
+      "description": "Outcome dimensions that can be scored without matching generated prose.",
+      "properties": {
+        "accepted_routes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ArtifactRoute"
+          },
+          "title": "Accepted Routes",
+          "type": "array"
+        },
+        "accepted_signal_kinds": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/FeedbackSignalKind"
+          },
+          "title": "Accepted Signal Kinds",
+          "type": "array"
+        },
+        "affected_artifact_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Affected Artifact Id"
+        },
+        "durable_signal": {
+          "title": "Durable Signal",
+          "type": "boolean"
+        },
+        "scope_hint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SemanticScopeHint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "durable_signal"
+      ],
+      "title": "SemanticFeedbackExpectation",
+      "type": "object"
+    },
+    "SemanticRouteClass": {
+      "description": "Mutually exclusive semantic forms under test.",
+      "enum": [
+        "memory",
+        "positive_example",
+        "preference",
+        "procedure",
+        "prompt_rule",
+        "revocation"
+      ],
+      "title": "SemanticRouteClass",
+      "type": "string"
+    },
+    "SemanticRouteScenario": {
+      "additionalProperties": false,
+      "description": "One label-first matched-contrast scenario.",
+      "properties": {
+        "affected_artifact_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Affected Artifact Id"
+        },
+        "case_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "contrast_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Contrast Id",
+          "type": "string"
+        },
+        "expectation": {
+          "$ref": "#/$defs/SemanticFeedbackExpectation"
+        },
+        "generation_brief": {
+          "minLength": 1,
+          "title": "Generation Brief",
+          "type": "string"
+        },
+        "scope_hint": {
+          "$ref": "#/$defs/SemanticScopeHint"
+        },
+        "semantic_class": {
+          "$ref": "#/$defs/SemanticRouteClass"
+        },
+        "split": {
+          "enum": [
+            "calibration",
+            "holdout"
+          ],
+          "title": "Split",
+          "type": "string"
+        },
+        "style": {
+          "$ref": "#/$defs/SemanticRouteStyle"
+        },
+        "tags": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Tags",
+          "type": "array"
+        }
+      },
+      "required": [
+        "case_id",
+        "split",
+        "contrast_id",
+        "semantic_class",
+        "style",
+        "scope_hint",
+        "generation_brief",
+        "tags",
+        "expectation"
+      ],
+      "title": "SemanticRouteScenario",
+      "type": "object"
+    },
+    "SemanticRouteStyle": {
+      "description": "Natural surface-form variations balanced within every split.",
+      "enum": [
+        "acronym",
+        "bad_grammar",
+        "clean",
+        "emphatic",
+        "fragment",
+        "indirect",
+        "mixed_intent",
+        "negation",
+        "slang",
+        "typo"
+      ],
+      "title": "SemanticRouteStyle",
+      "type": "string"
+    },
+    "SemanticScopeHint": {
+      "description": "Non-authoritative scope hint emitted by semantic interpretation.",
+      "enum": [
+        "permanent_profile",
+        "current_context"
+      ],
+      "title": "SemanticScopeHint",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Frozen 120-case route-discrimination design.",
+  "properties": {
+    "cases": {
+      "items": {
+        "$ref": "#/$defs/SemanticRouteScenario"
+      },
+      "maxItems": 120,
+      "minItems": 120,
+      "title": "Cases",
+      "type": "array"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "plan_id": {
+      "default": "semantic-route-discrimination-v1",
+      "enum": [
+        "semantic-route-discrimination-v1",
+        "semantic-route-discrimination-v2",
+        "semantic-route-discrimination-v3",
+        "semantic-route-discrimination-v4"
+      ],
+      "title": "Plan Id",
+      "type": "string"
+    },
+    "plan_version": {
+      "default": "1.0.0",
+      "enum": [
+        "1.0.0",
+        "2.0.0",
+        "3.0.0",
+        "4.0.0"
+      ],
+      "title": "Plan Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "created_at",
+    "cases"
+  ],
+  "title": "SemanticRoutePlan",
+  "type": "object"
+}

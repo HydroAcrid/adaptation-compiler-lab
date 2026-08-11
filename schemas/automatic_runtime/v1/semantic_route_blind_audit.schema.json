@@ -1,0 +1,131 @@
+{
+  "$defs": {
+    "BlindRouteClass": {
+      "description": "Class labels available to a blind auditor.",
+      "enum": [
+        "ambiguous",
+        "memory",
+        "no_durable_signal",
+        "positive_example",
+        "preference",
+        "procedure",
+        "prompt_rule",
+        "revocation"
+      ],
+      "title": "BlindRouteClass",
+      "type": "string"
+    },
+    "BlindRouteReason": {
+      "description": "Closed reasons that prevent auditors from returning private or generated prose.",
+      "enum": [
+        "ambiguous",
+        "endorsed_reuse",
+        "exact_artifact_removal",
+        "hard_invariant",
+        "non_normative_fact",
+        "no_durable_signal",
+        "ordered_trigger_workflow",
+        "stable_choice"
+      ],
+      "title": "BlindRouteReason",
+      "type": "string"
+    },
+    "BlindRouteScope": {
+      "description": "Scope labels available to a blind auditor without nullable fields.",
+      "enum": [
+        "ambiguous",
+        "current_context",
+        "no_durable_signal",
+        "permanent_profile"
+      ],
+      "title": "BlindRouteScope",
+      "type": "string"
+    },
+    "SemanticRouteBlindEntry": {
+      "additionalProperties": false,
+      "description": "One classification made without access to intended labels.",
+      "properties": {
+        "case_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "classification": {
+          "$ref": "#/$defs/BlindRouteClass"
+        },
+        "reason": {
+          "$ref": "#/$defs/BlindRouteReason"
+        },
+        "scope": {
+          "$ref": "#/$defs/BlindRouteScope"
+        }
+      },
+      "required": [
+        "case_id",
+        "classification",
+        "scope",
+        "reason"
+      ],
+      "title": "SemanticRouteBlindEntry",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Schema-bound output from one fresh label-blind context.",
+  "properties": {
+    "audit_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Audit Version",
+      "type": "string"
+    },
+    "auditor_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Auditor Id",
+      "type": "string"
+    },
+    "entries": {
+      "items": {
+        "$ref": "#/$defs/SemanticRouteBlindEntry"
+      },
+      "maxItems": 120,
+      "minItems": 120,
+      "title": "Entries",
+      "type": "array"
+    },
+    "labels_visible": {
+      "const": false,
+      "default": false,
+      "title": "Labels Visible",
+      "type": "boolean"
+    },
+    "model": {
+      "const": "gpt-5.6-luna",
+      "default": "gpt-5.6-luna",
+      "title": "Model",
+      "type": "string"
+    },
+    "reasoning_effort": {
+      "const": "low",
+      "default": "low",
+      "title": "Reasoning Effort",
+      "type": "string"
+    },
+    "source_generation_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Generation Digest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "auditor_id",
+    "source_generation_digest",
+    "entries"
+  ],
+  "title": "SemanticRouteBlindAudit",
+  "type": "object"
+}
