@@ -22,6 +22,7 @@ from adaptation_compiler_lab.automatic_runtime.semantic_evaluation import (
     evaluate_semantic_feedback,
     load_semantic_corpus_adjudication,
     load_semantic_feedback_corpus,
+    repair_semantic_evaluation_failures,
 )
 from adaptation_compiler_lab.domain import ArtifactRoute
 from adaptation_compiler_lab.targets.base import sha256_text
@@ -56,6 +57,17 @@ def _receipt() -> SemanticInterpreterReceipt:
 
 def _positive_signal(case: SemanticFeedbackCase) -> SemanticFeedbackSignal:
     expectation = case.expectation
+    if expectation.accepted_signal_kinds[0] is FeedbackSignalKind.REVOCATION:
+        return SemanticFeedbackSignal(
+            signal_kind=FeedbackSignalKind.REVOCATION,
+            affected_artifact_id="artifact-naming-style",
+            supporting_quote=case.text,
+            support_start=0,
+            support_end=len(case.text),
+            durability=SemanticSignalDurability.DURABLE,
+            clarity=SemanticSignalClarity.CLEAR,
+            scope_hint=expectation.scope_hint or SemanticScopeHint.PERMANENT_PROFILE,
+        )
     return SemanticFeedbackSignal(
         signal_kind=expectation.accepted_signal_kinds[0],
         normalized_behavior="Apply the supported behavior.",
@@ -176,3 +188,80 @@ def test_one_false_positive_blocks_calibrated_promotion() -> None:
     assert not report.promotion_ready
     assert report.metrics.false_positive == 1
     assert report.failed_case_ids == (negative.case_id,)
+
+
+def test_revocation_expectation_scores_without_an_artifact_route() -> None:
+    corpus = load_semantic_feedback_corpus(CORPUS_PATH)
+    source_case = next(case for case in corpus.cases if case.expectation.durable_signal)
+    revocation_case = source_case.model_copy(
+        update={
+            "text": "Remove artifact-naming-style from my active adaptations.",
+            "expectation": source_case.expectation.model_copy(
+                update={
+                    "accepted_signal_kinds": (FeedbackSignalKind.REVOCATION,),
+                    "accepted_routes": (),
+                }
+            ),
+        }
+    )
+    evaluation_corpus = corpus.model_copy(
+        update={
+            "cases": tuple(
+                revocation_case if case.case_id == source_case.case_id else case
+                for case in corpus.cases
+            )
+        }
+    )
+    receipt = _receipt()
+    interpretations = {
+        case.case_id: _interpretation(case, receipt)
+        for case in evaluation_corpus.select(source_case.split)
+    }
+
+    report = evaluate_semantic_feedback(
+        evaluation_corpus,
+        split=source_case.split,
+        interpretations=interpretations,
+    )
+
+    result = next(item for item in report.case_evaluations if item.case_id == source_case.case_id)
+    assert result.route_correct
+    assert result.predicted_routes == ()
+
+
+def test_scope_only_mismatch_is_included_in_the_failure_index() -> None:
+    corpus = load_semantic_feedback_corpus(CORPUS_PATH)
+    receipt = _receipt()
+    interpretations = {
+        case.case_id: _interpretation(case, receipt) for case in corpus.select("holdout")
+    }
+    positive = next(case for case in corpus.select("holdout") if case.expectation.durable_signal)
+    interpretation = interpretations[positive.case_id]
+    signal = interpretation.signals[0]
+    wrong_scope = (
+        SemanticScopeHint.CURRENT_CONTEXT
+        if signal.scope_hint is SemanticScopeHint.PERMANENT_PROFILE
+        else SemanticScopeHint.PERMANENT_PROFILE
+    )
+    interpretations[positive.case_id] = interpretation.model_copy(
+        update={"signals": (signal.model_copy(update={"scope_hint": wrong_scope}),)}
+    )
+
+    report = evaluate_semantic_feedback(
+        corpus,
+        split="holdout",
+        interpretations=interpretations,
+    )
+
+    assert positive.case_id in report.failed_case_ids
+    damaged = report.model_copy(
+        update={
+            "report_version": "1.0.0",
+            "failed_case_ids": tuple(
+                case_id for case_id in report.failed_case_ids if case_id != positive.case_id
+            ),
+        }
+    )
+    repaired = repair_semantic_evaluation_failures(damaged)
+    assert repaired.report_version == "1.1.0"
+    assert repaired.failed_case_ids == report.failed_case_ids

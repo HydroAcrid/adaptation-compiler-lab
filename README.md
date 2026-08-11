@@ -317,6 +317,12 @@ after valid trials.
 - [`MILESTONE_6A2C_ORDINARY_USE_GATE.md`](MILESTONE_6A2C_ORDINARY_USE_GATE.md): active Windows
   Desktop-to-WSL dogfood topology, immutable learning/activation assessments, preregistered
   readiness and success criteria, initial zero-history poll, and exact longitudinal workflow.
+- [`MILESTONE_6A2G_SYNTHETIC_STIMULATION.md`](MILESTONE_6A2G_SYNTHETIC_STIMULATION.md): five-repository
+  read-only abstraction, 100-case synthetic detector gate, immutable instrument failures,
+  deterministic model-output attestation, slice metrics, and the route-specific next step.
+- [`development_benchmark_semantic_stimulation`](development_benchmark_semantic_stimulation):
+  synthetic-only protocol, label-first plan, generation/audit/remediation trail, frozen corpus,
+  raw-free detector reports, and aggregate slice summary.
 - [`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md): docs-only portable
   specialty preset composition and the proposed Frontend Studio demonstration.
 - [`development_benchmark_compact_projection`](development_benchmark_compact_projection): frozen

@@ -14,7 +14,7 @@ from pathlib import Path
 from time import monotonic
 from typing import Annotated, Final, Protocol, cast
 
-from pydantic import Field, ValidationError
+from pydantic import Field, ValidationError, model_validator
 
 from adaptation_compiler_lab.automatic_runtime.codex_dogfood import (
     CodexDogfoodRpc,
@@ -37,8 +37,8 @@ from adaptation_compiler_lab.serialization import canonical_digest
 from adaptation_compiler_lab.targets.base import sha256_text
 
 _INTERPRETER_ID: Final = "codex-semantic-feedback"
-_INTERPRETER_VERSION: Final = "1.2.0"
-_PROMPT_VERSION: Final = "semantic-feedback-candidates-v3"
+_INTERPRETER_VERSION: Final = "1.3.0"
+_PROMPT_VERSION: Final = "semantic-feedback-candidates-v4"
 _ALLOWED_ITEM_TYPES: Final = frozenset({"agentMessage", "reasoning", "userMessage"})
 _DEVELOPER_CONTRACT: Final = """\
 You are a semantic sensor inside a governed user-adaptation system.
@@ -117,6 +117,23 @@ class _SignalProposal(FrozenModel):
     clarity: SemanticSignalClarity
     scope_hint: SemanticScopeHint
 
+    @model_validator(mode="after")
+    def proposal_shape_is_coherent(self) -> _SignalProposal:
+        if self.signal_kind is FeedbackSignalKind.REVOCATION:
+            if (
+                self.affected_artifact_id is None
+                or self.normalized_behavior is not None
+                or self.requested_route is not None
+            ):
+                raise ValueError("semantic revocation proposal has an invalid shape")
+        elif (
+            self.normalized_behavior is None
+            or self.requested_route is None
+            or self.affected_artifact_id is not None
+        ):
+            raise ValueError("semantic learning proposal has an invalid shape")
+        return self
+
 
 class _ObservationProposal(FrozenModel):
     observation_id: NonEmptyStr
@@ -131,8 +148,70 @@ class _BatchProposal(FrozenModel):
 def semantic_feedback_output_schema() -> dict[str, object]:
     """Return the strict model-facing schema without Python-only evidence offsets."""
 
-    nullable_string: dict[str, object] = {
-        "anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]
+    required = [
+        "signal_kind",
+        "normalized_behavior",
+        "requested_route",
+        "affected_artifact_id",
+        "supporting_quote",
+        "durability",
+        "clarity",
+        "scope_hint",
+    ]
+    shared: dict[str, object] = {
+        "supporting_quote": {"type": "string", "minLength": 1},
+        "durability": {
+            "type": "string",
+            "enum": [item.value for item in SemanticSignalDurability],
+        },
+        "clarity": {
+            "type": "string",
+            "enum": [item.value for item in SemanticSignalClarity],
+        },
+        "scope_hint": {
+            "type": "string",
+            "enum": [item.value for item in SemanticScopeHint],
+        },
+    }
+    learning_signal = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": required,
+        "properties": {
+            **shared,
+            "signal_kind": {
+                "type": "string",
+                "enum": [
+                    item.value
+                    for item in FeedbackSignalKind
+                    if item is not FeedbackSignalKind.REVOCATION
+                ],
+            },
+            "normalized_behavior": {"type": "string", "minLength": 1},
+            "requested_route": {
+                "type": "string",
+                "enum": [
+                    ArtifactRoute.MEMORY.value,
+                    ArtifactRoute.PREFERENCE.value,
+                    ArtifactRoute.EXAMPLE.value,
+                    ArtifactRoute.PROCEDURE.value,
+                    ArtifactRoute.PROMPT_RULE.value,
+                ],
+            },
+            "affected_artifact_id": {"type": "null"},
+        },
+    }
+    revocation_signal = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": required,
+        "properties": {
+            **shared,
+            "signal_kind": {"type": "string", "const": FeedbackSignalKind.REVOCATION.value},
+            "normalized_behavior": {"type": "null"},
+            "requested_route": {"type": "null"},
+            "affected_artifact_id": {"type": "string", "minLength": 1},
+        },
     }
     return {
         "type": "object",
@@ -153,59 +232,7 @@ def semantic_feedback_output_schema() -> dict[str, object]:
                         "signals": {
                             "type": "array",
                             "maxItems": 4,
-                            "items": {
-                                "type": "object",
-                                "additionalProperties": False,
-                                "required": [
-                                    "signal_kind",
-                                    "normalized_behavior",
-                                    "requested_route",
-                                    "affected_artifact_id",
-                                    "supporting_quote",
-                                    "durability",
-                                    "clarity",
-                                    "scope_hint",
-                                ],
-                                "properties": {
-                                    "signal_kind": {
-                                        "type": "string",
-                                        "enum": [item.value for item in FeedbackSignalKind],
-                                    },
-                                    "normalized_behavior": nullable_string,
-                                    "requested_route": {
-                                        "anyOf": [
-                                            {
-                                                "type": "string",
-                                                "enum": [
-                                                    ArtifactRoute.MEMORY.value,
-                                                    ArtifactRoute.PREFERENCE.value,
-                                                    ArtifactRoute.EXAMPLE.value,
-                                                    ArtifactRoute.PROCEDURE.value,
-                                                    ArtifactRoute.PROMPT_RULE.value,
-                                                ],
-                                            },
-                                            {"type": "null"},
-                                        ]
-                                    },
-                                    "affected_artifact_id": nullable_string,
-                                    "supporting_quote": {
-                                        "type": "string",
-                                        "minLength": 1,
-                                    },
-                                    "durability": {
-                                        "type": "string",
-                                        "enum": [item.value for item in SemanticSignalDurability],
-                                    },
-                                    "clarity": {
-                                        "type": "string",
-                                        "enum": [item.value for item in SemanticSignalClarity],
-                                    },
-                                    "scope_hint": {
-                                        "type": "string",
-                                        "enum": [item.value for item in SemanticScopeHint],
-                                    },
-                                },
-                            },
+                            "items": {"anyOf": [learning_signal, revocation_signal]},
                         },
                     },
                 },

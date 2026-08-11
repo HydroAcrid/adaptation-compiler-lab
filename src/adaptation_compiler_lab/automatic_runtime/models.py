@@ -408,7 +408,7 @@ class SemanticInterpreterReceipt(FrozenModel):
 
     receipt_version: Literal["1.0.0"] = "1.0.0"
     interpreter_id: Literal["codex-semantic-feedback"] = "codex-semantic-feedback"
-    interpreter_version: Literal["1.1.0", "1.2.0"] = "1.2.0"
+    interpreter_version: Literal["1.1.0", "1.2.0", "1.3.0"] = "1.3.0"
     model: NonEmptyStr
     reasoning_effort: NonEmptyStr
     source_runtime_version: NonEmptyStr

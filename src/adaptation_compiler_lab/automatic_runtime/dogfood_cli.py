@@ -1543,6 +1543,15 @@ def evaluate_feedback_detector(
             resolve_path=True,
         ),
     ] = None,
+    output_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--output",
+            help="Write the raw-free report envelope to this file instead of standard output.",
+            dir_okay=False,
+            resolve_path=True,
+        ),
+    ] = None,
 ) -> None:
     """Run one isolated subscription-backed semantic batch and emit a raw-free report."""
 
@@ -1618,14 +1627,17 @@ def evaluate_feedback_detector(
         )
     except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
-    typer.echo(
-        canonical_json(
-            {
-                "report": report.model_dump(mode="json"),
-                "report_digest": report.content_digest,
-            }
-        )
+    envelope = canonical_json(
+        {
+            "report": report.model_dump(mode="json"),
+            "report_digest": report.content_digest,
+        }
     )
+    if output_path is None:
+        typer.echo(envelope)
+        return
+    output_path.write_text(envelope + "\n", encoding="utf-8", newline="\n")
+    typer.echo(canonical_json({"output": str(output_path), "report_digest": report.content_digest}))
 
 
 @dogfood_app.command("status")
