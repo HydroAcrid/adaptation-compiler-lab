@@ -11,7 +11,7 @@ preset, then sends each assistant only the smallest applicable projection. Perso
 overlays can refine temporary expertise without changing either the imported preset or permanent
 profile.
 
-Milestones 6A.2D–6A.2E now include a governed automatic-runtime core, restart-safe host coordinator,
+Milestones 6A.2D–6A.2F now include a governed automatic-runtime core, restart-safe host coordinator,
 concrete pinned Codex dogfood integration, a same-user background watcher, and a writable
 multi-turn gateway. Under one signed bounded standing
 policy, low-risk user feedback can be encrypted, turned into an evaluation candidate,
@@ -35,16 +35,21 @@ holdout after preserving its earlier v1 holdout failure. Dogfood starts semantic
 review mode. `gate-report` measures immutable learning assessments, activation relevance, pack
 size, update latency, maintenance, and evidence readiness. Completion requires 20 genuine
 interactions across at least three dates and will not be simulated. DPAPI auto-unlock, raw-free
-Windows notifications, fixed verification commands, and gateway metrics are implemented, while
-credential enrollment, watcher installation, and canonical change application remain explicit
-owner actions. The full Windows edit/review/apply path has passed one isolated saved-ChatGPT live
-canary; production enrollment and genuine longitudinal evidence remain separate. See
+Windows notifications, fixed verification commands, and gateway metrics are implemented. New
+local runtimes now generate and enroll managed credentials automatically; no key file, passphrase,
+or `ACLAB_*` environment setup is required. Watcher installation and canonical change application
+remain explicit owner actions. The full Windows edit/review/apply path has passed one isolated
+saved-ChatGPT live canary; the new managed production lineage is enrolled, while genuine
+longitudinal evidence must still accumulate naturally. See
 [`SEMANTIC_FEEDBACK_DETECTOR.md`](SEMANTIC_FEEDBACK_DETECTOR.md) and
 [`MILESTONE_6A2D_WRITABLE_GATEWAY.md`](MILESTONE_6A2D_WRITABLE_GATEWAY.md). Config v1.4 additionally
 supports signed prospective project registration with a per-project cutoff and metadata-only
 preview. Green Meadow and Kairn previews verified that existing completed tasks stay excluded and
 that preview performs no content reads. See
 [`MILESTONE_6A2E_MULTIPROJECT_DOGFOOD.md`](MILESTONE_6A2E_MULTIPROJECT_DOGFOOD.md).
+When predecessor credentials are unavailable, 6A.2F creates a fresh prospective lineage without
+rewriting history or claiming old-payload recovery. See
+[`MILESTONE_6A2F_MANAGED_BOOTSTRAP.md`](MILESTONE_6A2F_MANAGED_BOOTSTRAP.md).
 
 Milestones 6A.3–6A.5 now provide positive, complementary comparisons against the strong static
 profile. Milestone 6A.3 showed lifecycle-aware compilation winning five of six fresh staged task
@@ -163,7 +168,9 @@ worked; its current target-visible projection did not beat an excellent profile.
   construction rules, common 3,000-token/12,000-byte ceilings, and immutable result correction.
 - A local SQLite metadata/governance ledger, AES-256-GCM content-addressed raw-evidence store,
   append-only lifecycle and activation journals, and scoped workspace layout. Signing and raw-data
-  keys are separate external dependencies and are never committed.
+  keys remain separate and are never committed. The automatic dogfood runtime can seal them
+  directly to the current Windows account; research and benchmark custody still use explicit
+  external key boundaries.
 - Evaluation-first candidate generation; review, provenance, privacy, routing, release, and
   activation gates.
 - Deterministic conflict resolution and fail-closed exclusion of revoked, expired, restricted,
@@ -241,6 +248,12 @@ complete synthetic flow is exercised in `tests/integration/test_cli_end_to_end.p
 synthetic task/evidence bundle, derives and approves evaluation/lesson/artifact records, freezes
 releases, builds all four pack formats, performs a sanitized export, and demonstrates activation
 supersession and rollback.
+
+The local automatic-runtime path is intentionally faster: `runtime init` defaults to managed
+credentials sealed by Windows CurrentUser DPAPI. Use `--credential-mode external` only for legacy
+or deliberate external custody. A lost-key predecessor can be replaced prospectively with
+`runtime credentials rebootstrap`; the command never copies old evidence or claims that old
+ciphertext became recoverable.
 
 Benchmark sealing uses a third key selected by `ACLAB_CUSTODY_KEY_FILE`; the file must contain a
 canonical base64-encoded 32-byte key outside the workspace and every Git repository. The external

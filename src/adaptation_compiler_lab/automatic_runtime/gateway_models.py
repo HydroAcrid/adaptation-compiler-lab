@@ -8,6 +8,7 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, field_validator, model_validator
 
 from adaptation_compiler_lab.domain import FrozenModel, Identifier, Sha256Digest, UtcDateTime
+from adaptation_compiler_lab.governance import GovernanceEvent, GovernanceEventType
 from adaptation_compiler_lab.serialization import canonical_digest
 
 
@@ -65,6 +66,46 @@ class CredentialEnvelopeMetadata(FrozenModel):
     ciphertext_digest: Sha256Digest
     enrolled_at: UtcDateTime
     revoked_at: UtcDateTime | None = None
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class RuntimeSuccessorReceipt(FrozenModel):
+    """New-key attestation that preserves an unavailable-key predecessor as history."""
+
+    receipt_id: Identifier
+    receipt_version: Literal["1.0.0"] = "1.0.0"
+    subject_id: Identifier
+    predecessor_config_digest: Sha256Digest
+    predecessor_signer_fingerprint: Sha256Digest
+    successor_config_digest: Sha256Digest
+    successor_signer_fingerprint: Sha256Digest
+    capture_after_epoch_seconds: int = Field(ge=0)
+    prior_payload_recovery: Literal["unavailable"] = "unavailable"
+    historical_state_mutated: Literal[False] = False
+    evidence_copied: Literal[False] = False
+    created_at: UtcDateTime
+    authorization: GovernanceEvent
+
+    @property
+    def authorization_digest(self) -> Sha256Digest:
+        return canonical_digest(self.model_dump(mode="json", exclude={"authorization"}))
+
+    @model_validator(mode="after")
+    def authorization_binds_successor(self) -> RuntimeSuccessorReceipt:
+        event = self.authorization
+        if (
+            event.subject_id != self.subject_id
+            or event.event_type is not GovernanceEventType.CUSTODY_ACTION
+            or event.target_ref != f"runtime-successor:{self.receipt_id}"
+            or event.target_digest != self.authorization_digest
+            or event.decision != "created_after_lost_credentials"
+            or event.occurred_at != self.created_at
+        ):
+            raise ValueError("runtime-successor authorization binding changed")
+        return self
 
     @property
     def content_digest(self) -> Sha256Digest:

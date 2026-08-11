@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: 2026-08-09
+Last updated: 2026-08-11
 
 ## Current milestone
 
@@ -28,6 +28,15 @@ instruction-source substitution. A network-denied, rootless `readOnly` response 
 strict reduction from requested workspace-write authority for the legacy inspection command; any
 network or root expansion remains forbidden.
 
+Milestone 6A.2F removes manual cryptographic setup from local dogfood without creating an unsigned
+mode. `runtime init` now defaults to independent in-memory Ed25519/AES generation and direct
+Windows CurrentUser DPAPI enrollment. New configs, logs, receipts, and child environments contain
+no keys, passphrases, or secret locators. V1 external-reference envelopes remain readable. For the
+existing unavailable-key state, `runtime credentials rebootstrap` requires explicit lost-key
+confirmation, preserves the predecessor unchanged, starts an empty prospective successor, copies
+no evidence, and emits a new-key-signed `RuntimeSuccessorReceipt` that labels old ciphertext
+unrecoverable. This is operational succession, not old-key rotation.
+
 Milestone 6A.2E adds prospective multi-project dogfood onboarding without widening source access.
 Config v1.4 gives each newly registered project its own signed creation-time cutoff and retains the
 complete additive standing-policy lineage. Existing append-only runtime state remains bound to the
@@ -36,9 +45,11 @@ targets, limits, retention, expiry, or any non-project scope. Overlapping projec
 `runtime project preview` uses only `account/read` and `thread/list`; it cannot read turns or message
 content. Live metadata-only previews found two historical completed tasks in Green Meadow and two
 in Kairn, with zero prospectively eligible tasks and zero `thread/read` calls. Those four historical
-tasks remain excluded. The signed registrations themselves await the existing external signing
-credential; the watcher is not installed and neither repository nor any existing Codex task has
-been modified.
+tasks remain excluded. Managed succession removed the lost external-signing-credential blocker;
+both projects are now signed and registered prospectively. The first three-project poll appended
+zero items, advanced only the raw-free source checkpoint, and left generation/artifact/review/
+activation/feedback counts at zero. Watcher installation remains separate. Neither repository nor
+any existing Codex task is modified by onboarding.
 
 Milestone 6A.2D adds explicit DPAPI same-user unlock, a renewable background watcher, generic
 Windows toasts plus an append-only local inbox, v1.3 project verification configuration, and a
@@ -47,7 +58,8 @@ Windows-mounted volume and refuse read-only fallback. The agent cannot change pr
 inputs; candidate changes are encrypted, replayed into a second clean worktree for independent
 testing, and shown locally before an explicit all-or-nothing canonical apply. Stale/dirty targets
 are refused and failed post-apply checks restore touched bytes and modes. No gateway action commits
-or pushes. Enrollment, watcher installation, and canonical application remain explicit.
+or pushes. Managed enrollment is automatic at new initialization; watcher installation and
+canonical application remain explicit.
 
 An isolated saved-ChatGPT development canary now proves the exact Windows gateway path rather than
 only its synthetic fakes. A fresh pinned Luna session used an auth-only home and network-denied

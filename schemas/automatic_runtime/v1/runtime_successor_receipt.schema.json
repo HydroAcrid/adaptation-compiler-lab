@@ -1,0 +1,238 @@
+{
+  "$defs": {
+    "GovernanceEvent": {
+      "additionalProperties": false,
+      "description": "Signed review, release, activation, or custody action.",
+      "properties": {
+        "decision": {
+          "minLength": 1,
+          "title": "Decision",
+          "type": "string"
+        },
+        "event_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "event_type": {
+          "$ref": "#/$defs/GovernanceEventType"
+        },
+        "governance_type": {
+          "const": "governance_event",
+          "default": "governance_event",
+          "title": "Governance Type",
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "signature": {
+          "$ref": "#/$defs/SignatureEnvelope"
+        },
+        "subject_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "target_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Target Digest",
+          "type": "string"
+        },
+        "target_ref": {
+          "minLength": 1,
+          "title": "Target Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "subject_id",
+        "event_type",
+        "target_ref",
+        "target_digest",
+        "decision",
+        "reason",
+        "policy_version",
+        "occurred_at",
+        "signature"
+      ],
+      "title": "GovernanceEvent",
+      "type": "object"
+    },
+    "GovernanceEventType": {
+      "enum": [
+        "review_decision",
+        "release_decision",
+        "activation_decision",
+        "custody_action"
+      ],
+      "title": "GovernanceEventType",
+      "type": "string"
+    },
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "New-key attestation that preserves an unavailable-key predecessor as history.",
+  "properties": {
+    "authorization": {
+      "$ref": "#/$defs/GovernanceEvent"
+    },
+    "capture_after_epoch_seconds": {
+      "minimum": 0,
+      "title": "Capture After Epoch Seconds",
+      "type": "integer"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "evidence_copied": {
+      "const": false,
+      "default": false,
+      "title": "Evidence Copied",
+      "type": "boolean"
+    },
+    "historical_state_mutated": {
+      "const": false,
+      "default": false,
+      "title": "Historical State Mutated",
+      "type": "boolean"
+    },
+    "predecessor_config_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Predecessor Config Digest",
+      "type": "string"
+    },
+    "predecessor_signer_fingerprint": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Predecessor Signer Fingerprint",
+      "type": "string"
+    },
+    "prior_payload_recovery": {
+      "const": "unavailable",
+      "default": "unavailable",
+      "title": "Prior Payload Recovery",
+      "type": "string"
+    },
+    "receipt_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "receipt_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Receipt Version",
+      "type": "string"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    },
+    "successor_config_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Successor Config Digest",
+      "type": "string"
+    },
+    "successor_signer_fingerprint": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Successor Signer Fingerprint",
+      "type": "string"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "subject_id",
+    "predecessor_config_digest",
+    "predecessor_signer_fingerprint",
+    "successor_config_digest",
+    "successor_signer_fingerprint",
+    "capture_after_epoch_seconds",
+    "created_at",
+    "authorization"
+  ],
+  "title": "RuntimeSuccessorReceipt",
+  "type": "object"
+}

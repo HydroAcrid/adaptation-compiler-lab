@@ -53,8 +53,49 @@ def test_same_binding_unlocks_without_serializing_plaintext(tmp_path: Path) -> N
         == secrets
     )
     stored = (tmp_path / "state" / "credential-envelope.json").read_text()
+    assert secrets.signing_key_passphrase is not None
     assert secrets.signing_key_passphrase not in stored
     assert metadata.protector == "windows-dpapi-current-user"
+
+
+def test_managed_keys_round_trip_without_files_or_environment(tmp_path: Path) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    store = DpapiCredentialStore(tmp_path / "state", protector=FakeProtector())
+    secrets = RuntimeSecrets.generate_managed()
+
+    store.enroll(
+        secrets,
+        subject_id="kevin",
+        config_digest=DIGEST,
+        signer_fingerprint=OTHER_DIGEST,
+    )
+    unlocked = store.unlock(
+        subject_id="kevin",
+        config_digest=DIGEST,
+        signer_fingerprint=OTHER_DIGEST,
+    )
+
+    assert unlocked == secrets
+    assert unlocked.managed is True
+    assert unlocked.private_key(workspace_root=repository) is not None
+    assert len(unlocked.raw_encryption_key(workspace_root=repository).value) == 32
+    envelope = (tmp_path / "state" / "credential-envelope.json").read_text()
+    assert "managed_signing_key_base64" not in envelope
+    assert "managed_raw_key_base64" not in envelope
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        b'{"version":2}',
+        b'{"managed_raw_key_base64":"eA==","managed_signing_key_base64":"eA==","version":2}',
+        b'{"version":3}',
+    ],
+)
+def test_managed_payload_validation_fails_closed(payload: bytes) -> None:
+    with pytest.raises(CredentialStoreError):
+        RuntimeSecrets.from_bytes(payload)
 
 
 @pytest.mark.parametrize(
