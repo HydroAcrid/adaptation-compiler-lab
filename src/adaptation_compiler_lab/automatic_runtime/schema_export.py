@@ -51,6 +51,14 @@ from adaptation_compiler_lab.automatic_runtime.semantic_evaluation import (
     SemanticEvaluationReport,
     SemanticFeedbackCorpus,
 )
+from adaptation_compiler_lab.automatic_runtime.semantic_feature_benchmark import (
+    SemanticFeatureBlindAudit,
+    SemanticFeatureGeneration,
+    SemanticFeaturePlan,
+    SemanticFeatureProtocol,
+    SemanticFeatureRemediation,
+    SemanticFeatureSummary,
+)
 from adaptation_compiler_lab.automatic_runtime.semantic_route_benchmark import (
     SemanticRouteBlindAudit,
     SemanticRouteGeneration,
@@ -96,6 +104,12 @@ _MODELS: dict[str, type[BaseModel]] = {
     "semantic_corpus_adjudication": SemanticCorpusAdjudication,
     "semantic_evaluation_report": SemanticEvaluationReport,
     "semantic_feedback_corpus": SemanticFeedbackCorpus,
+    "semantic_feature_blind_audit": SemanticFeatureBlindAudit,
+    "semantic_feature_generation": SemanticFeatureGeneration,
+    "semantic_feature_plan": SemanticFeaturePlan,
+    "semantic_feature_protocol": SemanticFeatureProtocol,
+    "semantic_feature_remediation": SemanticFeatureRemediation,
+    "semantic_feature_summary": SemanticFeatureSummary,
     "semantic_route_blind_audit": SemanticRouteBlindAudit,
     "semantic_route_generation": SemanticRouteGeneration,
     "semantic_route_plan": SemanticRoutePlan,

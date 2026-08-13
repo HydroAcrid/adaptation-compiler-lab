@@ -149,6 +149,15 @@ unscheduled pilot execution.
     or source checkpoint is written.
 33. Model scope hints cannot widen registered deterministic scope.
 34. A task-only correction may enter evaluation/review but cannot silently become durable learning.
+35. A language-model proposal cannot select or authorize its own artifact route; trusted code must
+    recompute the route from schema-bound semantic properties and reject substitutions.
+36. Multiple independently durable meanings, mixed unsupported features, and unresolved route
+    candidates remain review-required even when the least-invasive candidate is known.
+37. Model-copied observation, benchmark, or artifact identifiers are not trusted. Exact revocation
+    targets are validated against authoritative text; bulk semantic and audit transports use
+    numeric positions that trusted code binds back to immutable IDs.
+38. Synthetic calibration, generation, audit, and holdout output cannot become user authority,
+    mutate production state, or authorize automatic promotion.
 
 ## Incident posture
 

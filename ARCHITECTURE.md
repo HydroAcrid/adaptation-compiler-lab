@@ -71,8 +71,9 @@ flowchart LR
     I["Trusted host interaction event"] --> A["Authority and secret boundary"]
     A -->|untrusted| N["No capture / no learning"]
     A --> G["Deterministic high-precision grammar"]
-    G -->|no explicit grammar match| M["Isolated schema-bound semantic candidate generator"]
-    M --> P["Deterministic quote, route, scope, and policy validation"]
+    G -->|no explicit grammar match| M["Isolated schema-bound semantic feature sensor"]
+    M --> R["Deterministic least-invasive artifact router"]
+    R --> P["Exact evidence, scope, transition, and policy validation"]
     P -->|ordinary task only| N
     P -->|secret or unsafe| B["Block"]
     P -->|correction, ambiguous, or capability-changing| Q["Encrypted review queue candidate"]
@@ -105,11 +106,23 @@ installed only by an explicit same-user command and semantic serving remains rev
 The semantic detector is an optional interpretation port, not a replacement trust boundary.
 `grammar`, `shadow`, `review`, and `calibrated` modes are explicit. One fresh ephemeral Codex
 session receives only the ordered authoritative user-message batch in an empty network-denied
-read-only workspace and must return a strict schema with exact supporting quotes. Tool use,
-ambient instructions, model rerouting, malformed output, missing observations, or interpreter
-failure aborts the whole page before state or cursor writes. Deterministic code still controls
-origin, secrets, route coherence, registered scope, standing policy, review, promotion,
-supersession, revocation, and release construction. See `SEMANTIC_FEEDBACK_DETECTOR.md`.
+read-only workspace. It returns normalized behavior plus orthogonal semantic properties: fact
+versus norm, preference versus invariant, workflow structure, endorsed-example intent,
+addition/correction/revocation, durability, clarity, and scope hint. The trusted host binds every
+proposal to the complete exact message and restores immutable observation IDs from numeric
+positions; model-copied identifiers or quotes are never trusted.
+
+The deterministic router maps stable facts to memory, soft norms to preference, actual recurring
+workflows to procedure, hard invariants to prompt rules, and expressly endorsed demonstrations to
+examples. Specialized example/workflow structure suppresses generic wording unless both are
+present; mixed independent meanings remain ambiguous. Correction changes the evidence transition,
+not the content route. Exact revocation produces no content artifact. Candidate order is fixed as
+memory, example, preference, procedure, prompt rule, so an ambiguous selection is only the
+least-invasive review proposal. Tool use, ambient instructions, model rerouting, malformed output,
+missing observations, or interpreter failure aborts the whole page before state or cursor writes.
+Deterministic code still controls origin, secrets, route coherence, registered scope, standing
+policy, review, promotion, supersession, revocation, and release construction. See
+`SEMANTIC_FEEDBACK_DETECTOR.md` and `MILESTONE_6A2I_STRUCTURED_SEMANTIC_ROUTING.md`.
 
 Milestone 6A.2C separates the source execution surface from the target surface at configuration
 time. One governed project has a canonical target root plus explicit source-CWD aliases; source

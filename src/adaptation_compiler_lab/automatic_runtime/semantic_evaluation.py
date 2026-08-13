@@ -14,7 +14,9 @@ from pydantic import Field, field_validator, model_validator
 
 from adaptation_compiler_lab.automatic_runtime.models import (
     FeedbackSignalKind,
+    SemanticFeatureVector,
     SemanticFeedbackInterpretation,
+    SemanticRouteResolution,
     SemanticScopeHint,
     SemanticSignalDurability,
 )
@@ -98,6 +100,7 @@ class SemanticFeedbackCorpus(FrozenModel):
         "4.0.0",
         "5.0.0",
         "6.0.0",
+        "7.0.0",
     ] = "1.0.0"
     corpus_id: Identifier
     frozen_at: UtcDateTime
@@ -120,7 +123,7 @@ class SemanticFeedbackCorpus(FrozenModel):
             selected = tuple(item for item in self.cases if item.split == split)
             positives = tuple(item for item in selected if item.expectation.durable_signal)
             negatives = tuple(item for item in selected if not item.expectation.durable_signal)
-            route_only = self.corpus_version in {"4.0.0", "5.0.0", "6.0.0"}
+            route_only = self.corpus_version in {"4.0.0", "5.0.0", "6.0.0", "7.0.0"}
             if (
                 len(selected) < 20
                 or len(positives) < 10
@@ -215,9 +218,22 @@ class SemanticCaseEvaluation(FrozenModel):
     case_id: Identifier
     expected_durable: bool
     predicted_durable: bool
+    predicted_signal_count: int = Field(default=0, ge=0, exclude_if=lambda value: value == 0)
     predicted_signal_kinds: tuple[FeedbackSignalKind, ...]
     predicted_routes: tuple[ArtifactRoute, ...]
     predicted_affected_artifact_ids: tuple[Identifier, ...] = Field(
+        default=(),
+        exclude_if=lambda value: not value,
+    )
+    predicted_route_candidates: tuple[ArtifactRoute, ...] = Field(
+        default=(),
+        exclude_if=lambda value: not value,
+    )
+    predicted_route_resolutions: tuple[SemanticRouteResolution, ...] = Field(
+        default=(),
+        exclude_if=lambda value: not value,
+    )
+    predicted_feature_vectors: tuple[SemanticFeatureVector, ...] = Field(
         default=(),
         exclude_if=lambda value: not value,
     )
@@ -230,6 +246,8 @@ class SemanticCaseEvaluation(FrozenModel):
         "predicted_signal_kinds",
         "predicted_routes",
         "predicted_affected_artifact_ids",
+        "predicted_route_candidates",
+        "predicted_route_resolutions",
         "predicted_scope_hints",
     )
     @classmethod
@@ -243,7 +261,7 @@ class SemanticCaseEvaluation(FrozenModel):
 class SemanticEvaluationReport(FrozenModel):
     """Raw-free, digest-bound result suitable for a detector serving gate."""
 
-    report_version: Literal["1.0.0", "1.1.0", "1.2.0"] = "1.2.0"
+    report_version: Literal["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0"] = "1.4.0"
     source_corpus_digest: Sha256Digest
     effective_corpus_digest: Sha256Digest
     adjudication_digest: Sha256Digest | None = None
@@ -431,6 +449,7 @@ def evaluate_semantic_feedback(
                 case_id=case.case_id,
                 expected_durable=expected_positive,
                 predicted_durable=True,
+                predicted_signal_count=len(candidates),
                 predicted_signal_kinds=tuple(
                     sorted({item.signal_kind for item in candidates}, key=lambda item: item.value)
                 ),
@@ -451,6 +470,32 @@ def evaluate_semantic_feedback(
                             for item in candidates
                             if item.affected_artifact_id is not None
                         }
+                    )
+                ),
+                predicted_route_candidates=tuple(
+                    sorted(
+                        {route for item in candidates for route in item.route_candidates},
+                        key=lambda item: item.value,
+                    )
+                ),
+                predicted_route_resolutions=tuple(
+                    sorted(
+                        {
+                            item.route_resolution
+                            for item in candidates
+                            if item.route_resolution is not None
+                        },
+                        key=lambda item: item.value,
+                    )
+                ),
+                predicted_feature_vectors=tuple(
+                    sorted(
+                        {
+                            canonical_digest(item.semantic_features): item.semantic_features
+                            for item in candidates
+                            if item.semantic_features is not None
+                        }.values(),
+                        key=canonical_digest,
                     )
                 ),
                 predicted_scope_hints=tuple(

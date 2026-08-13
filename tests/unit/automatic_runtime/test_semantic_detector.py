@@ -11,12 +11,19 @@ from adaptation_compiler_lab.automatic_runtime import (
     AutomationDisposition,
     FeedbackDetectorMode,
     FeedbackSignalKind,
+    SemanticAssertionKind,
+    SemanticExampleIntent,
+    SemanticFeatureVector,
     SemanticFeedbackInterpretation,
     SemanticFeedbackSignal,
     SemanticInterpreterReceipt,
+    SemanticNormStrength,
+    SemanticRouteResolution,
     SemanticScopeHint,
     SemanticSignalClarity,
     SemanticSignalDurability,
+    SemanticTransitionIntent,
+    SemanticWorkflowStructure,
     initial_runtime_state,
 )
 from adaptation_compiler_lab.automatic_runtime.codex_dogfood import CodexDogfoodSchemaSet
@@ -219,6 +226,21 @@ def test_semantic_receipt_preserves_v1_1_read_compatibility(tmp_path: Path) -> N
     assert restored.interpreter_version == "1.1.0"
 
 
+def test_semantic_signal_preserves_legacy_shape_without_structured_fields(tmp_path: Path) -> None:
+    interpretation = _interpretation(
+        tmp_path,
+        text="I prefer descriptive names.",
+        quote="I prefer descriptive names.",
+        behavior="Use descriptive names.",
+    )
+
+    payload = interpretation.signals[0].model_dump(mode="json")
+
+    assert "semantic_features" not in payload
+    assert "route_candidates" not in payload
+    assert "route_resolution" not in payload
+
+
 def test_task_only_correction_becomes_evaluation_candidate(tmp_path: Path) -> None:
     text = "nah thats not what i meant—diagnose why it failed before trying another patch"
     observation = _observation(1, text)
@@ -276,6 +298,43 @@ def test_semantic_support_must_match_exact_authoritative_text(tmp_path: Path) ->
     _runtime_instance, policy = _runtime(tmp_path)
 
     with pytest.raises(SemanticInterpretationError, match="exact user text"):
+        detect_feedback(
+            observation,
+            policy,
+            initial_runtime_state(policy),
+            mode=FeedbackDetectorMode.REVIEW,
+            semantic_interpretation=interpretation,
+        )
+
+
+def test_structured_route_cannot_be_substituted_after_interpretation(tmp_path: Path) -> None:
+    observation = _observation(1, "I prefer descriptive names.")
+    interpretation = _interpretation(
+        tmp_path,
+        text=observation.text,
+        quote=observation.text,
+        behavior="Use descriptive names.",
+    )
+    features = SemanticFeatureVector(
+        assertion_kind=SemanticAssertionKind.NORMATIVE,
+        norm_strength=SemanticNormStrength.PREFERENCE,
+        workflow_structure=SemanticWorkflowStructure.NONE,
+        example_intent=SemanticExampleIntent.NONE,
+        transition_intent=SemanticTransitionIntent.ADDITION,
+    )
+    signal = interpretation.signals[0].model_copy(
+        update={
+            "semantic_features": features,
+            "route_candidates": (ArtifactRoute.PREFERENCE,),
+            "route_resolution": SemanticRouteResolution.RESOLVED,
+            "requested_route": ArtifactRoute.MEMORY,
+            "signal_kind": FeedbackSignalKind.MEMORY,
+        }
+    )
+    interpretation = interpretation.model_copy(update={"signals": (signal,)})
+    _runtime_instance, policy = _runtime(tmp_path)
+
+    with pytest.raises(SemanticInterpretationError, match="deterministic route policy"):
         detect_feedback(
             observation,
             policy,
@@ -370,20 +429,22 @@ def test_codex_semantic_interpreter_is_ephemeral_schema_bound_and_tool_free(
     observation = _observation(1, text)
     response = json.dumps(
         {
-            "prompt_version": "semantic-feedback-candidates-v4",
+            "prompt_version": "semantic-feedback-features-v7",
             "items": [
                 {
-                    "observation_id": observation.observation_id,
+                    "observation_index": 0,
                     "signals": [
                         {
-                            "signal_kind": "preference",
                             "normalized_behavior": (
                                 "Use names that represent real domain concepts and avoid "
                                 "generic techy names."
                             ),
-                            "requested_route": "preference",
                             "affected_artifact_id": None,
-                            "supporting_quote": text,
+                            "assertion_kind": "normative",
+                            "norm_strength": "preference",
+                            "workflow_structure": "none",
+                            "example_intent": "none",
+                            "transition_intent": "addition",
                             "durability": "durable",
                             "clarity": "clear",
                             "scope_hint": "permanent_profile",
@@ -412,7 +473,13 @@ def test_codex_semantic_interpreter_is_ephemeral_schema_bound_and_tool_free(
 
     result = interpreter.interpret_batch((observation,))
     assert tuple(result) == (observation.observation_id,)
-    assert result[observation.observation_id].signals[0].supporting_quote == text
+    signal = result[observation.observation_id].signals[0]
+    assert signal.supporting_quote == text
+    assert (signal.support_start, signal.support_end) == (0, len(text))
+    assert signal.signal_kind is FeedbackSignalKind.PREFERENCE
+    assert signal.requested_route is ArtifactRoute.PREFERENCE
+    assert signal.route_candidates == (ArtifactRoute.PREFERENCE,)
+    assert signal.route_resolution is SemanticRouteResolution.RESOLVED
     thread_params = rpc.calls[0][1]
     assert thread_params["ephemeral"] is True
     assert thread_params["dynamicTools"] == []
@@ -431,10 +498,13 @@ def test_codex_semantic_interpreter_is_ephemeral_schema_bound_and_tool_free(
 def test_semantic_output_schema_requires_complete_learning_or_revocation_shape() -> None:
     encoded = json.dumps(semantic_feedback_output_schema(), sort_keys=True)
 
-    assert '"const": "revocation"' in encoded
+    assert '"transition_intent": {"const": "revocation"' in encoded
     assert '"affected_artifact_id": {"type": "null"}' in encoded
     assert '"normalized_behavior": {"minLength": 1, "type": "string"}' in encoded
-    assert '"requested_route": {"enum":' in encoded
+    assert '"assertion_kind": {"enum":' in encoded
+    assert '"norm_strength": {"enum":' in encoded
+    assert '"requested_route"' not in encoded
+    assert '"signal_kind"' not in encoded
 
 
 def test_codex_semantic_interpreter_rejects_tool_use(tmp_path: Path) -> None:
@@ -442,8 +512,8 @@ def test_codex_semantic_interpreter_rejects_tool_use(tmp_path: Path) -> None:
     rpc = _SemanticRpc(
         response=json.dumps(
             {
-                "prompt_version": "semantic-feedback-candidates-v4",
-                "items": [{"observation_id": observation.observation_id, "signals": []}],
+                "prompt_version": "semantic-feedback-features-v7",
+                "items": [{"observation_index": 0, "signals": []}],
             }
         )
     )
