@@ -1,0 +1,314 @@
+{
+  "$defs": {
+    "ArtifactRoute": {
+      "enum": [
+        "evaluation_only",
+        "memory",
+        "preference",
+        "example",
+        "procedure",
+        "prompt_rule",
+        "skill",
+        "tool_recommendation",
+        "inactive_tool_candidate",
+        "inactive_adapter_dataset_candidate"
+      ],
+      "title": "ArtifactRoute",
+      "type": "string"
+    },
+    "FeedbackSignalKind": {
+      "description": "User signals that may become governed adaptation candidates.",
+      "enum": [
+        "memory",
+        "preference",
+        "procedure",
+        "prompt_rule",
+        "positive_example",
+        "correction",
+        "revocation"
+      ],
+      "title": "FeedbackSignalKind",
+      "type": "string"
+    },
+    "SemanticFeatureClass": {
+      "enum": [
+        "memory",
+        "preference",
+        "procedure",
+        "prompt_rule",
+        "positive_example",
+        "revocation",
+        "correction",
+        "ambiguous"
+      ],
+      "title": "SemanticFeatureClass",
+      "type": "string"
+    },
+    "SemanticFeatureScenario": {
+      "additionalProperties": false,
+      "properties": {
+        "brief": {
+          "minLength": 1,
+          "title": "Brief",
+          "type": "string"
+        },
+        "case_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "context_name": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Context Name"
+        },
+        "expectation": {
+          "$ref": "#/$defs/SemanticFeedbackExpectation"
+        },
+        "expected_resolution": {
+          "$ref": "#/$defs/SemanticRouteResolution"
+        },
+        "expected_route_candidates": {
+          "items": {
+            "$ref": "#/$defs/ArtifactRoute"
+          },
+          "title": "Expected Route Candidates",
+          "type": "array"
+        },
+        "scope_hint": {
+          "$ref": "#/$defs/SemanticScopeHint"
+        },
+        "secondary_topic": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Secondary Topic"
+        },
+        "semantic_class": {
+          "$ref": "#/$defs/SemanticFeatureClass"
+        },
+        "style": {
+          "$ref": "#/$defs/SemanticFeatureStyle"
+        },
+        "topic": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Topic",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_id",
+        "semantic_class",
+        "style",
+        "scope_hint",
+        "topic",
+        "brief",
+        "expectation",
+        "expected_route_candidates",
+        "expected_resolution"
+      ],
+      "title": "SemanticFeatureScenario",
+      "type": "object"
+    },
+    "SemanticFeatureStyle": {
+      "enum": [
+        "direct",
+        "conversational",
+        "fragment",
+        "typos",
+        "contrastive",
+        "indirect",
+        "emphatic",
+        "negated_alternative"
+      ],
+      "title": "SemanticFeatureStyle",
+      "type": "string"
+    },
+    "SemanticFeedbackExpectation": {
+      "additionalProperties": false,
+      "description": "Outcome dimensions that can be scored without matching generated prose.",
+      "properties": {
+        "accepted_routes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ArtifactRoute"
+          },
+          "title": "Accepted Routes",
+          "type": "array"
+        },
+        "accepted_signal_kinds": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/FeedbackSignalKind"
+          },
+          "title": "Accepted Signal Kinds",
+          "type": "array"
+        },
+        "affected_artifact_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Affected Artifact Id"
+        },
+        "durable_signal": {
+          "title": "Durable Signal",
+          "type": "boolean"
+        },
+        "scope_hint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SemanticScopeHint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "durable_signal"
+      ],
+      "title": "SemanticFeedbackExpectation",
+      "type": "object"
+    },
+    "SemanticRouteResolution": {
+      "description": "Deterministic result of mapping semantic features to artifact routes.",
+      "enum": [
+        "resolved",
+        "ambiguous"
+      ],
+      "title": "SemanticRouteResolution",
+      "type": "string"
+    },
+    "SemanticScopeHint": {
+      "description": "Non-authoritative scope hint emitted by semantic interpretation.",
+      "enum": [
+        "permanent_profile",
+        "current_context"
+      ],
+      "title": "SemanticScopeHint",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "calibration_corpus_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Calibration Corpus Digest",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "plan_id": {
+      "const": "milestone-6a2i-feature-holdout",
+      "default": "milestone-6a2i-feature-holdout",
+      "title": "Plan Id",
+      "type": "string"
+    },
+    "plan_version": {
+      "default": "1.0.0",
+      "enum": [
+        "1.0.0",
+        "2.0.0",
+        "3.0.0",
+        "4.0.0",
+        "5.0.0"
+      ],
+      "title": "Plan Version",
+      "type": "string"
+    },
+    "production_promotion_permitted": {
+      "const": false,
+      "default": false,
+      "title": "Production Promotion Permitted",
+      "type": "boolean"
+    },
+    "production_state_mutation_permitted": {
+      "const": false,
+      "default": false,
+      "title": "Production State Mutation Permitted",
+      "type": "boolean"
+    },
+    "scenarios": {
+      "items": {
+        "$ref": "#/$defs/SemanticFeatureScenario"
+      },
+      "maxItems": 64,
+      "minItems": 64,
+      "title": "Scenarios",
+      "type": "array"
+    },
+    "seed_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Seed Digest",
+      "type": "string"
+    },
+    "supersedes_plan_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Plan Digest"
+    },
+    "synthetic_is_user_authority": {
+      "const": false,
+      "default": false,
+      "title": "Synthetic Is User Authority",
+      "type": "boolean"
+    },
+    "synthetic_only": {
+      "const": true,
+      "default": true,
+      "title": "Synthetic Only",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "created_at",
+    "seed_digest",
+    "calibration_corpus_digest",
+    "scenarios"
+  ],
+  "title": "SemanticFeaturePlan",
+  "type": "object"
+}

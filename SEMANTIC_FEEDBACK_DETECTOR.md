@@ -30,14 +30,17 @@ does not become an authority, policy engine, scope resolver, or release manager.
    conversation. Any tool-like item, model substitution, reroute, ambient instruction source,
    timeout, malformed response, or workspace drift fails the entire page before a cycle or cursor
    is written.
-5. The response is schema-bound and limited to four proposals per message. Every proposal must
-   quote one exact, unique, contiguous span of the user message. Deterministic code computes and
-   verifies the offsets. Prompt v3 explicitly prohibits converting a requested task topic, format,
-   technology, domain, or audience into a reusable preference; unexpressed private intent cannot
-   become evidence even when an inference happens to be true.
-6. Deterministic code rechecks source authority, secrets, route coherence, size, standing-policy
-   scope, duplicates, active revocation targets, and capability changes. The model's scope is only
-   diagnostic; the registered project scope controls activation.
+5. The response is schema-bound and limited to four proposals per message. The model emits
+   normalized behavior plus fact/norm, norm strength, workflow structure, endorsed-example intent,
+   transition intent, durability, clarity, and scope hint. It does not emit an artifact route.
+   The trusted host binds every proposal to the complete exact user message and restores immutable
+   observation IDs from numeric positions. Unexpressed private intent cannot become evidence even
+   when an inference happens to be true.
+6. Deterministic code maps those properties to the least-invasive artifact, rejects route
+   substitution, and rechecks source authority, secrets, size, standing-policy scope, duplicates,
+   active revocation targets, and capability changes. Multiple durable meanings and unresolved
+   candidate routes require review. The model's scope is only diagnostic; the registered project
+   scope controls activation.
 7. Corrections always enter review/evaluation first. An immediate task correction may become an
    evaluation candidate but cannot become durable learning. Ambiguous, uncertain, multiple,
    capability-changing, and oversized proposals remain inactive.
@@ -101,6 +104,15 @@ authentication, so provider-billed cost was zero. Instrument-repair attempts are
 evaluation results. They exposed and repaired the experimental-capability declaration, Windows
 temporary-workspace lifetime, user-message trace classification, response serialization, and
 typed proposal validation before an accepted report was emitted.
+
+Milestone 6A.2H later showed that asking the model for one flat artifact label remained brittle:
+the final route holdout reached perfect detection and scope but only 85% route accuracy. Milestone
+6A.2I therefore introduced the structured feature contract and deterministic router described
+above. Its final fresh 64-case holdout passed at 100% detection, 100% scope, 98.4% semantic class,
+and 90.6% exact feature/route decisions. Revocation, correction, and multi-intent safety classes
+were perfect; blind auditors reached 98.4% and 100%. This is a development pass for review-mode
+serving only. See `MILESTONE_6A2I_STRUCTURED_SEMANTIC_ROUTING.md` for the complete preserved failure
+history, digests, and residual disagreements.
 
 ## Honest limits
 

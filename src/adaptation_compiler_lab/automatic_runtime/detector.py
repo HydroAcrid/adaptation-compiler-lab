@@ -15,12 +15,14 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     InteractionObservation,
     SemanticFeedbackInterpretation,
     SemanticFeedbackSignal,
+    SemanticRouteResolution,
     SemanticSignalClarity,
     SemanticSignalDurability,
     StandingAutomationPolicy,
     infer_layer,
     require_policy_scope,
 )
+from adaptation_compiler_lab.automatic_runtime.semantic_routing import route_semantic_features
 from adaptation_compiler_lab.domain import ArtifactRoute, SourceClass
 from adaptation_compiler_lab.sanitization import scan_text
 from adaptation_compiler_lab.targets.base import sha256_text
@@ -375,6 +377,17 @@ def _validate_semantic_interpretation(
             raise SemanticInterpretationError(
                 "semantic interpretation selected an incoherent artifact route"
             )
+        if signal.semantic_features is not None:
+            decision = route_semantic_features(signal.semantic_features)
+            if (
+                signal.signal_kind is not decision.signal_kind
+                or signal.requested_route is not decision.selected_route
+                or signal.route_candidates != decision.route_candidates
+                or signal.route_resolution is not decision.resolution
+            ):
+                raise SemanticInterpretationError(
+                    "semantic interpretation does not match deterministic route policy"
+                )
 
 
 def _semantic_revocation(
@@ -520,6 +533,7 @@ def detect_feedback(
         or len(durable) != 1
         or primary.durability is SemanticSignalDurability.UNCERTAIN
         or primary.clarity is SemanticSignalClarity.AMBIGUOUS
+        or primary.route_resolution is SemanticRouteResolution.AMBIGUOUS
     )
     if primary.signal_kind is FeedbackSignalKind.REVOCATION:
         return _semantic_revocation(

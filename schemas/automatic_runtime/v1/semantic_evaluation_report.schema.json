@@ -30,6 +30,17 @@
       "title": "FeedbackSignalKind",
       "type": "string"
     },
+    "SemanticAssertionKind": {
+      "description": "Whether the supported statement describes reality or prescribes behavior.",
+      "enum": [
+        "fact",
+        "normative",
+        "mixed",
+        "other"
+      ],
+      "title": "SemanticAssertionKind",
+      "type": "string"
+    },
     "SemanticCaseEvaluation": {
       "additionalProperties": false,
       "description": "Raw-free per-case classification used to diagnose calibration failures.",
@@ -64,6 +75,30 @@
           "title": "Predicted Durable",
           "type": "boolean"
         },
+        "predicted_feature_vectors": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SemanticFeatureVector"
+          },
+          "title": "Predicted Feature Vectors",
+          "type": "array"
+        },
+        "predicted_route_candidates": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ArtifactRoute"
+          },
+          "title": "Predicted Route Candidates",
+          "type": "array"
+        },
+        "predicted_route_resolutions": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SemanticRouteResolution"
+          },
+          "title": "Predicted Route Resolutions",
+          "type": "array"
+        },
         "predicted_routes": {
           "items": {
             "$ref": "#/$defs/ArtifactRoute"
@@ -77,6 +112,12 @@
           },
           "title": "Predicted Scope Hints",
           "type": "array"
+        },
+        "predicted_signal_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Predicted Signal Count",
+          "type": "integer"
         },
         "predicted_signal_kinds": {
           "items": {
@@ -219,6 +260,64 @@
       "title": "SemanticEvaluationThresholds",
       "type": "object"
     },
+    "SemanticExampleIntent": {
+      "description": "Whether an endorsed example is explicitly intended for later reuse.",
+      "enum": [
+        "none",
+        "endorsed_for_reuse"
+      ],
+      "title": "SemanticExampleIntent",
+      "type": "string"
+    },
+    "SemanticFeatureVector": {
+      "additionalProperties": false,
+      "description": "Orthogonal model-extracted meaning used by deterministic route policy.",
+      "properties": {
+        "assertion_kind": {
+          "$ref": "#/$defs/SemanticAssertionKind"
+        },
+        "example_intent": {
+          "$ref": "#/$defs/SemanticExampleIntent"
+        },
+        "norm_strength": {
+          "$ref": "#/$defs/SemanticNormStrength"
+        },
+        "transition_intent": {
+          "$ref": "#/$defs/SemanticTransitionIntent"
+        },
+        "workflow_structure": {
+          "$ref": "#/$defs/SemanticWorkflowStructure"
+        }
+      },
+      "required": [
+        "assertion_kind",
+        "norm_strength",
+        "workflow_structure",
+        "example_intent",
+        "transition_intent"
+      ],
+      "title": "SemanticFeatureVector",
+      "type": "object"
+    },
+    "SemanticNormStrength": {
+      "description": "Strength of a normative statement, independent of its final artifact route.",
+      "enum": [
+        "none",
+        "preference",
+        "invariant"
+      ],
+      "title": "SemanticNormStrength",
+      "type": "string"
+    },
+    "SemanticRouteResolution": {
+      "description": "Deterministic result of mapping semantic features to artifact routes.",
+      "enum": [
+        "resolved",
+        "ambiguous"
+      ],
+      "title": "SemanticRouteResolution",
+      "type": "string"
+    },
     "SemanticScopeHint": {
       "description": "Non-authoritative scope hint emitted by semantic interpretation.",
       "enum": [
@@ -226,6 +325,27 @@
         "current_context"
       ],
       "title": "SemanticScopeHint",
+      "type": "string"
+    },
+    "SemanticTransitionIntent": {
+      "description": "Lifecycle intent expressed by the supported user text.",
+      "enum": [
+        "addition",
+        "correction",
+        "revocation"
+      ],
+      "title": "SemanticTransitionIntent",
+      "type": "string"
+    },
+    "SemanticWorkflowStructure": {
+      "description": "Repeatable workflow structure expressed by the supported text.",
+      "enum": [
+        "none",
+        "triggered_action",
+        "ordered_sequence",
+        "triggered_sequence"
+      ],
+      "title": "SemanticWorkflowStructure",
       "type": "string"
     }
   },
@@ -280,11 +400,13 @@
       "type": "boolean"
     },
     "report_version": {
-      "default": "1.2.0",
+      "default": "1.4.0",
       "enum": [
         "1.0.0",
         "1.1.0",
-        "1.2.0"
+        "1.2.0",
+        "1.3.0",
+        "1.4.0"
       ],
       "title": "Report Version",
       "type": "string"

@@ -1,0 +1,202 @@
+{
+  "$defs": {
+    "SemanticFeatureClass": {
+      "enum": [
+        "memory",
+        "preference",
+        "procedure",
+        "prompt_rule",
+        "positive_example",
+        "revocation",
+        "correction",
+        "ambiguous"
+      ],
+      "title": "SemanticFeatureClass",
+      "type": "string"
+    },
+    "SemanticFeatureClassMetrics": {
+      "additionalProperties": false,
+      "properties": {
+        "case_count": {
+          "minimum": 1,
+          "title": "Case Count",
+          "type": "integer"
+        },
+        "semantic_class": {
+          "$ref": "#/$defs/SemanticFeatureClass"
+        },
+        "sensor_accuracy": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Sensor Accuracy",
+          "type": "number"
+        },
+        "sensor_correct": {
+          "minimum": 0,
+          "title": "Sensor Correct",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "semantic_class",
+        "case_count",
+        "sensor_correct",
+        "sensor_accuracy"
+      ],
+      "title": "SemanticFeatureClassMetrics",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "auditor_a_accuracy": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Auditor A Accuracy",
+      "type": "number"
+    },
+    "auditor_a_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Auditor A Digest",
+      "type": "string"
+    },
+    "auditor_b_accuracy": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Auditor B Accuracy",
+      "type": "number"
+    },
+    "auditor_b_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Auditor B Digest",
+      "type": "string"
+    },
+    "auditor_pair_agreement": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Auditor Pair Agreement",
+      "type": "number"
+    },
+    "automatic_promotion_authorized": {
+      "const": false,
+      "default": false,
+      "title": "Automatic Promotion Authorized",
+      "type": "boolean"
+    },
+    "class_metrics": {
+      "items": {
+        "$ref": "#/$defs/SemanticFeatureClassMetrics"
+      },
+      "title": "Class Metrics",
+      "type": "array"
+    },
+    "corpus_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Corpus Digest",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "detection_accuracy": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Detection Accuracy",
+      "type": "number"
+    },
+    "development_gate_passed": {
+      "title": "Development Gate Passed",
+      "type": "boolean"
+    },
+    "failed_case_ids": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Failed Case Ids",
+      "type": "array"
+    },
+    "feature_decision_accuracy": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Feature Decision Accuracy",
+      "type": "number"
+    },
+    "generation_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Generation Digest",
+      "type": "string"
+    },
+    "plan_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Plan Digest",
+      "type": "string"
+    },
+    "production_mode": {
+      "const": "review",
+      "default": "review",
+      "title": "Production Mode",
+      "type": "string"
+    },
+    "protocol_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Protocol Digest",
+      "type": "string"
+    },
+    "report_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Report Digest",
+      "type": "string"
+    },
+    "scope_accuracy": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Scope Accuracy",
+      "type": "number"
+    },
+    "sensor_class_accuracy": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Sensor Class Accuracy",
+      "type": "number"
+    },
+    "summary_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Summary Version",
+      "type": "string"
+    },
+    "synthetic_is_user_authority": {
+      "const": false,
+      "default": false,
+      "title": "Synthetic Is User Authority",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "created_at",
+    "protocol_digest",
+    "plan_digest",
+    "generation_digest",
+    "corpus_digest",
+    "auditor_a_digest",
+    "auditor_b_digest",
+    "report_digest",
+    "detection_accuracy",
+    "scope_accuracy",
+    "sensor_class_accuracy",
+    "feature_decision_accuracy",
+    "auditor_a_accuracy",
+    "auditor_b_accuracy",
+    "auditor_pair_agreement",
+    "class_metrics",
+    "failed_case_ids",
+    "development_gate_passed"
+  ],
+  "title": "SemanticFeatureSummary",
+  "type": "object"
+}

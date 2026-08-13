@@ -9,12 +9,19 @@ import pytest
 
 from adaptation_compiler_lab.automatic_runtime.models import (
     FeedbackSignalKind,
+    SemanticAssertionKind,
+    SemanticExampleIntent,
+    SemanticFeatureVector,
     SemanticFeedbackInterpretation,
     SemanticFeedbackSignal,
     SemanticInterpreterReceipt,
+    SemanticNormStrength,
+    SemanticRouteResolution,
     SemanticScopeHint,
     SemanticSignalClarity,
     SemanticSignalDurability,
+    SemanticTransitionIntent,
+    SemanticWorkflowStructure,
 )
 from adaptation_compiler_lab.automatic_runtime.semantic_evaluation import (
     SemanticFeedbackCase,
@@ -188,6 +195,60 @@ def test_one_false_positive_blocks_calibrated_promotion() -> None:
     assert not report.promotion_ready
     assert report.metrics.false_positive == 1
     assert report.failed_case_ids == (negative.case_id,)
+
+
+def test_structured_feature_diagnostics_are_preserved_raw_free() -> None:
+    corpus = load_semantic_feedback_corpus(CORPUS_PATH)
+    receipt = _receipt()
+    interpretations = {
+        case.case_id: _interpretation(case, receipt) for case in corpus.select("holdout")
+    }
+    positive = next(
+        case
+        for case in corpus.select("holdout")
+        if case.expectation.accepted_routes == (ArtifactRoute.PREFERENCE,)
+    )
+    interpretation = interpretations[positive.case_id]
+    features = SemanticFeatureVector(
+        assertion_kind=SemanticAssertionKind.MIXED,
+        norm_strength=SemanticNormStrength.PREFERENCE,
+        workflow_structure=SemanticWorkflowStructure.NONE,
+        example_intent=SemanticExampleIntent.NONE,
+        transition_intent=SemanticTransitionIntent.ADDITION,
+    )
+    interpretations[positive.case_id] = interpretation.model_copy(
+        update={
+            "signals": (
+                interpretation.signals[0].model_copy(
+                    update={
+                        "signal_kind": FeedbackSignalKind.MEMORY,
+                        "requested_route": ArtifactRoute.MEMORY,
+                        "semantic_features": features,
+                        "route_candidates": (
+                            ArtifactRoute.MEMORY,
+                            ArtifactRoute.PREFERENCE,
+                        ),
+                        "route_resolution": SemanticRouteResolution.AMBIGUOUS,
+                    }
+                ),
+            )
+        }
+    )
+
+    report = evaluate_semantic_feedback(
+        corpus,
+        split="holdout",
+        interpretations=interpretations,
+    )
+    result = next(item for item in report.case_evaluations if item.case_id == positive.case_id)
+
+    assert result.predicted_route_candidates == (
+        ArtifactRoute.MEMORY,
+        ArtifactRoute.PREFERENCE,
+    )
+    assert result.predicted_route_resolutions == (SemanticRouteResolution.AMBIGUOUS,)
+    assert result.predicted_feature_vectors == (features,)
+    assert result.predicted_signal_count == 1
 
 
 def test_revocation_expectation_scores_without_an_artifact_route() -> None:

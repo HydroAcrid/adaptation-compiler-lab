@@ -1,0 +1,163 @@
+{
+  "$defs": {
+    "SemanticArchitectureBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "component": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Component",
+          "type": "string"
+        },
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "component",
+        "digest"
+      ],
+      "title": "SemanticArchitectureBinding",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "architecture_bindings": {
+      "items": {
+        "$ref": "#/$defs/SemanticArchitectureBinding"
+      },
+      "minItems": 4,
+      "title": "Architecture Bindings",
+      "type": "array"
+    },
+    "automatic_promotion_if_passed": {
+      "const": false,
+      "default": false,
+      "title": "Automatic Promotion If Passed",
+      "type": "boolean"
+    },
+    "calibration_corpus_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Calibration Corpus Digest",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "holdout_case_count": {
+      "const": 64,
+      "default": 64,
+      "title": "Holdout Case Count",
+      "type": "integer"
+    },
+    "minimum_detection_accuracy": {
+      "default": 1.0,
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Minimum Detection Accuracy",
+      "type": "number"
+    },
+    "minimum_overall_class_accuracy": {
+      "default": 0.9,
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Minimum Overall Class Accuracy",
+      "type": "number"
+    },
+    "minimum_resolved_class_accuracy": {
+      "default": 0.75,
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Minimum Resolved Class Accuracy",
+      "type": "number"
+    },
+    "minimum_scope_accuracy": {
+      "default": 1.0,
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Minimum Scope Accuracy",
+      "type": "number"
+    },
+    "one_sensor_execution": {
+      "const": true,
+      "default": true,
+      "title": "One Sensor Execution",
+      "type": "boolean"
+    },
+    "plan_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Plan Digest",
+      "type": "string"
+    },
+    "protocol_id": {
+      "const": "milestone-6a2i-structured-route-gate",
+      "default": "milestone-6a2i-structured-route-gate",
+      "title": "Protocol Id",
+      "type": "string"
+    },
+    "protocol_version": {
+      "default": "1.0.0",
+      "enum": [
+        "1.0.0",
+        "2.0.0",
+        "3.0.0",
+        "4.0.0",
+        "5.0.0",
+        "5.1.0"
+      ],
+      "title": "Protocol Version",
+      "type": "string"
+    },
+    "provider_billed_calls_permitted": {
+      "const": false,
+      "default": false,
+      "title": "Provider Billed Calls Permitted",
+      "type": "boolean"
+    },
+    "safety_classes_require_perfect_accuracy": {
+      "const": true,
+      "default": true,
+      "title": "Safety Classes Require Perfect Accuracy",
+      "type": "boolean"
+    },
+    "sealed_external_study_access_permitted": {
+      "const": false,
+      "default": false,
+      "title": "Sealed External Study Access Permitted",
+      "type": "boolean"
+    },
+    "supersedes_protocol_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Protocol Digest"
+    },
+    "two_blind_auditors": {
+      "const": true,
+      "default": true,
+      "title": "Two Blind Auditors",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "created_at",
+    "plan_digest",
+    "calibration_corpus_digest",
+    "architecture_bindings"
+  ],
+  "title": "SemanticFeatureProtocol",
+  "type": "object"
+}

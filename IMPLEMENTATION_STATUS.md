@@ -18,17 +18,20 @@ overlay references are typed and composition-checked, but no preset is imported 
 runtime correctly emits a zero-byte projection when no adaptation applies or the final rule is
 revoked, so revoked behavior cannot survive as target-visible boilerplate.
 
-Milestone 6A.2H has completed a blind 120-case semantic route-discrimination benchmark through
-four immutable synthetic revisions. The final fresh split reached 100% durable detection, 100%
-scope accuracy, and 100% exact-target revocation, but only 85% exact route accuracy. Calibration
-route accuracy was 90%. Two isolated blind auditors each matched 116/120 planned labels, agreed
-with each other on all labels, and identified four intended-memory labels as corpus defects.
-Auditor-consensus scoring would raise holdout routing only to 88.3%, still below the 90% gate.
-Calibrated unattended promotion therefore remains disabled and review-mode dogfood is unchanged.
-The bounded next design is schema-bound extraction of orthogonal semantic properties followed by
-deterministic least-invasive routing; embeddings remain retrieval-only future work, not an
-authority or promotion mechanism. No source repository, production state, or sealed external
-study was accessed.
+Milestone 6A.2I has now implemented the bounded successor to 6A.2H. The model no longer selects an
+artifact label. It extracts evidence-bound semantic properties—assertion kind, normative strength,
+workflow structure, endorsed-example intent, transition intent, durability, clarity, and scope.
+Deterministic code recomputes the least-invasive compatible route, rejects route substitution, and
+requires review for unresolved combinations or multiple durable signals. Immutable legacy
+semantic records remain readable and canonically stable.
+
+After preserving calibration, construction, and audit-transport failures, the final fresh 64-case
+holdout passed its preregistered development gate: 100% durable detection, 100% scope, 98.4%
+semantic-class accuracy, and 90.6% exact feature/route decisions. Revocation, correction, and
+multi-intent safety classes were perfect. Indexed blind auditors scored 98.4% and 100%, with 98.4%
+agreement. This authorizes continued review-mode development only. Automatic promotion remains
+disabled; synthetic evidence is not user authority and cannot mutate production state. No source
+repository, real dogfood state, provider-billed API, or sealed external study was accessed.
 
 The concrete adapter pins Codex 0.146.0 on Linux and Windows, requires saved ChatGPT
 authentication, reads only post-cutoff user-authored messages from allowlisted completed
@@ -375,8 +378,8 @@ uv run pytest
 uv build
 ```
 
-The current full suite checks formatting for 632 files, passes Ruff lint, passes strict typing
-across 303 source files, passes 814 tests with one Windows-only check skipped under WSL, and builds
+The current full suite checks formatting for 641 files, passes Ruff lint, passes strict typing
+across 309 source files, passes 853 tests with two Windows-only checks skipped under WSL, and builds
 both the source distribution and wheel. Immutable anonymous target outputs are excluded from
 formatter/linter mutation.
 Wheel inspection confirms the ports, adapters, runner, both
@@ -463,3 +466,10 @@ were perfect, but route accuracy was 90% on calibration and 85% on holdout. The 
 gate remains closed. The next detector iteration must decompose meaning into evidence-bound
 features and let deterministic policy choose the least invasive route; real dogfood remains in
 review mode.
+
+Milestone 6A.2I completed that structured successor. Public calibration under interpreter v1.7
+reached 100% detection and scope with 95% route accuracy. The final indexed-audit v5 holdout then
+passed the frozen gate at 100% detection, 100% scope, 98.4% semantic class, and 90.6% exact feature
+decision accuracy. The development result validates the hybrid architecture; it does not authorize
+unattended promotion. The active next evidence remains genuine 6A.2C review-mode dogfood, with
+borderline rule/procedure and preference/example cases retained as review candidates.

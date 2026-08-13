@@ -100,6 +100,64 @@ class SemanticScopeHint(StrEnum):
     CURRENT_CONTEXT = "current_context"
 
 
+class SemanticAssertionKind(StrEnum):
+    """Whether the supported statement describes reality or prescribes behavior."""
+
+    FACT = "fact"
+    NORMATIVE = "normative"
+    MIXED = "mixed"
+    OTHER = "other"
+
+
+class SemanticNormStrength(StrEnum):
+    """Strength of a normative statement, independent of its final artifact route."""
+
+    NONE = "none"
+    PREFERENCE = "preference"
+    INVARIANT = "invariant"
+
+
+class SemanticWorkflowStructure(StrEnum):
+    """Repeatable workflow structure expressed by the supported text."""
+
+    NONE = "none"
+    TRIGGERED_ACTION = "triggered_action"
+    ORDERED_SEQUENCE = "ordered_sequence"
+    TRIGGERED_SEQUENCE = "triggered_sequence"
+
+
+class SemanticExampleIntent(StrEnum):
+    """Whether an endorsed example is explicitly intended for later reuse."""
+
+    NONE = "none"
+    ENDORSED_FOR_REUSE = "endorsed_for_reuse"
+
+
+class SemanticTransitionIntent(StrEnum):
+    """Lifecycle intent expressed by the supported user text."""
+
+    ADDITION = "addition"
+    CORRECTION = "correction"
+    REVOCATION = "revocation"
+
+
+class SemanticRouteResolution(StrEnum):
+    """Deterministic result of mapping semantic features to artifact routes."""
+
+    RESOLVED = "resolved"
+    AMBIGUOUS = "ambiguous"
+
+
+class SemanticFeatureVector(FrozenModel):
+    """Orthogonal model-extracted meaning used by deterministic route policy."""
+
+    assertion_kind: SemanticAssertionKind
+    norm_strength: SemanticNormStrength
+    workflow_structure: SemanticWorkflowStructure
+    example_intent: SemanticExampleIntent
+    transition_intent: SemanticTransitionIntent
+
+
 class AutomationDisposition(StrEnum):
     """Outcome of one automatic-runtime cycle."""
 
@@ -380,6 +438,18 @@ class SemanticFeedbackSignal(FrozenModel):
     durability: SemanticSignalDurability
     clarity: SemanticSignalClarity
     scope_hint: SemanticScopeHint
+    semantic_features: SemanticFeatureVector | None = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+    )
+    route_candidates: tuple[ArtifactRoute, ...] = Field(
+        default=(),
+        exclude_if=lambda value: not value,
+    )
+    route_resolution: SemanticRouteResolution | None = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+    )
 
     @model_validator(mode="after")
     def signal_shape_is_coherent(self) -> Self:
@@ -400,6 +470,27 @@ class SemanticFeedbackSignal(FrozenModel):
             raise ValueError(
                 "non-revocation semantic signals require behavior and route but no artifact"
             )
+        if self.semantic_features is None:
+            if self.route_candidates or self.route_resolution is not None:
+                raise ValueError("legacy semantic signal cannot carry structured routing fields")
+        else:
+            if self.route_resolution is None:
+                raise ValueError("structured semantic signal requires a route resolution")
+            if self.signal_kind is FeedbackSignalKind.REVOCATION:
+                if self.route_candidates:
+                    raise ValueError("semantic revocation cannot carry route candidates")
+            elif not self.route_candidates or self.requested_route not in self.route_candidates:
+                raise ValueError("structured semantic route must be one of its candidates")
+            if (
+                self.route_resolution is SemanticRouteResolution.RESOLVED
+                and len(self.route_candidates) > 1
+            ):
+                raise ValueError("resolved semantic route cannot carry multiple candidates")
+            if (
+                self.route_resolution is SemanticRouteResolution.AMBIGUOUS
+                and len(self.route_candidates) < 2
+            ):
+                raise ValueError("ambiguous semantic route requires multiple candidates")
         return self
 
 
@@ -408,7 +499,9 @@ class SemanticInterpreterReceipt(FrozenModel):
 
     receipt_version: Literal["1.0.0"] = "1.0.0"
     interpreter_id: Literal["codex-semantic-feedback"] = "codex-semantic-feedback"
-    interpreter_version: Literal["1.1.0", "1.2.0", "1.3.0"] = "1.3.0"
+    interpreter_version: Literal["1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0"] = (
+        "1.7.0"
+    )
     model: NonEmptyStr
     reasoning_effort: NonEmptyStr
     source_runtime_version: NonEmptyStr

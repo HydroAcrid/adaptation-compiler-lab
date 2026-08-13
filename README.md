@@ -62,6 +62,17 @@ classifier; deterministic policy still controls provenance, consent, scope, conf
 revocation, and promotion. See
 [`MILESTONE_6A2H_BLIND_ROUTE_DISCRIMINATION.md`](MILESTONE_6A2H_BLIND_ROUTE_DISCRIMINATION.md).
 
+Milestone 6A.2I replaces that failed flat-label design with structured semantic extraction. Luna
+now proposes orthogonal properties—fact versus norm, soft preference versus invariant, workflow
+structure, endorsed-example intent, addition/correction/revocation, durability, clarity, and scope.
+Trusted deterministic code recomputes the least-invasive route and forces ambiguous combinations
+to review. On the final fresh 64-case holdout, the sensor achieved 64/64 detection, 64/64 scope,
+63/64 semantic-class decisions, and 58/64 exact feature/route decisions; every revocation,
+correction, and multi-intent safety class met its perfect gate. Two indexed blind auditors scored
+63/64 and 64/64 with 63/64 agreement. The development gate passed, but automatic promotion remains
+disabled and ordinary-use dogfood remains review-first. See
+[`MILESTONE_6A2I_STRUCTURED_SEMANTIC_ROUTING.md`](MILESTONE_6A2I_STRUCTURED_SEMANTIC_ROUTING.md).
+
 Milestones 6A.3–6A.5 now provide positive, complementary comparisons against the strong static
 profile. Milestone 6A.3 showed lifecycle-aware compilation winning five of six fresh staged task
 pairs with one tie. Milestone 6A.4 replicated breadth across the four approved behavior families
