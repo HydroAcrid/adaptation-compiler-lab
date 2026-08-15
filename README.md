@@ -85,6 +85,16 @@ disabled. “Temper” does not rename repository, package, or schema identities
 clearance. See
 [`MILESTONE_6A2J_REVIEW_MODE_PRODUCT_DOGFOOD.md`](MILESTONE_6A2J_REVIEW_MODE_PRODUCT_DOGFOOD.md).
 
+Milestone 6A.2K accelerates that exact loop through a deterministic, isolated simulation: 20
+interactions across three synthetic dates, six fresh activations, strict scope probes, correction,
+supersession, revocation, helped/hurt/irrelevant feedback, and pack-growth measurement. The
+synthetic gate passed with 18 correct learning decisions, one false positive, one miss, six exact
+activation sets, zero false or missed activations, and a 302-byte maximum projection. The first
+pass exposed and repaired scope-inaccurate activation receipts, review-revocation miscounting, and
+lost correction targets. The committed report is instrument evidence only and explicitly cannot
+count toward genuine 6A.2C readiness. See
+[`MILESTONE_6A2K_ACCELERATED_LONGITUDINAL_SIMULATION.md`](MILESTONE_6A2K_ACCELERATED_LONGITUDINAL_SIMULATION.md).
+
 Milestones 6A.3–6A.5 now provide positive, complementary comparisons against the strong static
 profile. Milestone 6A.3 showed lifecycle-aware compilation winning five of six fresh staged task
 pairs with one tie. Milestone 6A.4 replicated breadth across the four approved behavior families

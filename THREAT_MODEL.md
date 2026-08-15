@@ -170,6 +170,15 @@ unscheduled pilot execution.
     release identities. Renaming requires a separately reviewed migration.
 44. Synthetic product-loop conformance cannot manufacture genuine interactions, dates,
     activations, ratings, or success under the frozen longitudinal evidence gate.
+45. An activation receipt cannot claim artifacts that did not contribute to the target-visible
+    scoped projection. An empty projection must bind an empty activated-artifact set.
+46. A reviewed revocation cannot be reported as a content promotion. Its immutable review item
+    must bind the exact revocation signal before lifecycle metrics classify it.
+47. A semantic correction cannot obtain its affected artifact identity from model output. Only an
+    exact host-bound active target may enter review and later correction or supersession.
+48. Accelerated longitudinal state must use a synthetic selector and receipt flag, a distinct
+    subject and keys, an isolated temporary ledger/raw store, and destructive teardown before the
+    raw-free report leaves the harness.
 
 ## Incident posture
 

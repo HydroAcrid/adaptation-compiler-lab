@@ -259,6 +259,23 @@ atomically, and duplicate apply/discard decisions fail closed. Use `runtime gate
 raw-free instrument metrics. Full workflow and remaining evidence limits are documented in
 `MILESTONE_6A2D_WRITABLE_GATEWAY.md`.
 
+## Accelerated longitudinal simulation
+
+Run the synthetic lifecycle conformance independently of production state:
+
+```bash
+uv run python scripts/run_longitudinal_simulation.py \
+  --output development_benchmark_longitudinal_simulation/synthetic_gate_report.json \
+  --workspace /tmp/temper-longitudinal-workspace
+```
+
+The workspace argument is only a parent. The harness creates and destroys its isolated encrypted
+raw store and SQLite ledger beneath it. The output is raw-free and must state
+`evidence_class=synthetic_instrument_conformance` and
+`counts_toward_ordinary_use_gate=false`. Never substitute the production dogfood root, signing
+key, encryption key, subject, or report as a simulation input, and never import the report into the
+ordinary-use ledger.
+
 ## Paid-run and rating gates
 
 Preparing role packets, condition files, commitments, fixtures, and a run manifest does not

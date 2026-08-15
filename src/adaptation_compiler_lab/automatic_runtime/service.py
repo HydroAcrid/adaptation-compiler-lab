@@ -187,6 +187,7 @@ class AutomaticAdaptationRuntime:
         signer: GovernanceSigner,
         signer_identity: SignerIdentity,
         raw_store: LocalRawPayloadStore,
+        synthetic_capture: bool = False,
     ) -> None:
         if not raw_store.encrypted:
             raise AutomaticRuntimeError("automatic runtime requires encrypted raw storage")
@@ -202,7 +203,22 @@ class AutomaticAdaptationRuntime:
         self._signer = signer
         self._identity = signer_identity
         self._raw_store = raw_store
+        self._synthetic_capture = synthetic_capture
         self._verify_policy(policy.effective_at)
+
+    @staticmethod
+    def _projected_artifact_ids(projection: CanonicalRuntimeProjection) -> tuple[str, ...]:
+        """Return only artifacts that contributed to the target-visible projection."""
+
+        return tuple(
+            sorted(
+                {
+                    source.record_id
+                    for clause in projection.clauses
+                    for source in clause.source_artifact_refs
+                }
+            )
+        )
 
     def learn(
         self,
@@ -620,10 +636,7 @@ class AutomaticAdaptationRuntime:
             projection_context_digest=canonical_digest(context),
             delivery_receipt_digest=canonical_digest(prepared.receipt),
             activation_event_digest=canonical_digest(activation_event),
-            active_artifact_ids=tuple(
-                item.artifact_ref.record_id
-                for item in state.release.governed_release.active_artifacts
-            ),
+            active_artifact_ids=self._projected_artifact_ids(projection),
             material_utf8_bytes=prepared.receipt.material_utf8_bytes,
             activated_at=activated_at,
         )
@@ -813,9 +826,7 @@ class AutomaticAdaptationRuntime:
             rendered_material_digest=rendered.content_digest,
             rendered_material_utf8_bytes=rendered.utf8_bytes,
             delivery_receipt_digest=canonical_digest(prepared.receipt),
-            active_artifact_ids=tuple(
-                item.artifact_ref.record_id for item in release.governed_release.active_artifacts
-            ),
+            active_artifact_ids=self._projected_artifact_ids(projection),
             update_latency_seconds=(processed_at - observation.observed_at).total_seconds(),
             automatic_actions=6,
             notice=notice,
@@ -893,8 +904,12 @@ class AutomaticAdaptationRuntime:
         processed_at: datetime,
     ) -> CapturedInteraction:
         selector = SourceSelector(
-            source_system=observation.source_system,
-            selection_method="explicit_task_ids",
+            source_system=(
+                "synthetic_fixture" if self._synthetic_capture else observation.source_system
+            ),
+            selection_method=(
+                "synthetic_fixture" if self._synthetic_capture else "explicit_task_ids"
+            ),
             source_ids=(observation.task_ref.record_id,),
         )
         expires_at = min(
@@ -935,7 +950,7 @@ class AutomaticAdaptationRuntime:
                     "source_schema_digest": observation.source_schema_digest,
                     "payload_digest": f"sha256:{stored.sha256}",
                     "captured_at": observation.observed_at.isoformat(),
-                    "synthetic": False,
+                    "synthetic": self._synthetic_capture,
                 },
                 self._signer,
             )

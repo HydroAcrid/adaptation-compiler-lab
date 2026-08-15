@@ -2152,6 +2152,7 @@ def show_codex_dogfood_gate_report(config_path: ConfigOption) -> None:
             learning_cycles=ledger.learning_cycles(),
             learning_assessments=ledger.learning_assessments(),
             learning_review_resolutions=ledger.learning_review_resolutions(),
+            learning_review_items=ledger.learning_review_items(),
             activations=ledger.activations(),
             acknowledgements=ledger.delivery_acknowledgements(),
             activation_feedback=ledger.feedback(),

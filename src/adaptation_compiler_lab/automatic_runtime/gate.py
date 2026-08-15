@@ -9,12 +9,14 @@ from pydantic import Field, model_validator
 
 from adaptation_compiler_lab.automatic_runtime.models import (
     AutomationDisposition,
+    FeedbackSignalKind,
     RuntimeActivationFeedback,
     RuntimeFeedbackOutcome,
     RuntimeLearningAssessment,
     RuntimeLearningAssessmentOutcome,
     RuntimeLearningCycleReceipt,
     RuntimeLearningReviewResolution,
+    RuntimeReviewQueueItem,
     RuntimeTargetDeliveryAcknowledgement,
     RuntimeTaskActivationReceipt,
 )
@@ -125,6 +127,7 @@ def build_codex_dogfood_gate_report(
     activation_feedback: tuple[RuntimeActivationFeedback, ...],
     generated_at: datetime,
     learning_review_resolutions: tuple[RuntimeLearningReviewResolution, ...] = (),
+    learning_review_items: tuple[RuntimeReviewQueueItem, ...] = (),
     goal_interaction_count: int = 20,
     minimum_active_dates: int = 3,
     minimum_activation_count: int = 6,
@@ -161,6 +164,23 @@ def build_codex_dogfood_gate_report(
         if resolution.cycle_id in resolution_by_cycle:
             raise ValueError("dogfood report received duplicate review resolutions")
         resolution_by_cycle[resolution.cycle_id] = resolution
+
+    review_item_by_cycle: dict[str, RuntimeReviewQueueItem] = {}
+    for item in learning_review_items:
+        cycle = cycle_by_id.get(item.cycle_id)
+        if (
+            cycle is None
+            or item.subject_id != subject_id
+            or cycle.disposition is not AutomationDisposition.REVIEW_REQUIRED
+            or cycle.detected_feedback_digest != item.detection.content_digest
+            or cycle.evaluation_receipt_digest != item.evaluation.content_digest
+        ):
+            raise ValueError("dogfood review item crossed or changed its learning cycle")
+        if item.cycle_id in review_item_by_cycle:
+            raise ValueError("dogfood report received duplicate review items")
+        review_item_by_cycle[item.cycle_id] = item
+    if learning_review_items and not set(resolution_by_cycle) <= set(review_item_by_cycle):
+        raise ValueError("dogfood review resolution lacks its exact review item")
 
     activation_by_id = {item.activation_id: item for item in activations}
     if len(activation_by_id) != len(activations):
@@ -205,6 +225,15 @@ def build_codex_dogfood_gate_report(
     review_required_count = dispositions.count(AutomationDisposition.REVIEW_REQUIRED)
     approved_resolutions = tuple(
         item for item in resolution_by_cycle.values() if item.decision.value == "approved"
+    )
+    approved_review_revocations = tuple(
+        item
+        for item in approved_resolutions
+        if (
+            item.cycle_id in review_item_by_cycle
+            and review_item_by_cycle[item.cycle_id].detection.signal_kind
+            is FeedbackSignalKind.REVOCATION
+        )
     )
     rejected_resolutions = tuple(
         item for item in resolution_by_cycle.values() if item.decision.value == "rejected"
@@ -252,9 +281,13 @@ def build_codex_dogfood_gate_report(
             item.outcome is RuntimeLearningAssessmentOutcome.MISSED for item in assessment_values
         ),
         promoted_count=(
-            dispositions.count(AutomationDisposition.PROMOTED) + len(approved_resolutions)
+            dispositions.count(AutomationDisposition.PROMOTED)
+            + len(approved_resolutions)
+            - len(approved_review_revocations)
         ),
-        revoked_count=dispositions.count(AutomationDisposition.REVOKED),
+        revoked_count=(
+            dispositions.count(AutomationDisposition.REVOKED) + len(approved_review_revocations)
+        ),
         review_required_count=review_required_count,
         resolved_review_count=len(resolution_by_cycle),
         approved_review_count=len(approved_resolutions),

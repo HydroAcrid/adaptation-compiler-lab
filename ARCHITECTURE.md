@@ -121,6 +121,20 @@ Widening, no-op refinement, refinement on rejection, and partial revocation are 
 invalid. This preserves compatibility while making approve/reject/refine/undo/feedback one coherent
 daily product loop.
 
+Milestone 6A.2K adds an accelerated conformance lane around the same architecture. The lane creates
+one isolated temporary runtime with a dedicated synthetic subject, deterministic development-only
+signing material, separate encryption key, `synthetic_fixture` selectors, and synthetic capture
+receipts. It exercises the production lifecycle and report builders, emits one raw-free typed
+report, and destroys the SQLite/raw directory before returning. No synthetic row is opened in or
+copied into the production dogfood ledger.
+
+Activation receipts bind the task projection, not the broader release. Their artifact IDs are the
+sorted union of source artifact references contributing to effective runtime clauses. This makes
+an unrelated empty projection record zero active artifacts even when scoped learning remains
+active elsewhere. Gate reporting receives exact immutable review items so an approved reviewed
+revocation is classified separately from a content promotion. Semantic corrections retain only a
+trusted host-bound exact target; the model still cannot invent or authorize that identity.
+
 The semantic detector is an optional interpretation port, not a replacement trust boundary.
 `grammar`, `shadow`, `review`, and `calibrated` modes are explicit. One fresh ephemeral Codex
 session receives only the ordered authoritative user-message batch in an empty network-denied

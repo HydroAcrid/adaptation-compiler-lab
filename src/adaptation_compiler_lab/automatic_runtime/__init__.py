@@ -44,6 +44,12 @@ from adaptation_compiler_lab.automatic_runtime.host import (
     RuntimeReviewSink,
 )
 from adaptation_compiler_lab.automatic_runtime.ledger import AutomaticRuntimeLedger
+from adaptation_compiler_lab.automatic_runtime.longitudinal_simulation import (
+    LongitudinalSimulationActivation,
+    LongitudinalSimulationChecks,
+    LongitudinalSimulationReport,
+    run_longitudinal_simulation,
+)
 from adaptation_compiler_lab.automatic_runtime.models import (
     AdaptationLayer,
     AutomaticRenderedMaterial,
@@ -142,6 +148,9 @@ __all__ = [
     "GatewaySessionStatus",
     "GatewayTurnReceipt",
     "InteractionObservation",
+    "LongitudinalSimulationActivation",
+    "LongitudinalSimulationChecks",
+    "LongitudinalSimulationReport",
     "NotificationInboxEntry",
     "PreparedRuntimeActivation",
     "PreparedRuntimeTask",
@@ -205,5 +214,6 @@ __all__ = [
     "detect_feedback",
     "infer_layer",
     "initial_runtime_state",
+    "run_longitudinal_simulation",
     "summarize_runtime",
 ]

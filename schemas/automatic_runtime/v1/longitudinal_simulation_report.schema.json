@@ -1,0 +1,623 @@
+{
+  "$defs": {
+    "CodexDogfoodGateReport": {
+      "additionalProperties": false,
+      "description": "Raw-free longitudinal measures and deterministic evidence-readiness state.",
+      "properties": {
+        "activation_count": {
+          "minimum": 0,
+          "title": "Activation Count",
+          "type": "integer"
+        },
+        "active_date_count": {
+          "minimum": 0,
+          "title": "Active Date Count",
+          "type": "integer"
+        },
+        "approved_review_count": {
+          "minimum": 0,
+          "title": "Approved Review Count",
+          "type": "integer"
+        },
+        "assessed_interaction_count": {
+          "minimum": 0,
+          "title": "Assessed Interaction Count",
+          "type": "integer"
+        },
+        "automatic_actions": {
+          "minimum": 0,
+          "title": "Automatic Actions",
+          "type": "integer"
+        },
+        "blocked_count": {
+          "minimum": 0,
+          "title": "Blocked Count",
+          "type": "integer"
+        },
+        "completed_activation_count": {
+          "minimum": 0,
+          "title": "Completed Activation Count",
+          "type": "integer"
+        },
+        "correct_activation_count": {
+          "minimum": 0,
+          "title": "Correct Activation Count",
+          "type": "integer"
+        },
+        "correct_learning_count": {
+          "minimum": 0,
+          "title": "Correct Learning Count",
+          "type": "integer"
+        },
+        "duplicate_count": {
+          "minimum": 0,
+          "title": "Duplicate Count",
+          "type": "integer"
+        },
+        "eligible_interaction_count": {
+          "minimum": 0,
+          "title": "Eligible Interaction Count",
+          "type": "integer"
+        },
+        "evidence_ready": {
+          "title": "Evidence Ready",
+          "type": "boolean"
+        },
+        "failed_activation_count": {
+          "minimum": 0,
+          "title": "Failed Activation Count",
+          "type": "integer"
+        },
+        "false_activation_count": {
+          "minimum": 0,
+          "title": "False Activation Count",
+          "type": "integer"
+        },
+        "false_learning_count": {
+          "minimum": 0,
+          "title": "False Learning Count",
+          "type": "integer"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "goal_interaction_count": {
+          "minimum": 1,
+          "title": "Goal Interaction Count",
+          "type": "integer"
+        },
+        "helped_count": {
+          "minimum": 0,
+          "title": "Helped Count",
+          "type": "integer"
+        },
+        "hurt_count": {
+          "minimum": 0,
+          "title": "Hurt Count",
+          "type": "integer"
+        },
+        "irrelevant_count": {
+          "minimum": 0,
+          "title": "Irrelevant Count",
+          "type": "integer"
+        },
+        "manual_review_touches": {
+          "minimum": 0,
+          "title": "Manual Review Touches",
+          "type": "integer"
+        },
+        "minimum_activation_count": {
+          "minimum": 1,
+          "title": "Minimum Activation Count",
+          "type": "integer"
+        },
+        "minimum_active_dates": {
+          "minimum": 1,
+          "title": "Minimum Active Dates",
+          "type": "integer"
+        },
+        "missed_activation_count": {
+          "minimum": 0,
+          "title": "Missed Activation Count",
+          "type": "integer"
+        },
+        "missed_learning_count": {
+          "minimum": 0,
+          "title": "Missed Learning Count",
+          "type": "integer"
+        },
+        "no_explicit_signal_count": {
+          "minimum": 0,
+          "title": "No Explicit Signal Count",
+          "type": "integer"
+        },
+        "pack_bytes_by_activation": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Pack Bytes By Activation",
+          "type": "array"
+        },
+        "promoted_count": {
+          "minimum": 0,
+          "title": "Promoted Count",
+          "type": "integer"
+        },
+        "rated_activation_count": {
+          "minimum": 0,
+          "title": "Rated Activation Count",
+          "type": "integer"
+        },
+        "rejected_review_count": {
+          "minimum": 0,
+          "title": "Rejected Review Count",
+          "type": "integer"
+        },
+        "remaining_interactions": {
+          "minimum": 0,
+          "title": "Remaining Interactions",
+          "type": "integer"
+        },
+        "repeated_correction_count": {
+          "minimum": 0,
+          "title": "Repeated Correction Count",
+          "type": "integer"
+        },
+        "report_version": {
+          "const": "1.1.0",
+          "default": "1.1.0",
+          "title": "Report Version",
+          "type": "string"
+        },
+        "resolved_review_count": {
+          "minimum": 0,
+          "title": "Resolved Review Count",
+          "type": "integer"
+        },
+        "review_required_count": {
+          "minimum": 0,
+          "title": "Review Required Count",
+          "type": "integer"
+        },
+        "revoked_count": {
+          "minimum": 0,
+          "title": "Revoked Count",
+          "type": "integer"
+        },
+        "subject_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "unresolved_activation_count": {
+          "minimum": 0,
+          "title": "Unresolved Activation Count",
+          "type": "integer"
+        },
+        "unresolved_review_count": {
+          "minimum": 0,
+          "title": "Unresolved Review Count",
+          "type": "integer"
+        },
+        "update_latency_seconds": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Update Latency Seconds",
+          "type": "array"
+        }
+      },
+      "required": [
+        "subject_id",
+        "generated_at",
+        "goal_interaction_count",
+        "minimum_active_dates",
+        "minimum_activation_count",
+        "eligible_interaction_count",
+        "active_date_count",
+        "assessed_interaction_count",
+        "correct_learning_count",
+        "false_learning_count",
+        "missed_learning_count",
+        "promoted_count",
+        "revoked_count",
+        "review_required_count",
+        "resolved_review_count",
+        "approved_review_count",
+        "rejected_review_count",
+        "unresolved_review_count",
+        "blocked_count",
+        "no_explicit_signal_count",
+        "duplicate_count",
+        "activation_count",
+        "completed_activation_count",
+        "failed_activation_count",
+        "unresolved_activation_count",
+        "rated_activation_count",
+        "helped_count",
+        "hurt_count",
+        "irrelevant_count",
+        "correct_activation_count",
+        "false_activation_count",
+        "missed_activation_count",
+        "repeated_correction_count",
+        "pack_bytes_by_activation",
+        "update_latency_seconds",
+        "automatic_actions",
+        "manual_review_touches",
+        "remaining_interactions",
+        "evidence_ready"
+      ],
+      "title": "CodexDogfoodGateReport",
+      "type": "object"
+    },
+    "LongitudinalSimulationActivation": {
+      "additionalProperties": false,
+      "description": "One raw-free scope and lifecycle probe over a fresh synthetic activation.",
+      "properties": {
+        "activated_aliases": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Activated Aliases",
+          "type": "array"
+        },
+        "activation_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Activation Id",
+          "type": "string"
+        },
+        "exact_scope_match": {
+          "title": "Exact Scope Match",
+          "type": "boolean"
+        },
+        "expected_aliases": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Expected Aliases",
+          "type": "array"
+        },
+        "forbidden_aliases": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Forbidden Aliases",
+          "type": "array"
+        },
+        "forbidden_learning_absent": {
+          "title": "Forbidden Learning Absent",
+          "type": "boolean"
+        },
+        "material_utf8_bytes": {
+          "minimum": 0,
+          "title": "Material Utf8 Bytes",
+          "type": "integer"
+        },
+        "outcome": {
+          "$ref": "#/$defs/RuntimeFeedbackOutcome"
+        },
+        "probe_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Probe Version",
+          "type": "string"
+        },
+        "project_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "simulated_date": {
+          "format": "date",
+          "title": "Simulated Date",
+          "type": "string"
+        },
+        "task_class": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Task Class"
+        }
+      },
+      "required": [
+        "activation_id",
+        "simulated_date",
+        "project_id",
+        "expected_aliases",
+        "activated_aliases",
+        "forbidden_aliases",
+        "material_utf8_bytes",
+        "outcome",
+        "exact_scope_match",
+        "forbidden_learning_absent"
+      ],
+      "title": "LongitudinalSimulationActivation",
+      "type": "object"
+    },
+    "LongitudinalSimulationChecks": {
+      "additionalProperties": false,
+      "description": "Frozen 6A.2C product conditions evaluated over synthetic conformance evidence.",
+      "properties": {
+        "activation_gate_complete": {
+          "title": "Activation Gate Complete",
+          "type": "boolean"
+        },
+        "activation_quality_thresholds_passed": {
+          "title": "Activation Quality Thresholds Passed",
+          "type": "boolean"
+        },
+        "all_activations_completed_and_rated": {
+          "title": "All Activations Completed And Rated",
+          "type": "boolean"
+        },
+        "all_interactions_assessed": {
+          "title": "All Interactions Assessed",
+          "type": "boolean"
+        },
+        "check_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Check Version",
+          "type": "string"
+        },
+        "ephemeral_state_destroyed": {
+          "title": "Ephemeral State Destroyed",
+          "type": "boolean"
+        },
+        "feedback_balance_passed": {
+          "title": "Feedback Balance Passed",
+          "type": "boolean"
+        },
+        "interaction_gate_complete": {
+          "title": "Interaction Gate Complete",
+          "type": "boolean"
+        },
+        "latest_pack_size_passed": {
+          "title": "Latest Pack Size Passed",
+          "type": "boolean"
+        },
+        "learning_error_thresholds_passed": {
+          "title": "Learning Error Thresholds Passed",
+          "type": "boolean"
+        },
+        "lineage_complete": {
+          "title": "Lineage Complete",
+          "type": "boolean"
+        },
+        "repeated_correction_check_passed": {
+          "title": "Repeated Correction Check Passed",
+          "type": "boolean"
+        },
+        "revoked_learning_absent": {
+          "title": "Revoked Learning Absent",
+          "type": "boolean"
+        },
+        "scope_isolation_passed": {
+          "title": "Scope Isolation Passed",
+          "type": "boolean"
+        },
+        "security_probes_passed": {
+          "title": "Security Probes Passed",
+          "type": "boolean"
+        },
+        "synthetic_capture_marking_complete": {
+          "title": "Synthetic Capture Marking Complete",
+          "type": "boolean"
+        },
+        "synthetic_date_spread_complete": {
+          "title": "Synthetic Date Spread Complete",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "interaction_gate_complete",
+        "synthetic_date_spread_complete",
+        "activation_gate_complete",
+        "all_interactions_assessed",
+        "all_activations_completed_and_rated",
+        "learning_error_thresholds_passed",
+        "activation_quality_thresholds_passed",
+        "feedback_balance_passed",
+        "repeated_correction_check_passed",
+        "scope_isolation_passed",
+        "revoked_learning_absent",
+        "latest_pack_size_passed",
+        "lineage_complete",
+        "synthetic_capture_marking_complete",
+        "security_probes_passed",
+        "ephemeral_state_destroyed"
+      ],
+      "title": "LongitudinalSimulationChecks",
+      "type": "object"
+    },
+    "RuntimeFeedbackOutcome": {
+      "enum": [
+        "helped",
+        "hurt",
+        "irrelevant"
+      ],
+      "title": "RuntimeFeedbackOutcome",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Raw-free result that can never be mistaken for genuine longitudinal evidence.",
+  "properties": {
+    "activation_count": {
+      "minimum": 0,
+      "title": "Activation Count",
+      "type": "integer"
+    },
+    "activations": {
+      "items": {
+        "$ref": "#/$defs/LongitudinalSimulationActivation"
+      },
+      "title": "Activations",
+      "type": "array"
+    },
+    "checks": {
+      "$ref": "#/$defs/LongitudinalSimulationChecks"
+    },
+    "counts_toward_ordinary_use_gate": {
+      "const": false,
+      "default": false,
+      "title": "Counts Toward Ordinary Use Gate",
+      "type": "boolean"
+    },
+    "evidence_class": {
+      "const": "synthetic_instrument_conformance",
+      "default": "synthetic_instrument_conformance",
+      "title": "Evidence Class",
+      "type": "string"
+    },
+    "external_agent_sessions": {
+      "const": 0,
+      "default": 0,
+      "title": "External Agent Sessions",
+      "type": "integer"
+    },
+    "final_active_aliases": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Final Active Aliases",
+      "type": "array"
+    },
+    "final_generation": {
+      "minimum": 0,
+      "title": "Final Generation",
+      "type": "integer"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "interaction_count": {
+      "minimum": 0,
+      "title": "Interaction Count",
+      "type": "integer"
+    },
+    "latest_pack_utf8_bytes": {
+      "minimum": 0,
+      "title": "Latest Pack Utf8 Bytes",
+      "type": "integer"
+    },
+    "maximum_pack_utf8_bytes": {
+      "minimum": 0,
+      "title": "Maximum Pack Utf8 Bytes",
+      "type": "integer"
+    },
+    "pack_bytes_by_activation": {
+      "items": {
+        "type": "integer"
+      },
+      "title": "Pack Bytes By Activation",
+      "type": "array"
+    },
+    "production_dogfood_state_accessed": {
+      "const": false,
+      "default": false,
+      "title": "Production Dogfood State Accessed",
+      "type": "boolean"
+    },
+    "provider_billed_calls": {
+      "const": 0,
+      "default": 0,
+      "title": "Provider Billed Calls",
+      "type": "integer"
+    },
+    "raw_payloads_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Payloads Exposed",
+      "type": "boolean"
+    },
+    "report_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Report Version",
+      "type": "string"
+    },
+    "sealed_external_validation_accessed": {
+      "const": false,
+      "default": false,
+      "title": "Sealed External Validation Accessed",
+      "type": "boolean"
+    },
+    "security_probe_count": {
+      "minimum": 0,
+      "title": "Security Probe Count",
+      "type": "integer"
+    },
+    "simulated_dates": {
+      "items": {
+        "format": "date",
+        "type": "string"
+      },
+      "title": "Simulated Dates",
+      "type": "array"
+    },
+    "simulated_gate": {
+      "$ref": "#/$defs/CodexDogfoodGateReport"
+    },
+    "simulated_product_gate_passed": {
+      "title": "Simulated Product Gate Passed",
+      "type": "boolean"
+    },
+    "simulation_id": {
+      "const": "temper-6a2c-accelerated-v1",
+      "default": "temper-6a2c-accelerated-v1",
+      "title": "Simulation Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "generated_at",
+    "simulated_dates",
+    "interaction_count",
+    "activation_count",
+    "security_probe_count",
+    "final_generation",
+    "final_active_aliases",
+    "pack_bytes_by_activation",
+    "latest_pack_utf8_bytes",
+    "maximum_pack_utf8_bytes",
+    "activations",
+    "simulated_gate",
+    "checks",
+    "simulated_product_gate_passed"
+  ],
+  "title": "LongitudinalSimulationReport",
+  "type": "object"
+}

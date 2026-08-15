@@ -219,6 +219,7 @@ def build_review_mode_dogfood_snapshot(
         acknowledgements=acknowledgements,
         activation_feedback=feedback,
         learning_review_resolutions=resolutions,
+        learning_review_items=ledger.learning_review_items(),
         generated_at=generated_at,
     )
     proposals = tuple(

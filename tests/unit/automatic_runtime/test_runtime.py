@@ -687,6 +687,50 @@ def test_owner_rejection_records_false_positive_without_changing_state(tmp_path:
     assert result.resolution.transition_digest is None
 
 
+def test_activation_receipt_names_only_artifacts_in_the_scoped_projection(
+    tmp_path: Path,
+) -> None:
+    runtime, policy = _runtime(tmp_path)
+    state = initial_runtime_state(policy)
+    learning = runtime.learn(
+        _observation(
+            41,
+            "Preference: keep this project handoff concise",
+            project_id="project-alpha",
+        ),
+        state=state,
+        processed_at=NOW + timedelta(minutes=42),
+    )
+    assert learning.state.release is not None
+
+    unrelated = runtime.activate(
+        activation_id="activation-unrelated-scope",
+        task_ref=TaskRecordRef(record_id="task-unrelated", record_version="1.0.0"),
+        state=learning.state,
+        context=_context(43, project_id="project-beta"),
+        target_task="Prepare the unrelated handoff.",
+        activated_at=NOW + timedelta(minutes=43),
+    )
+
+    assert unrelated.task.rendered_material.utf8_bytes == 0
+    assert unrelated.activation.material_utf8_bytes == 0
+    assert unrelated.activation.active_artifact_ids == ()
+
+
+def test_ordinary_runtime_capture_remains_explicitly_non_synthetic(tmp_path: Path) -> None:
+    runtime, policy = _runtime(tmp_path)
+    learning = runtime.learn(
+        _observation(44, "Preference: keep ordinary capture provenance exact"),
+        state=initial_runtime_state(policy),
+        processed_at=NOW + timedelta(minutes=45),
+    )
+
+    assert learning.captured is not None
+    assert learning.captured.capture.synthetic is False
+    assert learning.captured.capture.source_selector.source_system == "local_interaction_runtime"
+    assert learning.captured.capture.source_selector.selection_method == "explicit_task_ids"
+
+
 def test_review_resolution_fails_after_standing_policy_expiry(tmp_path: Path) -> None:
     runtime, policy = _runtime(tmp_path)
     state = initial_runtime_state(policy)
