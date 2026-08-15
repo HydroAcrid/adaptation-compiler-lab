@@ -1,0 +1,58 @@
+{
+  "additionalProperties": false,
+  "description": "Product-friction measures not already represented by the frozen 6A.2C gate.",
+  "properties": {
+    "activation_feedback_latency_seconds": {
+      "items": {
+        "type": "number"
+      },
+      "title": "Activation Feedback Latency Seconds",
+      "type": "array"
+    },
+    "pending_feedback_count": {
+      "minimum": 0,
+      "title": "Pending Feedback Count",
+      "type": "integer"
+    },
+    "pending_review_age_seconds": {
+      "items": {
+        "type": "number"
+      },
+      "title": "Pending Review Age Seconds",
+      "type": "array"
+    },
+    "pending_review_count": {
+      "minimum": 0,
+      "title": "Pending Review Count",
+      "type": "integer"
+    },
+    "resolved_review_count": {
+      "minimum": 0,
+      "title": "Resolved Review Count",
+      "type": "integer"
+    },
+    "review_decision_latency_seconds": {
+      "items": {
+        "type": "number"
+      },
+      "title": "Review Decision Latency Seconds",
+      "type": "array"
+    },
+    "scope_refinement_count": {
+      "minimum": 0,
+      "title": "Scope Refinement Count",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "resolved_review_count",
+    "scope_refinement_count",
+    "pending_review_count",
+    "pending_feedback_count",
+    "review_decision_latency_seconds",
+    "pending_review_age_seconds",
+    "activation_feedback_latency_seconds"
+  ],
+  "title": "ReviewModeDogfoodMetrics",
+  "type": "object"
+}

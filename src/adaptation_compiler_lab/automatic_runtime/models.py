@@ -1253,10 +1253,46 @@ class RuntimeLearningAssessment(FrozenModel):
         return canonical_digest(self)
 
 
+class RuntimeReviewScopeRefinement(FrozenModel):
+    """Owner-authored narrowing of one immutable review proposal.
+
+    The source proposal remains unchanged. The refinement binds the original queue and detection,
+    records the exact narrower scope, and names the newly evaluated detection that may be promoted.
+    """
+
+    refinement_version: Literal["1.0.0"] = "1.0.0"
+    refinement_id: Identifier
+    queue_id: Identifier
+    queue_digest: Sha256Digest
+    original_detection_digest: Sha256Digest
+    refined_detection_digest: Sha256Digest
+    original_scope: Scope
+    refined_scope: Scope
+    refined_layer: AdaptationLayer
+    refined_at: UtcDateTime
+    raw_payload_exposed: Literal[False] = False
+
+    @model_validator(mode="after")
+    def refinement_is_strictly_narrower(self) -> Self:
+        if self.refined_scope == self.original_scope:
+            raise ValueError("review scope refinement must change the proposed scope")
+        if not scope_is_within(self.refined_scope, self.original_scope):
+            raise ValueError("review scope refinement cannot widen the proposed scope")
+        if self.refined_layer is not infer_layer(self.refined_scope):
+            raise ValueError("review scope refinement layer is inconsistent")
+        if self.original_detection_digest == self.refined_detection_digest:
+            raise ValueError("review scope refinement must bind a new detection digest")
+        return self
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
 class RuntimeLearningReviewResolution(FrozenModel):
     """Signed append-only owner decision for one exact inactive learning proposal."""
 
-    resolution_version: Literal["1.0.0"] = "1.0.0"
+    resolution_version: Literal["1.0.0", "1.1.0"] = "1.0.0"
     resolution_id: Identifier
     queue_id: Identifier
     queue_digest: Sha256Digest
@@ -1273,10 +1309,22 @@ class RuntimeLearningReviewResolution(FrozenModel):
     transition_digest: Sha256Digest | None = None
     release_digest: Sha256Digest | None = None
     release_event_digest: Sha256Digest | None = None
+    scope_refinement: RuntimeReviewScopeRefinement | None = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+    )
     resolved_at: UtcDateTime
 
     @model_validator(mode="after")
     def decision_is_exact_and_append_only(self) -> Self:
+        if (self.scope_refinement is not None) != (self.resolution_version == "1.1.0"):
+            raise ValueError("runtime review refinement requires resolution version 1.1.0")
+        if self.scope_refinement is not None and (
+            self.scope_refinement.queue_id != self.queue_id
+            or self.scope_refinement.queue_digest != self.queue_digest
+            or self.scope_refinement.refined_at != self.resolved_at
+        ):
+            raise ValueError("runtime review refinement does not bind its exact resolution")
         if (
             self.review.decision is not self.decision
             or self.review.approver.kind is not ActorKind.USER
@@ -1317,6 +1365,7 @@ class RuntimeLearningReviewResolution(FrozenModel):
             self.assessment.outcome is not RuntimeLearningAssessmentOutcome.FALSE_POSITIVE
             or self.prior_state_digest != self.resulting_state_digest
             or any(item is not None for item in outputs)
+            or self.scope_refinement is not None
             or self.review_event.target_ref != f"runtime-review-queue:{self.queue_id}"
             or self.review_event.target_digest != self.queue_digest
         ):

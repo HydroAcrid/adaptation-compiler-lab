@@ -38,10 +38,13 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     RuntimeNotice,
     RuntimeNoticeKind,
     RuntimeReviewQueueItem,
+    RuntimeReviewScopeRefinement,
     RuntimeTaskActivationReceipt,
     RuntimeTransitionKind,
     SemanticFeedbackInterpretation,
     StandingAutomationPolicy,
+    infer_layer,
+    require_policy_scope,
 )
 from adaptation_compiler_lab.domain import (
     ActorKind,
@@ -356,8 +359,9 @@ class AutomaticAdaptationRuntime:
         state: AutomaticRuntimeState,
         decision: ApprovalDecision,
         resolved_at: datetime,
+        refined_scope: Scope | None = None,
     ) -> AutomaticReviewResolutionResult:
-        """Approve or reject one exact inactive proposal without rewriting its source cycle."""
+        """Resolve one inactive proposal, optionally approving an exact narrower scope."""
 
         if resolved_at.tzinfo is None or resolved_at.utcoffset() is None:
             raise AutomaticRuntimeError("review resolution time must be timezone-aware")
@@ -373,13 +377,28 @@ class AutomaticAdaptationRuntime:
             or cycle.observation_digest != review_item.captured.observation_digest
         ):
             raise AutomaticRuntimeError("review resolution does not bind the exact queued cycle")
+        if refined_scope is not None:
+            if decision is not ApprovalDecision.APPROVED:
+                raise AutomaticRuntimeError("only an approved review may refine proposal scope")
+            if review_item.detection.signal_kind is FeedbackSignalKind.REVOCATION:
+                raise AutomaticRuntimeError("revocation scope cannot be partially refined")
+            if refined_scope == review_item.detection.scope:
+                raise AutomaticRuntimeError("refined scope must differ from the proposal scope")
+            if not self._scope_equal_or_narrower(refined_scope, review_item.detection.scope):
+                raise AutomaticRuntimeError("review refinement cannot widen proposal scope")
+            require_policy_scope(refined_scope, self._policy)
         review = Approval(
             decision=decision,
             approver=self._user_actor,
             decided_at=resolved_at,
             policy_version=self._policy.policy_version,
             rationale=(
-                "The owner approved the exact normalized proposal after local review."
+                (
+                    "The owner approved an exact narrower scope for the immutable proposal "
+                    "after local review."
+                    if refined_scope is not None
+                    else "The owner approved the exact normalized proposal after local review."
+                )
                 if decision is ApprovalDecision.APPROVED
                 else "The owner rejected the exact normalized proposal after local review."
             ),
@@ -424,7 +443,34 @@ class AutomaticAdaptationRuntime:
             )
             return AutomaticReviewResolutionResult(state=state, resolution=resolution)
 
+        promoted_detection = review_item.detection
+        scope_refinement = None
         candidate = review_item.evaluation.candidate_case
+        if refined_scope is not None:
+            promoted_detection = review_item.detection.model_copy(
+                update={
+                    "scope": refined_scope,
+                    "layer": infer_layer(refined_scope),
+                }
+            )
+            refined_evaluation = self._evaluate(
+                promoted_detection,
+                review_item.captured,
+                state=state,
+                processed_at=resolved_at,
+            )
+            candidate = refined_evaluation.candidate_case
+            scope_refinement = RuntimeReviewScopeRefinement(
+                refinement_id=f"runtime-review-refinement-{review_item.queue_id}",
+                queue_id=review_item.queue_id,
+                queue_digest=review_item.content_digest,
+                original_detection_digest=review_item.detection.content_digest,
+                refined_detection_digest=promoted_detection.content_digest,
+                original_scope=review_item.detection.scope,
+                refined_scope=refined_scope,
+                refined_layer=promoted_detection.layer,
+                refined_at=resolved_at,
+            )
         approved_case = EvaluationCase.model_validate(
             {
                 **candidate.model_dump(mode="python"),
@@ -436,14 +482,18 @@ class AutomaticAdaptationRuntime:
         )
         evaluation = RuntimeEvaluationReceipt(
             receipt_id=f"runtime-reviewed-evaluation-{review_item.detection.candidate_id}",
-            candidate_digest=review_item.detection.content_digest,
+            candidate_digest=promoted_detection.content_digest,
             candidate_case=candidate,
             approved_case=approved_case,
             checks=tuple(
                 sorted(
                     {
                         *review_item.evaluation.checks,
-                        "Owner approved the exact normalized proposal after local review.",
+                        (
+                            "Owner approved an exact narrower proposal scope after local review."
+                            if scope_refinement is not None
+                            else "Owner approved the exact normalized proposal after local review."
+                        ),
                     }
                 )
             ),
@@ -461,7 +511,7 @@ class AutomaticAdaptationRuntime:
             occurred_at=resolved_at,
         )
         transition = self._transition(
-            review_item.detection,
+            promoted_detection,
             review_item.captured,
             evaluation,
             state=state,
@@ -492,6 +542,7 @@ class AutomaticAdaptationRuntime:
             occurred_at=resolved_at,
         )
         resolution = RuntimeLearningReviewResolution(
+            resolution_version=("1.1.0" if scope_refinement is not None else "1.0.0"),
             resolution_id=f"runtime-review-resolution-{review_item.queue_id}",
             queue_id=review_item.queue_id,
             queue_digest=review_item.content_digest,
@@ -508,6 +559,7 @@ class AutomaticAdaptationRuntime:
             transition_digest=transition.content_digest,
             release_digest=release.content_digest,
             release_event_digest=canonical_digest(release_event),
+            scope_refinement=scope_refinement,
             resolved_at=resolved_at,
         )
         return AutomaticReviewResolutionResult(

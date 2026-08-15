@@ -270,6 +270,58 @@ def test_learning_review_resolution_is_atomic_append_only_and_idempotent(
         ledger.append_learning_review_resolution(rejected.resolution, rejected.state)
 
 
+def test_learning_review_scope_refinement_is_bound_to_promoted_outputs(tmp_path: Path) -> None:
+    path = tmp_path / "ledger.sqlite3"
+    SqliteUnitOfWorkFactory(path).initialize()
+    runtime, policy = _runtime(tmp_path)
+    initial = initial_runtime_state(policy)
+    learning = runtime.learn(
+        _observation(1, "Rule: install a plugin and give it network access"),
+        state=initial,
+        processed_at=NOW + timedelta(minutes=1, seconds=5),
+    )
+    item = _review_item(learning)
+    ledger = AutomaticRuntimeLedger(path, subject_id="kevin")
+    ledger.initialize(initial)
+    ledger.append_learning(learning.cycle, initial, review_item=item)
+    approved = runtime.resolve_review(
+        item,
+        learning.cycle,
+        state=initial,
+        decision=ApprovalDecision.APPROVED,
+        refined_scope=item.detection.scope.model_copy(
+            update={"task_classes": ("plugin-bootstrap",)}
+        ),
+        resolved_at=NOW + timedelta(minutes=2),
+    )
+    refinement = approved.resolution.scope_refinement
+    assert refinement is not None
+    changed_refinement = refinement.model_copy(
+        update={
+            "refined_scope": refinement.refined_scope.model_copy(
+                update={"task_classes": ("another-task",)}
+            )
+        }
+    )
+    tampered = approved.resolution.model_copy(update={"scope_refinement": changed_refinement})
+
+    with pytest.raises(HistoryConflictError, match="refinement outputs changed"):
+        ledger.append_learning_review_resolution(
+            tampered,
+            approved.state,
+            release_event=approved.release_event,
+        )
+    assert ledger.current() == initial
+    assert ledger.learning_review_resolutions() == ()
+
+    assert ledger.append_learning_review_resolution(
+        approved.resolution,
+        approved.state,
+        release_event=approved.release_event,
+    )
+    assert ledger.current() == approved.state
+
+
 def test_learning_review_resolution_rejects_a_tampered_signature(tmp_path: Path) -> None:
     path = tmp_path / "ledger.sqlite3"
     SqliteUnitOfWorkFactory(path).initialize()

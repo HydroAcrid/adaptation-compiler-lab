@@ -73,6 +73,18 @@ correction, and multi-intent safety class met its perfect gate. Two indexed blin
 disabled and ordinary-use dogfood remains review-first. See
 [`MILESTONE_6A2I_STRUCTURED_SEMANTIC_ROUTING.md`](MILESTONE_6A2I_STRUCTURED_SEMANTIC_ROUTING.md).
 
+Milestone 6A.2J turns those governed primitives into one review-mode product loop under the
+internal working name **Temper**. `runtime daily` now presents one deterministic raw-free snapshot
+of proposed adaptations, exact evidence/consent/capture lineage, recent changes, completed
+activations awaiting helped/hurt/irrelevant feedback, watcher/credential health, review friction,
+and the unchanged longitudinal gate. Owners may approve, reject, or approve a strictly narrower
+task/environment/activation/exclusion scope. Narrowing creates a typed v1.1 signed-decision binding
+and a newly evaluated artifact without editing the original v1.0 proposal; widening, no-op
+refinement, rejected refinement, and partial revocation fail closed. Automatic promotion remains
+disabled. “Temper” does not rename repository, package, or schema identities pending name
+clearance. See
+[`MILESTONE_6A2J_REVIEW_MODE_PRODUCT_DOGFOOD.md`](MILESTONE_6A2J_REVIEW_MODE_PRODUCT_DOGFOOD.md).
+
 Milestones 6A.3–6A.5 now provide positive, complementary comparisons against the strong static
 profile. Milestone 6A.3 showed lifecycle-aware compilation winning five of six fresh staged task
 pairs with one tie. Milestone 6A.4 replicated breadth across the four approved behavior families
@@ -208,6 +220,9 @@ worked; its current target-visible projection did not beat an excellent profile.
   lifecycle compilation, permanent/context layer ownership, exact revocation including zero-byte
   removal, compact task delivery, notifications, append-only state/cycle/outcome feedback, and
   longitudinal activation/size/latency/maintenance metrics.
+- A cohesive review-mode daily snapshot with compact raw-free proposal cards, exact lineage,
+  append-only approve/reject/strict-scope-refine decisions, pending activation feedback, health,
+  friction, and longitudinal gate measures. `Temper` is an internal working display name only.
 - A pinned Codex 0.146.0 pickup and fresh-session target integration that requires saved ChatGPT
   authentication, admits only post-cutoff user-authored text from allowlisted completed interactive
   tasks, checkpoints hashed prefixes, separates learning from later activation, validates the

@@ -335,6 +335,16 @@ class AutomaticRuntimeLedger:
                 ):
                     connection.rollback()
                     raise HistoryConflictError("approved runtime review outputs changed")
+                refinement = resolution.scope_refinement
+                if refinement is not None and (
+                    refinement.original_detection_digest != item.detection.content_digest
+                    or refinement.refined_detection_digest != transition.evaluation.candidate_digest
+                    or transition.instruction is None
+                    or transition.instruction.scope != refinement.refined_scope
+                    or transition.source_layer is not refinement.refined_layer
+                ):
+                    connection.rollback()
+                    raise HistoryConflictError("runtime review scope refinement outputs changed")
                 try:
                     verify_signed_governance(
                         release_event,

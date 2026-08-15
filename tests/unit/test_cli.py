@@ -10,6 +10,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from typing import ClassVar
 
 import pytest
@@ -194,12 +195,149 @@ def test_runtime_help_exposes_explicit_review_decision() -> None:
     result = runner.invoke(app, ["runtime", "--help"])
 
     assert result.exit_code == 0
+    assert "daily" in result.output
     assert "review-decide" in result.output
 
     decision_help = runner.invoke(app, ["runtime", "review-decide", "--help"])
 
     assert decision_help.exit_code == 0
     assert "--confirm-future-use" in decision_help.output
+    assert "--refine-task-class" in decision_help.output
+    assert "--refine-environment-id" in decision_help.output
+
+    daily_help = runner.invoke(app, ["runtime", "daily", "--help"])
+
+    assert daily_help.exit_code == 0
+    assert "--poll-now" in daily_help.output
+
+
+def test_runtime_review_scope_refinement_is_additive_and_cannot_widen() -> None:
+    scope = Scope(
+        subject_ids=("kevin",),
+        project_ids=("green-meadow",),
+        target_families=("codex",),
+        activation_conditions=("coding",),
+    )
+
+    refined = dogfood_cli._review_refined_scope(
+        scope,
+        task_classes=["debugging"],
+        environment_ids=None,
+        activation_conditions=["python"],
+        exclusions=["release"],
+    )
+
+    assert refined is not None
+    assert refined.task_classes == ("debugging",)
+    assert refined.activation_conditions == ("coding", "python")
+    assert refined.exclusions == ("release",)
+    with pytest.raises(AutomaticRuntimeError, match="cannot widen"):
+        dogfood_cli._review_refined_scope(
+            scope.model_copy(update={"task_classes": ("debugging",)}),
+            task_classes=["research"],
+            environment_ids=None,
+            activation_conditions=None,
+            exclusions=None,
+        )
+
+
+def test_runtime_review_decide_and_daily_commands_form_one_raw_free_loop(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from adaptation_compiler_lab.automatic_runtime.ledger import AutomaticRuntimeLedger
+    from adaptation_compiler_lab.automatic_runtime.models import FeedbackDetectorMode
+    from adaptation_compiler_lab.persistence.sqlite import SqliteUnitOfWorkFactory
+    from tests.unit.automatic_runtime import test_runtime
+
+    runtime, policy = test_runtime._runtime(tmp_path)
+    initial = initial_runtime_state(policy)
+    learning = runtime.learn(
+        test_runtime._observation(
+            1,
+            "Rule: install a plugin and give it network access",
+        ),
+        state=initial,
+        processed_at=test_runtime.NOW + timedelta(minutes=1, seconds=5),
+    )
+    item = test_runtime._review_item(learning)
+    database = tmp_path / "runtime.sqlite3"
+    SqliteUnitOfWorkFactory(database).initialize()
+    ledger = AutomaticRuntimeLedger(database, subject_id="kevin")
+    ledger.initialize(initial)
+    ledger.append_learning(learning.cycle, initial, review_item=item)
+    config_path = tmp_path / "config.json"
+    config_path.write_text("{}", encoding="utf-8")
+    config = SimpleNamespace(
+        subject_id="kevin",
+        state_root=tmp_path,
+        feedback_detector_mode=FeedbackDetectorMode.REVIEW,
+        policy=policy,
+    )
+
+    class EnrolledCredentials:
+        def __init__(self, _state_root: Path) -> None:
+            pass
+
+        @staticmethod
+        def status() -> object:
+            return object()
+
+    monkeypatch.setattr(dogfood_cli, "_load_config", lambda _path: config)
+    monkeypatch.setattr(dogfood_cli, "_ledger", lambda _config: ledger)
+    monkeypatch.setattr(dogfood_cli, "_runtime", lambda _config: runtime)
+    monkeypatch.setattr(dogfood_cli, "DpapiCredentialStore", EnrolledCredentials)
+    monkeypatch.setattr(dogfood_cli, "_watcher_is_active", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(
+        dogfood_cli,
+        "_now",
+        lambda: test_runtime.NOW + timedelta(minutes=2),
+    )
+
+    before = runner.invoke(
+        app,
+        ["runtime", "daily", "--config", str(config_path)],
+    )
+
+    assert before.exit_code == 0, before.output
+    before_payload = json.loads(before.output)
+    assert before_payload["snapshot"]["working_product_name"] == "Temper"
+    assert before_payload["snapshot"]["metrics"]["pending_review_count"] == 1
+    assert "Rule:" not in before.output
+    decision = runner.invoke(
+        app,
+        [
+            "runtime",
+            "review-decide",
+            item.queue_id,
+            "approved",
+            "--proposal-digest",
+            str(item.detection.content_digest),
+            "--confirm-future-use",
+            "--refine-task-class",
+            "plugin-bootstrap",
+            "--config",
+            str(config_path),
+        ],
+    )
+
+    assert decision.exit_code == 0, decision.output
+    decision_payload = json.loads(decision.output)
+    assert decision_payload["scope_refinement"]["refined_scope"]["task_classes"] == [
+        "plugin-bootstrap"
+    ]
+    current = ledger.current()
+    assert current is not None
+    assert current.generation == 1
+    after = runner.invoke(
+        app,
+        ["runtime", "daily", "--config", str(config_path)],
+    )
+
+    assert after.exit_code == 0, after.output
+    after_payload = json.loads(after.output)
+    assert after_payload["snapshot"]["metrics"]["pending_review_count"] == 0
+    assert after_payload["snapshot"]["metrics"]["scope_refinement_count"] == 1
 
 
 def test_runtime_review_approval_requires_explicit_future_use_confirmation() -> None:

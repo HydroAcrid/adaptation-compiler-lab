@@ -1,0 +1,1027 @@
+{
+  "$defs": {
+    "ActivationFeedbackCard": {
+      "additionalProperties": false,
+      "description": "One completed activation waiting for helped/hurt/irrelevant owner feedback.",
+      "properties": {
+        "activated_at": {
+          "format": "date-time",
+          "title": "Activated At",
+          "type": "string"
+        },
+        "activation_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Activation Id",
+          "type": "string"
+        },
+        "active_artifact_ids": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Active Artifact Ids",
+          "type": "array"
+        },
+        "available_actions": {
+          "default": [
+            "helped",
+            "hurt",
+            "irrelevant"
+          ],
+          "items": {
+            "enum": [
+              "helped",
+              "hurt",
+              "irrelevant"
+            ],
+            "type": "string"
+          },
+          "title": "Available Actions",
+          "type": "array"
+        },
+        "card_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Card Version",
+          "type": "string"
+        },
+        "completed_at": {
+          "format": "date-time",
+          "title": "Completed At",
+          "type": "string"
+        },
+        "delivery_receipt_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Delivery Receipt Digest",
+          "type": "string"
+        },
+        "projection_utf8_bytes": {
+          "minimum": 0,
+          "title": "Projection Utf8 Bytes",
+          "type": "integer"
+        },
+        "raw_payload_exposed": {
+          "const": false,
+          "default": false,
+          "title": "Raw Payload Exposed",
+          "type": "boolean"
+        },
+        "task_ref_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Task Ref Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "activation_id",
+        "task_ref_id",
+        "delivery_receipt_digest",
+        "active_artifact_ids",
+        "projection_utf8_bytes",
+        "activated_at",
+        "completed_at"
+      ],
+      "title": "ActivationFeedbackCard",
+      "type": "object"
+    },
+    "AdaptationLayer": {
+      "description": "Separately governed inputs combined by the future product runtime.",
+      "enum": [
+        "permanent_profile",
+        "current_context",
+        "temporary_capability_preset",
+        "personal_preset_overlay"
+      ],
+      "title": "AdaptationLayer",
+      "type": "string"
+    },
+    "ArtifactRoute": {
+      "enum": [
+        "evaluation_only",
+        "memory",
+        "preference",
+        "example",
+        "procedure",
+        "prompt_rule",
+        "skill",
+        "tool_recommendation",
+        "inactive_tool_candidate",
+        "inactive_adapter_dataset_candidate"
+      ],
+      "title": "ArtifactRoute",
+      "type": "string"
+    },
+    "CaptureReceiptRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "governance_type": {
+          "const": "capture_receipt",
+          "default": "capture_receipt",
+          "title": "Governance Type",
+          "type": "string"
+        },
+        "object_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "content_digest"
+      ],
+      "title": "CaptureReceiptRef",
+      "type": "object"
+    },
+    "CodexDogfoodGateReport": {
+      "additionalProperties": false,
+      "description": "Raw-free longitudinal measures and deterministic evidence-readiness state.",
+      "properties": {
+        "activation_count": {
+          "minimum": 0,
+          "title": "Activation Count",
+          "type": "integer"
+        },
+        "active_date_count": {
+          "minimum": 0,
+          "title": "Active Date Count",
+          "type": "integer"
+        },
+        "approved_review_count": {
+          "minimum": 0,
+          "title": "Approved Review Count",
+          "type": "integer"
+        },
+        "assessed_interaction_count": {
+          "minimum": 0,
+          "title": "Assessed Interaction Count",
+          "type": "integer"
+        },
+        "automatic_actions": {
+          "minimum": 0,
+          "title": "Automatic Actions",
+          "type": "integer"
+        },
+        "blocked_count": {
+          "minimum": 0,
+          "title": "Blocked Count",
+          "type": "integer"
+        },
+        "completed_activation_count": {
+          "minimum": 0,
+          "title": "Completed Activation Count",
+          "type": "integer"
+        },
+        "correct_activation_count": {
+          "minimum": 0,
+          "title": "Correct Activation Count",
+          "type": "integer"
+        },
+        "correct_learning_count": {
+          "minimum": 0,
+          "title": "Correct Learning Count",
+          "type": "integer"
+        },
+        "duplicate_count": {
+          "minimum": 0,
+          "title": "Duplicate Count",
+          "type": "integer"
+        },
+        "eligible_interaction_count": {
+          "minimum": 0,
+          "title": "Eligible Interaction Count",
+          "type": "integer"
+        },
+        "evidence_ready": {
+          "title": "Evidence Ready",
+          "type": "boolean"
+        },
+        "failed_activation_count": {
+          "minimum": 0,
+          "title": "Failed Activation Count",
+          "type": "integer"
+        },
+        "false_activation_count": {
+          "minimum": 0,
+          "title": "False Activation Count",
+          "type": "integer"
+        },
+        "false_learning_count": {
+          "minimum": 0,
+          "title": "False Learning Count",
+          "type": "integer"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "goal_interaction_count": {
+          "minimum": 1,
+          "title": "Goal Interaction Count",
+          "type": "integer"
+        },
+        "helped_count": {
+          "minimum": 0,
+          "title": "Helped Count",
+          "type": "integer"
+        },
+        "hurt_count": {
+          "minimum": 0,
+          "title": "Hurt Count",
+          "type": "integer"
+        },
+        "irrelevant_count": {
+          "minimum": 0,
+          "title": "Irrelevant Count",
+          "type": "integer"
+        },
+        "manual_review_touches": {
+          "minimum": 0,
+          "title": "Manual Review Touches",
+          "type": "integer"
+        },
+        "minimum_activation_count": {
+          "minimum": 1,
+          "title": "Minimum Activation Count",
+          "type": "integer"
+        },
+        "minimum_active_dates": {
+          "minimum": 1,
+          "title": "Minimum Active Dates",
+          "type": "integer"
+        },
+        "missed_activation_count": {
+          "minimum": 0,
+          "title": "Missed Activation Count",
+          "type": "integer"
+        },
+        "missed_learning_count": {
+          "minimum": 0,
+          "title": "Missed Learning Count",
+          "type": "integer"
+        },
+        "no_explicit_signal_count": {
+          "minimum": 0,
+          "title": "No Explicit Signal Count",
+          "type": "integer"
+        },
+        "pack_bytes_by_activation": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Pack Bytes By Activation",
+          "type": "array"
+        },
+        "promoted_count": {
+          "minimum": 0,
+          "title": "Promoted Count",
+          "type": "integer"
+        },
+        "rated_activation_count": {
+          "minimum": 0,
+          "title": "Rated Activation Count",
+          "type": "integer"
+        },
+        "rejected_review_count": {
+          "minimum": 0,
+          "title": "Rejected Review Count",
+          "type": "integer"
+        },
+        "remaining_interactions": {
+          "minimum": 0,
+          "title": "Remaining Interactions",
+          "type": "integer"
+        },
+        "repeated_correction_count": {
+          "minimum": 0,
+          "title": "Repeated Correction Count",
+          "type": "integer"
+        },
+        "report_version": {
+          "const": "1.1.0",
+          "default": "1.1.0",
+          "title": "Report Version",
+          "type": "string"
+        },
+        "resolved_review_count": {
+          "minimum": 0,
+          "title": "Resolved Review Count",
+          "type": "integer"
+        },
+        "review_required_count": {
+          "minimum": 0,
+          "title": "Review Required Count",
+          "type": "integer"
+        },
+        "revoked_count": {
+          "minimum": 0,
+          "title": "Revoked Count",
+          "type": "integer"
+        },
+        "subject_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "unresolved_activation_count": {
+          "minimum": 0,
+          "title": "Unresolved Activation Count",
+          "type": "integer"
+        },
+        "unresolved_review_count": {
+          "minimum": 0,
+          "title": "Unresolved Review Count",
+          "type": "integer"
+        },
+        "update_latency_seconds": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Update Latency Seconds",
+          "type": "array"
+        }
+      },
+      "required": [
+        "subject_id",
+        "generated_at",
+        "goal_interaction_count",
+        "minimum_active_dates",
+        "minimum_activation_count",
+        "eligible_interaction_count",
+        "active_date_count",
+        "assessed_interaction_count",
+        "correct_learning_count",
+        "false_learning_count",
+        "missed_learning_count",
+        "promoted_count",
+        "revoked_count",
+        "review_required_count",
+        "resolved_review_count",
+        "approved_review_count",
+        "rejected_review_count",
+        "unresolved_review_count",
+        "blocked_count",
+        "no_explicit_signal_count",
+        "duplicate_count",
+        "activation_count",
+        "completed_activation_count",
+        "failed_activation_count",
+        "unresolved_activation_count",
+        "rated_activation_count",
+        "helped_count",
+        "hurt_count",
+        "irrelevant_count",
+        "correct_activation_count",
+        "false_activation_count",
+        "missed_activation_count",
+        "repeated_correction_count",
+        "pack_bytes_by_activation",
+        "update_latency_seconds",
+        "automatic_actions",
+        "manual_review_touches",
+        "remaining_interactions",
+        "evidence_ready"
+      ],
+      "title": "CodexDogfoodGateReport",
+      "type": "object"
+    },
+    "ConsentReceiptRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "governance_type": {
+          "const": "consent_receipt",
+          "default": "consent_receipt",
+          "title": "Governance Type",
+          "type": "string"
+        },
+        "object_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "content_digest"
+      ],
+      "title": "ConsentReceiptRef",
+      "type": "object"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "evidence",
+          "default": "evidence",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "FeedbackDetectorMode": {
+      "description": "Serving mode for the semantic feedback interpreter.",
+      "enum": [
+        "grammar",
+        "shadow",
+        "review",
+        "calibrated"
+      ],
+      "title": "FeedbackDetectorMode",
+      "type": "string"
+    },
+    "FeedbackSignalKind": {
+      "description": "User signals that may become governed adaptation candidates.",
+      "enum": [
+        "memory",
+        "preference",
+        "procedure",
+        "prompt_rule",
+        "positive_example",
+        "correction",
+        "revocation"
+      ],
+      "title": "FeedbackSignalKind",
+      "type": "string"
+    },
+    "ReviewModeDogfoodMetrics": {
+      "additionalProperties": false,
+      "description": "Product-friction measures not already represented by the frozen 6A.2C gate.",
+      "properties": {
+        "activation_feedback_latency_seconds": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Activation Feedback Latency Seconds",
+          "type": "array"
+        },
+        "pending_feedback_count": {
+          "minimum": 0,
+          "title": "Pending Feedback Count",
+          "type": "integer"
+        },
+        "pending_review_age_seconds": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Pending Review Age Seconds",
+          "type": "array"
+        },
+        "pending_review_count": {
+          "minimum": 0,
+          "title": "Pending Review Count",
+          "type": "integer"
+        },
+        "resolved_review_count": {
+          "minimum": 0,
+          "title": "Resolved Review Count",
+          "type": "integer"
+        },
+        "review_decision_latency_seconds": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Review Decision Latency Seconds",
+          "type": "array"
+        },
+        "scope_refinement_count": {
+          "minimum": 0,
+          "title": "Scope Refinement Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "resolved_review_count",
+        "scope_refinement_count",
+        "pending_review_count",
+        "pending_feedback_count",
+        "review_decision_latency_seconds",
+        "pending_review_age_seconds",
+        "activation_feedback_latency_seconds"
+      ],
+      "title": "ReviewModeDogfoodMetrics",
+      "type": "object"
+    },
+    "ReviewProposalCard": {
+      "additionalProperties": false,
+      "description": "Compact proposal and exact lineage shown to the owner, never supporting raw text.",
+      "properties": {
+        "affected_artifact_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Affected Artifact Id"
+        },
+        "available_actions": {
+          "items": {
+            "enum": [
+              "approve",
+              "reject",
+              "refine_scope"
+            ],
+            "type": "string"
+          },
+          "title": "Available Actions",
+          "type": "array"
+        },
+        "behavior": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Behavior"
+        },
+        "capture_ref": {
+          "$ref": "#/$defs/CaptureReceiptRef"
+        },
+        "card_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Card Version",
+          "type": "string"
+        },
+        "consent_ref": {
+          "$ref": "#/$defs/ConsentReceiptRef"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "cycle_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Cycle Id",
+          "type": "string"
+        },
+        "evidence_ref": {
+          "$ref": "#/$defs/EvidenceRef"
+        },
+        "layer": {
+          "$ref": "#/$defs/AdaptationLayer"
+        },
+        "proposal_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Proposal Digest",
+          "type": "string"
+        },
+        "queue_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Queue Id",
+          "type": "string"
+        },
+        "raw_payload_exposed": {
+          "const": false,
+          "default": false,
+          "title": "Raw Payload Exposed",
+          "type": "boolean"
+        },
+        "reasons": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "route": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArtifactRoute"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "signal_kind": {
+          "$ref": "#/$defs/FeedbackSignalKind"
+        }
+      },
+      "required": [
+        "queue_id",
+        "cycle_id",
+        "proposal_digest",
+        "signal_kind",
+        "layer",
+        "scope",
+        "reasons",
+        "evidence_ref",
+        "consent_ref",
+        "capture_ref",
+        "available_actions",
+        "created_at"
+      ],
+      "title": "ReviewProposalCard",
+      "type": "object"
+    },
+    "RuntimeNotice": {
+      "additionalProperties": false,
+      "description": "Small user-visible notification with an exact undo target where applicable.",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/RuntimeNoticeKind"
+        },
+        "notice_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Notice Id",
+          "type": "string"
+        },
+        "summary": {
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "transition_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transition Id"
+        },
+        "undo_artifact_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Undo Artifact Id"
+        }
+      },
+      "required": [
+        "notice_id",
+        "kind",
+        "summary",
+        "created_at"
+      ],
+      "title": "RuntimeNotice",
+      "type": "object"
+    },
+    "RuntimeNoticeKind": {
+      "enum": [
+        "learned",
+        "updated",
+        "removed",
+        "needs_review",
+        "blocked",
+        "ignored",
+        "unchanged"
+      ],
+      "title": "RuntimeNoticeKind",
+      "type": "string"
+    },
+    "Scope": {
+      "additionalProperties": false,
+      "description": "Machine-comparable applicability bounds.\n\nEmpty optional dimensions mean unconstrained. Subjects are never unconstrained in this\nsingle-user prototype. A narrower scope may restrict a dimension, add exclusions or\nactivation conditions, and shrink the validity window.",
+      "properties": {
+        "activation_conditions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Activation Conditions",
+          "type": "array"
+        },
+        "environment_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Environment Ids",
+          "type": "array"
+        },
+        "exclusions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Exclusions",
+          "type": "array"
+        },
+        "project_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Project Ids",
+          "type": "array"
+        },
+        "repository_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Repository Ids",
+          "type": "array"
+        },
+        "subject_ids": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Subject Ids",
+          "type": "array"
+        },
+        "target_families": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Target Families",
+          "type": "array"
+        },
+        "task_classes": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Task Classes",
+          "type": "array"
+        },
+        "valid_from": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid From"
+        },
+        "valid_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid Until"
+        },
+        "workspace_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Workspace Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "subject_ids"
+      ],
+      "title": "Scope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Single actionable daily view over the governed automatic-runtime ledgers.",
+  "properties": {
+    "activation_feedback": {
+      "items": {
+        "$ref": "#/$defs/ActivationFeedbackCard"
+      },
+      "title": "Activation Feedback",
+      "type": "array"
+    },
+    "active_artifact_count": {
+      "minimum": 0,
+      "title": "Active Artifact Count",
+      "type": "integer"
+    },
+    "automatic_promotion_enabled": {
+      "const": false,
+      "default": false,
+      "title": "Automatic Promotion Enabled",
+      "type": "boolean"
+    },
+    "credential_enrolled": {
+      "title": "Credential Enrolled",
+      "type": "boolean"
+    },
+    "detector_mode": {
+      "$ref": "#/$defs/FeedbackDetectorMode"
+    },
+    "gate": {
+      "$ref": "#/$defs/CodexDogfoodGateReport"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "generation": {
+      "minimum": 0,
+      "title": "Generation",
+      "type": "integer"
+    },
+    "metrics": {
+      "$ref": "#/$defs/ReviewModeDogfoodMetrics"
+    },
+    "naming_status": {
+      "const": "internal_working_name",
+      "default": "internal_working_name",
+      "title": "Naming Status",
+      "type": "string"
+    },
+    "next_actions": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Next Actions",
+      "type": "array"
+    },
+    "proposals": {
+      "items": {
+        "$ref": "#/$defs/ReviewProposalCard"
+      },
+      "title": "Proposals",
+      "type": "array"
+    },
+    "raw_payloads_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Payloads Exposed",
+      "type": "boolean"
+    },
+    "recent_notices": {
+      "items": {
+        "$ref": "#/$defs/RuntimeNotice"
+      },
+      "title": "Recent Notices",
+      "type": "array"
+    },
+    "snapshot_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Snapshot Version",
+      "type": "string"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    },
+    "watcher_active": {
+      "title": "Watcher Active",
+      "type": "boolean"
+    },
+    "working_product_name": {
+      "const": "Temper",
+      "default": "Temper",
+      "title": "Working Product Name",
+      "type": "string"
+    }
+  },
+  "required": [
+    "subject_id",
+    "generated_at",
+    "detector_mode",
+    "credential_enrolled",
+    "watcher_active",
+    "generation",
+    "active_artifact_count",
+    "proposals",
+    "activation_feedback",
+    "recent_notices",
+    "metrics",
+    "gate",
+    "next_actions"
+  ],
+  "title": "ReviewModeDogfoodSnapshot",
+  "type": "object"
+}
