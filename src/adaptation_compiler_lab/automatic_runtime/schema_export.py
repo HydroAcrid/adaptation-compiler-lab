@@ -26,6 +26,11 @@ from adaptation_compiler_lab.automatic_runtime.gateway_models import (
     WorkspaceFileChange,
     WorkspaceLease,
 )
+from adaptation_compiler_lab.automatic_runtime.longitudinal_simulation import (
+    LongitudinalSimulationActivation,
+    LongitudinalSimulationChecks,
+    LongitudinalSimulationReport,
+)
 from adaptation_compiler_lab.automatic_runtime.models import (
     AutomaticRenderedMaterial,
     AutomaticRuntimeMetrics,
@@ -97,6 +102,9 @@ _MODELS: dict[str, type[BaseModel]] = {
     "gateway_session": GatewaySession,
     "gateway_instrument_metrics": GatewayInstrumentMetrics,
     "gateway_turn_receipt": GatewayTurnReceipt,
+    "longitudinal_simulation_activation": LongitudinalSimulationActivation,
+    "longitudinal_simulation_checks": LongitudinalSimulationChecks,
+    "longitudinal_simulation_report": LongitudinalSimulationReport,
     "notification_inbox_entry": NotificationInboxEntry,
     "runtime_cycle_receipt": RuntimeCycleReceipt,
     "runtime_delivery_receipt": RuntimeDeliveryReceipt,

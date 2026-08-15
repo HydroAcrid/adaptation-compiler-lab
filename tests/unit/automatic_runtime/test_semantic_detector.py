@@ -134,6 +134,46 @@ def test_natural_preference_is_reviewed_then_calibrated_for_promotion(
     )
 
 
+def test_semantic_correction_retains_exact_host_bound_artifact_target(tmp_path: Path) -> None:
+    text = "Actually, use a short outcome summary before details."
+    observation = _observation(
+        1,
+        text,
+        affected_artifact_id="runtime-artifact-1",
+    )
+    interpretation = SemanticFeedbackInterpretation(
+        observation_id=observation.observation_id,
+        observation_digest=observation.content_digest,
+        signals=(
+            SemanticFeedbackSignal(
+                signal_kind=FeedbackSignalKind.CORRECTION,
+                normalized_behavior="Lead with a short outcome summary before details.",
+                requested_route=ArtifactRoute.PREFERENCE,
+                supporting_quote=text,
+                support_start=0,
+                support_end=len(text),
+                durability=SemanticSignalDurability.DURABLE,
+                clarity=SemanticSignalClarity.CLEAR,
+                scope_hint=SemanticScopeHint.PERMANENT_PROFILE,
+            ),
+        ),
+        receipt=_receipt(tmp_path),
+    )
+    _runtime_instance, policy = _runtime(tmp_path)
+
+    detection = detect_feedback(
+        observation,
+        policy,
+        initial_runtime_state(policy),
+        mode=FeedbackDetectorMode.REVIEW,
+        semantic_interpretation=interpretation,
+    )
+
+    assert detection.disposition is AutomationDisposition.REVIEW_REQUIRED
+    assert detection.signal_kind is FeedbackSignalKind.CORRECTION
+    assert detection.affected_artifact_id == "runtime-artifact-1"
+
+
 def test_task_only_semantic_signal_is_not_durable_learning(tmp_path: Path) -> None:
     text = "For this one file, rename x to request_count."
     observation = _observation(1, text)

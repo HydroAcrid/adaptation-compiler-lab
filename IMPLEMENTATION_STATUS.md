@@ -31,6 +31,26 @@ proved proposal-to-refinement-to-daily-snapshot flow without touching production
 the complete suite passes 859 tests with two platform skips. Genuine longitudinal product evidence
 still must accrue prospectively under the frozen 6A.2C criteria.
 
+Milestone 6A.2K is engineering-complete. A deterministic isolated simulation now drives the real
+encrypted capture, signed review, append-only ledger, compiler, scoped projection, activation,
+acknowledgement, feedback, and gate-report path through 20 interactions on three synthetic dates
+and six later activations. The synthetic product gate passed: 18 correct learning assessments,
+one false positive, one intentional miss, five content promotions, two revocations, six exact
+activation sets, zero false or missed activation, three helped/one hurt/two irrelevant ratings,
+zero repeated corrections, and projection sizes `0/190/209/302/227/0` bytes.
+
+The simulation repaired three real defects: receipts now identify only artifacts contributing to
+the task projection; reviewed revocations count as revocations rather than promotions; and
+semantic corrections retain the exact host-bound artifact target. All simulated promoted captures
+carry an exact synthetic selector and `synthetic=true`. Intermediate SQLite, encrypted raw bytes,
+and keys are destroyed. The raw-free report declares `counts_toward_ordinary_use_gate=false`; this
+does not complete or weaken the genuine 6A.2C gate.
+
+Current verification is green: locked dependency sync, 645-file formatting, Ruff, strict mypy
+over 312 source files, 864 tests passed with two expected platform skips, source and wheel builds,
+12 schema/migration checks, deterministic report reproduction, and zero credential, private-path,
+consented-task-ID, or raw-report scan findings across 25 changed files.
+
 Permanent-profile and current-context ownership is implemented. Capability-preset and personal
 overlay references are typed and composition-checked, but no preset is imported or active. The
 runtime correctly emits a zero-byte projection when no adaptation applies or the final rule is

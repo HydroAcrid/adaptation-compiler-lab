@@ -227,5 +227,12 @@ profile-review sessions, 12 fresh `gpt-5.6-luna` target sessions, and one isolat
 `gpt-5.6-sol` general-quality judge. Automated correctness is primary. The isolated judge is
 secondary, condition-blind, and cannot replace or rewrite objective results.
 
+An accelerated longitudinal simulation may exercise the complete readiness shape for instrument
+conformance, but it is not part of the public comparison or genuine ordinary-use evidence. It must
+use an isolated synthetic subject and capture selector, separate keys and temporary storage, no
+external agent session, a raw-free report, and teardown. Its report must declare that it does not
+count toward 6A.2C. Simulated dates, decisions, outcomes, and activations cannot satisfy or relax
+the real gate.
+
 The registration, role packets, six public fixtures, and independent scorers are frozen before
 execution. No Codex comparison session has run.

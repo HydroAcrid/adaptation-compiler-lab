@@ -1,0 +1,96 @@
+{
+  "additionalProperties": false,
+  "description": "Frozen 6A.2C product conditions evaluated over synthetic conformance evidence.",
+  "properties": {
+    "activation_gate_complete": {
+      "title": "Activation Gate Complete",
+      "type": "boolean"
+    },
+    "activation_quality_thresholds_passed": {
+      "title": "Activation Quality Thresholds Passed",
+      "type": "boolean"
+    },
+    "all_activations_completed_and_rated": {
+      "title": "All Activations Completed And Rated",
+      "type": "boolean"
+    },
+    "all_interactions_assessed": {
+      "title": "All Interactions Assessed",
+      "type": "boolean"
+    },
+    "check_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Check Version",
+      "type": "string"
+    },
+    "ephemeral_state_destroyed": {
+      "title": "Ephemeral State Destroyed",
+      "type": "boolean"
+    },
+    "feedback_balance_passed": {
+      "title": "Feedback Balance Passed",
+      "type": "boolean"
+    },
+    "interaction_gate_complete": {
+      "title": "Interaction Gate Complete",
+      "type": "boolean"
+    },
+    "latest_pack_size_passed": {
+      "title": "Latest Pack Size Passed",
+      "type": "boolean"
+    },
+    "learning_error_thresholds_passed": {
+      "title": "Learning Error Thresholds Passed",
+      "type": "boolean"
+    },
+    "lineage_complete": {
+      "title": "Lineage Complete",
+      "type": "boolean"
+    },
+    "repeated_correction_check_passed": {
+      "title": "Repeated Correction Check Passed",
+      "type": "boolean"
+    },
+    "revoked_learning_absent": {
+      "title": "Revoked Learning Absent",
+      "type": "boolean"
+    },
+    "scope_isolation_passed": {
+      "title": "Scope Isolation Passed",
+      "type": "boolean"
+    },
+    "security_probes_passed": {
+      "title": "Security Probes Passed",
+      "type": "boolean"
+    },
+    "synthetic_capture_marking_complete": {
+      "title": "Synthetic Capture Marking Complete",
+      "type": "boolean"
+    },
+    "synthetic_date_spread_complete": {
+      "title": "Synthetic Date Spread Complete",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "interaction_gate_complete",
+    "synthetic_date_spread_complete",
+    "activation_gate_complete",
+    "all_interactions_assessed",
+    "all_activations_completed_and_rated",
+    "learning_error_thresholds_passed",
+    "activation_quality_thresholds_passed",
+    "feedback_balance_passed",
+    "repeated_correction_check_passed",
+    "scope_isolation_passed",
+    "revoked_learning_absent",
+    "latest_pack_size_passed",
+    "lineage_complete",
+    "synthetic_capture_marking_complete",
+    "security_probes_passed",
+    "ephemeral_state_destroyed"
+  ],
+  "title": "LongitudinalSimulationChecks",
+  "type": "object"
+}

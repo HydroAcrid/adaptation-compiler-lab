@@ -1,0 +1,117 @@
+{
+  "$defs": {
+    "RuntimeFeedbackOutcome": {
+      "enum": [
+        "helped",
+        "hurt",
+        "irrelevant"
+      ],
+      "title": "RuntimeFeedbackOutcome",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One raw-free scope and lifecycle probe over a fresh synthetic activation.",
+  "properties": {
+    "activated_aliases": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Activated Aliases",
+      "type": "array"
+    },
+    "activation_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Activation Id",
+      "type": "string"
+    },
+    "exact_scope_match": {
+      "title": "Exact Scope Match",
+      "type": "boolean"
+    },
+    "expected_aliases": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Expected Aliases",
+      "type": "array"
+    },
+    "forbidden_aliases": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Forbidden Aliases",
+      "type": "array"
+    },
+    "forbidden_learning_absent": {
+      "title": "Forbidden Learning Absent",
+      "type": "boolean"
+    },
+    "material_utf8_bytes": {
+      "minimum": 0,
+      "title": "Material Utf8 Bytes",
+      "type": "integer"
+    },
+    "outcome": {
+      "$ref": "#/$defs/RuntimeFeedbackOutcome"
+    },
+    "probe_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Probe Version",
+      "type": "string"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "simulated_date": {
+      "format": "date",
+      "title": "Simulated Date",
+      "type": "string"
+    },
+    "task_class": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Task Class"
+    }
+  },
+  "required": [
+    "activation_id",
+    "simulated_date",
+    "project_id",
+    "expected_aliases",
+    "activated_aliases",
+    "forbidden_aliases",
+    "material_utf8_bytes",
+    "outcome",
+    "exact_scope_match",
+    "forbidden_learning_absent"
+  ],
+  "title": "LongitudinalSimulationActivation",
+  "type": "object"
+}

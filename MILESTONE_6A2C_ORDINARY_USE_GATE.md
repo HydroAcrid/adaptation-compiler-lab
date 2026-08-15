@@ -154,3 +154,16 @@ The gate has started but cannot be completed in one session without fabricating 
 evidence. The current pre-cutoff task does not count, and calendar dates will not be simulated.
 The next valid evidence arrives only from newly created ordinary Codex tasks. Milestone 6B and the
 deferred sealed study remain untouched.
+
+## Accelerated synthetic conformance
+
+Milestone 6A.2K now runs the complete threshold shape in an isolated synthetic lane: 20
+interactions, three simulated dates, six activations, scope refinement, correction, supersession,
+revocation, helped/hurt/irrelevant ratings, and pack-size measurement. It passed after repairing
+projection-receipt artifact selection, reviewed-revocation classification, and exact semantic
+correction targeting.
+
+This does not change any criterion above. The report and every promoted simulated capture are
+explicitly synthetic, the temporary ledger and encrypted raw store are destroyed, and the report
+states `counts_toward_ordinary_use_gate=false`. Real calendar dates and ordinary-work outcomes
+remain prospective.

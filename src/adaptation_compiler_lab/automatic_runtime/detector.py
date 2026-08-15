@@ -555,9 +555,16 @@ def detect_feedback(
             signal_kind=primary.signal_kind,
             behavior=behavior,
             route=route,
+            affected_artifact_id=observation.affected_artifact_id,
             disposition=AutomationDisposition.REVIEW_REQUIRED,
             reasons=(
-                "Natural-language correction requires one exact active target before supersession.",
+                (
+                    "Natural-language correction retains the host-bound exact active target and "
+                    "requires review before supersession."
+                    if observation.affected_artifact_id is not None
+                    else "Natural-language correction requires one exact active target before "
+                    "supersession."
+                ),
             ),
             detector_mode=mode,
             interpreter_receipt_digest=receipt_digest,
