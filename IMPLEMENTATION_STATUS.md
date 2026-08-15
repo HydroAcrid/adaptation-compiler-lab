@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: 2026-08-11
+Last updated: 2026-08-15
 
 ## Current milestone
 
@@ -12,6 +12,24 @@ arbitrary-length addition/correction/supersession/revocation compilation, compac
 projection, signed release/activation events, exact-once task delivery, notification, undo, and
 helped/hurt/irrelevant measurement. Untrusted content is rejected before capture; secrets are
 blocked; ambiguous and capability-changing proposals remain inactive.
+
+Milestone 6A.2J is engineering-complete. The internal-alpha surface now presents the runtime as one
+review-mode daily loop under the working display name `Temper`: pending raw-free proposal cards,
+exact evidence/consent/capture digests, completed activations awaiting feedback, recent notices,
+credential/watcher health, review latency, pending age, scope-refinement count, activation-feedback
+latency, and the unchanged 6A.2C gate. `runtime daily` is read-only; `--poll-now` performs one
+bounded pickup before the same snapshot. The name does not change repository, package, schema, or
+governance identities.
+
+Owner review now supports strict scope refinement in addition to exact approval or rejection.
+Task classes, environments, activation conditions, and exclusions may only narrow the immutable
+proposal. The original queue item and v1.0 resolution format remain canonical. A refined approval
+issues a typed v1.1 resolution, signs the exact newly evaluated decision, binds its narrower
+artifact into the append-only ledger and release, and rejects widening, no-op refinement, rejected
+refinement, or partial revocation. Automatic promotion remains disabled. Synthetic CLI conformance
+proved proposal-to-refinement-to-daily-snapshot flow without touching production dogfood state;
+the complete suite passes 859 tests with two platform skips. Genuine longitudinal product evidence
+still must accrue prospectively under the frozen 6A.2C criteria.
 
 Permanent-profile and current-context ownership is implemented. Capability-preset and personal
 overlay references are typed and composition-checked, but no preset is imported or active. The

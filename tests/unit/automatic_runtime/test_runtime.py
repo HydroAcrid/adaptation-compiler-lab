@@ -21,6 +21,16 @@ from adaptation_compiler_lab.automatic_runtime import (
     StandingAutomationPolicy,
     initial_runtime_state,
 )
+from adaptation_compiler_lab.automatic_runtime.ledger import AutomaticRuntimeLedger
+from adaptation_compiler_lab.automatic_runtime.models import (
+    FeedbackDetectorMode,
+    RuntimeActivationFeedback,
+    RuntimeFeedbackOutcome,
+    RuntimeTargetDeliveryAcknowledgement,
+)
+from adaptation_compiler_lab.automatic_runtime.product_dogfood import (
+    build_review_mode_dogfood_snapshot,
+)
 from adaptation_compiler_lab.domain import (
     ActorKind,
     ActorRef,
@@ -43,8 +53,10 @@ from adaptation_compiler_lab.governance.signing import (
     sign_governance_event,
 )
 from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore, RawEncryptionKey
+from adaptation_compiler_lab.persistence.sqlite import SqliteUnitOfWorkFactory
 from adaptation_compiler_lab.runtime import RuntimeProjectionContext
-from adaptation_compiler_lab.serialization import canonical_digest
+from adaptation_compiler_lab.serialization import canonical_digest, canonical_json
+from adaptation_compiler_lab.targets.base import sha256_text
 from adaptation_compiler_lab.targets.models import ScopeDimension
 
 NOW = datetime(2026, 7, 29, 14, 0, tzinfo=UTC)
@@ -463,6 +475,193 @@ def test_owner_can_approve_exact_review_into_next_governed_release(tmp_path: Pat
     assert result.resolution.assessment.outcome.value == "correct"
     assert result.resolution.transition_digest == result.state.transitions[-1].content_digest
     assert result.release_event is not None
+    assert '"scope_refinement"' not in canonical_json(result.resolution)
+
+
+def test_owner_can_approve_strictly_narrower_review_scope(tmp_path: Path) -> None:
+    runtime, policy = _runtime(tmp_path)
+    state = initial_runtime_state(policy)
+    learning = runtime.learn(
+        _observation(1, "Rule: install a plugin and give it network access"),
+        state=state,
+        processed_at=NOW + timedelta(minutes=1, seconds=5),
+    )
+    item = _review_item(learning)
+    refined_scope = item.detection.scope.model_copy(update={"task_classes": ("plugin-bootstrap",)})
+
+    result = runtime.resolve_review(
+        item,
+        learning.cycle,
+        state=state,
+        decision=ApprovalDecision.APPROVED,
+        refined_scope=refined_scope,
+        resolved_at=NOW + timedelta(minutes=2),
+    )
+
+    refinement = result.resolution.scope_refinement
+    assert refinement is not None
+    assert refinement.original_detection_digest == item.detection.content_digest
+    assert refinement.refined_scope == refined_scope
+    assert refinement.refined_layer is AdaptationLayer.CURRENT_CONTEXT
+    assert result.state.transitions[-1].instruction is not None
+    assert result.state.transitions[-1].instruction.scope == refined_scope
+    assert (
+        result.state.transitions[-1].evaluation.candidate_digest
+        == refinement.refined_detection_digest
+    )
+    assert item.detection.scope.task_classes == ()
+
+
+def test_review_scope_refinement_cannot_widen_or_accompany_rejection(tmp_path: Path) -> None:
+    runtime, policy = _runtime(tmp_path)
+    state = initial_runtime_state(policy)
+    learning = runtime.learn(
+        _observation(
+            1,
+            "Rule: install a plugin and give it network access",
+            project_id="project-a",
+        ),
+        state=state,
+        processed_at=NOW + timedelta(minutes=1, seconds=5),
+    )
+    item = _review_item(learning)
+
+    with pytest.raises(AutomaticRuntimeError, match="cannot widen"):
+        runtime.resolve_review(
+            item,
+            learning.cycle,
+            state=state,
+            decision=ApprovalDecision.APPROVED,
+            refined_scope=item.detection.scope.model_copy(update={"project_ids": ("project-b",)}),
+            resolved_at=NOW + timedelta(minutes=2),
+        )
+    with pytest.raises(AutomaticRuntimeError, match="only an approved"):
+        runtime.resolve_review(
+            item,
+            learning.cycle,
+            state=state,
+            decision=ApprovalDecision.REJECTED,
+            refined_scope=item.detection.scope.model_copy(
+                update={"task_classes": ("plugin-bootstrap",)}
+            ),
+            resolved_at=NOW + timedelta(minutes=2),
+        )
+
+
+def test_review_mode_snapshot_unifies_proposals_activation_feedback_and_metrics(
+    tmp_path: Path,
+) -> None:
+    runtime, policy = _runtime(tmp_path)
+    state = initial_runtime_state(policy)
+    path = tmp_path / "runtime.sqlite3"
+    SqliteUnitOfWorkFactory(path).initialize()
+    ledger = AutomaticRuntimeLedger(path, subject_id="kevin")
+    ledger.initialize(state)
+    learning = runtime.learn(
+        _observation(1, "Rule: install a plugin and give it network access"),
+        state=state,
+        processed_at=NOW + timedelta(minutes=1, seconds=5),
+    )
+    item = _review_item(learning)
+    ledger.append_learning(learning.cycle, state, review_item=item)
+
+    pending = build_review_mode_dogfood_snapshot(
+        ledger,
+        subject_id="kevin",
+        generated_at=NOW + timedelta(minutes=2),
+        detector_mode=FeedbackDetectorMode.REVIEW,
+        credential_enrolled=True,
+        watcher_active=False,
+    )
+
+    assert pending.working_product_name == "Temper"
+    assert not pending.automatic_promotion_enabled
+    assert pending.metrics.pending_review_count == 1
+    assert pending.proposals[0].evidence_ref.content_digest == canonical_digest(
+        item.captured.evidence
+    )
+    assert pending.proposals[0].available_actions == (
+        "approve",
+        "refine_scope",
+        "reject",
+    )
+    assert not pending.raw_payloads_exposed
+    rendered_pending = canonical_json(pending)
+    assert "Rule:" not in rendered_pending
+    assert "supporting_quote" not in rendered_pending
+    assert "locator" not in rendered_pending
+
+    approved = runtime.resolve_review(
+        item,
+        learning.cycle,
+        state=state,
+        decision=ApprovalDecision.APPROVED,
+        resolved_at=NOW + timedelta(minutes=2, seconds=10),
+    )
+    ledger.append_learning_review_resolution(
+        approved.resolution,
+        approved.state,
+        release_event=approved.release_event,
+    )
+    prepared = runtime.activate(
+        activation_id="activation-1",
+        task_ref=TaskRecordRef(record_id="task-activation-1", record_version="1.0.0"),
+        state=approved.state,
+        context=_context(3, project_id="ordinary-project"),
+        target_task="Prepare the plugin handoff.",
+        activated_at=NOW + timedelta(minutes=3),
+    )
+    ledger.append_activation(prepared)
+    acknowledgement = RuntimeTargetDeliveryAcknowledgement(
+        acknowledgement_id="ack-activation-1",
+        activation_id="activation-1",
+        subject_id="kevin",
+        target_family="codex",
+        activation_digest=prepared.activation.content_digest,
+        external_session_digest=sha256_text("session-1"),
+        external_turn_digest=sha256_text("turn-1"),
+        result_digest=sha256_text("result-1"),
+        status="completed",
+        acknowledged_at=NOW + timedelta(minutes=4),
+    )
+    ledger.acknowledge_delivery(acknowledgement)
+
+    unrated = build_review_mode_dogfood_snapshot(
+        ledger,
+        subject_id="kevin",
+        generated_at=NOW + timedelta(minutes=5),
+        detector_mode=FeedbackDetectorMode.REVIEW,
+        credential_enrolled=True,
+        watcher_active=True,
+    )
+
+    assert not unrated.proposals
+    assert unrated.metrics.pending_feedback_count == 1
+    assert unrated.activation_feedback[0].activation_id == "activation-1"
+    feedback = RuntimeActivationFeedback(
+        feedback_id="feedback-activation-1",
+        subject_id="kevin",
+        cycle_id="activation-1",
+        delivery_receipt_digest=prepared.activation.delivery_receipt_digest,
+        outcome=RuntimeFeedbackOutcome.HELPED,
+        relevant_artifact_ids=prepared.activation.active_artifact_ids,
+        activated_artifact_ids=prepared.activation.active_artifact_ids,
+        recorded_at=NOW + timedelta(minutes=6),
+    )
+    ledger.add_feedback(feedback)
+    rated = build_review_mode_dogfood_snapshot(
+        ledger,
+        subject_id="kevin",
+        generated_at=NOW + timedelta(minutes=7),
+        detector_mode=FeedbackDetectorMode.REVIEW,
+        credential_enrolled=True,
+        watcher_active=True,
+    )
+
+    assert not rated.activation_feedback
+    assert rated.gate.helped_count == 1
+    assert rated.gate.correct_activation_count == 1
+    assert rated.metrics.activation_feedback_latency_seconds == (180.0,)
 
 
 def test_owner_rejection_records_false_positive_without_changing_state(tmp_path: Path) -> None:

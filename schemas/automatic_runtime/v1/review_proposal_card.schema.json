@@ -1,0 +1,415 @@
+{
+  "$defs": {
+    "AdaptationLayer": {
+      "description": "Separately governed inputs combined by the future product runtime.",
+      "enum": [
+        "permanent_profile",
+        "current_context",
+        "temporary_capability_preset",
+        "personal_preset_overlay"
+      ],
+      "title": "AdaptationLayer",
+      "type": "string"
+    },
+    "ArtifactRoute": {
+      "enum": [
+        "evaluation_only",
+        "memory",
+        "preference",
+        "example",
+        "procedure",
+        "prompt_rule",
+        "skill",
+        "tool_recommendation",
+        "inactive_tool_candidate",
+        "inactive_adapter_dataset_candidate"
+      ],
+      "title": "ArtifactRoute",
+      "type": "string"
+    },
+    "CaptureReceiptRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "governance_type": {
+          "const": "capture_receipt",
+          "default": "capture_receipt",
+          "title": "Governance Type",
+          "type": "string"
+        },
+        "object_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "content_digest"
+      ],
+      "title": "CaptureReceiptRef",
+      "type": "object"
+    },
+    "ConsentReceiptRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "governance_type": {
+          "const": "consent_receipt",
+          "default": "consent_receipt",
+          "title": "Governance Type",
+          "type": "string"
+        },
+        "object_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Object Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_id",
+        "content_digest"
+      ],
+      "title": "ConsentReceiptRef",
+      "type": "object"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "evidence",
+          "default": "evidence",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "FeedbackSignalKind": {
+      "description": "User signals that may become governed adaptation candidates.",
+      "enum": [
+        "memory",
+        "preference",
+        "procedure",
+        "prompt_rule",
+        "positive_example",
+        "correction",
+        "revocation"
+      ],
+      "title": "FeedbackSignalKind",
+      "type": "string"
+    },
+    "Scope": {
+      "additionalProperties": false,
+      "description": "Machine-comparable applicability bounds.\n\nEmpty optional dimensions mean unconstrained. Subjects are never unconstrained in this\nsingle-user prototype. A narrower scope may restrict a dimension, add exclusions or\nactivation conditions, and shrink the validity window.",
+      "properties": {
+        "activation_conditions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Activation Conditions",
+          "type": "array"
+        },
+        "environment_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Environment Ids",
+          "type": "array"
+        },
+        "exclusions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Exclusions",
+          "type": "array"
+        },
+        "project_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Project Ids",
+          "type": "array"
+        },
+        "repository_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Repository Ids",
+          "type": "array"
+        },
+        "subject_ids": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Subject Ids",
+          "type": "array"
+        },
+        "target_families": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Target Families",
+          "type": "array"
+        },
+        "task_classes": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Task Classes",
+          "type": "array"
+        },
+        "valid_from": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid From"
+        },
+        "valid_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid Until"
+        },
+        "workspace_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Workspace Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "subject_ids"
+      ],
+      "title": "Scope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Compact proposal and exact lineage shown to the owner, never supporting raw text.",
+  "properties": {
+    "affected_artifact_id": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Affected Artifact Id"
+    },
+    "available_actions": {
+      "items": {
+        "enum": [
+          "approve",
+          "reject",
+          "refine_scope"
+        ],
+        "type": "string"
+      },
+      "title": "Available Actions",
+      "type": "array"
+    },
+    "behavior": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Behavior"
+    },
+    "capture_ref": {
+      "$ref": "#/$defs/CaptureReceiptRef"
+    },
+    "card_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Card Version",
+      "type": "string"
+    },
+    "consent_ref": {
+      "$ref": "#/$defs/ConsentReceiptRef"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "cycle_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Cycle Id",
+      "type": "string"
+    },
+    "evidence_ref": {
+      "$ref": "#/$defs/EvidenceRef"
+    },
+    "layer": {
+      "$ref": "#/$defs/AdaptationLayer"
+    },
+    "proposal_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Proposal Digest",
+      "type": "string"
+    },
+    "queue_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Queue Id",
+      "type": "string"
+    },
+    "raw_payload_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Payload Exposed",
+      "type": "boolean"
+    },
+    "reasons": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Reasons",
+      "type": "array"
+    },
+    "route": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ArtifactRoute"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "scope": {
+      "$ref": "#/$defs/Scope"
+    },
+    "signal_kind": {
+      "$ref": "#/$defs/FeedbackSignalKind"
+    }
+  },
+  "required": [
+    "queue_id",
+    "cycle_id",
+    "proposal_digest",
+    "signal_kind",
+    "layer",
+    "scope",
+    "reasons",
+    "evidence_ref",
+    "consent_ref",
+    "capture_ref",
+    "available_actions",
+    "created_at"
+  ],
+  "title": "ReviewProposalCard",
+  "type": "object"
+}

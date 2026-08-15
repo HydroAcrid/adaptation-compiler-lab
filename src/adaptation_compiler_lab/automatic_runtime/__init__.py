@@ -74,6 +74,7 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     RuntimeNotice,
     RuntimeNoticeKind,
     RuntimeReviewQueueItem,
+    RuntimeReviewScopeRefinement,
     RuntimeSourceCheckpoint,
     RuntimeTargetDeliveryAcknowledgement,
     RuntimeTaskActivationReceipt,
@@ -94,6 +95,13 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     StandingAutomationPolicy,
     infer_layer,
 )
+from adaptation_compiler_lab.automatic_runtime.product_dogfood import (
+    ActivationFeedbackCard,
+    ReviewModeDogfoodMetrics,
+    ReviewModeDogfoodSnapshot,
+    ReviewProposalCard,
+    build_review_mode_dogfood_snapshot,
+)
 from adaptation_compiler_lab.automatic_runtime.service import (
     AutomaticAdaptationRuntime,
     AutomaticLearningResult,
@@ -104,6 +112,7 @@ from adaptation_compiler_lab.automatic_runtime.service import (
 )
 
 __all__ = [
+    "ActivationFeedbackCard",
     "AdaptationLayer",
     "AutomaticAdaptationRuntime",
     "AutomaticLearningResult",
@@ -136,6 +145,9 @@ __all__ = [
     "NotificationInboxEntry",
     "PreparedRuntimeActivation",
     "PreparedRuntimeTask",
+    "ReviewModeDogfoodMetrics",
+    "ReviewModeDogfoodSnapshot",
+    "ReviewProposalCard",
     "RuntimeActivationFeedback",
     "RuntimeCycleReceipt",
     "RuntimeDeliveryReceipt",
@@ -157,6 +169,7 @@ __all__ = [
     "RuntimeNoticeSink",
     "RuntimeNotificationReceipt",
     "RuntimeReviewQueueItem",
+    "RuntimeReviewScopeRefinement",
     "RuntimeReviewSink",
     "RuntimeSourceCheckpoint",
     "RuntimeTargetDeliveryAcknowledgement",
@@ -185,6 +198,7 @@ __all__ = [
     "WorkspaceFileChange",
     "WorkspaceLease",
     "build_codex_dogfood_gate_report",
+    "build_review_mode_dogfood_snapshot",
     "compile_runtime_release",
     "compile_runtime_releases",
     "detect_explicit_feedback",

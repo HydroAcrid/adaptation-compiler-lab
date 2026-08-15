@@ -117,6 +117,13 @@ for the legacy or deliberately externally custodied workflow.
 
 Use `runtime poll` after completed ordinary Codex work. Pickup reads only pinned app-server
 `userMessage` text in post-cutoff, terminal, non-ephemeral interactive threads under the allowlist.
+For normal internal-alpha operation, prefer `runtime daily`: it reads one cohesive raw-free view of
+pending proposal cards, exact lineage digests, unrated completed activations, recent notices,
+credential/watcher health, review friction, and the frozen longitudinal gate. Use
+`runtime daily --poll-now` only when the watcher is inactive or an immediate bounded pickup is
+deliberately wanted. The command does not install or start a watcher. `Temper` in this output is an
+internal working display name; it does not change durable project identities.
+
 Use `runtime notices` and `runtime review` to inspect minimized local outcomes. Review output shows
 the normalized proposed behavior, route, scope, and proposal digest, but never the supporting raw
 message or quote. Resolve one exact item with
@@ -128,6 +135,14 @@ scope, evaluation, conflict, signature, and release invariants before advancing 
 does not deliver the release to an agent until a later `runtime run`. Rejection preserves the
 current state. Both decisions append a signed resolution and the corresponding
 correct/false-positive assessment. Use `runtime undo` for exact artifact revocation after approval.
+
+To approve only a narrower scope, add one or more of `--refine-task-class`,
+`--refine-environment-id`, `--refine-activation-condition`, or `--refine-exclusion` to the approved
+decision. Existing constrained task/environment dimensions may only shrink; conditions and
+exclusions are additive restrictions. The original proposal remains immutable. A refined approval
+creates resolution v1.1 and binds the exact newly evaluated scoped artifact; exact approval and
+rejection remain v1.0. Widening, empty/no-op refinement, refinement with rejection, and partial
+revocation fail closed. Repeat only the exact same decision and refinement for idempotent replay.
 
 Detector serving is explicit:
 

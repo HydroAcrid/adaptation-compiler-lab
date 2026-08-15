@@ -158,6 +158,18 @@ unscheduled pilot execution.
     numeric positions that trusted code binds back to immutable IDs.
 38. Synthetic calibration, generation, audit, and holdout output cannot become user authority,
     mutate production state, or authorize automatic promotion.
+39. A product-facing proposal card or daily snapshot cannot contain supporting quotes, raw payload
+    locators, credentials, private repository paths, or held-out identifiers.
+40. Review-time refinement can only narrow the exact immutable proposal. The signed decision,
+    reevaluated candidate, compiled artifact, and release must all bind the same refined scope.
+41. Rejection cannot carry a refinement, and exact-artifact revocation cannot be weakened into a
+    partial scope revocation.
+42. A stale, foreign-subject, malformed, or dead-process watcher lease cannot be reported as active.
+    A daily manual poll cannot install persistence or expand the registered source boundary.
+43. A working product name cannot substitute for durable repository, package, signer, schema, or
+    release identities. Renaming requires a separately reviewed migration.
+44. Synthetic product-loop conformance cannot manufacture genuine interactions, dates,
+    activations, ratings, or success under the frozen longitudinal evidence gate.
 
 ## Incident posture
 

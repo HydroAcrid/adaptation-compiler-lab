@@ -103,6 +103,24 @@ notice/review/undo/feedback commands are implemented. Milestone 6A.2D adds a ren
 watcher lease, jittered retry, raw-free durable inbox, and generic Windows toasts. The watcher is
 installed only by an explicit same-user command and semantic serving remains review-only.
 
+Milestone 6A.2J adds a product-facing projection over those same ledgers rather than a parallel
+memory system. A `ReviewProposalCard` exposes only normalized behavior, route, layer, exact scope,
+decision reasons, and evidence/consent/capture digests. `ReviewModeDogfoodSnapshot` combines pending
+cards, completed activations awaiting feedback, recent notices, health signals, review-friction
+measures, and the frozen 6A.2C report. It never contains supporting quotes, raw payload locators,
+credentials, repository paths, or held-out state. `runtime daily` reads this snapshot; optional
+`--poll-now` executes one existing bounded host pickup first.
+
+Review-time scope changes are new immutable evidence, not edits. A
+`RuntimeReviewScopeRefinement` binds the original queue/detection/scope, the exact strictly narrower
+scope and inferred layer, and the newly evaluated detection digest. Exact and rejected decisions
+remain resolution v1.0; refined approvals use v1.1. The signed review event authorizes the exact
+refined evaluation, the signed release event binds the resulting scoped artifact, and the ledger
+verifies both against the unchanged source queue before atomically advancing the state head.
+Widening, no-op refinement, refinement on rejection, and partial revocation are structurally
+invalid. This preserves compatibility while making approve/reject/refine/undo/feedback one coherent
+daily product loop.
+
 The semantic detector is an optional interpretation port, not a replacement trust boundary.
 `grammar`, `shadow`, `review`, and `calibrated` modes are explicit. One fresh ephemeral Codex
 session receives only the ordered authoritative user-message batch in an empty network-denied

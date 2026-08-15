@@ -48,6 +48,7 @@ from adaptation_compiler_lab.automatic_runtime.gateway_models import (
     GatewaySessionStatus,
     GatewayTurnReceipt,
     RuntimeSuccessorReceipt,
+    RuntimeWatcherLease,
     VerificationCommandSpec,
     VerificationReceipt,
 )
@@ -68,6 +69,9 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     RuntimeReviewQueueItem,
     RuntimeTargetDeliveryAcknowledgement,
     StandingAutomationPolicy,
+)
+from adaptation_compiler_lab.automatic_runtime.product_dogfood import (
+    build_review_mode_dogfood_snapshot,
 )
 from adaptation_compiler_lab.automatic_runtime.semantic_evaluation import (
     SemanticEvaluationSplit,
@@ -497,6 +501,49 @@ def _validate_review_decision_intent(
         )
 
 
+def _review_refined_scope(
+    scope: Scope,
+    *,
+    task_classes: list[str] | None,
+    environment_ids: list[str] | None,
+    activation_conditions: list[str] | None,
+    exclusions: list[str] | None,
+) -> Scope | None:
+    """Construct only an explicit deterministic narrowing of the proposed scope."""
+
+    supplied = any(
+        value is not None
+        for value in (task_classes, environment_ids, activation_conditions, exclusions)
+    )
+    if not supplied:
+        return None
+    updates: dict[str, tuple[str, ...]] = {}
+    for name, values in (
+        ("task_classes", task_classes),
+        ("environment_ids", environment_ids),
+    ):
+        if values is None:
+            continue
+        normalized = tuple(sorted({item.strip() for item in values if item.strip()}))
+        if not normalized:
+            raise AutomaticRuntimeError(f"--refine-{name.replace('_', '-')} cannot be empty")
+        existing = set(getattr(scope, name))
+        if existing and not set(normalized) <= existing:
+            raise AutomaticRuntimeError(f"review refinement cannot widen {name}")
+        updates[name] = normalized
+    for name, values in (
+        ("activation_conditions", activation_conditions),
+        ("exclusions", exclusions),
+    ):
+        if values is None:
+            continue
+        normalized_set = {item.strip() for item in values if item.strip()}
+        if not normalized_set:
+            raise AutomaticRuntimeError(f"--refine-{name.replace('_', '-')} cannot be empty")
+        updates[name] = tuple(sorted({*getattr(scope, name), *normalized_set}))
+    return scope.model_copy(update=updates)
+
+
 class _ConsoleReviewSink(RuntimeReviewSink):
     def enqueue(self, item: RuntimeReviewQueueItem) -> None:
         typer.echo(
@@ -510,6 +557,13 @@ class _ConsoleReviewSink(RuntimeReviewSink):
                 }
             )
         )
+
+
+class _SilentReviewSink(RuntimeReviewSink):
+    """Let the durable ledger carry proposals when one cohesive snapshot follows the poll."""
+
+    def enqueue(self, item: RuntimeReviewQueueItem) -> None:
+        del item
 
 
 def _now() -> datetime:
@@ -1679,6 +1733,72 @@ def show_codex_dogfood_status(config_path: ConfigOption) -> None:
     typer.echo(canonical_json(payload))
 
 
+def _watcher_is_active(config: CodexDogfoodLocalConfig, *, observed_at: datetime) -> bool:
+    """Return true only for a current same-subject lease whose owner process still exists."""
+
+    lease_path = config.state_root / "watcher-lease.json"
+    if not lease_path.exists():
+        return False
+    try:
+        lease = RuntimeWatcherLease.model_validate_json(lease_path.read_text(encoding="utf-8"))
+        if lease.subject_id != config.subject_id or lease.expires_at <= observed_at:
+            return False
+        os.kill(lease.owner_pid, 0)
+    except PermissionError:
+        return True
+    except (OSError, ValueError):
+        return False
+    return True
+
+
+@dogfood_app.command("daily")
+def show_review_mode_daily_loop(
+    config_path: ConfigOption,
+    poll_now: Annotated[
+        bool,
+        typer.Option(
+            "--poll-now",
+            help="Run one bounded source pickup before producing the raw-free action snapshot.",
+        ),
+    ] = False,
+    limit: Annotated[int, typer.Option("--limit", min=1, max=100)] = 25,
+) -> None:
+    """Show Temper's cohesive review-mode action queue and longitudinal product measures."""
+
+    try:
+        config = _load_config(config_path)
+        pickup = None
+        if poll_now:
+            pickup = _execute_poll(
+                config,
+                limit=limit,
+                review_sink=_SilentReviewSink(),
+                notice_sink=_durable_notice_sink(config),
+            )
+        observed_at = _now()
+        ledger = _ledger(config)
+        ledger.initialize(initial_runtime_state(config.policy))
+        snapshot = build_review_mode_dogfood_snapshot(
+            ledger,
+            subject_id=config.subject_id,
+            generated_at=observed_at,
+            detector_mode=config.feedback_detector_mode,
+            credential_enrolled=DpapiCredentialStore(config.state_root).status() is not None,
+            watcher_active=_watcher_is_active(config, observed_at=observed_at),
+        )
+    except (OSError, ValueError, RuntimeConformanceError) as error:
+        _fail(str(error))
+    typer.echo(
+        canonical_json(
+            {
+                "pickup": None if pickup is None else asdict(pickup),
+                "snapshot": snapshot.model_dump(mode="json", round_trip=True),
+                "snapshot_digest": str(snapshot.content_digest),
+            }
+        )
+    )
+
+
 @dogfood_app.command("review")
 def show_codex_dogfood_review(config_path: ConfigOption) -> None:
     """List unresolved normalized proposals without exposing supporting raw text."""
@@ -1732,6 +1852,34 @@ def decide_codex_dogfood_review(
             ),
         ),
     ] = False,
+    refine_task_class: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--refine-task-class",
+            help="Approve only for these task classes; repeat the option for multiple values.",
+        ),
+    ] = None,
+    refine_environment_id: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--refine-environment-id",
+            help="Approve only for these environments; repeat the option for multiple values.",
+        ),
+    ] = None,
+    refine_activation_condition: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--refine-activation-condition",
+            help="Add an exact activation condition; repeat the option for multiple values.",
+        ),
+    ] = None,
+    refine_exclusion: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--refine-exclusion",
+            help="Add an exact exclusion; repeat the option for multiple values.",
+        ),
+    ] = None,
 ) -> None:
     """Decide whether one proposal is authorized to influence future sessions."""
 
@@ -1750,9 +1898,27 @@ def decide_codex_dogfood_review(
         item = matches[0]
         if proposal_digest != str(item.detection.content_digest):
             raise AutomaticRuntimeError("review proposal digest changed")
+        refined_scope = _review_refined_scope(
+            item.detection.scope,
+            task_classes=refine_task_class,
+            environment_ids=refine_environment_id,
+            activation_conditions=refine_activation_condition,
+            exclusions=refine_exclusion,
+        )
+        if refined_scope is not None and decision is not ApprovalDecision.APPROVED:
+            raise AutomaticRuntimeError("scope refinement requires an approved review decision")
         existing = ledger.learning_review_resolution(queue_id)
         if existing is not None:
-            if existing.decision is not decision or existing.queue_digest != item.content_digest:
+            existing_scope = (
+                None
+                if existing.scope_refinement is None
+                else existing.scope_refinement.refined_scope
+            )
+            if (
+                existing.decision is not decision
+                or existing.queue_digest != item.content_digest
+                or existing_scope != refined_scope
+            ):
                 raise AutomaticRuntimeError("review item already has another immutable decision")
             resolution = existing
             state = ledger.current()
@@ -1769,6 +1935,7 @@ def decide_codex_dogfood_review(
                 state=state,
                 decision=decision,
                 resolved_at=_now(),
+                refined_scope=refined_scope,
             )
             ledger.append_learning_review_resolution(
                 result.resolution,
@@ -1794,6 +1961,14 @@ def decide_codex_dogfood_review(
             "future_use_authorized": resolution.decision is ApprovalDecision.APPROVED,
             "generation": state.generation,
             "queue_id": resolution.queue_id,
+            "scope_refinement": (
+                None
+                if resolution.scope_refinement is None
+                else {
+                    "digest": str(resolution.scope_refinement.content_digest),
+                    "refined_scope": _json_scope(resolution.scope_refinement.refined_scope),
+                }
+            ),
             "resolution_digest": str(resolution.content_digest),
             "resolution_id": resolution.resolution_id,
         }

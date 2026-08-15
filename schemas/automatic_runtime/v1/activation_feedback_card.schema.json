@@ -1,0 +1,90 @@
+{
+  "additionalProperties": false,
+  "description": "One completed activation waiting for helped/hurt/irrelevant owner feedback.",
+  "properties": {
+    "activated_at": {
+      "format": "date-time",
+      "title": "Activated At",
+      "type": "string"
+    },
+    "activation_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Activation Id",
+      "type": "string"
+    },
+    "active_artifact_ids": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Active Artifact Ids",
+      "type": "array"
+    },
+    "available_actions": {
+      "default": [
+        "helped",
+        "hurt",
+        "irrelevant"
+      ],
+      "items": {
+        "enum": [
+          "helped",
+          "hurt",
+          "irrelevant"
+        ],
+        "type": "string"
+      },
+      "title": "Available Actions",
+      "type": "array"
+    },
+    "card_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Card Version",
+      "type": "string"
+    },
+    "completed_at": {
+      "format": "date-time",
+      "title": "Completed At",
+      "type": "string"
+    },
+    "delivery_receipt_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Delivery Receipt Digest",
+      "type": "string"
+    },
+    "projection_utf8_bytes": {
+      "minimum": 0,
+      "title": "Projection Utf8 Bytes",
+      "type": "integer"
+    },
+    "raw_payload_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Payload Exposed",
+      "type": "boolean"
+    },
+    "task_ref_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Task Ref Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "activation_id",
+    "task_ref_id",
+    "delivery_receipt_digest",
+    "active_artifact_ids",
+    "projection_utf8_bytes",
+    "activated_at",
+    "completed_at"
+  ],
+  "title": "ActivationFeedbackCard",
+  "type": "object"
+}
