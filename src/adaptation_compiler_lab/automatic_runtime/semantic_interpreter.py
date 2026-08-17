@@ -44,7 +44,7 @@ from adaptation_compiler_lab.serialization import canonical_digest
 from adaptation_compiler_lab.targets.base import sha256_text
 
 _INTERPRETER_ID: Final = "codex-semantic-feedback"
-_INTERPRETER_VERSION: Final = "1.9.0"
+_INTERPRETER_VERSION: Final = "1.10.0"
 _PROMPT_VERSION: Final = "semantic-feedback-features-v8"
 _ALLOWED_ITEM_TYPES: Final = frozenset({"agentMessage", "reasoning", "userMessage"})
 _DEVELOPER_CONTRACT: Final = """\
@@ -180,7 +180,11 @@ class _SignalProposal(FrozenModel):
                 raise ValueError("semantic revocation proposal cannot carry content features")
         elif self.normalized_behavior is None or self.affected_artifact_id is not None:
             raise ValueError("semantic content proposal has an invalid shape")
-        route_semantic_features(self.features)
+        try:
+            route_semantic_features(self.features)
+        except ValueError:
+            if self.durability is SemanticSignalDurability.DURABLE:
+                raise
         return self
 
     @property
@@ -421,7 +425,14 @@ def bind_semantic_feedback_output(
         signals: list[SemanticFeedbackSignal] = []
         for proposal in item.signals:
             features = proposal.features
-            route = route_semantic_features(features)
+            try:
+                route = route_semantic_features(features)
+            except ValueError as error:
+                if proposal.durability is SemanticSignalDurability.DURABLE:
+                    raise SemanticInterpreterError(
+                        "durable semantic proposal lacks a governed artifact meaning"
+                    ) from error
+                continue
             signals.append(
                 SemanticFeedbackSignal(
                     signal_kind=route.signal_kind,

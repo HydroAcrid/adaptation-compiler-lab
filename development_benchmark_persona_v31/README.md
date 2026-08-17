@@ -36,3 +36,9 @@ class prior in the measurement channel itself. The original result is preserved.
 non-evidentiary schema remediation may replace those overlapping branches with one neutral learning
 shape and test only the compiled sensor on the same public calibration fixture; it cannot convert
 this frozen run into a pass or count as fresh effectiveness evidence.
+
+The first neutral-schema diagnostic launch produced model output but local binding rejected two
+all-`none`, task-only proposals before scoring. Amendment 1.1 preserves that encrypted result and
+changes only deterministic binding: an unroutable non-durable proposal is discarded, while an
+unroutable durable proposal still fails closed. One replacement Luna launch is authorized. This
+raises the remediation launch ceiling to two, with only one successful scored diagnostic allowed.

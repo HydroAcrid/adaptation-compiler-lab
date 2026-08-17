@@ -57,10 +57,50 @@ class PersonaV31RemediationFreeze(FrozenModel):
     full_grid_execution_authorized: Literal[False] = False
 
 
+class PersonaV31RemediationIncident(FrozenModel):
+    incident_version: Literal["1.0.0"] = "1.0.0"
+    incident_id: Literal["v31-remediation-task-only-binding-001"] = (
+        "v31-remediation-task-only-binding-001"
+    )
+    failure_code: Literal["unroutable_task_only_signal_rejected"] = (
+        "unroutable_task_only_signal_rejected"
+    )
+    encrypted_raw_result_ref: Sha256Digest
+    model_output_observed: Literal[True] = True
+    semantic_learning_scored: Literal[False] = False
+    tool_use_observed: Literal[False] = False
+    file_change_observed: Literal[False] = False
+    counts_toward_effectiveness_evidence: Literal[False] = False
+
+
+class PersonaV31RemediationAmendment(FrozenModel):
+    amendment_version: Literal["1.1.0"] = "1.1.0"
+    prior_freeze_digest: Sha256Digest
+    incident_digest: Sha256Digest
+    output_schema_digest: Sha256Digest
+    semantic_role_or_prompt_changed: Literal[False] = False
+    fixture_or_oracle_changed: Literal[False] = False
+    model_or_reasoning_changed: Literal[False] = False
+    binder_change: Literal["discard_unroutable_non_durable_proposals"] = (
+        "discard_unroutable_non_durable_proposals"
+    )
+    interpreter_module_digest: Sha256Digest
+    amended_benchmark_module_digest: Sha256Digest
+    amended_runner_module_digest: Sha256Digest
+    successful_session_maximum: Literal[1] = 1
+    total_launch_maximum: Literal[2] = 2
+    failed_binding_launches: Literal[1] = 1
+    replacement_luna_launches_authorized: Literal[1] = 1
+    counts_toward_effectiveness_evidence: Literal[False] = False
+    full_grid_execution_authorized: Literal[False] = False
+
+
 class PersonaV31RemediationReport(FrozenModel):
     report_version: Literal["1.0.0"] = "1.0.0"
     protocol_digest: Sha256Digest
     freeze_digest: Sha256Digest
+    amendment_digest: Sha256Digest
+    instrument_incident: PersonaV31RemediationIncident
     fixture_digest: Sha256Digest
     oracle_digest: Sha256Digest
     prior_smoke_report_digest: Sha256Digest
@@ -72,7 +112,9 @@ class PersonaV31RemediationReport(FrozenModel):
     instrument_remediation_passed: bool
     prior_smoke_result_changed: Literal[False] = False
     counts_toward_effectiveness_evidence: Literal[False] = False
-    isolated_luna_sessions: Literal[1] = 1
+    successful_luna_sessions: Literal[1] = 1
+    total_luna_launches: Literal[2] = 2
+    failed_binding_launches: Literal[1] = 1
     provider_billed_calls: Literal[0] = 0
     full_grid_execution_authorized: Literal[False] = False
 
@@ -96,5 +138,11 @@ def persona_v31_remediation_schemas() -> dict[str, dict[str, object]]:
         ),
         "persona-v31-remediation-report.schema.json": (
             PersonaV31RemediationReport.model_json_schema()
+        ),
+        "persona-v31-remediation-incident.schema.json": (
+            PersonaV31RemediationIncident.model_json_schema()
+        ),
+        "persona-v31-remediation-amendment.schema.json": (
+            PersonaV31RemediationAmendment.model_json_schema()
         ),
     }

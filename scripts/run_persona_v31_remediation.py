@@ -36,7 +36,9 @@ from adaptation_compiler_lab.benchmark.persona_v31 import (
     score_v31_material,
 )
 from adaptation_compiler_lab.benchmark.persona_v31_remediation import (
+    PersonaV31RemediationAmendment,
     PersonaV31RemediationFreeze,
+    PersonaV31RemediationIncident,
     PersonaV31RemediationProtocol,
     PersonaV31RemediationReport,
 )
@@ -135,6 +137,12 @@ def main() -> None:
     freeze = PersonaV31RemediationFreeze.model_validate_json(
         (input_root / "remediation" / "FREEZE-v1.json").read_bytes()
     )
+    incident = PersonaV31RemediationIncident.model_validate_json(
+        (input_root / "remediation" / "INSTRUMENT-INCIDENT-001.json").read_bytes()
+    )
+    amendment = PersonaV31RemediationAmendment.model_validate_json(
+        (input_root / "remediation" / "AMENDMENT-v1.1.json").read_bytes()
+    )
     observations = build_v31_observations(fixture)
     expected = {
         "protocol_digest": canonical_digest(protocol),
@@ -147,14 +155,27 @@ def main() -> None:
         "unchanged_batch_input_digest": semantic_feedback_batch_input_digest(observations),
         "unchanged_batch_prompt_digest": sha256_text(semantic_feedback_batch_prompt(observations)),
         "remediated_output_schema_digest": canonical_digest(semantic_feedback_output_schema()),
-        "benchmark_module_digest": sha256_file(
-            repo / "src/adaptation_compiler_lab/benchmark/persona_v31_remediation.py"
-        ),
-        "runner_module_digest": sha256_file(repo / "scripts/run_persona_v31_remediation.py"),
     }
     for field, value in expected.items():
         if getattr(freeze, field) != value:
             raise RuntimeError(f"v3.1 remediation freeze drifted: {field}")
+    amended_expected = {
+        "prior_freeze_digest": canonical_digest(freeze),
+        "incident_digest": canonical_digest(incident),
+        "output_schema_digest": canonical_digest(semantic_feedback_output_schema()),
+        "interpreter_module_digest": sha256_file(
+            repo / "src/adaptation_compiler_lab/automatic_runtime/semantic_interpreter.py"
+        ),
+        "amended_benchmark_module_digest": sha256_file(
+            repo / "src/adaptation_compiler_lab/benchmark/persona_v31_remediation.py"
+        ),
+        "amended_runner_module_digest": sha256_file(
+            repo / "scripts/run_persona_v31_remediation.py"
+        ),
+    }
+    for field, value in amended_expected.items():
+        if getattr(amendment, field) != value:
+            raise RuntimeError(f"v3.1 remediation amendment drifted: {field}")
 
     luna = CodexPersonaV3RoleRunner(
         executable=args.codex_executable,
@@ -268,6 +289,8 @@ def main() -> None:
     report = PersonaV31RemediationReport(
         protocol_digest=canonical_digest(protocol),
         freeze_digest=canonical_digest(freeze),
+        amendment_digest=canonical_digest(amendment),
+        instrument_incident=incident,
         fixture_digest=canonical_digest(fixture),
         oracle_digest=canonical_digest(oracle),
         prior_smoke_report_digest=canonical_digest(prior_report),

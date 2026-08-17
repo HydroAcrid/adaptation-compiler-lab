@@ -35,7 +35,7 @@ def test_remediation_is_one_session_and_non_evidentiary() -> None:
 def test_remediation_schemas_match_snapshots() -> None:
     schemas = persona_v31_remediation_schemas()
 
-    assert len(schemas) == 3
+    assert len(schemas) == 5
     assert all(schema["additionalProperties"] is False for schema in schemas.values())
     for name, schema in schemas.items():
         snapshot = ROOT / "schemas" / "persona_evaluation" / "v3.1-remediation" / name
