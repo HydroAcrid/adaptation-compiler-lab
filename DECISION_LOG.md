@@ -1,6 +1,6 @@
 # Decision Log
 
-Last updated: 2026-08-06
+Last updated: 2026-08-16
 
 This log separates implemented choices from objective gates and later open decisions. On
 2026-07-22 the project owner authorized automatic continuation between milestones. That removes the
@@ -184,6 +184,11 @@ blind ratings, holdout isolation, or any fixed exclusion.
 | D-172 | Activation receipt artifact semantics | **Corrected 2026-08-15.** `active_artifact_ids` means artifacts that actually contributed to the task's effective projection, not all artifacts active in the release. Compute the exact sorted union from projection-clause source references. This aligns receipts, relevance feedback, false-activation metrics, and zero-byte unrelated projections. |
 | D-173 | Reviewed lifecycle metric classification | **Corrected 2026-08-15.** Give the longitudinal report exact immutable review items. Validate their cycle/detection/evaluation bindings and count approved revocation proposals as revocations, not promotions. Retain backward compatibility for callers that have only legacy resolution data, while all product-ledger callers supply exact items. |
 | D-174 | Natural correction target authority | **Corrected 2026-08-15.** Preserve the exact `InteractionObservation.affected_artifact_id` selected by the trusted host when semantic features classify a correction. The semantic sensor cannot emit the target, and the resulting correction remains review-required. Missing, stale, or non-active targets continue to fail closed. |
+| D-175 | Synthetic persona evaluation authority | **Resolved 2026-08-16.** It is scalable engineering evidence only. Synthetic personas, choices, and judgments never count toward ordinary-use personalization or cross-agent transfer. |
+| D-176 | Persona evaluation session isolation | **Resolved 2026-08-16.** Every judge or adjudicator session receives exactly one persona and one scenario, uses a fresh ephemeral home/workspace, and is destroyed afterward. Strong-profile author roles receive one persona only. Multi-persona requests fail before execution. |
+| D-177 | Persona judgment binding authority | **Resolved 2026-08-16.** Do not trust model-authored identifiers. The model emits only track, first/second/tie, and rationale. Trusted code binds the exact persona, case, packet, track order, and anonymous option IDs. |
+| D-178 | 6A.2L v1 interpretation | **Instrument failure 2026-08-16.** Agreement was 79.2% per track and every sentinel passed, but 37.5% of cases required adjudication against a frozen 25% ceiling. Do not weaken the threshold retrospectively or interpret condition wins. |
+| D-179 | 6A.2L v1 compiler-path deviation | **Recorded 2026-08-16.** Reference compiled projections came from frozen synthetic expectations; the planned live Luna sensor was not executed. V2 must use fresh cases and construct compiled material from isolated sensor output plus deterministic policy. |
 
 ## Decision process
 

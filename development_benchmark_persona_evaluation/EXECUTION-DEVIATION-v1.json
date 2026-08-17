@@ -1,0 +1,13 @@
+{
+  "benchmark_id": "temper-6a2l-persona-evaluation-v1",
+  "condition_comparison_permitted": false,
+  "deviation_id": "persona-v1-live-sensor-omission",
+  "external_validation_accessed": false,
+  "observed_after_freeze": true,
+  "planned_luna_semantic_sensor_sessions": 18,
+  "provider_billed_calls": 0,
+  "reason": "V1 compiled materials were deterministic reference projections derived from frozen synthetic trait expectations rather than output from the isolated live semantic sensor.",
+  "remediation": "Use fresh cases and a new seed in v2; construct compiled materials only from isolated sensor output and deterministic routing before judging.",
+  "result_classification": "instrument_failure",
+  "schema_version": "1.0.0"
+}

@@ -1,0 +1,161 @@
+{
+  "$defs": {
+    "PersonaAlternative": {
+      "additionalProperties": false,
+      "properties": {
+        "alternative_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Alternative Id",
+          "type": "string"
+        },
+        "content": {
+          "minLength": 1,
+          "title": "Content",
+          "type": "string"
+        }
+      },
+      "required": [
+        "alternative_id",
+        "content"
+      ],
+      "title": "PersonaAlternative",
+      "type": "object"
+    },
+    "PersonaTrack": {
+      "enum": [
+        "learning_state",
+        "target_guidance"
+      ],
+      "title": "PersonaTrack",
+      "type": "string"
+    },
+    "PersonaTrackPair": {
+      "additionalProperties": false,
+      "properties": {
+        "alternatives": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/PersonaAlternative"
+            },
+            {
+              "$ref": "#/$defs/PersonaAlternative"
+            }
+          ],
+          "title": "Alternatives",
+          "type": "array"
+        },
+        "track": {
+          "$ref": "#/$defs/PersonaTrack"
+        }
+      },
+      "required": [
+        "track",
+        "alternatives"
+      ],
+      "title": "PersonaTrackPair",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "case_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Case Id",
+      "type": "string"
+    },
+    "condition_mapping_withheld": {
+      "const": true,
+      "default": true,
+      "title": "Condition Mapping Withheld",
+      "type": "boolean"
+    },
+    "expected_answers_withheld": {
+      "const": true,
+      "default": true,
+      "title": "Expected Answers Withheld",
+      "type": "boolean"
+    },
+    "one_persona_only": {
+      "const": true,
+      "default": true,
+      "title": "One Persona Only",
+      "type": "boolean"
+    },
+    "packet_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Packet Id",
+      "type": "string"
+    },
+    "packet_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Packet Version",
+      "type": "string"
+    },
+    "persona_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Persona Id",
+      "type": "string"
+    },
+    "persona_summary": {
+      "minLength": 1,
+      "title": "Persona Summary",
+      "type": "string"
+    },
+    "prior_judgments_visible": {
+      "const": false,
+      "default": false,
+      "title": "Prior Judgments Visible",
+      "type": "boolean"
+    },
+    "replicate": {
+      "enum": [
+        1,
+        2,
+        3
+      ],
+      "title": "Replicate",
+      "type": "integer"
+    },
+    "scenario": {
+      "minLength": 1,
+      "title": "Scenario",
+      "type": "string"
+    },
+    "track_pairs": {
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+        {
+          "$ref": "#/$defs/PersonaTrackPair"
+        },
+        {
+          "$ref": "#/$defs/PersonaTrackPair"
+        }
+      ],
+      "title": "Track Pairs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "packet_id",
+    "case_id",
+    "persona_id",
+    "persona_summary",
+    "scenario",
+    "replicate",
+    "track_pairs"
+  ],
+  "title": "PersonaJudgePacket",
+  "type": "object"
+}

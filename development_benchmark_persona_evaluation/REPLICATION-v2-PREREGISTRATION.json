@@ -1,0 +1,32 @@
+{
+  "benchmark_id": "temper-6a2l-persona-evaluation-v2",
+  "condition_mapping_withheld_until_complete": true,
+  "construction_requirements": {
+    "compiled_material_source": "isolated_live_semantic_sensor_plus_deterministic_policy",
+    "fresh_randomization_seed": true,
+    "fresh_scenarios": 24,
+    "reference_ground_truth_visible_to_compiler": false,
+    "strong_static_profile_source": "same_eligible_evidence_only"
+  },
+  "execution_requirements": {
+    "adjudicator": "gpt-5.6-sol-max-on-track-disagreement-only",
+    "judge": "two-fresh-gpt-5.6-sol-xhigh-sessions-per-case",
+    "one_persona_per_session": true,
+    "provider_billed_calls": 0,
+    "reverse_candidate_and_track_order": true,
+    "saved_chatgpt_authentication_only": true
+  },
+  "external_validation_access_permitted": false,
+  "gate": {
+    "adjudicated_track_rate_maximum": 0.25,
+    "false_neutral_activation_maximum": 0,
+    "guidance_track_agreement_minimum": 0.75,
+    "learning_track_agreement_minimum": 0.75,
+    "revoked_or_superseded_leak_maximum": 0,
+    "sentinel_guidance_accuracy_minimum": 1.0,
+    "sentinel_learning_accuracy_minimum": 1.0
+  },
+  "preregistration_version": "1.0.0",
+  "status": "frozen_design_not_executed",
+  "v1_inputs_or_results_may_influence_v2_cases": false
+}

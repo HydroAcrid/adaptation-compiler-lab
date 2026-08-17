@@ -1,0 +1,238 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "api_key_environment_present": {
+      "const": false,
+      "default": false,
+      "title": "Api Key Environment Present",
+      "type": "boolean"
+    },
+    "cached_input_tokens": {
+      "minimum": 0,
+      "title": "Cached Input Tokens",
+      "type": "integer"
+    },
+    "case_id": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Case Id"
+    },
+    "command_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Command Digest",
+      "type": "string"
+    },
+    "empty_workspace": {
+      "const": true,
+      "default": true,
+      "title": "Empty Workspace",
+      "type": "boolean"
+    },
+    "environment_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Environment Digest",
+      "type": "string"
+    },
+    "exactly_one_persona": {
+      "const": true,
+      "default": true,
+      "title": "Exactly One Persona",
+      "type": "boolean"
+    },
+    "execution_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Execution Id",
+      "type": "string"
+    },
+    "external_validation_accessed": {
+      "const": false,
+      "default": false,
+      "title": "External Validation Accessed",
+      "type": "boolean"
+    },
+    "fresh_ephemeral_session": {
+      "const": true,
+      "default": true,
+      "title": "Fresh Ephemeral Session",
+      "type": "boolean"
+    },
+    "host_home_visible": {
+      "const": false,
+      "default": false,
+      "title": "Host Home Visible",
+      "type": "boolean"
+    },
+    "input_tokens": {
+      "minimum": 0,
+      "title": "Input Tokens",
+      "type": "integer"
+    },
+    "mcp_loaded": {
+      "const": false,
+      "default": false,
+      "title": "Mcp Loaded",
+      "type": "boolean"
+    },
+    "memories_loaded": {
+      "const": false,
+      "default": false,
+      "title": "Memories Loaded",
+      "type": "boolean"
+    },
+    "model": {
+      "enum": [
+        "gpt-5.6-luna",
+        "gpt-5.6-sol"
+      ],
+      "title": "Model",
+      "type": "string"
+    },
+    "output_tokens": {
+      "minimum": 0,
+      "title": "Output Tokens",
+      "type": "integer"
+    },
+    "packet_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Packet Digest",
+      "type": "string"
+    },
+    "persona_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Persona Id",
+      "type": "string"
+    },
+    "plugins_loaded": {
+      "const": false,
+      "default": false,
+      "title": "Plugins Loaded",
+      "type": "boolean"
+    },
+    "prior_transcripts_loaded": {
+      "const": false,
+      "default": false,
+      "title": "Prior Transcripts Loaded",
+      "type": "boolean"
+    },
+    "provider_billed_calls": {
+      "const": 0,
+      "default": 0,
+      "title": "Provider Billed Calls",
+      "type": "integer"
+    },
+    "reasoning_effort": {
+      "enum": [
+        "medium",
+        "xhigh",
+        "max"
+      ],
+      "title": "Reasoning Effort",
+      "type": "string"
+    },
+    "reasoning_output_tokens": {
+      "minimum": 0,
+      "title": "Reasoning Output Tokens",
+      "type": "integer"
+    },
+    "receipt_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Receipt Version",
+      "type": "string"
+    },
+    "repository_visible": {
+      "const": false,
+      "default": false,
+      "title": "Repository Visible",
+      "type": "boolean"
+    },
+    "role": {
+      "enum": [
+        "profile_author",
+        "semantic_sensor",
+        "judge",
+        "adjudicator"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "rules_loaded": {
+      "const": false,
+      "default": false,
+      "title": "Rules Loaded",
+      "type": "boolean"
+    },
+    "saved_chatgpt_authentication": {
+      "const": true,
+      "default": true,
+      "title": "Saved Chatgpt Authentication",
+      "type": "boolean"
+    },
+    "session_destroyed": {
+      "const": true,
+      "default": true,
+      "title": "Session Destroyed",
+      "type": "boolean"
+    },
+    "skills_loaded": {
+      "const": false,
+      "default": false,
+      "title": "Skills Loaded",
+      "type": "boolean"
+    },
+    "tools_used": {
+      "const": false,
+      "default": false,
+      "title": "Tools Used",
+      "type": "boolean"
+    },
+    "trace_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Trace Digest",
+      "type": "string"
+    },
+    "user_config_loaded": {
+      "const": false,
+      "default": false,
+      "title": "User Config Loaded",
+      "type": "boolean"
+    },
+    "web_search_enabled": {
+      "const": false,
+      "default": false,
+      "title": "Web Search Enabled",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "execution_id",
+    "role",
+    "persona_id",
+    "packet_digest",
+    "model",
+    "reasoning_effort",
+    "input_tokens",
+    "cached_input_tokens",
+    "output_tokens",
+    "reasoning_output_tokens",
+    "trace_digest",
+    "command_digest",
+    "environment_digest"
+  ],
+  "title": "PersonaExecutionReceipt",
+  "type": "object"
+}

@@ -1,0 +1,74 @@
+{
+  "$defs": {
+    "PersonaCondition": {
+      "enum": [
+        "compiled_adaptation",
+        "strong_static_profile",
+        "controlled_sentinel"
+      ],
+      "title": "PersonaCondition",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "active_trait_ids": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Active Trait Ids",
+      "type": "array"
+    },
+    "case_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Case Id",
+      "type": "string"
+    },
+    "condition": {
+      "$ref": "#/$defs/PersonaCondition"
+    },
+    "evidence_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Evidence Digest",
+      "type": "string"
+    },
+    "independently_maintained": {
+      "title": "Independently Maintained",
+      "type": "boolean"
+    },
+    "learning_state": {
+      "minLength": 1,
+      "title": "Learning State",
+      "type": "string"
+    },
+    "persona_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Persona Id",
+      "type": "string"
+    },
+    "target_guidance": {
+      "minLength": 1,
+      "title": "Target Guidance",
+      "type": "string"
+    }
+  },
+  "required": [
+    "case_id",
+    "persona_id",
+    "condition",
+    "learning_state",
+    "target_guidance",
+    "active_trait_ids",
+    "evidence_digest",
+    "independently_maintained"
+  ],
+  "title": "PersonaConditionMaterial",
+  "type": "object"
+}

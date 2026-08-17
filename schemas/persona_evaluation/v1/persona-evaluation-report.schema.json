@@ -1,0 +1,271 @@
+{
+  "$defs": {
+    "PersonaCondition": {
+      "enum": [
+        "compiled_adaptation",
+        "strong_static_profile",
+        "controlled_sentinel"
+      ],
+      "title": "PersonaCondition",
+      "type": "string"
+    },
+    "PersonaPreference": {
+      "enum": [
+        "first",
+        "second",
+        "tie"
+      ],
+      "title": "PersonaPreference",
+      "type": "string"
+    },
+    "PersonaTrack": {
+      "enum": [
+        "learning_state",
+        "target_guidance"
+      ],
+      "title": "PersonaTrack",
+      "type": "string"
+    },
+    "PersonaTrackOutcome": {
+      "additionalProperties": false,
+      "properties": {
+        "adjudicated": {
+          "title": "Adjudicated",
+          "type": "boolean"
+        },
+        "case_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "resolved_preference": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PersonaPreference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "track": {
+          "$ref": "#/$defs/PersonaTrack"
+        },
+        "winning_condition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PersonaCondition"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "xhigh_agreed": {
+          "title": "Xhigh Agreed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "case_id",
+        "track",
+        "xhigh_agreed",
+        "adjudicated",
+        "resolved_preference",
+        "winning_condition"
+      ],
+      "title": "PersonaTrackOutcome",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "adjudication_rate": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Adjudication Rate",
+      "type": "number"
+    },
+    "benchmark_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Benchmark Id",
+      "type": "string"
+    },
+    "case_count": {
+      "const": 24,
+      "default": 24,
+      "title": "Case Count",
+      "type": "integer"
+    },
+    "comparison_case_count": {
+      "const": 18,
+      "default": 18,
+      "title": "Comparison Case Count",
+      "type": "integer"
+    },
+    "compiled_lineage_complete": {
+      "title": "Compiled Lineage Complete",
+      "type": "boolean"
+    },
+    "compiled_max_bytes": {
+      "maximum": 3000,
+      "minimum": 0,
+      "title": "Compiled Max Bytes",
+      "type": "integer"
+    },
+    "compiled_median_bytes": {
+      "minimum": 0,
+      "title": "Compiled Median Bytes",
+      "type": "number"
+    },
+    "counts_toward_ordinary_use_gate": {
+      "const": false,
+      "default": false,
+      "title": "Counts Toward Ordinary Use Gate",
+      "type": "boolean"
+    },
+    "cross_agent_transfer_established": {
+      "const": false,
+      "default": false,
+      "title": "Cross Agent Transfer Established",
+      "type": "boolean"
+    },
+    "external_validation_accessed": {
+      "const": false,
+      "default": false,
+      "title": "External Validation Accessed",
+      "type": "boolean"
+    },
+    "false_activation_count": {
+      "minimum": 0,
+      "title": "False Activation Count",
+      "type": "integer"
+    },
+    "guidance_agreement_rate": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Guidance Agreement Rate",
+      "type": "number"
+    },
+    "instrument_valid": {
+      "title": "Instrument Valid",
+      "type": "boolean"
+    },
+    "interpretation": {
+      "enum": [
+        "instrument_failure",
+        "compiled_negative",
+        "compiled_directional_tie",
+        "compiled_directional_positive"
+      ],
+      "title": "Interpretation",
+      "type": "string"
+    },
+    "learning_agreement_rate": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Learning Agreement Rate",
+      "type": "number"
+    },
+    "luna_session_count": {
+      "maximum": 18,
+      "minimum": 0,
+      "title": "Luna Session Count",
+      "type": "integer"
+    },
+    "max_session_count": {
+      "maximum": 24,
+      "minimum": 0,
+      "title": "Max Session Count",
+      "type": "integer"
+    },
+    "outcomes": {
+      "items": {
+        "$ref": "#/$defs/PersonaTrackOutcome"
+      },
+      "maxItems": 48,
+      "minItems": 48,
+      "title": "Outcomes",
+      "type": "array"
+    },
+    "plan_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Plan Digest",
+      "type": "string"
+    },
+    "report_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Report Version",
+      "type": "string"
+    },
+    "revoked_or_superseded_leak_count": {
+      "minimum": 0,
+      "title": "Revoked Or Superseded Leak Count",
+      "type": "integer"
+    },
+    "sentinel_case_count": {
+      "const": 6,
+      "default": 6,
+      "title": "Sentinel Case Count",
+      "type": "integer"
+    },
+    "sentinel_guidance_correct": {
+      "maximum": 6,
+      "minimum": 0,
+      "title": "Sentinel Guidance Correct",
+      "type": "integer"
+    },
+    "sentinel_learning_correct": {
+      "maximum": 6,
+      "minimum": 0,
+      "title": "Sentinel Learning Correct",
+      "type": "integer"
+    },
+    "static_median_bytes": {
+      "minimum": 0,
+      "title": "Static Median Bytes",
+      "type": "number"
+    },
+    "total_session_count": {
+      "maximum": 102,
+      "minimum": 0,
+      "title": "Total Session Count",
+      "type": "integer"
+    },
+    "xhigh_session_count": {
+      "maximum": 54,
+      "minimum": 0,
+      "title": "Xhigh Session Count",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "benchmark_id",
+    "plan_digest",
+    "xhigh_session_count",
+    "max_session_count",
+    "luna_session_count",
+    "total_session_count",
+    "outcomes",
+    "sentinel_learning_correct",
+    "sentinel_guidance_correct",
+    "learning_agreement_rate",
+    "guidance_agreement_rate",
+    "adjudication_rate",
+    "instrument_valid",
+    "compiled_lineage_complete",
+    "false_activation_count",
+    "revoked_or_superseded_leak_count",
+    "compiled_max_bytes",
+    "compiled_median_bytes",
+    "static_median_bytes",
+    "interpretation"
+  ],
+  "title": "PersonaEvaluationReport",
+  "type": "object"
+}

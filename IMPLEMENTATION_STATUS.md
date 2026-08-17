@@ -1,6 +1,19 @@
 # Implementation Status
 
-Last updated: 2026-08-15
+Last updated: 2026-08-16
+
+## Milestone 6A.2L — Naïve-agent persona evaluation
+
+The framework is implemented and v1 is sealed as an evaluator-instrument failure. It enforces one
+persona per isolated role, counterbalanced anonymous presentation, two independent Sol/xhigh
+judgments, max-only disagreement adjudication, host-bound identities, encrypted external traces,
+and synthetic-only claim boundaries.
+
+V1 completed 63 accepted subscription sessions. Both tracks achieved 79.2% agreement and all 12
+sentinel track outcomes were correct, but nine of 24 cases required adjudication, exceeding the
+frozen six-case ceiling. The result cannot compare conditions. V1 also omitted the planned live
+Luna sensor and used deterministic reference compiled projections, which independently prevents an
+end-to-end product claim. Fresh-case v2 is preregistered but not executed.
 
 ## Current milestone
 
