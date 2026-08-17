@@ -44,8 +44,8 @@ from adaptation_compiler_lab.serialization import canonical_digest
 from adaptation_compiler_lab.targets.base import sha256_text
 
 _INTERPRETER_ID: Final = "codex-semantic-feedback"
-_INTERPRETER_VERSION: Final = "1.7.0"
-_PROMPT_VERSION: Final = "semantic-feedback-features-v7"
+_INTERPRETER_VERSION: Final = "1.8.0"
+_PROMPT_VERSION: Final = "semantic-feedback-features-v8"
 _ALLOWED_ITEM_TYPES: Final = frozenset({"agentMessage", "reasoning", "userMessage"})
 _DEVELOPER_CONTRACT: Final = """\
 You are a semantic sensor inside a governed user-adaptation system.
@@ -67,6 +67,12 @@ type or route. Extract these independent properties for each supported signal:
 
 Deterministic policy—not you—will map these properties to memory, preference, procedure, rule,
 example, correction, or revocation. Preserve distinctions instead of forcing a single class.
+
+Future applicability or a request to repeat a behavior establishes durability; it does not make
+the statement a positive example. Set example_intent=endorsed_for_reuse only when the user points
+to a concrete demonstrated output, patch, template, or other artifact and explicitly wants later
+work to imitate that demonstration. A prose description of desired behavior is not an example,
+even when it says "going forward," "keep doing this," or otherwise requests future reuse.
 
 Decompose compound feedback. When one message contains two independently durable clauses that
 would need different artifacts, emit one signal per clause and describe only that clause in each
@@ -106,6 +112,9 @@ Scope must be explicit in the supplied words. Use current_context only when the 
 clearly bounds a project, repository, environment, or comparable context. Use permanent_profile
 when the message explicitly applies generally or across future projects. If durable intent is clear
 but its scope is not, mark clarity ambiguous instead of inventing a boundary.
+
+Future intent inside one named project remains current_context. Personal phrasing such as "for me"
+or "I prefer" does not widen a project-bounded statement into permanent_profile.
 
 Workflow structure means the user directs the assistant to perform an action or ordered series of
 actions repeatedly. A prohibition, safety boundary, permission prerequisite, approval gate, or

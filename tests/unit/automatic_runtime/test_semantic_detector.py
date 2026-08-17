@@ -35,11 +35,22 @@ from adaptation_compiler_lab.automatic_runtime.semantic_interpreter import (
     CodexSemanticFeedbackInterpreter,
     SemanticInterpreterError,
     semantic_feedback_output_schema,
+    semantic_feedback_role_contract,
 )
 from adaptation_compiler_lab.connectors.models import JsonObject
 from adaptation_compiler_lab.connectors.pins import VerifiedCodexRuntime
 from adaptation_compiler_lab.domain import ArtifactRoute
 from tests.unit.automatic_runtime.test_runtime import DIGEST, NOW, _observation, _runtime
+
+
+def test_semantic_contract_separates_durability_examples_and_project_scope() -> None:
+    contract = semantic_feedback_role_contract()
+
+    assert (
+        "Future applicability or a request to repeat a behavior establishes durability" in contract
+    )
+    assert "A prose description of desired behavior is not an example" in contract
+    assert "Future intent inside one named project remains current_context" in contract
 
 
 def _receipt(tmp_path: Path) -> SemanticInterpreterReceipt:
@@ -534,7 +545,7 @@ def test_codex_semantic_interpreter_is_ephemeral_schema_bound_and_tool_free(
     observation = _observation(1, text)
     response = json.dumps(
         {
-            "prompt_version": "semantic-feedback-features-v7",
+            "prompt_version": "semantic-feedback-features-v8",
             "items": [
                 {
                     "observation_index": 0,
@@ -619,7 +630,7 @@ def test_codex_semantic_interpreter_rejects_tool_use(tmp_path: Path) -> None:
     rpc = _SemanticRpc(
         response=json.dumps(
             {
-                "prompt_version": "semantic-feedback-features-v7",
+                "prompt_version": "semantic-feedback-features-v8",
                 "items": [{"observation_index": 0, "signals": []}],
             }
         )
