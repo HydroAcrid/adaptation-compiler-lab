@@ -1,12 +1,13 @@
 # adaptation-compiler-lab
 
-Milestone 6A.2L adds a one-persona-per-session synthetic evaluation framework. Six fictional
-personas, 24 cases, reversed-order independent xhigh judges, and disagreement-only max adjudication
-now produce typed, raw-free receipts. The frozen v1 evaluator gate is invalid—not a Temper failure:
-both tracks reached 79.2% agreement and all sentinels passed, but 37.5% of cases required
-adjudication against a 25% ceiling. V1 also used reference compiled projections rather than the
-planned live semantic sensor, so no condition-performance claim is allowed. A fresh v2 design is
-preregistered in `development_benchmark_persona_evaluation/`.
+Milestone 6A.2L.1 hardens the one-persona-per-session evaluation framework before another live
+comparison. Construction packets now strip hidden labels and future turns; static profiles require
+separate author and reviewer contexts; compiled materials must bind real semantic-interpreter and
+deterministic-detector receipts; internal learning state is scored objectively; and blind judges
+see only neutrally rendered target guidance. A nine-check disposable calibration passes without an
+agent call. V1 remains immutable and invalid, the original unexecuted v2 design is preserved as
+superseded, and the corrected v2.1 protocol is frozen but not executed. See
+[`MILESTONE_6A2L1_PERSONA_INSTRUMENT_HARDENING.md`](MILESTONE_6A2L1_PERSONA_INSTRUMENT_HARDENING.md).
 
 `adaptation-compiler-lab` is a local research prototype for compiling verified, scoped learning
 from completed coding work into typed external artifacts. Its research question is whether a
@@ -366,6 +367,9 @@ after valid trials.
 - [`MILESTONE_6A2_AUTOMATIC_RUNTIME.md`](MILESTONE_6A2_AUTOMATIC_RUNTIME.md): signed standing
   policy, automatic capture/evaluation/compile/activate/deliver loop, layer model, notification,
   undo, metrics, conformance result, and honest host-integration boundary.
+- [`MILESTONE_6A2L1_PERSONA_INSTRUMENT_HARDENING.md`](MILESTONE_6A2L1_PERSONA_INSTRUMENT_HARDENING.md):
+  stage-bounded label-free packets, reviewed static baseline, receipted semantic compilation,
+  objective state scoring, neutral guidance judging, calibration, and frozen v2.1 protocol.
 - [`MILESTONE_6A2B_CODEX_DOGFOOD.md`](MILESTONE_6A2B_CODEX_DOGFOOD.md): pinned saved-auth Codex
   pickup, durable cursors, separate learning/activation receipts, fresh-session delivery, local
   controls, live no-model conformance, and the ordinary-use longitudinal evidence gate.
