@@ -42,3 +42,7 @@ all-`none`, task-only proposals before scoring. Amendment 1.1 preserves that enc
 changes only deterministic binding: an unroutable non-durable proposal is discarded, while an
 unroutable durable proposal still fails closed. One replacement Luna launch is authorized. This
 raises the remediation launch ceiling to two, with only one successful scored diagnostic allowed.
+
+The amended diagnostic passed exactly. Compiled material contained only the turn 2 preference and
+turn 6 procedure, with the correct host-owned scopes and no task-only false activations. See
+`CALIBRATION-CONCLUSION.md` for the deliberately narrow conclusion and remaining evidence boundary.

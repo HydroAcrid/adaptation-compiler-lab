@@ -496,8 +496,8 @@ uv run pytest
 uv build
 ```
 
-The current full suite checks formatting for 641 files, passes Ruff lint, passes strict typing
-across 309 source files, passes 853 tests with two Windows-only checks skipped under WSL, and builds
+The current full suite checks formatting for 692 files, passes Ruff lint, passes strict typing
+across 334 source files, passes 925 tests with two Windows-only checks skipped under WSL, and builds
 both the source distribution and wheel. Immutable anonymous target outputs are excluded from
 formatter/linter mutation.
 Wheel inspection confirms the ports, adapters, runner, both
@@ -591,3 +591,20 @@ passed the frozen gate at 100% detection, 100% scope, 98.4% semantic class, and 
 decision accuracy. The development result validates the hybrid architecture; it does not authorize
 unattended promotion. The active next evidence remains genuine 6A.2C review-mode dogfood, with
 borderline rule/procedure and preference/example cases retained as review candidates.
+
+Persona v3 instrument calibration is now complete at the construction-channel level. The original
+Sable smoke remains a valid negative record: compiled activated nothing and static found both
+behaviors but exposed an ambiguous preference/procedure oracle. The fresh Nola replacement removed
+those confounds; its independently reviewed static profile scored 2/2 exactly, while its original
+compiled sensor exposed positive-example bias from overlapping structured-output branches. The
+route-neutral schema remediation and non-durable binder amendment preserved both failed launches,
+then produced an exact 2/2 compiled state with zero task-only false activations and correct
+host-owned scopes. All sessions used the pinned Codex CLI, saved ChatGPT authentication, isolated
+state, encrypted external traces, and zero provider-billed calls.
+
+This is instrument calibration, not Temper-effectiveness evidence. The successful sensor diagnostic
+reused the public Nola calibration fixture after a prior result; no target behavior task was run.
+The original v3 and v3.1 results were not rewritten, the full v3 grid was not launched, and the
+deferred external-validation study was not accessed. The next AI evaluation must use fresh
+post-remediation personas and scenarios; static tests remain responsible for transport, binding,
+scope, lifecycle, and scoring mechanics.
