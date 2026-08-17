@@ -2,6 +2,28 @@
 
 Last updated: 2026-08-17
 
+## Pre-v3 static engineering gate
+
+The gate is implemented and passing without agent sessions. The successor persona interface
+separates behavioral proposals from host-owned scope: model-authored scope strings cannot control
+delivery, both conditions consume one exact scope registry, unknown evidence turns and scope
+substitution fail closed, and the latest cited visible turn determines the registered scope. A
+revealed-only audit bound all 39 reviewed v2.1 claims across 24 snapshots with zero fuzzy matches;
+24 claims were applicable to their public scenarios. This is a transport repair for the successor,
+not a retroactive repair of v2.1.
+
+Lifecycle scoring is now non-vacuous and before/after based. Deterministic fixtures passed separate
+addition, scoped-exception, correction, revocation, and neutral slices. A deliberately empty prior
+state does not receive revocation credit. Least-invasive routing keeps a preference as a preference
+and retains multi-route semantics for review. The report explicitly records zero language
+evaluation, zero effectiveness evidence, zero agent sessions, and zero provider-billed calls.
+
+The next model-facing work is a separately frozen v3 protocol followed by one one-persona
+construction smoke. A full fresh v3 grid may begin only if that smoke proves both lanes receive
+non-empty applicable material where expected and all deterministic accounting remains valid. V3
+then measures semantic extraction and target behavior, not compiler plumbing. See
+[`PRE_V3_STATIC_ENGINEERING_GATE.md`](PRE_V3_STATIC_ENGINEERING_GATE.md).
+
 ## Milestone 6A.2L.2 — Persona evaluation v2.1 execution
 
 V2.1 executed through its objective gate and stopped. The compiled condition was exact on 10/24

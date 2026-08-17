@@ -1,5 +1,13 @@
 # adaptation-compiler-lab
 
+The pre-v3 static engineering gate now passes. Both persona-comparison lanes consume the same
+host-owned exact scope registry, all 39 revealed v2.1 reviewed claims can be bound without fuzzy
+matching, and before/after lifecycle scoring rejects vacuous revocation credit. This used zero
+agent sessions and is deliberately **not** counted as Temper effectiveness evidence. A future fresh
+v3 AI benchmark will measure language understanding and behavioral usefulness only after a
+one-persona instrument smoke. See
+[`PRE_V3_STATIC_ENGINEERING_GATE.md`](PRE_V3_STATIC_ENGINEERING_GATE.md).
+
 Milestone 6A.2L.2 executed the hardened one-persona-per-session v2.1 evaluation and stopped at its
 preregistered objective gate. Compiled adaptation recovered 10/24 exact states (41.7%) and the
 strong static condition recovered 8/24 (33.3%), both below the frozen 75% floor. No blind guidance

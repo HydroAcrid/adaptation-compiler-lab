@@ -1,0 +1,203 @@
+{
+  "$defs": {
+    "PersonaHostScopeBinding": {
+      "additionalProperties": false,
+      "description": "Trusted host mapping from one evidence turn to one exact registered scope.",
+      "properties": {
+        "binding_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Binding Id",
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "source_turn": {
+          "maximum": 15,
+          "minimum": 1,
+          "title": "Source Turn",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "binding_id",
+        "source_turn",
+        "scope"
+      ],
+      "title": "PersonaHostScopeBinding",
+      "type": "object"
+    },
+    "Scope": {
+      "additionalProperties": false,
+      "description": "Machine-comparable applicability bounds.\n\nEmpty optional dimensions mean unconstrained. Subjects are never unconstrained in this\nsingle-user prototype. A narrower scope may restrict a dimension, add exclusions or\nactivation conditions, and shrink the validity window.",
+      "properties": {
+        "activation_conditions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Activation Conditions",
+          "type": "array"
+        },
+        "environment_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Environment Ids",
+          "type": "array"
+        },
+        "exclusions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Exclusions",
+          "type": "array"
+        },
+        "project_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Project Ids",
+          "type": "array"
+        },
+        "repository_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Repository Ids",
+          "type": "array"
+        },
+        "subject_ids": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Subject Ids",
+          "type": "array"
+        },
+        "target_families": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Target Families",
+          "type": "array"
+        },
+        "task_classes": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Task Classes",
+          "type": "array"
+        },
+        "valid_from": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid From"
+        },
+        "valid_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid Until"
+        },
+        "workspace_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Workspace Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "subject_ids"
+      ],
+      "title": "Scope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The canonical scope vocabulary shared by both comparison lanes.",
+  "properties": {
+    "bindings": {
+      "items": {
+        "$ref": "#/$defs/PersonaHostScopeBinding"
+      },
+      "minItems": 1,
+      "title": "Bindings",
+      "type": "array"
+    },
+    "persona_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Persona Id",
+      "type": "string"
+    },
+    "registry_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Registry Version",
+      "type": "string"
+    },
+    "stage": {
+      "maximum": 4,
+      "minimum": 1,
+      "title": "Stage",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "persona_id",
+    "stage",
+    "bindings"
+  ],
+  "title": "PersonaHostScopeRegistry",
+  "type": "object"
+}
