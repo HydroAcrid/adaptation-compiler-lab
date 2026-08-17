@@ -1,0 +1,1 @@
+{"adjudication_version":"2.1.0","adjudications":[{"adjudication_id":"sensor-adjudication-8fc51050ce4d1b17b71c421f","adjudication_version":"2.1.0","corrected_approved":false,"original_record_digest":"sha256:8fc51050ce4d1b17b71c421f27735f987d4d7a9f303296d8297d621b52fe4c5f","persona_id":"mei","reason":"trusted lifecycle target was not active","turn":10}],"upgrade_permitted":false}

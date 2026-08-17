@@ -1,0 +1,23 @@
+{
+  "amendment_version": "1.0.0",
+  "benchmark_id": "temper-6a2l-persona-evaluation-v2.1",
+  "amendment_id": "v21-pre-result-instrument-repair-001",
+  "trigger_incident_id": "v21-sensor-schema-gap-001",
+  "timing": "after_one_invalid_attempt_before_any_benchmark_result",
+  "hidden_oracle_accessed": false,
+  "condition_material_created": false,
+  "successful_role_design_changed": false,
+  "fixture_or_expected_state_changed": false,
+  "repair_scope": [
+    "Reject semantically unroutable feature vectors in the model-facing JSON schema.",
+    "Retain encrypted traces and raw-free incident receipts for future post-run validation failures.",
+    "Allow exactly four documented model-started non-result instrumentation attempts in addition to the 18 successful sensor sessions; provider schema rejections are logged but do not count as model sessions."
+  ],
+  "successful_semantic_sensor_sessions": 18,
+  "semantic_sensor_attempt_maximum": 22,
+  "successful_profile_role_sessions": 48,
+  "profile_role_attempt_maximum": 49,
+  "successful_total_session_maximum": 120,
+  "total_attempt_maximum": 125,
+  "interpretation": "The repair is instrumentation-driven and occurred before scoring or hidden-oracle access; it does not replace or modify a benchmark outcome."
+}

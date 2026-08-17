@@ -134,6 +134,34 @@ def test_natural_preference_is_reviewed_then_calibrated_for_promotion(
     )
 
 
+def test_review_mode_uses_semantic_features_even_when_explicit_grammar_matches(
+    tmp_path: Path,
+) -> None:
+    text = "I prefer descriptive names"
+    observation = _observation(1, text)
+    interpretation = _interpretation(
+        tmp_path,
+        text=text,
+        quote=text,
+        behavior="Use descriptive names that identify the real domain concept.",
+    )
+    _service, policy = _runtime(tmp_path)
+
+    detected = detect_feedback(
+        observation,
+        policy,
+        initial_runtime_state(policy),
+        mode=FeedbackDetectorMode.REVIEW,
+        semantic_interpretation=interpretation,
+    )
+
+    assert detected.detector_mode is FeedbackDetectorMode.REVIEW
+    assert detected.normalized_behavior == (
+        "Use descriptive names that identify the real domain concept."
+    )
+    assert detected.interpreter_receipt_digest == interpretation.receipt.content_digest
+
+
 def test_semantic_correction_retains_exact_host_bound_artifact_target(tmp_path: Path) -> None:
     text = "Actually, use a short outcome summary before details."
     observation = _observation(
@@ -172,6 +200,43 @@ def test_semantic_correction_retains_exact_host_bound_artifact_target(tmp_path: 
     assert detection.disposition is AutomationDisposition.REVIEW_REQUIRED
     assert detection.signal_kind is FeedbackSignalKind.CORRECTION
     assert detection.affected_artifact_id == "runtime-artifact-1"
+
+
+def test_semantic_revocation_uses_only_the_exact_host_bound_target(tmp_path: Path) -> None:
+    text = "Remove the earlier naming preference; it no longer applies."
+    observation = _observation(1, text, affected_artifact_id="runtime-artifact-trusted")
+    interpretation = SemanticFeedbackInterpretation(
+        observation_id=observation.observation_id,
+        observation_digest=observation.content_digest,
+        signals=(
+            SemanticFeedbackSignal(
+                signal_kind=FeedbackSignalKind.REVOCATION,
+                normalized_behavior=None,
+                requested_route=None,
+                affected_artifact_id="model-selected-target-must-not-win",
+                supporting_quote=text,
+                support_start=0,
+                support_end=len(text),
+                durability=SemanticSignalDurability.DURABLE,
+                clarity=SemanticSignalClarity.CLEAR,
+                scope_hint=SemanticScopeHint.CURRENT_CONTEXT,
+            ),
+        ),
+        receipt=_receipt(tmp_path),
+    )
+    _runtime_instance, policy = _runtime(tmp_path)
+
+    detection = detect_feedback(
+        observation,
+        policy,
+        initial_runtime_state(policy),
+        mode=FeedbackDetectorMode.REVIEW,
+        semantic_interpretation=interpretation,
+    )
+
+    assert detection.disposition is AutomationDisposition.REVIEW_REQUIRED
+    assert detection.signal_kind is FeedbackSignalKind.REVOCATION
+    assert detection.affected_artifact_id == "runtime-artifact-trusted"
 
 
 def test_task_only_semantic_signal_is_not_durable_learning(tmp_path: Path) -> None:
@@ -539,6 +604,8 @@ def test_semantic_output_schema_requires_complete_learning_or_revocation_shape()
     encoded = json.dumps(semantic_feedback_output_schema(), sort_keys=True)
 
     assert '"transition_intent": {"const": "revocation"' in encoded
+    assert '"affected_artifact_id": {"const": "host-bound-target"' in encoded
+    assert '"anyOf":' in encoded
     assert '"affected_artifact_id": {"type": "null"}' in encoded
     assert '"normalized_behavior": {"minLength": 1, "type": "string"}' in encoded
     assert '"assertion_kind": {"enum":' in encoded

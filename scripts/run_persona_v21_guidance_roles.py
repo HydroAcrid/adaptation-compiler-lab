@@ -15,6 +15,7 @@ from adaptation_compiler_lab.benchmark.persona_instrument import (
     PersonaV21ExecutionReceipt,
     PersonaV21JudgePacket,
     PersonaV21ModelJudgeDecision,
+    PersonaV21ObjectiveGateReport,
     audit_public_payload,
     bind_v21_judge_decision,
     persona_v21_judge_output_schema,
@@ -25,7 +26,8 @@ from adaptation_compiler_lab.persistence.raw import (
     RawEncryptionKey,
     require_external_raw_root,
 )
-from adaptation_compiler_lab.runners.codex_persona import CodexPersonaRoleRunner, PersonaRoleRequest
+from adaptation_compiler_lab.runners.codex_persona import PersonaRoleRequest
+from adaptation_compiler_lab.runners.codex_persona_v21 import CodexPersonaV21RoleRunner
 from adaptation_compiler_lab.runners.codex_structured_role import StructuredRoleRawResult
 from adaptation_compiler_lab.serialization import canonical_json
 
@@ -81,6 +83,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--role", choices=("judge", "adjudicator"), required=True)
     parser.add_argument("--packets", type=Path, required=True)
+    parser.add_argument("--objective-gate-report", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--raw-root", type=Path, required=True)
     parser.add_argument("--key-file", type=Path, required=True)
@@ -92,12 +95,16 @@ def main() -> None:
     args = parser.parse_args()
     if any(os.environ.get(name) for name in _FORBIDDEN_ENV):
         raise RuntimeError("API keys are forbidden for v2.1 guidance roles")
+    gate_report = PersonaV21ObjectiveGateReport.model_validate_json(
+        args.objective_gate_report.read_bytes(), strict=True
+    )
+    gate_report.require_comparison_permitted()
     role: Literal["guidance_judge", "guidance_adjudicator"] = (
         "guidance_judge" if args.role == "judge" else "guidance_adjudicator"
     )
     reasoning: Literal["xhigh", "max"] = "xhigh" if role == "guidance_judge" else "max"
     timeout = 600 if role == "guidance_judge" else 900
-    runner = CodexPersonaRoleRunner(
+    runner = CodexPersonaV21RoleRunner(
         executable=args.codex_executable,
         saved_auth_file=args.saved_auth,
         bubblewrap=args.bubblewrap,

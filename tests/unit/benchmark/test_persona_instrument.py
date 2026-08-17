@@ -46,8 +46,11 @@ from adaptation_compiler_lab.benchmark.persona_instrument import (
     PersonaV21ExecutionReceipt,
     PersonaV21JudgeDecision,
     PersonaV21ModelJudgeDecision,
+    PersonaV21ObjectiveGateReport,
     PersonaV21Protocol,
+    adjudicate_inactive_lifecycle_targets,
     audit_public_payload,
+    bind_model_profile_output,
     bind_reviewed_profile_material,
     bind_sensor_record,
     bind_v21_judge_decision,
@@ -225,6 +228,47 @@ def test_objective_score_reports_route_scope_and_lifecycle_errors() -> None:
     assert score.exact is False
     assert score.route_mismatch_source_turns == (10,)
     assert score.scope_mismatch_source_turns == (10,)
+
+
+def test_objective_score_uses_latest_supporting_turn_as_governing_evidence() -> None:
+    history = build_calibration_history()
+    evidence = build_stage_evidence(history, 3)
+    profile = build_calibration_profile().model_copy(
+        update={
+            "snapshot": build_calibration_profile().snapshot.model_copy(
+                update={
+                    "claims": (
+                        build_calibration_profile()
+                        .snapshot.claims[1]
+                        .model_copy(update={"source_turns": (2, 10)}),
+                    ),
+                }
+            ),
+        }
+    )
+    static = bind_reviewed_profile_material(
+        case=_case(3),
+        evidence=evidence,
+        reviewed=profile,
+    )
+    oracle = PersonaHiddenOracle(
+        case_id=static.case_id,
+        persona_id=static.persona_id,
+        sentinel=False,
+        active_claims=(
+            PersonaExpectedClaim(
+                source_turn=10,
+                route=ArtifactRoute.PREFERENCE,
+                scope=_scope("lantern-docs"),
+            ),
+        ),
+        forbidden_source_turns=(2,),
+    )
+
+    score = score_objective_state(static, oracle)
+
+    assert score.exact is True
+    assert score.forbidden_source_turns == ()
 
 
 def test_guidance_packet_is_counterbalanced_and_host_bound() -> None:
@@ -622,6 +666,17 @@ def test_live_semantic_types_bind_to_one_exact_sensor_record() -> None:
                 "affected_claim_id": None,
             }
         )
+    rejected = PersonaSensorRecord.model_validate(
+        {
+            **record.model_dump(round_trip=True),
+            "transition_intent": SemanticTransitionIntent.CORRECTION,
+            "affected_claim_id": None,
+            "approved": False,
+            "review_receipt_digest": None,
+        }
+    )
+    assert rejected.approved is False
+    assert rejected.affected_claim_id is None
 
 
 def test_protocol_and_disposable_calibration_are_frozen_and_non_evidentiary() -> None:
@@ -635,6 +690,69 @@ def test_protocol_and_disposable_calibration_are_frozen_and_non_evidentiary() ->
     assert report.provider_billed_calls == 0
     assert report.counts_toward_product_evidence is False
     assert len(report.checks) == 9
+
+
+def test_model_profile_binding_canonicalizes_only_set_like_order() -> None:
+    payload = build_calibration_profile(2).model_dump(mode="json", round_trip=True)
+    second = payload["snapshot"]["claims"][1]
+    second["scope"]["activation_conditions"] = ["z-condition", "a-condition"]
+    second["scope"]["exclusions"] = ["z-exclusion", "a-exclusion"]
+    second["source_turns"] = [7, 6]
+
+    bound = bind_model_profile_output(json.dumps(payload))
+
+    claim = bound.snapshot.claims[1]
+    assert claim.scope.activation_conditions == ("a-condition", "z-condition")
+    assert claim.scope.exclusions == ("a-exclusion", "z-exclusion")
+    assert claim.source_turns == (6, 7)
+
+
+def test_inactive_lifecycle_target_is_downgraded_but_never_upgraded() -> None:
+    records = list(build_calibration_sensor_records())
+    records[0] = records[0].model_copy(update={"approved": False, "review_receipt_digest": None})
+
+    effective, adjudications = adjudicate_inactive_lifecycle_targets(tuple(records[:3]))
+
+    assert effective[0].approved is False
+    assert effective[1].approved is True
+    assert effective[2].approved is False
+    assert tuple(item.turn for item in adjudications) == (10,)
+
+
+def test_failed_objective_gate_prohibits_guidance_comparison() -> None:
+    report = PersonaV21ObjectiveGateReport(
+        status="stopped_at_objective_gate",
+        compiled_exact_count=10,
+        static_exact_count=8,
+        compiled_objective_exact_rate=10 / 24,
+        static_objective_exact_rate=8 / 24,
+        nonempty_expected_case_count=16,
+        compiled_nonempty_exact_count=3,
+        static_nonempty_exact_count=0,
+        empty_expected_case_count=8,
+        compiled_empty_exact_count=7,
+        static_empty_exact_count=8,
+        compiled_material_claim_count=7,
+        reviewed_static_claim_count=39,
+        delivered_static_claim_count=0,
+        static_scope_transport_valid=False,
+        compiled_gate_passed=False,
+        static_gate_passed=False,
+        comparison_permitted=False,
+        instrument_valid=False,
+        interpretation="instrument_failure",
+        diagnostic_codes=(
+            "compiled_below_objective_floor",
+            "static_below_objective_floor",
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="guidance comparison is prohibited"):
+        report.require_comparison_permitted()
+    with pytest.raises(ValueError, match="decision does not match"):
+        PersonaV21ObjectiveGateReport.model_validate(
+            {**report.model_dump(round_trip=True), "compiled_gate_passed": True}
+        )
 
 
 def test_v1_artifacts_remain_byte_identical_during_hardening() -> None:
