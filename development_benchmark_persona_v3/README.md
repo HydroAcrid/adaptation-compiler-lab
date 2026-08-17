@@ -64,3 +64,16 @@ scope registry, oracle, sensor output, or expected answer changed.
 The old wrapper raised before the orchestration layer could encrypt the failed trace; the sanitized
 incident record therefore retains the failure and thread digests while explicitly recording that
 capture limitation. This is an instrumentation defect and contributes no effectiveness evidence.
+
+## Result
+
+The amended smoke completed all three successful roles and failed its exact gate. The compiled lane
+activated no claims. The static lane retained both intended durable statements with exact lineage
+and host-owned scope, but routed both as procedures; the frozen oracle had classified the normal
+ordered presentation choice as a preference. The full v3 grid remains blocked.
+
+This is not a comparative product result. The fixture conflated a presentation order with the
+preference/procedure boundary and described the narrow behavior as an “exception,” which also
+conflated addition with correction. Separately, the semantic sensor incorrectly treated future-use
+language as endorsement of a reusable example and ignored the named-project scope. Those issues
+are preserved in the result and analyzed in `SMOKE-ANALYSIS.md`.

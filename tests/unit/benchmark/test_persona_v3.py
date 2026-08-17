@@ -20,6 +20,8 @@ from adaptation_compiler_lab.benchmark.persona_v3 import (
     PersonaV3ProfileOutput,
     PersonaV3ProfileSnapshot,
     PersonaV3Protocol,
+    PersonaV3SensorResult,
+    PersonaV3SmokeReport,
     bind_v3_profile_material,
     bind_v3_profile_output,
     build_v3_profile_author_packet,
@@ -177,3 +179,29 @@ def test_v3_schemas_are_closed_and_match_snapshots() -> None:
     for name, schema in schemas.items():
         snapshot = ROOT / "schemas" / "persona_evaluation" / "v3" / name
         assert json.loads(snapshot.read_text(encoding="utf-8")) == schema
+
+
+def test_frozen_v3_smoke_preserves_its_negative_result() -> None:
+    result_root = ROOT / "development_benchmark_persona_v3" / "results"
+    sensor = PersonaV3SensorResult.model_validate_json(
+        (result_root / "SMOKE-SENSOR-RESULT-v1.json").read_bytes()
+    )
+    report = PersonaV3SmokeReport.model_validate_json(
+        (result_root / "SMOKE-REPORT-v1.json").read_bytes()
+    )
+
+    assert report.passed is False
+    assert report.full_grid_launch_gate_passed is False
+    assert report.compiled_score.missing_source_turns == (2, 6)
+    assert report.static_score.route_mismatch_source_turns == (2,)
+    assert report.compiled_material.claims == ()
+    assert tuple(claim.source_turns for claim in report.static_material.claims) == ((2,), (6,))
+    assert tuple(sensor.records[index - 1].route for index in (2, 6)) == (
+        ArtifactRoute.EXAMPLE,
+        ArtifactRoute.EXAMPLE,
+    )
+    assert all(sensor.records[index - 1].approved is False for index in (2, 6))
+    assert report.successful_agent_sessions == 3
+    assert report.total_agent_launches == 4
+    assert report.provider_billed_calls == 0
+    assert report.counts_toward_effectiveness_evidence is False
