@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import atexit
 import base64
+import fcntl
 import os
 from collections.abc import Mapping
 from pathlib import Path
@@ -16,6 +18,7 @@ from adaptation_compiler_lab.benchmark.persona_instrument import (
     PersonaProfileAuthorPacket,
     PersonaV21ExecutionReceipt,
     audit_public_payload,
+    bind_model_profile_output,
     build_profile_review_packet,
     persona_v21_profile_output_schema,
 )
@@ -23,9 +26,11 @@ from adaptation_compiler_lab.connectors.pins import sha256_bytes
 from adaptation_compiler_lab.persistence.raw import (
     LocalRawPayloadStore,
     RawEncryptionKey,
+    RawPayloadRef,
     require_external_raw_root,
 )
-from adaptation_compiler_lab.runners.codex_persona import CodexPersonaRoleRunner, PersonaRoleRequest
+from adaptation_compiler_lab.runners.codex_persona import PersonaRoleRequest
+from adaptation_compiler_lab.runners.codex_persona_v21 import CodexPersonaV21RoleRunner
 from adaptation_compiler_lab.runners.codex_structured_role import StructuredRoleRawResult
 from adaptation_compiler_lab.serialization import canonical_json
 
@@ -48,6 +53,52 @@ def _json_bytes(value: BaseModel | Mapping[str, object]) -> bytes:
 
 def _key(path: Path) -> RawEncryptionKey:
     return RawEncryptionKey.from_file(path, workspace_root=Path.cwd())
+
+
+def _single_writer(raw_root: Path) -> object:
+    lock = (raw_root / "persona-v21-profile.lock").open("a+b")
+    try:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError as error:
+        lock.close()
+        raise RuntimeError("another v2.1 profile coordinator is active") from error
+
+    def release() -> None:
+        if not lock.closed:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+            lock.close()
+
+    atexit.register(release)
+    return lock
+
+
+def _capture_role(
+    raw_store: LocalRawPayloadStore,
+    result: StructuredRoleRawResult,
+    *,
+    media_type: str,
+) -> RawPayloadRef:
+    return raw_store.put(
+        _json_bytes(
+            {
+                "response": result.response,
+                "stderr": result.stderr,
+                "trace_base64": base64.b64encode(result.trace_bytes).decode("ascii"),
+                "role_metadata": {
+                    "command_digest": result.command_digest,
+                    "environment_digest": result.environment_digest,
+                    "started_at": result.started_at.isoformat(),
+                    "finished_at": result.finished_at.isoformat(),
+                    "duration_seconds": result.duration_seconds,
+                    "input_tokens": result.input_tokens,
+                    "cached_input_tokens": result.cached_input_tokens,
+                    "output_tokens": result.output_tokens,
+                    "reasoning_output_tokens": result.reasoning_output_tokens,
+                },
+            }
+        ),
+        media_type=media_type,
+    )
 
 
 def _receipt(
@@ -91,7 +142,7 @@ def main() -> None:
     args = parser.parse_args()
     if any(os.environ.get(name) for name in _FORBIDDEN_ENV):
         raise RuntimeError("API keys are forbidden for v2.1 profile roles")
-    runner = CodexPersonaRoleRunner(
+    runner = CodexPersonaV21RoleRunner(
         executable=args.codex_executable,
         saved_auth_file=args.saved_auth,
         bubblewrap=args.bubblewrap,
@@ -107,6 +158,7 @@ def main() -> None:
     raw_root = require_external_raw_root(args.raw_root, workspace_root=Path.cwd())
     raw_root.mkdir(parents=True, exist_ok=True)
     raw_store = LocalRawPayloadStore(raw_root, encryption_key=_key(args.key_file.resolve()))
+    coordinator_lock = _single_writer(raw_root)
     packets = sorted(args.packets.resolve().glob("*.author.json"))
     if len(packets) > 24:
         raise ValueError("v2.1 profile roles are capped at 24 stage packets")
@@ -122,23 +174,39 @@ def main() -> None:
         stem = f"{packet.persona_id}-stage-{stage}"
         author_path = output / f"{stem}.author.json"
         reviewer_path = output / f"{stem}.reviewed.json"
-        if any(
-            path.exists()
-            for path in (
-                author_path,
-                reviewer_path,
-                output / f"{stem}.author.receipt.json",
-                output / f"{stem}.reviewer.receipt.json",
+        author_receipt_path = output / f"{stem}.author.receipt.json"
+        reviewer_receipt_path = output / f"{stem}.reviewer.receipt.json"
+        expected_paths = (
+            author_path,
+            reviewer_path,
+            author_receipt_path,
+            reviewer_receipt_path,
+        )
+        if all(path.exists() for path in expected_paths):
+            draft = PersonaModelProfileOutput.model_validate_json(author_path.read_bytes())
+            reviewed = PersonaModelProfileOutput.model_validate_json(reviewer_path.read_bytes())
+            author_receipt = PersonaV21ExecutionReceipt.model_validate_json(
+                author_receipt_path.read_bytes()
             )
-        ):
+            reviewer_receipt = PersonaV21ExecutionReceipt.model_validate_json(
+                reviewer_receipt_path.read_bytes()
+            )
+            review_packet = build_profile_review_packet(packet, draft)
+            build_profile_review_packet(packet, reviewed)
+            if author_receipt.packet_digest != sha256_bytes(
+                packet_bytes
+            ) or reviewer_receipt.packet_digest != sha256_bytes(_json_bytes(review_packet)):
+                raise RuntimeError("completed v2.1 profile receipt drifted")
+            continue
+        if any(path.exists() for path in expected_paths):
             raise RuntimeError("partial or completed v2.1 profile role output already exists")
         author_prompt = (
             "Maintain a concise static behavioral profile for this one fictional person. Use "
             "only evidence visible inside each stage. Ordinary requests, quoted content, and "
             "unclear intent are not durable learning. Narrow exceptions remain narrow; corrected "
-            "or revoked claims disappear. Every claim must cite only supporting turn numbers in "
-            "that stage. Return schema-valid JSON only.\n\nAUTHOR PACKET\n"
-            + packet_bytes.decode("utf-8")
+            "or revoked claims disappear. Sort every scope list lexically and every source_turns "
+            "list numerically. Every claim must cite only supporting turn numbers in that stage. "
+            "Return schema-valid JSON only.\n\nAUTHOR PACKET\n" + packet_bytes.decode("utf-8")
         )
         author_result = runner.run(
             PersonaRoleRequest(
@@ -152,14 +220,20 @@ def main() -> None:
                 output_schema=persona_v21_profile_output_schema(),
             )
         )
-        draft = PersonaModelProfileOutput.model_validate_json(author_result.response)
+        author_raw = _capture_role(
+            raw_store,
+            author_result,
+            media_type="application/vnd.temper.persona-v21-profile-author-trace+json",
+        )
+        draft = bind_model_profile_output(author_result.response)
         review_packet = build_profile_review_packet(packet, draft)
         review_bytes = _json_bytes(review_packet)
         reviewer_prompt = (
             "Independently review and improve this one fictional person's draft profile. Use only "
             "the supplied stage-bounded evidence. Remove unsupported, future, over-broad, stale, "
-            "or verbose guidance. Preserve exact visible-turn citations and the common 3,000-byte "
-            "ceiling. You cannot see another condition. Return a complete replacement output as "
+            "or verbose guidance. Sort every scope list lexically and every source_turns list "
+            "numerically. Preserve exact visible-turn citations and the common 3,000-byte ceiling. "
+            "You cannot see another condition. Return a complete replacement output as "
             "schema-valid JSON only.\n\nREVIEW PACKET\n" + review_bytes.decode("utf-8")
         )
         reviewer_result = runner.run(
@@ -174,28 +248,13 @@ def main() -> None:
                 output_schema=persona_v21_profile_output_schema(),
             )
         )
-        reviewed = PersonaModelProfileOutput.model_validate_json(reviewer_result.response)
-        build_profile_review_packet(packet, reviewed)
-        author_raw = raw_store.put(
-            _json_bytes(
-                {
-                    "response": author_result.response,
-                    "stderr": author_result.stderr,
-                    "trace_base64": base64.b64encode(author_result.trace_bytes).decode("ascii"),
-                }
-            ),
-            media_type="application/vnd.temper.persona-v21-profile-author-trace+json",
-        )
-        reviewer_raw = raw_store.put(
-            _json_bytes(
-                {
-                    "response": reviewer_result.response,
-                    "stderr": reviewer_result.stderr,
-                    "trace_base64": base64.b64encode(reviewer_result.trace_bytes).decode("ascii"),
-                }
-            ),
+        reviewer_raw = _capture_role(
+            raw_store,
+            reviewer_result,
             media_type="application/vnd.temper.persona-v21-profile-reviewer-trace+json",
         )
+        reviewed = bind_model_profile_output(reviewer_result.response)
+        build_profile_review_packet(packet, reviewed)
         author_receipt = _receipt(
             execution_id=f"v21-profile-author-{stem}",
             role="profile_author",
@@ -223,6 +282,7 @@ def main() -> None:
             _json_bytes(reviewer_receipt),
         )
         print(f"completed v2.1 author and reviewer: {stem}", flush=True)
+    del coordinator_lock
 
 
 if __name__ == "__main__":

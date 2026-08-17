@@ -923,6 +923,7 @@ def _run_isolated(root: Path) -> LongitudinalSimulationReport:
         minute=30,
         text="Stop using the verification-depth adaptation.",
         scope=broad,
+        affected_alias="verification_depth",
         spec=_SignalSpec(
             behavior=None,
             route=None,
@@ -947,6 +948,7 @@ def _run_isolated(root: Path) -> LongitudinalSimulationReport:
         minute=50,
         text="Remove the ordinary outcome-first adaptation too.",
         scope=broad,
+        affected_alias="outcome_first",
         spec=_SignalSpec(
             behavior=None,
             route=None,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 from collections import Counter
 from enum import StrEnum
 from typing import Annotated, Literal, Self, cast
@@ -183,6 +184,52 @@ class PersonaModelProfileOutput(FrozenModel):
         return self
 
 
+_PROFILE_SCOPE_SET_FIELDS = (
+    "subject_ids",
+    "workspace_ids",
+    "project_ids",
+    "repository_ids",
+    "task_classes",
+    "environment_ids",
+    "target_families",
+    "activation_conditions",
+    "exclusions",
+)
+
+
+def bind_model_profile_output(response: str) -> PersonaModelProfileOutput:
+    """Canonicalize ordering for set-like model fields, then apply strict domain validation."""
+
+    def reject_constant(value: str) -> None:
+        raise ValueError(f"non-finite JSON constant is forbidden: {value}")
+
+    value: object = json.loads(response, parse_constant=reject_constant)
+    if not isinstance(value, dict) or not all(isinstance(key, str) for key in value):
+        raise ValueError("profile output must be one JSON object")
+    root = cast(dict[str, object], value)
+    snapshot = root.get("snapshot")
+    if not isinstance(snapshot, dict) or not all(isinstance(key, str) for key in snapshot):
+        raise ValueError("profile output snapshot must be one JSON object")
+    claims = snapshot.get("claims")
+    if not isinstance(claims, list):
+        raise ValueError("profile output claims must be an array")
+    for raw_claim in claims:
+        if not isinstance(raw_claim, dict) or not all(isinstance(key, str) for key in raw_claim):
+            raise ValueError("profile output claim must be one JSON object")
+        claim = cast(dict[str, object], raw_claim)
+        source_turns = claim.get("source_turns")
+        if isinstance(source_turns, list) and all(isinstance(item, int) for item in source_turns):
+            claim["source_turns"] = sorted(source_turns)
+        scope = claim.get("scope")
+        if not isinstance(scope, dict) or not all(isinstance(key, str) for key in scope):
+            raise ValueError("profile output scope must be one JSON object")
+        for field in _PROFILE_SCOPE_SET_FIELDS:
+            field_value = scope.get(field)
+            if isinstance(field_value, list) and all(isinstance(item, str) for item in field_value):
+                scope[field] = sorted(field_value)
+    return PersonaModelProfileOutput.model_validate_json(canonical_json(root), strict=True)
+
+
 class PersonaProfileAuthorPacket(FrozenModel):
     packet_version: Literal["2.1.0"] = "2.1.0"
     persona_id: Identifier
@@ -295,7 +342,7 @@ class PersonaSensorRecord(FrozenModel):
                 raise ValueError("no-signal sensor record cannot change learning")
         elif self.signal_kind is FeedbackSignalKind.REVOCATION:
             if (
-                self.affected_claim_id is None
+                (self.approved and self.affected_claim_id is None)
                 or self.claim_id is not None
                 or self.statement is not None
                 or self.route is not None
@@ -307,10 +354,51 @@ class PersonaSensorRecord(FrozenModel):
         elif self.transition_intent is SemanticTransitionIntent.REVOCATION:
             raise ValueError("content sensor record cannot carry revocation lifecycle intent")
         elif self.transition_intent is SemanticTransitionIntent.CORRECTION:
-            if self.affected_claim_id is None:
+            if self.approved and self.affected_claim_id is None:
                 raise ValueError("correction sensor record requires one exact active target")
         elif self.affected_claim_id is not None:
             raise ValueError("addition sensor record cannot target an earlier claim")
+        return self
+
+
+class PersonaV21SensorTarget(FrozenModel):
+    """Trusted host binding from one correcting or revoking turn to earlier evidence."""
+
+    turn: Annotated[int, Field(ge=1, le=11)]
+    affected_source_turn: Annotated[int, Field(ge=1, le=10)]
+
+    @model_validator(mode="after")
+    def target_precedes_transition(self) -> Self:
+        if self.affected_source_turn >= self.turn:
+            raise ValueError("sensor target must precede the correcting or revoking turn")
+        return self
+
+
+class PersonaV21SensorBatch(FrozenModel):
+    """One stage-bounded semantic batch for exactly one persona."""
+
+    batch_version: Literal["2.1.0"] = "2.1.0"
+    batch_id: Identifier
+    persona_id: Identifier
+    stage: Annotated[int, Field(ge=1, le=3)]
+    messages: Annotated[tuple[PersonaEvidenceMessage, ...], Field(min_length=3, max_length=4)]
+    scope: Scope
+    target_bindings: tuple[PersonaV21SensorTarget, ...] = ()
+    construction_cutoff: NonEmptyStr
+
+    @model_validator(mode="after")
+    def segment_is_exact_and_host_bindings_are_visible(self) -> Self:
+        expected = {
+            1: tuple(range(1, 4)),
+            2: tuple(range(4, 8)),
+            3: tuple(range(8, 12)),
+        }[self.stage]
+        turns = tuple(item.turn for item in self.messages)
+        if turns != expected:
+            raise ValueError("semantic batch must contain one exact incremental stage segment")
+        bindings = tuple(item.turn for item in self.target_bindings)
+        if bindings != tuple(sorted(set(bindings))) or any(turn not in turns for turn in bindings):
+            raise ValueError("sensor target bindings must be unique and visible in the batch")
         return self
 
 
@@ -541,6 +629,137 @@ class PersonaV21ExecutionReceipt(FrozenModel):
         return self
 
 
+class PersonaSensorReviewDecision(FrozenModel):
+    """Raw-free deterministic review of one sensor decision."""
+
+    decision_version: Literal["2.1.0"] = "2.1.0"
+    batch_id: Identifier
+    persona_id: Identifier
+    turn: Annotated[int, Field(ge=1, le=11)]
+    observation_digest: Sha256Digest
+    interpretation_receipt_digest: Sha256Digest
+    detection_digest: Sha256Digest
+    approved: bool
+    reasons: Annotated[tuple[NonEmptyStr, ...], Field(min_length=1)]
+
+    @field_validator("reasons")
+    @classmethod
+    def reasons_are_sorted_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if value != tuple(sorted(set(value))):
+            raise ValueError("sensor review reasons must be sorted and unique")
+        return value
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class PersonaSensorReviewAdjudication(FrozenModel):
+    """Deterministic downgrade when an approved lifecycle action has no active target."""
+
+    adjudication_version: Literal["2.1.0"] = "2.1.0"
+    adjudication_id: Identifier
+    persona_id: Identifier
+    turn: Annotated[int, Field(ge=1, le=11)]
+    original_record_digest: Sha256Digest
+    corrected_approved: Literal[False] = False
+    reason: Literal["trusted lifecycle target was not active"] = (
+        "trusted lifecycle target was not active"
+    )
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class PersonaV21SensorResult(FrozenModel):
+    """One complete semantic session with reviewed records and a raw-free receipt."""
+
+    result_version: Literal["2.1.0"] = "2.1.0"
+    batch_id: Identifier
+    persona_id: Identifier
+    stage: Annotated[int, Field(ge=1, le=3)]
+    batch_digest: Sha256Digest
+    records: Annotated[tuple[PersonaSensorRecord, ...], Field(min_length=3, max_length=4)]
+    reviews: Annotated[tuple[PersonaSensorReviewDecision, ...], Field(min_length=3, max_length=4)]
+    execution_receipt: PersonaV21ExecutionReceipt
+
+    @model_validator(mode="after")
+    def bindings_are_exact(self) -> Self:
+        expected_turns = {
+            1: tuple(range(1, 4)),
+            2: tuple(range(4, 8)),
+            3: tuple(range(8, 12)),
+        }[self.stage]
+        if tuple(item.turn for item in self.records) != expected_turns:
+            raise ValueError("sensor result records do not match the exact stage segment")
+        if tuple(item.turn for item in self.reviews) != expected_turns:
+            raise ValueError("sensor result reviews do not match the exact stage segment")
+        if any(item.persona_id != self.persona_id for item in self.records):
+            raise ValueError("sensor result records crossed personas")
+        if any(
+            item.persona_id != self.persona_id or item.batch_id != self.batch_id
+            for item in self.reviews
+        ):
+            raise ValueError("sensor result reviews crossed batch or persona boundaries")
+        if self.execution_receipt.role != "semantic_sensor":
+            raise ValueError("sensor result requires one semantic-sensor receipt")
+        if self.execution_receipt.persona_id != self.persona_id:
+            raise ValueError("sensor result receipt crossed personas")
+        for record, review in zip(self.records, self.reviews, strict=True):
+            if (
+                record.observation_digest != review.observation_digest
+                or record.interpretation_receipt_digest != review.interpretation_receipt_digest
+                or record.detection_digest != review.detection_digest
+                or record.approved != review.approved
+                or (
+                    record.review_receipt_digest
+                    != (review.content_digest if review.approved else None)
+                )
+            ):
+                raise ValueError("sensor record and deterministic review lineage drifted")
+        return self
+
+
+def adjudicate_inactive_lifecycle_targets(
+    records: tuple[PersonaSensorRecord, ...],
+) -> tuple[tuple[PersonaSensorRecord, ...], tuple[PersonaSensorReviewAdjudication, ...]]:
+    """Downgrade, but never upgrade, approved lifecycle actions targeting no active claim."""
+
+    turns = tuple(item.turn for item in records)
+    if turns != tuple(sorted(set(turns))):
+        raise ValueError("sensor adjudication requires chronological unique records")
+    active: set[str] = set()
+    effective: list[PersonaSensorRecord] = []
+    adjudications: list[PersonaSensorReviewAdjudication] = []
+    for record in records:
+        corrected = record
+        target_required = record.signal_kind is FeedbackSignalKind.REVOCATION or (
+            record.transition_intent is SemanticTransitionIntent.CORRECTION
+        )
+        if record.approved and target_required and record.affected_claim_id not in active:
+            original_digest = canonical_digest(record)
+            adjudications.append(
+                PersonaSensorReviewAdjudication(
+                    adjudication_id=(
+                        "sensor-adjudication-" + original_digest.removeprefix("sha256:")[:24]
+                    ),
+                    persona_id=record.persona_id,
+                    turn=record.turn,
+                    original_record_digest=original_digest,
+                )
+            )
+            corrected = record.model_copy(update={"approved": False, "review_receipt_digest": None})
+        if corrected.approved and corrected.signal_kind is not None:
+            if target_required:
+                target = cast(str, corrected.affected_claim_id)
+                active.remove(target)
+            if corrected.signal_kind is not FeedbackSignalKind.REVOCATION:
+                active.add(cast(str, corrected.claim_id))
+        effective.append(corrected)
+    return tuple(effective), tuple(adjudications)
+
+
 class PersonaV21Alternative(FrozenModel):
     alternative_id: Identifier
     content: NonEmptyStr
@@ -652,6 +871,96 @@ class PersonaV21EvaluationReport(FrozenModel):
         if not self.instrument_valid and self.interpretation != "instrument_failure":
             raise ValueError("invalid v2.1 instrument cannot compare conditions")
         return self
+
+
+class PersonaV21ObjectiveGateReport(FrozenModel):
+    """Pre-guidance result that prevents comparison when learning-state recovery is invalid."""
+
+    report_version: Literal["2.1.0"] = "2.1.0"
+    benchmark_id: Literal["temper-6a2l-persona-evaluation-v2.1"] = (
+        "temper-6a2l-persona-evaluation-v2.1"
+    )
+    status: Literal["comparison_permitted", "stopped_at_objective_gate"]
+    case_count: Literal[24] = 24
+    objective_exact_rate_minimum: float = Field(default=0.75, ge=0, le=1)
+    compiled_exact_count: Annotated[int, Field(ge=0, le=24)]
+    static_exact_count: Annotated[int, Field(ge=0, le=24)]
+    compiled_objective_exact_rate: float = Field(ge=0, le=1)
+    static_objective_exact_rate: float = Field(ge=0, le=1)
+    nonempty_expected_case_count: Annotated[int, Field(ge=0, le=24)]
+    compiled_nonempty_exact_count: Annotated[int, Field(ge=0, le=24)]
+    static_nonempty_exact_count: Annotated[int, Field(ge=0, le=24)]
+    empty_expected_case_count: Annotated[int, Field(ge=0, le=24)]
+    compiled_empty_exact_count: Annotated[int, Field(ge=0, le=24)]
+    static_empty_exact_count: Annotated[int, Field(ge=0, le=24)]
+    compiled_material_claim_count: int = Field(ge=0)
+    reviewed_static_claim_count: int = Field(ge=0)
+    delivered_static_claim_count: int = Field(ge=0)
+    static_scope_transport_valid: bool
+    compiled_gate_passed: bool
+    static_gate_passed: bool
+    comparison_permitted: bool
+    instrument_valid: bool
+    interpretation: Literal["instrument_failure", "objective_gate_passed"]
+    guidance_sessions_executed: Literal[0] = 0
+    diagnostic_codes: Annotated[tuple[NonEmptyStr, ...], Field(min_length=1)]
+    counts_toward_ordinary_use_gate: Literal[False] = False
+    cross_agent_transfer_established: Literal[False] = False
+    external_validation_accessed: Literal[False] = False
+    provider_billed_calls: Literal[0] = 0
+
+    @field_validator("diagnostic_codes")
+    @classmethod
+    def diagnostics_are_sorted_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if value != tuple(sorted(set(value))):
+            raise ValueError("objective-gate diagnostics must be sorted and unique")
+        return value
+
+    @model_validator(mode="after")
+    def gate_arithmetic_is_exact(self) -> Self:
+        if self.objective_exact_rate_minimum != 0.75:
+            raise ValueError("v2.1 objective-gate minimum must remain frozen at 0.75")
+        if self.nonempty_expected_case_count + self.empty_expected_case_count != self.case_count:
+            raise ValueError("objective-gate expected-state groups must cover every case")
+        if self.compiled_nonempty_exact_count + self.compiled_empty_exact_count != (
+            self.compiled_exact_count
+        ):
+            raise ValueError("compiled objective-gate subgroup counts drifted")
+        if self.static_nonempty_exact_count + self.static_empty_exact_count != (
+            self.static_exact_count
+        ):
+            raise ValueError("static objective-gate subgroup counts drifted")
+        if self.compiled_objective_exact_rate != self.compiled_exact_count / self.case_count:
+            raise ValueError("compiled objective-gate rate drifted")
+        if self.static_objective_exact_rate != self.static_exact_count / self.case_count:
+            raise ValueError("static objective-gate rate drifted")
+        compiled_passed = self.compiled_objective_exact_rate >= self.objective_exact_rate_minimum
+        static_passed = self.static_objective_exact_rate >= self.objective_exact_rate_minimum
+        comparison_permitted = compiled_passed and static_passed
+        if (
+            self.compiled_gate_passed != compiled_passed
+            or self.static_gate_passed != static_passed
+            or self.comparison_permitted != comparison_permitted
+            or self.instrument_valid != comparison_permitted
+        ):
+            raise ValueError("objective-gate decision does not match its frozen rates")
+        expected_status = (
+            "comparison_permitted" if comparison_permitted else "stopped_at_objective_gate"
+        )
+        if self.status != expected_status:
+            raise ValueError("objective-gate status does not match its decision")
+        expected_interpretation = (
+            "objective_gate_passed" if comparison_permitted else "instrument_failure"
+        )
+        if self.interpretation != expected_interpretation:
+            raise ValueError("objective-gate interpretation does not match its decision")
+        return self
+
+    def require_comparison_permitted(self) -> None:
+        """Fail closed before any guidance session when either objective lane is invalid."""
+
+        if not self.comparison_permitted:
+            raise RuntimeError("v2.1 objective gate failed; guidance comparison is prohibited")
 
 
 def build_stage_evidence(history: PersonaEvidenceHistory, stage: int) -> PersonaStageEvidence:
@@ -906,10 +1215,10 @@ def score_objective_state(
     actual: dict[int, PersonaMaterialClaim] = {}
     duplicate_turns: set[int] = set()
     for claim in material.claims:
-        for turn in claim.source_turns:
-            if turn in actual:
-                duplicate_turns.add(turn)
-            actual[turn] = claim
+        governing_turn = claim.source_turns[-1]
+        if governing_turn in actual:
+            duplicate_turns.add(governing_turn)
+        actual[governing_turn] = claim
     expected_turns = set(expected)
     actual_turns = set(actual)
     missing = tuple(sorted(expected_turns - actual_turns))

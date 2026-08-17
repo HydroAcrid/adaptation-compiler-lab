@@ -399,16 +399,19 @@ def _semantic_revocation(
     mode: FeedbackDetectorMode,
     force_review: bool,
 ) -> DetectedFeedback:
-    artifact_id = signal.affected_artifact_id
+    artifact_id = observation.affected_artifact_id
     if artifact_id is None:
-        raise SemanticInterpretationError("semantic revocation lacks an artifact target")
+        raise SemanticInterpretationError(
+            "semantic revocation lacks one exact host-bound active artifact target"
+        )
     active = _active_artifacts(state)
     eligible = artifact_id in active and not force_review
     reason = (
-        "Semantic revocation names one exact active artifact and is calibrated "
-        "for reversible removal."
+        "Semantic revocation retains one exact host-bound active artifact and is calibrated for "
+        "reversible removal."
         if eligible
-        else "Semantic revocation requires review before changing active learning."
+        else "Semantic revocation retains the host-bound target and requires review before "
+        "changing active learning."
     )
     return _feedback(
         observation,
@@ -452,12 +455,22 @@ def detect_feedback(
         )
     _validate_semantic_interpretation(observation, semantic_interpretation)
 
-    if deterministic.disposition is not AutomationDisposition.NO_EXPLICIT_SIGNAL:
-        return deterministic
-
     receipt_digest = semantic_interpretation.receipt.content_digest
     signals = semantic_interpretation.signals
     span_digests = tuple(sha256_text(item.supporting_quote) for item in signals)
+    if deterministic.disposition in {
+        AutomationDisposition.IGNORED_UNTRUSTED,
+        AutomationDisposition.BLOCKED,
+    }:
+        return deterministic.model_copy(
+            update={
+                "detector_id": "codex-semantic-feedback",
+                "detector_mode": mode,
+                "interpreter_receipt_digest": receipt_digest,
+                "semantic_candidate_count": len(signals),
+                "supporting_span_digests": span_digests,
+            }
+        )
     if mode is FeedbackDetectorMode.SHADOW:
         return deterministic.model_copy(
             update={

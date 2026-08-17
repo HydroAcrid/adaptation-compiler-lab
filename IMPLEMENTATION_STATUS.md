@@ -2,9 +2,29 @@
 
 Last updated: 2026-08-17
 
+## Milestone 6A.2L.2 — Persona evaluation v2.1 execution
+
+V2.1 executed through its objective gate and stopped. The compiled condition was exact on 10/24
+states (41.7%); the independently authored/reviewed static condition was exact on 8/24 (33.3%).
+Both missed the frozen 75% floor. Guidance sessions executed: zero. The experiment reports no
+condition winner and does not count toward ordinary-use evidence.
+
+On the 16 states requiring an active behavior, compiled was exact on 3 and static on 0. The
+compiled path missed all six narrow exceptions, made six route errors, and failed several
+lifecycle chains. The static roles authored 39 evidence-cited claims, but their packets omitted
+the runtime's canonical scope vocabulary; exact target applicability therefore filtered every
+claim. This is an invalid static comparator channel plus a genuine negative compiled objective
+result. A typed gate report now prevents accidental guidance execution after failure.
+
+The 18 accepted Luna sensor sessions and 48 accepted Sol author/reviewer sessions used saved
+ChatGPT authentication and zero provider-billed calls. Five model-started non-results and two
+pre-inference provider schema rejections are preserved in the incident ledger. No Milestone 6
+external-validation material was accessed. See
+[`MILESTONE_6A2L2_PERSONA_EXECUTION.md`](MILESTONE_6A2L2_PERSONA_EXECUTION.md).
+
 ## Milestone 6A.2L.1 — Persona instrument hardening
 
-The evaluator is hardened and deterministically calibrated; v2.1 has not run. Public role packets
+The evaluator was hardened and deterministically calibrated before v2.1 ran. Public role packets
 now contain only stage-bounded turn numbers and message text. Expected labels, transition labels,
 final persona summaries, future evidence, forbidden claims, and condition cues fail closed. Static
 profiles require separate one-persona author and reviewer outputs with exact visible-turn lineage.
@@ -23,9 +43,8 @@ activation, neutral rendering, and condition-cue rejection. It is explicitly non
 files are byte-bound by an immutability manifest. The original v2 preregistration is unchanged and
 superseded before execution by a pinned 120-session-maximum v2.1 protocol. Author and reviewer
 roles are stage-specific, so no context asked to produce an earlier snapshot can see a later turn.
-The final quality gate passed 893 tests with two expected platform skips, strict mypy over 321
-source files, formatting and linting over 664 files, deterministic schema regeneration, and both
-distribution builds. No agent session or provider-billed call was used for this hardening.
+The hardening quality gate passed before execution. No agent session or provider-billed call was
+used for the hardening itself.
 
 ## Milestone 6A.2L — Naïve-agent persona evaluation
 
@@ -39,8 +58,7 @@ sentinel track outcomes were correct, but nine of 24 cases required adjudication
 frozen six-case ceiling. The result cannot compare conditions. V1 also omitted the planned live
 Luna sensor and used deterministic reference compiled projections, which independently prevents an
 end-to-end product claim. The original fresh-case v2 design is preserved as unexecuted history. Its
-v2.1 successor is frozen but not executed; fresh personas, scenarios, hidden oracle, and
-randomization material do not yet exist.
+v2.1 successor was then constructed and executed as the separate 6A.2L.2 instrument above.
 
 ## Current milestone
 
@@ -86,10 +104,10 @@ carry an exact synthetic selector and `synthetic=true`. Intermediate SQLite, enc
 and keys are destroyed. The raw-free report declares `counts_toward_ordinary_use_gate=false`; this
 does not complete or weaken the genuine 6A.2C gate.
 
-Current verification is green: locked dependency sync, 645-file formatting, Ruff, strict mypy
-over 312 source files, 864 tests passed with two expected platform skips, source and wheel builds,
-12 schema/migration checks, deterministic report reproduction, and zero credential, private-path,
-consented-task-ID, or raw-report scan findings across 25 changed files.
+Current verification is green: locked dependency sync, 670-file formatting, Ruff, strict mypy
+over 323 source files, 900 tests passed with two expected platform skips, source and wheel builds,
+schema and migration coverage, byte-identical v2.1 schema regeneration, idempotent material/score
+reproduction, and zero new credential, private-path, consented-task-ID, or raw-payload findings.
 
 Permanent-profile and current-context ownership is implemented. Capability-preset and personal
 overlay references are typed and composition-checked, but no preset is imported or active. The

@@ -1,12 +1,12 @@
 # adaptation-compiler-lab
 
-Milestone 6A.2L.1 hardens the one-persona-per-session evaluation framework before another live
-comparison. Construction packets now strip hidden labels and future turns; static profiles require
-separate author and reviewer contexts; compiled materials must bind real semantic-interpreter and
-deterministic-detector receipts; internal learning state is scored objectively; and blind judges
-see only neutrally rendered target guidance. A nine-check disposable calibration passes without an
-agent call. V1 remains immutable and invalid, the original unexecuted v2 design is preserved as
-superseded, and the corrected v2.1 protocol is frozen but not executed. See
+Milestone 6A.2L.2 executed the hardened one-persona-per-session v2.1 evaluation and stopped at its
+preregistered objective gate. Compiled adaptation recovered 10/24 exact states (41.7%) and the
+strong static condition recovered 8/24 (33.3%), both below the frozen 75% floor. No blind guidance
+judges ran and no winner is reported. The compiled path genuinely missed exceptions, routes, and
+lifecycle transitions; the static comparator also suffered a scope-vocabulary transport defect
+that filtered 39 reviewed claims to zero. V1 and v2.1 remain preserved as instrument failures. See
+[`MILESTONE_6A2L2_PERSONA_EXECUTION.md`](MILESTONE_6A2L2_PERSONA_EXECUTION.md) and
 [`MILESTONE_6A2L1_PERSONA_INSTRUMENT_HARDENING.md`](MILESTONE_6A2L1_PERSONA_INSTRUMENT_HARDENING.md).
 
 `adaptation-compiler-lab` is a local research prototype for compiling verified, scoped learning

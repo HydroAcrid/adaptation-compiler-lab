@@ -116,15 +116,15 @@ has norm_strength=invariant and workflow_structure=none.
 The trusted host binds every proposal to the complete exact user message, so do not copy or
 normalize a supporting quote. The normalized behavior must be concise and entailed by that
 message; do not add requirements. Scope is only a hint and cannot broaden deterministic policy.
-Set affected_artifact_id to null except for an explicit revocation that quotes an exact artifact
-ID. Revocation has no normalized behavior and uses assertion_kind=other with all content features
-set to none. Correction describes the evidence transition while the other features describe the
-corrected content.
+Set affected_artifact_id to null except for an explicit revocation whose batch item says
+host_bound_target_available=true. For that revocation use the literal value "host-bound-target";
+it is only a presence marker, never an artifact ID selected by you. Revocation has no normalized
+behavior and uses assertion_kind=other with all content features set to none. Correction describes
+the evidence transition while the other features describe the corrected content.
 
-An explicit request to remove, revoke, forget, or stop using an exact active adaptation artifact
-ID is always a durable revocation proposal, including when it is polite, conversational, or scoped
-to one project. Never discard an exact artifact removal as an ordinary task request. Emit the exact
-ID in affected_artifact_id and transition_intent=revocation.
+An explicit request to remove, revoke, forget, or stop using one earlier behavior is a durable
+revocation proposal when the trusted host says a target is available, including when the request
+is polite, conversational, or scoped to one project. Never invent or select its artifact ID.
 """
 
 
@@ -157,7 +157,10 @@ class _SignalProposal(FrozenModel):
     @model_validator(mode="after")
     def proposal_shape_is_coherent(self) -> _SignalProposal:
         if self.transition_intent is SemanticTransitionIntent.REVOCATION:
-            if self.affected_artifact_id is None or self.normalized_behavior is not None:
+            if (
+                self.affected_artifact_id != "host-bound-target"
+                or self.normalized_behavior is not None
+            ):
                 raise ValueError("semantic revocation proposal has an invalid shape")
             if (
                 self.assertion_kind is not SemanticAssertionKind.OTHER
@@ -237,23 +240,67 @@ def semantic_feedback_output_schema() -> dict[str, object]:
             "enum": [item.value for item in SemanticExampleIntent],
         },
     }
-    learning_signal = {
-        "type": "object",
-        "additionalProperties": False,
-        "required": required,
-        "properties": {
-            **shared,
-            "normalized_behavior": {"type": "string", "minLength": 1},
-            "transition_intent": {
+    learning_properties: dict[str, object] = {
+        **shared,
+        "normalized_behavior": {"type": "string", "minLength": 1},
+        "transition_intent": {
+            "type": "string",
+            "enum": [
+                SemanticTransitionIntent.ADDITION.value,
+                SemanticTransitionIntent.CORRECTION.value,
+            ],
+        },
+        "affected_artifact_id": {"type": "null"},
+    }
+
+    def learning_variant(field: str, constraint: dict[str, object]) -> dict[str, object]:
+        return {
+            "type": "object",
+            "additionalProperties": False,
+            "required": required,
+            "properties": {**learning_properties, field: constraint},
+        }
+
+    learning_variants = [
+        learning_variant(
+            "example_intent",
+            {
+                "type": "string",
+                "const": SemanticExampleIntent.ENDORSED_FOR_REUSE.value,
+            },
+        ),
+        learning_variant(
+            "workflow_structure",
+            {
                 "type": "string",
                 "enum": [
-                    SemanticTransitionIntent.ADDITION.value,
-                    SemanticTransitionIntent.CORRECTION.value,
+                    SemanticWorkflowStructure.TRIGGERED_ACTION.value,
+                    SemanticWorkflowStructure.ORDERED_SEQUENCE.value,
+                    SemanticWorkflowStructure.TRIGGERED_SEQUENCE.value,
                 ],
             },
-            "affected_artifact_id": {"type": "null"},
-        },
-    }
+        ),
+        learning_variant(
+            "assertion_kind",
+            {
+                "type": "string",
+                "enum": [
+                    SemanticAssertionKind.FACT.value,
+                    SemanticAssertionKind.MIXED.value,
+                ],
+            },
+        ),
+        learning_variant(
+            "norm_strength",
+            {
+                "type": "string",
+                "enum": [
+                    SemanticNormStrength.PREFERENCE.value,
+                    SemanticNormStrength.INVARIANT.value,
+                ],
+            },
+        ),
+    ]
     revocation_signal = {
         "type": "object",
         "additionalProperties": False,
@@ -261,7 +308,7 @@ def semantic_feedback_output_schema() -> dict[str, object]:
         "properties": {
             **shared,
             "normalized_behavior": {"type": "null"},
-            "affected_artifact_id": {"type": "string", "minLength": 1},
+            "affected_artifact_id": {"type": "string", "const": "host-bound-target"},
             "assertion_kind": {
                 "type": "string",
                 "const": SemanticAssertionKind.OTHER.value,
@@ -300,13 +347,142 @@ def semantic_feedback_output_schema() -> dict[str, object]:
                         "signals": {
                             "type": "array",
                             "maxItems": 4,
-                            "items": {"anyOf": [learning_signal, revocation_signal]},
+                            "items": {"anyOf": [*learning_variants, revocation_signal]},
                         },
                     },
                 },
             },
         },
     }
+
+
+def semantic_feedback_role_contract() -> str:
+    """Return the exact instruction contract shared by app-server and CLI sensor roles."""
+
+    return _DEVELOPER_CONTRACT
+
+
+def semantic_feedback_batch_input_digest(
+    observations: Sequence[InteractionObservation],
+) -> str:
+    """Bind one sensor execution to the ordered raw-free observation identities."""
+
+    return canonical_digest(
+        {
+            "observations": [
+                {
+                    "observation_id": item.observation_id,
+                    "observation_digest": item.content_digest,
+                }
+                for item in observations
+            ]
+        }
+    )
+
+
+def semantic_feedback_prompt_digest() -> str:
+    """Identify the stable semantic contract separately from one batch's raw text."""
+
+    return canonical_digest(
+        {
+            "developer_contract": _DEVELOPER_CONTRACT,
+            "prompt_version": _PROMPT_VERSION,
+        }
+    )
+
+
+def semantic_feedback_batch_prompt(observations: Sequence[InteractionObservation]) -> str:
+    """Render the exact ordered, quoted-data prompt for an isolated sensor session."""
+
+    if not observations or len(observations) > 100:
+        raise SemanticInterpreterError("semantic batch must contain between one and 100 items")
+    observation_ids = tuple(item.observation_id for item in observations)
+    if len(observation_ids) != len(set(observation_ids)):
+        raise SemanticInterpreterError("semantic batch contains duplicate observations")
+    batch_payload = [
+        {
+            "observation_index": index,
+            "observation_id": item.observation_id,
+            "observation_digest": item.content_digest,
+            "text": item.text,
+            "host_bound_target_available": item.affected_artifact_id is not None,
+        }
+        for index, item in enumerate(observations)
+    ]
+    return (
+        "Interpret this ordered JSON batch. Return one item for every observation_index in "
+        "the same order. Copy the small integer index, not the opaque observation_id.\n\n"
+        + json.dumps(
+            {
+                "prompt_version": _PROMPT_VERSION,
+                "messages": batch_payload,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+    )
+
+
+def bind_semantic_feedback_output(
+    observations: Sequence[InteractionObservation],
+    final_message: str,
+    receipt: SemanticInterpreterReceipt,
+) -> Mapping[str, SemanticFeedbackInterpretation]:
+    """Validate one model result and bind every proposal to its exact trusted observation."""
+
+    try:
+        parsed = _BatchProposal.model_validate_json(final_message, strict=True)
+    except ValidationError as error:
+        failures = tuple(
+            f"{'.'.join(str(part) for part in item['loc'])}:{item['type']}"
+            for item in error.errors(include_input=False, include_url=False)[:4]
+        )
+        raise SemanticInterpreterError(
+            "semantic interpreter output violates the typed response at " + ", ".join(failures)
+        ) from error
+    if parsed.prompt_version != _PROMPT_VERSION:
+        raise SemanticInterpreterError("semantic interpreter prompt version drifted")
+    returned_indices = tuple(item.observation_index for item in parsed.items)
+    if returned_indices != tuple(range(len(observations))):
+        raise SemanticInterpreterError(
+            "semantic interpreter omitted, reordered, or invented observations"
+        )
+    result: dict[str, SemanticFeedbackInterpretation] = {}
+    for item in parsed.items:
+        observation = observations[item.observation_index]
+        signals: list[SemanticFeedbackSignal] = []
+        for proposal in item.signals:
+            features = proposal.features
+            route = route_semantic_features(features)
+            signals.append(
+                SemanticFeedbackSignal(
+                    signal_kind=route.signal_kind,
+                    normalized_behavior=proposal.normalized_behavior,
+                    requested_route=route.selected_route,
+                    affected_artifact_id=proposal.affected_artifact_id,
+                    supporting_quote=observation.text,
+                    support_start=0,
+                    support_end=len(observation.text),
+                    durability=proposal.durability,
+                    clarity=(
+                        SemanticSignalClarity.AMBIGUOUS
+                        if route.resolution is SemanticRouteResolution.AMBIGUOUS
+                        else proposal.clarity
+                    ),
+                    scope_hint=proposal.scope_hint,
+                    semantic_features=features,
+                    route_candidates=route.route_candidates,
+                    route_resolution=route.resolution,
+                )
+            )
+        result[observation.observation_id] = SemanticFeedbackInterpretation(
+            observation_id=observation.observation_id,
+            observation_digest=observation.content_digest,
+            signals=tuple(signals),
+            receipt=receipt,
+        )
+    return result
 
 
 def _object(value: object, *, field: str) -> JsonObject:
@@ -366,45 +542,9 @@ class CodexSemanticFeedbackInterpreter:
             raise SemanticInterpreterError("semantic batch contains duplicate observations")
 
         schema = semantic_feedback_output_schema()
-        batch_payload = [
-            {
-                "observation_index": index,
-                "observation_id": item.observation_id,
-                "observation_digest": item.content_digest,
-                "text": item.text,
-            }
-            for index, item in enumerate(observations)
-        ]
-        batch_input_digest = canonical_digest(
-            {
-                "observations": [
-                    {
-                        "observation_id": item.observation_id,
-                        "observation_digest": item.content_digest,
-                    }
-                    for item in observations
-                ]
-            }
-        )
-        prompt = (
-            "Interpret this ordered JSON batch. Return one item for every observation_index in "
-            "the same order. Copy the small integer index, not the opaque observation_id.\n\n"
-            + json.dumps(
-                {
-                    "prompt_version": _PROMPT_VERSION,
-                    "messages": batch_payload,
-                },
-                ensure_ascii=False,
-                sort_keys=True,
-                separators=(",", ":"),
-            )
-        )
-        prompt_digest = canonical_digest(
-            {
-                "developer_contract": _DEVELOPER_CONTRACT,
-                "prompt_version": _PROMPT_VERSION,
-            }
-        )
+        batch_input_digest = semantic_feedback_batch_input_digest(observations)
+        prompt = semantic_feedback_batch_prompt(observations)
+        prompt_digest = semantic_feedback_prompt_digest()
         schema_digest = canonical_digest(schema)
         started = self._clock()
         if started.tzinfo is None or started.utcoffset() is None:
@@ -417,24 +557,6 @@ class CodexSemanticFeedbackInterpreter:
             prompt=prompt,
             output_schema=schema,
         )
-        try:
-            parsed = _BatchProposal.model_validate_json(final_message, strict=True)
-        except ValidationError as error:
-            failures = tuple(
-                f"{'.'.join(str(part) for part in item['loc'])}:{item['type']}"
-                for item in error.errors(include_input=False, include_url=False)[:4]
-            )
-            raise SemanticInterpreterError(
-                "semantic interpreter output violates the typed response at " + ", ".join(failures)
-            ) from error
-        if parsed.prompt_version != _PROMPT_VERSION:
-            raise SemanticInterpreterError("semantic interpreter prompt version drifted")
-        returned_indices = tuple(item.observation_index for item in parsed.items)
-        if returned_indices != tuple(range(len(observations))):
-            raise SemanticInterpreterError(
-                "semantic interpreter omitted, reordered, or invented observations"
-            )
-
         receipt = SemanticInterpreterReceipt(
             interpreter_version=_INTERPRETER_VERSION,
             model=self._model,
@@ -450,41 +572,7 @@ class CodexSemanticFeedbackInterpreter:
             input_count=len(observations),
             created_at=started,
         )
-        result: dict[str, SemanticFeedbackInterpretation] = {}
-        for item in parsed.items:
-            observation = observations[item.observation_index]
-            signals: list[SemanticFeedbackSignal] = []
-            for proposal in item.signals:
-                features = proposal.features
-                route = route_semantic_features(features)
-                signals.append(
-                    SemanticFeedbackSignal(
-                        signal_kind=route.signal_kind,
-                        normalized_behavior=proposal.normalized_behavior,
-                        requested_route=route.selected_route,
-                        affected_artifact_id=proposal.affected_artifact_id,
-                        supporting_quote=observation.text,
-                        support_start=0,
-                        support_end=len(observation.text),
-                        durability=proposal.durability,
-                        clarity=(
-                            SemanticSignalClarity.AMBIGUOUS
-                            if route.resolution is SemanticRouteResolution.AMBIGUOUS
-                            else proposal.clarity
-                        ),
-                        scope_hint=proposal.scope_hint,
-                        semantic_features=features,
-                        route_candidates=route.route_candidates,
-                        route_resolution=route.resolution,
-                    )
-                )
-            result[observation.observation_id] = SemanticFeedbackInterpretation(
-                observation_id=observation.observation_id,
-                observation_digest=observation.content_digest,
-                signals=tuple(signals),
-                receipt=receipt,
-            )
-        return result
+        return bind_semantic_feedback_output(observations, final_message, receipt)
 
     def _run_turn(
         self,

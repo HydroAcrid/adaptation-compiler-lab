@@ -16,10 +16,15 @@ from adaptation_compiler_lab.benchmark.persona_instrument import (
     PersonaProfileAuthorPacket,
     PersonaProfileReviewPacket,
     PersonaSensorRecord,
+    PersonaSensorReviewAdjudication,
+    PersonaSensorReviewDecision,
     PersonaV21EvaluationReport,
     PersonaV21ExecutionReceipt,
     PersonaV21JudgePacket,
+    PersonaV21ObjectiveGateReport,
     PersonaV21Protocol,
+    PersonaV21SensorBatch,
+    PersonaV21SensorResult,
 )
 from adaptation_compiler_lab.serialization import canonical_json
 
@@ -32,7 +37,12 @@ _MODELS: tuple[tuple[str, type[BaseModel]], ...] = (
     ("persona-profile-author-packet", PersonaProfileAuthorPacket),
     ("persona-profile-review-packet", PersonaProfileReviewPacket),
     ("persona-sensor-record", PersonaSensorRecord),
+    ("persona-sensor-review-adjudication", PersonaSensorReviewAdjudication),
+    ("persona-sensor-review-decision", PersonaSensorReviewDecision),
+    ("persona-v21-sensor-batch", PersonaV21SensorBatch),
+    ("persona-v21-sensor-result", PersonaV21SensorResult),
     ("persona-v21-judge-packet", PersonaV21JudgePacket),
+    ("persona-v21-objective-gate-report", PersonaV21ObjectiveGateReport),
     ("persona-v21-evaluation-report", PersonaV21EvaluationReport),
     ("persona-v21-execution-receipt", PersonaV21ExecutionReceipt),
     ("persona-v21-protocol", PersonaV21Protocol),
