@@ -34,12 +34,24 @@ from adaptation_compiler_lab.automatic_runtime.detector import (
 from adaptation_compiler_lab.automatic_runtime.semantic_interpreter import (
     CodexSemanticFeedbackInterpreter,
     SemanticInterpreterError,
+    bind_semantic_feedback_output,
     semantic_feedback_output_schema,
+    semantic_feedback_role_contract,
 )
 from adaptation_compiler_lab.connectors.models import JsonObject
 from adaptation_compiler_lab.connectors.pins import VerifiedCodexRuntime
 from adaptation_compiler_lab.domain import ArtifactRoute
 from tests.unit.automatic_runtime.test_runtime import DIGEST, NOW, _observation, _runtime
+
+
+def test_semantic_contract_separates_durability_examples_and_project_scope() -> None:
+    contract = semantic_feedback_role_contract()
+
+    assert (
+        "Future applicability or a request to repeat a behavior establishes durability" in contract
+    )
+    assert "A prose description of desired behavior is not an example" in contract
+    assert "Future intent inside one named project remains current_context" in contract
 
 
 def _receipt(tmp_path: Path) -> SemanticInterpreterReceipt:
@@ -534,7 +546,7 @@ def test_codex_semantic_interpreter_is_ephemeral_schema_bound_and_tool_free(
     observation = _observation(1, text)
     response = json.dumps(
         {
-            "prompt_version": "semantic-feedback-features-v7",
+            "prompt_version": "semantic-feedback-features-v8",
             "items": [
                 {
                     "observation_index": 0,
@@ -610,8 +622,54 @@ def test_semantic_output_schema_requires_complete_learning_or_revocation_shape()
     assert '"normalized_behavior": {"minLength": 1, "type": "string"}' in encoded
     assert '"assertion_kind": {"enum":' in encoded
     assert '"norm_strength": {"enum":' in encoded
+    assert '"const": "endorsed_for_reuse"' not in encoded
+    assert encoded.count('"anyOf"') == 1
     assert '"requested_route"' not in encoded
     assert '"signal_kind"' not in encoded
+
+
+def test_unroutable_task_only_signal_is_ignored_but_durable_signal_fails(tmp_path: Path) -> None:
+    observation = _observation(1, "Show the current symptoms.")
+
+    def response(durability: str) -> str:
+        return json.dumps(
+            {
+                "prompt_version": "semantic-feedback-features-v8",
+                "items": [
+                    {
+                        "observation_index": 0,
+                        "signals": [
+                            {
+                                "normalized_behavior": "Show the current symptoms.",
+                                "affected_artifact_id": None,
+                                "assertion_kind": "other",
+                                "norm_strength": "none",
+                                "workflow_structure": "none",
+                                "example_intent": "none",
+                                "transition_intent": "addition",
+                                "durability": durability,
+                                "clarity": "clear",
+                                "scope_hint": "current_context",
+                            }
+                        ],
+                    }
+                ],
+            }
+        )
+
+    result = bind_semantic_feedback_output(
+        (observation,),
+        response("task_only"),
+        _receipt(tmp_path),
+    )
+    assert result[observation.observation_id].signals == ()
+
+    with pytest.raises(SemanticInterpreterError, match="typed response"):
+        bind_semantic_feedback_output(
+            (observation,),
+            response("durable"),
+            _receipt(tmp_path),
+        )
 
 
 def test_codex_semantic_interpreter_rejects_tool_use(tmp_path: Path) -> None:
@@ -619,7 +677,7 @@ def test_codex_semantic_interpreter_rejects_tool_use(tmp_path: Path) -> None:
     rpc = _SemanticRpc(
         response=json.dumps(
             {
-                "prompt_version": "semantic-feedback-features-v7",
+                "prompt_version": "semantic-feedback-features-v8",
                 "items": [{"observation_index": 0, "signals": []}],
             }
         )

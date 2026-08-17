@@ -390,6 +390,12 @@ after valid trials.
 - [`development_benchmark_semantic_stimulation`](development_benchmark_semantic_stimulation):
   synthetic-only protocol, label-first plan, generation/audit/remediation trail, frozen corpus,
   raw-free detector reports, and aggregate slice summary.
+- [`development_benchmark_persona_v3`](development_benchmark_persona_v3): frozen Sable construction
+  smoke, preserved transport incident, objective negative result, and route/lifecycle ambiguity
+  analysis.
+- [`development_benchmark_persona_v31`](development_benchmark_persona_v31): fresh Nola smoke,
+  exact strong-static result, preserved compiled failure, neutral-schema remediation, and bounded
+  instrument-calibration conclusion.
 - [`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md): docs-only portable
   specialty preset composition and the proposed Frontend Studio demonstration.
 - [`development_benchmark_compact_projection`](development_benchmark_compact_projection): frozen
@@ -400,3 +406,18 @@ after valid trials.
   interpretation.
 - [`MILESTONE_6_AUTHORIZATION_GATE.md`](MILESTONE_6_AUTHORIZATION_GATE.md): exact frozen bindings,
   runtime/spend ceilings, and the explicit authorization required before paid execution.
+
+## Current persona-instrument state
+
+The v3 construction sequence found three measurement defects without changing a hidden task or
+claiming a condition win: ambiguous route/lifecycle wording in Sable, a class-biased semantic
+`anyOf` schema, and a binder that required even task-only proposals to name a durable artifact.
+Every failed result and pre-score incident remains versioned.
+
+After a fresh unambiguous Nola smoke, the strong static profile scored 2/2 exactly. A one-session
+instrument remediation then neutralized the semantic schema and made unroutable non-durable
+proposals disappear without weakening durable fail-closed behavior. The compiled result also scored
+2/2 exactly with zero false activation and the correct host-owned scopes. This calibrates the
+construction instrument only; the successful compiled diagnostic reused a public calibration
+fixture and therefore is not effectiveness evidence. A fresh post-fix persona/task comparison is
+still required before the full v3 effectiveness grid can be authorized.
