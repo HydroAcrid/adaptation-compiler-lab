@@ -32,6 +32,22 @@ class RawPayloadKeyError(ValueError):
     """Raised when the separate AES-256 key is absent, unsafe, or invalid."""
 
 
+class RawPayloadLocationError(ValueError):
+    """Raised when raw research bytes would be stored in a Git-controlled location."""
+
+
+def require_external_raw_root(path: Path, *, workspace_root: Path) -> Path:
+    """Resolve a raw store root and reject every workspace or Git-repository location."""
+
+    resolved = path.expanduser().resolve()
+    root = workspace_root.expanduser().resolve()
+    if resolved.is_relative_to(root) or any(
+        (parent / ".git").exists() for parent in (resolved, *resolved.parents)
+    ):
+        raise RawPayloadLocationError("raw payloads must remain outside every Git repository")
+    return resolved
+
+
 @dataclass(frozen=True, slots=True)
 class RawEncryptionKey:
     """In-memory AES-256 key loaded from an external file."""

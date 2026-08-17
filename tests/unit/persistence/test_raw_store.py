@@ -14,6 +14,8 @@ from adaptation_compiler_lab.persistence.raw import (
     LocalRawPayloadStore,
     RawEncryptionKey,
     RawPayloadKeyError,
+    RawPayloadLocationError,
+    require_external_raw_root,
 )
 
 
@@ -47,6 +49,21 @@ def test_missing_or_wrong_key_fails_closed(tmp_path: Path) -> None:
         LocalRawPayloadStore(root, encryption_key=_key(2)).read(reference)
     with pytest.raises(RawPayloadKeyError, match="unavailable"):
         LocalRawPayloadStore(tmp_path / "new").put(b"payload", media_type="text/plain")
+
+
+def test_raw_root_must_remain_outside_workspaces_and_git_repositories(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    with pytest.raises(RawPayloadLocationError, match="outside every Git repository"):
+        require_external_raw_root(workspace / "raw", workspace_root=workspace)
+
+    repository = tmp_path / "other-repository"
+    (repository / ".git").mkdir(parents=True)
+    with pytest.raises(RawPayloadLocationError, match="outside every Git repository"):
+        require_external_raw_root(repository / "raw", workspace_root=workspace)
+
+    external = tmp_path / "external-raw"
+    assert require_external_raw_root(external, workspace_root=workspace) == external.resolve()
 
 
 def test_raw_reference_cannot_escape_store_root(tmp_path: Path) -> None:

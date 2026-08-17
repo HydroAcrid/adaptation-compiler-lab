@@ -1,0 +1,1 @@
+{"effective_before_any_v2_execution":true,"original_preregistration_immutable":true,"reason":"V1 exposed answer-key leakage, future-stage judge context, non-objective learning-state scoring, and an unreviewed static baseline.","replacement":"temper-6a2l-persona-evaluation-v2.1","status":"superseded_unexecuted","superseded":"temper-6a2l-persona-evaluation-v2"}

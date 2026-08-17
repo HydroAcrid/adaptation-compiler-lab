@@ -1,6 +1,31 @@
 # Implementation Status
 
-Last updated: 2026-08-16
+Last updated: 2026-08-17
+
+## Milestone 6A.2L.1 — Persona instrument hardening
+
+The evaluator is hardened and deterministically calibrated; v2.1 has not run. Public role packets
+now contain only stage-bounded turn numbers and message text. Expected labels, transition labels,
+final persona summaries, future evidence, forbidden claims, and condition cues fail closed. Static
+profiles require separate one-persona author and reviewer outputs with exact visible-turn lineage.
+Compiled materials require exact semantic-interpreter, deterministic-detector, and review-receipt
+bindings; reference projections cannot enter the v2.1 compiled path.
+
+Internal state is no longer decided by an AI preference vote. Trusted code scores active evidence
+turns, routes, scopes, forbidden lifecycle turns, and lineage against a construction-hidden oracle.
+Fresh counterbalanced judges evaluate target-visible guidance only, after both conditions use one
+neutral renderer. Guidance adjudication and unresolved rates are tracked separately, along with
+first-position bias. Invalid instruments suppress condition interpretation.
+
+The zero-call Lantern Docs calibration passed nine boundary checks covering redaction, stage
+isolation, reviewer lineage, objective state, correction, revocation, exception scope, unrelated
+activation, neutral rendering, and condition-cue rejection. It is explicitly non-evidentiary. V1
+files are byte-bound by an immutability manifest. The original v2 preregistration is unchanged and
+superseded before execution by a pinned 120-session-maximum v2.1 protocol. Author and reviewer
+roles are stage-specific, so no context asked to produce an earlier snapshot can see a later turn.
+The final quality gate passed 893 tests with two expected platform skips, strict mypy over 321
+source files, formatting and linting over 664 files, deterministic schema regeneration, and both
+distribution builds. No agent session or provider-billed call was used for this hardening.
 
 ## Milestone 6A.2L — Naïve-agent persona evaluation
 
@@ -13,7 +38,9 @@ V1 completed 63 accepted subscription sessions. Both tracks achieved 79.2% agree
 sentinel track outcomes were correct, but nine of 24 cases required adjudication, exceeding the
 frozen six-case ceiling. The result cannot compare conditions. V1 also omitted the planned live
 Luna sensor and used deterministic reference compiled projections, which independently prevents an
-end-to-end product claim. Fresh-case v2 is preregistered but not executed.
+end-to-end product claim. The original fresh-case v2 design is preserved as unexecuted history. Its
+v2.1 successor is frozen but not executed; fresh personas, scenarios, hidden oracle, and
+randomization material do not yet exist.
 
 ## Current milestone
 
