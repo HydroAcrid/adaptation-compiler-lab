@@ -1,0 +1,68 @@
+{
+  "$defs": {
+    "PersonaTransitionKind": {
+      "enum": [
+        "addition",
+        "scoped_exception",
+        "correction",
+        "supersession",
+        "revocation",
+        "neutral"
+      ],
+      "title": "PersonaTransitionKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Exact before/after state required to award lifecycle credit.",
+  "properties": {
+    "current_active_source_turns": {
+      "items": {
+        "type": "integer"
+      },
+      "title": "Current Active Source Turns",
+      "type": "array"
+    },
+    "current_case_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Current Case Id",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/PersonaTransitionKind"
+    },
+    "prior_active_source_turns": {
+      "items": {
+        "type": "integer"
+      },
+      "title": "Prior Active Source Turns",
+      "type": "array"
+    },
+    "prior_case_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Prior Case Id",
+      "type": "string"
+    },
+    "transition_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Transition Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "transition_id",
+    "kind",
+    "prior_case_id",
+    "current_case_id",
+    "prior_active_source_turns",
+    "current_active_source_turns"
+  ],
+  "title": "PersonaTransitionExpectation",
+  "type": "object"
+}

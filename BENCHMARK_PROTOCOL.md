@@ -1,5 +1,19 @@
 # Benchmark Protocol
 
+## Static engineering versus AI effectiveness
+
+Persona evaluations must not spend agent sessions measuring deterministic compiler mechanics.
+Exact schema transport, host-owned scope binding, applicability, routing policy, lifecycle
+resolution, revocation, provenance, rendering, custody, and scoring are preconditions covered by
+the zero-session pre-v3 static engineering gate. A model-facing benchmark measures whether natural
+language is understood and whether the resulting adaptation improves fresh target behavior.
+
+Before any future full persona grid, one fresh persona must pass an end-to-end construction smoke
+for both compiled and strong-static lanes. The smoke must produce applicable material when expected,
+use the same exact host scope vocabulary, preserve visible-turn lineage, and satisfy before/after
+lifecycle accounting. A smoke failure returns to deterministic repair and cannot be counted as an
+effectiveness result. The sealed Milestone 6 external-validation study remains inaccessible.
+
 Status: **Internal feasibility design v1.1 frozen; Milestone 5 corpus, roles, conditions, and
 software custody complete; paid trials not authorized**
 

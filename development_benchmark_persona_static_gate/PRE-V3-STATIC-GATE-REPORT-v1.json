@@ -1,0 +1,106 @@
+{
+  "report_version": "1.0.0",
+  "gate_id": "temper-pre-v3-static-engineering",
+  "checks": [
+    "ambiguous semantic meaning remains review-required",
+    "compiled and static lanes consume one host-owned scope vocabulary",
+    "compiled scope substitution fails closed",
+    "lifecycle results are reported in separate transition slices",
+    "neutral contexts remain inactive",
+    "preference-only meaning uses the least-invasive preference route",
+    "revealed v2.1 reviewed claims bind without fuzzy scope matching",
+    "revocation requires a previously recovered active behavior",
+    "scoped exceptions activate only in their registered context"
+  ],
+  "scope_transport": {
+    "audit_version": "1.0.0",
+    "reviewed_snapshots": 24,
+    "reviewed_claims": 39,
+    "host_bound_claims": 39,
+    "applicable_projected_claims": 24,
+    "fuzzy_scope_matches": 0,
+    "hidden_oracle_accessed": false
+  },
+  "transition_scorecard": {
+    "scores": [
+      {
+        "transition_id": "01-addition",
+        "kind": "addition",
+        "prior_state_exact": true,
+        "current_state_exact": true,
+        "addition_requirement_satisfied": true,
+        "removal_requirement_satisfied": true,
+        "exact": true
+      },
+      {
+        "transition_id": "02-scoped-exception",
+        "kind": "scoped_exception",
+        "prior_state_exact": true,
+        "current_state_exact": true,
+        "addition_requirement_satisfied": true,
+        "removal_requirement_satisfied": true,
+        "exact": true
+      },
+      {
+        "transition_id": "03-correction",
+        "kind": "correction",
+        "prior_state_exact": true,
+        "current_state_exact": true,
+        "addition_requirement_satisfied": true,
+        "removal_requirement_satisfied": true,
+        "exact": true
+      },
+      {
+        "transition_id": "04-revocation",
+        "kind": "revocation",
+        "prior_state_exact": true,
+        "current_state_exact": true,
+        "addition_requirement_satisfied": true,
+        "removal_requirement_satisfied": true,
+        "exact": true
+      },
+      {
+        "transition_id": "05-neutral",
+        "kind": "neutral",
+        "prior_state_exact": true,
+        "current_state_exact": true,
+        "addition_requirement_satisfied": true,
+        "removal_requirement_satisfied": true,
+        "exact": true
+      }
+    ],
+    "slices": [
+      {
+        "kind": "addition",
+        "total": 1,
+        "exact": 1
+      },
+      {
+        "kind": "scoped_exception",
+        "total": 1,
+        "exact": 1
+      },
+      {
+        "kind": "correction",
+        "total": 1,
+        "exact": 1
+      },
+      {
+        "kind": "revocation",
+        "total": 1,
+        "exact": 1
+      },
+      {
+        "kind": "neutral",
+        "total": 1,
+        "exact": 1
+      }
+    ],
+    "exact": true
+  },
+  "language_understanding_evaluated": false,
+  "counts_toward_effectiveness_evidence": false,
+  "provider_billed_calls": 0,
+  "agent_sessions": 0,
+  "passed": true
+}

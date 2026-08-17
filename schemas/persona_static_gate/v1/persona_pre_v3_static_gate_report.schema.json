@@ -1,0 +1,235 @@
+{
+  "$defs": {
+    "PersonaScopeTransportAudit": {
+      "additionalProperties": false,
+      "description": "Raw-free audit of the revealed v2.1 static comparator transport defect.",
+      "properties": {
+        "applicable_projected_claims": {
+          "minimum": 0,
+          "title": "Applicable Projected Claims",
+          "type": "integer"
+        },
+        "audit_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Audit Version",
+          "type": "string"
+        },
+        "fuzzy_scope_matches": {
+          "const": 0,
+          "default": 0,
+          "title": "Fuzzy Scope Matches",
+          "type": "integer"
+        },
+        "hidden_oracle_accessed": {
+          "const": false,
+          "default": false,
+          "title": "Hidden Oracle Accessed",
+          "type": "boolean"
+        },
+        "host_bound_claims": {
+          "minimum": 0,
+          "title": "Host Bound Claims",
+          "type": "integer"
+        },
+        "reviewed_claims": {
+          "minimum": 1,
+          "title": "Reviewed Claims",
+          "type": "integer"
+        },
+        "reviewed_snapshots": {
+          "minimum": 1,
+          "title": "Reviewed Snapshots",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "reviewed_snapshots",
+        "reviewed_claims",
+        "host_bound_claims",
+        "applicable_projected_claims"
+      ],
+      "title": "PersonaScopeTransportAudit",
+      "type": "object"
+    },
+    "PersonaTransitionKind": {
+      "enum": [
+        "addition",
+        "scoped_exception",
+        "correction",
+        "supersession",
+        "revocation",
+        "neutral"
+      ],
+      "title": "PersonaTransitionKind",
+      "type": "string"
+    },
+    "PersonaTransitionScore": {
+      "additionalProperties": false,
+      "properties": {
+        "addition_requirement_satisfied": {
+          "title": "Addition Requirement Satisfied",
+          "type": "boolean"
+        },
+        "current_state_exact": {
+          "title": "Current State Exact",
+          "type": "boolean"
+        },
+        "exact": {
+          "title": "Exact",
+          "type": "boolean"
+        },
+        "kind": {
+          "$ref": "#/$defs/PersonaTransitionKind"
+        },
+        "prior_state_exact": {
+          "title": "Prior State Exact",
+          "type": "boolean"
+        },
+        "removal_requirement_satisfied": {
+          "title": "Removal Requirement Satisfied",
+          "type": "boolean"
+        },
+        "transition_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Transition Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "transition_id",
+        "kind",
+        "prior_state_exact",
+        "current_state_exact",
+        "addition_requirement_satisfied",
+        "removal_requirement_satisfied",
+        "exact"
+      ],
+      "title": "PersonaTransitionScore",
+      "type": "object"
+    },
+    "PersonaTransitionScorecard": {
+      "additionalProperties": false,
+      "properties": {
+        "exact": {
+          "title": "Exact",
+          "type": "boolean"
+        },
+        "scores": {
+          "items": {
+            "$ref": "#/$defs/PersonaTransitionScore"
+          },
+          "title": "Scores",
+          "type": "array"
+        },
+        "slices": {
+          "items": {
+            "$ref": "#/$defs/PersonaTransitionSlice"
+          },
+          "title": "Slices",
+          "type": "array"
+        }
+      },
+      "required": [
+        "scores",
+        "slices",
+        "exact"
+      ],
+      "title": "PersonaTransitionScorecard",
+      "type": "object"
+    },
+    "PersonaTransitionSlice": {
+      "additionalProperties": false,
+      "properties": {
+        "exact": {
+          "minimum": 0,
+          "title": "Exact",
+          "type": "integer"
+        },
+        "kind": {
+          "$ref": "#/$defs/PersonaTransitionKind"
+        },
+        "total": {
+          "minimum": 1,
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "total",
+        "exact"
+      ],
+      "title": "PersonaTransitionSlice",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Evidence that compiler mechanics are ready for a separate AI effectiveness test.",
+  "properties": {
+    "agent_sessions": {
+      "const": 0,
+      "default": 0,
+      "title": "Agent Sessions",
+      "type": "integer"
+    },
+    "checks": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Checks",
+      "type": "array"
+    },
+    "counts_toward_effectiveness_evidence": {
+      "const": false,
+      "default": false,
+      "title": "Counts Toward Effectiveness Evidence",
+      "type": "boolean"
+    },
+    "gate_id": {
+      "const": "temper-pre-v3-static-engineering",
+      "default": "temper-pre-v3-static-engineering",
+      "title": "Gate Id",
+      "type": "string"
+    },
+    "language_understanding_evaluated": {
+      "const": false,
+      "default": false,
+      "title": "Language Understanding Evaluated",
+      "type": "boolean"
+    },
+    "passed": {
+      "title": "Passed",
+      "type": "boolean"
+    },
+    "provider_billed_calls": {
+      "const": 0,
+      "default": 0,
+      "title": "Provider Billed Calls",
+      "type": "integer"
+    },
+    "report_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Report Version",
+      "type": "string"
+    },
+    "scope_transport": {
+      "$ref": "#/$defs/PersonaScopeTransportAudit"
+    },
+    "transition_scorecard": {
+      "$ref": "#/$defs/PersonaTransitionScorecard"
+    }
+  },
+  "required": [
+    "checks",
+    "scope_transport",
+    "transition_scorecard",
+    "passed"
+  ],
+  "title": "PersonaPreV3StaticGateReport",
+  "type": "object"
+}
