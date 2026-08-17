@@ -1,5 +1,13 @@
 # adaptation-compiler-lab
 
+Milestone 6A.2L adds a one-persona-per-session synthetic evaluation framework. Six fictional
+personas, 24 cases, reversed-order independent xhigh judges, and disagreement-only max adjudication
+now produce typed, raw-free receipts. The frozen v1 evaluator gate is invalid—not a Temper failure:
+both tracks reached 79.2% agreement and all sentinels passed, but 37.5% of cases required
+adjudication against a 25% ceiling. V1 also used reference compiled projections rather than the
+planned live semantic sensor, so no condition-performance claim is allowed. A fresh v2 design is
+preregistered in `development_benchmark_persona_evaluation/`.
+
 `adaptation-compiler-lab` is a local research prototype for compiling verified, scoped learning
 from completed coding work into typed external artifacts. Its research question is whether a
 compiled adaptation pack can improve a target coding agent on unseen work beyond a base agent,

@@ -1,0 +1,401 @@
+{
+  "$defs": {
+    "PersonaDomain": {
+      "enum": [
+        "communication",
+        "debugging",
+        "environment_safety",
+        "research_integrity",
+        "workflow",
+        "interface"
+      ],
+      "title": "PersonaDomain",
+      "type": "string"
+    },
+    "PersonaEvaluationCase": {
+      "additionalProperties": false,
+      "properties": {
+        "case_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "checkpoint_turn": {
+          "enum": [
+            3,
+            7,
+            11,
+            15
+          ],
+          "title": "Checkpoint Turn",
+          "type": "integer"
+        },
+        "current_context": {
+          "minLength": 1,
+          "title": "Current Context",
+          "type": "string"
+        },
+        "expected_active_trait_ids": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Expected Active Trait Ids",
+          "type": "array"
+        },
+        "forbidden_trait_ids": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Forbidden Trait Ids",
+          "type": "array"
+        },
+        "persona_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Persona Id",
+          "type": "string"
+        },
+        "scenario": {
+          "minLength": 1,
+          "title": "Scenario",
+          "type": "string"
+        },
+        "sentinel": {
+          "title": "Sentinel",
+          "type": "boolean"
+        },
+        "stage": {
+          "maximum": 4,
+          "minimum": 1,
+          "title": "Stage",
+          "type": "integer"
+        },
+        "transition": {
+          "$ref": "#/$defs/PersonaTransition"
+        }
+      },
+      "required": [
+        "case_id",
+        "persona_id",
+        "stage",
+        "checkpoint_turn",
+        "transition",
+        "current_context",
+        "scenario",
+        "expected_active_trait_ids",
+        "forbidden_trait_ids",
+        "sentinel"
+      ],
+      "title": "PersonaEvaluationCase",
+      "type": "object"
+    },
+    "PersonaEvidenceHistory": {
+      "additionalProperties": false,
+      "properties": {
+        "interactions": {
+          "items": {
+            "$ref": "#/$defs/PersonaInteraction"
+          },
+          "maxItems": 15,
+          "minItems": 15,
+          "title": "Interactions",
+          "type": "array"
+        },
+        "persona_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Persona Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "persona_id",
+        "interactions"
+      ],
+      "title": "PersonaEvidenceHistory",
+      "type": "object"
+    },
+    "PersonaInteraction": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_trait_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Expected Trait Ids",
+          "type": "array"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "synthetic": {
+          "const": true,
+          "default": true,
+          "title": "Synthetic",
+          "type": "boolean"
+        },
+        "turn": {
+          "maximum": 15,
+          "minimum": 1,
+          "title": "Turn",
+          "type": "integer"
+        },
+        "user_authority": {
+          "const": false,
+          "default": false,
+          "title": "User Authority",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "turn",
+        "message"
+      ],
+      "title": "PersonaInteraction",
+      "type": "object"
+    },
+    "PersonaTrait": {
+      "additionalProperties": false,
+      "properties": {
+        "durable": {
+          "title": "Durable",
+          "type": "boolean"
+        },
+        "introduced_stage": {
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Introduced Stage",
+          "type": "integer"
+        },
+        "kind": {
+          "$ref": "#/$defs/PersonaTraitKind"
+        },
+        "retired_stage": {
+          "anyOf": [
+            {
+              "maximum": 3,
+              "minimum": 2,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retired Stage"
+        },
+        "scope": {
+          "minLength": 1,
+          "title": "Scope",
+          "type": "string"
+        },
+        "statement": {
+          "minLength": 1,
+          "title": "Statement",
+          "type": "string"
+        },
+        "supersedes_trait_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Trait Id"
+        },
+        "trait_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Trait Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "trait_id",
+        "statement",
+        "kind",
+        "scope",
+        "durable",
+        "introduced_stage"
+      ],
+      "title": "PersonaTrait",
+      "type": "object"
+    },
+    "PersonaTraitKind": {
+      "enum": [
+        "fact",
+        "preference",
+        "invariant",
+        "procedure"
+      ],
+      "title": "PersonaTraitKind",
+      "type": "string"
+    },
+    "PersonaTransition": {
+      "enum": [
+        "addition",
+        "context_exception",
+        "supersession",
+        "revocation",
+        "neutral_sentinel"
+      ],
+      "title": "PersonaTransition",
+      "type": "string"
+    },
+    "SyntheticPersona": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Display Name",
+          "type": "string"
+        },
+        "domain": {
+          "$ref": "#/$defs/PersonaDomain"
+        },
+        "judge_summary": {
+          "minLength": 1,
+          "title": "Judge Summary",
+          "type": "string"
+        },
+        "persona_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Persona Id",
+          "type": "string"
+        },
+        "project_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "traits": {
+          "items": {
+            "$ref": "#/$defs/PersonaTrait"
+          },
+          "maxItems": 6,
+          "minItems": 3,
+          "title": "Traits",
+          "type": "array"
+        }
+      },
+      "required": [
+        "persona_id",
+        "display_name",
+        "domain",
+        "judge_summary",
+        "project_id",
+        "traits"
+      ],
+      "title": "SyntheticPersona",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "benchmark_id": {
+      "const": "temper-6a2l-persona-evaluation-v1",
+      "default": "temper-6a2l-persona-evaluation-v1",
+      "title": "Benchmark Id",
+      "type": "string"
+    },
+    "cases": {
+      "items": {
+        "$ref": "#/$defs/PersonaEvaluationCase"
+      },
+      "maxItems": 24,
+      "minItems": 24,
+      "title": "Cases",
+      "type": "array"
+    },
+    "counts_toward_ordinary_use_gate": {
+      "const": false,
+      "default": false,
+      "title": "Counts Toward Ordinary Use Gate",
+      "type": "boolean"
+    },
+    "external_validation_accessed": {
+      "const": false,
+      "default": false,
+      "title": "External Validation Accessed",
+      "type": "boolean"
+    },
+    "histories": {
+      "items": {
+        "$ref": "#/$defs/PersonaEvidenceHistory"
+      },
+      "maxItems": 6,
+      "minItems": 6,
+      "title": "Histories",
+      "type": "array"
+    },
+    "one_persona_per_session": {
+      "const": true,
+      "default": true,
+      "title": "One Persona Per Session",
+      "type": "boolean"
+    },
+    "personas": {
+      "items": {
+        "$ref": "#/$defs/SyntheticPersona"
+      },
+      "maxItems": 6,
+      "minItems": 6,
+      "title": "Personas",
+      "type": "array"
+    },
+    "plan_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Plan Version",
+      "type": "string"
+    },
+    "provider_billed_calls_permitted": {
+      "const": false,
+      "default": false,
+      "title": "Provider Billed Calls Permitted",
+      "type": "boolean"
+    },
+    "synthetic_only": {
+      "const": true,
+      "default": true,
+      "title": "Synthetic Only",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "personas",
+    "histories",
+    "cases"
+  ],
+  "title": "PersonaBenchmarkPlan",
+  "type": "object"
+}

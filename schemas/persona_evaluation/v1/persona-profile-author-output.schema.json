@@ -1,0 +1,85 @@
+{
+  "$defs": {
+    "PersonaProfileSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_checkpoint_turn": {
+          "enum": [
+            3,
+            7,
+            11,
+            15
+          ],
+          "title": "Evidence Checkpoint Turn",
+          "type": "integer"
+        },
+        "learning_state": {
+          "minLength": 1,
+          "title": "Learning State",
+          "type": "string"
+        },
+        "stage": {
+          "maximum": 4,
+          "minimum": 1,
+          "title": "Stage",
+          "type": "integer"
+        },
+        "target_guidance": {
+          "minLength": 1,
+          "title": "Target Guidance",
+          "type": "string"
+        }
+      },
+      "required": [
+        "stage",
+        "evidence_checkpoint_turn",
+        "learning_state",
+        "target_guidance"
+      ],
+      "title": "PersonaProfileSnapshot",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "limitations": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 5,
+      "minItems": 1,
+      "title": "Limitations",
+      "type": "array"
+    },
+    "output_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Output Version",
+      "type": "string"
+    },
+    "persona_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Persona Id",
+      "type": "string"
+    },
+    "snapshots": {
+      "items": {
+        "$ref": "#/$defs/PersonaProfileSnapshot"
+      },
+      "maxItems": 4,
+      "minItems": 4,
+      "title": "Snapshots",
+      "type": "array"
+    }
+  },
+  "required": [
+    "persona_id",
+    "snapshots",
+    "limitations"
+  ],
+  "title": "PersonaProfileAuthorOutput",
+  "type": "object"
+}
