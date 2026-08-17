@@ -157,8 +157,23 @@ def test_separately_frozen_oracle_rejects_cross_case_scoring() -> None:
 def test_v3_schemas_are_closed_and_match_snapshots() -> None:
     schemas = persona_v3_schemas()
 
-    assert len(schemas) == 7
+    assert len(schemas) == 9
     assert all(schema["additionalProperties"] is False for schema in schemas.values())
+    profile_schema = schemas["persona-v3-profile-output.schema.json"]
+
+    def assert_model_objects_are_strict(node: object) -> None:
+        if isinstance(node, dict):
+            properties = node.get("properties")
+            if isinstance(properties, dict):
+                assert node["additionalProperties"] is False
+                assert node["required"] == list(properties)
+            for value in node.values():
+                assert_model_objects_are_strict(value)
+        elif isinstance(node, list):
+            for value in node:
+                assert_model_objects_are_strict(value)
+
+    assert_model_objects_are_strict(profile_schema)
     for name, schema in schemas.items():
         snapshot = ROOT / "schemas" / "persona_evaluation" / "v3" / name
         assert json.loads(snapshot.read_text(encoding="utf-8")) == schema

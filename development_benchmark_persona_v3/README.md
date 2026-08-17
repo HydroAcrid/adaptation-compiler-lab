@@ -50,3 +50,17 @@ A pass only makes the full v3 effectiveness grid eligible for a separate authori
 not launch that grid and it does not change any v2.1 result. A genuine language-understanding miss
 is preserved as a failed result; only defects in transport, schemas, isolation, or scoring may be
 repaired and rerun under a new frozen version.
+
+## Frozen instrument amendment 1.1
+
+The first semantic-sensor role completed, then the initial profile-author launch was rejected by
+the structured-output transport before it produced model output. The generated profile schema did
+not mark every defaulted property as required. The original freeze and sensor result remain
+unchanged. Amendment 1.1 closes that schema recursively and authorizes exactly one replacement
+profile-author launch and the still-unused reviewer launch. It raises the total launch ceiling from
+three to four while preserving a maximum of three successful role sessions. No prompt, evidence,
+scope registry, oracle, sensor output, or expected answer changed.
+
+The old wrapper raised before the orchestration layer could encrypt the failed trace; the sanitized
+incident record therefore retains the failure and thread digests while explicitly recording that
+capture limitation. This is an instrumentation defect and contributes no effectiveness evidence.

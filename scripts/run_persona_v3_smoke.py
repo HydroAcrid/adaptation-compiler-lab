@@ -41,11 +41,13 @@ from adaptation_compiler_lab.benchmark.persona_instrument import (
     bind_sensor_record,
 )
 from adaptation_compiler_lab.benchmark.persona_v3 import (
+    PersonaV3InstrumentIncident,
     PersonaV3ProfileAuthorPacket,
     PersonaV3ProfileOutput,
     PersonaV3Protocol,
     PersonaV3RoleReceipt,
     PersonaV3SensorResult,
+    PersonaV3SmokeAmendment,
     PersonaV3SmokeFixture,
     PersonaV3SmokeFreeze,
     PersonaV3SmokeReport,
@@ -287,6 +289,8 @@ def _load_and_verify_freeze(
     PersonaV3SmokeFixture,
     PersonaV3ProfileAuthorPacket,
     PersonaV3SmokeFreeze,
+    PersonaV3InstrumentIncident,
+    PersonaV3SmokeAmendment,
 ]:
     protocol = PersonaV3Protocol.model_validate_json((input_root / "PROTOCOL-v3.json").read_bytes())
     fixture = PersonaV3SmokeFixture.model_validate_json(
@@ -298,6 +302,12 @@ def _load_and_verify_freeze(
     freeze = PersonaV3SmokeFreeze.model_validate_json(
         (input_root / "SMOKE-FREEZE-v1.json").read_bytes()
     )
+    incident = PersonaV3InstrumentIncident.model_validate_json(
+        (input_root / "INSTRUMENT-INCIDENT-001.json").read_bytes()
+    )
+    amendment = PersonaV3SmokeAmendment.model_validate_json(
+        (input_root / "SMOKE-FREEZE-AMENDMENT-v1.1.json").read_bytes()
+    )
     observations = build_v3_observations(fixture)
     expected = {
         "protocol_digest": canonical_digest(protocol),
@@ -308,11 +318,6 @@ def _load_and_verify_freeze(
         "semantic_batch_input_digest": semantic_feedback_batch_input_digest(observations),
         "semantic_batch_prompt_digest": sha256_text(semantic_feedback_batch_prompt(observations)),
         "semantic_output_schema_digest": canonical_digest(semantic_feedback_output_schema()),
-        "profile_output_schema_digest": canonical_digest(persona_v3_profile_output_schema()),
-        "benchmark_module_digest": sha256_file(
-            repo / "src/adaptation_compiler_lab/benchmark/persona_v3.py"
-        ),
-        "runner_module_digest": sha256_file(repo / "scripts/run_persona_v3_smoke.py"),
     }
     for field, value in expected.items():
         if getattr(freeze, field) != value:
@@ -321,7 +326,25 @@ def _load_and_verify_freeze(
         raise RuntimeError("v3 author packet protocol binding drifted")
     if author.scope_registry_digest != canonical_digest(fixture.scope_registry):
         raise RuntimeError("v3 author packet scope-registry binding drifted")
-    return protocol, fixture, author, freeze
+    sensor_result = PersonaV3SensorResult.model_validate_json(
+        (input_root / "results" / "SMOKE-SENSOR-RESULT-v1.json").read_bytes()
+    )
+    amended_expected = {
+        "prior_freeze_digest": canonical_digest(freeze),
+        "incident_digest": canonical_digest(incident),
+        "retained_sensor_result_digest": canonical_digest(sensor_result),
+        "amended_profile_output_schema_digest": canonical_digest(
+            persona_v3_profile_output_schema()
+        ),
+        "amended_benchmark_module_digest": sha256_file(
+            repo / "src/adaptation_compiler_lab/benchmark/persona_v3.py"
+        ),
+        "amended_runner_module_digest": sha256_file(repo / "scripts/run_persona_v3_smoke.py"),
+    }
+    for field, value in amended_expected.items():
+        if getattr(amendment, field) != value:
+            raise RuntimeError(f"amended v3 smoke input drifted: {field}")
+    return protocol, fixture, author, freeze, incident, amendment
 
 
 def main() -> None:
@@ -345,7 +368,9 @@ def main() -> None:
     output = args.output.resolve()
     if not input_root.is_relative_to(repo) or not output.is_relative_to(repo):
         raise RuntimeError("v3 public smoke inputs and outputs must remain in the repository")
-    protocol, fixture, author_packet, freeze = _load_and_verify_freeze(
+    if output != input_root / "results":
+        raise RuntimeError("v3 amended smoke output must be the frozen input results directory")
+    protocol, fixture, author_packet, freeze, incident, amendment = _load_and_verify_freeze(
         repo=repo,
         input_root=input_root,
     )
@@ -570,6 +595,8 @@ def main() -> None:
         fixture_digest=canonical_digest(fixture),
         oracle_digest=canonical_digest(oracle),
         freeze_digest=canonical_digest(freeze),
+        amendment_digest=canonical_digest(amendment),
+        instrument_incident=incident,
         scope_registry_digest=canonical_digest(fixture.scope_registry),
         role_receipts=(sensor_result.execution_receipt, author_receipt, reviewer_receipt),
         compiled_material=compiled,

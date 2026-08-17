@@ -271,6 +271,55 @@ class PersonaV3SmokeFreeze(FrozenModel):
     sealed_external_validation_accessed: Literal[False] = False
 
 
+class PersonaV3InstrumentIncident(FrozenModel):
+    """Sanitized record of the one pre-output structured-schema rejection."""
+
+    incident_version: Literal["1.0.0"] = "1.0.0"
+    incident_id: Literal["persona-v3-smoke-schema-rejection-001"] = (
+        "persona-v3-smoke-schema-rejection-001"
+    )
+    failed_role: Literal["profile_author"] = "profile_author"
+    failure_code: Literal["strict_schema_missing_required_properties"] = (
+        "strict_schema_missing_required_properties"
+    )
+    failure_message_digest: Sha256Digest
+    failed_thread_digest: Sha256Digest
+    model_output_observed: Literal[False] = False
+    tool_use_observed: Literal[False] = False
+    file_change_observed: Literal[False] = False
+    failed_before_construction_result: Literal[True] = True
+    encrypted_trace_captured: Literal[False] = False
+    capture_limitation: Literal[
+        "v1 wrapper raised before the orchestration layer could encrypt the failed trace"
+    ] = "v1 wrapper raised before the orchestration layer could encrypt the failed trace"
+    counts_toward_effectiveness_evidence: Literal[False] = False
+
+
+class PersonaV3SmokeAmendment(FrozenModel):
+    """One narrow retry authorization for an instrument-only transport defect."""
+
+    amendment_version: Literal["1.1.0"] = "1.1.0"
+    prior_freeze_digest: Sha256Digest
+    incident_digest: Sha256Digest
+    retained_sensor_result_digest: Sha256Digest
+    amended_profile_output_schema_digest: Sha256Digest
+    amended_benchmark_module_digest: Sha256Digest
+    amended_runner_module_digest: Sha256Digest
+    scope_or_oracle_changed: Literal[False] = False
+    semantic_sensor_result_changed: Literal[False] = False
+    profile_prompt_changed: Literal[False] = False
+    retry_reason: Literal["transport_schema_rejection_before_model_output"] = (
+        "transport_schema_rejection_before_model_output"
+    )
+    successful_session_maximum: Literal[3] = 3
+    total_launch_maximum: Literal[4] = 4
+    failed_transport_launches: Literal[1] = 1
+    replacement_profile_author_launches_authorized: Literal[1] = 1
+    profile_reviewer_launches_authorized: Literal[1] = 1
+    full_grid_execution_authorized: Literal[False] = False
+    sealed_external_validation_accessed: Literal[False] = False
+
+
 class PersonaV3RoleReceipt(FrozenModel):
     receipt_version: Literal["1.0.0"] = "1.0.0"
     execution_id: Identifier
@@ -330,6 +379,8 @@ class PersonaV3SmokeReport(FrozenModel):
     fixture_digest: Sha256Digest
     oracle_digest: Sha256Digest
     freeze_digest: Sha256Digest
+    amendment_digest: Sha256Digest
+    instrument_incident: PersonaV3InstrumentIncident
     scope_registry_digest: Sha256Digest
     role_receipts: Annotated[tuple[PersonaV3RoleReceipt, ...], Field(min_length=3, max_length=3)]
     compiled_material: PersonaMaterialSnapshot
@@ -342,7 +393,9 @@ class PersonaV3SmokeReport(FrozenModel):
     condition_leakage_detected: Literal[False] = False
     language_understanding_evaluated: Literal[True] = True
     counts_toward_effectiveness_evidence: Literal[False] = False
-    agent_sessions: Literal[3] = 3
+    successful_agent_sessions: Literal[3] = 3
+    total_agent_launches: Literal[4] = 4
+    failed_transport_launches: Literal[1] = 1
     provider_billed_calls: Literal[0] = 0
     full_grid_executed: Literal[False] = False
     full_grid_launch_gate_passed: bool
@@ -397,7 +450,22 @@ def bind_v3_profile_output(response: str) -> PersonaV3ProfileOutput:
 
 
 def persona_v3_profile_output_schema() -> dict[str, object]:
-    return cast(dict[str, object], PersonaV3ProfileOutput.model_json_schema())
+    schema = PersonaV3ProfileOutput.model_json_schema()
+
+    def close(node: object) -> None:
+        if isinstance(node, dict):
+            properties = node.get("properties")
+            if isinstance(properties, dict):
+                node["additionalProperties"] = False
+                node["required"] = list(properties)
+            for item in node.values():
+                close(item)
+        elif isinstance(node, list):
+            for item in node:
+                close(item)
+
+    close(schema)
+    return cast(dict[str, object], schema)
 
 
 def build_v3_profile_author_packet(
@@ -624,11 +692,15 @@ def build_v3_smoke_oracle(fixture: PersonaV3SmokeFixture) -> PersonaHiddenOracle
 
 def persona_v3_schemas() -> dict[str, dict[str, object]]:
     return {
-        "persona-v3-profile-output.schema.json": PersonaV3ProfileOutput.model_json_schema(),
+        "persona-v3-profile-output.schema.json": persona_v3_profile_output_schema(),
         "persona-v3-protocol.schema.json": PersonaV3Protocol.model_json_schema(),
         "persona-v3-role-receipt.schema.json": PersonaV3RoleReceipt.model_json_schema(),
         "persona-v3-sensor-result.schema.json": PersonaV3SensorResult.model_json_schema(),
         "persona-v3-smoke-fixture.schema.json": PersonaV3SmokeFixture.model_json_schema(),
         "persona-v3-smoke-freeze.schema.json": PersonaV3SmokeFreeze.model_json_schema(),
         "persona-v3-smoke-report.schema.json": PersonaV3SmokeReport.model_json_schema(),
+        "persona-v3-instrument-incident.schema.json": (
+            PersonaV3InstrumentIncident.model_json_schema()
+        ),
+        "persona-v3-smoke-amendment.schema.json": PersonaV3SmokeAmendment.model_json_schema(),
     }
