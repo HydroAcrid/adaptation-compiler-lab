@@ -18,6 +18,8 @@ from adaptation_compiler_lab.benchmark.persona_v3 import (
 )
 from adaptation_compiler_lab.benchmark.persona_v31 import (
     PersonaV31Protocol,
+    PersonaV31Report,
+    PersonaV31SensorResult,
     bind_v31_profile_material,
     build_v31_author_packet,
     build_v31_fixture,
@@ -107,3 +109,24 @@ def test_v31_schemas_match_closed_snapshots() -> None:
     for name, schema in schemas.items():
         snapshot = ROOT / "schemas" / "persona_evaluation" / "v3.1" / name
         assert json.loads(snapshot.read_text(encoding="utf-8")) == schema
+
+
+def test_v31_frozen_result_preserves_static_pass_and_compiled_failure() -> None:
+    result_root = ROOT / "development_benchmark_persona_v31" / "results"
+    sensor = PersonaV31SensorResult.model_validate_json(
+        (result_root / "SMOKE-SENSOR-RESULT-v1.json").read_bytes()
+    )
+    report = PersonaV31Report.model_validate_json(
+        (result_root / "SMOKE-REPORT-v1.json").read_bytes()
+    )
+
+    assert report.passed is False
+    assert report.full_grid_launch_gate_passed is False
+    assert report.static_score.exact is True
+    assert report.compiled_score.missing_source_turns == (6,)
+    assert report.compiled_score.route_mismatch_source_turns == (2,)
+    assert sensor.records[1].route is ArtifactRoute.EXAMPLE
+    assert sensor.records[1].approved is True
+    assert sensor.records[5].approved is False
+    assert report.provider_billed_calls == 0
+    assert report.counts_toward_effectiveness_evidence is False

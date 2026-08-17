@@ -44,7 +44,7 @@ from adaptation_compiler_lab.serialization import canonical_digest
 from adaptation_compiler_lab.targets.base import sha256_text
 
 _INTERPRETER_ID: Final = "codex-semantic-feedback"
-_INTERPRETER_VERSION: Final = "1.8.0"
+_INTERPRETER_VERSION: Final = "1.9.0"
 _PROMPT_VERSION: Final = "semantic-feedback-features-v8"
 _ALLOWED_ITEM_TYPES: Final = frozenset({"agentMessage", "reasoning", "userMessage"})
 _DEVELOPER_CONTRACT: Final = """\
@@ -262,54 +262,12 @@ def semantic_feedback_output_schema() -> dict[str, object]:
         "affected_artifact_id": {"type": "null"},
     }
 
-    def learning_variant(field: str, constraint: dict[str, object]) -> dict[str, object]:
-        return {
-            "type": "object",
-            "additionalProperties": False,
-            "required": required,
-            "properties": {**learning_properties, field: constraint},
-        }
-
-    learning_variants = [
-        learning_variant(
-            "example_intent",
-            {
-                "type": "string",
-                "const": SemanticExampleIntent.ENDORSED_FOR_REUSE.value,
-            },
-        ),
-        learning_variant(
-            "workflow_structure",
-            {
-                "type": "string",
-                "enum": [
-                    SemanticWorkflowStructure.TRIGGERED_ACTION.value,
-                    SemanticWorkflowStructure.ORDERED_SEQUENCE.value,
-                    SemanticWorkflowStructure.TRIGGERED_SEQUENCE.value,
-                ],
-            },
-        ),
-        learning_variant(
-            "assertion_kind",
-            {
-                "type": "string",
-                "enum": [
-                    SemanticAssertionKind.FACT.value,
-                    SemanticAssertionKind.MIXED.value,
-                ],
-            },
-        ),
-        learning_variant(
-            "norm_strength",
-            {
-                "type": "string",
-                "enum": [
-                    SemanticNormStrength.PREFERENCE.value,
-                    SemanticNormStrength.INVARIANT.value,
-                ],
-            },
-        ),
-    ]
+    learning_signal = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": required,
+        "properties": learning_properties,
+    }
     revocation_signal = {
         "type": "object",
         "additionalProperties": False,
@@ -356,7 +314,7 @@ def semantic_feedback_output_schema() -> dict[str, object]:
                         "signals": {
                             "type": "array",
                             "maxItems": 4,
-                            "items": {"anyOf": [*learning_variants, revocation_signal]},
+                            "items": {"anyOf": [learning_signal, revocation_signal]},
                         },
                     },
                 },

@@ -621,6 +621,8 @@ def test_semantic_output_schema_requires_complete_learning_or_revocation_shape()
     assert '"normalized_behavior": {"minLength": 1, "type": "string"}' in encoded
     assert '"assertion_kind": {"enum":' in encoded
     assert '"norm_strength": {"enum":' in encoded
+    assert '"const": "endorsed_for_reuse"' not in encoded
+    assert encoded.count('"anyOf"') == 1
     assert '"requested_route"' not in encoded
     assert '"signal_kind"' not in encoded
 

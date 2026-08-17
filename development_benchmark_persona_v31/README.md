@@ -21,3 +21,18 @@ current-context scope.
 Both lanes must produce the exact two-claim active state with no false activation from the other
 five messages. A pass calibrates the two construction lanes and makes a later full effectiveness
 design eligible; it is not product-effectiveness evidence and does not itself launch any grid.
+
+## Result
+
+The strong static lane passed exactly. It retained only turns 2 and 6, assigned preference and
+procedure respectively, received the correct host-owned scopes, and produced no false activation.
+The compiled lane failed: it activated turn 2 as an example and rejected turn 6 after producing an
+ambiguous example-plus-procedure feature vector. The full v3 grid remains blocked.
+
+The encrypted semantic response confirms that Luna again set `endorsed_for_reuse` for both prose
+instructions despite there being no demonstrated artifact. The model-facing schema presented
+positive example as the first of four overlapping `anyOf` learning variants. This created a route
+class prior in the measurement channel itself. The original result is preserved. A one-session,
+non-evidentiary schema remediation may replace those overlapping branches with one neutral learning
+shape and test only the compiled sensor on the same public calibration fixture; it cannot convert
+this frozen run into a pass or count as fresh effectiveness evidence.
