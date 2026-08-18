@@ -396,6 +396,9 @@ after valid trials.
 - [`development_benchmark_persona_v31`](development_benchmark_persona_v31): fresh Nola smoke,
   exact strong-static result, preserved compiled failure, neutral-schema remediation, and bounded
   instrument-calibration conclusion.
+- [`development_benchmark_persona_v32`](development_benchmark_persona_v32): frozen fresh-persona
+  behavioral canary comparing compiled and strong-static delivery on one applicable task and one
+  unrelated control; no result is claimed until all immutable target evidence is scored.
 - [`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md): docs-only portable
   specialty preset composition and the proposed Frontend Studio demonstration.
 - [`development_benchmark_compact_projection`](development_benchmark_compact_projection): frozen

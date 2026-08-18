@@ -1,0 +1,20 @@
+# Persona v3.2 Fresh Behavioral Canary
+
+This is the first effectiveness test after the persona construction instrument was repaired. It
+uses a new fictional person, new evidence, and two new target repositories. It does not reuse the
+Sable or Nola calibration fixtures.
+
+The canary compares compiled adaptation with a fresh independently authored and reviewed static
+profile. Both receive the same seven evidence turns and are delivered once through the same user
+task channel to fresh Codex Luna sessions. One Tide Ledger incident task requires the two eligible
+behaviors. One unrelated Ember Quay task must remain unaffected. A restricted answer-blind scorer
+checks eight states per task; one fresh condition-blind Sol judge evaluates each anonymous pair
+only after outputs are frozen.
+
+The exact ceiling is nine saved-ChatGPT subscription sessions: three construction roles, four
+targets, and two judges. API keys, provider-billed calls, the deferred external-validation study,
+post-output tuning, and the larger persona grid are forbidden. Raw traces and condition mapping
+remain encrypted outside Git.
+
+Passing permits only a narrow claim about these two fresh tasks. It does not establish general
+superiority, cross-agent transfer, or powered external validity.
