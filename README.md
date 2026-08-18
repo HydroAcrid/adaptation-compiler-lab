@@ -67,6 +67,13 @@ that preview performs no content reads. See
 When predecessor credentials are unavailable, 6A.2F creates a fresh prospective lineage without
 rewriting history or claiming old-payload recovery. See
 [`MILESTONE_6A2F_MANAGED_BOOTSTRAP.md`](MILESTONE_6A2F_MANAGED_BOOTSTRAP.md).
+The 2026-08-18 cumulative checkpoint combines that signed predecessor and successor history: 13
+eligible interactions across four dates, one miss, one false-positive learning decision, one false
+activation, two activation attempts, and seven interactions remaining. Successor reporting now
+fails closed unless the exact preserved predecessor is supplied, preventing credential recovery
+from silently improving the experiment. The post-gate product runway is frozen in
+[`TEMPER_PRIVATE_ALPHA_PLAN.md`](TEMPER_PRIVATE_ALPHA_PLAN.md): a practical Base-versus-Temper
+comparison followed by a three-to-five-person local review-mode alpha.
 
 Milestone 6A.2H isolates semantic artifact routing in a 120-case blind-label benchmark across six
 matched meanings and four immutable synthetic revisions. In the final fresh split, the unchanged

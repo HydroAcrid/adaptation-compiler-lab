@@ -143,6 +143,26 @@ def test_runtime_review_scope_payload_is_json_serializable() -> None:
     assert decoded["project_ids"] == ["adaptation-compiler-lab"]
 
 
+def test_runtime_config_version_drift_has_actionable_error(tmp_path: Path) -> None:
+    config_path = _write_json(tmp_path / "config.json", {"config_version": "9.9.9"})
+
+    with pytest.raises(
+        AutomaticRuntimeError,
+        match="update the local Temper installation",
+    ):
+        dogfood_cli._load_config(config_path)
+
+
+def test_runtime_malformed_config_remains_raw_free(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"private": "do-not-print"', encoding="utf-8")
+
+    with pytest.raises(AutomaticRuntimeError, match="Codex dogfood config is invalid") as raised:
+        dogfood_cli._load_config(config_path)
+
+    assert "do-not-print" not in str(raised.value)
+
+
 def test_runtime_notice_payload_is_json_serializable(tmp_path: Path) -> None:
     from adaptation_compiler_lab.automatic_runtime import initial_runtime_state
     from tests.unit.automatic_runtime import test_runtime
@@ -720,6 +740,71 @@ def test_runtime_init_writes_no_secret_config_and_status_is_local(
         successor_config.signer_identity,
         effective_at=receipt.created_at,
     )
+    omitted_predecessor = runner.invoke(
+        app,
+        [
+            "runtime",
+            "gate-report",
+            "--config",
+            str(successor_state / "config.json"),
+        ],
+    )
+    assert omitted_predecessor.exit_code == 1
+    assert "--predecessor-config" in omitted_predecessor.output
+
+    cumulative_gate = runner.invoke(
+        app,
+        [
+            "runtime",
+            "gate-report",
+            "--config",
+            str(successor_state / "config.json"),
+            "--predecessor-config",
+            str(config_path),
+        ],
+    )
+    assert cumulative_gate.exit_code == 0, cumulative_gate.output
+    assert json.loads(cumulative_gate.stdout)["eligible_interaction_count"] == 0
+
+    cumulative_daily = runner.invoke(
+        app,
+        [
+            "runtime",
+            "daily",
+            "--config",
+            str(successor_state / "config.json"),
+            "--predecessor-config",
+            str(config_path),
+        ],
+    )
+    assert cumulative_daily.exit_code == 0, cumulative_daily.output
+    assert (
+        json.loads(cumulative_daily.stdout)["snapshot"]["gate"]["eligible_interaction_count"] == 0
+    )
+
+    substituted_predecessor_path = tmp_path / "substituted-predecessor.json"
+    substituted_predecessor_path.write_text(
+        json.dumps(
+            registered_config.model_copy(
+                update={"watcher_idle_seconds": registered_config.watcher_idle_seconds + 1}
+            ).model_dump(mode="json")
+        ),
+        encoding="utf-8",
+    )
+    substituted_predecessor = runner.invoke(
+        app,
+        [
+            "runtime",
+            "gate-report",
+            "--config",
+            str(successor_state / "config.json"),
+            "--predecessor-config",
+            str(substituted_predecessor_path),
+        ],
+    )
+    assert substituted_predecessor.exit_code == 1
+    assert "lineage binding changed" in substituted_predecessor.output
+
     tampered_receipt = receipt.model_dump(mode="python")
     tampered_receipt["predecessor_config_digest"] = f"sha256:{'f' * 64}"
     with pytest.raises(ValueError, match="authorization binding changed"):
@@ -738,6 +823,24 @@ def test_runtime_init_writes_no_secret_config_and_status_is_local(
             successor_config.signer_identity,
             effective_at=receipt.created_at,
         )
+    successor_receipt_path = successor_state / "successor-receipt.json"
+    successor_receipt_path.write_text(
+        receipt.model_copy(update={"authorization": tampered_event}).model_dump_json(),
+        encoding="utf-8",
+    )
+    rejected_tampered_lineage = runner.invoke(
+        app,
+        [
+            "runtime",
+            "gate-report",
+            "--config",
+            str(successor_state / "config.json"),
+            "--predecessor-config",
+            str(config_path),
+        ],
+    )
+    assert rejected_tampered_lineage.exit_code == 1
+    assert "successor gate lineage is invalid" in rejected_tampered_lineage.output
 
     tampered = registered_config.model_dump(mode="python")
     tampered["projects"][1]["registration_authorization"]["signature"]["signature_base64"] = (

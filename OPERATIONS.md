@@ -205,6 +205,13 @@ Use `runtime gate-report` for the raw-free 20-interaction/three-date/six-activat
 report. Do not backdate interactions, alter the construction cutoff, or import pre-cutoff tasks to
 accelerate the gate.
 
+After lost-credential succession, `runtime daily` and `runtime gate-report` require the exact
+preserved predecessor through `--predecessor-config`. The runtime verifies its config binding and
+signer fingerprint against the signed `successor-receipt.json`, verifies the successor signature,
+and combines both ledgers for readiness and incident counts. Omitting or substituting the
+predecessor fails closed. Pickup, review, activation, and feedback still write only to the current
+successor; the predecessor remains historical and is never migrated or copied into the new state.
+
 The host advances its source cursor only after all sinks acknowledge a page. If it stops after the
 SQLite append, replaying the same observation reconstructs the historical learning result and does
 not create another transition. Review items and signed release/activation events remain in

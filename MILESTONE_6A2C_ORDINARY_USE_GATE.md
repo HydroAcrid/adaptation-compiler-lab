@@ -129,6 +129,49 @@ interactions, as expected: all existing tasks predated the registered cutoff. In
 generation zero, zero artifacts, zero activations, zero reviews, and zero unresolved work. The
 initial gate report has 20 interactions remaining and `evidence_ready=false`.
 
+## Cumulative live checkpoint — 2026-08-18
+
+The active managed successor cannot be interpreted as a clean experimental reset. Its signed
+succession receipt proves that predecessor evidence was not copied, but the predecessor's raw-free
+negative outcomes remain relevant to the unchanged product gate. Runtime reporting therefore
+requires the exact preserved predecessor config and verifies it against that receipt before
+combining both append-only ledgers. Omitting the predecessor now fails closed.
+
+The verified cumulative checkpoint contains:
+
+- 13 eligible ordinary-use interactions across four UTC dates;
+- one missed-learning assessment from the predecessor;
+- one false activation and irrelevant rating from the predecessor;
+- one false-positive learning assessment from the successor after correctly rejecting a
+  task-context-only Kairn correction;
+- one prior approved artifact that was subsequently revoked, with no currently active artifact;
+- two activation attempts, one completed and one failed, with none unresolved; and
+- seven interactions and four activation attempts remaining before numerical readiness.
+
+The latest bounded poll added four genuine interactions from 2026-08-18. All four produced
+no-explicit-signal decisions and no review proposal. This is useful negative evidence, but those
+cycles still require immutable assessment before the gate can become evidence-ready.
+
+The current allowance is fully consumed for missed learning, false-positive learning, and false
+activation when the two lineages are interpreted cumulatively. Another incident in any of those
+categories fails the active gate; it must not be hidden by succession or report selection.
+
+Use the cumulative raw-free surface for this exceptional successor lineage:
+
+```text
+adaptation-compiler-lab runtime daily \
+  --config <successor>/config.json \
+  --predecessor-config <predecessor>/config.json
+
+adaptation-compiler-lab runtime gate-report \
+  --config <successor>/config.json \
+  --predecessor-config <predecessor>/config.json
+```
+
+The installed Windows command wrapper was also found to predate config v1.4 and returned only a
+generic invalid-config error. The current implementation now reports unsupported config versions
+as deployment drift with an explicit update instruction; it never prints config contents.
+
 ## Exact operating loop
 
 1. Use a newly created Codex Desktop task in the registered project. Threads created before the
