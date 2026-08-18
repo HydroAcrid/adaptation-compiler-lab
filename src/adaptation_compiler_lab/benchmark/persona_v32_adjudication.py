@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
@@ -12,11 +13,13 @@ from adaptation_compiler_lab.benchmark.persona_v3 import PersonaV3ProfileOutput
 from adaptation_compiler_lab.benchmark.persona_v32 import (
     PersonaV32ConstructionReport,
     PersonaV32FinalReport,
+    PersonaV32JudgeDecision,
     PersonaV32Oracle,
     PersonaV32TaskOutcome,
+    PersonaV32TrialReceipt,
 )
 from adaptation_compiler_lab.domain import ArtifactRoute, FrozenModel, Sha256Digest
-from adaptation_compiler_lab.serialization import canonical_digest
+from adaptation_compiler_lab.serialization import canonical_digest, canonical_json
 
 
 class PersonaV321Protocol(FrozenModel):
@@ -172,6 +175,49 @@ class PersonaV32MaterialsFreezeV12(PersonaV32MaterialsFreezeV11):
     judge_amendment_digest: Sha256Digest
 
 
+class PersonaV32UnblindInstrumentIncident(FrozenModel):
+    incident_version: Literal["1.0.0"] = "1.0.0"
+    incident_id: Literal["persona-v32-strict-json-binding-001"] = (
+        "persona-v32-strict-json-binding-001"
+    )
+    failure_code: Literal["strict_python_validation_rejected_json_shapes"] = (
+        "strict_python_validation_rejected_json_shapes"
+    )
+    target_report_complete: Literal[True] = True
+    judge_receipts_complete: Literal[True] = True
+    condition_mapping_authorized_after_judging: Literal[True] = True
+    final_report_produced: Literal[False] = False
+    model_session_started: Literal[False] = False
+    target_or_judge_result_changed: Literal[False] = False
+    provider_billed_calls: Literal[0] = 0
+    external_validation_accessed: Literal[False] = False
+
+
+class PersonaV32UnblindAmendment(FrozenModel):
+    amendment_version: Literal["1.3.0"] = "1.3.0"
+    superseded_material_freeze_digest: Sha256Digest
+    incident_digest: Sha256Digest
+    prior_unblinder_digest: Sha256Digest
+    amended_unblinder_digest: Sha256Digest
+    binding_change: Literal["strict_json_deserialization_before_model_binding"] = (
+        "strict_json_deserialization_before_model_binding"
+    )
+    target_report_unchanged: Literal[True] = True
+    judge_receipts_unchanged: Literal[True] = True
+    condition_mapping_unchanged: Literal[True] = True
+    scoring_logic_unchanged: Literal[True] = True
+    model_sessions: Literal[0] = 0
+    provider_billed_calls: Literal[0] = 0
+    external_validation_accessed: Literal[False] = False
+
+
+class PersonaV32MaterialsFreezeV13(PersonaV32MaterialsFreezeV12):
+    unblind_amendment_version: Literal["1.3.0"] = "1.3.0"
+    superseded_unblind_material_freeze_digest: Sha256Digest
+    unblind_incident_digest: Sha256Digest
+    unblind_amendment_digest: Sha256Digest
+
+
 class PersonaV32FinalReportV11(PersonaV32FinalReport):
     amendment_version: Literal["1.1.0"] = "1.1.0"
     original_protocol_digest: Sha256Digest
@@ -193,6 +239,18 @@ def corrected_v32_oracle(original: PersonaV32Oracle) -> PersonaV32Oracle:
     return original.model_copy(
         update={"material": original.material.model_copy(update={"active_claims": claims})}
     )
+
+
+def bind_v32_trial_receipt(value: Mapping[str, object]) -> PersonaV32TrialReceipt:
+    """Bind JSON-shaped receipt data through Pydantic's strict JSON boundary."""
+
+    return PersonaV32TrialReceipt.model_validate_json(canonical_json(value), strict=True)
+
+
+def bind_v32_judge_decision(value: Mapping[str, object]) -> PersonaV32JudgeDecision:
+    """Bind JSON-shaped judge data without weakening strict model validation."""
+
+    return PersonaV32JudgeDecision.model_validate_json(canonical_json(value), strict=True)
 
 
 def build_v32_construction_adjudication(
@@ -264,5 +322,14 @@ def persona_v32_adjudication_schemas() -> dict[str, dict[str, object]]:
         "persona-v32-judge-amendment.schema.json": PersonaV32JudgeAmendment.model_json_schema(),
         "persona-v32-materials-freeze-v12.schema.json": (
             PersonaV32MaterialsFreezeV12.model_json_schema()
+        ),
+        "persona-v32-unblind-incident.schema.json": (
+            PersonaV32UnblindInstrumentIncident.model_json_schema()
+        ),
+        "persona-v32-unblind-amendment.schema.json": (
+            PersonaV32UnblindAmendment.model_json_schema()
+        ),
+        "persona-v32-materials-freeze-v13.schema.json": (
+            PersonaV32MaterialsFreezeV13.model_json_schema()
         ),
     }

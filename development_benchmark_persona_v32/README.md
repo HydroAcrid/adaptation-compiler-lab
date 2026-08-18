@@ -40,3 +40,7 @@ runner digests are frozen before judging.
 Both amended judge sessions completed with condition mapping access false. The Ember Quay pair was
 rated a tie; the second anonymous Tide Ledger output was preferred. These receipts are frozen
 before deterministic unblinding.
+
+The first deterministic unblind attempt then exposed strict Python-versus-JSON shape binding for
+timestamps and tuples. It emitted no report and made no model call. V1.3 binds the same frozen
+trials and judge decisions through strict JSON deserialization, with scoring and mapping unchanged.

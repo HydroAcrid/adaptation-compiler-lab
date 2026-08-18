@@ -16,6 +16,10 @@ from adaptation_compiler_lab.benchmark.persona_v32_adjudication import (
     PersonaV32JudgeAmendment,
     PersonaV32JudgeInstrumentIncident,
     PersonaV32MaterialsFreezeV12,
+    PersonaV32UnblindAmendment,
+    PersonaV32UnblindInstrumentIncident,
+    bind_v32_judge_decision,
+    bind_v32_trial_receipt,
     build_v32_construction_adjudication,
     persona_v32_adjudication_schemas,
 )
@@ -104,3 +108,29 @@ def test_v32_judge_amendment_precedes_sessions_and_repairs_role_binding() -> Non
     assert amendment.failed_judge_sessions == 0
     assert amendment.replacement_judge_sessions_authorized == 2
     assert freeze.judge_amendment_digest == canonical_digest(amendment)
+
+
+def test_v32_unblinder_binds_actual_json_shaped_receipts_strictly() -> None:
+    blind = json.loads(
+        (BENCHMARK / "target-results-v1/BLIND-REPORT-v1.json").read_text(encoding="utf-8")
+    )
+    receipt = bind_v32_trial_receipt(blind["trials"][0])
+    judge_value = json.loads(
+        (BENCHMARK / "judge-results-v1/JUDGE-ember-quay-thumbnail-control-v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    decision = bind_v32_judge_decision(judge_value["decision"])
+
+    assert receipt.integrity_valid is True
+    assert receipt.observation.started_at.tzinfo is not None
+    assert decision.rating.task_id == "ember-quay-thumbnail-control"
+
+
+def test_v32_unblind_incident_is_zero_session_and_nonmutating() -> None:
+    incident = PersonaV32UnblindInstrumentIncident()
+
+    assert incident.final_report_produced is False
+    assert incident.model_session_started is False
+    assert incident.target_or_judge_result_changed is False
+    assert PersonaV32UnblindAmendment.model_fields["model_sessions"].default == 0

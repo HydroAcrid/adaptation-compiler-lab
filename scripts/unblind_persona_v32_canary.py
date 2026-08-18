@@ -11,7 +11,6 @@ from typing import Literal, cast
 from adaptation_compiler_lab.benchmark.persona_v32 import (
     PersonaV32ConstructionReport,
     PersonaV32Fixture,
-    PersonaV32JudgeDecision,
     PersonaV32Oracle,
     PersonaV32TaskOutcome,
     PersonaV32TrialReceipt,
@@ -21,8 +20,11 @@ from adaptation_compiler_lab.benchmark.persona_v32_adjudication import (
     PersonaV32ConstructionAdjudication,
     PersonaV32FinalReportV11,
     PersonaV32JudgeAmendment,
-    PersonaV32MaterialsFreezeV12,
+    PersonaV32MaterialsFreezeV13,
+    PersonaV32UnblindAmendment,
     PersonaV321Protocol,
+    bind_v32_judge_decision,
+    bind_v32_trial_receipt,
 )
 from adaptation_compiler_lab.connectors.pins import sha256_file
 from adaptation_compiler_lab.serialization import canonical_digest, canonical_json
@@ -77,11 +79,14 @@ def main() -> None:
     adjudication = PersonaV32ConstructionAdjudication.model_validate_json(
         (root / "CONSTRUCTION-ADJUDICATION-v1.1.json").read_bytes()
     )
-    materials = PersonaV32MaterialsFreezeV12.model_validate_json(
-        (root / "MATERIALS-FREEZE-v1.2.json").read_bytes()
+    materials = PersonaV32MaterialsFreezeV13.model_validate_json(
+        (root / "MATERIALS-FREEZE-v1.3.json").read_bytes()
     )
     judge_amendment = PersonaV32JudgeAmendment.model_validate_json(
         (root / "JUDGE-AMENDMENT-v1.2.json").read_bytes()
+    )
+    unblind_amendment = PersonaV32UnblindAmendment.model_validate_json(
+        (root / "UNBLIND-AMENDMENT-v1.3.json").read_bytes()
     )
     if materials.successor_protocol_digest != canonical_digest(protocol):
         raise RuntimeError("v3.2 successor protocol drifted before unblinding")
@@ -89,14 +94,15 @@ def main() -> None:
         raise RuntimeError("v3.2 adjudication drifted before unblinding")
     if materials.judge_amendment_digest != canonical_digest(judge_amendment):
         raise RuntimeError("v3.2 judge amendment drifted before unblinding")
+    if materials.unblind_amendment_digest != canonical_digest(unblind_amendment):
+        raise RuntimeError("v3.2 unblind amendment drifted before unblinding")
     if materials.unblinder_digest != sha256_file(Path(__file__)):
         raise RuntimeError("v3.2 unblinder drifted after material freeze")
     public, private = build_v32_plan(fixture=fixture, seed=seed_path.read_bytes())
     blind_path = root / "target-results-v1/BLIND-REPORT-v1.json"
     blind = json.loads(blind_path.read_text(encoding="utf-8"))
     trials = tuple(
-        PersonaV32TrialReceipt.model_validate(item)
-        for item in cast(list[dict[str, object]], blind["trials"])
+        bind_v32_trial_receipt(item) for item in cast(list[dict[str, object]], blind["trials"])
     )
     trial_by_output = {item.observation.blind_output_id: item for item in trials}
     condition_by_output = {
@@ -115,7 +121,7 @@ def main() -> None:
         static = by_condition["strong_static_profile"]
         judge_path = root / f"judge-results-v1/JUDGE-{task_id}-v1.json"
         judge_value = json.loads(judge_path.read_text(encoding="utf-8"))
-        decision = PersonaV32JudgeDecision.model_validate(judge_value["decision"])
+        decision = bind_v32_judge_decision(judge_value["decision"])
         preferred = decision.rating.preferred_output_id
         judge_winner = cast(
             Literal["compiled_adaptation", "strong_static_profile", "tie"],
