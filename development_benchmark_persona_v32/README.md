@@ -27,3 +27,7 @@ plan sequence a procedure. The failed report is preserved. No target session has
 The v1.1 adjudication and Protocol 3.2.1 now freeze that correction with zero additional model
 sessions. The original report remains failed; target tasks, hidden behavioral answers, randomization,
 and both condition-material byte streams are unchanged.
+
+The four target cells are now complete, integrity-valid, behavior-conformant, and still blinded.
+No target will be retried. Two fresh task-specific blind judges remain before deterministic
+unblinding.
