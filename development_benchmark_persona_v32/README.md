@@ -36,3 +36,7 @@ The first judge coordinator attempt failed its local persona/role prefix check b
 model session. The v1.2 amendment changes only that identity binding, preserves every target byte
 and condition mapping, and reauthorizes the same two judge sessions. The incident and superseding
 runner digests are frozen before judging.
+
+Both amended judge sessions completed with condition mapping access false. The Ember Quay pair was
+rated a tie; the second anonymous Tide Ledger output was preferred. These receipts are frozen
+before deterministic unblinding.
