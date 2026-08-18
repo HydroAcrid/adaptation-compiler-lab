@@ -13,10 +13,14 @@ from adaptation_compiler_lab.benchmark.persona_v32 import (
     score_v32_material,
 )
 from adaptation_compiler_lab.benchmark.persona_v32_adjudication import (
+    PersonaV32JudgeAmendment,
+    PersonaV32JudgeInstrumentIncident,
+    PersonaV32MaterialsFreezeV12,
     build_v32_construction_adjudication,
     persona_v32_adjudication_schemas,
 )
 from adaptation_compiler_lab.domain import ArtifactRoute
+from adaptation_compiler_lab.runners.codex_persona import PersonaRoleRequest
 from adaptation_compiler_lab.serialization import canonical_digest
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -74,3 +78,29 @@ def test_v32_adjudication_schemas_match_snapshots() -> None:
     for name, schema in persona_v32_adjudication_schemas().items():
         snapshot = ROOT / "schemas" / "persona_evaluation" / "v3.2" / name
         assert json.loads(snapshot.read_text(encoding="utf-8")) == schema
+
+
+def test_v32_judge_amendment_precedes_sessions_and_repairs_role_binding() -> None:
+    incident = PersonaV32JudgeInstrumentIncident.model_validate_json(
+        (BENCHMARK / "JUDGE-INSTRUMENT-INCIDENT-001.json").read_bytes()
+    )
+    amendment = PersonaV32JudgeAmendment.model_validate_json(
+        (BENCHMARK / "JUDGE-AMENDMENT-v1.2.json").read_bytes()
+    )
+    freeze = PersonaV32MaterialsFreezeV12.model_validate_json(
+        (BENCHMARK / "MATERIALS-FREEZE-v1.2.json").read_bytes()
+    )
+    judge_id = "blindjudge-ember-quay-thumbnail-control"
+    request = PersonaRoleRequest(
+        role_id=f"persona-{judge_id}-quality",
+        persona_ids=(judge_id,),
+        developer_contract="condition blind",
+        prompt="compare two anonymous outputs",
+        output_schema={"type": "object"},
+    )
+
+    assert request.persona_ids == (judge_id,)
+    assert incident.judge_model_session_started is False
+    assert amendment.failed_judge_sessions == 0
+    assert amendment.replacement_judge_sessions_authorized == 2
+    assert freeze.judge_amendment_digest == canonical_digest(amendment)

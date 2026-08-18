@@ -127,6 +127,51 @@ class PersonaV32MaterialsFreezeV11(FrozenModel):
     external_validation_accessed: Literal[False] = False
 
 
+class PersonaV32JudgeInstrumentIncident(FrozenModel):
+    incident_version: Literal["1.0.0"] = "1.0.0"
+    incident_id: Literal["persona-v32-judge-role-binding-001"] = (
+        "persona-v32-judge-role-binding-001"
+    )
+    failure_code: Literal["role_id_did_not_start_with_bound_persona"] = (
+        "role_id_did_not_start_with_bound_persona"
+    )
+    target_report_already_complete: Literal[True] = True
+    judge_model_session_started: Literal[False] = False
+    judge_output_produced: Literal[False] = False
+    target_result_changed: Literal[False] = False
+    provider_billed_calls: Literal[0] = 0
+    external_validation_accessed: Literal[False] = False
+
+
+class PersonaV32JudgeAmendment(FrozenModel):
+    amendment_version: Literal["1.2.0"] = "1.2.0"
+    superseded_material_freeze_digest: Sha256Digest
+    incident_digest: Sha256Digest
+    prior_judge_runner_digest: Sha256Digest
+    amended_judge_runner_digest: Sha256Digest
+    amended_unblinder_digest: Sha256Digest
+    role_binding_change: Literal["persona_prefix_matches_single_blind_judge_id"] = (
+        "persona_prefix_matches_single_blind_judge_id"
+    )
+    additional_target_sessions: Literal[0] = 0
+    failed_judge_sessions: Literal[0] = 0
+    replacement_judge_sessions_authorized: Literal[2] = 2
+    tasks_unchanged: Literal[True] = True
+    task_oracles_unchanged: Literal[True] = True
+    target_outputs_unchanged: Literal[True] = True
+    target_materials_unchanged: Literal[True] = True
+    condition_mapping_unchanged: Literal[True] = True
+    provider_billed_calls: Literal[0] = 0
+    external_validation_accessed: Literal[False] = False
+
+
+class PersonaV32MaterialsFreezeV12(PersonaV32MaterialsFreezeV11):
+    judge_amendment_version: Literal["1.2.0"] = "1.2.0"
+    superseded_material_freeze_digest: Sha256Digest
+    judge_incident_digest: Sha256Digest
+    judge_amendment_digest: Sha256Digest
+
+
 class PersonaV32FinalReportV11(PersonaV32FinalReport):
     amendment_version: Literal["1.1.0"] = "1.1.0"
     original_protocol_digest: Sha256Digest
@@ -213,4 +258,11 @@ def persona_v32_adjudication_schemas() -> dict[str, dict[str, object]]:
             PersonaV32MaterialsFreezeV11.model_json_schema()
         ),
         "persona-v32-final-report-v11.schema.json": PersonaV32FinalReportV11.model_json_schema(),
+        "persona-v32-judge-incident.schema.json": (
+            PersonaV32JudgeInstrumentIncident.model_json_schema()
+        ),
+        "persona-v32-judge-amendment.schema.json": PersonaV32JudgeAmendment.model_json_schema(),
+        "persona-v32-materials-freeze-v12.schema.json": (
+            PersonaV32MaterialsFreezeV12.model_json_schema()
+        ),
     }

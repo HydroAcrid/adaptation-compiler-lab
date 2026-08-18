@@ -13,7 +13,8 @@ from adaptation_compiler_lab.benchmark.persona_v32 import (
     PersonaV32PublicPlan,
 )
 from adaptation_compiler_lab.benchmark.persona_v32_adjudication import (
-    PersonaV32MaterialsFreezeV11,
+    PersonaV32JudgeAmendment,
+    PersonaV32MaterialsFreezeV12,
 )
 from adaptation_compiler_lab.connectors.pins import sha256_bytes, sha256_file
 from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore, RawEncryptionKey
@@ -87,9 +88,14 @@ def main() -> None:
     protocol = PersonaV32Protocol.model_validate_json((root / "PROTOCOL-v3.2.json").read_bytes())
     fixture = PersonaV32Fixture.model_validate_json((root / "FIXTURE-v1.json").read_bytes())
     plan = PersonaV32PublicPlan.model_validate_json((root / "PUBLIC-PLAN-v1.json").read_bytes())
-    materials = PersonaV32MaterialsFreezeV11.model_validate_json(
-        (root / "MATERIALS-FREEZE-v1.1.json").read_bytes()
+    materials = PersonaV32MaterialsFreezeV12.model_validate_json(
+        (root / "MATERIALS-FREEZE-v1.2.json").read_bytes()
     )
+    amendment = PersonaV32JudgeAmendment.model_validate_json(
+        (root / "JUDGE-AMENDMENT-v1.2.json").read_bytes()
+    )
+    if materials.judge_amendment_digest != canonical_digest(amendment):
+        raise RuntimeError("v3.2 judge amendment drifted before execution")
     if materials.judge_runner_digest != sha256_file(Path(__file__)):
         raise RuntimeError("v3.2 judge runner drifted after material freeze")
     completion = root / "target-results-v1/COMPLETION-v1.json"
@@ -147,10 +153,11 @@ def main() -> None:
             + "\n\nANONYMOUS PACKET\n"
             + packet
         )
+        judge_id = f"blindjudge-{task_id}"
         role = runner.run(
             PersonaRoleRequest(
-                role_id=f"persona-v32-blind-judge-{task_id}",
-                persona_ids=(f"judge-{task_id}",),
+                role_id=f"persona-{judge_id}-quality",
+                persona_ids=(judge_id,),
                 developer_contract=(
                     "You are a fresh condition-blind software-quality judge. You have no prior "
                     "context, tools, repository, adaptation material, automated scores, or "

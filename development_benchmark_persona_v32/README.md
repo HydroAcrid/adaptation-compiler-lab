@@ -31,3 +31,8 @@ and both condition-material byte streams are unchanged.
 The four target cells are now complete, integrity-valid, behavior-conformant, and still blinded.
 No target will be retried. Two fresh task-specific blind judges remain before deterministic
 unblinding.
+
+The first judge coordinator attempt failed its local persona/role prefix check before starting a
+model session. The v1.2 amendment changes only that identity binding, preserves every target byte
+and condition mapping, and reauthorizes the same two judge sessions. The incident and superseding
+runner digests are frozen before judging.

@@ -20,7 +20,8 @@ from adaptation_compiler_lab.benchmark.persona_v32 import (
 from adaptation_compiler_lab.benchmark.persona_v32_adjudication import (
     PersonaV32ConstructionAdjudication,
     PersonaV32FinalReportV11,
-    PersonaV32MaterialsFreezeV11,
+    PersonaV32JudgeAmendment,
+    PersonaV32MaterialsFreezeV12,
     PersonaV321Protocol,
 )
 from adaptation_compiler_lab.connectors.pins import sha256_file
@@ -76,13 +77,18 @@ def main() -> None:
     adjudication = PersonaV32ConstructionAdjudication.model_validate_json(
         (root / "CONSTRUCTION-ADJUDICATION-v1.1.json").read_bytes()
     )
-    materials = PersonaV32MaterialsFreezeV11.model_validate_json(
-        (root / "MATERIALS-FREEZE-v1.1.json").read_bytes()
+    materials = PersonaV32MaterialsFreezeV12.model_validate_json(
+        (root / "MATERIALS-FREEZE-v1.2.json").read_bytes()
+    )
+    judge_amendment = PersonaV32JudgeAmendment.model_validate_json(
+        (root / "JUDGE-AMENDMENT-v1.2.json").read_bytes()
     )
     if materials.successor_protocol_digest != canonical_digest(protocol):
         raise RuntimeError("v3.2 successor protocol drifted before unblinding")
     if materials.construction_adjudication_digest != canonical_digest(adjudication):
         raise RuntimeError("v3.2 adjudication drifted before unblinding")
+    if materials.judge_amendment_digest != canonical_digest(judge_amendment):
+        raise RuntimeError("v3.2 judge amendment drifted before unblinding")
     if materials.unblinder_digest != sha256_file(Path(__file__)):
         raise RuntimeError("v3.2 unblinder drifted after material freeze")
     public, private = build_v32_plan(fixture=fixture, seed=seed_path.read_bytes())
