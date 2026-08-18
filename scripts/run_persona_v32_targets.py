@@ -25,12 +25,15 @@ from adaptation_compiler_lab.benchmark.longitudinal_instrument import (
 from adaptation_compiler_lab.benchmark.persona_v32 import (
     PersonaV32ConstructionReport,
     PersonaV32Fixture,
-    PersonaV32MaterialsFreeze,
-    PersonaV32Protocol,
     PersonaV32PublicPlan,
     PersonaV32TaskCase,
     PersonaV32TrialReceipt,
     build_v32_plan,
+)
+from adaptation_compiler_lab.benchmark.persona_v32_adjudication import (
+    PersonaV32ConstructionAdjudication,
+    PersonaV32MaterialsFreezeV11,
+    PersonaV321Protocol,
 )
 from adaptation_compiler_lab.benchmark.role_packets import ApprovedSourceFamily
 from adaptation_compiler_lab.connectors.pins import sha256_bytes, sha256_file
@@ -39,6 +42,7 @@ from adaptation_compiler_lab.runners.codex_subscription import CodexExecutionCon
 from adaptation_compiler_lab.runners.codex_subscription_v3 import CodexSubscriptionRunnerV3
 from adaptation_compiler_lab.sanitization import assert_condition_material_safe
 from adaptation_compiler_lab.serialization import canonical_digest, canonical_json
+from adaptation_compiler_lab.targets.base import sha256_text
 from adaptation_compiler_lab.targets.task_delivery import deliver_task_scoped_material
 from scripts.run_durable_progress_comparison import (
     _create_key,
@@ -290,18 +294,36 @@ def main() -> None:
         raise RuntimeError("API keys are forbidden for v3.2 target runs")
     repo = args.repo.resolve()
     root = repo / "development_benchmark_persona_v32"
-    protocol = PersonaV32Protocol.model_validate_json((root / "PROTOCOL-v3.2.json").read_bytes())
+    protocol = PersonaV321Protocol.model_validate_json((root / "PROTOCOL-v3.2.1.json").read_bytes())
     fixture = PersonaV32Fixture.model_validate_json((root / "FIXTURE-v1.json").read_bytes())
     construction = PersonaV32ConstructionReport.model_validate_json(
         (root / "construction-results-v1/CONSTRUCTION-REPORT-v1.json").read_bytes()
     )
-    materials = PersonaV32MaterialsFreeze.model_validate_json(
-        (root / "MATERIALS-FREEZE-v1.json").read_bytes()
+    adjudication = PersonaV32ConstructionAdjudication.model_validate_json(
+        (root / "CONSTRUCTION-ADJUDICATION-v1.1.json").read_bytes()
     )
-    if not construction.exact_target_gate_passed:
-        raise RuntimeError("v3.2 targets require exact construction")
-    if materials.construction_report_digest != canonical_digest(construction):
+    materials = PersonaV32MaterialsFreezeV11.model_validate_json(
+        (root / "MATERIALS-FREEZE-v1.1.json").read_bytes()
+    )
+    if construction.exact_target_gate_passed:
+        raise RuntimeError("v3.2 successor requires the preserved original failed gate")
+    if not adjudication.corrected_construction_exact:
+        raise RuntimeError("v3.2 successor construction adjudication did not pass")
+    if materials.original_construction_report_digest != canonical_digest(construction):
         raise RuntimeError("v3.2 construction report drifted after material freeze")
+    if materials.construction_adjudication_digest != canonical_digest(adjudication):
+        raise RuntimeError("v3.2 construction adjudication drifted after material freeze")
+    if protocol.adjudication_digest != canonical_digest(adjudication):
+        raise RuntimeError("v3.2 successor protocol lost its adjudication binding")
+    expected_materials = (
+        sha256_text(construction.compiled_material.target_guidance),
+        sha256_text(construction.static_material.target_guidance),
+    )
+    if expected_materials != (
+        materials.compiled_material_digest,
+        materials.static_material_digest,
+    ):
+        raise RuntimeError("v3.2 target material bytes drifted after adjudication")
     if materials.target_runner_digest != sha256_file(Path(__file__)):
         raise RuntimeError("v3.2 target runner drifted after material freeze")
     runner = CodexSubscriptionRunnerV3(
@@ -387,6 +409,7 @@ def main() -> None:
         "report_version": "1.0.0",
         "protocol_digest": canonical_digest(protocol),
         "fixture_digest": canonical_digest(fixture),
+        "construction_adjudication_digest": canonical_digest(adjudication),
         "materials_freeze_digest": canonical_digest(materials),
         "public_plan_digest": public.content_digest,
         "trials": [item.model_dump(mode="json", round_trip=True) for item in receipts],

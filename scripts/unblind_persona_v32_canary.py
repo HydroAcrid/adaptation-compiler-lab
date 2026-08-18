@@ -10,15 +10,18 @@ from typing import Literal, cast
 
 from adaptation_compiler_lab.benchmark.persona_v32 import (
     PersonaV32ConstructionReport,
-    PersonaV32FinalReport,
     PersonaV32Fixture,
     PersonaV32JudgeDecision,
-    PersonaV32MaterialsFreeze,
     PersonaV32Oracle,
-    PersonaV32Protocol,
     PersonaV32TaskOutcome,
     PersonaV32TrialReceipt,
     build_v32_plan,
+)
+from adaptation_compiler_lab.benchmark.persona_v32_adjudication import (
+    PersonaV32ConstructionAdjudication,
+    PersonaV32FinalReportV11,
+    PersonaV32MaterialsFreezeV11,
+    PersonaV321Protocol,
 )
 from adaptation_compiler_lab.connectors.pins import sha256_file
 from adaptation_compiler_lab.serialization import canonical_digest, canonical_json
@@ -58,15 +61,30 @@ def main() -> None:
     seed_path = args.seed_file.expanduser().resolve()
     if repo == seed_path or repo in seed_path.parents or seed_path.stat().st_mode & 0o077:
         raise RuntimeError("v3.2 unblind seed location or permissions are unsafe")
-    protocol = PersonaV32Protocol.model_validate_json((root / "PROTOCOL-v3.2.json").read_bytes())
+    original_protocol_digest = canonical_digest(
+        json.loads((root / "PROTOCOL-v3.2.json").read_text(encoding="utf-8"))
+    )
+    original_freeze_digest = canonical_digest(
+        json.loads((root / "FREEZE-v1.json").read_text(encoding="utf-8"))
+    )
+    protocol = PersonaV321Protocol.model_validate_json((root / "PROTOCOL-v3.2.1.json").read_bytes())
     fixture = PersonaV32Fixture.model_validate_json((root / "FIXTURE-v1.json").read_bytes())
-    oracle = PersonaV32Oracle.model_validate_json((root / "ORACLE-v1.json").read_bytes())
+    oracle = PersonaV32Oracle.model_validate_json((root / "ORACLE-v1.1.json").read_bytes())
     construction = PersonaV32ConstructionReport.model_validate_json(
         (root / "construction-results-v1/CONSTRUCTION-REPORT-v1.json").read_bytes()
     )
-    materials = PersonaV32MaterialsFreeze.model_validate_json(
-        (root / "MATERIALS-FREEZE-v1.json").read_bytes()
+    adjudication = PersonaV32ConstructionAdjudication.model_validate_json(
+        (root / "CONSTRUCTION-ADJUDICATION-v1.1.json").read_bytes()
     )
+    materials = PersonaV32MaterialsFreezeV11.model_validate_json(
+        (root / "MATERIALS-FREEZE-v1.1.json").read_bytes()
+    )
+    if materials.successor_protocol_digest != canonical_digest(protocol):
+        raise RuntimeError("v3.2 successor protocol drifted before unblinding")
+    if materials.construction_adjudication_digest != canonical_digest(adjudication):
+        raise RuntimeError("v3.2 adjudication drifted before unblinding")
+    if materials.unblinder_digest != sha256_file(Path(__file__)):
+        raise RuntimeError("v3.2 unblinder drifted after material freeze")
     public, private = build_v32_plan(fixture=fixture, seed=seed_path.read_bytes())
     blind_path = root / "target-results-v1/BLIND-REPORT-v1.json"
     blind = json.loads(blind_path.read_text(encoding="utf-8"))
@@ -117,7 +135,7 @@ def main() -> None:
     instrument_valid = bool(blind["instrument_valid"]) and all(
         item.integrity_valid for item in trials
     )
-    construction_exact = construction.exact_target_gate_passed
+    construction_exact = adjudication.corrected_construction_exact
     compiled_trials = tuple(
         item
         for item in trials
@@ -158,10 +176,14 @@ def main() -> None:
         claim = "fresh_canary_compiled_outperformed"
     else:
         claim = "fresh_canary_compiled_matched_static"
-    report = PersonaV32FinalReport(
+    report = PersonaV32FinalReportV11(
         protocol_digest=canonical_digest(protocol),
+        original_protocol_digest=original_protocol_digest,
+        original_freeze_digest=original_freeze_digest,
         fixture_digest=canonical_digest(fixture),
         oracle_digest=canonical_digest(oracle),
+        corrected_oracle_digest=canonical_digest(oracle),
+        construction_adjudication_digest=canonical_digest(adjudication),
         construction_report_digest=canonical_digest(construction),
         materials_freeze_digest=canonical_digest(materials),
         public_plan_digest=public.content_digest,

@@ -23,3 +23,7 @@ The original construction gate stopped at 1/2 for both conditions because the fr
 Turn 2 a preference while both independent lanes and deterministic routing called its explicit
 plan sequence a procedure. The failed report is preserved. No target session has started; see
 `CONSTRUCTION-ANALYSIS.md` for the condition-neutral remediation boundary.
+
+The v1.1 adjudication and Protocol 3.2.1 now freeze that correction with zero additional model
+sessions. The original report remains failed; target tasks, hidden behavioral answers, randomization,
+and both condition-material byte streams are unchanged.

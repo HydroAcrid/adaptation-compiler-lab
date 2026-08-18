@@ -6,6 +6,9 @@ import argparse
 from pathlib import Path
 
 from adaptation_compiler_lab.benchmark.persona_v32 import persona_v32_schemas
+from adaptation_compiler_lab.benchmark.persona_v32_adjudication import (
+    persona_v32_adjudication_schemas,
+)
 from adaptation_compiler_lab.serialization import canonical_json
 
 
@@ -15,7 +18,8 @@ def main() -> None:
     args = parser.parse_args()
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
-    for name, schema in persona_v32_schemas().items():
+    schemas = {**persona_v32_schemas(), **persona_v32_adjudication_schemas()}
+    for name, schema in schemas.items():
         (output / name).write_text(canonical_json(schema) + "\n", encoding="utf-8")
 
 

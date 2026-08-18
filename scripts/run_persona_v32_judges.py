@@ -12,6 +12,9 @@ from adaptation_compiler_lab.benchmark.persona_v32 import (
     PersonaV32Protocol,
     PersonaV32PublicPlan,
 )
+from adaptation_compiler_lab.benchmark.persona_v32_adjudication import (
+    PersonaV32MaterialsFreezeV11,
+)
 from adaptation_compiler_lab.connectors.pins import sha256_bytes, sha256_file
 from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore, RawEncryptionKey
 from adaptation_compiler_lab.runners.codex_persona import PersonaRoleRequest
@@ -84,6 +87,11 @@ def main() -> None:
     protocol = PersonaV32Protocol.model_validate_json((root / "PROTOCOL-v3.2.json").read_bytes())
     fixture = PersonaV32Fixture.model_validate_json((root / "FIXTURE-v1.json").read_bytes())
     plan = PersonaV32PublicPlan.model_validate_json((root / "PUBLIC-PLAN-v1.json").read_bytes())
+    materials = PersonaV32MaterialsFreezeV11.model_validate_json(
+        (root / "MATERIALS-FREEZE-v1.1.json").read_bytes()
+    )
+    if materials.judge_runner_digest != sha256_file(Path(__file__)):
+        raise RuntimeError("v3.2 judge runner drifted after material freeze")
     completion = root / "target-results-v1/COMPLETION-v1.json"
     blind_report = root / "target-results-v1/BLIND-REPORT-v1.json"
     completion_value = __import__("json").loads(completion.read_text(encoding="utf-8"))

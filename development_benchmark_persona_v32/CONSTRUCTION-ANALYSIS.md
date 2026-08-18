@@ -21,3 +21,9 @@ A continuation is permissible only through a versioned zero-session adjudication
 Turn 2 material route from preference to procedure for both conditions, proves the target-task
 oracles and target-visible material bytes unchanged, freezes a successor protocol before targets,
 and preserves the failed original score. It may not reinterpret target behavior after a run.
+
+That adjudication is now frozen as v1.1. It changes only the material-oracle route for Turn 2,
+scores both preserved material snapshots exactly under the corrected oracle, and binds identical
+before/after digests for both target-task oracles and both target-visible materials. Protocol 3.2.1
+uses no additional construction session and retains the original four target plus two blind-judge
+ceiling. Target execution has still not started.
