@@ -18,3 +18,8 @@ remain encrypted outside Git.
 
 Passing permits only a narrow claim about these two fresh tasks. It does not establish general
 superiority, cross-agent transfer, or powered external validity.
+
+The original construction gate stopped at 1/2 for both conditions because the frozen oracle called
+Turn 2 a preference while both independent lanes and deterministic routing called its explicit
+plan sequence a procedure. The failed report is preserved. No target session has started; see
+`CONSTRUCTION-ANALYSIS.md` for the condition-neutral remediation boundary.
