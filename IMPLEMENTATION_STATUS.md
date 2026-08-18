@@ -2,6 +2,28 @@
 
 Last updated: 2026-08-17
 
+## Persona v3.2 fresh behavioral canary
+
+The first fresh post-fix behavioral canary now passes its bounded gate. Compiled adaptation and an
+independently authored/reviewed strong static profile each achieved 8/8 checks on the applicable
+Tide Ledger task and 8/8 on the unrelated Ember Quay control. Neither condition falsely activated
+in the control. The condition-blind quality judge tied the control and preferred the compiled
+output on the applicable task. The study used the preregistered nine saved-ChatGPT sessions and
+zero provider-billed calls.
+
+The originally emitted final report is preserved and invalidated. A restricted scorer rejected
+ordinary capability-free Python used by both conditions, while the first final gate failed to
+require direct check totals. A versioned post-unblind amendment rescored only the exact frozen
+diffs, accepted both implementation styles symmetrically, retained wrong-behavior and
+host-capability rejection controls, and made no model call. A subsequent strict JSON finalization
+failure also emitted no report and is preserved before the v1.4.1 repair.
+
+The permitted conclusion is narrow: Temper matched this strong profile on two fresh tasks and its
+compiled output received the better blinded quality judgment on the one applicable task. This is
+genuine end-to-end effectiveness evidence, not proof of general superiority, cross-agent transfer,
+or completion of the prospective ordinary-use gate. See
+[`development_benchmark_persona_v32/README.md`](development_benchmark_persona_v32/README.md).
+
 ## Pre-v3 static engineering gate
 
 The gate is implemented and passing without agent sessions. The successor persona interface

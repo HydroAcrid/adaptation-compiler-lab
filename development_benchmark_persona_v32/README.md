@@ -28,9 +28,9 @@ The v1.1 adjudication and Protocol 3.2.1 now freeze that correction with zero ad
 sessions. The original report remains failed; target tasks, hidden behavioral answers, randomization,
 and both condition-material byte streams are unchanged.
 
-The four target cells are now complete, integrity-valid, behavior-conformant, and still blinded.
-No target will be retried. Two fresh task-specific blind judges remain before deterministic
-unblinding.
+The four target cells completed with integrity-valid traces and were not retried. Their original
+producer receipts called every cell behavior-conformant, but that field was later invalidated for
+the Tide Ledger pair by the scoring incident described below.
 
 The first judge coordinator attempt failed its local persona/role prefix check before starting a
 model session. The v1.2 amendment changes only that identity binding, preserves every target byte
@@ -44,3 +44,23 @@ before deterministic unblinding.
 The first deterministic unblind attempt then exposed strict Python-versus-JSON shape binding for
 timestamps and tuples. It emitted no report and made no model call. V1.3 binds the same frozen
 trials and judge decisions through strict JSON deserialization, with scoring and mapping unchanged.
+
+The first emitted final report is preserved but invalid. It exposed two related instrument defects:
+the restricted observer rejected ordinary capability-free tuple/list construction used by both
+Tide Ledger outputs, and the final gate trusted successful observer receipts without requiring the
+eight direct checks to be true. The post-unblind v1.4 amendment changes no model output, material,
+task answer, judge receipt, or mapping. Its versioned observer supports only tuple concatenation,
+local list `append`/`extend`, and tuple conversion beyond the original grammar. Wrong-order and
+host-capability controls still fail. The exact four frozen diffs were then rescored with zero model
+sessions. A second strict JSON finalization error produced no report and is preserved under v1.4.1.
+
+The corrected result passes the bounded canary. Compiled adaptation and strong static profile each
+score 8/8 on the applicable Tide Ledger task and 8/8 on the unrelated Ember Quay control, with zero
+false activation. Automated scoring is a tie. The condition-blind judge tied Ember Quay and
+preferred the compiled adaptation output on Tide Ledger. All nine planned subscription sessions
+completed, no provider-billed call was used, and no external-validation material was accessed.
+
+This is positive fresh end-to-end evidence that Temper can construct, scope, deliver, and apply the
+right behavior as reliably as this strong independently maintained profile on these tasks. It does
+not establish general superiority over strong static profiles, cross-agent transfer, ordinary-use
+learning, or powered external validity.

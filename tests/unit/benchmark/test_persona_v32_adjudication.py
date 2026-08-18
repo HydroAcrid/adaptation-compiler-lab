@@ -13,6 +13,7 @@ from adaptation_compiler_lab.benchmark.persona_v32 import (
     score_v32_material,
 )
 from adaptation_compiler_lab.benchmark.persona_v32_adjudication import (
+    PersonaV32ConstructionAdjudication,
     PersonaV32JudgeAmendment,
     PersonaV32JudgeInstrumentIncident,
     PersonaV32MaterialsFreezeV12,
@@ -31,7 +32,7 @@ ROOT = Path(__file__).resolve().parents[3]
 BENCHMARK = ROOT / "development_benchmark_persona_v32"
 
 
-def _adjudication() -> tuple[PersonaV32Oracle, object]:
+def _adjudication() -> tuple[PersonaV32Oracle, PersonaV32ConstructionAdjudication]:
     protocol = PersonaV32Protocol.model_validate_json(
         (BENCHMARK / "PROTOCOL-v3.2.json").read_bytes()
     )

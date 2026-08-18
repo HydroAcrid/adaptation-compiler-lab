@@ -18,7 +18,7 @@ from adaptation_compiler_lab.benchmark.persona_v32 import (
     PersonaV32TaskOutcome,
     PersonaV32TrialReceipt,
 )
-from adaptation_compiler_lab.domain import ArtifactRoute, FrozenModel, Sha256Digest
+from adaptation_compiler_lab.domain import ArtifactRoute, FrozenModel, NonEmptyStr, Sha256Digest
 from adaptation_compiler_lab.serialization import canonical_digest, canonical_json
 
 
@@ -229,6 +229,188 @@ class PersonaV32FinalReportV11(PersonaV32FinalReport):
     task_outcomes: Annotated[tuple[PersonaV32TaskOutcome, ...], Field(min_length=2, max_length=2)]
 
 
+class PersonaV32ScoringInstrumentIncident(FrozenModel):
+    """Durable invalidation of the first post-unblind score and gate."""
+
+    incident_version: Literal["1.0.0"] = "1.0.0"
+    incident_id: Literal["persona-v32-policy-observer-gate-002"] = (
+        "persona-v32-policy-observer-gate-002"
+    )
+    original_final_report_digest: Sha256Digest
+    target_blind_report_digest: Sha256Digest
+    invalidation_note_digest: Sha256Digest
+    affected_task_id: Literal["tide-ledger-incident-transfer"] = "tide-ledger-incident-transfer"
+    affected_output_ids: Annotated[tuple[str, ...], Field(min_length=2, max_length=2)]
+    original_checks_passed_per_output: Literal[0] = 0
+    original_checks_total_per_output: Literal[8] = 8
+    original_report_gate_passed: Literal[True] = True
+    observer_rejected_capability_free_python: Literal[True] = True
+    gate_omitted_direct_check_total_requirement: Literal[True] = True
+    original_report_invalid: Literal[True] = True
+    target_outputs_changed: Literal[False] = False
+    judge_results_changed: Literal[False] = False
+    task_oracles_changed: Literal[False] = False
+    condition_mapping_changed: Literal[False] = False
+    model_sessions: Literal[0] = 0
+    provider_billed_calls: Literal[0] = 0
+    external_validation_accessed: Literal[False] = False
+
+
+class PersonaV32ScoringAmendment(FrozenModel):
+    """Post-unblind, condition-symmetric repair for frozen-output rescoring."""
+
+    amendment_version: Literal["1.4.0"] = "1.4.0"
+    incident_digest: Sha256Digest
+    invalidated_final_report_digest: Sha256Digest
+    prior_observer_digest: Sha256Digest
+    amended_observer_digest: Sha256Digest
+    prior_scorer_digest: Sha256Digest
+    amended_scorer_digest: Sha256Digest
+    frozen_rescorer_digest: Sha256Digest
+    amended_unblinder_digest: Sha256Digest
+    supported_capability_free_forms: tuple[
+        Literal["tuple_concatenation"],
+        Literal["local_list_append_extend_and_tuple_conversion"],
+    ] = (
+        "tuple_concatenation",
+        "local_list_append_extend_and_tuple_conversion",
+    )
+    direct_check_totals_required: Literal[True] = True
+    negative_behavior_controls_required: Literal[True] = True
+    forbidden_capability_controls_required: Literal[True] = True
+    post_unblind_repair: Literal[True] = True
+    original_results_preserved: Literal[True] = True
+    exact_frozen_diffs_only: Literal[True] = True
+    target_outputs_unchanged: Literal[True] = True
+    judge_results_unchanged: Literal[True] = True
+    task_oracles_unchanged: Literal[True] = True
+    condition_materials_unchanged: Literal[True] = True
+    condition_mapping_unchanged: Literal[True] = True
+    target_or_judge_model_sessions: Literal[0] = 0
+    provider_billed_calls: Literal[0] = 0
+    external_validation_accessed: Literal[False] = False
+
+
+class PersonaV32FrozenRescoreTrial(FrozenModel):
+    rescore_version: Literal["1.4.0"] = "1.4.0"
+    blind_output_id: NonEmptyStr
+    task_id: NonEmptyStr
+    original_diff_digest: Sha256Digest
+    original_scorer_output_digest: Sha256Digest
+    corrected_scorer_output_digest: Sha256Digest
+    objective_checks_passed: int = Field(ge=0)
+    objective_checks_total: int = Field(ge=1)
+    diagnostic_checks_passed: int = Field(ge=0)
+    diagnostic_checks_total: int = Field(ge=1)
+    neutral_checks_passed: int = Field(ge=0)
+    neutral_checks_total: int = Field(ge=1)
+    behavior_failures: tuple[str, ...]
+    behavior_conformant: bool
+
+    @model_validator(mode="after")
+    def conformance_matches_direct_checks(self) -> Self:
+        passed = (
+            self.objective_checks_passed
+            + self.diagnostic_checks_passed
+            + self.neutral_checks_passed
+        )
+        total = (
+            self.objective_checks_total + self.diagnostic_checks_total + self.neutral_checks_total
+        )
+        if self.behavior_conformant != (passed == total and not self.behavior_failures):
+            raise ValueError("v3.2 frozen rescore conformance is inconsistent")
+        return self
+
+
+class PersonaV32FrozenRescoreReport(FrozenModel):
+    report_version: Literal["1.4.0"] = "1.4.0"
+    scoring_amendment_digest: Sha256Digest
+    invalidated_final_report_digest: Sha256Digest
+    target_blind_report_digest: Sha256Digest
+    corrected_observer_digest: Sha256Digest
+    corrected_scorer_digest: Sha256Digest
+    trials: Annotated[tuple[PersonaV32FrozenRescoreTrial, ...], Field(min_length=4, max_length=4)]
+    all_observer_receipts_succeeded: bool
+    all_check_totals_passed: bool
+    exact_frozen_diffs_only: Literal[True] = True
+    original_results_preserved: Literal[True] = True
+    target_outputs_changed: Literal[False] = False
+    target_model_sessions: Literal[0] = 0
+    judge_model_sessions: Literal[0] = 0
+    provider_billed_calls: Literal[0] = 0
+    external_validation_accessed: Literal[False] = False
+
+    @model_validator(mode="after")
+    def summary_matches_trials(self) -> Self:
+        expected = all(item.behavior_conformant for item in self.trials)
+        if self.all_check_totals_passed != expected:
+            raise ValueError("v3.2 frozen rescore summary is inconsistent")
+        if len({item.blind_output_id for item in self.trials}) != len(self.trials):
+            raise ValueError("v3.2 frozen rescore repeated an output")
+        return self
+
+
+class PersonaV32FinalReportV14(PersonaV32FinalReport):
+    amendment_version: Literal["1.4.0"] = "1.4.0"
+    original_protocol_digest: Sha256Digest
+    original_freeze_digest: Sha256Digest
+    corrected_oracle_digest: Sha256Digest
+    construction_adjudication_digest: Sha256Digest
+    original_construction_gate_passed: Literal[False] = False
+    corrected_construction_gate_passed: Literal[True] = True
+    task_outcomes: Annotated[tuple[PersonaV32TaskOutcome, ...], Field(min_length=2, max_length=2)]
+    invalidated_final_report_digest: Sha256Digest
+    scoring_incident_digest: Sha256Digest
+    scoring_amendment_digest: Sha256Digest
+    frozen_rescore_report_digest: Sha256Digest
+    original_final_report_invalidated: Literal[True] = True
+    post_unblind_instrument_repair: Literal[True] = True
+
+
+class PersonaV32FinalizationInstrumentIncident(FrozenModel):
+    incident_version: Literal["1.0.0"] = "1.0.0"
+    incident_id: Literal["persona-v32-rescore-json-binding-003"] = (
+        "persona-v32-rescore-json-binding-003"
+    )
+    scoring_amendment_digest: Sha256Digest
+    frozen_rescore_report_digest: Sha256Digest
+    prior_unblinder_digest: Sha256Digest
+    failure_code: Literal["strict_python_validation_rejected_json_shapes"] = (
+        "strict_python_validation_rejected_json_shapes"
+    )
+    frozen_rescore_complete: Literal[True] = True
+    final_report_produced: Literal[False] = False
+    target_or_judge_result_changed: Literal[False] = False
+    model_session_started: Literal[False] = False
+    provider_billed_calls: Literal[0] = 0
+    external_validation_accessed: Literal[False] = False
+
+
+class PersonaV32FinalizationAmendment(FrozenModel):
+    amendment_version: Literal["1.4.1"] = "1.4.1"
+    superseded_scoring_amendment_digest: Sha256Digest
+    incident_digest: Sha256Digest
+    frozen_rescore_report_digest: Sha256Digest
+    prior_unblinder_digest: Sha256Digest
+    amended_unblinder_digest: Sha256Digest
+    binding_change: Literal["strict_json_deserialization_before_final_report_binding"] = (
+        "strict_json_deserialization_before_final_report_binding"
+    )
+    frozen_rescore_unchanged: Literal[True] = True
+    target_outputs_unchanged: Literal[True] = True
+    judge_results_unchanged: Literal[True] = True
+    task_oracles_unchanged: Literal[True] = True
+    model_sessions: Literal[0] = 0
+    provider_billed_calls: Literal[0] = 0
+    external_validation_accessed: Literal[False] = False
+
+
+class PersonaV32FinalReportV141(PersonaV32FinalReportV14):
+    amendment_version: Literal["1.4.1"] = "1.4.1"  # type: ignore[assignment]
+    finalization_incident_digest: Sha256Digest
+    finalization_amendment_digest: Sha256Digest
+
+
 def corrected_v32_oracle(original: PersonaV32Oracle) -> PersonaV32Oracle:
     claims = tuple(
         claim.model_copy(
@@ -251,6 +433,31 @@ def bind_v32_judge_decision(value: Mapping[str, object]) -> PersonaV32JudgeDecis
     """Bind JSON-shaped judge data without weakening strict model validation."""
 
     return PersonaV32JudgeDecision.model_validate_json(canonical_json(value), strict=True)
+
+
+def strict_v32_scorer_failures(score: Mapping[str, object]) -> tuple[str, ...]:
+    """Require both successful observer receipts and true direct checks."""
+
+    failures: list[str] = []
+    receipts = score.get("receipts")
+    if not isinstance(receipts, dict):
+        failures.append("independent scorer returned no receipts")
+    else:
+        for scenario_id, value in receipts.items():
+            if not isinstance(value, dict) or value.get("status") != "succeeded":
+                failures.append(f"independent scorer failed safely for {scenario_id}")
+    groups = score.get("checks")
+    if not isinstance(groups, dict):
+        failures.append("independent scorer returned no check groups")
+    else:
+        for group, values in groups.items():
+            if not isinstance(values, dict) or not values:
+                failures.append(f"independent scorer returned an invalid {group} group")
+                continue
+            for scenario_id, passed in values.items():
+                if passed is not True:
+                    failures.append(f"automated check failed for {group}/{scenario_id}")
+    return tuple(failures)
 
 
 def build_v32_construction_adjudication(
@@ -331,5 +538,24 @@ def persona_v32_adjudication_schemas() -> dict[str, dict[str, object]]:
         ),
         "persona-v32-materials-freeze-v13.schema.json": (
             PersonaV32MaterialsFreezeV13.model_json_schema()
+        ),
+        "persona-v32-scoring-incident.schema.json": (
+            PersonaV32ScoringInstrumentIncident.model_json_schema()
+        ),
+        "persona-v32-scoring-amendment.schema.json": (
+            PersonaV32ScoringAmendment.model_json_schema()
+        ),
+        "persona-v32-frozen-rescore.schema.json": (
+            PersonaV32FrozenRescoreReport.model_json_schema()
+        ),
+        "persona-v32-final-report-v14.schema.json": PersonaV32FinalReportV14.model_json_schema(),
+        "persona-v32-finalization-incident.schema.json": (
+            PersonaV32FinalizationInstrumentIncident.model_json_schema()
+        ),
+        "persona-v32-finalization-amendment.schema.json": (
+            PersonaV32FinalizationAmendment.model_json_schema()
+        ),
+        "persona-v32-final-report-v141.schema.json": (
+            PersonaV32FinalReportV141.model_json_schema()
         ),
     }
