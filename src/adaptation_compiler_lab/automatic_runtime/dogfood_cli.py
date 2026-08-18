@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import difflib
+import json
 import os
 import shutil
 import subprocess
@@ -39,6 +40,7 @@ from adaptation_compiler_lab.automatic_runtime.credentials import (
     RuntimeSecrets,
 )
 from adaptation_compiler_lab.automatic_runtime.gate import (
+    CodexDogfoodGateReport,
     build_codex_dogfood_gate_report,
 )
 from adaptation_compiler_lab.automatic_runtime.gateway_ledger import GatewayLedger
@@ -145,6 +147,8 @@ dogfood_app = typer.Typer(
     no_args_is_help=True,
     pretty_exceptions_enable=False,
 )
+
+_SUPPORTED_DOGFOOD_CONFIG_VERSIONS = frozenset({"1.1.0", "1.2.0", "1.3.0", "1.4.0"})
 credentials_app = typer.Typer(
     help="Manage automatic same-user runtime unlock and lost-credential succession."
 )
@@ -165,6 +169,19 @@ ConfigOption = Annotated[
     typer.Option(
         "--config",
         help="Explicit local Codex dogfood configuration outside every Git repository.",
+        exists=True,
+        dir_okay=False,
+        resolve_path=True,
+    ),
+]
+PredecessorConfigOption = Annotated[
+    Path | None,
+    typer.Option(
+        "--predecessor-config",
+        help=(
+            "Exact preserved predecessor config required for cumulative reporting after "
+            "lost-credential succession."
+        ),
         exists=True,
         dir_okay=False,
         resolve_path=True,
@@ -283,7 +300,7 @@ class CodexDogfoodLocalConfig(FrozenModel):
 
     @model_validator(mode="after")
     def paths_and_subject_are_consistent(self) -> CodexDogfoodLocalConfig:
-        if self.config_version not in {"1.1.0", "1.2.0", "1.3.0", "1.4.0"}:
+        if self.config_version not in _SUPPORTED_DOGFOOD_CONFIG_VERSIONS:
             raise ValueError("unsupported dogfood config version")
         if self.config_version == "1.1.0" and (
             self.feedback_detector_mode is not FeedbackDetectorMode.GRAMMAR
@@ -588,11 +605,28 @@ def _outside_git(path: Path, *, repository_root: Path) -> Path:
 
 def _load_config(path: Path) -> CodexDogfoodLocalConfig:
     try:
-        config = CodexDogfoodLocalConfig.model_validate_json(
-            path.read_text(encoding="utf-8"),
-            strict=True,
-        )
-    except (OSError, ValueError) as error:
+        raw_config = path.read_text(encoding="utf-8")
+    except OSError as error:
+        raise AutomaticRuntimeError("Codex dogfood config is invalid") from error
+
+    try:
+        untrusted_envelope = json.loads(raw_config)
+    except json.JSONDecodeError:
+        untrusted_envelope = None
+    if isinstance(untrusted_envelope, dict):
+        declared_version = untrusted_envelope.get("config_version")
+        if (
+            isinstance(declared_version, str)
+            and declared_version not in _SUPPORTED_DOGFOOD_CONFIG_VERSIONS
+        ):
+            raise AutomaticRuntimeError(
+                "Unsupported Codex dogfood config version "
+                f"{declared_version!r}; update the local Temper installation"
+            )
+
+    try:
+        config = CodexDogfoodLocalConfig.model_validate_json(raw_config, strict=True)
+    except ValueError as error:
         raise AutomaticRuntimeError("Codex dogfood config is invalid") from error
     _outside_git(config.state_root, repository_root=config.repository_root)
     return config
@@ -644,6 +678,82 @@ def _replace_config_with_credential_rebind(
 def _ledger(config: CodexDogfoodLocalConfig) -> AutomaticRuntimeLedger:
     SqliteUnitOfWorkFactory(config.database_path).initialize()
     return AutomaticRuntimeLedger(config.database_path, subject_id=config.subject_id)
+
+
+def _existing_ledger(config: CodexDogfoodLocalConfig) -> AutomaticRuntimeLedger:
+    if not config.database_path.is_file():
+        raise AutomaticRuntimeError("preserved predecessor ledger is unavailable")
+    return AutomaticRuntimeLedger(config.database_path, subject_id=config.subject_id)
+
+
+def _gate_lineage_ledgers(
+    config: CodexDogfoodLocalConfig,
+    predecessor_config_path: Path | None,
+) -> tuple[AutomaticRuntimeLedger, ...]:
+    receipt_path = config.state_root / "successor-receipt.json"
+    if not receipt_path.exists():
+        if predecessor_config_path is not None:
+            raise AutomaticRuntimeError(
+                "--predecessor-config is valid only for a signed successor lineage"
+            )
+        return (_ledger(config),)
+    if predecessor_config_path is None:
+        raise AutomaticRuntimeError(
+            "successor gate reporting requires --predecessor-config so historical "
+            "evidence cannot be omitted"
+        )
+
+    try:
+        receipt = RuntimeSuccessorReceipt.model_validate_json(
+            receipt_path.read_text(encoding="utf-8"),
+            strict=True,
+        )
+        predecessor = _load_config(predecessor_config_path)
+        verify_signed_governance(
+            receipt.authorization,
+            config.signer_identity,
+            effective_at=receipt.created_at,
+        )
+    except (OSError, ValueError) as error:
+        raise AutomaticRuntimeError("successor gate lineage is invalid") from error
+    if (
+        predecessor.subject_id != config.subject_id
+        or predecessor.state_root == config.state_root
+        or receipt.subject_id != config.subject_id
+        or receipt.predecessor_config_digest != predecessor.credential_binding_digest
+        or receipt.predecessor_signer_fingerprint != predecessor.signer_identity.key_fingerprint
+        or receipt.successor_signer_fingerprint != config.signer_identity.key_fingerprint
+        or receipt.capture_after_epoch_seconds != config.capture_after_epoch_seconds
+    ):
+        raise AutomaticRuntimeError("successor gate lineage binding changed")
+    return (_existing_ledger(predecessor), _ledger(config))
+
+
+def _combined_gate_report(
+    config: CodexDogfoodLocalConfig,
+    ledgers: tuple[AutomaticRuntimeLedger, ...],
+    *,
+    generated_at: datetime,
+) -> CodexDogfoodGateReport:
+    return build_codex_dogfood_gate_report(
+        subject_id=config.subject_id,
+        learning_cycles=tuple(chain.from_iterable(item.learning_cycles() for item in ledgers)),
+        learning_assessments=tuple(
+            chain.from_iterable(item.learning_assessments() for item in ledgers)
+        ),
+        learning_review_resolutions=tuple(
+            chain.from_iterable(item.learning_review_resolutions() for item in ledgers)
+        ),
+        learning_review_items=tuple(
+            chain.from_iterable(item.learning_review_items() for item in ledgers)
+        ),
+        activations=tuple(chain.from_iterable(item.activations() for item in ledgers)),
+        acknowledgements=tuple(
+            chain.from_iterable(item.delivery_acknowledgements() for item in ledgers)
+        ),
+        activation_feedback=tuple(chain.from_iterable(item.feedback() for item in ledgers)),
+        generated_at=generated_at,
+    )
 
 
 def _gateway_ledger(config: CodexDogfoodLocalConfig) -> GatewayLedger:
@@ -1754,6 +1864,7 @@ def _watcher_is_active(config: CodexDogfoodLocalConfig, *, observed_at: datetime
 @dogfood_app.command("daily")
 def show_review_mode_daily_loop(
     config_path: ConfigOption,
+    predecessor_config_path: PredecessorConfigOption = None,
     poll_now: Annotated[
         bool,
         typer.Option(
@@ -1767,6 +1878,7 @@ def show_review_mode_daily_loop(
 
     try:
         config = _load_config(config_path)
+        gate_ledgers = _gate_lineage_ledgers(config, predecessor_config_path)
         pickup = None
         if poll_now:
             pickup = _execute_poll(
@@ -1785,6 +1897,15 @@ def show_review_mode_daily_loop(
             detector_mode=config.feedback_detector_mode,
             credential_enrolled=DpapiCredentialStore(config.state_root).status() is not None,
             watcher_active=_watcher_is_active(config, observed_at=observed_at),
+        )
+        snapshot = snapshot.model_copy(
+            update={
+                "gate": _combined_gate_report(
+                    config,
+                    gate_ledgers,
+                    generated_at=observed_at,
+                )
+            }
         )
     except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
@@ -2141,21 +2262,17 @@ def record_codex_learning_feedback(
 
 
 @dogfood_app.command("gate-report")
-def show_codex_dogfood_gate_report(config_path: ConfigOption) -> None:
+def show_codex_dogfood_gate_report(
+    config_path: ConfigOption,
+    predecessor_config_path: PredecessorConfigOption = None,
+) -> None:
     """Report raw-free longitudinal readiness and product metrics."""
 
     try:
         config = _load_config(config_path)
-        ledger = _ledger(config)
-        report = build_codex_dogfood_gate_report(
-            subject_id=config.subject_id,
-            learning_cycles=ledger.learning_cycles(),
-            learning_assessments=ledger.learning_assessments(),
-            learning_review_resolutions=ledger.learning_review_resolutions(),
-            learning_review_items=ledger.learning_review_items(),
-            activations=ledger.activations(),
-            acknowledgements=ledger.delivery_acknowledgements(),
-            activation_feedback=ledger.feedback(),
+        report = _combined_gate_report(
+            config,
+            _gate_lineage_ledgers(config, predecessor_config_path),
             generated_at=_now(),
         )
     except (AutomaticRuntimeError, OSError, ValueError) as error:

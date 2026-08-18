@@ -1,6 +1,29 @@
 # Implementation Status
 
-Last updated: 2026-08-17
+Last updated: 2026-08-18
+
+## Genuine 6A.2C cumulative checkpoint
+
+The exact Windows-DPAPI managed successor was recovered without resetting its ledger. One stale
+task-context-only proposal—“Treat Kairn as the target instead of the previously referenced
+tool”—was rejected and immutably assessed as a false positive; nothing was promoted. A bounded
+saved-ChatGPT poll then appended four genuine 2026-08-18 interactions, all with no explicit durable
+signal and no review card.
+
+Successor reporting previously showed only the new empty cryptographic lineage. The runtime now
+fails closed unless `daily` and `gate-report` receive the exact predecessor config whenever a
+signed successor receipt exists. It verifies both signer fingerprints, subject, cutoff,
+predecessor config binding, and successor authorization before combining the ledgers. The live
+cumulative result is 13 interactions across four dates, one missed learning, one false-positive
+learning decision, one false activation, two activation attempts, and seven interactions
+remaining. The current miss, false-learning, and false-activation allowances are therefore all
+consumed.
+
+An outdated installed Windows CLI also exposed an actionable-diagnostics defect. Unsupported
+config versions now instruct the user to update the local Temper installation; malformed content
+still receives only a generic raw-free error. The active product runway is Base versus Temper
+after longitudinal completion, followed by a three-to-five-person local review-mode alpha. See
+[`TEMPER_PRIVATE_ALPHA_PLAN.md`](TEMPER_PRIVATE_ALPHA_PLAN.md).
 
 ## Persona v3.2 fresh behavioral canary
 
