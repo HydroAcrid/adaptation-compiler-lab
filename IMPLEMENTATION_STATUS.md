@@ -1,6 +1,43 @@
 # Implementation Status
 
-Last updated: 2026-08-18
+Last updated: 2026-08-22
+
+## Milestone 6A.3 terminal alpha surface
+
+Phases 1 and 2 are implemented. `temper` is a separate product command over the existing typed
+automatic-runtime services; it does not own a second database, learning engine, or raw-data path.
+Its default read-only dashboard and `status`, `review`, `adaptations`, `history`, `health`, and
+`gate` views consume one `TerminalAlphaSnapshot`. Its `poll`, `approve`, `reject`, `run`,
+`feedback`, and `undo` commands call the already signed service operations. Approval requires the
+exact proposal digest plus `--confirm-future-use`; undo requires an exact artifact ID plus
+`--confirm`.
+
+Rich terminal output, ANSI-free phone/plain output, and canonical JSON share the same typed
+snapshot. Reviewed fixtures exercise a 13/20 all-allowances-used dashboard, a normalized review
+card with exact evidence linkage, one active adaptation, a pending activation rating, and
+80-column rendering. Renderer dependency tests reject direct persistence, raw-store, connector,
+and runner access. Targeted automatic-runtime and CLI verification passes 190 tests with two
+expected platform skips.
+
+The product command was installed into an isolated local Windows development environment and its
+read-only view was run against the exact signed predecessor-plus-successor dogfood lineage. It
+reported 13/20 eligible interactions, four dates, two of six activation attempts, one rated
+activation, no pending review or feedback, no active adaptation, enrolled credentials, an inactive
+watcher, and all three error allowances used. This was an operational validation only: it did not
+poll, decrypt raw evidence, mutate a ledger, count a new interaction, or alter the frozen external
+study.
+
+Phase 3 is therefore active but evidence-dependent. The remaining seven ordinary-work
+interactions and at least four additional fresh activations cannot be simulated or manufactured.
+The Base-versus-Temper comparison remains blocked until the genuine gate and exact compact pack
+are frozen. The design-partner guide exists as a draft; no alpha build, tag, public release, or
+partner onboarding is frozen yet.
+
+Repository-wide verification passes: locked dependency sync, 722-file format check, Ruff, strict
+mypy over 342 source files, 954 tests with two expected platform skips, source and wheel builds,
+byte-identical automatic-runtime schema regeneration, focused migration/schema/foundation checks,
+Git whitespace validation, and zero changed-file findings for provider secrets, private keys,
+private paths, consented source-task IDs, or raw/private terminal-snapshot markers.
 
 ## Genuine 6A.2C cumulative checkpoint
 

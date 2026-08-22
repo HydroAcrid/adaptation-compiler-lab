@@ -54,9 +54,12 @@ from adaptation_compiler_lab.automatic_runtime.models import (
 )
 from adaptation_compiler_lab.automatic_runtime.product_dogfood import (
     ActivationFeedbackCard,
+    ActiveAdaptationCard,
+    GateAllowanceCard,
     ReviewModeDogfoodMetrics,
     ReviewModeDogfoodSnapshot,
     ReviewProposalCard,
+    TerminalAlphaSnapshot,
 )
 from adaptation_compiler_lab.automatic_runtime.semantic_evaluation import (
     SemanticCorpusAdjudication,
@@ -93,6 +96,7 @@ _MODELS: dict[str, type[BaseModel]] = {
     "automatic_runtime_metrics": AutomaticRuntimeMetrics,
     "automatic_runtime_state": AutomaticRuntimeState,
     "activation_feedback_card": ActivationFeedbackCard,
+    "active_adaptation_card": ActiveAdaptationCard,
     "capability_preset_ref": CapabilityPresetRef,
     "codex_project_registration": CodexProjectRegistration,
     "codex_dogfood_gate_report": CodexDogfoodGateReport,
@@ -102,6 +106,7 @@ _MODELS: dict[str, type[BaseModel]] = {
     "gateway_session": GatewaySession,
     "gateway_instrument_metrics": GatewayInstrumentMetrics,
     "gateway_turn_receipt": GatewayTurnReceipt,
+    "gate_allowance_card": GateAllowanceCard,
     "longitudinal_simulation_activation": LongitudinalSimulationActivation,
     "longitudinal_simulation_checks": LongitudinalSimulationChecks,
     "longitudinal_simulation_report": LongitudinalSimulationReport,
@@ -121,6 +126,7 @@ _MODELS: dict[str, type[BaseModel]] = {
     "review_mode_dogfood_metrics": ReviewModeDogfoodMetrics,
     "review_mode_dogfood_snapshot": ReviewModeDogfoodSnapshot,
     "review_proposal_card": ReviewProposalCard,
+    "terminal_alpha_snapshot": TerminalAlphaSnapshot,
     "semantic_corpus_adjudication": SemanticCorpusAdjudication,
     "semantic_evaluation_report": SemanticEvaluationReport,
     "semantic_feedback_corpus": SemanticFeedbackCorpus,

@@ -1,5 +1,19 @@
 # adaptation-compiler-lab
 
+Temper now has a product-facing terminal surface over the existing governed runtime. The new
+`temper` executable shows a raw-free dashboard, review inbox, active scoped adaptations,
+provenance counts, recent history, health, and the longitudinal gate; it delegates poll, exact
+approval/rejection, fresh Codex delivery, helped/hurt/irrelevant feedback, and confirmed undo to
+the existing signed services. It also emits stable plain text for Codex Remote and canonical JSON
+for automation. Synthetic disposable-ledger snapshots cover pending review, active delivery,
+phone output, all-used error allowances, and 80-column rendering. A read-only Windows validation
+against the real predecessor-plus-successor ledger reproduced the 13/20, four-date, 2/6 checkpoint
+without reading raw evidence or changing state. Phase 3 is now active: genuine ordinary work must
+provide the remaining seven interactions and four or more activations before the frozen
+Base-versus-Temper comparison can begin. See
+[`MILESTONE_6A3_TERMINAL_ALPHA_SURFACE.md`](MILESTONE_6A3_TERMINAL_ALPHA_SURFACE.md) and the
+[`alpha onboarding draft`](TEMPER_ALPHA_ONBOARDING_DRAFT.md).
+
 The pre-v3 static engineering gate now passes. Both persona-comparison lanes consume the same
 host-owned exact scope registry, all 39 revealed v2.1 reviewed claims can be bound without fuzzy
 matching, and before/after lifecycle scoring rejects vacuous revocation credit. This used zero

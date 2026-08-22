@@ -84,7 +84,7 @@ ROLES = (
 
 def _runtime(tmp_path: Path) -> tuple[AutomaticAdaptationRuntime, StandingAutomationPolicy]:
     signer = GovernanceSigner(
-        Ed25519PrivateKey.generate(),
+        Ed25519PrivateKey.from_private_bytes(b"t" * 32),
         identity_id="runtime-owner-key",
         subject_id="kevin",
     )

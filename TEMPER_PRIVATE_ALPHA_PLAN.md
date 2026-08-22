@@ -2,6 +2,11 @@
 
 Status: **active runway; longitudinal evidence collection in progress**
 
+The terminal product surface is now implemented and synthetically verified. It is installed only
+as Kevin's isolated development build; it is not yet the frozen design-partner alpha. The genuine
+gate remains 13/20 interactions and 2/6 activation attempts, so the comparison and alpha freeze
+below remain gated.
+
 ## Product sequence
 
 1. Complete the unchanged genuine 6A.2C ordinary-use gate across the signed predecessor and
@@ -58,11 +63,14 @@ period. It exports only a signed sanitized aggregate. Review mode, exact scope, 
 confirmation, provenance, revocation, and undo remain mandatory. Automatic promotion and presets
 remain disabled.
 
-The intended product commands are `temper init`, `temper daily`, `temper review`, `temper approve`,
-`temper reject`, `temper run`, `temper feedback`, `temper undo`, `temper status`, and
-`temper export-report`. The existing research CLI remains available for compatibility. A compact
-terminal inbox and generic native notification are sufficient for the first alpha; no web UI is
-required.
+The implemented product commands are `temper status`, `temper poll`, `temper review`,
+`temper approve`, `temper reject`, `temper adaptations`, `temper run`, `temper feedback`,
+`temper undo`, `temper history`, `temper health`, and `temper gate`. The existing research CLI
+remains available for initialization, watcher installation, project registration, and compatibility
+until those setup flows receive an alpha-safe wrapper. `temper init` and a signed sanitized
+`temper export-report` are therefore explicit Phase 5 freeze gaps, not undocumented commands. A
+compact terminal inbox and generic native notification are sufficient for the first alpha; no web
+UI is required.
 
 Planning a public preview requires at least three active participants, 100 eligible interactions
 across 14 days, 30 completed rated activations, zero high-severity incidents, false learning at or

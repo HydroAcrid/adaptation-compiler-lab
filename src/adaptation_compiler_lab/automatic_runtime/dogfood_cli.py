@@ -11,7 +11,7 @@ import subprocess
 import tempfile
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from itertools import chain
 from pathlib import Path
@@ -73,7 +73,9 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     StandingAutomationPolicy,
 )
 from adaptation_compiler_lab.automatic_runtime.product_dogfood import (
+    TerminalAlphaSnapshot,
     build_review_mode_dogfood_snapshot,
+    build_terminal_alpha_snapshot,
 )
 from adaptation_compiler_lab.automatic_runtime.semantic_evaluation import (
     SemanticEvaluationSplit,
@@ -455,6 +457,16 @@ class CodexDogfoodLocalConfig(FrozenModel):
     @property
     def effective_target_runtime_pin_path(self) -> Path:
         return self.target_runtime_pin_path or self.runtime_pin_path
+
+
+@dataclass(frozen=True, slots=True)
+class FreshCodexTaskResult:
+    """Raw-free result summary plus the target's final message."""
+
+    activation_id: str
+    material_utf8_bytes: int
+    status: str
+    final_message: str | None
 
 
 class _ConsoleNoticeSink(RuntimeNoticeSink):
@@ -1497,6 +1509,25 @@ def _execute_poll(
         ).run_once(limit=limit)
 
 
+def execute_codex_feedback_poll(
+    config_path: Path,
+    *,
+    limit: int = 25,
+    quiet: bool = True,
+) -> CodexDogfoodPickupReceipt:
+    """Run one bounded pickup through the existing governed source boundary."""
+
+    if not 1 <= limit <= 100:
+        raise AutomaticRuntimeError("poll limit must be between 1 and 100")
+    config = _load_config(config_path)
+    return _execute_poll(
+        config,
+        limit=limit,
+        review_sink=_SilentReviewSink() if quiet else _ConsoleReviewSink(),
+        notice_sink=_durable_notice_sink(config) if quiet else _ConsoleNoticeSink(),
+    )
+
+
 @dogfood_app.command("poll")
 def poll_codex_feedback(
     config_path: ConfigOption,
@@ -1505,16 +1536,82 @@ def poll_codex_feedback(
     """Pick up new interactive user messages and commit the cursor after local notices."""
 
     try:
-        config = _load_config(config_path)
-        receipt = _execute_poll(
-            config,
-            limit=limit,
-            review_sink=_ConsoleReviewSink(),
-            notice_sink=_ConsoleNoticeSink(),
-        )
+        receipt = execute_codex_feedback_poll(config_path, limit=limit, quiet=False)
     except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
     typer.echo(canonical_json(asdict(receipt)))
+
+
+def execute_fresh_codex_task(
+    config_path: Path,
+    *,
+    task: str,
+    workspace: Path,
+    activation_id: str | None = None,
+) -> FreshCodexTaskResult:
+    """Deliver the current scoped release once through the governed target launcher."""
+
+    config = _load_config(config_path)
+    runtime = _runtime(config)
+    ledger = _ledger(config)
+    ledger.initialize(initial_runtime_state(config.policy))
+    state = ledger.current()
+    if state is None or state.release is None:
+        raise AutomaticRuntimeError("no governed adaptation release is available")
+    unresolved = tuple(
+        item.activation_id
+        for item in ledger.activations()
+        if ledger.delivery_acknowledgement(item.activation_id) is None
+    )
+    if unresolved:
+        raise AutomaticRuntimeError(
+            "an earlier activation has no delivery acknowledgement: " + ", ".join(unresolved)
+        )
+    now = _now()
+    project = _project(config, workspace)
+    normalized_task = task.strip()
+    if not normalized_task:
+        raise AutomaticRuntimeError("target task must not be empty")
+    chosen_id = activation_id or (
+        f"dogfood-{now.strftime('%Y%m%dT%H%M%S')}-"
+        f"{str(sha256_text(normalized_task)).removeprefix('sha256:')[:12]}"
+    )
+    prepared = runtime.activate(
+        activation_id=chosen_id,
+        task_ref=TaskRecordRef(
+            record_id=f"task-{chosen_id}",
+            record_version="1.0.0",
+        ),
+        state=state,
+        context=_context(config, project, evaluated_at=now),
+        target_task=normalized_task,
+        activated_at=now,
+    )
+    pins = load_dogfood_runtime_pins(config.effective_target_runtime_pin_path)
+    with (
+        _isolated_target_home(config) as target_home,
+        open_codex_dogfood(
+            executable=config.effective_target_codex_executable,
+            codex_home=target_home,
+            pin=pins.codex,
+            windows_interop=config.effective_target_windows_interop,
+            experimental_api=True,
+        ) as (_verified, schemas, rpc),
+    ):
+        if not ledger.append_activation(prepared):
+            raise AutomaticRuntimeError("activation already exists; automatic relaunch is refused")
+        result = CodexDogfoodSessionLauncher(rpc, schemas=schemas).launch(
+            prepared,
+            workspace=workspace,
+            ephemeral=True,
+        )
+        ledger.acknowledge_delivery(result.acknowledgement)
+    return FreshCodexTaskResult(
+        activation_id=chosen_id,
+        material_utf8_bytes=prepared.task.receipt.material_utf8_bytes,
+        status=result.acknowledgement.status,
+        final_message=result.final_message,
+    )
 
 
 @dogfood_app.command("run")
@@ -1538,83 +1635,27 @@ def run_fresh_codex_task(
     """Deliver the current scoped release once to a fresh isolated Codex session."""
 
     try:
-        config = _load_config(config_path)
-        runtime = _runtime(config)
-        ledger = _ledger(config)
-        ledger.initialize(initial_runtime_state(config.policy))
-        state = ledger.current()
-        if state is None or state.release is None:
-            raise AutomaticRuntimeError("no governed adaptation release is available")
-        unresolved = tuple(
-            item.activation_id
-            for item in ledger.activations()
-            if ledger.delivery_acknowledgement(item.activation_id) is None
+        result = execute_fresh_codex_task(
+            config_path,
+            task=task,
+            workspace=workspace,
+            activation_id=activation_id,
         )
-        if unresolved:
-            raise AutomaticRuntimeError(
-                "an earlier activation has no delivery acknowledgement: " + ", ".join(unresolved)
-            )
-        now = _now()
-        project = _project(config, workspace)
-        normalized_task = task.strip()
-        if not normalized_task:
-            raise AutomaticRuntimeError("target task must not be empty")
-        chosen_id = activation_id or (
-            f"dogfood-{now.strftime('%Y%m%dT%H%M%S')}-"
-            f"{str(sha256_text(normalized_task)).removeprefix('sha256:')[:12]}"
-        )
-        prepared = runtime.activate(
-            activation_id=chosen_id,
-            task_ref=TaskRecordRef(
-                record_id=f"task-{chosen_id}",
-                record_version="1.0.0",
-            ),
-            state=state,
-            context=_context(config, project, evaluated_at=now),
-            target_task=normalized_task,
-            activated_at=now,
-        )
-        pins = load_dogfood_runtime_pins(config.effective_target_runtime_pin_path)
-        with (
-            _isolated_target_home(config) as target_home,
-            open_codex_dogfood(
-                executable=config.effective_target_codex_executable,
-                codex_home=target_home,
-                pin=pins.codex,
-                windows_interop=config.effective_target_windows_interop,
-                experimental_api=True,
-            ) as (_verified, schemas, rpc),
-        ):
-            if not ledger.append_activation(prepared):
-                raise AutomaticRuntimeError(
-                    "activation already exists; automatic relaunch is refused"
-                )
-            result = CodexDogfoodSessionLauncher(
-                rpc,
-                schemas=schemas,
-            ).launch(
-                prepared,
-                workspace=workspace,
-                ephemeral=True,
-            )
-            ledger.acknowledge_delivery(result.acknowledgement)
-        typer.echo(
-            canonical_json(
-                {
-                    "activation_id": chosen_id,
-                    "material_utf8_bytes": prepared.task.receipt.material_utf8_bytes,
-                    "status": result.acknowledgement.status,
-                }
-            )
-        )
-        if result.final_message:
-            typer.echo(result.final_message)
-        if result.acknowledgement.status != "completed":
-            raise typer.Exit(code=1)
-    except typer.Exit:
-        raise
     except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
+    typer.echo(
+        canonical_json(
+            {
+                "activation_id": result.activation_id,
+                "material_utf8_bytes": result.material_utf8_bytes,
+                "status": result.status,
+            }
+        )
+    )
+    if result.final_message:
+        typer.echo(result.final_message)
+    if result.status != "completed":
+        raise typer.Exit(code=1)
 
 
 @dogfood_app.command("detector-mode")
@@ -1861,6 +1902,63 @@ def _watcher_is_active(config: CodexDogfoodLocalConfig, *, observed_at: datetime
     return True
 
 
+def load_terminal_alpha_snapshot(
+    config_path: Path,
+    *,
+    predecessor_config_path: Path | None = None,
+    poll_now: bool = False,
+    limit: int = 25,
+) -> tuple[TerminalAlphaSnapshot, CodexDogfoodPickupReceipt | None]:
+    """Load one governed raw-free product snapshot for any presentation surface."""
+
+    if not 1 <= limit <= 100:
+        raise AutomaticRuntimeError("poll limit must be between 1 and 100")
+    config = _load_config(config_path)
+    gate_ledgers = _gate_lineage_ledgers(config, predecessor_config_path)
+    pickup = None
+    if poll_now:
+        pickup = _execute_poll(
+            config,
+            limit=limit,
+            review_sink=_SilentReviewSink(),
+            notice_sink=_durable_notice_sink(config),
+        )
+    observed_at = _now()
+    ledger = _ledger(config)
+    ledger.initialize(initial_runtime_state(config.policy))
+    state = ledger.current()
+    if state is None:
+        raise AutomaticRuntimeError("Temper runtime state is unavailable")
+    review_mode = build_review_mode_dogfood_snapshot(
+        ledger,
+        subject_id=config.subject_id,
+        generated_at=observed_at,
+        detector_mode=config.feedback_detector_mode,
+        credential_enrolled=DpapiCredentialStore(config.state_root).status() is not None,
+        watcher_active=_watcher_is_active(config, observed_at=observed_at),
+    )
+    review_mode = review_mode.model_copy(
+        update={
+            "gate": _combined_gate_report(
+                config,
+                gate_ledgers,
+                generated_at=observed_at,
+            )
+        }
+    )
+    configured_project_ids = (
+        tuple(item.project_id for item in config.projects)
+        if hasattr(config, "projects")
+        else config.policy.scope.project_ids
+    )
+    terminal = build_terminal_alpha_snapshot(
+        review_mode,
+        state=state,
+        configured_project_ids=configured_project_ids,
+    )
+    return terminal, pickup
+
+
 @dogfood_app.command("daily")
 def show_review_mode_daily_loop(
     config_path: ConfigOption,
@@ -1877,36 +1975,13 @@ def show_review_mode_daily_loop(
     """Show Temper's cohesive review-mode action queue and longitudinal product measures."""
 
     try:
-        config = _load_config(config_path)
-        gate_ledgers = _gate_lineage_ledgers(config, predecessor_config_path)
-        pickup = None
-        if poll_now:
-            pickup = _execute_poll(
-                config,
-                limit=limit,
-                review_sink=_SilentReviewSink(),
-                notice_sink=_durable_notice_sink(config),
-            )
-        observed_at = _now()
-        ledger = _ledger(config)
-        ledger.initialize(initial_runtime_state(config.policy))
-        snapshot = build_review_mode_dogfood_snapshot(
-            ledger,
-            subject_id=config.subject_id,
-            generated_at=observed_at,
-            detector_mode=config.feedback_detector_mode,
-            credential_enrolled=DpapiCredentialStore(config.state_root).status() is not None,
-            watcher_active=_watcher_is_active(config, observed_at=observed_at),
+        terminal, pickup = load_terminal_alpha_snapshot(
+            config_path,
+            predecessor_config_path=predecessor_config_path,
+            poll_now=poll_now,
+            limit=limit,
         )
-        snapshot = snapshot.model_copy(
-            update={
-                "gate": _combined_gate_report(
-                    config,
-                    gate_ledgers,
-                    generated_at=observed_at,
-                )
-            }
-        )
+        snapshot = terminal.review_mode
     except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
     typer.echo(
@@ -1949,6 +2024,101 @@ def show_codex_dogfood_review(config_path: ConfigOption) -> None:
             }
         )
     )
+
+
+def resolve_codex_dogfood_review(
+    config_path: Path,
+    *,
+    queue_id: str,
+    decision: ApprovalDecision,
+    proposal_digest: str,
+    confirm_future_use: bool = False,
+    refine_task_class: list[str] | None = None,
+    refine_environment_id: list[str] | None = None,
+    refine_activation_condition: list[str] | None = None,
+    refine_exclusion: list[str] | None = None,
+) -> dict[str, object]:
+    """Resolve one exact review through the governed runtime service."""
+
+    _validate_review_decision_intent(decision, confirm_future_use=confirm_future_use)
+    config = _load_config(config_path)
+    ledger = _ledger(config)
+    matches = tuple(item for item in ledger.learning_review_items() if item.queue_id == queue_id)
+    if len(matches) != 1:
+        raise AutomaticRuntimeError("review decision requires one exact queue item")
+    item = matches[0]
+    if proposal_digest != str(item.detection.content_digest):
+        raise AutomaticRuntimeError("review proposal digest changed")
+    refined_scope = _review_refined_scope(
+        item.detection.scope,
+        task_classes=refine_task_class,
+        environment_ids=refine_environment_id,
+        activation_conditions=refine_activation_condition,
+        exclusions=refine_exclusion,
+    )
+    if refined_scope is not None and decision is not ApprovalDecision.APPROVED:
+        raise AutomaticRuntimeError("scope refinement requires an approved review decision")
+    existing = ledger.learning_review_resolution(queue_id)
+    if existing is not None:
+        existing_scope = (
+            None if existing.scope_refinement is None else existing.scope_refinement.refined_scope
+        )
+        if (
+            existing.decision is not decision
+            or existing.queue_digest != item.content_digest
+            or existing_scope != refined_scope
+        ):
+            raise AutomaticRuntimeError("review item already has another immutable decision")
+        resolution = existing
+        state = ledger.current()
+        if state is None:
+            raise AutomaticRuntimeError("review decision state is unavailable")
+    else:
+        cycle = ledger.learning_cycle(item.cycle_id)
+        state = ledger.current()
+        if cycle is None or state is None:
+            raise AutomaticRuntimeError("review decision source state is unavailable")
+        result = _runtime(config).resolve_review(
+            item,
+            cycle,
+            state=state,
+            decision=decision,
+            resolved_at=_now(),
+            refined_scope=refined_scope,
+        )
+        ledger.append_learning_review_resolution(
+            result.resolution,
+            result.state,
+            release_event=result.release_event,
+        )
+        resolution = result.resolution
+        state = result.state
+    active_artifact_ids = (
+        ()
+        if state.release is None
+        else tuple(
+            artifact.artifact_ref.record_id
+            for artifact in state.release.governed_release.active_artifacts
+        )
+    )
+    return {
+        "active_artifact_ids": active_artifact_ids,
+        "assessment": resolution.assessment.outcome.value,
+        "decision": resolution.decision.value,
+        "future_use_authorized": resolution.decision is ApprovalDecision.APPROVED,
+        "generation": state.generation,
+        "queue_id": resolution.queue_id,
+        "scope_refinement": (
+            None
+            if resolution.scope_refinement is None
+            else {
+                "digest": str(resolution.scope_refinement.content_digest),
+                "refined_scope": _json_scope(resolution.scope_refinement.refined_scope),
+            }
+        ),
+        "resolution_digest": str(resolution.content_digest),
+        "resolution_id": resolution.resolution_id,
+    }
 
 
 @dogfood_app.command("review-decide")
@@ -2005,94 +2175,17 @@ def decide_codex_dogfood_review(
     """Decide whether one proposal is authorized to influence future sessions."""
 
     try:
-        _validate_review_decision_intent(
-            decision,
+        response = resolve_codex_dogfood_review(
+            config_path,
+            queue_id=queue_id,
+            decision=decision,
+            proposal_digest=proposal_digest,
             confirm_future_use=confirm_future_use,
+            refine_task_class=refine_task_class,
+            refine_environment_id=refine_environment_id,
+            refine_activation_condition=refine_activation_condition,
+            refine_exclusion=refine_exclusion,
         )
-        config = _load_config(config_path)
-        ledger = _ledger(config)
-        matches = tuple(
-            item for item in ledger.learning_review_items() if item.queue_id == queue_id
-        )
-        if len(matches) != 1:
-            raise AutomaticRuntimeError("review decision requires one exact queue item")
-        item = matches[0]
-        if proposal_digest != str(item.detection.content_digest):
-            raise AutomaticRuntimeError("review proposal digest changed")
-        refined_scope = _review_refined_scope(
-            item.detection.scope,
-            task_classes=refine_task_class,
-            environment_ids=refine_environment_id,
-            activation_conditions=refine_activation_condition,
-            exclusions=refine_exclusion,
-        )
-        if refined_scope is not None and decision is not ApprovalDecision.APPROVED:
-            raise AutomaticRuntimeError("scope refinement requires an approved review decision")
-        existing = ledger.learning_review_resolution(queue_id)
-        if existing is not None:
-            existing_scope = (
-                None
-                if existing.scope_refinement is None
-                else existing.scope_refinement.refined_scope
-            )
-            if (
-                existing.decision is not decision
-                or existing.queue_digest != item.content_digest
-                or existing_scope != refined_scope
-            ):
-                raise AutomaticRuntimeError("review item already has another immutable decision")
-            resolution = existing
-            state = ledger.current()
-            if state is None:
-                raise AutomaticRuntimeError("review decision state is unavailable")
-        else:
-            cycle = ledger.learning_cycle(item.cycle_id)
-            state = ledger.current()
-            if cycle is None or state is None:
-                raise AutomaticRuntimeError("review decision source state is unavailable")
-            result = _runtime(config).resolve_review(
-                item,
-                cycle,
-                state=state,
-                decision=decision,
-                resolved_at=_now(),
-                refined_scope=refined_scope,
-            )
-            ledger.append_learning_review_resolution(
-                result.resolution,
-                result.state,
-                release_event=result.release_event,
-            )
-            resolution = result.resolution
-            state = result.state
-        if state is None:
-            raise AutomaticRuntimeError("review decision state is unavailable")
-        active_artifact_ids = (
-            ()
-            if state.release is None
-            else tuple(
-                artifact.artifact_ref.record_id
-                for artifact in state.release.governed_release.active_artifacts
-            )
-        )
-        response = {
-            "active_artifact_ids": active_artifact_ids,
-            "assessment": resolution.assessment.outcome.value,
-            "decision": resolution.decision.value,
-            "future_use_authorized": resolution.decision is ApprovalDecision.APPROVED,
-            "generation": state.generation,
-            "queue_id": resolution.queue_id,
-            "scope_refinement": (
-                None
-                if resolution.scope_refinement is None
-                else {
-                    "digest": str(resolution.scope_refinement.content_digest),
-                    "refined_scope": _json_scope(resolution.scope_refinement.refined_scope),
-                }
-            ),
-            "resolution_digest": str(resolution.content_digest),
-            "resolution_id": resolution.resolution_id,
-        }
     except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
     typer.echo(canonical_json(response))
@@ -2110,6 +2203,56 @@ def show_codex_dogfood_notices(config_path: ConfigOption) -> None:
     typer.echo(canonical_json({"notices": [_json_notice(item.notice) for item in cycles]}))
 
 
+def revoke_active_codex_adaptation(config_path: Path, *, artifact_id: str) -> RuntimeNotice:
+    """Revoke one exact active adaptation through the existing governed runtime."""
+
+    config = _load_config(config_path)
+    runtime = _runtime(config)
+    ledger = _ledger(config)
+    state = ledger.current()
+    if state is None or state.release is None:
+        raise AutomaticRuntimeError("no governed adaptation release is available")
+    active = next(
+        (
+            item
+            for item in state.release.governed_release.active_artifacts
+            if item.artifact_ref.record_id == artifact_id
+        ),
+        None,
+    )
+    if active is None:
+        raise AutomaticRuntimeError("undo target is not an active artifact")
+    now = _now()
+    suffix = str(sha256_text(f"{artifact_id}\0{now.isoformat()}")).removeprefix("sha256:")[:24]
+    observation = InteractionObservation(
+        observation_id=f"local-undo-{suffix}",
+        subject_id=config.subject_id,
+        task_ref=TaskRecordRef(
+            record_id=f"local-undo-task-{suffix}",
+            record_version="1.0.0",
+        ),
+        turn_id=f"local-undo-turn-{suffix}",
+        actor=ActorRef(actor_id=config.subject_id, kind=ActorKind.USER),
+        source_class=SourceClass.EXPLICIT_USER_FEEDBACK,
+        text=f"Revoke: {artifact_id}",
+        scope=active.scope,
+        observed_at=now,
+        source_system="local_interaction_runtime",
+        source_version="dogfood-cli-1.0.0",
+        source_schema_digest=load_dogfood_runtime_pins(
+            config.runtime_pin_path
+        ).codex.schema_bundle_sha256,
+    )
+    result = runtime.learn(observation, state=state, processed_at=now)
+    if not ledger.append_learning(
+        result.cycle,
+        result.state,
+        release_event=result.release_event,
+    ):
+        raise AutomaticRuntimeError("undo observation unexpectedly already exists")
+    return result.cycle.notice
+
+
 @dogfood_app.command("undo")
 def undo_codex_adaptation(
     config_path: ConfigOption,
@@ -2118,53 +2261,53 @@ def undo_codex_adaptation(
     """Revoke one exact active adaptation and compile the next release immediately."""
 
     try:
-        config = _load_config(config_path)
-        runtime = _runtime(config)
-        ledger = _ledger(config)
-        state = ledger.current()
-        if state is None or state.release is None:
-            raise AutomaticRuntimeError("no governed adaptation release is available")
-        active = next(
-            (
-                item
-                for item in state.release.governed_release.active_artifacts
-                if item.artifact_ref.record_id == artifact_id
-            ),
-            None,
-        )
-        if active is None:
-            raise AutomaticRuntimeError("undo target is not an active artifact")
-        now = _now()
-        suffix = str(sha256_text(f"{artifact_id}\0{now.isoformat()}")).removeprefix("sha256:")[:24]
-        observation = InteractionObservation(
-            observation_id=f"local-undo-{suffix}",
-            subject_id=config.subject_id,
-            task_ref=TaskRecordRef(
-                record_id=f"local-undo-task-{suffix}",
-                record_version="1.0.0",
-            ),
-            turn_id=f"local-undo-turn-{suffix}",
-            actor=ActorRef(actor_id=config.subject_id, kind=ActorKind.USER),
-            source_class=SourceClass.EXPLICIT_USER_FEEDBACK,
-            text=f"Revoke: {artifact_id}",
-            scope=active.scope,
-            observed_at=now,
-            source_system="local_interaction_runtime",
-            source_version="dogfood-cli-1.0.0",
-            source_schema_digest=load_dogfood_runtime_pins(
-                config.runtime_pin_path
-            ).codex.schema_bundle_sha256,
-        )
-        result = runtime.learn(observation, state=state, processed_at=now)
-        if not ledger.append_learning(
-            result.cycle,
-            result.state,
-            release_event=result.release_event,
-        ):
-            raise AutomaticRuntimeError("undo observation unexpectedly already exists")
+        notice = revoke_active_codex_adaptation(config_path, artifact_id=artifact_id)
     except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
-    typer.echo(canonical_json(result.cycle.notice))
+    typer.echo(canonical_json(notice))
+
+
+def save_codex_activation_feedback(
+    config_path: Path,
+    *,
+    activation_id: str,
+    outcome: RuntimeFeedbackOutcome,
+    relevant_artifact_ids: list[str] | None = None,
+    correction_key: str | None = None,
+) -> RuntimeActivationFeedback:
+    """Persist one exact activation rating through the append-only runtime ledger."""
+
+    config = _load_config(config_path)
+    ledger = _ledger(config)
+    activation = ledger.activation(activation_id)
+    acknowledgement = ledger.delivery_acknowledgement(activation_id)
+    if activation is None or acknowledgement is None:
+        raise AutomaticRuntimeError(
+            "feedback requires an exact activation and delivery acknowledgement"
+        )
+    now = _now()
+    activated = activation.active_artifact_ids
+    relevant = (
+        tuple(sorted(set(relevant_artifact_ids)))
+        if relevant_artifact_ids is not None
+        else (() if outcome is RuntimeFeedbackOutcome.IRRELEVANT else activated)
+    )
+    feedback = RuntimeActivationFeedback(
+        feedback_id=(
+            f"feedback-{activation_id}-"
+            f"{str(sha256_text(now.isoformat())).removeprefix('sha256:')[:12]}"
+        ),
+        subject_id=config.subject_id,
+        cycle_id=activation_id,
+        delivery_receipt_digest=activation.delivery_receipt_digest,
+        outcome=outcome,
+        relevant_artifact_ids=relevant,
+        activated_artifact_ids=activated,
+        correction_key=correction_key,
+        recorded_at=now,
+    )
+    ledger.add_feedback(feedback)
+    return feedback
 
 
 @dogfood_app.command("feedback")
@@ -2193,36 +2336,13 @@ def record_codex_activation_feedback(
     """Record whether one exact completed activation helped, hurt, or was irrelevant."""
 
     try:
-        config = _load_config(config_path)
-        ledger = _ledger(config)
-        activation = ledger.activation(activation_id)
-        acknowledgement = ledger.delivery_acknowledgement(activation_id)
-        if activation is None or acknowledgement is None:
-            raise AutomaticRuntimeError(
-                "feedback requires an exact activation and delivery acknowledgement"
-            )
-        now = _now()
-        activated = activation.active_artifact_ids
-        relevant = (
-            tuple(sorted(set(relevant_artifact_ids)))
-            if relevant_artifact_ids is not None
-            else (() if outcome is RuntimeFeedbackOutcome.IRRELEVANT else activated)
-        )
-        feedback = RuntimeActivationFeedback(
-            feedback_id=(
-                f"feedback-{activation_id}-"
-                f"{str(sha256_text(now.isoformat())).removeprefix('sha256:')[:12]}"
-            ),
-            subject_id=config.subject_id,
-            cycle_id=activation_id,
-            delivery_receipt_digest=activation.delivery_receipt_digest,
+        feedback = save_codex_activation_feedback(
+            config_path,
+            activation_id=activation_id,
             outcome=outcome,
-            relevant_artifact_ids=relevant,
-            activated_artifact_ids=activated,
+            relevant_artifact_ids=relevant_artifact_ids,
             correction_key=correction_key,
-            recorded_at=now,
         )
-        ledger.add_feedback(feedback)
     except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
     typer.echo(canonical_json(feedback))
