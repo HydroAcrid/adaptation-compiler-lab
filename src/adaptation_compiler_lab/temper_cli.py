@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 from dataclasses import asdict, dataclass
 from enum import StrEnum
+from io import TextIOWrapper
 from pathlib import Path
 from typing import Annotated, NoReturn
 
@@ -109,6 +110,9 @@ def main(
 ) -> None:
     """Show the read-only dashboard when no subcommand is supplied."""
 
+    for stream in (sys.stdout, sys.stderr):
+        if isinstance(stream, TextIOWrapper):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     checked_config = _validated_path(
         config_path,
         label="local configuration",

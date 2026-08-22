@@ -349,9 +349,58 @@ def render_plain(snapshot: TerminalAlphaSnapshot, *, view: TerminalView = "statu
             lines.extend(
                 (
                     f"[{index}] {adaptation.intent}",
+                    f"    Behavior: {'; '.join(adaptation.required_behaviors)}",
                     f"    Artifact: {adaptation.artifact_id}@{adaptation.artifact_version}",
                     f"    Scope: {_scope_text(adaptation.scope)}",
+                    f"    Evidence links: {adaptation.evidence_count}",
                 )
             )
         return "\n".join(lines) + "\n"
-    return render_terminal(snapshot, view=view, width=88, color=False)
+    if view == "history":
+        lines = [f"Temper recent history: {len(daily.recent_notices)} notices"]
+        lines.extend(
+            (
+                f"{notice.created_at.isoformat().replace('+00:00', 'Z')} | "
+                f"{notice.kind.value} | {notice.summary}"
+            )
+            for notice in reversed(daily.recent_notices)
+        )
+        return "\n".join(lines) + "\n"
+    if view == "health":
+        lines = [
+            "Temper local health",
+            f"Credential enrolled: {'yes' if daily.credential_enrolled else 'no'}",
+            f"Watcher active: {'yes' if daily.watcher_active else 'no'}",
+            "Automatic promotion: no",
+            "Raw payloads exposed: no",
+            f"Unresolved reviews: {report.unresolved_review_count}",
+            f"Unresolved activations: {report.unresolved_activation_count}",
+            "Registered projects: " + (", ".join(snapshot.configured_project_ids) or "none"),
+        ]
+        return "\n".join(lines) + "\n"
+    lines = [
+        "Temper longitudinal gate",
+        f"Interactions: {report.eligible_interaction_count}/{report.goal_interaction_count}",
+        f"Dates: {report.active_date_count}/{report.minimum_active_dates}",
+        f"Activation attempts: {report.activation_count}/{report.minimum_activation_count}",
+        f"Correct learning: {report.correct_learning_count}",
+        f"False learning: {report.false_learning_count}",
+        f"Missed learning: {report.missed_learning_count}",
+        (
+            f"Helped/hurt/irrelevant: {report.helped_count}/{report.hurt_count}/"
+            f"{report.irrelevant_count}"
+        ),
+        (
+            "Correct/false/missed activation: "
+            f"{report.correct_activation_count}/{report.false_activation_count}/"
+            f"{report.missed_activation_count}"
+        ),
+        f"Repeated corrections: {report.repeated_correction_count}",
+        f"Latest delivered projection: {snapshot.latest_delivered_projection_utf8_bytes} bytes",
+        f"Evidence ready: {'yes' if report.evidence_ready else 'no'}",
+    ]
+    lines.extend(
+        f"Allowance {item.name}: {item.observed}/{item.maximum} ({item.state})"
+        for item in snapshot.allowances
+    )
+    return "\n".join(lines) + "\n"
