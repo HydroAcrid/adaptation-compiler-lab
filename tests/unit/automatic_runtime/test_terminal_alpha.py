@@ -221,6 +221,17 @@ def test_plain_phone_view_is_stable_raw_free_and_ansi_free(tmp_path: Path) -> No
     )
 
 
+def test_every_plain_view_is_box_free_and_legacy_console_encodable(tmp_path: Path) -> None:
+    pending, active = _review_and_active_snapshots(tmp_path)
+
+    for snapshot in (pending, active, _current_gate_snapshot(tmp_path)):
+        for view in ("status", "review", "adaptations", "history", "health", "gate"):
+            rendered = render_plain(snapshot, view=view)
+            assert "╭" not in rendered
+            assert "│" not in rendered
+            rendered.encode("cp1252")
+
+
 def test_terminal_views_respect_eighty_column_floor(tmp_path: Path) -> None:
     pending, active = _review_and_active_snapshots(tmp_path)
     for snapshot in (pending, active, _current_gate_snapshot(tmp_path)):

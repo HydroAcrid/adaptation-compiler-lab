@@ -19,6 +19,12 @@ card with exact evidence linkage, one active adaptation, a pending activation ra
 and runner access. Targeted automatic-runtime and CLI verification passes 190 tests with two
 expected platform skips.
 
+The first installed Windows command exposed one post-merge display defect: plain `health`,
+`history`, and `gate` still fell back to Rich box characters, which a CP-1252 host stream rejected.
+That failure is preserved as the local validation finding. Every plain view now has a dedicated
+box-free renderer, the CLI configures UTF-8 on reconfigurable host streams, and a regression checks
+all six plain views under legacy CP-1252 encoding. All six installed real-ledger views now run.
+
 The product command was installed into an isolated local Windows development environment and its
 read-only view was run against the exact signed predecessor-plus-successor dogfood lineage. It
 reported 13/20 eligible interactions, four dates, two of six activation attempts, one rated
@@ -34,7 +40,7 @@ are frozen. The design-partner guide exists as a draft; no alpha build, tag, pub
 partner onboarding is frozen yet.
 
 Repository-wide verification passes: locked dependency sync, 722-file format check, Ruff, strict
-mypy over 342 source files, 954 tests with two expected platform skips, source and wheel builds,
+mypy over 342 source files, 955 tests with two expected platform skips, source and wheel builds,
 byte-identical automatic-runtime schema regeneration, focused migration/schema/foundation checks,
 Git whitespace validation, and zero changed-file findings for provider secrets, private keys,
 private paths, consented source-task IDs, or raw/private terminal-snapshot markers.

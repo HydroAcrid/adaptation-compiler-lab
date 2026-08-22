@@ -152,9 +152,15 @@ Disposable encrypted ledgers now freeze reviewed terminal snapshots for the dash
 inbox, active-adaptation view, and phone status. Additional tests cover ANSI-free output, exact
 lineage display, 80-column bounds, non-mutating reads, missing configuration, explicit future-use
 confirmation, and confirmed undo. Targeted automatic-runtime and CLI verification passes 190
-tests with two expected platform skips. The complete repository gate passes 954 tests with two
+tests with two expected platform skips. The complete repository gate passes 955 tests with two
 expected platform skips, locked sync, formatting, Ruff, strict mypy, source/wheel builds,
 byte-identical schema regeneration, migrations, whitespace, and changed-file safety scans.
+
+The first installed Windows `health` view then found a platform-specific defect after the initial
+merge: the plain fallback reused Rich box drawing and failed on a CP-1252 host stream. The
+versioned repair gives history, health, and gate dedicated box-free output, configures UTF-8 when
+the host stream permits it, and proves every plain view remains CP-1252 encodable for the current
+synthetic fixtures. All six read-only product views subsequently passed against the real ledger.
 
 An isolated editable Windows development installation then loaded the real cumulative ledger in
 read-only mode. It reproduced the existing 13/20 interactions, four dates, 2/6 activation attempts,
