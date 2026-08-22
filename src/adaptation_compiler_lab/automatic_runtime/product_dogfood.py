@@ -14,6 +14,7 @@ from adaptation_compiler_lab.automatic_runtime.gate import (
 from adaptation_compiler_lab.automatic_runtime.ledger import AutomaticRuntimeLedger
 from adaptation_compiler_lab.automatic_runtime.models import (
     AdaptationLayer,
+    AutomaticRuntimeState,
     FeedbackDetectorMode,
     FeedbackSignalKind,
     RuntimeNotice,
@@ -34,6 +35,7 @@ from adaptation_compiler_lab.domain import (
 from adaptation_compiler_lab.serialization import canonical_digest
 
 ReviewAction = Literal["approve", "reject", "refine_scope"]
+AllowanceState = Literal["available", "used", "exceeded"]
 
 
 class ReviewProposalCard(FrozenModel):
@@ -143,6 +145,68 @@ class ReviewModeDogfoodSnapshot(FrozenModel):
             raise ValueError("dogfood snapshot pending feedback count is inconsistent")
         if not self.next_actions:
             raise ValueError("dogfood snapshot must state the next product action")
+        return self
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class ActiveAdaptationCard(FrozenModel):
+    """Raw-free behavior and governance summary for one active artifact."""
+
+    card_version: Literal["1.0.0"] = "1.0.0"
+    artifact_id: Identifier
+    artifact_version: NonEmptyStr
+    artifact_type: NonEmptyStr
+    layer: AdaptationLayer
+    intent: NonEmptyStr
+    required_behaviors: tuple[NonEmptyStr, ...]
+    scope: Scope
+    evidence_count: int = Field(ge=1)
+    review_at: UtcDateTime | None = None
+    expires_at: UtcDateTime | None = None
+    raw_payload_exposed: Literal[False] = False
+
+
+class GateAllowanceCard(FrozenModel):
+    """One frozen error allowance rendered without implying that readiness means success."""
+
+    name: Literal["missed_learning", "false_learning", "false_activation"]
+    observed: int = Field(ge=0)
+    maximum: Literal[1] = 1
+    state: AllowanceState
+
+    @model_validator(mode="after")
+    def state_matches_count(self) -> Self:
+        expected: AllowanceState = (
+            "available" if self.observed == 0 else "used" if self.observed == 1 else "exceeded"
+        )
+        if self.state != expected:
+            raise ValueError("gate allowance state is inconsistent")
+        return self
+
+
+class TerminalAlphaSnapshot(FrozenModel):
+    """Typed raw-free source for terminal, plain-text, and JSON product views."""
+
+    snapshot_version: Literal["1.0.0"] = "1.0.0"
+    review_mode: ReviewModeDogfoodSnapshot
+    configured_project_ids: tuple[Identifier, ...]
+    active_adaptations: tuple[ActiveAdaptationCard, ...]
+    allowances: tuple[GateAllowanceCard, GateAllowanceCard, GateAllowanceCard]
+    latest_delivered_projection_utf8_bytes: int = Field(ge=0)
+    raw_payloads_exposed: Literal[False] = False
+
+    @model_validator(mode="after")
+    def state_is_consistent(self) -> Self:
+        if self.configured_project_ids != tuple(sorted(set(self.configured_project_ids))):
+            raise ValueError("terminal project IDs must be sorted and unique")
+        if self.review_mode.active_artifact_count != len(self.active_adaptations):
+            raise ValueError("terminal active-adaptation count is inconsistent")
+        expected_names = ("missed_learning", "false_learning", "false_activation")
+        if tuple(item.name for item in self.allowances) != expected_names:
+            raise ValueError("terminal gate allowances are not in canonical order")
         return self
 
     @property
@@ -269,6 +333,10 @@ def build_review_mode_dogfood_snapshot(
             f"Rate {len(pending_activation_feedback)} completed activation(s) "
             "as helped, hurt, or irrelevant."
         )
+    if not credential_enrolled:
+        next_actions.append("Restore local credential enrollment before changing state.")
+    if not watcher_active:
+        next_actions.append("The watcher is inactive; run `temper poll` after ordinary work.")
     if not next_actions:
         next_actions.append("Continue normal work; no owner action is pending.")
     active_artifact_count = (
@@ -296,4 +364,59 @@ def build_review_mode_dogfood_snapshot(
         ),
         gate=gate,
         next_actions=tuple(next_actions),
+    )
+
+
+def build_terminal_alpha_snapshot(
+    review_mode: ReviewModeDogfoodSnapshot,
+    *,
+    state: AutomaticRuntimeState,
+    configured_project_ids: tuple[Identifier, ...],
+) -> TerminalAlphaSnapshot:
+    """Build the complete presentation snapshot from already-governed runtime state."""
+
+    artifacts = () if state.release is None else state.release.governed_release.active_artifacts
+    layer_by_artifact = (
+        {}
+        if state.release is None
+        else {item.artifact_ref.record_id: item.layer for item in state.release.layer_bindings}
+    )
+    active = tuple(
+        ActiveAdaptationCard(
+            artifact_id=item.artifact_ref.record_id,
+            artifact_version=item.artifact_ref.record_version,
+            artifact_type=item.artifact_type.value,
+            layer=layer_by_artifact[item.artifact_ref.record_id],
+            intent=item.behavioral_contract.intent,
+            required_behaviors=item.behavioral_contract.required_behaviors,
+            scope=item.scope,
+            evidence_count=len(item.evidence_links.supporting),
+            review_at=item.review_at,
+            expires_at=item.expires_at,
+        )
+        for item in artifacts
+    )
+    gate = review_mode.gate
+
+    def allowance(
+        name: Literal["missed_learning", "false_learning", "false_activation"],
+        observed: int,
+    ) -> GateAllowanceCard:
+        state_value: AllowanceState = (
+            "available" if observed == 0 else "used" if observed == 1 else "exceeded"
+        )
+        return GateAllowanceCard(name=name, observed=observed, state=state_value)
+
+    return TerminalAlphaSnapshot(
+        review_mode=review_mode,
+        configured_project_ids=tuple(sorted(configured_project_ids)),
+        active_adaptations=active,
+        allowances=(
+            allowance("missed_learning", gate.missed_learning_count),
+            allowance("false_learning", gate.false_learning_count),
+            allowance("false_activation", gate.false_activation_count),
+        ),
+        latest_delivered_projection_utf8_bytes=(
+            0 if not gate.pack_bytes_by_activation else gate.pack_bytes_by_activation[-1]
+        ),
     )

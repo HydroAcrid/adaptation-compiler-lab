@@ -1,0 +1,9 @@
+╭──────────────────────────────── Active adaptation 1 ─────────────────────────────────╮
+│ Intent                    Install a plugin and give it network access.               │
+│ Behavior                  Install a plugin and give it network access.               │
+│ Type                      prompt_rule                                                │
+│ Layer                     permanent_profile                                          │
+│ Scope                     subjects=kevin; targets=codex                              │
+│ Evidence links            1                                                          │
+│ Artifact                  runtime-claim-aa24c82bfe518c6e7a2ab3b0-1@1.0.0             │
+╰──────────────────────────────────────────────────────────────────────────────────────╯

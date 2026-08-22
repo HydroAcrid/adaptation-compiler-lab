@@ -103,10 +103,14 @@ from adaptation_compiler_lab.automatic_runtime.models import (
 )
 from adaptation_compiler_lab.automatic_runtime.product_dogfood import (
     ActivationFeedbackCard,
+    ActiveAdaptationCard,
+    GateAllowanceCard,
     ReviewModeDogfoodMetrics,
     ReviewModeDogfoodSnapshot,
     ReviewProposalCard,
+    TerminalAlphaSnapshot,
     build_review_mode_dogfood_snapshot,
+    build_terminal_alpha_snapshot,
 )
 from adaptation_compiler_lab.automatic_runtime.service import (
     AutomaticAdaptationRuntime,
@@ -119,6 +123,7 @@ from adaptation_compiler_lab.automatic_runtime.service import (
 
 __all__ = [
     "ActivationFeedbackCard",
+    "ActiveAdaptationCard",
     "AdaptationLayer",
     "AutomaticAdaptationRuntime",
     "AutomaticLearningResult",
@@ -143,6 +148,7 @@ __all__ = [
     "DetectedFeedback",
     "FeedbackDetectorMode",
     "FeedbackSignalKind",
+    "GateAllowanceCard",
     "GatewayInstrumentMetrics",
     "GatewaySession",
     "GatewaySessionStatus",
@@ -200,6 +206,7 @@ __all__ = [
     "SemanticTransitionIntent",
     "SemanticWorkflowStructure",
     "StandingAutomationPolicy",
+    "TerminalAlphaSnapshot",
     "VerificationCommandSpec",
     "VerificationReceipt",
     "WorkspaceBaseline",
@@ -208,6 +215,7 @@ __all__ = [
     "WorkspaceLease",
     "build_codex_dogfood_gate_report",
     "build_review_mode_dogfood_snapshot",
+    "build_terminal_alpha_snapshot",
     "compile_runtime_release",
     "compile_runtime_releases",
     "detect_explicit_feedback",

@@ -1,0 +1,42 @@
+{
+  "additionalProperties": false,
+  "description": "One frozen error allowance rendered without implying that readiness means success.",
+  "properties": {
+    "maximum": {
+      "const": 1,
+      "default": 1,
+      "title": "Maximum",
+      "type": "integer"
+    },
+    "name": {
+      "enum": [
+        "missed_learning",
+        "false_learning",
+        "false_activation"
+      ],
+      "title": "Name",
+      "type": "string"
+    },
+    "observed": {
+      "minimum": 0,
+      "title": "Observed",
+      "type": "integer"
+    },
+    "state": {
+      "enum": [
+        "available",
+        "used",
+        "exceeded"
+      ],
+      "title": "State",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "observed",
+    "state"
+  ],
+  "title": "GateAllowanceCard",
+  "type": "object"
+}

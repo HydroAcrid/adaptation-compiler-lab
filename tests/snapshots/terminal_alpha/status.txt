@@ -1,0 +1,45 @@
+╭──────────────────────────────────────────────────────────────────────────────────────╮
+│ Temper  kevin · Codex · review mode                                                  │
+│ Detector: review  Generation: 0  Projects: 2                                         │
+╰──────────────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────── Ordinary-use gate ──────────────────────────────────╮
+│                                                                                      │
+│  Eligible interactions                                                      13 / 20  │
+│  Distinct dates                                                               4 / 3  │
+│  Activation attempts                                                          2 / 6  │
+│  Rated activations                                                                2  │
+│  Correct activations                                                              1  │
+│  Evidence ready                                                                  NO  │
+│                                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────╯
+╭─────────────────────────────────────── Today ────────────────────────────────────────╮
+│                                                                                      │
+│  Pending reviews                                                                  0  │
+│  Awaiting activation feedback                                                     0  │
+│  Active adaptations                                                               0  │
+│  Latest delivered projection                                              142 bytes  │
+│                                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────── Attention ──────────────────────────────────────╮
+│ All current error allowances have been used; another incident fails this gate.       │
+╰──────────────────────────────────────────────────────────────────────────────────────╯
+╭────────────────────────────────── Error allowances ──────────────────────────────────╮
+│                                                                                      │
+│  Allowance                                                 Observed           State  │
+│  ──────────────────────────────────────────────────────────────────────────────────  │
+│  Missed learning                                              1 / 1            USED  │
+│  False learning                                               1 / 1            USED  │
+│  False activation                                             1 / 1            USED  │
+│                                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────╯
+╭──────────────────────────────────── Local health ────────────────────────────────────╮
+│                                                                                      │
+│  Local credential                                                                OK  │
+│  Background watcher                                                              OK  │
+│  Automatic promotion                                                            OFF  │
+│                                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────╯
+╭──────────────────────────────────────── Next ────────────────────────────────────────╮
+│ • Continue normal work; no owner action is pending.                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────╯
+Commands: temper poll · temper review · temper adaptations · temper gate · temper health

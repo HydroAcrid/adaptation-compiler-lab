@@ -8,11 +8,13 @@ dependencies = [
     "cryptography>=44,<47",
     "jsonschema>=4.23,<5",
     "pydantic>=2.10,<3",
+    "rich>=14,<16",
     "typer>=0.15,<1",
 ]
 
 [project.scripts]
 adaptation-compiler-lab = "adaptation_compiler_lab.cli:app"
+temper = "adaptation_compiler_lab.temper_cli:app"
 
 [build-system]
 requires = ["hatchling"]
