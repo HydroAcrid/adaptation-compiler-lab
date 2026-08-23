@@ -326,8 +326,8 @@
       "$ref": "#/$defs/CaptureReceiptRef"
     },
     "card_version": {
-      "const": "1.0.0",
-      "default": "1.0.0",
+      "const": "1.1.0",
+      "default": "1.1.0",
       "title": "Card Version",
       "type": "string"
     },
@@ -378,6 +378,11 @@
       "title": "Reasons",
       "type": "array"
     },
+    "review_number": {
+      "minimum": 1,
+      "title": "Review Number",
+      "type": "integer"
+    },
     "route": {
       "anyOf": [
         {
@@ -397,6 +402,7 @@
     }
   },
   "required": [
+    "review_number",
     "queue_id",
     "cycle_id",
     "proposal_digest",

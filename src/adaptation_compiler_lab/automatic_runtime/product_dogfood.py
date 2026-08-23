@@ -41,7 +41,8 @@ AllowanceState = Literal["available", "used", "exceeded"]
 class ReviewProposalCard(FrozenModel):
     """Compact proposal and exact lineage shown to the owner, never supporting raw text."""
 
-    card_version: Literal["1.0.0"] = "1.0.0"
+    card_version: Literal["1.1.0"] = "1.1.0"
+    review_number: int = Field(ge=1)
     queue_id: Identifier
     cycle_id: Identifier
     proposal_digest: Sha256Digest
@@ -118,7 +119,7 @@ class ReviewModeDogfoodMetrics(FrozenModel):
 class ReviewModeDogfoodSnapshot(FrozenModel):
     """Single actionable daily view over the governed automatic-runtime ledgers."""
 
-    snapshot_version: Literal["1.0.0"] = "1.0.0"
+    snapshot_version: Literal["1.1.0"] = "1.1.0"
     working_product_name: Literal["Temper"] = "Temper"
     naming_status: Literal["internal_working_name"] = "internal_working_name"
     subject_id: Identifier
@@ -190,7 +191,7 @@ class GateAllowanceCard(FrozenModel):
 class TerminalAlphaSnapshot(FrozenModel):
     """Typed raw-free source for terminal, plain-text, and JSON product views."""
 
-    snapshot_version: Literal["1.0.0"] = "1.0.0"
+    snapshot_version: Literal["1.1.0"] = "1.1.0"
     review_mode: ReviewModeDogfoodSnapshot
     configured_project_ids: tuple[Identifier, ...]
     active_adaptations: tuple[ActiveAdaptationCard, ...]
@@ -214,7 +215,11 @@ class TerminalAlphaSnapshot(FrozenModel):
         return canonical_digest(self)
 
 
-def review_proposal_card(item: RuntimeReviewQueueItem) -> ReviewProposalCard:
+def review_proposal_card(
+    item: RuntimeReviewQueueItem,
+    *,
+    review_number: int,
+) -> ReviewProposalCard:
     """Project one immutable queue item into a compact owner-facing card."""
 
     detection = item.detection
@@ -223,6 +228,7 @@ def review_proposal_card(item: RuntimeReviewQueueItem) -> ReviewProposalCard:
         raise ValueError("review proposal requires one explicit feedback signal")
     evidence = item.captured.evidence
     return ReviewProposalCard(
+        review_number=review_number,
         queue_id=item.queue_id,
         cycle_id=item.cycle_id,
         proposal_digest=detection.content_digest,
@@ -286,8 +292,17 @@ def build_review_mode_dogfood_snapshot(
         learning_review_items=ledger.learning_review_items(),
         generated_at=generated_at,
     )
+    all_review_items = ledger.learning_review_items()
+    review_number_by_queue = {
+        item.queue_id: number for number, item in enumerate(all_review_items, start=1)
+    }
+    unresolved_review_items = ledger.unresolved_learning_review_items()
     proposals = tuple(
-        review_proposal_card(item) for item in ledger.unresolved_learning_review_items()
+        review_proposal_card(
+            item,
+            review_number=review_number_by_queue[item.queue_id],
+        )
+        for item in unresolved_review_items
     )
     feedback_by_activation = {item.cycle_id: item for item in feedback}
     activation_by_id = {item.activation_id: item for item in activations}
@@ -320,8 +335,7 @@ def build_review_mode_dogfood_snapshot(
         for item in resolutions
     )
     pending_review_age = tuple(
-        (generated_at - item.created_at).total_seconds()
-        for item in ledger.unresolved_learning_review_items()
+        (generated_at - item.created_at).total_seconds() for item in unresolved_review_items
     )
     if any(value < 0 for value in (*feedback_latency, *review_latency, *pending_review_age)):
         raise ValueError("dogfood snapshot cannot predate its source receipts")

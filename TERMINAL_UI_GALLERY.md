@@ -3,14 +3,24 @@
 These images are deterministic captures of the implemented `temper` terminal renderer. They are
 not design mockups or AI-generated approximations.
 
-The dashboard, gate, and phone views reflect the raw-free cumulative development ledger at the
-2026-08-22 checkpoint. The review and active-adaptation views use clearly labeled synthetic data
-because that ledger had no pending review and no active adaptation. No raw evidence, credential,
-private filesystem path, or sealed-study content appears in these images.
+The advanced dashboard and gate reflect the raw-free cumulative development ledger at the
+2026-08-22 checkpoint. The everyday home, review, active-adaptation, and phone views use clearly
+labeled synthetic data so each interaction state is visible. No raw evidence, credential, private
+filesystem path, or sealed-study content appears in these images.
 
-## Current dashboard
+## Everyday home
 
-![Temper current dashboard](docs/images/temper-terminal/temper-current-dashboard.png)
+This is the default. It answers whether Temper is working, whether it needs attention, and what to
+do next without exposing research or governance internals.
+
+![Temper everyday consumer dashboard](docs/images/temper-terminal/temper-consumer-dashboard.png)
+
+## Advanced operator dashboard
+
+The previous dense view remains available with `temper advanced` for development, support, and
+research inspection.
+
+![Temper advanced operator dashboard](docs/images/temper-terminal/temper-advanced-dashboard.png)
 
 ## Current longitudinal gate
 

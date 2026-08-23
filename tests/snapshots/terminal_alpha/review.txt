@@ -1,18 +1,14 @@
-╭────────────────────────────── Review inbox · 1 pending ──────────────────────────────╮
-│ Supporting raw text remains encrypted. Approval authorizes future sessions and       │
-│ therefore requires explicit confirmation.                                            │
+╭────────────────────────────── Suggestions · 1 waiting ───────────────────────────────╮
+│ Temper noticed behavior that could help in future work. Nothing becomes active until │
+│ you approve it.                                                                      │
 ╰──────────────────────────────────────────────────────────────────────────────────────╯
-╭───────────────────────────────────── Proposal 1 ─────────────────────────────────────╮
-│ Behavior            Install a plugin and give it network access.                     │
-│ Route               prompt_rule                                                      │
-│ Layer               permanent_profile                                                │
-│ Scope               subjects=kevin; targets=codex                                    │
-│ Why                 Capability, credential, tool, or network changes require review. │
-│ Queue               learning-review-observation-1                                    │
-│ Proposal digest     sha256:6358d8c3fc0d07142642d6eb00bbfbb456299f17d3c2adb5c27f4a0fd │
-│                     7e9e155                                                          │
-│ Evidence            runtime-evidence-observation-1                                   │
-│                     (sha256:7bec2ceeda9b6182dd6fed0b1ee8aafde2aa8a26d5826a0939a148c3 │
-│                     c2edce2e)                                                        │
-│ Actions             approve, refine_scope, reject                                    │
+╭─────────────────────────────────── Suggestion #1 ────────────────────────────────────╮
+│ "Install a plugin and give it network access."                                       │
+│                                                                                      │
+│ Applies to: Your Codex sessions                                                      │
+│                                                                                      │
+│ Approve:      temper approve 1                                                       │
+│ Change scope: temper approve 1 --help                                                │
+│ Ignore:       temper reject 1                                                        │
 ╰──────────────────────────────────────────────────────────────────────────────────────╯
+Technical lineage: temper review --advanced
