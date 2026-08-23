@@ -65,7 +65,9 @@ remain disabled.
 
 The implemented product commands are `temper status`, `temper poll`, `temper review`,
 `temper approve`, `temper reject`, `temper adaptations`, `temper run`, `temper feedback`,
-`temper undo`, `temper history`, `temper health`, and `temper gate`. The existing research CLI
+`temper undo`, `temper activity`, `temper history`, `temper health`, `temper gate`, and `temper
+advanced`. The default surface is consumer-oriented; exact IDs, digests, provenance, research-gate
+metrics, and raw-free diagnostics remain available through the advanced views. The existing research CLI
 remains available for initialization, watcher installation, project registration, and compatibility
 until those setup flows receive an alpha-safe wrapper. `temper init` and a signed sanitized
 `temper export-report` are therefore explicit Phase 5 freeze gaps, not undocumented commands. A

@@ -22,7 +22,10 @@ from adaptation_compiler_lab.automatic_runtime.dogfood_cli import (
 from adaptation_compiler_lab.automatic_runtime.models import (
     RuntimeFeedbackOutcome,
 )
-from adaptation_compiler_lab.automatic_runtime.product_dogfood import TerminalAlphaSnapshot
+from adaptation_compiler_lab.automatic_runtime.product_dogfood import (
+    ReviewProposalCard,
+    TerminalAlphaSnapshot,
+)
 from adaptation_compiler_lab.automatic_runtime.terminal_ui import (
     TerminalView,
     render_plain,
@@ -164,25 +167,37 @@ def _emit(
     *,
     settings: TemperCliSettings,
     view: TerminalView,
+    advanced: bool = False,
 ) -> None:
     output_format = _effective_format(settings)
     if output_format is OutputFormat.JSON:
         typer.echo(canonical_json(snapshot))
     elif output_format is OutputFormat.PLAIN:
-        typer.echo(render_plain(snapshot, view=view), nl=False)
+        typer.echo(render_plain(snapshot, view=view, advanced=advanced), nl=False)
     else:
         typer.echo(
-            render_terminal(snapshot, view=view, width=settings.width, color=True),
+            render_terminal(
+                snapshot,
+                view=view,
+                advanced=advanced,
+                width=settings.width,
+                color=True,
+            ),
             nl=False,
         )
 
 
-def _show(settings: TemperCliSettings, *, view: TerminalView) -> None:
+def _show(
+    settings: TemperCliSettings,
+    *,
+    view: TerminalView,
+    advanced: bool = False,
+) -> None:
     try:
         snapshot = _load(settings)
     except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
-    _emit(snapshot, settings=settings, view=view)
+    _emit(snapshot, settings=settings, view=view, advanced=advanced)
 
 
 def _action_result(settings: TemperCliSettings, payload: dict[str, object], message: str) -> None:
@@ -190,6 +205,36 @@ def _action_result(settings: TemperCliSettings, payload: dict[str, object], mess
         typer.echo(canonical_json(payload))
         return
     typer.echo(message)
+
+
+def _proposal_for_selector(
+    settings: TemperCliSettings,
+    *,
+    selector: str,
+    proposal_digest: str | None,
+) -> ReviewProposalCard:
+    """Resolve a friendly stable number while retaining exact queue and digest binding."""
+
+    snapshot = _load(settings)
+    if selector.isdecimal():
+        review_number = int(selector)
+        matches = tuple(
+            item for item in snapshot.review_mode.proposals if item.review_number == review_number
+        )
+    else:
+        matches = tuple(
+            item for item in snapshot.review_mode.proposals if item.queue_id == selector
+        )
+    if not matches:
+        raise ValueError(
+            f"suggestion {selector!r} is not pending; run `temper review` for the current list"
+        )
+    if len(matches) != 1:
+        raise ValueError(f"suggestion {selector!r} is not unique")
+    proposal = matches[0]
+    if proposal_digest is not None and proposal_digest != str(proposal.proposal_digest):
+        raise ValueError("proposal digest does not match the selected pending suggestion")
+    return proposal
 
 
 @app.command("status")
@@ -200,17 +245,29 @@ def status(ctx: typer.Context) -> None:
 
 
 @app.command("review")
-def review(ctx: typer.Context) -> None:
-    """Show normalized pending proposals and their exact decision digests."""
+def review(
+    ctx: typer.Context,
+    advanced: Annotated[
+        bool,
+        typer.Option("--advanced", help="Show exact lineage, routing, IDs, and digests."),
+    ] = False,
+) -> None:
+    """Show pending suggestions and simple decision commands."""
 
-    _show(_settings(ctx), view="review")
+    _show(_settings(ctx), view="review", advanced=advanced)
 
 
 @app.command("adaptations")
-def adaptations(ctx: typer.Context) -> None:
-    """Show active scoped behavior and provenance counts without raw evidence."""
+def adaptations(
+    ctx: typer.Context,
+    advanced: Annotated[
+        bool,
+        typer.Option("--advanced", help="Show exact provenance, artifact IDs, and scopes."),
+    ] = False,
+) -> None:
+    """Show the behavior Temper currently carries into applicable sessions."""
 
-    _show(_settings(ctx), view="adaptations")
+    _show(_settings(ctx), view="adaptations", advanced=advanced)
 
 
 @app.command("history")
@@ -218,6 +275,20 @@ def history(ctx: typer.Context) -> None:
     """Show recent immutable learning notices."""
 
     _show(_settings(ctx), view="history")
+
+
+@app.command("activity")
+def activity(ctx: typer.Context) -> None:
+    """Show recent learning and completed sessions awaiting feedback."""
+
+    _show(_settings(ctx), view="activity")
+
+
+@app.command("advanced")
+def advanced(ctx: typer.Context) -> None:
+    """Show the full operator, health, and longitudinal-evidence dashboard."""
+
+    _show(_settings(ctx), view="status", advanced=True)
 
 
 @app.command("health")
@@ -269,13 +340,19 @@ def poll(
 @app.command("approve")
 def approve(
     ctx: typer.Context,
-    queue_id: Annotated[str, typer.Argument(help="Exact queue ID shown by `temper review`.")],
-    proposal_digest: Annotated[str, typer.Option("--proposal-digest")],
+    selector: Annotated[
+        str,
+        typer.Argument(
+            help="Suggestion number from `temper review`, or an exact queue ID from advanced view."
+        ),
+    ],
+    proposal_digest: Annotated[str | None, typer.Option("--proposal-digest")] = None,
     confirm_future_use: Annotated[
         bool,
         typer.Option(
+            "--yes",
             "--confirm-future-use",
-            help="Explicitly authorize this behavior to influence future sessions.",
+            help="Authorize this behavior without an interactive confirmation prompt.",
         ),
     ] = False,
     task_class: Annotated[list[str] | None, typer.Option("--task-class")] = None,
@@ -289,11 +366,28 @@ def approve(
 
     settings = _settings(ctx)
     try:
+        proposal = _proposal_for_selector(
+            settings,
+            selector=selector,
+            proposal_digest=proposal_digest,
+        )
+    except (OSError, ValueError, RuntimeConformanceError) as error:
+        _fail(str(error))
+    behavior = proposal.behavior or f"stop using adaptation {proposal.affected_artifact_id}"
+    if not confirm_future_use:
+        confirm_future_use = typer.confirm(
+            f'Allow suggestion #{proposal.review_number} — "{behavior}" — '
+            "to influence future sessions?"
+        )
+        if not confirm_future_use:
+            typer.echo("No change made.")
+            raise typer.Exit()
+    try:
         result = resolve_codex_dogfood_review(
             settings.config_path,
-            queue_id=queue_id,
+            queue_id=proposal.queue_id,
             decision=ApprovalDecision.APPROVED,
-            proposal_digest=proposal_digest,
+            proposal_digest=str(proposal.proposal_digest),
             confirm_future_use=confirm_future_use,
             refine_task_class=task_class,
             refine_environment_id=environment_id,
@@ -305,29 +399,43 @@ def approve(
     _action_result(
         settings,
         result,
-        f"Approved {queue_id} for future use. Runtime generation: {result['generation']}.",
+        f"Approved suggestion #{proposal.review_number}. It can now help in matching future work.",
     )
 
 
 @app.command("reject")
 def reject(
     ctx: typer.Context,
-    queue_id: Annotated[str, typer.Argument(help="Exact queue ID shown by `temper review`.")],
-    proposal_digest: Annotated[str, typer.Option("--proposal-digest")],
+    selector: Annotated[
+        str,
+        typer.Argument(
+            help="Suggestion number from `temper review`, or an exact queue ID from advanced view."
+        ),
+    ],
+    proposal_digest: Annotated[str | None, typer.Option("--proposal-digest")] = None,
 ) -> None:
     """Reject one proposal as not authorized for future sessions."""
 
     settings = _settings(ctx)
     try:
+        proposal = _proposal_for_selector(
+            settings,
+            selector=selector,
+            proposal_digest=proposal_digest,
+        )
         result = resolve_codex_dogfood_review(
             settings.config_path,
-            queue_id=queue_id,
+            queue_id=proposal.queue_id,
             decision=ApprovalDecision.REJECTED,
-            proposal_digest=proposal_digest,
+            proposal_digest=str(proposal.proposal_digest),
         )
     except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
-    _action_result(settings, result, f"Rejected {queue_id}; no future behavior was authorized.")
+    _action_result(
+        settings,
+        result,
+        f"Ignored suggestion #{proposal.review_number}. It will not affect future sessions.",
+    )
 
 
 @app.command("run")

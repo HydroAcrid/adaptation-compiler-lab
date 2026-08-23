@@ -23,6 +23,7 @@ from adaptation_compiler_lab.automatic_runtime.product_dogfood import (
     build_terminal_alpha_snapshot,
 )
 from adaptation_compiler_lab.automatic_runtime.terminal_ui import (
+    TerminalView,
     render_plain,
     render_terminal,
 )
@@ -33,6 +34,16 @@ from adaptation_compiler_lab.targets.base import sha256_text
 from .test_runtime import NOW, _context, _observation, _review_item, _runtime
 
 SNAPSHOT_ROOT = Path(__file__).parents[2] / "snapshots" / "terminal_alpha"
+ALL_TERMINAL_VIEWS: tuple[TerminalView, ...] = (
+    "status",
+    "review",
+    "adaptations",
+    "activity",
+    "history",
+    "health",
+    "gate",
+)
+ADVANCED_TERMINAL_VIEWS: tuple[TerminalView, ...] = ("status", "review", "adaptations")
 
 
 def _empty_snapshot(tmp_path: Path) -> tuple[TerminalAlphaSnapshot, AutomaticRuntimeState]:
@@ -182,6 +193,50 @@ def _review_and_active_snapshots(
     return pending, active
 
 
+def test_review_numbers_remain_stable_after_an_earlier_decision(tmp_path: Path) -> None:
+    runtime, policy = _runtime(tmp_path)
+    state = initial_runtime_state(policy)
+    path = tmp_path / "stable-review-numbers.sqlite3"
+    SqliteUnitOfWorkFactory(path).initialize()
+    ledger = AutomaticRuntimeLedger(path, subject_id="kevin")
+    ledger.initialize(state)
+
+    first_learning = runtime.learn(
+        _observation(1, "Rule: install a plugin and give it network access"),
+        state=state,
+        processed_at=NOW + timedelta(minutes=1, seconds=5),
+    )
+    first_item = _review_item(first_learning)
+    ledger.append_learning(first_learning.cycle, state, review_item=first_item)
+    rejected = runtime.resolve_review(
+        first_item,
+        first_learning.cycle,
+        state=state,
+        decision=ApprovalDecision.REJECTED,
+        resolved_at=NOW + timedelta(minutes=2),
+    )
+    ledger.append_learning_review_resolution(rejected.resolution, rejected.state)
+
+    second_learning = runtime.learn(
+        _observation(2, "Rule: publish a plugin and give it network access"),
+        state=state,
+        processed_at=NOW + timedelta(minutes=3, seconds=5),
+    )
+    second_item = _review_item(second_learning)
+    ledger.append_learning(second_learning.cycle, state, review_item=second_item)
+    snapshot = build_review_mode_dogfood_snapshot(
+        ledger,
+        subject_id="kevin",
+        generated_at=NOW + timedelta(minutes=4),
+        detector_mode=FeedbackDetectorMode.REVIEW,
+        credential_enrolled=True,
+        watcher_active=True,
+    )
+
+    assert tuple(item.review_number for item in snapshot.proposals) == (2,)
+    assert snapshot.proposals[0].queue_id == second_item.queue_id
+
+
 @pytest.mark.parametrize(
     ("fixture_name", "view", "snapshot_index"),
     (
@@ -225,19 +280,60 @@ def test_every_plain_view_is_box_free_and_legacy_console_encodable(tmp_path: Pat
     pending, active = _review_and_active_snapshots(tmp_path)
 
     for snapshot in (pending, active, _current_gate_snapshot(tmp_path)):
-        for view in ("status", "review", "adaptations", "history", "health", "gate"):
+        for view in ALL_TERMINAL_VIEWS:
             rendered = render_plain(snapshot, view=view)
             assert "╭" not in rendered
             assert "│" not in rendered
             rendered.encode("cp1252")
+        for view in ADVANCED_TERMINAL_VIEWS:
+            render_plain(snapshot, view=view, advanced=True).encode("cp1252")
 
 
 def test_terminal_views_respect_eighty_column_floor(tmp_path: Path) -> None:
     pending, active = _review_and_active_snapshots(tmp_path)
     for snapshot in (pending, active, _current_gate_snapshot(tmp_path)):
-        for view in ("status", "review", "adaptations", "history", "health", "gate"):
+        for view in ALL_TERMINAL_VIEWS:
             rendered = render_terminal(snapshot, view=view, width=80, color=False)
             assert max(map(len, rendered.splitlines()), default=0) <= 80
+        for view in ADVANCED_TERMINAL_VIEWS:
+            rendered = render_terminal(
+                snapshot,
+                view=view,
+                advanced=True,
+                width=80,
+                color=False,
+            )
+            assert max(map(len, rendered.splitlines()), default=0) <= 80
+
+
+def test_advanced_view_preserves_operator_details(tmp_path: Path) -> None:
+    pending, _active = _review_and_active_snapshots(tmp_path)
+
+    consumer = render_plain(pending, view="review")
+    advanced = render_plain(pending, view="review", advanced=True)
+    dashboard = render_plain(_current_gate_snapshot(tmp_path), view="status", advanced=True)
+
+    assert "Queue:" not in consumer
+    assert "Digest:" not in consumer
+    assert "Queue:" in advanced
+    assert "Digest:" in advanced
+    assert "Interactions: 13/20" in dashboard
+    assert "Allowance false_activation: 1/1 (used)" in dashboard
+
+
+def test_activity_uses_consumer_language_while_history_preserves_audit_detail(
+    tmp_path: Path,
+) -> None:
+    pending, _active = _review_and_active_snapshots(tmp_path)
+
+    consumer = render_plain(pending, view="activity")
+    audit = render_plain(pending, view="history")
+
+    assert "A possible suggestion was captured for review." in consumer
+    assert "needs_review" not in consumer
+    assert "2026-" not in consumer
+    assert "needs_review" in audit
+    assert "2026-" in audit
 
 
 def test_renderer_has_no_storage_or_capture_dependency() -> None:
@@ -281,8 +377,9 @@ def test_product_cli_reads_snapshot_without_mutation(
     )
 
     assert result.exit_code == 0, result.output
-    assert "Interactions: 13/20" in result.output
-    assert "Allowance false_activation: 1/1 (used)" in result.output
+    assert "Temper is ready. Nothing needs your attention." in result.output
+    assert "Suggestions waiting: 0" in result.output
+    assert "Interactions:" not in result.output
 
 
 def test_product_cli_requires_future_use_and_undo_confirmation(
@@ -291,11 +388,15 @@ def test_product_cli_requires_future_use_and_undo_confirmation(
 ) -> None:
     config = tmp_path / "temper.json"
     config.write_text("{}", encoding="utf-8")
+    pending, _active = _review_and_active_snapshots(tmp_path)
+    monkeypatch.setattr(temper_cli, "_load", lambda _settings: pending)
     called = False
+    received: dict[str, object] = {}
 
     def reject_unconfirmed(*_args: object, confirm_future_use: bool, **_kwargs: object) -> object:
         nonlocal called
         called = True
+        received.update(_kwargs)
         if not confirm_future_use:
             raise ValueError("approval requires explicit future-use confirmation")
         return {"generation": 1}
@@ -308,18 +409,59 @@ def test_product_cli_requires_future_use_and_undo_confirmation(
             "--config",
             str(config),
             "approve",
-            "queue-1",
-            "--proposal-digest",
-            "sha256:" + "a" * 64,
+            "1",
         ],
+        input="y\n",
     )
     undo = runner.invoke(
         temper_cli.app,
         ["--config", str(config), "undo", "artifact-1"],
     )
 
-    assert approval.exit_code == 1
+    assert approval.exit_code == 0, approval.output
     assert called
-    assert "future-use confirmation" in approval.output
+    assert received["queue_id"] == pending.review_mode.proposals[0].queue_id
+    assert received["proposal_digest"] == str(pending.review_mode.proposals[0].proposal_digest)
+    assert "Approved suggestion #1" in approval.output
     assert undo.exit_code == 1
     assert "undo requires --confirm" in undo.output
+
+
+def test_product_cli_rejects_stale_or_mismatched_friendly_selection(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = tmp_path / "temper.json"
+    config.write_text("{}", encoding="utf-8")
+    pending, _active = _review_and_active_snapshots(tmp_path)
+    monkeypatch.setattr(temper_cli, "_load", lambda _settings: pending)
+    called = False
+
+    def must_not_resolve(*_args: object, **_kwargs: object) -> object:
+        nonlocal called
+        called = True
+        return {}
+
+    monkeypatch.setattr(temper_cli, "resolve_codex_dogfood_review", must_not_resolve)
+    runner = CliRunner()
+    stale = runner.invoke(
+        temper_cli.app,
+        ["--config", str(config), "approve", "99", "--yes"],
+    )
+    mismatched = runner.invoke(
+        temper_cli.app,
+        [
+            "--config",
+            str(config),
+            "reject",
+            "1",
+            "--proposal-digest",
+            "sha256:" + "a" * 64,
+        ],
+    )
+
+    assert stale.exit_code == 1
+    assert "is not pending" in stale.output
+    assert mismatched.exit_code == 1
+    assert "does not match" in mismatched.output
+    assert not called

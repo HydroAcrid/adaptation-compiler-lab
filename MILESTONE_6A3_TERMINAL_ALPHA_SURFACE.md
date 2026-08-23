@@ -29,21 +29,26 @@ the existing product loop:
 - `temper feedback`
 - `temper undo`
 - `temper history`
+- `temper activity`
 - `temper health`
 - `temper gate`
+- `temper advanced`
 
 The terminal renderer consumes typed raw-free product snapshots. State-changing commands delegate
 to the existing signed runtime operations. No TUI code may write SQLite rows, raw payloads, release
 records, or activation records directly.
 
-The default terminal view uses a fixed information hierarchy:
+The default terminal view uses progressive disclosure. The everyday home answers only:
 
-1. subject, detector mode, and review-mode state;
-2. ordinary-use gate progress;
-3. pending review and activation-feedback inbox;
-4. active adaptation count and latest delivered projection size;
-5. credential, watcher, and error-allowance health; and
-6. the next safe command.
+1. Is Temper working?
+2. Does Temper need the owner?
+3. What is the next safe action?
+
+The review and adaptation views show normalized behavior, a human-readable scope, and short action
+commands. Queue IDs, proposal digests, evidence IDs, routes, detector modes, projection bytes,
+longitudinal progress, and error allowances stay in `--advanced`, `temper advanced`, `temper
+health`, or `temper gate`. The typed snapshot and governance service remain identical across both
+layers; the simple surface is not a second state model.
 
 A color-free plain renderer and canonical JSON renderer remain available for Codex Remote,
 accessibility, logs, and automation. Color is supplementary; no state is communicated by color
@@ -140,6 +145,22 @@ services and then hands the renderer only typed raw-free values.
 
 Completion of these criteria authorizes Phase 3 dogfood through the TUI. It does not complete the
 ordinary-use gate, authorize the comparative run, or freeze the design-partner alpha.
+
+## Consumer-surface refinement — 2026-08-23
+
+The alpha now defaults to a calm consumer home and preserves the original dense dashboard as
+`temper advanced`. Review cards use stable append-only suggestion numbers. `temper approve 1`
+loads the current raw-free snapshot, resolves suggestion 1 to its exact queue ID and digest, asks a
+plain-language future-use confirmation, and then delegates the immutable binding to the existing
+signed review service. `--yes` supports deliberate non-interactive use; exact queue IDs and
+`--proposal-digest` remain compatible in advanced workflows. Resolved earlier suggestions never
+renumber later pending suggestions, and stale or mismatched selections fail before state mutation.
+
+The simple surface deliberately hides research progress, error budgets, source identifiers,
+cryptographic digests, artifact IDs, detector configuration, and projection byte counts. Activity
+now combines recent learning notices with completed activations awaiting helped/hurt/irrelevant
+feedback. The complete technical lineage remains one command away and canonical JSON retains the
+full typed snapshot for automation.
 
 ## Implementation result — 2026-08-22
 

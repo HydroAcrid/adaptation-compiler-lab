@@ -1,12 +1,15 @@
 # adaptation-compiler-lab
 
-Temper now has a product-facing terminal surface over the existing governed runtime. The new
-`temper` executable shows a raw-free dashboard, review inbox, active scoped adaptations,
-provenance counts, recent history, health, and the longitudinal gate; it delegates poll, exact
-approval/rejection, fresh Codex delivery, helped/hurt/irrelevant feedback, and confirmed undo to
-the existing signed services. It also emits stable plain text for Codex Remote and canonical JSON
-for automation. Synthetic disposable-ledger snapshots cover pending review, active delivery,
-phone output, all-used error allowances, and 80-column rendering. A read-only Windows validation
+Temper now has a progressively disclosed terminal surface over the existing governed runtime.
+Running `temper` answers only three everyday questions: whether Temper is working, whether it needs
+the owner, and what to do next. `temper review`, `temper activity`, and `temper adaptations` expose
+the small decision surface; `temper advanced`, `temper health`, and `temper gate` retain the full
+operator and research detail. Stable suggestion numbers allow `temper approve 1` and
+`temper reject 1` without copying queue IDs or digests, while the service still binds every action
+to the exact immutable queue item and proposal digest and rejects stale selections. It also emits
+stable plain text for Codex Remote and canonical JSON for automation. Synthetic disposable-ledger
+snapshots cover pending review, active delivery, phone output, all-used error allowances, and
+80-column rendering. A read-only Windows validation
 against the real predecessor-plus-successor ledger reproduced the 13/20, four-date, 2/6 checkpoint
 without reading raw evidence or changing state. Phase 3 is now active: genuine ordinary work must
 provide the remaining seven interactions and four or more activations before the frozen
