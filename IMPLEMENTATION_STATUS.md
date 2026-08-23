@@ -1,6 +1,42 @@
 # Implementation Status
 
-Last updated: 2026-08-22
+Last updated: 2026-08-23
+
+## Desktop private-alpha foundation
+
+The native desktop foundation is engineering-complete for internal existing-runtime dogfood. A
+typed raw-free application service, PySide6 controller, and Qt Quick UI expose the same signed
+runtime operations as the terminal product: polling, exact proposal approval/rejection, exact
+artifact revocation, activation feedback, explicit 30-day renewal, and a fresh governed Codex task.
+The default interface hides operator detail; Advanced mode exposes route, evidence, digest, and
+scope data.
+
+The writable path now remains explicitly two phase. Codex operates in the existing disposable
+gateway; the desktop loads the encrypted captured bundle locally and renders its unified diff.
+Nothing reaches the canonical repository until Apply. Application requires the reviewed commit,
+a clean tree, exact before-bytes and modes, and independent postflight checks; failures are refused
+or rolled back and durably recorded. Discard creates a receipt bound to the bundle and its real
+baseline rather than a placeholder head.
+
+First-run UI safely validates and imports an existing governed config while leaving background
+observation and aggregate reporting off. Windows and macOS autostart adapters, atomic local
+preferences, a target-native Nuitka builder, Inno Setup definition, macOS entitlements, and
+signature-gated release types exist. The private Next.js/Supabase foundation uses separate
+`adaptation_compiler_*` tables and a private build bucket, verifies invitation tokens and Ed25519
+aggregate signatures, rejects unknown report fields, supports explicit report deletion, and
+enforces 90-day aggregate retention.
+
+This is not yet an externally installable alpha. One-click new-user enrollment, current native
+Codex pins, macOS Keychain credentials, deployed client-side invite/report flow, clean native
+two-platform builds, Authenticode, Apple Developer ID/notarization, and clean-machine install tests
+remain release blockers. Monday outreach may recruit design partners and show screenshots but must
+not distribute an unsigned installer. See [`DESKTOP_PRIVATE_ALPHA.md`](DESKTOP_PRIVATE_ALPHA.md).
+
+Final branch verification passes: locked Python 3.12 dependency sync, 747-file format check, Ruff,
+strict mypy across 365 source files, **1,000 tests passed with one expected Windows-only skip**, source
+and wheel builds, wheel QML/package-data inspection, schema/migration regressions, Git whitespace
+and changed-file safety scans, plus the portal's TypeScript check, four Node tests, ESLint, and
+optimized Next.js production build.
 
 ## Milestone 6A.3 terminal alpha surface
 

@@ -10,6 +10,8 @@ build/
 dist/
 .coverage
 htmlcov/
+node_modules/
+.next/
 .env
 .env.*
 !.env.example

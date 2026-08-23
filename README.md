@@ -1,5 +1,20 @@
 # adaptation-compiler-lab
 
+The Adaptation Compiler desktop private-alpha foundation is now implemented over the same governed
+runtime as the Temper terminal surface. It provides a progressively disclosed Qt Quick interface,
+exact review/undo/feedback actions, explicit 30-day renewal, and a fresh governed Codex work surface.
+Agent-written files remain in an isolated worktree until the owner reviews a local diff and chooses
+Apply or Discard; application checks the reviewed Git head, reruns bounded tests, and rolls back on
+failure. Background observation and aggregate reporting are independent and off by default.
+
+This is not yet a downloadable external alpha. First-run setup currently imports an existing
+governed config, native Codex/macOS credential pins remain to be completed, the invite-bound
+telemetry client is not connected, and no Windows or Apple signing credentials exist. The separate
+Supabase/Vercel foundation stores only strict signed aggregates in isolated
+`adaptation_compiler_*` tables; raw evidence stays local. See
+[`DESKTOP_PRIVATE_ALPHA.md`](DESKTOP_PRIVATE_ALPHA.md) for the exact UX, privacy boundary, release
+gates, and honest Monday-recruitment scope.
+
 Temper now has a progressively disclosed terminal surface over the existing governed runtime.
 Running `temper` answers only three everyday questions: whether Temper is working, whether it needs
 the owner, and what to do next. `temper review`, `temper activity`, and `temper adaptations` expose

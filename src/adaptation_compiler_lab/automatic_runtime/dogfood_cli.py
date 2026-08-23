@@ -863,6 +863,85 @@ def _next_policy_version(current: str) -> str:
     return f"{major}.{minor + 1}.0"
 
 
+def renew_codex_dogfood_consent(
+    config_path: Path,
+    *,
+    confirm_renewal: bool,
+) -> CodexDogfoodLocalConfig:
+    """Create a newly signed 30-day policy transition after explicit owner confirmation."""
+
+    if not confirm_renewal:
+        raise AutomaticRuntimeError("consent renewal requires explicit confirmation")
+    config = _load_config(config_path)
+    event = config.policy_authorization
+    try:
+        verify_signed_governance(
+            event,
+            config.signer_identity,
+            effective_at=event.occurred_at,
+        )
+    except ValueError as error:
+        raise AutomaticRuntimeError("current consent authorization is invalid") from error
+    if (
+        event.event_type is not GovernanceEventType.ACTIVATION_DECISION
+        or event.target_ref != config.policy.authorization_target_ref
+        or event.target_digest != config.policy.content_digest
+        or event.decision != "enabled"
+        or event.policy_version != config.policy.policy_version
+    ):
+        raise AutomaticRuntimeError("current consent authorization binding changed")
+    now = _now()
+    signer = _registration_signer(config)
+    current_identity_expiry = config.signer_identity.expires_at
+    renewed_identity = create_signer_identity(
+        signer,
+        roles=config.signer_identity.roles,
+        created_at=config.signer_identity.created_at,
+        expires_at=(
+            None
+            if current_identity_expiry is None
+            else max(current_identity_expiry, now + timedelta(days=31))
+        ),
+    )
+    renewed_policy = StandingAutomationPolicy.model_validate(
+        config.policy.model_copy(
+            update={
+                "policy_version": _next_policy_version(config.policy.policy_version),
+                "effective_at": now,
+                "expires_at": now + timedelta(days=30),
+                "previous_policy": config.policy,
+            }
+        ).model_dump(mode="python"),
+        strict=True,
+    )
+    authorization = sign_governance_event(
+        {
+            "event_id": f"renew-{config.subject_id}-{int(now.timestamp())}",
+            "subject_id": config.subject_id,
+            "event_type": GovernanceEventType.ACTIVATION_DECISION.value,
+            "target_ref": renewed_policy.authorization_target_ref,
+            "target_digest": renewed_policy.content_digest,
+            "decision": "enabled",
+            "reason": "Explicitly renew bounded local adaptation for 30 days.",
+            "policy_version": renewed_policy.policy_version,
+            "occurred_at": now.isoformat(),
+        },
+        signer,
+    )
+    updated = CodexDogfoodLocalConfig.model_validate(
+        config.model_copy(
+            update={
+                "policy": renewed_policy,
+                "policy_authorization": authorization,
+                "signer_identity": renewed_identity,
+            }
+        ).model_dump(mode="python"),
+        strict=True,
+    )
+    _replace_config_with_credential_rebind(config_path, config, updated)
+    return updated
+
+
 def _project(
     config: CodexDogfoodLocalConfig,
     workspace: Path,
@@ -2748,25 +2827,35 @@ def run_runtime_watcher(
     """Run the foreground watcher; use install for user-login startup."""
 
     try:
-        config = _load_config(config_path)
-        if DpapiCredentialStore(config.state_root).status() is None:
-            raise CredentialStoreError("watcher requires explicit DPAPI credential enrollment")
-        watcher = AutomaticRuntimeWatcher(
-            poll=lambda: _execute_poll(
-                config,
-                limit=25,
-                review_sink=_ConsoleReviewSink(),
-                notice_sink=_durable_notice_sink(config),
-            ),
-            ledger=_gateway_ledger(config),
-            lease=FileWatcherLease(config.state_root, subject_id=config.subject_id),
-            state_root=config.state_root,
-            idle_seconds=config.watcher_idle_seconds,
-            maximum_backoff_seconds=config.watcher_maximum_backoff_seconds,
-        )
-        watcher.run(maximum_polls=maximum_polls)
+        execute_runtime_watcher(config_path, maximum_polls=maximum_polls)
     except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
+
+
+def execute_runtime_watcher(
+    config_path: Path,
+    *,
+    maximum_polls: int | None = None,
+) -> None:
+    """Run the restart-safe watcher without crossing through Typer presentation code."""
+
+    config = _load_config(config_path)
+    if DpapiCredentialStore(config.state_root).status() is None:
+        raise CredentialStoreError("watcher requires explicit DPAPI credential enrollment")
+    watcher = AutomaticRuntimeWatcher(
+        poll=lambda: _execute_poll(
+            config,
+            limit=25,
+            review_sink=_SilentReviewSink(),
+            notice_sink=_durable_notice_sink(config),
+        ),
+        ledger=_gateway_ledger(config),
+        lease=FileWatcherLease(config.state_root, subject_id=config.subject_id),
+        state_root=config.state_root,
+        idle_seconds=config.watcher_idle_seconds,
+        maximum_backoff_seconds=config.watcher_maximum_backoff_seconds,
+    )
+    watcher.run(maximum_polls=maximum_polls)
 
 
 def _watcher_task_name(config: CodexDogfoodLocalConfig) -> str:
@@ -3286,16 +3375,31 @@ def run_gateway_task(
     """Run one writable, independently verified Codex task and preserve its review bundle."""
 
     try:
-        config = _load_config(config_path)
-        session_id = _execute_gateway_session(
-            config,
-            project=_gateway_project(config, project_id),
-            initial_task=task,
-            followups=(),
+        session_id = execute_governed_gateway_task(
+            config_path,
+            task=task,
+            project_id=project_id,
         )
     except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
     typer.echo(canonical_json({"session_id": session_id, "status": "review_available"}))
+
+
+def execute_governed_gateway_task(
+    config_path: Path,
+    *,
+    task: str,
+    project_id: str,
+) -> str:
+    """Run one isolated task and retain changes for explicit review rather than direct apply."""
+
+    config = _load_config(config_path)
+    return _execute_gateway_session(
+        config,
+        project=_gateway_project(config, project_id),
+        initial_task=task,
+        followups=(),
+    )
 
 
 @session_app.command("chat")

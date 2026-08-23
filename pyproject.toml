@@ -1,19 +1,21 @@
 [project]
 name = "adaptation-compiler-lab"
-version = "0.1.0"
-description = "Research foundation for evidence-backed, external-artifact adaptation transfer"
+version = "0.2.0a1"
+description = "Governed behavior compiler and private desktop alpha for coding agents"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "cryptography>=44,<47",
     "jsonschema>=4.23,<5",
     "pydantic>=2.10,<3",
+    "pyside6>=6.10,<6.11",
     "rich>=14,<16",
     "typer>=0.15,<1",
 ]
 
 [project.scripts]
 adaptation-compiler-lab = "adaptation_compiler_lab.cli:app"
+adaptation-compiler = "adaptation_compiler_lab.desktop.app:main"
 temper = "adaptation_compiler_lab.temper_cli:app"
 
 [build-system]
@@ -25,8 +27,13 @@ dev = [
     "hypothesis>=6.120",
     "mypy>=1.18.2",
     "pytest>=8.4.2",
+    "pytest-qt>=4.5,<5",
     "ruff>=0.14.0",
     "types-jsonschema>=4.23",
+]
+release = [
+    "nuitka>=2.7,<3",
+    "pip>=25,<27",
 ]
 
 [tool.hatch.build.targets.wheel]

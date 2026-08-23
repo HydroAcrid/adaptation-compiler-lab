@@ -7,6 +7,7 @@ store, and then represented only by content digests and promoted behavioral clau
 
 from __future__ import annotations
 
+from datetime import timedelta
 from enum import StrEnum
 from typing import Annotated, Literal, Self
 
@@ -283,7 +284,7 @@ class StandingAutomationPolicy(FrozenModel):
             raise ValueError("standing-policy targets exceed its scope")
         previous = self.previous_policy
         if previous is not None:
-            unchanged = (
+            base_unchanged = (
                 self.policy_id == previous.policy_id
                 and self.subject_id == previous.subject_id
                 and self.permitted_uses == previous.permitted_uses
@@ -293,25 +294,32 @@ class StandingAutomationPolicy(FrozenModel):
                 and self.retention_days == previous.retention_days
                 and self.auto_activate == previous.auto_activate
                 and self.notify_on_change == previous.notify_on_change
-                and self.expires_at == previous.expires_at
             )
-            if not unchanged:
-                raise ValueError(
-                    "standing-policy project amendment changed a non-project authorization"
-                )
+            if not base_unchanged:
+                raise ValueError("standing-policy transition changed a non-project authorization")
             current_scope = self.scope.model_dump()
             previous_scope = previous.scope.model_dump()
             current_projects = set(self.scope.project_ids)
             previous_projects = set(previous.scope.project_ids)
             current_scope["project_ids"] = ()
             previous_scope["project_ids"] = ()
-            if (
-                current_scope != previous_scope
-                or not current_projects > previous_projects
-                or self.effective_at < previous.effective_at
-                or self.effective_at >= self.expires_at
-            ):
-                raise ValueError("standing-policy amendment must only add projects prospectively")
+            project_amendment = (
+                self.expires_at == previous.expires_at
+                and current_scope == previous_scope
+                and current_projects > previous_projects
+                and self.effective_at >= previous.effective_at
+                and self.effective_at < self.expires_at
+            )
+            renewal = (
+                self.scope == previous.scope
+                and self.effective_at >= previous.effective_at
+                and self.expires_at > previous.expires_at
+                and self.expires_at <= self.effective_at + timedelta(days=30)
+            )
+            if not project_amendment and not renewal:
+                raise ValueError(
+                    "standing-policy transition must add projects or explicitly renew consent"
+                )
         return self
 
     @property
