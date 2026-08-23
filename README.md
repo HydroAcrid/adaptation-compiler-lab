@@ -12,7 +12,8 @@ without reading raw evidence or changing state. Phase 3 is now active: genuine o
 provide the remaining seven interactions and four or more activations before the frozen
 Base-versus-Temper comparison can begin. See
 [`MILESTONE_6A3_TERMINAL_ALPHA_SURFACE.md`](MILESTONE_6A3_TERMINAL_ALPHA_SURFACE.md) and the
-[`alpha onboarding draft`](TEMPER_ALPHA_ONBOARDING_DRAFT.md).
+[`alpha onboarding draft`](TEMPER_ALPHA_ONBOARDING_DRAFT.md). Exact dashboard, review, adaptation,
+gate, and phone captures are available in the [`terminal UI gallery`](TERMINAL_UI_GALLERY.md).
 
 The pre-v3 static engineering gate now passes. Both persona-comparison lanes consume the same
 host-owned exact scope registry, all 39 revealed v2.1 reviewed claims can be bound without fuzzy
