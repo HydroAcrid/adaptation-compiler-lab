@@ -2,9 +2,11 @@
 
 These images are deterministic Playwright baselines rendered from synthetic, raw-free data. They
 are the visual approval gate before the React surface is connected to the governed Python engine.
-The dark surfaces include a professionally drawn public-domain 1904 Art Nouveau floral headpiece,
-recolored as a deliberately faint, noninteractive copper identity layer. Its exact provenance and
-vendored digest are recorded in [third-party notices](../THIRD_PARTY_NOTICES.md).
+The dark surfaces include a professionally drawn CC0 antique acanthus corner. Temper crops and
+mirrors its irregular scrollwork at opposite window edges instead of drawing a rectangular frame,
+then recolors it as a deliberately faint, noninteractive copper identity layer. Its exact
+provenance, upstream digest, and sanitized vendored digest are recorded in
+[third-party notices](../THIRD_PARTY_NOTICES.md).
 
 ## Everyday Today surface
 
