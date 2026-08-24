@@ -4,30 +4,45 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-const ornamentPath = join(
-  process.cwd(),
-  "public",
-  "assets",
-  "ornaments",
-  "antique-acanthus-corner.svg",
-);
-const expectedDigest =
-  "cefed89f0b17b5b5cff6ea5c4a921cad65b81a8e6a9acf38e7bcc491d2f14997";
+const assets = [
+  {
+    path: join(
+      process.cwd(),
+      "public",
+      "assets",
+      "ornaments",
+      "antique-acanthus-corner.svg",
+    ),
+    digest: "cefed89f0b17b5b5cff6ea5c4a921cad65b81a8e6a9acf38e7bcc491d2f14997",
+  },
+  {
+    path: join(
+      process.cwd(),
+      "public",
+      "assets",
+      "ornaments",
+      "core-knowledge-tree.svg",
+    ),
+    digest: "0ee7f8ab03b30a816cb04cf07a4c1670e029603c859c23bb05ec774c43993d01",
+  },
+];
 
 describe("vendored visual assets", () => {
-  it("keeps the reviewed and sanitized CC0 ornament byte exact", () => {
-    const asset = readFileSync(ornamentPath);
-
-    expect(createHash("sha256").update(asset).digest("hex")).toBe(
-      expectedDigest,
-    );
+  it("keeps the reviewed and sanitized CC0 ornaments byte exact", () => {
+    for (const asset of assets) {
+      const contents = readFileSync(asset.path);
+      expect(createHash("sha256").update(contents).digest("hex")).toBe(
+        asset.digest,
+      );
+    }
   });
 
   it("contains no active or externally loaded SVG content", () => {
-    const asset = readFileSync(ornamentPath, "utf8");
-
-    expect(asset).not.toMatch(
-      /<!DOCTYPE|<script|<foreignObject|\bon(?:load|click|error)\s*=|\bhref\s*=|\burl\s*\(/i,
-    );
+    for (const asset of assets) {
+      const contents = readFileSync(asset.path, "utf8");
+      expect(contents).not.toMatch(
+        /<!DOCTYPE|<script|<foreignObject|\bon(?:load|click|error)\s*=|\bhref\s*=|\burl\s*\(/i,
+      );
+    }
   });
 });

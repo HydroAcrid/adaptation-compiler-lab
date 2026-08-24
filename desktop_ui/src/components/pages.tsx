@@ -14,6 +14,7 @@ import {
   Moon,
   MoreHorizontal,
   Pause,
+  Pencil,
   Play,
   Plus,
   RotateCcw,
@@ -24,19 +25,30 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-import { adaptations, connections, projects } from "../data/demo";
-import type { FeedbackValue, Theme } from "../types";
+import { connections, coreItems, projects } from "../data/demo";
+import type {
+  CoreItem,
+  CoreKind,
+  FeedbackValue,
+  ProjectName,
+  Theme,
+} from "../types";
 import { Button, Divider, SectionHeading, StatusPill, Toggle } from "./ui";
 
 export function TodayPage({
   onReview,
+  onOpenCore,
   feedback,
   onFeedback,
+  project,
 }: {
   onReview: () => void;
+  onOpenCore: () => void;
   feedback: FeedbackValue | null;
   onFeedback: (value: FeedbackValue) => void;
+  project: ProjectName;
 }) {
+  const hasSuggestion = project === "Kairn";
   return (
     <div className="page folio-page folio-page--today">
       <header className="folio-page-meta">
@@ -51,11 +63,12 @@ export function TodayPage({
       </header>
       <section className="folio-statement" aria-labelledby="today-heading">
         <div className="folio-statement__line">
-          <h1 id="today-heading">Temper is active in Kairn.</h1>
+          <h1 id="today-heading">Temper is active in {project}.</h1>
         </div>
         <p>
-          One approved adaptation is ready when it is relevant. One suggestion
-          needs your review.
+          {hasSuggestion
+            ? "Approved guidance is ready when it is relevant. One suggestion needs your review."
+            : "Approved guidance is ready when it is relevant. Nothing needs your review."}
         </p>
       </section>
       <div className="folio-divider" aria-hidden="true">
@@ -63,35 +76,77 @@ export function TodayPage({
       </div>
       <section className="folio-workbench" aria-label="Current thought">
         <article className="folio-proposal">
-          <span className="folio-kicker">Suggestion</span>
-          <h2>A preference may be taking shape.</h2>
-          <blockquote>“Lead with the purpose before setup steps.”</blockquote>
-          <p>
-            Temper noticed the same direction in two approved corrections. It
-            has not changed your profile.
-          </p>
-          <button
-            className="folio-primary-action"
-            onClick={onReview}
-            type="button"
-          >
-            Review suggestion <ArrowRight aria-hidden="true" size={16} />
-          </button>
+          {hasSuggestion ? (
+            <>
+              <span className="folio-kicker">Suggestion</span>
+              <h2>A preference may be taking shape.</h2>
+              <blockquote>
+                “Lead with the purpose before setup steps.”
+              </blockquote>
+              <p>
+                Temper noticed the same direction in two approved corrections.
+                It has not changed your profile.
+              </p>
+              <button
+                className="folio-primary-action"
+                onClick={onReview}
+                type="button"
+              >
+                Review suggestion <ArrowRight aria-hidden="true" size={16} />
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="folio-kicker">Current project</span>
+              <h2>Green Meadow is ready.</h2>
+              <blockquote>“Use PowerShell 7 for release work.”</blockquote>
+              <p>
+                One project memory and the relevant shared guidance are
+                available here. Kairn-only knowledge stays out.
+              </p>
+              <button
+                className="folio-primary-action"
+                onClick={onOpenCore}
+                type="button"
+              >
+                View in Core <ArrowRight aria-hidden="true" size={16} />
+              </button>
+            </>
+          )}
         </article>
-        <aside className="folio-margin" aria-label="Suggestion notes">
+        <aside className="folio-margin" aria-label="Current project notes">
           <dl className="margin-register">
-            <div>
-              <dt>Suggested scope</dt>
-              <dd>All coding work</dd>
-            </div>
-            <div>
-              <dt>Based on</dt>
-              <dd>Two approved corrections</dd>
-            </div>
-            <div>
-              <dt>Status</dt>
-              <dd>Not active</dd>
-            </div>
+            {hasSuggestion ? (
+              <>
+                <div>
+                  <dt>Suggested scope</dt>
+                  <dd>All coding work</dd>
+                </div>
+                <div>
+                  <dt>Based on</dt>
+                  <dd>Two approved corrections</dd>
+                </div>
+                <div>
+                  <dt>Status</dt>
+                  <dd>Not active</dd>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <dt>Project</dt>
+                  <dd>Green Meadow</dd>
+                </div>
+                <div>
+                  <dt>Available here</dt>
+                  <dd>Seven approved items</dd>
+                </div>
+                <div>
+                  <dt>Status</dt>
+                  <dd>Ready</dd>
+                </div>
+              </>
+            )}
           </dl>
           <div className="margin-feedback">
             <span className="folio-kicker">Last task</span>
@@ -124,84 +179,291 @@ export function TodayPage({
   );
 }
 
-export function AdaptationsPage() {
-  const [revoked, setRevoked] = useState<string[]>([]);
-  const active = adaptations.filter((item) => !revoked.includes(item.id));
-  const global = active.filter((item) => item.scope === "All coding work");
-  const project = active.filter((item) => item.scope !== "All coding work");
+const coreKinds: Array<{
+  id: CoreKind;
+  label: string;
+  description: string;
+}> = [
+  {
+    id: "preference",
+    label: "Preferences",
+    description: "Choices you tend to favor.",
+  },
+  {
+    id: "memory",
+    label: "Memories",
+    description: "Stable context worth carrying forward.",
+  },
+  {
+    id: "procedure",
+    label: "Procedures",
+    description: "Sequences and safeguards you approved.",
+  },
+  {
+    id: "skill",
+    label: "Skills",
+    description: "Reusable guidance for a kind of work.",
+  },
+];
+
+export function CorePage({ activeProject }: { activeProject: ProjectName }) {
+  const [items, setItems] = useState(coreItems);
+  const [kind, setKind] = useState<CoreKind | "all">("all");
+  const [scope, setScope] = useState<ProjectName | "all">("all");
+  const [selected, setSelected] = useState<CoreItem | null>(null);
+  const [removed, setRemoved] = useState<{
+    item: CoreItem;
+    index: number;
+  } | null>(null);
+  const visibleItems = items.filter(
+    (item) =>
+      (kind === "all" || item.kind === kind) &&
+      (scope === "all" || item.scope === "Everywhere" || item.scope === scope),
+  );
+
+  function removeItem(item: CoreItem) {
+    setRemoved({
+      item,
+      index: items.findIndex((entry) => entry.id === item.id),
+    });
+    setItems((current) => current.filter((entry) => entry.id !== item.id));
+  }
+
+  function restoreItem() {
+    if (!removed) return;
+    setItems((current) => {
+      const restored = [...current];
+      restored.splice(removed.index, 0, removed.item);
+      return restored;
+    });
+    setRemoved(null);
+  }
+
+  function saveItem(updated: CoreItem) {
+    setItems((current) =>
+      current.map((item) => (item.id === updated.id ? updated : item)),
+    );
+    setSelected(null);
+  }
+
   return (
-    <div className="page folio-page folio-page--adaptations">
-      <header className="folio-page-heading">
+    <div className="page folio-page core-page">
+      <div aria-hidden="true" className="core-tree" />
+      <header className="core-heading">
         <div>
-          <h1>Adaptations</h1>
+          <span className="folio-kicker">Your working character</span>
+          <h1>Core</h1>
           <p>
-            The approved ways of working Temper can use when they are relevant.
+            What Temper has learned about how you work, and where each part
+            belongs.
           </p>
         </div>
-        <Button icon={<Plus size={16} />} tone="quiet">
-          Add manually
-        </Button>
+        <div className="core-current-project">
+          <span>Current project</span>
+          <strong>{activeProject}</strong>
+        </div>
       </header>
-      {revoked.length ? (
+      <section className="core-overview" aria-label="Core summary">
+        <p>
+          <strong>{items.length} approved items</strong> across two projects.
+          Shared guidance forms the trunk; project knowledge branches only where
+          it applies.
+        </p>
+      </section>
+      <div className="core-toolbar">
+        <div aria-label="Filter by knowledge type" className="core-kind-filter">
+          <button
+            aria-pressed={kind === "all"}
+            onClick={() => setKind("all")}
+            type="button"
+          >
+            All
+          </button>
+          {coreKinds.map((entry) => (
+            <button
+              aria-pressed={kind === entry.id}
+              key={entry.id}
+              onClick={() => setKind(entry.id)}
+              type="button"
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
+        <label className="core-scope-filter">
+          <span>Show for</span>
+          <select
+            onChange={(event) =>
+              setScope(event.target.value as ProjectName | "all")
+            }
+            value={scope}
+          >
+            <option value="all">All knowledge</option>
+            <option value="Kairn">Kairn</option>
+            <option value="Green Meadow">Green Meadow</option>
+          </select>
+        </label>
+      </div>
+      {removed ? (
         <div className="undo-banner">
-          <span>One clause was withdrawn from the active folio.</span>
-          <button onClick={() => setRevoked([])} type="button">
+          <span>“{removed.item.title}” was removed from Core.</span>
+          <button onClick={restoreItem} type="button">
             <RotateCcw size={14} /> Undo
           </button>
         </div>
       ) : null}
-      <AdaptationGroup
-        label="Everywhere"
-        items={global}
-        onRevoke={(id) => setRevoked((items) => [...items, id])}
-      />
-      <AdaptationGroup
-        label="Kairn only"
-        items={project}
-        onRevoke={(id) => setRevoked((items) => [...items, id])}
-      />
+      <div className="core-catalog">
+        {coreKinds.map((entry) => {
+          const groupItems = visibleItems.filter(
+            (item) => item.kind === entry.id,
+          );
+          if (!groupItems.length) return null;
+          return (
+            <CoreGroup
+              description={entry.description}
+              items={groupItems}
+              key={entry.id}
+              label={entry.label}
+              onEdit={setSelected}
+              onRemove={removeItem}
+            />
+          );
+        })}
+        {visibleItems.length === 0 ? (
+          <div className="core-empty">
+            Nothing in Core matches these filters.
+          </div>
+        ) : null}
+      </div>
+      {selected ? (
+        <CoreItemDialog
+          item={selected}
+          key={selected.id}
+          onClose={() => setSelected(null)}
+          onSave={saveItem}
+        />
+      ) : null}
     </div>
   );
 }
 
-function AdaptationGroup({
+function CoreGroup({
   label,
+  description,
   items,
-  onRevoke,
+  onEdit,
+  onRemove,
 }: {
   label: string;
-  items: typeof adaptations;
-  onRevoke: (id: string) => void;
+  description: string;
+  items: CoreItem[];
+  onEdit: (item: CoreItem) => void;
+  onRemove: (item: CoreItem) => void;
 }) {
-  if (!items.length) return null;
   return (
-    <section className="adaptation-chapter">
-      <header className="adaptation-chapter__heading">
+    <section className="core-group">
+      <header className="core-group__heading">
         <h2>{label}</h2>
-        <p>
-          {items.length} {items.length === 1 ? "adaptation" : "adaptations"}
-        </p>
+        <p>{description}</p>
       </header>
-      <ul className="clause-list">
+      <ul className="core-list">
         {items.map((item) => (
           <li key={item.id}>
-            <article className="behavior-clause">
-              <div className="clause-copy">
-                <strong>{item.behavior}</strong>
-                <span>{item.sourceSummary}</span>
+            <article className="core-entry">
+              <div className="core-entry__copy">
+                <strong>{item.title}</strong>
+                <p>{item.description}</p>
+                <span>
+                  {item.scope} · {item.sourceSummary}
+                </span>
               </div>
-              <button
-                className="revoke-link"
-                onClick={() => onRevoke(item.id)}
-                type="button"
-              >
-                Revoke
-              </button>
+              <div className="core-entry__actions">
+                <button onClick={() => onEdit(item)} type="button">
+                  <Pencil aria-hidden="true" size={13} /> Edit
+                </button>
+                <button onClick={() => onRemove(item)} type="button">
+                  Remove
+                </button>
+              </div>
             </article>
           </li>
         ))}
       </ul>
     </section>
+  );
+}
+
+function CoreItemDialog({
+  item,
+  onClose,
+  onSave,
+}: {
+  item: CoreItem;
+  onClose: () => void;
+  onSave: (item: CoreItem) => void;
+}) {
+  const [title, setTitle] = useState(item.title);
+  const [description, setDescription] = useState(item.description);
+  const [scope, setScope] = useState<CoreItem["scope"]>(item.scope);
+  return (
+    <Dialog.Root onOpenChange={(open) => (open ? undefined : onClose())} open>
+      <Dialog.Portal>
+        <Dialog.Overlay className="dialog-overlay" />
+        <Dialog.Content className="core-dialog">
+          <Dialog.Close aria-label="Close" className="dialog-close">
+            <X size={18} />
+          </Dialog.Close>
+          <span className="folio-kicker">{item.kind}</span>
+          <Dialog.Title>Edit {item.title}</Dialog.Title>
+          <Dialog.Description>
+            Change the wording or narrow where this can be used.
+          </Dialog.Description>
+          <label className="core-field">
+            <span>Name</span>
+            <input
+              onChange={(event) => setTitle(event.target.value)}
+              value={title}
+            />
+          </label>
+          <label className="core-field">
+            <span>What it means</span>
+            <textarea
+              onChange={(event) => setDescription(event.target.value)}
+              rows={3}
+              value={description}
+            />
+          </label>
+          <label className="core-field">
+            <span>Use in</span>
+            <select
+              onChange={(event) =>
+                setScope(event.target.value as CoreItem["scope"])
+              }
+              value={scope}
+            >
+              <option value="Everywhere">Everywhere</option>
+              <option value="Kairn">Kairn</option>
+              <option value="Green Meadow">Green Meadow</option>
+            </select>
+          </label>
+          <div className="core-source-note">
+            <span>Based on</span>
+            <strong>{item.sourceSummary}</strong>
+          </div>
+          <div className="core-dialog__actions">
+            <Button onClick={onClose} tone="quiet">
+              Cancel
+            </Button>
+            <Button
+              onClick={() => onSave({ ...item, title, description, scope })}
+              tone="primary"
+            >
+              Save changes
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 

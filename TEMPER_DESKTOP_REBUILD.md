@@ -20,7 +20,7 @@ that gate would discard a working recovery path.
 `desktop_ui/` is a real React 19/Vite package backed only by deterministic synthetic data. It
 contains:
 
-- the everyday Today, Adaptations, Connections, and Settings surfaces;
+- the everyday Today, Core, Connections, and Settings surfaces;
 - a one-decision suggestion sheet with suggested and project-only scope choices;
 - five-step new-user onboarding;
 - explicit Codex and Claude source/target/cost language;
@@ -29,19 +29,24 @@ contains:
 - tray and notification previews;
 - system, light, and dark theme behavior; and
 - a Quiet Folio visual language that replaces the conventional sidebar, card grid, green success
-  banner, icon tiles, and status pills on the defining Today, review, and Adaptations surfaces with
+  banner, icon tiles, and status pills on the defining Today, review, and Core surfaces with
   restrained editorial typography, one current statement, a focused suggestion, plain
-  scope/source/status context, and readable approved adaptations;
+  scope/source/status context, and readable approved knowledge;
+- an explicit Kairn/Green Meadow project selector that changes Today without leaking another
+  project's guidance;
+- a user-facing Core that groups preferences, stable memories, procedures, and reusable skills,
+  filters them by applicable repository, and prototypes focused edit, rescope, remove, and undo;
 - self-hosted Newsreader and Instrument Sans variable typefaces under the SIL Open Font License;
-- a professionally drawn CC0 antique acanthus corner, cropped as asymmetric edge growth, that
-  gives dark mode a restrained old-world identity without a runtime network or commercial-asset
-  dependency; and
+- professionally drawn CC0 acanthus and rooted-tree assets, cropped as asymmetric edge growth,
+  that give dark mode a restrained old-world identity without a runtime network or
+  commercial-asset dependency; and
 - compact-window behavior down to the proposed 760×560 review size.
 
 The visual package has no engine, filesystem, process, credential, Supabase, Codex, Claude, or
-sealed-study access. It cannot mutate governed state. The screenshot suite covers eight product
-scenes in both themes plus Today at compact and wide widths and compact suggestion/Adaptations
-states. All 24 browser scenes pass their required visual, accessibility, and overflow checks. See
+sealed-study access. Its working edit and project controls mutate synthetic in-memory presentation
+state only. The screenshot suite covers eight product scenes in both themes, both registered
+project contexts, Today at compact and wide widths, and compact suggestion/Core states. All 26
+browser scenes pass their required visual, accessibility, and overflow checks. See
 the [visual gallery](desktop_ui/docs/VISUAL_GALLERY.md).
 
 The ornamental layer is presentation only: it is vendored locally with exact upstream and
@@ -60,7 +65,9 @@ answer a real user question.
 
 - Customer-facing naming is **Temper**; internal Python and research identities remain stable.
 - The default application is tray-first and quiet. Closing hides it; quitting is explicit.
-- Ordinary users see four destinations and one primary action at a time.
+- Ordinary users see Today, Core, Connections, and Settings, with one primary action at a time.
+- Core is the plain-language view over governed artifacts; it does not create a second memory
+  store, weaken lineage, or expose raw evidence.
 - Notifications open a decision sheet and never approve, reject, or revoke directly.
 - Advanced mode is opt-in and contains diagnostics, provenance metadata, and the governed task lab.
 - No Presets route appears until Milestone 6B has real governed preset types.

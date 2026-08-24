@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 
 import { Onboarding } from "./components/Onboarding";
 import {
-  AdaptationsPage,
   AdvancedPage,
   ConnectionsPage,
+  CorePage,
   SettingsPage,
   TodayPage,
   TrayPreview,
@@ -13,13 +13,13 @@ import {
 import { ReviewDialog } from "./components/ReviewDialog";
 import { Shell } from "./components/Shell";
 import { suggestion } from "./data/demo";
-import type { FeedbackValue, Screen, Theme } from "./types";
+import type { FeedbackValue, ProjectName, Screen, Theme } from "./types";
 
 const supportedScreens = new Set<Screen>([
   "onboarding",
   "today",
   "suggestion",
-  "adaptations",
+  "core",
   "connections",
   "settings",
   "advanced",
@@ -27,10 +27,17 @@ const supportedScreens = new Set<Screen>([
 ]);
 
 function initialScreen(): Screen {
-  const value = new URLSearchParams(window.location.search).get(
-    "screen",
-  ) as Screen | null;
+  const rawValue = new URLSearchParams(window.location.search).get("screen");
+  if (rawValue === "adaptations") return "core";
+  const value = rawValue as Screen | null;
   return value && supportedScreens.has(value) ? value : "today";
+}
+
+function initialProject(): ProjectName {
+  return new URLSearchParams(window.location.search).get("project") ===
+    "green-meadow"
+    ? "Green Meadow"
+    : "Kairn";
 }
 
 function initialTheme(): Theme {
@@ -44,6 +51,8 @@ export default function App() {
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [advancedMode, setAdvancedMode] = useState(firstScreen === "advanced");
   const [reviewOpen, setReviewOpen] = useState(firstScreen === "suggestion");
+  const [activeProject, setActiveProject] =
+    useState<ProjectName>(initialProject);
   const [feedback, setFeedback] = useState<FeedbackValue | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -63,7 +72,7 @@ export default function App() {
   }
   function decide(decision: "keep" | "project" | "ignore") {
     setReviewOpen(false);
-    setScreen(decision === "ignore" ? "today" : "adaptations");
+    setScreen(decision === "ignore" ? "today" : "core");
     setToast(
       decision === "keep"
         ? "Adaptation kept for all coding work."
@@ -78,15 +87,23 @@ export default function App() {
 
   return (
     <Tooltip.Provider delayDuration={500}>
-      <Shell advancedMode={advancedMode} onNavigate={navigate} screen={screen}>
+      <Shell
+        activeProject={activeProject}
+        advancedMode={advancedMode}
+        onNavigate={navigate}
+        onProjectChange={setActiveProject}
+        screen={screen}
+      >
         {screen === "today" || screen === "suggestion" || screen === "tray" ? (
           <TodayPage
             feedback={feedback}
             onFeedback={setFeedback}
+            onOpenCore={() => navigate("core")}
             onReview={() => setReviewOpen(true)}
+            project={activeProject}
           />
         ) : null}
-        {screen === "adaptations" ? <AdaptationsPage /> : null}
+        {screen === "core" ? <CorePage activeProject={activeProject} /> : null}
         {screen === "connections" ? <ConnectionsPage /> : null}
         {screen === "settings" ? (
           <SettingsPage

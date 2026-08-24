@@ -2,7 +2,7 @@ export type Screen =
   | "onboarding"
   | "today"
   | "suggestion"
-  | "adaptations"
+  | "core"
   | "connections"
   | "settings"
   | "advanced"
@@ -10,6 +10,7 @@ export type Screen =
 
 export type Theme = "light" | "dark" | "system";
 export type FeedbackValue = "helped" | "hurt" | "irrelevant";
+export type ProjectName = "Kairn" | "Green Meadow";
 
 export interface Suggestion {
   id: string;
@@ -23,12 +24,16 @@ export interface Suggestion {
   digest: string;
 }
 
-export interface Adaptation {
+export type CoreKind = "preference" | "memory" | "procedure" | "skill";
+export type CoreScope = "Everywhere" | "Kairn" | "Green Meadow";
+
+export interface CoreItem {
   id: string;
-  behavior: string;
-  scope: string;
+  kind: CoreKind;
+  title: string;
+  description: string;
+  scope: CoreScope;
   sourceSummary: string;
-  status: "active" | "paused";
 }
 
 export interface AgentConnection {

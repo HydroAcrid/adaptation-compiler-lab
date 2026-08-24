@@ -5,7 +5,7 @@ const screens = [
   "onboarding",
   "today",
   "suggestion",
-  "adaptations",
+  "core",
   "connections",
   "settings",
   "advanced",
@@ -17,6 +17,22 @@ async function openScene(page: Page, screen: string, theme: "light" | "dark") {
   await page.goto(`/?screen=${screen}&theme=${theme}`);
   await page.locator("body").waitFor({ state: "visible" });
   await page.evaluate(() => document.fonts.ready);
+}
+
+for (const theme of ["light", "dark"] as const) {
+  test(`today with Green Meadow ${theme} visual`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto(`/?screen=today&theme=${theme}&project=green-meadow`);
+    await page.locator("body").waitFor({ state: "visible" });
+    await page.evaluate(() => document.fonts.ready);
+    await expect(page).toHaveScreenshot(
+      `today-green-meadow-1280x800-${theme}.png`,
+      { fullPage: true },
+    );
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations).toEqual([]);
+  });
 }
 
 for (const theme of ["light", "dark"] as const) {
@@ -65,7 +81,7 @@ for (const viewport of [
   }
 }
 
-for (const screen of ["suggestion", "adaptations"] as const) {
+for (const screen of ["suggestion", "core"] as const) {
   for (const theme of ["light", "dark"] as const) {
     test(`${screen} 760x560 ${theme}`, async ({ page }) => {
       await page.setViewportSize({ width: 760, height: 560 });

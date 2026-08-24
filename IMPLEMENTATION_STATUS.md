@@ -4,19 +4,26 @@ Last updated: 2026-08-24
 
 ## Temper React/Tauri rebuild
 
-The first rebuild phase is implemented and awaiting owner visual acceptance. `desktop_ui/` is a
+The first rebuild phase is implemented in an owner-approved visual direction. `desktop_ui/` is a
 standalone React 19/Vite prototype using synthetic raw-free data; it does not call the compiler,
 credentials, agents, Supabase, or sealed-study code. It establishes the custom warm-neutral design
-system, four-destination everyday navigation, focused review sheet, onboarding, explicit Codex and
-Claude capability language, telemetry preview, tray/notification previews, dark mode, compact
-window behavior, and hidden Advanced task lab.
+system, Today/Core/Connections/Settings navigation, a working two-project selector, a scoped Core
+for preferences, memories, procedures, and skills, focused review and Core-edit sheets, onboarding,
+explicit Codex and Claude capability language, telemetry preview, tray/notification previews, dark
+mode, compact window behavior, and a hidden Advanced task lab. Core edits remain synthetic
+in-memory prototype behavior until the typed engine protocol is wired.
 
-Frontend formatting, ESLint, strict TypeScript, six component tests, production build, and twenty
-Playwright visual-plus-axe scenes pass. The next slice is blocked by the explicit visual gate. Once
-accepted, it will add the Tauri shell and a read-only versioned sidecar handshake before any
-governed mutation is exposed. Qt remains the internal diagnostic application and no release claim,
-native installer, Claude hook, or external-study action has occurred. See
+Frontend formatting, ESLint, strict TypeScript, 13 component and asset tests, production build, and
+26 Playwright visual-plus-axe scenes pass. The next slice remains the Tauri shell and a read-only
+versioned sidecar handshake before any governed mutation is exposed. Qt remains the internal
+diagnostic application and no release claim, native installer, Claude hook, or external-study
+action has occurred. See
 [`TEMPER_DESKTOP_REBUILD.md`](TEMPER_DESKTOP_REBUILD.md).
+
+Repository-wide Ruff, strict mypy over 365 source files, source/wheel builds, and the serial Python
+suite also pass: 999 tests with two expected platform skips. One verification invocation omitted
+`/usr/sbin` from `PATH`, causing fail-closed sandbox tests to report missing `chroot`; restoring the
+normal system path produced the clean full result without a code change.
 
 ## Desktop private-alpha foundation
 

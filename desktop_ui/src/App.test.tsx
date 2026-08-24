@@ -61,9 +61,7 @@ describe("Temper prototype", () => {
       screen.getByRole("button", { name: /review suggestion/i }),
     );
     await user.click(screen.getByRole("button", { name: "Only in Kairn" }));
-    expect(
-      screen.getByRole("heading", { name: "Adaptations" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Core" })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(
       "Adaptation kept for Kairn only",
     );
@@ -76,15 +74,61 @@ describe("Temper prototype", () => {
     expect(screen.getByText(/Recorded as helped/i)).toBeInTheDocument();
   });
 
-  it("withdraws and restores an approved clause", async () => {
+  it("removes and restores an approved Core item", async () => {
     const user = userEvent.setup();
-    window.history.replaceState({}, "", "/?screen=adaptations");
+    window.history.replaceState({}, "", "/?screen=core");
     render(<App />);
-    expect(screen.getAllByRole("button", { name: "Revoke" })).toHaveLength(3);
-    await user.click(screen.getAllByRole("button", { name: "Revoke" })[0]);
-    expect(screen.getAllByRole("button", { name: "Revoke" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(8);
+    await user.click(screen.getAllByRole("button", { name: "Remove" })[0]);
+    expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(7);
     await user.click(screen.getByRole("button", { name: "Undo" }));
-    expect(screen.getAllByRole("button", { name: "Revoke" })).toHaveLength(3);
+    expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(8);
+  });
+
+  it("switches projects without leaking another project's knowledge", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Current project" }),
+      "Green Meadow",
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: "Temper is active in Green Meadow.",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Kairn-only knowledge stays out/i),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Core" }));
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Show for" }),
+      "Green Meadow",
+    );
+    expect(screen.getByText("Green Meadow release shell")).toBeInTheDocument();
+    expect(screen.queryByText("Kairn notes can lag")).not.toBeInTheDocument();
+  });
+
+  it("edits Core wording and scope from a focused sheet", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState({}, "", "/?screen=core");
+    render(<App />);
+    await user.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+    expect(
+      screen.getByRole("dialog", { name: /edit purpose before procedure/i }),
+    ).toBeInTheDocument();
+    const name = screen.getByRole("textbox", { name: "Name" });
+    await user.clear(name);
+    await user.type(name, "Purpose, then steps");
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Use in" }),
+      "Kairn",
+    );
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(screen.getByText("Purpose, then steps")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Kairn · Approved from 3 explicit corrections/i),
+    ).toBeInTheDocument();
   });
 
   it("shows advanced navigation only after explicit opt-in", async () => {

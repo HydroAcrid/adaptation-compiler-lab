@@ -29,3 +29,17 @@ Temper self-hosts both fonts at build time. No runtime font request is made.
 
 The file and fonts are bundled locally. Temper does not hotlink, fetch, or execute remote visual
 assets at runtime.
+
+## Core knowledge tree
+
+- Bundled file: `public/assets/ornaments/core-knowledge-tree.svg`
+- Work: _Tree and roots silhouette_
+- Source: [FreePNGImg](https://freepngimg.com/svg/99050-tree-and-roots-silhouette)
+- License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
+- Retrieved: 2026-08-24
+- Upstream SHA-256: `b957698ba38af1644b74e2f2ec1ded88b727a83946b44bb6aa041814c4cf23d4`
+- Vendored SHA-256: `0ee7f8ab03b30a816cb04cf07a4c1670e029603c859c23bb05ec774c43993d01`
+- Modifications: optimized and sanitized with SVGO 4.0.1; removed the XML declaration, external
+  DTD, editor metadata, physical dimensions, and unused attributes while retaining the original
+  vector paths and view box. Temper applies color, opacity, placement, and clipping through a CSS
+  mask.

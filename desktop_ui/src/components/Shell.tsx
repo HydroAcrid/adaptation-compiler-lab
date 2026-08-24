@@ -1,25 +1,29 @@
 import type { ReactNode } from "react";
 
-import type { Screen } from "../types";
+import type { ProjectName, Screen } from "../types";
 import { BotanicalFlourish } from "./BotanicalFlourish";
 import { BrandMark } from "./BrandMark";
 
 const primaryNavigation = [
   { id: "today" as const, label: "Today" },
-  { id: "adaptations" as const, label: "Adaptations" },
+  { id: "core" as const, label: "Core" },
   { id: "connections" as const, label: "Connections" },
   { id: "settings" as const, label: "Settings" },
 ];
 
 export function Shell({
   screen,
+  activeProject,
   advancedMode,
   onNavigate,
+  onProjectChange,
   children,
 }: {
   screen: Screen;
+  activeProject: ProjectName;
   advancedMode: boolean;
   onNavigate: (screen: Screen) => void;
+  onProjectChange: (project: ProjectName) => void;
   children: ReactNode;
 }) {
   return (
@@ -65,13 +69,28 @@ export function Shell({
             ) : null}
           </nav>
           <div className="folio-runtime-context" aria-label="Current delivery">
-            <span>Kairn</span>
+            <label className="sr-only" htmlFor="current-project">
+              Current project
+            </label>
+            <select
+              aria-label="Current project"
+              id="current-project"
+              onChange={(event) =>
+                onProjectChange(event.target.value as ProjectName)
+              }
+              value={activeProject}
+            >
+              <option value="Kairn">Kairn</option>
+              <option value="Green Meadow">Green Meadow</option>
+            </select>
             <span aria-hidden="true">→</span>
             <strong>Codex</strong>
           </div>
         </header>
         <main className="main-content">
-          <BotanicalFlourish placement="workspace" />
+          {screen === "core" ? null : (
+            <BotanicalFlourish placement="workspace" />
+          )}
           {children}
         </main>
       </div>

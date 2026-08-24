@@ -19,7 +19,7 @@ export default defineConfig({
     toHaveScreenshot: {
       animations: "disabled",
       caret: "hide",
-      maxDiffPixelRatio: 0.015,
+      maxDiffPixelRatio: 0.003,
     },
   },
   webServer: {

@@ -113,6 +113,17 @@ p {
   margin: 0;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
 .window-shell {
   position: relative;
   width: min(1180px, calc(100vw - 32px));
@@ -1942,6 +1953,23 @@ p {
   font-weight: 650;
 }
 
+.folio-runtime-context select {
+  max-width: 118px;
+  min-height: 44px;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: inherit;
+}
+
+.folio-runtime-context select:hover {
+  border-bottom-color: var(--accent);
+}
+
 .local-seal {
   display: flex;
   align-items: center;
@@ -2467,6 +2495,397 @@ p {
   background: transparent;
 }
 
+.core-page {
+  position: relative;
+  isolation: isolate;
+}
+
+.core-tree {
+  position: absolute;
+  z-index: -1;
+  top: 58px;
+  right: -34px;
+  width: 315px;
+  height: 360px;
+  background: var(--ornament);
+  content: "";
+  mask: url("/assets/ornaments/core-knowledge-tree.svg") center / contain
+    no-repeat;
+  opacity: calc(var(--ornament-opacity) * 0.72);
+  pointer-events: none;
+  -webkit-mask: url("/assets/ornaments/core-knowledge-tree.svg") center /
+    contain no-repeat;
+}
+
+.core-heading {
+  display: flex;
+  min-height: 192px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 42px;
+  padding: 38px 0 28px;
+  border-bottom: 1px solid var(--folio-rule);
+}
+
+.core-heading > div:first-child {
+  max-width: 660px;
+}
+
+.core-heading h1 {
+  margin-top: 8px;
+  font-family: "Newsreader Variable", Newsreader, Georgia, serif;
+  font-size: clamp(42px, 4.4vw, 54px);
+  font-weight: 440;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.core-heading p {
+  max-width: 590px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.core-current-project {
+  display: flex;
+  min-width: 136px;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px 0;
+  border-top: 1px solid var(--folio-rule);
+  border-bottom: 1px solid var(--folio-rule);
+}
+
+.core-current-project span {
+  color: var(--faint);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.core-current-project strong {
+  font-family: "Newsreader Variable", Newsreader, Georgia, serif;
+  font-size: 17px;
+  font-weight: 480;
+}
+
+.core-overview {
+  max-width: 660px;
+  padding: 21px 0 22px;
+}
+
+.core-overview p {
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.core-overview strong {
+  color: var(--text-soft);
+  font-weight: 650;
+}
+
+.core-toolbar {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-top: 1px solid var(--folio-rule);
+  border-bottom: 1px solid var(--folio-rule);
+}
+
+.core-kind-filter {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 17px;
+  overflow-x: auto;
+}
+
+.core-kind-filter button {
+  position: relative;
+  min-height: 44px;
+  flex: 0 0 auto;
+  padding: 0 1px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.core-kind-filter button::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: transparent;
+  content: "";
+}
+
+.core-kind-filter button[aria-pressed="true"] {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.core-kind-filter button[aria-pressed="true"]::after {
+  background: var(--accent);
+}
+
+.core-scope-filter {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 9px;
+  color: var(--faint);
+  font-size: 10px;
+}
+
+.core-scope-filter select {
+  min-height: 44px;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1px solid var(--border-strong);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.core-page > .undo-banner {
+  margin: 17px 0 0;
+  border-width: 1px 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.core-catalog {
+  padding-bottom: 30px;
+}
+
+.core-group {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 38px;
+  padding: 27px 0 10px;
+}
+
+.core-group + .core-group {
+  margin-top: 5px;
+  border-top: 1px solid var(--folio-rule);
+}
+
+.core-group__heading h2 {
+  font-family: "Newsreader Variable", Newsreader, Georgia, serif;
+  font-size: 22px;
+  font-weight: 480;
+}
+
+.core-group__heading p {
+  max-width: 145px;
+  margin-top: 7px;
+  color: var(--faint);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.core-list {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--folio-rule);
+  list-style: none;
+}
+
+.core-list > li {
+  border-bottom: 1px solid var(--folio-rule);
+}
+
+.core-entry {
+  display: grid;
+  min-height: 108px;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  padding: 15px 0;
+}
+
+.core-entry__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.core-entry__copy strong {
+  font-family: "Newsreader Variable", Newsreader, Georgia, serif;
+  font-size: 18px;
+  font-weight: 480;
+  line-height: 1.25;
+}
+
+.core-entry__copy p {
+  max-width: 590px;
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.core-entry__copy span {
+  color: var(--faint);
+  font-size: 9.5px;
+  line-height: 1.35;
+}
+
+.core-entry__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.core-entry__actions button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 7px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.core-entry__actions button:hover {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+}
+
+.core-entry__actions button:last-child:hover {
+  border-bottom-color: var(--danger);
+  color: var(--danger);
+}
+
+.core-empty {
+  padding: 42px 0;
+  color: var(--muted);
+  font-family: "Newsreader Variable", Newsreader, Georgia, serif;
+  font-size: 19px;
+}
+
+.core-dialog {
+  position: fixed;
+  z-index: 51;
+  top: 50%;
+  left: 50%;
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  padding: 30px 34px 32px;
+  overflow-y: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  background: var(--folio-paper);
+  box-shadow: var(--shadow-dialog);
+  transform: translate(-50%, -50%);
+  animation: dialog-in 150ms ease-out;
+}
+
+.core-dialog h2 {
+  max-width: 450px;
+  margin-top: 8px;
+  font-family: "Newsreader Variable", Newsreader, Georgia, serif;
+  font-size: 29px;
+  font-weight: 460;
+  letter-spacing: -0.025em;
+  line-height: 1.16;
+}
+
+.core-dialog > p {
+  max-width: 440px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.core-dialog .dialog-close {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.core-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 19px;
+}
+
+.core-field > span,
+.core-source-note > span {
+  color: var(--faint);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.core-field input,
+.core-field textarea,
+.core-field select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.core-field textarea {
+  resize: vertical;
+}
+
+.core-source-note {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 20px;
+  padding: 13px 0;
+  border-top: 1px solid var(--folio-rule);
+  border-bottom: 1px solid var(--folio-rule);
+}
+
+.core-source-note strong {
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 540;
+}
+
+.core-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 22px;
+}
+
+.core-dialog__actions .button {
+  min-height: 44px;
+  border-radius: 4px;
+}
+
 .review-dialog.review-sheet {
   width: min(570px, calc(100vw - 32px));
   padding: 28px 36px 30px;
@@ -2660,6 +3079,10 @@ p {
     font-size: 9px;
   }
 
+  .folio-runtime-context select {
+    max-width: 100px;
+  }
+
   .folio-page {
     padding-inline: 24px;
   }
@@ -2751,6 +3174,23 @@ p {
   .folio-page--adaptations .undo-banner {
     margin-left: 159px;
   }
+
+  .core-tree {
+    display: none;
+  }
+
+  .core-heading {
+    min-height: 175px;
+  }
+
+  .core-group {
+    grid-template-columns: 135px minmax(0, 1fr);
+    gap: 25px;
+  }
+
+  .core-entry {
+    gap: 13px;
+  }
 }
 
 @media (max-width: 700px) {
@@ -2817,6 +3257,50 @@ p {
   .folio-footnote,
   .folio-page--adaptations .undo-banner {
     margin-left: 0;
+  }
+
+  .core-heading {
+    min-height: 0;
+    align-items: flex-start;
+    padding-top: 30px;
+  }
+
+  .core-current-project {
+    min-width: 118px;
+  }
+
+  .core-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0;
+    padding: 4px 0 10px;
+  }
+
+  .core-kind-filter {
+    width: 100%;
+  }
+
+  .core-scope-filter {
+    width: 100%;
+    justify-content: space-between;
+    border-top: 1px solid var(--folio-rule);
+  }
+
+  .core-group {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .core-group__heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .core-group__heading p {
+    max-width: 220px;
+    text-align: right;
   }
 }
 
@@ -2921,5 +3405,32 @@ p {
 
   .review-sheet .review-action--ignore {
     margin-left: 0;
+  }
+
+  .core-heading {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .core-current-project {
+    width: 100%;
+  }
+
+  .core-kind-filter {
+    gap: 13px;
+  }
+
+  .core-entry {
+    align-items: flex-start;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .core-entry__actions {
+    justify-self: start;
+  }
+
+  .core-dialog {
+    padding: 26px 22px 25px;
   }
 }
