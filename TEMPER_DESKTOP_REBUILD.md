@@ -28,6 +28,10 @@ contains:
 - a hidden Advanced task/diff surface;
 - tray and notification previews;
 - system, light, and dark theme behavior; and
+- a Quiet Folio visual language that replaces the conventional sidebar, card grid, green success
+  banner, icon tiles, and status pills on the defining Today, review, and Adaptations surfaces with
+  an editorial index, governed clauses, marginalia, maker marks, and a compact projection register;
+- self-hosted Newsreader and Instrument Sans variable typefaces under the SIL Open Font License;
 - a professionally drawn CC0 antique acanthus corner, cropped as asymmetric edge growth, that
   gives dark mode a restrained old-world identity without a runtime network or commercial-asset
   dependency; and
@@ -35,13 +39,15 @@ contains:
 
 The visual package has no engine, filesystem, process, credential, Supabase, Codex, Claude, or
 sealed-study access. It cannot mutate governed state. The screenshot suite covers eight product
-scenes in both themes plus primary compact and wide-window states. All 20 browser scenes pass the
-same axe accessibility audit. See the [visual gallery](desktop_ui/docs/VISUAL_GALLERY.md).
+scenes in both themes plus Today at compact and wide widths and compact suggestion/Adaptations
+states. All 24 browser scenes pass their required visual, accessibility, and overflow checks. See
+the [visual gallery](desktop_ui/docs/VISUAL_GALLERY.md).
 
 The ornamental layer is presentation only: it is vendored locally with exact upstream and
 sanitized digests plus a CC0 notice, marked `aria-hidden`, accepts no input, remains behind product
-content, and is deliberately quieter in light mode. Third-party marketplace artwork may be used as
-mood reference but is never copied, fetched, or required at runtime.
+content, and is deliberately quieter in light mode. The ornamental vocabulary informs page
+structure rather than surrounding cards. Third-party marketplace artwork may be used as mood
+reference but is never copied, fetched, or required at runtime.
 
 ## Locked product behavior
 

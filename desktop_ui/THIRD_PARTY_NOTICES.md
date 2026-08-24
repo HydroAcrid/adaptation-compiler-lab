@@ -1,4 +1,15 @@
-# Temper desktop third-party visual assets
+# Temper desktop third-party assets
+
+## Typefaces
+
+Temper self-hosts both fonts at build time. No runtime font request is made.
+
+- **Newsreader Variable 5.3.0** — editorial display and behavioral clauses; distributed through
+  [`@fontsource-variable/newsreader`](https://fontsource.org/fonts/newsreader) under the
+  [SIL Open Font License 1.1](https://openfontlicense.org/open-font-license-official-text/).
+- **Instrument Sans Variable 5.3.0** — interface text and metadata; distributed through
+  [`@fontsource-variable/instrument-sans`](https://fontsource.org/fonts/instrument-sans) under the
+  [SIL Open Font License 1.1](https://openfontlicense.org/open-font-license-official-text/).
 
 ## Antique corner ornament
 
@@ -16,5 +27,5 @@
   metadata; retained the original vector paths, view box, and aspect-ratio behavior. Temper applies
   color, opacity, placement, rotation, and clipping at render time through a CSS mask.
 
-The file is bundled locally. Temper does not hotlink, fetch, or execute remote visual assets at
-runtime.
+The file and fonts are bundled locally. Temper does not hotlink, fetch, or execute remote visual
+assets at runtime.

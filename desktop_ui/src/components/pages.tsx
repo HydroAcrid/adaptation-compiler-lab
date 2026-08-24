@@ -6,22 +6,18 @@ import {
   Bot,
   Check,
   CheckCircle2,
-  ChevronRight,
   CircleHelp,
   Cloud,
   ExternalLink,
   FileDiff,
-  Folder,
   Info,
   Laptop,
   LockKeyhole,
-  MessageCircleMore,
   Moon,
   MoreHorizontal,
   Pause,
   Play,
   Plus,
-  Radio,
   RotateCcw,
   ShieldCheck,
   Sparkles,
@@ -44,98 +40,117 @@ export function TodayPage({
   onFeedback: (value: FeedbackValue) => void;
 }) {
   return (
-    <div className="page page--today">
-      <header className="page-topline">
-        <div className="project-context">
-          <span className="project-dot" />
-          Kairn
-          <ChevronRight size={14} />
-        </div>
+    <div className="page folio-page folio-page--today">
+      <header className="folio-page-meta">
+        <span>Monday, August 24</span>
         <button
           aria-label="Notifications"
-          className="icon-button"
+          className="folio-icon-button"
           type="button"
         >
-          <Bell size={18} />
+          <Bell aria-hidden="true" size={17} strokeWidth={1.6} />
         </button>
       </header>
-      <SectionHeading
-        eyebrow="Monday, August 24"
-        title="You're all set."
-        description="Temper is quietly working in Kairn."
-      />
-      <section className="calm-status-card">
-        <div className="calm-status-card__icon">
-          <ShieldCheck size={25} strokeWidth={1.7} />
-        </div>
-        <div className="calm-status-card__copy">
-          <h2>Nothing needs your attention</h2>
-          <p>
-            One approved adaptation is available for relevant Codex tasks in
-            this project.
-          </p>
-        </div>
-        <StatusPill tone="positive">Active</StatusPill>
-      </section>
-      <section className="today-grid">
-        <article className="content-card suggestion-card">
-          <div className="card-header-row">
-            <div className="card-icon card-icon--accent">
-              <Sparkles size={18} />
-            </div>
-            <StatusPill tone="attention">Ready to review</StatusPill>
+      <section className="folio-statement" aria-labelledby="today-heading">
+        <span className="folio-kicker">Current state · Kairn</span>
+        <div className="folio-statement__line">
+          <h1 id="today-heading">Temper is active in Kairn.</h1>
+          <div
+            className="maker-status"
+            aria-label="One approved behavior active"
+          >
+            <span aria-hidden="true">T</span>
+            <span>
+              1 behavior
+              <br />
+              in scope
+            </span>
           </div>
-          <h2>A possible preference</h2>
-          <p>Lead with the purpose before setup steps.</p>
-          <button className="card-link" onClick={onReview} type="button">
-            Review suggestion <ArrowRight size={15} />
+        </div>
+        <p>
+          Your approved way of working is ready for the next relevant Codex
+          task. One new preference is waiting for your judgment.
+        </p>
+      </section>
+      <div className="folio-divider" aria-hidden="true">
+        <span />
+      </div>
+      <section className="folio-workbench" aria-label="Current thought">
+        <article className="folio-proposal">
+          <span className="folio-kicker">Possible adaptation · 01</span>
+          <h2>A preference may be taking shape.</h2>
+          <blockquote>“Lead with the purpose before setup steps.”</blockquote>
+          <p>
+            Temper noticed the same direction in two approved corrections. It
+            has not changed your profile.
+          </p>
+          <button
+            className="folio-primary-action"
+            onClick={onReview}
+            type="button"
+          >
+            Review suggestion <ArrowRight aria-hidden="true" size={16} />
           </button>
         </article>
-        <article className="content-card">
-          <div className="card-header-row">
-            <div className="card-icon">
-              <MessageCircleMore size={18} />
+        <aside className="folio-margin" aria-label="Suggestion notes">
+          <dl className="margin-register">
+            <div>
+              <dt>01 · Scope</dt>
+              <dd>Suggested: all coding work</dd>
             </div>
-            <span className="card-kicker">Recent task</span>
+            <div>
+              <dt>02 · Source</dt>
+              <dd>Two approved corrections</dd>
+            </div>
+            <div>
+              <dt>03 · Delivery</dt>
+              <dd>Not delivered</dd>
+            </div>
+          </dl>
+          <div className="margin-feedback">
+            <span className="folio-kicker">Last task</span>
+            <h2>Was Temper useful?</h2>
+            <p>One scoped behavior was included in a release handoff.</p>
+            {feedback ? (
+              <div className="feedback-thanks">
+                <Check aria-hidden="true" size={15} /> Recorded as {feedback}
+              </div>
+            ) : (
+              <div
+                className="feedback-row feedback-row--folio"
+                aria-label="Rate the recent adaptation"
+              >
+                <button onClick={() => onFeedback("helped")} type="button">
+                  Helped
+                </button>
+                <button onClick={() => onFeedback("hurt")} type="button">
+                  Hurt
+                </button>
+                <button onClick={() => onFeedback("irrelevant")} type="button">
+                  Irrelevant
+                </button>
+              </div>
+            )}
           </div>
-          <h2>Was Temper useful?</h2>
-          <p>
-            Codex used one scoped adaptation while preparing a release handoff.
-          </p>
-          {feedback ? (
-            <div className="feedback-thanks">
-              <Check size={16} /> Recorded as {feedback}
-            </div>
-          ) : (
-            <div
-              className="feedback-row"
-              aria-label="Rate the recent adaptation"
-            >
-              <button onClick={() => onFeedback("helped")} type="button">
-                Helped
-              </button>
-              <button onClick={() => onFeedback("hurt")} type="button">
-                Hurt
-              </button>
-              <button onClick={() => onFeedback("irrelevant")} type="button">
-                Irrelevant
-              </button>
-            </div>
-          )}
-        </article>
+        </aside>
       </section>
-      <section className="recent-line">
-        <div className="recent-line__icon">
-          <Activity size={17} />
-        </div>
-        <div>
-          <strong>Last checked 4 minutes ago</strong>
-          <span>No new completed tasks.</span>
-        </div>
-        <button className="text-action" type="button">
-          Check now
+      <footer className="projection-register" aria-label="Current projection">
+        <span>
+          <b>Personal</b> 1
+        </span>
+        <span>
+          <b>Project</b> Kairn
+        </span>
+        <span>
+          <b>Preset</b> none
+        </span>
+        <span className="projection-register__target">
+          <b>Destination</b> Codex
+        </span>
+        <button className="projection-refresh" type="button">
+          <Activity aria-hidden="true" size={14} /> Checked 4 min ago
         </button>
-      </section>
+      </footer>
     </div>
   );
 }
@@ -146,93 +161,97 @@ export function AdaptationsPage() {
   const global = active.filter((item) => item.scope === "All coding work");
   const project = active.filter((item) => item.scope !== "All coding work");
   return (
-    <div className="page">
-      <header className="page-topline page-topline--actions">
-        <Button icon={<Plus size={16} />} tone="secondary">
+    <div className="page folio-page folio-page--adaptations">
+      <header className="folio-page-heading">
+        <div>
+          <span className="folio-kicker">Behavior folio · 02</span>
+          <h1>Adaptations</h1>
+          <p>The approved clauses Temper can carry into relevant work.</p>
+        </div>
+        <Button icon={<Plus size={16} />} tone="quiet">
           Add manually
         </Button>
       </header>
-      <SectionHeading
-        title="Adaptations"
-        description="The approved behaviors Temper can carry into relevant work."
-      />
       {revoked.length ? (
         <div className="undo-banner">
-          <span>Adaptation removed.</span>
+          <span>One clause was withdrawn from the active folio.</span>
           <button onClick={() => setRevoked([])} type="button">
             <RotateCcw size={14} /> Undo
           </button>
         </div>
       ) : null}
       <AdaptationGroup
+        index="01"
         label="Everywhere"
-        icon={<Radio size={16} />}
         items={global}
         onRevoke={(id) => setRevoked((items) => [...items, id])}
       />
       <AdaptationGroup
+        index="02"
         label="Kairn only"
-        icon={<Folder size={16} />}
         items={project}
         onRevoke={(id) => setRevoked((items) => [...items, id])}
       />
-      <div className="quiet-note">
-        <LockKeyhole size={16} />
+      <footer className="folio-footnote">
+        <LockKeyhole aria-hidden="true" size={15} />
         <span>
-          Raw evidence is encrypted locally. These are the approved
-          instructions—not your source conversations.
+          Source conversations remain encrypted locally. This folio contains
+          only approved behavioral clauses and raw-free lineage summaries.
         </span>
-      </div>
+      </footer>
     </div>
   );
 }
 
 function AdaptationGroup({
+  index,
   label,
-  icon,
   items,
   onRevoke,
 }: {
+  index: string;
   label: string;
-  icon: ReactNode;
   items: typeof adaptations;
   onRevoke: (id: string) => void;
 }) {
   if (!items.length) return null;
   return (
-    <section className="adaptation-group">
-      <h2>
-        {icon}
-        {label}
-        <span>{items.length}</span>
-      </h2>
-      <div className="adaptation-list">
-        {items.map((item) => (
-          <article className="adaptation-row" key={item.id}>
-            <div className="adaptation-check">
-              <Check size={15} />
-            </div>
-            <div className="adaptation-copy">
-              <strong>{item.behavior}</strong>
-              <span>{item.sourceSummary}</span>
-            </div>
-            <button
-              aria-label={`More options for ${item.behavior}`}
-              className="icon-button"
-              type="button"
-            >
-              <MoreHorizontal size={18} />
-            </button>
-            <button
-              className="revoke-link"
-              onClick={() => onRevoke(item.id)}
-              type="button"
-            >
-              Remove
-            </button>
-          </article>
+    <section className="adaptation-chapter">
+      <header className="adaptation-chapter__heading">
+        <span>{index} · Scope</span>
+        <h2>{label}</h2>
+        <p>
+          {items.length} approved {items.length === 1 ? "clause" : "clauses"}
+        </p>
+      </header>
+      <ol className="clause-list">
+        {items.map((item, itemIndex) => (
+          <li key={item.id}>
+            <article className="behavior-clause">
+              <span className="clause-number" aria-hidden="true">
+                {index}.{itemIndex + 1}
+              </span>
+              <div className="clause-copy">
+                <strong>{item.behavior}</strong>
+                <span>
+                  <sup>{itemIndex + 1}</sup> {item.sourceSummary}
+                </span>
+              </div>
+              <div className="clause-approval">
+                <span aria-hidden="true">T</span>
+                Approved
+              </div>
+              <button
+                className="revoke-link"
+                onClick={() => onRevoke(item.id)}
+                type="button"
+              >
+                Revoke
+              </button>
+            </article>
+          </li>
         ))}
-      </div>
+      </ol>
     </section>
   );
 }

@@ -5,11 +5,14 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
       className={`brand ${compact ? "brand--compact" : ""}`}
     >
       <span aria-hidden="true" className="brand-mark">
-        <span />
-        <span />
-        <span />
+        T
       </span>
-      {compact ? null : <span className="brand-word">temper</span>}
+      {compact ? null : (
+        <span className="brand-copy">
+          <span className="brand-word">Temper</span>
+          <span className="brand-subtitle">behavior folio</span>
+        </span>
+      )}
     </div>
   );
 }

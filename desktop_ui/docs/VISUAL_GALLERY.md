@@ -2,10 +2,11 @@
 
 These images are deterministic Playwright baselines rendered from synthetic, raw-free data. They
 are the visual approval gate before the React surface is connected to the governed Python engine.
-The dark surfaces include a professionally drawn CC0 antique acanthus corner. Temper crops and
-mirrors its irregular scrollwork at opposite window edges instead of drawing a rectangular frame,
-then recolors it as a deliberately faint, noninteractive copper identity layer. Its exact
-provenance, upstream digest, and sanitized vendored digest are recorded in
+The defining surfaces use the **Quiet Folio** direction: a thin editorial index, one continuous
+page, behavioral clauses, marginal annotations, maker marks, and a compact projection register.
+Newsreader and Instrument Sans replace the stock dashboard typography. A professionally drawn CC0
+antique acanthus corner grows asymmetrically from an outer edge instead of framing conventional
+cards. Exact asset provenance, font licenses, and sanitized vector digests are recorded in
 [third-party notices](../THIRD_PARTY_NOTICES.md).
 
 ## Everyday Today surface
@@ -46,8 +47,13 @@ provenance, upstream digest, and sanitized vendored digest are recorded in
 
 ![Temper Today at 760 by 560](../tests/gallery.spec.ts-snapshots/today-760x560-light-linux.png)
 
-Approval should evaluate the calmness of the default surface, hierarchy of the review sheet,
-legibility, product voice, color direction, whether the botanical detail feels distinctive without
-becoming ornamental noise, and whether diagnostic detail is sufficiently hidden.
+![Temper suggestion at 760 by 560](../tests/gallery.spec.ts-snapshots/suggestion-760x560-dark-linux.png)
+
+![Temper adaptations at 760 by 560](../tests/gallery.spec.ts-snapshots/adaptations-760x560-dark-linux.png)
+
+Approval should evaluate whether the product now reads as a personal governed behavioral document
+rather than a generic B2B dashboard; the calmness of Today; the hierarchy of the review sheet; the
+legibility of behavioral clauses; and whether the botanical detail feels distinctive without
+becoming ornamental noise.
 Approval does not authorize a particular implementation of engine IPC or agent hooks; those retain
 their independent security and conformance gates.

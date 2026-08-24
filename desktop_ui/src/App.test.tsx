@@ -11,12 +11,31 @@ describe("Temper prototype", () => {
   it("keeps the everyday Today surface calm and raw-free", () => {
     render(<App />);
     expect(
-      screen.getByRole("heading", { name: "You're all set." }),
+      screen.getByRole("heading", { name: "Temper is active in Kairn." }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Temper is quietly working in Kairn."),
+      screen.getByText(/One new preference is waiting for your judgment/i),
     ).toBeInTheDocument();
+    expect(screen.getByText("Not delivered")).toBeInTheDocument();
     expect(screen.queryByText(/sha256/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps navigation state aligned with the visible folio", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+    expect(screen.getByRole("button", { name: "Settings" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await user.click(screen.getByRole("button", { name: "Today" }));
+    expect(screen.getByRole("button", { name: "Today" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(
+      screen.getByRole("heading", { name: "Temper is active in Kairn." }),
+    ).toBeInTheDocument();
   });
 
   it("reviews one suggestion without mutating from a notification", async () => {
@@ -48,6 +67,24 @@ describe("Temper prototype", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "Adaptation kept for Kairn only",
     );
+  });
+
+  it("records lightweight usefulness feedback", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Helped" }));
+    expect(screen.getByText(/Recorded as helped/i)).toBeInTheDocument();
+  });
+
+  it("withdraws and restores an approved clause", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState({}, "", "/?screen=adaptations");
+    render(<App />);
+    expect(screen.getAllByRole("button", { name: "Revoke" })).toHaveLength(3);
+    await user.click(screen.getAllByRole("button", { name: "Revoke" })[0]);
+    expect(screen.getAllByRole("button", { name: "Revoke" })).toHaveLength(2);
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    expect(screen.getAllByRole("button", { name: "Revoke" })).toHaveLength(3);
   });
 
   it("shows advanced navigation only after explicit opt-in", async () => {

@@ -1,6 +1,6 @@
 import * as Collapsible from "@radix-ui/react-collapsible";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Check, ChevronDown, Folder, Globe2, Sparkles, X } from "lucide-react";
+import { Check, ChevronDown, Folder, X } from "lucide-react";
 import { useState } from "react";
 
 import type { Suggestion } from "../types";
@@ -24,33 +24,36 @@ export function ReviewDialog({
         <Dialog.Overlay className="dialog-overlay" />
         <Dialog.Content
           aria-describedby="review-description"
-          className="review-dialog"
+          className="review-dialog review-sheet"
         >
-          <div className="review-icon" aria-hidden="true">
-            <Sparkles size={21} strokeWidth={1.8} />
-          </div>
           <Dialog.Close
             aria-label="Close review"
             className="icon-button dialog-close"
           >
             <X size={18} />
           </Dialog.Close>
-          <span className="eyebrow">Possible adaptation</span>
-          <Dialog.Title>{suggestion.behavior}</Dialog.Title>
+          <header className="review-sheet__register">
+            <span>Temper folio</span>
+            <span>Proposal · 01</span>
+          </header>
+          <span className="folio-kicker">A preference may be taking shape</span>
+          <Dialog.Title>“{suggestion.behavior}”</Dialog.Title>
           <Dialog.Description id="review-description">
             {suggestion.explanation}
           </Dialog.Description>
-          <div className="scope-preview">
-            <div className="scope-preview__icon" aria-hidden="true">
-              <Globe2 size={18} />
+          <div className="review-annotations">
+            <div>
+              <span>01 · Suggested scope</span>
+              <strong>{suggestion.suggestedScope}</strong>
             </div>
             <div>
-              <span>Suggested scope</span>
-              <strong>{suggestion.suggestedScope}</strong>
+              <span>02 · Support</span>
+              <strong>{suggestion.sourceCount} approved corrections</strong>
             </div>
           </div>
           <div className="review-actions">
             <Button
+              className="review-action--primary"
               icon={<Check aria-hidden="true" size={17} />}
               onClick={() => onDecision("keep")}
               tone="primary"
@@ -58,12 +61,18 @@ export function ReviewDialog({
               Keep
             </Button>
             <Button
+              className="review-action--scope"
               icon={<Folder aria-hidden="true" size={17} />}
               onClick={() => onDecision("project")}
+              tone="quiet"
             >
               Only in Kairn
             </Button>
-            <Button onClick={() => onDecision("ignore")} tone="quiet">
+            <Button
+              className="review-action--ignore"
+              onClick={() => onDecision("ignore")}
+              tone="quiet"
+            >
               Ignore
             </Button>
           </div>

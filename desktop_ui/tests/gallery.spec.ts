@@ -57,6 +57,26 @@ for (const viewport of [
         `today-${viewport.width}x${viewport.height}-${theme}.png`,
         { fullPage: true },
       );
+      const hasHorizontalOverflow = await page
+        .locator(".main-content")
+        .evaluate((element) => element.scrollWidth > element.clientWidth);
+      expect(hasHorizontalOverflow).toBe(false);
+    });
+  }
+}
+
+for (const screen of ["suggestion", "adaptations"] as const) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`${screen} 760x560 ${theme}`, async ({ page }) => {
+      await page.setViewportSize({ width: 760, height: 560 });
+      await openScene(page, screen, theme);
+      await expect(page).toHaveScreenshot(`${screen}-760x560-${theme}.png`, {
+        fullPage: true,
+      });
+      const hasHorizontalOverflow = await page
+        .locator(".main-content")
+        .evaluate((element) => element.scrollWidth > element.clientWidth);
+      expect(hasHorizontalOverflow).toBe(false);
     });
   }
 }
