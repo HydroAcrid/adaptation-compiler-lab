@@ -22,6 +22,10 @@ contains:
 
 - the everyday Today, Core, Connections, and Settings surfaces;
 - a one-decision suggestion sheet with suggested and project-only scope choices;
+- a calm ranked queue that keeps one suggestion in focus while showing the next two as a textual
+  index rather than a bulk-review dashboard;
+- separate evidence-strength and automation-safety language, plus an off-by-default automatic
+  low-risk learning control;
 - five-step new-user onboarding;
 - explicit Codex and Claude source/target/cost language;
 - exact aggregate-report preview with reporting off by default;
@@ -45,8 +49,9 @@ contains:
 The visual package has no engine, filesystem, process, credential, Supabase, Codex, Claude, or
 sealed-study access. Its working edit and project controls mutate synthetic in-memory presentation
 state only. The screenshot suite covers eight product scenes in both themes, both registered
-project contexts, Today at compact and wide widths, and compact suggestion/Core states. All 26
-browser scenes pass their required visual, accessibility, and overflow checks. See
+project contexts, a three-item suggestion queue, Today at compact and wide widths, and compact
+suggestion/Core states. All 26 browser scenes pass their required visual, accessibility, and
+overflow checks. See
 the [visual gallery](desktop_ui/docs/VISUAL_GALLERY.md).
 
 The ornamental layer is presentation only: it is vendored locally with exact upstream and
@@ -69,6 +74,11 @@ answer a real user question.
 - Core is the plain-language view over governed artifacts; it does not create a second memory
   store, weaken lineage, or expose raw evidence.
 - Notifications open a decision sheet and never approve, reject, or revoke directly.
+- Evidence strength and automation eligibility are different properties. Strongly supported
+  procedures, global rules, conflicts, exceptions, and revocations still require review.
+- Automatic low-risk learning is off by default. The prototype shows the proposed narrow,
+  project-scoped, reversible preference class; engine mutation remains blocked pending shadow-mode
+  and genuine-use admission under [the confidence policy](TEMPER_CONFIDENCE_POLICY.md).
 - Advanced mode is opt-in and contains diagnostics, provenance metadata, and the governed task lab.
 - No Presets route appears until Milestone 6B has real governed preset types.
 - No account is required. Project registration is explicit and prospective.

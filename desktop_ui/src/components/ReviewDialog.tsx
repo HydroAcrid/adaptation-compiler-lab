@@ -18,6 +18,17 @@ export function ReviewDialog({
   onDecision: (decision: "keep" | "project" | "ignore") => void;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const evidenceLabel = {
+    strong: "Strong evidence",
+    promising: "Promising evidence",
+    developing: "Developing evidence",
+  }[suggestion.evidenceStrength];
+  const automationSummary =
+    suggestion.automationDisposition === "eligible"
+      ? "Eligible for automatic keeping when you enable it. Temper would notify you and preserve a 24-hour undo window."
+      : suggestion.automationDisposition === "review-required"
+        ? "Your review stays required because this adaptation could materially guide how an agent works."
+        : "Temper will keep gathering support unless you choose to keep this now.";
   return (
     <Dialog.Root onOpenChange={onOpenChange} open={open}>
       <Dialog.Portal>
@@ -44,9 +55,16 @@ export function ReviewDialog({
             </div>
             <div>
               <span>Based on</span>
-              <strong>{suggestion.sourceCount} approved corrections</strong>
+              <strong>{suggestion.sourceCount} approved source moments</strong>
+            </div>
+            <div>
+              <span>Evidence</span>
+              <strong>{evidenceLabel}</strong>
             </div>
           </div>
+          <p className="review-automation-note">
+            {automationSummary} {suggestion.automationReason}
+          </p>
           <div className="review-actions">
             <Button
               className="review-action--primary"
@@ -90,6 +108,10 @@ export function ReviewDialog({
                 <div>
                   <dt>Support</dt>
                   <dd>{suggestion.sourceCount} approved source moments</dd>
+                </div>
+                <div>
+                  <dt>Evidence assessment</dt>
+                  <dd>{suggestion.confidenceReason}</dd>
                 </div>
                 <div>
                   <dt>Captured</dt>

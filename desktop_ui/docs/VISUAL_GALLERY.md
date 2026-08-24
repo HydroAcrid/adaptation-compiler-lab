@@ -18,6 +18,10 @@ asset provenance, font licenses, and sanitized vector digests are recorded in
 
 ![Temper Today, dark](../tests/gallery.spec.ts-snapshots/today-1280x800-dark-linux.png)
 
+The current synthetic state contains three pending suggestions. Today keeps the strongest item in
+focus and renders the remainder as a quiet textual queue. Evidence strength is visible without a
+fake probability; automation safety remains a separate decision.
+
 ## A second connected project
 
 ![Temper Today for Green Meadow](../tests/gallery.spec.ts-snapshots/today-green-meadow-1280x800-dark-linux.png)

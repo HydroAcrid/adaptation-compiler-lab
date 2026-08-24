@@ -29,8 +29,10 @@ import { connections, coreItems, projects } from "../data/demo";
 import type {
   CoreItem,
   CoreKind,
+  EvidenceStrength,
   FeedbackValue,
   ProjectName,
+  Suggestion,
   Theme,
 } from "../types";
 import { Button, Divider, SectionHeading, StatusPill, Toggle } from "./ui";
@@ -41,14 +43,36 @@ export function TodayPage({
   feedback,
   onFeedback,
   project,
+  suggestions,
+  selectedSuggestionId,
+  automaticLearning,
 }: {
-  onReview: () => void;
+  onReview: (suggestionId: string) => void;
   onOpenCore: () => void;
   feedback: FeedbackValue | null;
   onFeedback: (value: FeedbackValue) => void;
   project: ProjectName;
+  suggestions: Suggestion[];
+  selectedSuggestionId: string | null;
+  automaticLearning: boolean;
 }) {
-  const hasSuggestion = project === "Kairn";
+  const selectedSuggestion =
+    suggestions.find((item) => item.id === selectedSuggestionId) ??
+    suggestions[0];
+  const hasSuggestion = project === "Kairn" && Boolean(selectedSuggestion);
+  const selectedIndex = selectedSuggestion
+    ? suggestions.findIndex((item) => item.id === selectedSuggestion.id)
+    : -1;
+  const suggestionCount = suggestions.length;
+  const automationStatus = selectedSuggestion
+    ? selectedSuggestion.automationDisposition === "eligible"
+      ? automaticLearning
+        ? "Automatic with 24-hour undo"
+        : "Automatic option available"
+      : selectedSuggestion.automationDisposition === "review-required"
+        ? "Your review is required"
+        : "Waiting for more evidence"
+    : "";
   return (
     <div className="page folio-page folio-page--today">
       <header className="folio-page-meta">
@@ -67,7 +91,9 @@ export function TodayPage({
         </div>
         <p>
           {hasSuggestion
-            ? "Approved guidance is ready when it is relevant. One suggestion needs your review."
+            ? suggestionCount === 1
+              ? "Approved guidance is ready when it is relevant. One suggestion needs your attention."
+              : `${suggestionCount} suggestions are ready. Temper has put the clearest one first.`
             : "Approved guidance is ready when it is relevant. Nothing needs your review."}
         </p>
       </section>
@@ -78,18 +104,17 @@ export function TodayPage({
         <article className="folio-proposal">
           {hasSuggestion ? (
             <>
-              <span className="folio-kicker">Suggestion</span>
-              <h2>A preference may be taking shape.</h2>
-              <blockquote>
-                “Lead with the purpose before setup steps.”
-              </blockquote>
-              <p>
-                Temper noticed the same direction in two approved corrections.
-                It has not changed your profile.
-              </p>
+              <span className="folio-kicker">
+                Suggestion {selectedIndex + 1} of {suggestionCount}
+              </span>
+              <h2>Temper noticed a pattern worth considering.</h2>
+              <blockquote>“{selectedSuggestion?.behavior}”</blockquote>
+              <p>{selectedSuggestion?.explanation}</p>
               <button
                 className="folio-primary-action"
-                onClick={onReview}
+                onClick={() =>
+                  selectedSuggestion ? onReview(selectedSuggestion.id) : null
+                }
                 type="button"
               >
                 Review suggestion <ArrowRight aria-hidden="true" size={16} />
@@ -119,16 +144,22 @@ export function TodayPage({
             {hasSuggestion ? (
               <>
                 <div>
+                  <dt>Evidence</dt>
+                  <dd>
+                    {
+                      evidenceStrengthLabels[
+                        selectedSuggestion?.evidenceStrength ?? "developing"
+                      ]
+                    }
+                  </dd>
+                </div>
+                <div>
                   <dt>Suggested scope</dt>
-                  <dd>All coding work</dd>
+                  <dd>{selectedSuggestion?.suggestedScope}</dd>
                 </div>
                 <div>
-                  <dt>Based on</dt>
-                  <dd>Two approved corrections</dd>
-                </div>
-                <div>
-                  <dt>Status</dt>
-                  <dd>Not active</dd>
+                  <dt>Next step</dt>
+                  <dd>{automationStatus}</dd>
                 </div>
               </>
             ) : (
@@ -148,36 +179,77 @@ export function TodayPage({
               </>
             )}
           </dl>
-          <div className="margin-feedback">
-            <span className="folio-kicker">Last task</span>
-            <h2>Was Temper useful?</h2>
-            <p>One scoped behavior was included in a release handoff.</p>
-            {feedback ? (
-              <div className="feedback-thanks">
-                <Check aria-hidden="true" size={15} /> Recorded as {feedback}
+          {hasSuggestion && suggestionCount > 1 ? (
+            <div className="margin-queue">
+              <div className="margin-queue__heading">
+                <span className="folio-kicker">Suggestion queue</span>
+                <span>{suggestionCount} ready</span>
               </div>
-            ) : (
-              <div
-                className="feedback-row feedback-row--folio"
-                aria-label="Rate the recent adaptation"
-              >
-                <button onClick={() => onFeedback("helped")} type="button">
-                  Helped
-                </button>
-                <button onClick={() => onFeedback("hurt")} type="button">
-                  Hurt
-                </button>
-                <button onClick={() => onFeedback("irrelevant")} type="button">
-                  Irrelevant
-                </button>
-              </div>
-            )}
-          </div>
+              <ol>
+                {suggestions.map((item, index) => (
+                  <li key={item.id}>
+                    <button
+                      aria-current={
+                        item.id === selectedSuggestion?.id ? "true" : undefined
+                      }
+                      onClick={() => onReview(item.id)}
+                      type="button"
+                    >
+                      <span className="queue-number">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span className="queue-copy">
+                        <strong>{item.behavior}</strong>
+                        <small>
+                          {evidenceStrengthLabels[item.evidenceStrength]}
+                        </small>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ) : (
+            <div className="margin-feedback">
+              <span className="folio-kicker">Last task</span>
+              <h2>Was Temper useful?</h2>
+              <p>One scoped behavior was included in a release handoff.</p>
+              {feedback ? (
+                <div className="feedback-thanks">
+                  <Check aria-hidden="true" size={15} /> Recorded as {feedback}
+                </div>
+              ) : (
+                <div
+                  className="feedback-row feedback-row--folio"
+                  aria-label="Rate the recent adaptation"
+                >
+                  <button onClick={() => onFeedback("helped")} type="button">
+                    Helped
+                  </button>
+                  <button onClick={() => onFeedback("hurt")} type="button">
+                    Hurt
+                  </button>
+                  <button
+                    onClick={() => onFeedback("irrelevant")}
+                    type="button"
+                  >
+                    Irrelevant
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </aside>
       </section>
     </div>
   );
 }
+
+const evidenceStrengthLabels: Record<EvidenceStrength, string> = {
+  strong: "Strong evidence",
+  promising: "Promising evidence",
+  developing: "Developing evidence",
+};
 
 const coreKinds: Array<{
   id: CoreKind;
@@ -557,11 +629,15 @@ export function SettingsPage({
   onThemeChange,
   advancedMode,
   onAdvancedModeChange,
+  automaticLearning,
+  onAutomaticLearningChange,
 }: {
   theme: Theme;
   onThemeChange: (theme: Theme) => void;
   advancedMode: boolean;
   onAdvancedModeChange: (enabled: boolean) => void;
+  automaticLearning: boolean;
+  onAutomaticLearningChange: (enabled: boolean) => void;
 }) {
   const [learning, setLearning] = useState(true);
   const [notifications, setNotifications] = useState(true);
@@ -589,6 +665,12 @@ export function SettingsPage({
           description="Show a quiet notification when a decision is ready."
           label="Decision notifications"
           onCheckedChange={setNotifications}
+        />
+        <Toggle
+          checked={automaticLearning}
+          description="Keep only strong, low-impact project preferences. Temper notifies you and gives you 24 hours to undo."
+          label="Automatic low-risk learning"
+          onCheckedChange={onAutomaticLearningChange}
         />
       </SettingsGroup>
       <SettingsGroup title="Appearance">

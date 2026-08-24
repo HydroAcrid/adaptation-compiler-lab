@@ -11,6 +11,9 @@ export type Screen =
 export type Theme = "light" | "dark" | "system";
 export type FeedbackValue = "helped" | "hurt" | "irrelevant";
 export type ProjectName = "Kairn" | "Green Meadow";
+export type EvidenceStrength = "strong" | "promising" | "developing";
+export type AutomationDisposition =
+  "eligible" | "review-required" | "collect-more";
 
 export interface Suggestion {
   id: string;
@@ -22,6 +25,10 @@ export interface Suggestion {
   authority: string;
   capturedAt: string;
   digest: string;
+  evidenceStrength: EvidenceStrength;
+  confidenceReason: string;
+  automationDisposition: AutomationDisposition;
+  automationReason: string;
 }
 
 export type CoreKind = "preference" | "memory" | "procedure" | "skill";

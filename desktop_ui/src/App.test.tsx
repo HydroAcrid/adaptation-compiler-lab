@@ -13,11 +13,28 @@ describe("Temper prototype", () => {
     expect(
       screen.getByRole("heading", { name: "Temper is active in Kairn." }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/One suggestion needs your review/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Not active")).toBeInTheDocument();
+    expect(screen.getByText(/3 suggestions are ready/i)).toBeInTheDocument();
+    expect(screen.getByText("Automatic option available")).toBeInTheDocument();
     expect(screen.queryByText(/sha256/i)).not.toBeInTheDocument();
+  });
+
+  it("ranks several suggestions without turning Today into a bulk-review dashboard", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    expect(screen.getByText("3 ready")).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Strong evidence").length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("Developing evidence")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", {
+        name: /when notes and the repository disagree/i,
+      }),
+    );
+    expect(
+      screen.getByRole("dialog", { name: /when notes and the repository/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Your review stays required/i)).toBeInTheDocument();
   });
 
   it("keeps navigation state aligned with the visible folio", async () => {
@@ -70,6 +87,10 @@ describe("Temper prototype", () => {
   it("records lightweight usefulness feedback", async () => {
     const user = userEvent.setup();
     render(<App />);
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Current project" }),
+      "Green Meadow",
+    );
     await user.click(screen.getByRole("button", { name: "Helped" }));
     expect(screen.getByText(/Recorded as helped/i)).toBeInTheDocument();
   });
@@ -142,6 +163,23 @@ describe("Temper prototype", () => {
     expect(
       screen.getByRole("button", { name: "Advanced" }),
     ).toBeInTheDocument();
+  });
+
+  it("keeps narrow automatic learning off until the user enables it", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+    const automaticLearning = screen.getByRole("switch", {
+      name: "Automatic low-risk learning",
+    });
+    expect(automaticLearning).not.toBeChecked();
+    expect(
+      screen.getByText(/strong, low-impact project preferences/i),
+    ).toBeInTheDocument();
+    await user.click(automaticLearning);
+    expect(automaticLearning).toBeChecked();
+    await user.click(screen.getByRole("button", { name: "Today" }));
+    expect(screen.getByText("Automatic with 24-hour undo")).toBeInTheDocument();
   });
 
   it("keeps telemetry off and previews the exact bounded report", async () => {

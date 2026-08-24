@@ -12,8 +12,14 @@ import {
 } from "./components/pages";
 import { ReviewDialog } from "./components/ReviewDialog";
 import { Shell } from "./components/Shell";
-import { suggestion } from "./data/demo";
-import type { FeedbackValue, ProjectName, Screen, Theme } from "./types";
+import { suggestions } from "./data/demo";
+import type {
+  FeedbackValue,
+  ProjectName,
+  Screen,
+  Suggestion,
+  Theme,
+} from "./types";
 
 const supportedScreens = new Set<Screen>([
   "onboarding",
@@ -53,8 +59,17 @@ export default function App() {
   const [reviewOpen, setReviewOpen] = useState(firstScreen === "suggestion");
   const [activeProject, setActiveProject] =
     useState<ProjectName>(initialProject);
+  const [suggestionQueue, setSuggestionQueue] =
+    useState<Suggestion[]>(suggestions);
+  const [selectedSuggestionId, setSelectedSuggestionId] = useState(
+    suggestions[0]?.id ?? "",
+  );
+  const [automaticLearning, setAutomaticLearning] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackValue | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const selectedSuggestion =
+    suggestionQueue.find((item) => item.id === selectedSuggestionId) ??
+    suggestionQueue[0];
 
   useEffect(() => {
     const resolved =
@@ -70,7 +85,19 @@ export default function App() {
     setScreen(destination);
     if (destination === "suggestion") setReviewOpen(true);
   }
+
+  function reviewSuggestion(suggestionId: string) {
+    setSelectedSuggestionId(suggestionId);
+    setReviewOpen(true);
+  }
+
   function decide(decision: "keep" | "project" | "ignore") {
+    if (!selectedSuggestion) return;
+    const remaining = suggestionQueue.filter(
+      (item) => item.id !== selectedSuggestion.id,
+    );
+    setSuggestionQueue(remaining);
+    setSelectedSuggestionId(remaining[0]?.id ?? "");
     setReviewOpen(false);
     setScreen(decision === "ignore" ? "today" : "core");
     setToast(
@@ -96,11 +123,14 @@ export default function App() {
       >
         {screen === "today" || screen === "suggestion" || screen === "tray" ? (
           <TodayPage
+            automaticLearning={automaticLearning}
             feedback={feedback}
             onFeedback={setFeedback}
             onOpenCore={() => navigate("core")}
-            onReview={() => setReviewOpen(true)}
+            onReview={reviewSuggestion}
             project={activeProject}
+            selectedSuggestionId={selectedSuggestion?.id ?? null}
+            suggestions={suggestionQueue}
           />
         ) : null}
         {screen === "core" ? <CorePage activeProject={activeProject} /> : null}
@@ -108,21 +138,31 @@ export default function App() {
         {screen === "settings" ? (
           <SettingsPage
             advancedMode={advancedMode}
+            automaticLearning={automaticLearning}
             onAdvancedModeChange={setAdvancedMode}
+            onAutomaticLearningChange={setAutomaticLearning}
             onThemeChange={setTheme}
             theme={theme}
           />
         ) : null}
         {screen === "advanced" ? <AdvancedPage /> : null}
       </Shell>
-      <ReviewDialog
-        onDecision={decide}
-        onOpenChange={setReviewOpen}
-        open={reviewOpen}
-        suggestion={suggestion}
-      />
+      {selectedSuggestion ? (
+        <ReviewDialog
+          onDecision={decide}
+          onOpenChange={setReviewOpen}
+          open={reviewOpen}
+          suggestion={selectedSuggestion}
+        />
+      ) : null}
       {screen === "tray" ? (
-        <TrayPreview onOpen={() => setReviewOpen(true)} />
+        <TrayPreview
+          onOpen={() =>
+            selectedSuggestion
+              ? reviewSuggestion(selectedSuggestion.id)
+              : undefined
+          }
+        />
       ) : null}
       {toast ? (
         <div className="toast" role="status">

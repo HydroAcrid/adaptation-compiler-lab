@@ -713,6 +713,15 @@ undo, and helped/hurt/irrelevant feedback. Only after that gate should an option
 watcher and persistent multi-turn gateway be considered. Existing pre-cutoff tasks and simulated
 dates do not count.
 
+The React acceptance prototype now demonstrates a three-item ranked suggestion queue and a
+separate evidence-strength/automation-disposition contract. Extensive synthetic detector and
+persona results justify this ranked presentation and a future shadow policy, but they do not erase
+the cumulative genuine gate's miss, false-learning decision, or false activation. Automatic
+low-risk learning is therefore visible but off by default and non-mutating. The first proposed
+eligible class is limited to explicit or corroborated, reversible, project-scoped preferences;
+procedures, skills, global rules, conflicts, exceptions, revocations, and sensitive or ambiguous
+material remain manual. See `TEMPER_CONFIDENCE_POLICY.md`.
+
 No Portable Specialty Preset exists yet. Milestone 6B remains the following product milestone and
 is currently architecture documentation only. The sealed external-validation study is not
 required for either milestone and must remain untouched unless separately revived with funding.

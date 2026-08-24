@@ -5,18 +5,64 @@ import type {
   Suggestion,
 } from "../types";
 
-export const suggestion: Suggestion = {
-  id: "suggestion-019f",
-  behavior: "Lead with the purpose before setup steps.",
-  explanation:
-    "You clarified this in two completed Codex tasks. Temper is suggesting a communication preference—not a hard rule.",
-  suggestedScope: "All coding work",
-  projectScope: "Kairn only",
-  sourceCount: 2,
-  authority: "Explicit user correction",
-  capturedAt: "August 24, 2026 at 10:42 AM",
-  digest: "sha256:0f67…c98a",
-};
+export const suggestions: Suggestion[] = [
+  {
+    id: "suggestion-purpose-first",
+    behavior: "Lead with the purpose before setup steps.",
+    explanation:
+      "You gave the same direction in three completed tasks. Temper reads it as a clear communication preference for Kairn.",
+    suggestedScope: "Kairn",
+    projectScope: "Kairn only",
+    sourceCount: 3,
+    authority: "Repeated explicit user corrections",
+    capturedAt: "August 24, 2026 at 10:42 AM",
+    digest: "sha256:0f67…c98a",
+    evidenceStrength: "strong",
+    confidenceReason:
+      "Repeated explicit corrections agree across three completed tasks.",
+    automationDisposition: "eligible",
+    automationReason:
+      "This is a low-impact, reversible preference with a clear project scope.",
+  },
+  {
+    id: "suggestion-live-state",
+    behavior:
+      "When notes and the repository disagree, verify the live repository.",
+    explanation:
+      "Two corrections point to the same verification habit. It is strongly supported, but it would guide a procedure rather than express a simple preference.",
+    suggestedScope: "Kairn",
+    projectScope: "Kairn only",
+    sourceCount: 2,
+    authority: "Repeated explicit user corrections",
+    capturedAt: "August 24, 2026 at 11:18 AM",
+    digest: "sha256:23aa…5f10",
+    evidenceStrength: "strong",
+    confidenceReason:
+      "Two explicit corrections agree and the intended project is clear.",
+    automationDisposition: "review-required",
+    automationReason:
+      "Procedures can materially change how an agent works, so review remains required.",
+  },
+  {
+    id: "suggestion-real-names",
+    behavior:
+      "Prefer names that represent real things over generic techy names.",
+    explanation:
+      "You stated this directly once. Temper can preserve it now if you want, or wait for another ordinary-work example.",
+    suggestedScope: "All projects",
+    projectScope: "All projects",
+    sourceCount: 1,
+    authority: "Direct user preference",
+    capturedAt: "August 24, 2026 at 12:03 PM",
+    digest: "sha256:54d1…0b9e",
+    evidenceStrength: "developing",
+    confidenceReason:
+      "The wording is explicit, but Temper has seen it in only one context.",
+    automationDisposition: "collect-more",
+    automationReason:
+      "A global preference needs either your decision or another supporting example.",
+  },
+];
 
 export const coreItems: CoreItem[] = [
   {
