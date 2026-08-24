@@ -30,7 +30,8 @@ contains:
 - system, light, and dark theme behavior; and
 - a Quiet Folio visual language that replaces the conventional sidebar, card grid, green success
   banner, icon tiles, and status pills on the defining Today, review, and Adaptations surfaces with
-  an editorial index, governed clauses, marginalia, maker marks, and a compact projection register;
+  restrained editorial typography, one current statement, a focused suggestion, plain
+  scope/source/status context, and readable approved adaptations;
 - self-hosted Newsreader and Instrument Sans variable typefaces under the SIL Open Font License;
 - a professionally drawn CC0 antique acanthus corner, cropped as asymmetric edge growth, that
   gives dark mode a restrained old-world identity without a runtime network or commercial-asset
@@ -48,6 +49,12 @@ sanitized digests plus a CC0 notice, marked `aria-hidden`, accepts no input, rem
 content, and is deliberately quieter in light mode. The ornamental vocabulary informs page
 structure rather than surrounding cards. Third-party marketplace artwork may be used as mood
 reference but is never copied, fetched, or required at runtime.
+
+Everyday presentation is product-first, not governance-first. Persistent encryption badges,
+numeric navigation, proposal identifiers, maker stamps, and the full runtime projection register
+were removed after owner review because they looked like research-instrument metadata. Encryption,
+digests, lineage, and exact delivery receipts remain available in Settings or Advanced when they
+answer a real user question.
 
 ## Locked product behavior
 

@@ -2,11 +2,13 @@
 
 These images are deterministic Playwright baselines rendered from synthetic, raw-free data. They
 are the visual approval gate before the React surface is connected to the governed Python engine.
-The defining surfaces use the **Quiet Folio** direction: a thin editorial index, one continuous
-page, behavioral clauses, marginal annotations, maker marks, and a compact projection register.
-Newsreader and Instrument Sans replace the stock dashboard typography. A professionally drawn CC0
-antique acanthus corner grows asymmetrically from an outer edge instead of framing conventional
-cards. Exact asset provenance, font licenses, and sanitized vector digests are recorded in
+The defining surfaces use the **Quiet Folio** direction: restrained editorial typography, one
+continuous page, one current statement, a focused suggestion, plain scope/source/status context,
+and readable approved adaptations. Persistent security badges, numbered navigation, proposal IDs,
+maker stamps, and the full runtime projection register are intentionally absent from the everyday
+surface. A professionally drawn CC0 antique acanthus corner grows asymmetrically from an outer edge
+instead of framing conventional cards. Exact asset provenance, font licenses, and sanitized vector
+digests are recorded in
 [third-party notices](../THIRD_PARTY_NOTICES.md).
 
 ## Everyday Today surface

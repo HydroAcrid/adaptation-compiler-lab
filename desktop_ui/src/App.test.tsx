@@ -14,9 +14,9 @@ describe("Temper prototype", () => {
       screen.getByRole("heading", { name: "Temper is active in Kairn." }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/One new preference is waiting for your judgment/i),
+      screen.getByText(/One suggestion needs your review/i),
     ).toBeInTheDocument();
-    expect(screen.getByText("Not delivered")).toBeInTheDocument();
+    expect(screen.getByText("Not active")).toBeInTheDocument();
     expect(screen.queryByText(/sha256/i)).not.toBeInTheDocument();
   });
 

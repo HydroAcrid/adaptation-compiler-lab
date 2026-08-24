@@ -5,10 +5,10 @@ import { BotanicalFlourish } from "./BotanicalFlourish";
 import { BrandMark } from "./BrandMark";
 
 const primaryNavigation = [
-  { id: "today" as const, label: "Today", index: "01" },
-  { id: "adaptations" as const, label: "Adaptations", index: "02" },
-  { id: "connections" as const, label: "Connections", index: "03" },
-  { id: "settings" as const, label: "Settings", index: "04" },
+  { id: "today" as const, label: "Today" },
+  { id: "adaptations" as const, label: "Adaptations" },
+  { id: "connections" as const, label: "Connections" },
+  { id: "settings" as const, label: "Settings" },
 ];
 
 export function Shell({
@@ -49,9 +49,6 @@ export function Shell({
                   onClick={() => onNavigate(item.id)}
                   type="button"
                 >
-                  <span aria-hidden="true" className="folio-index-number">
-                    {item.index}
-                  </span>
                   <span>{item.label}</span>
                 </button>
               );
@@ -63,9 +60,6 @@ export function Shell({
                 onClick={() => onNavigate("advanced")}
                 type="button"
               >
-                <span aria-hidden="true" className="folio-index-number">
-                  05
-                </span>
                 <span>Advanced</span>
               </button>
             ) : null}
@@ -74,17 +68,6 @@ export function Shell({
             <span>Kairn</span>
             <span aria-hidden="true">→</span>
             <strong>Codex</strong>
-          </div>
-          <div
-            className="local-seal"
-            title="Local profile, encrypted on this Mac"
-          >
-            <span aria-hidden="true" />
-            <span>
-              Local
-              <br />
-              encrypted
-            </span>
           </div>
         </header>
         <main className="main-content">

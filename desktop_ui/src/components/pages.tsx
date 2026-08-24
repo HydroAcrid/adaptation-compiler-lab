@@ -1,6 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import {
-  Activity,
   ArrowRight,
   Bell,
   Bot,
@@ -12,7 +11,6 @@ import {
   FileDiff,
   Info,
   Laptop,
-  LockKeyhole,
   Moon,
   MoreHorizontal,
   Pause,
@@ -52,24 +50,12 @@ export function TodayPage({
         </button>
       </header>
       <section className="folio-statement" aria-labelledby="today-heading">
-        <span className="folio-kicker">Current state · Kairn</span>
         <div className="folio-statement__line">
           <h1 id="today-heading">Temper is active in Kairn.</h1>
-          <div
-            className="maker-status"
-            aria-label="One approved behavior active"
-          >
-            <span aria-hidden="true">T</span>
-            <span>
-              1 behavior
-              <br />
-              in scope
-            </span>
-          </div>
         </div>
         <p>
-          Your approved way of working is ready for the next relevant Codex
-          task. One new preference is waiting for your judgment.
+          One approved adaptation is ready when it is relevant. One suggestion
+          needs your review.
         </p>
       </section>
       <div className="folio-divider" aria-hidden="true">
@@ -77,7 +63,7 @@ export function TodayPage({
       </div>
       <section className="folio-workbench" aria-label="Current thought">
         <article className="folio-proposal">
-          <span className="folio-kicker">Possible adaptation · 01</span>
+          <span className="folio-kicker">Suggestion</span>
           <h2>A preference may be taking shape.</h2>
           <blockquote>“Lead with the purpose before setup steps.”</blockquote>
           <p>
@@ -95,16 +81,16 @@ export function TodayPage({
         <aside className="folio-margin" aria-label="Suggestion notes">
           <dl className="margin-register">
             <div>
-              <dt>01 · Scope</dt>
-              <dd>Suggested: all coding work</dd>
+              <dt>Suggested scope</dt>
+              <dd>All coding work</dd>
             </div>
             <div>
-              <dt>02 · Source</dt>
+              <dt>Based on</dt>
               <dd>Two approved corrections</dd>
             </div>
             <div>
-              <dt>03 · Delivery</dt>
-              <dd>Not delivered</dd>
+              <dt>Status</dt>
+              <dd>Not active</dd>
             </div>
           </dl>
           <div className="margin-feedback">
@@ -134,23 +120,6 @@ export function TodayPage({
           </div>
         </aside>
       </section>
-      <footer className="projection-register" aria-label="Current projection">
-        <span>
-          <b>Personal</b> 1
-        </span>
-        <span>
-          <b>Project</b> Kairn
-        </span>
-        <span>
-          <b>Preset</b> none
-        </span>
-        <span className="projection-register__target">
-          <b>Destination</b> Codex
-        </span>
-        <button className="projection-refresh" type="button">
-          <Activity aria-hidden="true" size={14} /> Checked 4 min ago
-        </button>
-      </footer>
     </div>
   );
 }
@@ -164,9 +133,10 @@ export function AdaptationsPage() {
     <div className="page folio-page folio-page--adaptations">
       <header className="folio-page-heading">
         <div>
-          <span className="folio-kicker">Behavior folio · 02</span>
           <h1>Adaptations</h1>
-          <p>The approved clauses Temper can carry into relevant work.</p>
+          <p>
+            The approved ways of working Temper can use when they are relevant.
+          </p>
         </div>
         <Button icon={<Plus size={16} />} tone="quiet">
           Add manually
@@ -181,35 +151,24 @@ export function AdaptationsPage() {
         </div>
       ) : null}
       <AdaptationGroup
-        index="01"
         label="Everywhere"
         items={global}
         onRevoke={(id) => setRevoked((items) => [...items, id])}
       />
       <AdaptationGroup
-        index="02"
         label="Kairn only"
         items={project}
         onRevoke={(id) => setRevoked((items) => [...items, id])}
       />
-      <footer className="folio-footnote">
-        <LockKeyhole aria-hidden="true" size={15} />
-        <span>
-          Source conversations remain encrypted locally. This folio contains
-          only approved behavioral clauses and raw-free lineage summaries.
-        </span>
-      </footer>
     </div>
   );
 }
 
 function AdaptationGroup({
-  index,
   label,
   items,
   onRevoke,
 }: {
-  index: string;
   label: string;
   items: typeof adaptations;
   onRevoke: (id: string) => void;
@@ -218,28 +177,18 @@ function AdaptationGroup({
   return (
     <section className="adaptation-chapter">
       <header className="adaptation-chapter__heading">
-        <span>{index} · Scope</span>
         <h2>{label}</h2>
         <p>
-          {items.length} approved {items.length === 1 ? "clause" : "clauses"}
+          {items.length} {items.length === 1 ? "adaptation" : "adaptations"}
         </p>
       </header>
-      <ol className="clause-list">
-        {items.map((item, itemIndex) => (
+      <ul className="clause-list">
+        {items.map((item) => (
           <li key={item.id}>
             <article className="behavior-clause">
-              <span className="clause-number" aria-hidden="true">
-                {index}.{itemIndex + 1}
-              </span>
               <div className="clause-copy">
                 <strong>{item.behavior}</strong>
-                <span>
-                  <sup>{itemIndex + 1}</sup> {item.sourceSummary}
-                </span>
-              </div>
-              <div className="clause-approval">
-                <span aria-hidden="true">T</span>
-                Approved
+                <span>{item.sourceSummary}</span>
               </div>
               <button
                 className="revoke-link"
@@ -251,7 +200,7 @@ function AdaptationGroup({
             </article>
           </li>
         ))}
-      </ol>
+      </ul>
     </section>
   );
 }

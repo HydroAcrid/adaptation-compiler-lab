@@ -1809,7 +1809,7 @@ p {
   display: grid;
   min-width: 0;
   align-items: center;
-  grid-template-columns: 165px minmax(340px, 1fr) auto auto;
+  grid-template-columns: 165px minmax(340px, 1fr) auto;
   gap: 24px;
   padding: 0 34px;
   border-bottom: 1px solid var(--folio-rule);
@@ -2030,7 +2030,7 @@ p {
 .folio-statement__line {
   display: grid;
   align-items: end;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 38px;
   margin-top: 8px;
 }
@@ -2346,7 +2346,7 @@ p {
 }
 
 .adaptation-chapter__heading h2 {
-  margin-top: 8px;
+  margin-top: 0;
   font-family: "Newsreader Variable", Newsreader, Georgia, serif;
   font-size: 22px;
   font-weight: 480;
@@ -2373,7 +2373,7 @@ p {
   display: grid;
   min-height: 91px;
   align-items: center;
-  grid-template-columns: 42px minmax(0, 1fr) 78px 57px;
+  grid-template-columns: minmax(0, 1fr) 70px;
   gap: 13px;
   padding: 14px 0;
 }
@@ -2738,13 +2738,13 @@ p {
   }
 
   .behavior-clause {
-    grid-template-columns: 34px minmax(0, 1fr) 58px;
+    grid-template-columns: minmax(0, 1fr) 62px;
   }
 
   .behavior-clause .revoke-link {
     grid-column: 2;
-    justify-self: start;
-    margin-top: -13px;
+    justify-self: end;
+    margin-top: 0;
   }
 
   .folio-footnote,
@@ -2800,9 +2800,9 @@ p {
   }
 
   .adaptation-chapter__heading {
-    display: grid;
+    display: flex;
     align-items: end;
-    grid-template-columns: auto 1fr auto;
+    justify-content: space-between;
     gap: 10px;
   }
 
@@ -2889,7 +2889,7 @@ p {
   }
 
   .behavior-clause {
-    grid-template-columns: 30px minmax(0, 1fr) 50px;
+    grid-template-columns: minmax(0, 1fr) 54px;
   }
 
   .clause-approval {

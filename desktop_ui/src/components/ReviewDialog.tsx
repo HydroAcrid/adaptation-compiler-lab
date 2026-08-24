@@ -32,22 +32,18 @@ export function ReviewDialog({
           >
             <X size={18} />
           </Dialog.Close>
-          <header className="review-sheet__register">
-            <span>Temper folio</span>
-            <span>Proposal · 01</span>
-          </header>
-          <span className="folio-kicker">A preference may be taking shape</span>
+          <span className="folio-kicker">Suggestion</span>
           <Dialog.Title>“{suggestion.behavior}”</Dialog.Title>
           <Dialog.Description id="review-description">
             {suggestion.explanation}
           </Dialog.Description>
           <div className="review-annotations">
             <div>
-              <span>01 · Suggested scope</span>
+              <span>Suggested scope</span>
               <strong>{suggestion.suggestedScope}</strong>
             </div>
             <div>
-              <span>02 · Support</span>
+              <span>Based on</span>
               <strong>{suggestion.sourceCount} approved corrections</strong>
             </div>
           </div>
