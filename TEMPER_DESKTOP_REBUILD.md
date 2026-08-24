@@ -87,6 +87,8 @@ answer a real user question.
 - Raw evidence never crosses the presentation boundary.
 - Telemetry is independent, unchecked, raw-free, previewable, and deletable.
 - Agent capability labels must distinguish observation, managed delivery, and ambient delivery.
+- A suggestion decision may preserve its displayed scope or narrow it to the current project; it
+  may never silently widen scope. Core editing follows the same monotonic narrowing rule.
 
 ## Next implementation slice after acceptance
 
@@ -112,6 +114,7 @@ pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm test:compat
 pnpm build
 pnpm test:visual
 ```
@@ -119,3 +122,5 @@ pnpm test:visual
 Repository-wide Python, portal, build, schema, migration, and safety checks remain required before
 the prototype branch can merge. Passing the prototype gate is design and frontend-instrument
 evidence only; it is not a signed Tauri alpha and does not advance the longitudinal product gate.
+See [`TEMPER_ALPHA_READINESS_AUDIT.md`](TEMPER_ALPHA_READINESS_AUDIT.md) for the external-user
+admission decision and remaining product/platform blockers.

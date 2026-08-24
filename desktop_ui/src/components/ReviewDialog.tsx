@@ -3,19 +3,21 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Check, ChevronDown, Folder, X } from "lucide-react";
 import { useState } from "react";
 
-import type { Suggestion } from "../types";
+import type { ProjectName, Suggestion, SuggestionDecision } from "../types";
 import { Button } from "./ui";
 
 export function ReviewDialog({
   suggestion,
+  activeProject,
   open,
   onOpenChange,
   onDecision,
 }: {
   suggestion: Suggestion;
+  activeProject: ProjectName;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onDecision: (decision: "keep" | "project" | "ignore") => void;
+  onDecision: (decision: SuggestionDecision) => void;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const evidenceLabel = {
@@ -29,6 +31,9 @@ export function ReviewDialog({
       : suggestion.automationDisposition === "review-required"
         ? "Your review stays required because this adaptation could materially guide how an agent works."
         : "Temper will keep gathering support unless you choose to keep this now.";
+  const suggestedScopeIsCurrentProject =
+    suggestion.suggestedScope === activeProject ||
+    suggestion.projectScope === `${activeProject} only`;
   return (
     <Dialog.Root onOpenChange={onOpenChange} open={open}>
       <Dialog.Portal>
@@ -69,19 +74,21 @@ export function ReviewDialog({
             <Button
               className="review-action--primary"
               icon={<Check aria-hidden="true" size={17} />}
-              onClick={() => onDecision("keep")}
+              onClick={() => onDecision("suggested")}
               tone="primary"
             >
-              Keep
+              Keep as suggested
             </Button>
-            <Button
-              className="review-action--scope"
-              icon={<Folder aria-hidden="true" size={17} />}
-              onClick={() => onDecision("project")}
-              tone="quiet"
-            >
-              Only in Kairn
-            </Button>
+            {suggestedScopeIsCurrentProject ? null : (
+              <Button
+                className="review-action--scope"
+                icon={<Folder aria-hidden="true" size={17} />}
+                onClick={() => onDecision("project")}
+                tone="quiet"
+              >
+                Only in {activeProject}
+              </Button>
+            )}
             <Button
               className="review-action--ignore"
               onClick={() => onDecision("ignore")}

@@ -10,12 +10,20 @@ pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm test:compat
 pnpm test:visual
 ```
 
 Deterministic product states are selected with `?screen=<name>&theme=<light|dark>`. Supported
 screens are `onboarding`, `today`, `suggestion`, `adaptations`, `connections`, `settings`,
 `advanced`, and `tray`.
+
+`test:compat` exercises the everyday surfaces at the supported 720×540 minimum in Chromium as a
+practical Windows WebView2 proxy. It verifies accessibility, horizontal overflow, console
+cleanliness, local-only asset loading, and scope-preserving review and Core-edit behavior.
+`test:compat:webkit` runs the same checks through Playwright WebKit when its host libraries are
+available. Native Tauri compatibility still requires the later Windows and macOS builds plus
+clean-machine tests.
 
 The Qt interface remains the internal diagnostic application until the React/Tauri surface has
 passed the later engine-parity gate.

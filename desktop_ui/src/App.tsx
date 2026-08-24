@@ -18,6 +18,7 @@ import type {
   ProjectName,
   Screen,
   Suggestion,
+  SuggestionDecision,
   Theme,
 } from "./types";
 
@@ -72,13 +73,21 @@ export default function App() {
     suggestionQueue[0];
 
   useEffect(() => {
-    const resolved =
-      theme === "system"
-        ? window.matchMedia("(prefers-color-scheme: dark)").matches
-          ? "dark"
-          : "light"
-        : theme;
-    document.documentElement.dataset.theme = resolved;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+
+    function applyTheme() {
+      const resolved =
+        theme === "system" ? (media.matches ? "dark" : "light") : theme;
+      document.documentElement.dataset.theme = resolved;
+      document
+        .querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+        ?.setAttribute("content", resolved === "dark" ? "#161412" : "#f5f1ea");
+    }
+
+    applyTheme();
+    if (theme !== "system") return;
+    media.addEventListener("change", applyTheme);
+    return () => media.removeEventListener("change", applyTheme);
   }, [theme]);
 
   function navigate(destination: Screen) {
@@ -91,7 +100,7 @@ export default function App() {
     setReviewOpen(true);
   }
 
-  function decide(decision: "keep" | "project" | "ignore") {
+  function decide(decision: SuggestionDecision) {
     if (!selectedSuggestion) return;
     const remaining = suggestionQueue.filter(
       (item) => item.id !== selectedSuggestion.id,
@@ -100,11 +109,14 @@ export default function App() {
     setSelectedSuggestionId(remaining[0]?.id ?? "");
     setReviewOpen(false);
     setScreen(decision === "ignore" ? "today" : "core");
+    const suggestedScope = selectedSuggestion.suggestedScope;
     setToast(
-      decision === "keep"
-        ? "Adaptation kept for all coding work."
+      decision === "suggested"
+        ? suggestedScope === "All projects"
+          ? "Adaptation kept for all projects."
+          : `Adaptation kept for ${suggestedScope}.`
         : decision === "project"
-          ? "Adaptation kept for Kairn only."
+          ? `Adaptation kept for ${activeProject} only.`
           : "Suggestion ignored. Nothing changed.",
     );
   }
@@ -149,6 +161,7 @@ export default function App() {
       </Shell>
       {selectedSuggestion ? (
         <ReviewDialog
+          activeProject={activeProject}
           onDecision={decide}
           onOpenChange={setReviewOpen}
           open={reviewOpen}

@@ -13,12 +13,22 @@ explicit Codex and Claude capability language, telemetry preview, tray/notificat
 mode, compact window behavior, and a hidden Advanced task lab. Core edits remain synthetic
 in-memory prototype behavior until the typed engine protocol is wired.
 
-Frontend formatting, ESLint, strict TypeScript, 13 component and asset tests, production build, and
-26 Playwright visual-plus-axe scenes pass. The next slice remains the Tauri shell and a read-only
-versioned sidecar handshake before any governed mutation is exposed. Qt remains the internal
-diagnostic application and no release claim, native installer, Claude hook, or external-study
-action has occurred. See
-[`TEMPER_DESKTOP_REBUILD.md`](TEMPER_DESKTOP_REBUILD.md).
+Frontend formatting, ESLint, strict TypeScript, 20 component and asset tests, production build, and
+28 Playwright visual-plus-axe scenes pass. A new 720×540 compatibility gate passes eight
+Windows/WebView2-proxy checks and repaired scope widening, blank Core edits, minimum-window dark
+contrast, and one-shot system-theme behavior. The configured WebKit proxy cannot launch on this
+WSL host without administrator-installed system libraries, so native macOS validation remains
+open. The next slice remains the Tauri shell and a read-only versioned sidecar handshake before any
+governed mutation is exposed. Qt remains the internal diagnostic application and no release claim,
+native installer, Claude hook, or external-study action has occurred. See
+[`TEMPER_DESKTOP_REBUILD.md`](TEMPER_DESKTOP_REBUILD.md) and
+[`TEMPER_ALPHA_READINESS_AUDIT.md`](TEMPER_ALPHA_READINESS_AUDIT.md).
+
+The same audit found seven high-severity production advisories in the separate invitation portal.
+The portal now pins Next.js and its matching ESLint configuration to 16.2.11, overrides Sharp to
+0.35.0 and PostCSS to 8.5.23, declares the exact Turbopack root, and rebuilds with zero known
+production vulnerabilities. This repairs the dependency tree; it does not make invitation
+enrollment or telemetry upload operational.
 
 Repository-wide Ruff, strict mypy over 365 source files, source/wheel builds, and the serial Python
 suite also pass: 999 tests with two expected platform skips. One verification invocation omitted

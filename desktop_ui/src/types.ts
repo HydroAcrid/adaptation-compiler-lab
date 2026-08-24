@@ -14,6 +14,7 @@ export type ProjectName = "Kairn" | "Green Meadow";
 export type EvidenceStrength = "strong" | "promising" | "developing";
 export type AutomationDisposition =
   "eligible" | "review-required" | "collect-more";
+export type SuggestionDecision = "suggested" | "project" | "ignore";
 
 export interface Suggestion {
   id: string;

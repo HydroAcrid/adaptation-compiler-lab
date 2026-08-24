@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import App from "./App";
@@ -64,21 +64,38 @@ describe("Temper prototype", () => {
     expect(
       screen.getByRole("dialog", { name: /lead with the purpose/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Keep" })).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Only in Kairn" }),
+      screen.getByRole("button", { name: "Keep as suggested" }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Only in Kairn" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ignore" })).toBeInTheDocument();
   });
 
-  it("supports a project-only decision and presents a reversible result", async () => {
+  it("keeps the suggested project scope without widening it", async () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(
       screen.getByRole("button", { name: /review suggestion/i }),
     );
-    await user.click(screen.getByRole("button", { name: "Only in Kairn" }));
+    await user.click(screen.getByRole("button", { name: "Keep as suggested" }));
     expect(screen.getByRole("heading", { name: "Core" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Adaptation kept for Kairn",
+    );
+    expect(screen.getByRole("status")).not.toHaveTextContent("all projects");
+  });
+
+  it("offers project-only narrowing for a global suggestion", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(
+      screen.getByRole("button", {
+        name: /prefer names that represent real things/i,
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "Only in Kairn" }));
     expect(screen.getByRole("status")).toHaveTextContent(
       "Adaptation kept for Kairn only",
     );
@@ -152,6 +169,31 @@ describe("Temper prototype", () => {
     ).toBeInTheDocument();
   });
 
+  it("never offers scope widening for project-only Core items", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState({}, "", "/?screen=core");
+    render(<App />);
+    const kairnItem = screen
+      .getByText("Kairn notes can lag")
+      .closest("article");
+    expect(kairnItem).not.toBeNull();
+    await user.click(
+      within(kairnItem as HTMLElement).getByRole("button", { name: "Edit" }),
+    );
+    const scope = screen.getByRole("combobox", { name: "Use in" });
+    expect(within(scope).getAllByRole("option")).toHaveLength(1);
+    expect(within(scope).getByRole("option", { name: "Kairn" })).toBeVisible();
+  });
+
+  it("blocks empty Core wording", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState({}, "", "/?screen=core");
+    render(<App />);
+    await user.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+    await user.clear(screen.getByRole("textbox", { name: "Name" }));
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  });
+
   it("shows advanced navigation only after explicit opt-in", async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -180,6 +222,22 @@ describe("Temper prototype", () => {
     expect(automaticLearning).toBeChecked();
     await user.click(screen.getByRole("button", { name: "Today" }));
     expect(screen.getByText("Automatic with 24-hour undo")).toBeInTheDocument();
+  });
+
+  it("keeps the document theme and native window color aligned", async () => {
+    const user = userEvent.setup();
+    const themeColor = document.createElement("meta");
+    themeColor.name = "theme-color";
+    document.head.append(themeColor);
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+    await user.click(screen.getByRole("button", { name: "Dark" }));
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(document.querySelector('meta[name="theme-color"]')).toHaveAttribute(
+      "content",
+      "#161412",
+    );
+    themeColor.remove();
   });
 
   it("keeps telemetry off and previews the exact bounded report", async () => {
@@ -211,5 +269,29 @@ describe("Temper prototype", () => {
       screen.getByText(/Nothing becomes durable until you approve it/i),
     ).toBeInTheDocument();
     expect(screen.queryByText(/create account/i)).not.toBeInTheDocument();
+  });
+
+  it("completes every onboarding step with telemetry still off", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState({}, "", "/?screen=onboarding");
+    render(<App />);
+    for (const heading of [
+      "Local by design.",
+      "Connect your coding agents.",
+      "Choose where Temper is active.",
+      "Temper is ready.",
+    ]) {
+      await user.click(screen.getByRole("button", { name: "Continue" }));
+      expect(
+        screen.getByRole("heading", { name: heading }),
+      ).toBeInTheDocument();
+    }
+    expect(
+      screen.getByRole("switch", { name: "Help improve Temper" }),
+    ).not.toBeChecked();
+    await user.click(screen.getByRole("button", { name: "Open Temper" }));
+    expect(
+      screen.getByRole("heading", { name: "Temper is active in Kairn." }),
+    ).toBeInTheDocument();
   });
 });

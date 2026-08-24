@@ -17,6 +17,10 @@ async function openScene(page: Page, screen: string, theme: "light" | "dark") {
   await page.goto(`/?screen=${screen}&theme=${theme}`);
   await page.locator("body").waitFor({ state: "visible" });
   await page.evaluate(() => document.fonts.ready);
+  if (screen === "suggestion") {
+    await page.getByRole("dialog").waitFor({ state: "visible" });
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
 }
 
 for (const theme of ["light", "dark"] as const) {

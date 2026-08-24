@@ -477,6 +477,11 @@ function CoreItemDialog({
   const [title, setTitle] = useState(item.title);
   const [description, setDescription] = useState(item.description);
   const [scope, setScope] = useState<CoreItem["scope"]>(item.scope);
+  const allowedScopes: CoreItem["scope"][] =
+    item.scope === "Everywhere"
+      ? ["Everywhere", "Kairn", "Green Meadow"]
+      : [item.scope];
+  const canSave = Boolean(title.trim() && description.trim());
   return (
     <Dialog.Root onOpenChange={(open) => (open ? undefined : onClose())} open>
       <Dialog.Portal>
@@ -494,6 +499,7 @@ function CoreItemDialog({
             <span>Name</span>
             <input
               onChange={(event) => setTitle(event.target.value)}
+              required
               value={title}
             />
           </label>
@@ -501,6 +507,7 @@ function CoreItemDialog({
             <span>What it means</span>
             <textarea
               onChange={(event) => setDescription(event.target.value)}
+              required
               rows={3}
               value={description}
             />
@@ -513,9 +520,11 @@ function CoreItemDialog({
               }
               value={scope}
             >
-              <option value="Everywhere">Everywhere</option>
-              <option value="Kairn">Kairn</option>
-              <option value="Green Meadow">Green Meadow</option>
+              {allowedScopes.map((allowedScope) => (
+                <option key={allowedScope} value={allowedScope}>
+                  {allowedScope}
+                </option>
+              ))}
             </select>
           </label>
           <div className="core-source-note">
@@ -527,7 +536,15 @@ function CoreItemDialog({
               Cancel
             </Button>
             <Button
-              onClick={() => onSave({ ...item, title, description, scope })}
+              disabled={!canSave}
+              onClick={() =>
+                onSave({
+                  ...item,
+                  title: title.trim(),
+                  description: description.trim(),
+                  scope,
+                })
+              }
               tone="primary"
             >
               Save changes
