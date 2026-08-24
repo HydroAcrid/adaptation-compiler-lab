@@ -12,6 +12,11 @@ to connect shared preferences, memories, procedures, skills, and project-specifi
 asset provenance, font licenses, and sanitized vector digests are recorded in
 [third-party notices](../THIRD_PARTY_NOTICES.md).
 
+The Temper wordmark now uses NicholasJudy567's CC0 _Wind_ silhouette as its copper icon. The same
+local vector appears in the masthead, onboarding, and tray; theme color is applied through a CSS
+mask rather than baked into the source artwork. A close-cropped light/dark regression protects the
+small identity mark independently of whole-window screenshot thresholds.
+
 ## Everyday Today surface
 
 ![Temper Today, light](../tests/gallery.spec.ts-snapshots/today-1280x800-light-linux.png)

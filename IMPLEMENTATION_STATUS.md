@@ -722,6 +722,12 @@ eligible class is limited to explicit or corroborated, reversible, project-scope
 procedures, skills, global rules, conflicts, exceptions, revocations, and sensitive or ambiguous
 material remain manual. See `TEMPER_CONFIDENCE_POLICY.md`.
 
+The React identity prototype also replaces the rejected italic `T` monogram with a locally bundled
+CC0 _Wind_ silhouette from Openclipart. The exact sanitized vector is digest-bound, contains no
+active or external SVG content, and is recolored through the existing copper accent token. A
+targeted brand snapshot now complements the full-window gallery so small identity regressions
+cannot hide below the sparse-interface whole-image threshold.
+
 No Portable Specialty Preset exists yet. Milestone 6B remains the following product milestone and
 is currently architecture documentation only. The sealed external-validation study is not
 required for either milestone and must remain untouched unless separately revived with funding.

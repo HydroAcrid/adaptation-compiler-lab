@@ -11,6 +11,21 @@ Temper self-hosts both fonts at build time. No runtime font request is made.
   [`@fontsource-variable/instrument-sans`](https://fontsource.org/fonts/instrument-sans) under the
   [SIL Open Font License 1.1](https://openfontlicense.org/open-font-license-official-text/).
 
+## Temper wind mark
+
+- Bundled file: `public/assets/brand/temper-wind.svg`
+- Work: _Wind_
+- Artist: NicholasJudy567
+- Source: [Openclipart](https://openclipart.org/detail/327796)
+- License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
+- Uploaded by the artist: 2021-02-04
+- Retrieved: 2026-08-24
+- Upstream SHA-256: `3713e78f807bc60987b3f44319302ce5f6d6a31e1111ee1e2883acf5f0e15722`
+- Vendored SHA-256: `5447a3d08ed9a9b49c11fbd16d07f863aaab88a55b722b5597ab61af90086ec6`
+- Modifications: removed the XML declaration, physical dimensions, editor IDs, and presentation
+  attributes while retaining the original view box, group transform, and complete vector path.
+  Temper renders it as a CSS mask so the mark inherits the copper accent in every theme.
+
 ## Antique corner ornament
 
 - Bundled file: `public/assets/ornaments/antique-acanthus-corner.svg`

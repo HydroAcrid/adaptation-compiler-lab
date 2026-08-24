@@ -966,7 +966,7 @@ export function TrayPreview({ onOpen }: { onOpen: () => void }) {
       </aside>
       <aside aria-label="Temper tray menu" className="tray-menu">
         <div className="tray-header">
-          <span className="tray-brand-mark">t</span>
+          <span aria-hidden="true" className="tray-brand-mark" />
           <div>
             <strong>Temper</strong>
             <span>

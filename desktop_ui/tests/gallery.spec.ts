@@ -20,6 +20,14 @@ async function openScene(page: Page, screen: string, theme: "light" | "dark") {
 }
 
 for (const theme of ["light", "dark"] as const) {
+  test(`brand mark ${theme} visual`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await openScene(page, "today", theme);
+    await expect(page.locator(".brand").first()).toHaveScreenshot(
+      `brand-mark-${theme}.png`,
+    );
+  });
+
   test(`today with Green Meadow ${theme} visual`, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.emulateMedia({ reducedMotion: "reduce" });

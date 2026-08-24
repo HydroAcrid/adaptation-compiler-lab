@@ -190,29 +190,12 @@ p {
   padding: 0;
 }
 .brand-mark {
-  display: flex;
+  display: block;
   width: 22px;
   height: 23px;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 2px;
-}
-.brand-mark span {
-  width: 4px;
-  border-radius: 3px;
   background: var(--accent);
-  transform-origin: bottom;
-}
-.brand-mark span:nth-child(1) {
-  height: 11px;
-  transform: rotate(-10deg);
-}
-.brand-mark span:nth-child(2) {
-  height: 21px;
-}
-.brand-mark span:nth-child(3) {
-  height: 14px;
-  transform: rotate(9deg);
+  mask: url("/assets/brand/temper-wind.svg") center / contain no-repeat;
+  -webkit-mask: url("/assets/brand/temper-wind.svg") center / contain no-repeat;
 }
 .brand-word {
   font-family: Georgia, "Times New Roman", serif;
@@ -1563,16 +1546,12 @@ p {
   padding: 8px 8px 10px;
 }
 .tray-brand-mark {
-  display: grid;
+  display: block;
   width: 32px;
   height: 32px;
-  place-items: center;
-  border-radius: 9px;
   background: var(--accent);
-  color: var(--accent-contrast);
-  font-family: Georgia, serif;
-  font-size: 18px;
-  font-weight: 700;
+  mask: url("/assets/brand/temper-wind.svg") center / contain no-repeat;
+  -webkit-mask: url("/assets/brand/temper-wind.svg") center / contain no-repeat;
 }
 .tray-header > div {
   display: flex;
@@ -1837,19 +1816,13 @@ p {
 }
 
 .brand-mark {
-  display: grid;
-  width: 30px;
-  height: 34px;
+  display: block;
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
-  place-items: center;
-  border: 1px solid var(--accent);
-  border-radius: 50% 50% 46% 46%;
-  color: var(--accent);
-  font-family: "Newsreader Variable", Newsreader, Georgia, serif;
-  font-size: 22px;
-  font-style: italic;
-  font-weight: 500;
-  line-height: 1;
+  background: var(--accent);
+  mask: url("/assets/brand/temper-wind.svg") center / contain no-repeat;
+  -webkit-mask: url("/assets/brand/temper-wind.svg") center / contain no-repeat;
 }
 
 .brand-copy {
@@ -3144,9 +3117,8 @@ p {
   }
 
   .brand-mark {
-    width: 26px;
-    height: 30px;
-    font-size: 19px;
+    width: 28px;
+    height: 28px;
   }
 
   .brand-word {

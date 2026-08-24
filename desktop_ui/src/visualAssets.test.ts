@@ -6,6 +6,10 @@ import { describe, expect, it } from "vitest";
 
 const assets = [
   {
+    path: join(process.cwd(), "public", "assets", "brand", "temper-wind.svg"),
+    digest: "5447a3d08ed9a9b49c11fbd16d07f863aaab88a55b722b5597ab61af90086ec6",
+  },
+  {
     path: join(
       process.cwd(),
       "public",
@@ -28,7 +32,7 @@ const assets = [
 ];
 
 describe("vendored visual assets", () => {
-  it("keeps the reviewed and sanitized CC0 ornaments byte exact", () => {
+  it("keeps the reviewed and sanitized CC0 vectors byte exact", () => {
     for (const asset of assets) {
       const contents = readFileSync(asset.path);
       expect(createHash("sha256").update(contents).digest("hex")).toBe(

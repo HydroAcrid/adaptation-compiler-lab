@@ -44,13 +44,15 @@ contains:
 - professionally drawn CC0 acanthus and rooted-tree assets, cropped as asymmetric edge growth,
   that give dark mode a restrained old-world identity without a runtime network or
   commercial-asset dependency; and
+- a CC0 wind silhouette rendered as Temper's copper product mark in the masthead, onboarding, and
+  tray instead of a letter monogram; and
 - compact-window behavior down to the proposed 760×560 review size.
 
 The visual package has no engine, filesystem, process, credential, Supabase, Codex, Claude, or
 sealed-study access. Its working edit and project controls mutate synthetic in-memory presentation
 state only. The screenshot suite covers eight product scenes in both themes, both registered
 project contexts, a three-item suggestion queue, Today at compact and wide widths, and compact
-suggestion/Core states. All 26 browser scenes pass their required visual, accessibility, and
+suggestion/Core states. All 28 browser scenes pass their required visual, accessibility, and
 overflow checks. See
 the [visual gallery](desktop_ui/docs/VISUAL_GALLERY.md).
 
