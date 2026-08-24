@@ -2,8 +2,9 @@
 
 These images are deterministic Playwright baselines rendered from synthetic, raw-free data. They
 are the visual approval gate before the React surface is connected to the governed Python engine.
-The dark surfaces include Temper's original copper botanical flourish: a deliberately faint,
-noninteractive identity layer inspired by careful cultivation rather than a licensed stock asset.
+The dark surfaces include a professionally drawn public-domain 1904 Art Nouveau floral headpiece,
+recolored as a deliberately faint, noninteractive copper identity layer. Its exact provenance and
+vendored digest are recorded in [third-party notices](../THIRD_PARTY_NOTICES.md).
 
 ## Everyday Today surface
 

@@ -28,8 +28,8 @@ contains:
 - a hidden Advanced task/diff surface;
 - tray and notification previews;
 - system, light, and dark theme behavior; and
-- an original, noninteractive botanical line motif that gives dark mode a restrained old-world
-  identity without introducing a licensed artwork dependency; and
+- a professionally drawn, public-domain 1904 Art Nouveau botanical headpiece that gives dark mode
+  a restrained old-world identity without a runtime network or commercial-asset dependency; and
 - compact-window behavior down to the proposed 760×560 review size.
 
 The visual package has no engine, filesystem, process, credential, Supabase, Codex, Claude, or
@@ -37,10 +37,10 @@ sealed-study access. It cannot mutate governed state. The screenshot suite cover
 scenes in both themes plus primary compact and wide-window states. All 20 browser scenes pass the
 same axe accessibility audit. See the [visual gallery](desktop_ui/docs/VISUAL_GALLERY.md).
 
-The ornamental layer is presentation only: it is authored for Temper, marked `aria-hidden`, accepts
-no input, remains behind product content, and is deliberately quieter in light mode. Third-party
-marketplace artwork may be used as mood reference but is never copied, bundled, fetched, or required
-at runtime.
+The ornamental layer is presentation only: it is vendored locally with exact provenance and a
+public-domain notice, marked `aria-hidden`, accepts no input, remains behind product content, and is
+deliberately quieter in light mode. Third-party marketplace artwork may be used as mood reference
+but is never copied, fetched, or required at runtime.
 
 ## Locked product behavior
 
