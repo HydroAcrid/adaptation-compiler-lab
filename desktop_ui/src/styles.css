@@ -30,6 +30,8 @@
   --attention: #874a22;
   --attention-soft: #f7e7d7;
   --danger: #a3423d;
+  --ornament: #a64f2d;
+  --ornament-opacity: 0.075;
   --shadow-window:
     0 24px 70px rgb(67 52 37 / 17%), 0 3px 10px rgb(67 52 37 / 8%);
   --shadow-dialog:
@@ -63,6 +65,8 @@
   --attention: #dda06d;
   --attention-soft: #402d20;
   --danger: #e17e76;
+  --ornament: #d98660;
+  --ornament-opacity: 0.24;
   --shadow-window: 0 28px 80px rgb(0 0 0 / 42%), 0 4px 12px rgb(0 0 0 / 34%);
   --shadow-dialog: 0 32px 90px rgb(0 0 0 / 60%), 0 4px 18px rgb(0 0 0 / 44%);
   --focus: 0 0 0 3px rgb(221 130 91 / 25%);
@@ -281,7 +285,30 @@ p {
   overflow: auto;
   background: var(--window);
 }
+.botanical-flourish {
+  position: absolute;
+  z-index: 0;
+  display: block;
+  height: auto;
+  color: var(--ornament);
+  opacity: var(--ornament-opacity);
+  pointer-events: none;
+  user-select: none;
+}
+.botanical-flourish--workspace {
+  top: 14px;
+  right: -48px;
+  width: min(43vw, 390px);
+}
+.botanical-flourish--onboarding {
+  bottom: 35px;
+  left: -105px;
+  width: min(47vw, 380px);
+  transform: rotate(180deg);
+}
 .page {
+  position: relative;
+  z-index: 1;
   width: min(100%, 810px);
   min-height: 100%;
   margin: 0 auto;
@@ -1263,6 +1290,8 @@ p {
 }
 .onboarding-header,
 .onboarding-footer {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1278,6 +1307,8 @@ p {
   font-weight: 650;
 }
 .onboarding-progress {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 3px;
@@ -1290,6 +1321,8 @@ p {
   background: var(--accent) !important;
 }
 .onboarding-content {
+  position: relative;
+  z-index: 1;
   display: grid;
   overflow: auto;
   place-items: center;

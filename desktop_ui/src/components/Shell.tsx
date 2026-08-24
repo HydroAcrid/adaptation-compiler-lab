@@ -9,6 +9,7 @@ import {
 import type { ReactNode } from "react";
 
 import type { Screen } from "../types";
+import { BotanicalFlourish } from "./BotanicalFlourish";
 import { BrandMark } from "./BrandMark";
 
 const primaryNavigation = [
@@ -87,7 +88,10 @@ export function Shell({
             </div>
           </div>
         </aside>
-        <main className="main-content">{children}</main>
+        <main className="main-content">
+          <BotanicalFlourish placement="workspace" />
+          {children}
+        </main>
       </div>
     </div>
   );

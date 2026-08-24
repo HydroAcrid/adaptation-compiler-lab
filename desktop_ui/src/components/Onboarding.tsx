@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
+import { BotanicalFlourish } from "./BotanicalFlourish";
 import { BrandMark } from "./BrandMark";
 import { Button, Toggle } from "./ui";
 
@@ -29,6 +30,7 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
 
   return (
     <div className="onboarding-shell">
+      <BotanicalFlourish placement="onboarding" />
       <header className="onboarding-header">
         <BrandMark />
         <span>

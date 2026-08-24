@@ -2,6 +2,8 @@
 
 These images are deterministic Playwright baselines rendered from synthetic, raw-free data. They
 are the visual approval gate before the React surface is connected to the governed Python engine.
+The dark surfaces include Temper's original copper botanical flourish: a deliberately faint,
+noninteractive identity layer inspired by careful cultivation rather than a licensed stock asset.
 
 ## Everyday Today surface
 
@@ -42,6 +44,7 @@ are the visual approval gate before the React surface is connected to the govern
 ![Temper Today at 760 by 560](../tests/gallery.spec.ts-snapshots/today-760x560-light-linux.png)
 
 Approval should evaluate the calmness of the default surface, hierarchy of the review sheet,
-legibility, product voice, color direction, and whether diagnostic detail is sufficiently hidden.
+legibility, product voice, color direction, whether the botanical detail feels distinctive without
+becoming ornamental noise, and whether diagnostic detail is sufficiently hidden.
 Approval does not authorize a particular implementation of engine IPC or agent hooks; those retain
 their independent security and conformance gates.
