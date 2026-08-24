@@ -1,6 +1,22 @@
 # Implementation Status
 
-Last updated: 2026-08-23
+Last updated: 2026-08-24
+
+## Temper React/Tauri rebuild
+
+The first rebuild phase is implemented and awaiting owner visual acceptance. `desktop_ui/` is a
+standalone React 19/Vite prototype using synthetic raw-free data; it does not call the compiler,
+credentials, agents, Supabase, or sealed-study code. It establishes the custom warm-neutral design
+system, four-destination everyday navigation, focused review sheet, onboarding, explicit Codex and
+Claude capability language, telemetry preview, tray/notification previews, dark mode, compact
+window behavior, and hidden Advanced task lab.
+
+Frontend formatting, ESLint, strict TypeScript, six component tests, production build, and twenty
+Playwright visual-plus-axe scenes pass. The next slice is blocked by the explicit visual gate. Once
+accepted, it will add the Tauri shell and a read-only versioned sidecar handshake before any
+governed mutation is exposed. Qt remains the internal diagnostic application and no release claim,
+native installer, Claude hook, or external-study action has occurred. See
+[`TEMPER_DESKTOP_REBUILD.md`](TEMPER_DESKTOP_REBUILD.md).
 
 ## Desktop private-alpha foundation
 

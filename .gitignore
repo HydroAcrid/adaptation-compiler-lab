@@ -12,6 +12,9 @@ dist/
 htmlcov/
 node_modules/
 .next/
+test-results/
+playwright-report/
+*.tsbuildinfo
 .env
 .env.*
 !.env.example

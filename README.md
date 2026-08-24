@@ -1,5 +1,14 @@
 # adaptation-compiler-lab
 
+Temper's replacement customer desktop is now at its visual acceptance gate. A React 19/Vite
+prototype implements the calm tray-first product direction with Today, Adaptations, Connections,
+Settings, onboarding, focused review, exact telemetry preview, and opt-in Advanced surfaces over
+synthetic raw-free data. Twenty light/dark and multi-window browser scenes pass visual regression
+and axe accessibility checks. It is deliberately not connected to the governed runtime yet; the
+existing Qt application remains the internal diagnostic surface until Tauri reaches parity. See
+[`TEMPER_DESKTOP_REBUILD.md`](TEMPER_DESKTOP_REBUILD.md) and the
+[`React visual gallery`](desktop_ui/docs/VISUAL_GALLERY.md).
+
 The Adaptation Compiler desktop private-alpha foundation is now implemented over the same governed
 runtime as the Temper terminal surface. It provides a progressively disclosed Qt Quick interface,
 exact review/undo/feedback actions, explicit 30-day renewal, and a fresh governed Codex work surface.
