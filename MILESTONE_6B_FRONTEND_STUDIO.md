@@ -34,6 +34,12 @@ The managed task path records a signed raw-free activation and delivery before t
 
 Unit coverage additionally proves exact task/project/target/expiry matching, claim-specific suppression, append-only raw-free receipts, and exact clean deactivation.
 
+The Tauri product route now loads this evaluated catalog from the local engine. In an installed,
+configured desktop it requires an exact registered project and non-empty task, then invokes the
+existing fresh isolated Codex gateway using saved ChatGPT authentication. The browser showcase
+disables execution. A successful run returns changes for explicit review; it never writes directly
+to the canonical project through the Modes sheet.
+
 This establishes that the Mode machinery composes and removes Frontend Studio safely. It does **not** establish that an agent produces better frontend work. That claim requires fresh relevant tasks, neutral controls, automated correctness/accessibility checks, and blinded quality comparison after the product channel is stable.
 
 ## Boundaries

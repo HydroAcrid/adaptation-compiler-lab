@@ -36,6 +36,8 @@ from adaptation_compiler_lab.portability import (
     decrypt_portable_profile,
     encrypt_portable_profile,
     preview_portable_profile,
+    preview_profile_export,
+    read_portable_profile,
     verify_portable_profile,
     write_portable_profile,
 )
@@ -160,6 +162,9 @@ def test_encrypted_profile_round_trip_preserves_signed_lineage_without_authority
     assert restored == package
     assert restored.items[0].grants_source_authority is False
     assert restored.auto_activates_on_import is False
+    assert restored.items[0].scope.project_ids == ()
+    assert restored.items[0].scope.scope_mapping_required is True
+    assert "kairn" not in envelope.model_dump_json().lower()
     assert "Explain purpose" not in envelope.model_dump_json()
 
 
@@ -213,6 +218,14 @@ def test_preview_is_specific_and_import_stages_nothing_active(tmp_path: Path) ->
     assert len(tuple((tmp_path / "imports").glob("*.json"))) == 1
 
 
+def test_export_preview_describes_export_boundary_not_import_state() -> None:
+    preview = preview_profile_export(_package())
+
+    assert preview.activates_nothing is True
+    assert any("Raw conversations" in warning for warning in preview.warnings)
+    assert all("Imported guidance" not in warning for warning in preview.warnings)
+
+
 def test_staging_is_idempotent_but_rejects_changed_preview_digest(tmp_path: Path) -> None:
     envelope = encrypt_portable_profile(_package(), passphrase="correct horse battery staple")
     package = decrypt_portable_profile(envelope, passphrase="correct horse battery staple")
@@ -254,6 +267,19 @@ def test_export_never_overwrites_and_uses_private_permissions(tmp_path: Path) ->
     assert destination.stat().st_mode & 0o777 == 0o600
     with pytest.raises(FileExistsError):
         write_portable_profile(envelope, destination)
+    assert read_portable_profile(destination) == envelope
+
+
+def test_profile_reader_rejects_wrong_extension_and_unbounded_file(tmp_path: Path) -> None:
+    wrong = tmp_path / "profile.json"
+    wrong.write_text("{}", encoding="utf-8")
+    with pytest.raises(ProfilePortabilityError, match="extension"):
+        read_portable_profile(wrong)
+
+    oversized = tmp_path / "oversized.temper-profile"
+    oversized.write_bytes(b"x" * (8 * 1024 * 1024 + 1))
+    with pytest.raises(ProfilePortabilityError, match="size"):
+        read_portable_profile(oversized)
 
 
 def test_private_paths_are_rejected_before_export() -> None:

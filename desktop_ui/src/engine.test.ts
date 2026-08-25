@@ -5,8 +5,12 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 
 import {
   ENGINE_PROTOCOL_VERSION,
+  exportProfile,
   isTauriRuntime,
   loadEngineSnapshot,
+  loadModes,
+  loadProfileImportPreview,
+  runModeTask,
 } from "./engine";
 
 describe("Tauri engine boundary", () => {
@@ -120,5 +124,116 @@ describe("Tauri engine boundary", () => {
     await expect(loadEngineSnapshot()).rejects.toThrow(
       "unsafe desktop snapshot",
     );
+  });
+
+  it("keeps native profile paths out of renderer arguments", async () => {
+    invoke.mockResolvedValueOnce({
+      protocol_version: ENGINE_PROTOCOL_VERSION,
+      request_id: "one",
+      ok: true,
+      result: {
+        status: "exported",
+        package_digest: "sha256:" + "a".repeat(64),
+        item_count: 2,
+      },
+      error: null,
+      snapshot_digest: "sha256:" + "b".repeat(64),
+    });
+
+    await exportProfile(
+      {
+        activates_nothing: true,
+        display_name: "Temper Core",
+        export_token: "opaque-token",
+        item_count: 2,
+        items: [],
+        package_digest: "sha256:" + "a".repeat(64),
+        package_id: "temper-core",
+        raw_payloads_exposed: false,
+        scope_mapping_count: 0,
+        source_key_fingerprint: "sha256:" + "c".repeat(64),
+        source_signature_verified: true,
+        warnings: [],
+      },
+      "correct horse battery staple",
+      "sha256:" + "b".repeat(64),
+      "one-click",
+    );
+
+    expect(invoke).toHaveBeenCalledWith("profile_export", {
+      expectedSnapshotDigest: "sha256:" + "b".repeat(64),
+      exportToken: "opaque-token",
+      idempotencyKey: "one-click",
+      passphrase: "correct horse battery staple",
+    });
+    expect(JSON.stringify(invoke.mock.calls[0])).not.toContain("Users");
+  });
+
+  it("delegates import file choice to the native command", async () => {
+    invoke.mockResolvedValueOnce({
+      protocol_version: ENGINE_PROTOCOL_VERSION,
+      request_id: "one",
+      ok: true,
+      result: { import_token: "opaque", raw_payloads_exposed: false },
+      error: null,
+      snapshot_digest: null,
+    });
+
+    await loadProfileImportPreview("correct horse battery staple");
+
+    expect(invoke).toHaveBeenCalledWith("profile_import_preview", {
+      passphrase: "correct horse battery staple",
+    });
+  });
+
+  it("loads only the raw-free Mode catalog", async () => {
+    invoke.mockResolvedValueOnce({
+      protocol_version: ENGINE_PROTOCOL_VERSION,
+      request_id: "one",
+      ok: true,
+      result: {
+        modes: [{ mode_id: "frontend-studio" }],
+        raw_payloads_exposed: false,
+      },
+      error: null,
+      snapshot_digest: null,
+    });
+
+    const modes = await loadModes();
+
+    expect(modes[0]?.mode_id).toBe("frontend-studio");
+    expect(invoke).toHaveBeenCalledWith("modes_list");
+  });
+
+  it("binds a Mode run to one exact project, task, snapshot, and retry key", async () => {
+    invoke.mockResolvedValueOnce({
+      protocol_version: ENGINE_PROTOCOL_VERSION,
+      request_id: "one",
+      ok: true,
+      result: {
+        activation_id: "mode-run-1",
+        status: "review_available",
+        projection_utf8_bytes: 1200,
+        review_available: true,
+      },
+      error: null,
+      snapshot_digest: "sha256:" + "c".repeat(64),
+    });
+
+    await runModeTask(
+      "frontend-studio",
+      "kairn",
+      "Refine the settings page",
+      "sha256:" + "b".repeat(64),
+      "mode-click-1",
+    );
+
+    expect(invoke).toHaveBeenCalledWith("mode_run_task", {
+      expectedSnapshotDigest: "sha256:" + "b".repeat(64),
+      idempotencyKey: "mode-click-1",
+      modeId: "frontend-studio",
+      projectId: "kairn",
+      task: "Refine the settings page",
+    });
   });
 });

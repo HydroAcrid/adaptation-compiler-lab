@@ -56,13 +56,21 @@ impl EngineProcess {
         })
     }
 
-    fn request(&mut self, method: &str) -> Result<EngineResponse, PublicError> {
+    fn request(
+        &mut self,
+        method: &str,
+        params: Value,
+        expected_snapshot_digest: Option<&str>,
+        idempotency_key: Option<&str>,
+    ) -> Result<EngineResponse, PublicError> {
         let request_id = Uuid::new_v4().to_string();
         let frame = json!({
             "protocol_version": PROTOCOL_VERSION,
             "request_id": request_id,
             "method": method,
-            "params": {}
+            "params": params,
+            "expected_snapshot_digest": expected_snapshot_digest,
+            "idempotency_key": idempotency_key
         });
         let encoded = serde_json::to_vec(&frame).map_err(|_| unavailable())?;
         if encoded.len() > MAX_FRAME_BYTES {
@@ -131,14 +139,32 @@ fn incompatible() -> PublicError {
     }
 }
 
+fn cancelled() -> PublicError {
+    PublicError {
+        code: "cancelled",
+        message: "Nothing changed.",
+    }
+}
+
 struct EngineState(Mutex<Option<EngineProcess>>);
 
-fn call_engine(state: &EngineState, method: &str) -> Result<EngineResponse, PublicError> {
+fn call_engine(
+    state: &EngineState,
+    method: &str,
+    params: Value,
+    expected_snapshot_digest: Option<&str>,
+    idempotency_key: Option<&str>,
+) -> Result<EngineResponse, PublicError> {
     let mut guard = state.0.lock().map_err(|_| unavailable())?;
     if guard.is_none() {
         *guard = Some(EngineProcess::spawn()?);
     }
-    let response = guard.as_mut().ok_or_else(unavailable)?.request(method);
+    let response = guard.as_mut().ok_or_else(unavailable)?.request(
+        method,
+        params,
+        expected_snapshot_digest,
+        idempotency_key,
+    );
     if response.is_err() {
         *guard = None;
     }
@@ -147,19 +173,127 @@ fn call_engine(state: &EngineState, method: &str) -> Result<EngineResponse, Publ
 
 #[tauri::command]
 fn engine_handshake(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
-    call_engine(&state, "system.handshake")
+    call_engine(&state, "system.handshake", json!({}), None, None)
 }
 
 #[tauri::command]
 fn snapshot_get(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
-    call_engine(&state, "snapshot.get")
+    call_engine(&state, "snapshot.get", json!({}), None, None)
+}
+
+#[tauri::command]
+fn profile_export_preview(
+    state: tauri::State<'_, EngineState>,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(&state, "portability.export.preview", json!({}), None, None)
+}
+
+#[tauri::command]
+fn profile_export(
+    state: tauri::State<'_, EngineState>,
+    export_token: String,
+    passphrase: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    let mut destination = rfd::FileDialog::new()
+        .set_file_name("temper-core.temper-profile")
+        .add_filter("Temper profile", &["temper-profile"])
+        .save_file()
+        .ok_or_else(cancelled)?;
+    if destination.extension().and_then(|value| value.to_str()) != Some("temper-profile") {
+        destination.set_extension("temper-profile");
+    }
+    call_engine(
+        &state,
+        "portability.export.create",
+        json!({
+            "destination": destination,
+            "export_token": export_token,
+            "passphrase": passphrase,
+        }),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+fn profile_import_preview(
+    state: tauri::State<'_, EngineState>,
+    passphrase: String,
+) -> Result<EngineResponse, PublicError> {
+    let source = rfd::FileDialog::new()
+        .add_filter("Temper profile", &["temper-profile"])
+        .pick_file()
+        .ok_or_else(cancelled)?;
+    call_engine(
+        &state,
+        "portability.import.preview",
+        json!({"passphrase": passphrase, "source": source}),
+        None,
+        None,
+    )
+}
+
+#[tauri::command]
+fn profile_import_stage(
+    state: tauri::State<'_, EngineState>,
+    import_token: String,
+    package_digest: String,
+    passphrase: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "portability.import.stage",
+        json!({
+            "import_token": import_token,
+            "package_digest": package_digest,
+            "passphrase": passphrase,
+        }),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+fn modes_list(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
+    call_engine(&state, "mode.list", json!({}), None, None)
+}
+
+#[tauri::command]
+fn mode_run_task(
+    state: tauri::State<'_, EngineState>,
+    mode_id: String,
+    project_id: String,
+    task: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "mode.task.run",
+        json!({"mode_id": mode_id, "project_id": project_id, "task": task}),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .manage(EngineState(Mutex::new(None)))
-        .invoke_handler(tauri::generate_handler![engine_handshake, snapshot_get])
+        .invoke_handler(tauri::generate_handler![
+            engine_handshake,
+            snapshot_get,
+            profile_export_preview,
+            profile_export,
+            profile_import_preview,
+            profile_import_stage,
+            modes_list,
+            mode_run_task
+        ])
         .run(tauri::generate_context!())
         .expect("error while running Temper");
 }
@@ -174,6 +308,7 @@ mod tests {
         assert_eq!(incompatible().code, "engine_incompatible");
         assert!(!unavailable().message.contains('/'));
         assert!(!unavailable().message.contains('\\'));
+        assert_eq!(cancelled().code, "cancelled");
     }
 
     #[test]
@@ -183,5 +318,16 @@ mod tests {
         let generic_process_command = ["fn process_", "run("].concat();
         assert!(!source.contains(&generic_engine_command));
         assert!(!source.contains(&generic_process_command));
+    }
+
+    #[test]
+    fn renderer_commands_never_accept_an_arbitrary_path() {
+        let source = include_str!("lib.rs");
+        assert!(!source.contains(
+            "fn profile_export(\n    state: tauri::State<'_, EngineState>,\n    destination"
+        ));
+        assert!(!source.contains(
+            "fn profile_import_preview(\n    state: tauri::State<'_, EngineState>,\n    source"
+        ));
     }
 }

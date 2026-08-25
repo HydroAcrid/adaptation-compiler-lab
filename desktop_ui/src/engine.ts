@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
+import type { CapabilityModeSummary, PortableProfilePreview } from "./types";
+
 export const ENGINE_PROTOCOL_VERSION = "temper-engine-protocol/v1" as const;
 
 export interface EngineError {
@@ -51,7 +53,22 @@ export interface EngineDesktopSnapshot {
         pending_feedback_count: number;
       };
     };
-    active_adaptations: unknown[];
+    active_adaptations: Array<{
+      artifact_id: string;
+      artifact_version: string;
+      artifact_type: string;
+      layer: string;
+      intent: string;
+      required_behaviors: string[];
+      scope: {
+        project_ids: string[];
+        task_classes: string[];
+        target_families: string[];
+        environment_ids: string[];
+      };
+      evidence_count: number;
+      raw_payload_exposed: false;
+    }>;
     latest_delivered_projection_utf8_bytes: number;
     raw_payloads_exposed: false;
   };
@@ -82,6 +99,7 @@ function assertSuccessful<T>(response: EngineResponse<T>): T {
 export async function loadEngineSnapshot(): Promise<{
   handshake: EngineHandshake;
   snapshot: EngineDesktopSnapshot;
+  snapshotDigest: string;
 }> {
   const handshakeResponse =
     await invoke<EngineResponse<EngineHandshake>>("engine_handshake");
@@ -97,5 +115,135 @@ export async function loadEngineSnapshot(): Promise<{
   if (snapshot.raw_payloads_exposed || snapshot.terminal.raw_payloads_exposed) {
     throw new Error("Temper refused an unsafe desktop snapshot.");
   }
-  return { handshake, snapshot };
+  if (!snapshotResponse.snapshot_digest) {
+    throw new Error("Temper could not bind the desktop snapshot.");
+  }
+  return {
+    handshake,
+    snapshot,
+    snapshotDigest: snapshotResponse.snapshot_digest,
+  };
+}
+
+export interface ProfileExportPreview extends PortableProfilePreview {
+  export_token: string;
+}
+
+export interface ProfileImportPreview extends PortableProfilePreview {
+  import_token: string;
+}
+
+export async function loadProfileExportPreview(): Promise<ProfileExportPreview> {
+  return assertSuccessful(
+    await invoke<EngineResponse<ProfileExportPreview>>(
+      "profile_export_preview",
+    ),
+  );
+}
+
+export async function exportProfile(
+  preview: ProfileExportPreview,
+  passphrase: string,
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<{ status: "exported"; package_digest: string; item_count: number }> {
+  return assertSuccessful(
+    await invoke<
+      EngineResponse<{
+        status: "exported";
+        package_digest: string;
+        item_count: number;
+      }>
+    >("profile_export", {
+      expectedSnapshotDigest: snapshotDigest,
+      exportToken: preview.export_token,
+      idempotencyKey,
+      passphrase,
+    }),
+  );
+}
+
+export async function loadProfileImportPreview(
+  passphrase: string,
+): Promise<ProfileImportPreview> {
+  return assertSuccessful(
+    await invoke<EngineResponse<ProfileImportPreview>>(
+      "profile_import_preview",
+      { passphrase },
+    ),
+  );
+}
+
+export async function stageProfileImport(
+  preview: ProfileImportPreview,
+  passphrase: string,
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<{
+  status: "staged_for_review";
+  receipt_id: string;
+  item_count: number;
+  activates_artifacts: false;
+}> {
+  return assertSuccessful(
+    await invoke<
+      EngineResponse<{
+        status: "staged_for_review";
+        receipt_id: string;
+        item_count: number;
+        activates_artifacts: false;
+      }>
+    >("profile_import_stage", {
+      expectedSnapshotDigest: snapshotDigest,
+      idempotencyKey,
+      importToken: preview.import_token,
+      packageDigest: preview.package_digest,
+      passphrase,
+    }),
+  );
+}
+
+export async function loadModes(): Promise<CapabilityModeSummary[]> {
+  const result = assertSuccessful(
+    await invoke<
+      EngineResponse<{
+        modes: CapabilityModeSummary[];
+        raw_payloads_exposed: false;
+      }>
+    >("modes_list"),
+  );
+  if (result.raw_payloads_exposed) {
+    throw new Error("Temper refused an unsafe Mode catalog.");
+  }
+  return result.modes;
+}
+
+export async function runModeTask(
+  modeId: string,
+  projectId: string,
+  task: string,
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<{
+  activation_id: string;
+  status: string;
+  projection_utf8_bytes: number;
+  review_available: boolean;
+}> {
+  return assertSuccessful(
+    await invoke<
+      EngineResponse<{
+        activation_id: string;
+        status: string;
+        projection_utf8_bytes: number;
+        review_available: boolean;
+      }>
+    >("mode_run_task", {
+      expectedSnapshotDigest: snapshotDigest,
+      idempotencyKey,
+      modeId,
+      projectId,
+      task,
+    }),
+  );
 }

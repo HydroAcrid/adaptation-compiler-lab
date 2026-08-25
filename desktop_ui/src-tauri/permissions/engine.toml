@@ -1,4 +1,13 @@
 [[permission]]
-identifier = "engine-read"
-description = "Allows only raw-free handshake and snapshot reads from the local Temper engine."
-commands.allow = ["engine_handshake", "snapshot_get"]
+identifier = "engine-product"
+description = "Allows only typed product reads, user-mediated profile actions, and exact managed Mode tasks."
+commands.allow = [
+  "engine_handshake",
+  "snapshot_get",
+  "profile_export_preview",
+  "profile_export",
+  "profile_import_preview",
+  "profile_import_stage",
+  "modes_list",
+  "mode_run_task"
+]

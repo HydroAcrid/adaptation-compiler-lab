@@ -1,7 +1,7 @@
 # Temper alpha readiness audit
 
 Date: 2026-08-24
-Scope: React visual prototype, governed-engine boundary, platform compatibility, dependency safety,
+Scope: React/Tauri product slice, governed-engine boundary, platform compatibility, dependency safety,
 and external-user admission. The deferred Milestone 6 study was not accessed.
 
 ## Verdict
@@ -10,12 +10,13 @@ and external-user admission. The deferred Milestone 6 study was not accessed.
 an eventual private alpha. It is not yet ready to invite people to install or rely on the desktop
 product.**
 
-The visual direction is coherent and the tested prototype interactions are healthy. The customer
-renderer is still synthetic, however: it has no Tauri shell, no sidecar handshake, no live governed
-snapshot, no native enrollment, and no signed installer. Several controls intentionally depict
-future connection, consent, telemetry, tray, and task actions without implementing them. Shipping
-that surface would create a misleading product, even though the underlying Python engine and Qt
-diagnostic client are substantially further along.
+The visual direction is coherent and the implemented product slice is healthy. Tauri now
+supervises the local Python engine, loads a live raw-free snapshot, performs offline encrypted
+profile portability through native file dialogs, and exposes one exact-task Frontend Studio Mode.
+Native enrollment, Connections mutations, the complete review/revoke/undo/feedback loop, secure
+two-platform credential parity, and signed installers remain incomplete. Several browser-only
+controls still depict future behavior and are explicitly disabled. Shipping before those gaps
+close would still create a misleading product.
 
 ## Findings repaired during this audit
 
@@ -44,13 +45,17 @@ diagnostic client are substantially further along.
    to All projects, exposes both focused repository views, visibly changes Today and Core, and is
    covered in its open and closed states. Browser-only native account and folder actions are
    disabled and explained instead of behaving like broken controls.
+9. **Core dialog click interception.** The Core dialog rendered beneath its modal overlay, so
+   actual Chromium pointer events could not reach import or Mode controls even though DOM-only
+   tests passed. The dialog now shares the overlay-safe stacking layer and real-browser interaction
+   tests cover import preview and Mode disclosure.
 
 ## Evidence that currently passes
 
 - Frozen dependency installation with the exact pnpm lock.
-- Prettier, ESLint, strict TypeScript, 22 component/asset tests, and the optimized Vite build.
+- Prettier, ESLint, strict TypeScript, 33 component/engine tests, and the optimized Vite build.
 - Nine Windows/WebView2-proxy compatibility checks at 720×540.
-- Thirty Chromium visual/accessibility scenes in both themes and compact/wide layouts.
+- Thirty-four Chromium visual/accessibility/interaction scenes in both themes and compact/wide layouts.
 - React prototype and invitation-portal production dependency audits: no known vulnerabilities;
   the prototype's production licenses are 0BSD, ISC, MIT, and OFL-1.1.
 - Local-only font, ornament, and product-mark loading with exact asset digests and active-content
@@ -66,11 +71,7 @@ Apple Silicon Tauri build.
 
 ### Product blockers
 
-- Build the Tauri 2 shell, restrictive capabilities, tray/window lifecycle, and sidecar
-  supervision.
-- Implement and golden-test `temper-engine-protocol/v1`, beginning with a read-only raw-free
-  `snapshot.get` handshake.
-- Replace every synthetic customer-facing state with typed engine presentation models. No inert
+- Replace remaining synthetic customer-facing state with typed engine presentation models. No inert
   Connect, Manage, Add project, consent, telemetry, Apply, tray, or notification action may ship.
 - Complete prospective first-run identity, consent, and project registration with learning and
   telemetry still off by default.
@@ -84,7 +85,8 @@ Apple Silicon Tauri build.
 - Add Windows WebView2 and native macOS WKWebView build lanes; the current Chromium result is only
   a proxy.
 - Implement macOS Keychain parity and verify Windows CurrentUser DPAPI through the Tauri path.
-- Add continuous integration for frontend, Python, protocol, security, and native platform gates.
+- Expand continuous integration beyond the existing native Tauri platform matrix to cover every
+  frontend, Python, protocol, security, and packaging gate in one release workflow.
 - Pass keyboard-only and screen-reader manual audits in addition to axe.
 - Produce clean Windows x64 and Apple Silicon builds, then test install, upgrade, recovery, and
   uninstall on clean machines.
@@ -114,6 +116,7 @@ Not safe yet:
 - Claim that the desktop app is continuously learning from their work today.
 - Distribute an unsigned installer or collect governed user data through the synthetic renderer.
 
-The next engineering slice remains the smallest honest one: a Tauri shell plus a read-only,
-version-checked `snapshot.get` path from the existing Python application service. External
-installation begins only after the complete product and platform blockers above are closed.
+The next engineering slice is native onboarding and truthful Connections: governed identity/key
+initialization, explicit prospective project registration, Codex inspection, and delegated Claude
+inspection without handling provider credentials. External installation begins only after the
+complete product and platform blockers above are closed.

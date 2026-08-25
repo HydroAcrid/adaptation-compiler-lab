@@ -7,6 +7,8 @@ import {
   CheckCircle2,
   CircleHelp,
   Cloud,
+  Compass,
+  Download,
   ExternalLink,
   FileDiff,
   Info,
@@ -21,12 +23,15 @@ import {
   ShieldCheck,
   Sparkles,
   Sun,
+  Upload,
   X,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { connections, coreItems, projects } from "../data/demo";
+import { runModeTask } from "../engine";
 import type {
+  CapabilityModeSummary,
   CoreItem,
   CoreKind,
   EvidenceStrength,
@@ -37,6 +42,7 @@ import type {
   Theme,
   WorkspaceScope,
 } from "../types";
+import { ProfilePortabilityDialog } from "./ProfilePortabilityDialog";
 import { Button, Divider, SectionHeading, StatusPill, Toggle } from "./ui";
 
 export function TodayPage({
@@ -329,10 +335,20 @@ const coreKinds: Array<{
 
 export function CorePage({
   activeWorkspace,
+  availableWorkspaces,
+  initialItems = coreItems,
+  nativeRuntime = false,
+  snapshotDigest = null,
+  onNotice,
 }: {
   activeWorkspace: WorkspaceScope;
+  availableWorkspaces?: ProjectName[];
+  initialItems?: CoreItem[];
+  nativeRuntime?: boolean;
+  snapshotDigest?: string | null;
+  onNotice?: (message: string) => void;
 }) {
-  const [items, setItems] = useState(coreItems);
+  const [items, setItems] = useState(initialItems);
   const [kind, setKind] = useState<CoreKind | "all">("all");
   const [scope, setScope] = useState<ProjectName | "all">(activeWorkspace);
   const [selected, setSelected] = useState<CoreItem | null>(null);
@@ -340,6 +356,10 @@ export function CorePage({
     item: CoreItem;
     index: number;
   } | null>(null);
+  const [portabilityMode, setPortabilityMode] = useState<
+    "export" | "import" | null
+  >(null);
+  const workspaceChoices = availableWorkspaces ?? ["Kairn", "Green Meadow"];
   const visibleItems = items.filter(
     (item) =>
       (kind === "all" || item.kind === kind) &&
@@ -383,20 +403,30 @@ export function CorePage({
             belongs.
           </p>
         </div>
-        <div className="core-current-project">
-          <span>Workspace view</span>
-          <strong>
-            {activeWorkspace === "all" ? "All projects" : activeWorkspace}
-          </strong>
+        <div className="core-heading__aside">
+          <div className="core-portability-actions">
+            <button onClick={() => setPortabilityMode("export")} type="button">
+              <Download aria-hidden="true" size={14} /> Export
+            </button>
+            <button onClick={() => setPortabilityMode("import")} type="button">
+              <Upload aria-hidden="true" size={14} /> Import
+            </button>
+          </div>
+          <div className="core-current-project">
+            <span>Workspace view</span>
+            <strong>
+              {activeWorkspace === "all" ? "All projects" : activeWorkspace}
+            </strong>
+          </div>
         </div>
       </header>
       <section className="core-overview" aria-label="Core summary">
         <p>
           {activeWorkspace === "all" ? (
             <>
-              <strong>{items.length} approved items</strong> across two
-              projects. Shared guidance forms the trunk; project knowledge
-              branches only where it applies.
+              <strong>{items.length} approved items</strong> across your work.
+              Shared guidance forms the trunk; project knowledge branches only
+              where it applies.
             </>
           ) : (
             <>
@@ -445,8 +475,11 @@ export function CorePage({
             value={scope}
           >
             <option value="all">All projects</option>
-            <option value="Kairn">Kairn</option>
-            <option value="Green Meadow">Green Meadow</option>
+            {workspaceChoices.map((workspace) => (
+              <option key={workspace} value={workspace}>
+                {workspace}
+              </option>
+            ))}
           </select>
         </label>
       </div>
@@ -472,6 +505,7 @@ export function CorePage({
               label={entry.label}
               onEdit={setSelected}
               onRemove={removeItem}
+              readOnly={nativeRuntime}
             />
           );
         })}
@@ -489,6 +523,18 @@ export function CorePage({
           onSave={saveItem}
         />
       ) : null}
+      {portabilityMode ? (
+        <ProfilePortabilityDialog
+          mode={portabilityMode}
+          nativeRuntime={nativeRuntime}
+          onClose={() => setPortabilityMode(null)}
+          onComplete={(message) => {
+            setPortabilityMode(null);
+            onNotice?.(message);
+          }}
+          snapshotDigest={snapshotDigest}
+        />
+      ) : null}
     </div>
   );
 }
@@ -499,12 +545,14 @@ function CoreGroup({
   items,
   onEdit,
   onRemove,
+  readOnly,
 }: {
   label: string;
   description: string;
   items: CoreItem[];
   onEdit: (item: CoreItem) => void;
   onRemove: (item: CoreItem) => void;
+  readOnly: boolean;
 }) {
   return (
     <section className="core-group">
@@ -523,19 +571,275 @@ function CoreGroup({
                   {item.scope} · {item.sourceSummary}
                 </span>
               </div>
-              <div className="core-entry__actions">
-                <button onClick={() => onEdit(item)} type="button">
-                  <Pencil aria-hidden="true" size={13} /> Edit
-                </button>
-                <button onClick={() => onRemove(item)} type="button">
-                  Remove
-                </button>
-              </div>
+              {readOnly ? (
+                <span className="core-entry__governed">Approved</span>
+              ) : (
+                <div className="core-entry__actions">
+                  <button onClick={() => onEdit(item)} type="button">
+                    <Pencil aria-hidden="true" size={13} /> Edit
+                  </button>
+                  <button onClick={() => onRemove(item)} type="button">
+                    Remove
+                  </button>
+                </div>
+              )}
             </article>
           </li>
         ))}
       </ul>
     </section>
+  );
+}
+
+export function ModesPage({
+  modes,
+  nativeRuntime,
+  loading,
+  error,
+  onOpenCore,
+  onTaskComplete,
+  projects: modeProjects,
+  snapshotDigest,
+}: {
+  modes: CapabilityModeSummary[];
+  nativeRuntime: boolean;
+  loading: boolean;
+  error: string | null;
+  onOpenCore: () => void;
+  onTaskComplete: (message: string) => void;
+  projects: Array<{ id: string; label: string }>;
+  snapshotDigest: string | null;
+}) {
+  const [selected, setSelected] = useState<CapabilityModeSummary | null>(null);
+  return (
+    <div className="page folio-page modes-page">
+      <header className="modes-heading">
+        <div>
+          <span className="folio-kicker">Temporary expertise</span>
+          <h1>Modes</h1>
+          <p>
+            Give an agent a focused way of working for one task. Your permanent
+            Core stays yours and stays unchanged.
+          </p>
+        </div>
+        <Compass aria-hidden="true" size={30} strokeWidth={1.25} />
+      </header>
+      <section className="modes-principle">
+        <span>Core</span>
+        <strong>+</strong>
+        <span>Current project</span>
+        <strong>+</strong>
+        <span>One Mode</span>
+        <strong>→</strong>
+        <span>Small task projection</span>
+      </section>
+      {loading ? <div className="modes-empty">Loading local Modes…</div> : null}
+      {error ? (
+        <div className="modes-empty" role="alert">
+          {error}
+        </div>
+      ) : null}
+      <div className="mode-catalog">
+        {modes.map((mode) => (
+          <article className="mode-card" key={mode.mode_id}>
+            <div className="mode-card__mark" aria-hidden="true">
+              <Sparkles size={22} strokeWidth={1.4} />
+            </div>
+            <div className="mode-card__copy">
+              <span className="folio-kicker">
+                Built-in · v{mode.mode_version}
+              </span>
+              <h2>{mode.name}</h2>
+              <p>{mode.summary}</p>
+              <div className="mode-card__facts">
+                <span>One task</span>
+                <span>{mode.projection_utf8_bytes} bytes</span>
+                <span>
+                  {mode.requested_tools.length
+                    ? "Requests tools"
+                    : "No new tools"}
+                </span>
+              </div>
+            </div>
+            <button
+              className="folio-primary-action mode-card__action"
+              onClick={() => setSelected(mode)}
+              type="button"
+            >
+              View Mode <ArrowRight aria-hidden="true" size={15} />
+            </button>
+          </article>
+        ))}
+      </div>
+      <footer className="mode-footer">
+        <p>
+          Modes are temporary capabilities. Preferences, memories, procedures,
+          and personal skills belong in Core.
+        </p>
+        <button onClick={onOpenCore} type="button">
+          View Core <ArrowRight aria-hidden="true" size={14} />
+        </button>
+      </footer>
+      {selected ? (
+        <ModeDetailsDialog
+          mode={selected}
+          nativeRuntime={nativeRuntime}
+          onClose={() => setSelected(null)}
+          onComplete={onTaskComplete}
+          projects={modeProjects}
+          snapshotDigest={snapshotDigest}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function ModeDetailsDialog({
+  mode,
+  nativeRuntime,
+  onClose,
+  onComplete,
+  projects: modeProjects,
+  snapshotDigest,
+}: {
+  mode: CapabilityModeSummary;
+  nativeRuntime: boolean;
+  onClose: () => void;
+  onComplete: (message: string) => void;
+  projects: Array<{ id: string; label: string }>;
+  snapshotDigest: string | null;
+}) {
+  const [projectId, setProjectId] = useState(modeProjects[0]?.id ?? "");
+  const [task, setTask] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const canRun = Boolean(
+    nativeRuntime && snapshotDigest && projectId && task.trim() && !busy,
+  );
+
+  async function startTask() {
+    if (!canRun || !snapshotDigest) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await runModeTask(
+        mode.mode_id,
+        projectId,
+        task,
+        snapshotDigest,
+        crypto.randomUUID(),
+      );
+      onComplete(
+        result.review_available
+          ? `${mode.name} finished and was removed. Changes are ready for review.`
+          : `${mode.name} finished and was removed.`,
+      );
+      onClose();
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Temper could not start the managed Mode task.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog.Root onOpenChange={(open) => (open ? undefined : onClose())} open>
+      <Dialog.Portal>
+        <Dialog.Overlay className="dialog-overlay" />
+        <Dialog.Content className="core-dialog mode-dialog">
+          <Dialog.Close aria-label="Close" className="dialog-close">
+            <X size={18} />
+          </Dialog.Close>
+          <span className="folio-kicker">
+            Temporary Mode · v{mode.mode_version}
+          </span>
+          <Dialog.Title>{mode.name}</Dialog.Title>
+          <Dialog.Description>{mode.summary}</Dialog.Description>
+          <dl className="mode-detail-list">
+            <div>
+              <dt>Life span</dt>
+              <dd>One exact managed task, then clean removal</dd>
+            </div>
+            <div>
+              <dt>Works with</dt>
+              <dd>{mode.compatible_target_families.join(" and ")}</dd>
+            </div>
+            <div>
+              <dt>Added tools</dt>
+              <dd>
+                {mode.requested_tools.length
+                  ? mode.requested_tools.join(", ")
+                  : "None"}
+              </dd>
+            </div>
+            <div>
+              <dt>Validation</dt>
+              <dd>
+                {mode.evaluation_valid
+                  ? `${mode.evaluation_case_count} conformance checks passed`
+                  : "Needs attention"}
+              </dd>
+            </div>
+          </dl>
+          <div className="mode-authority-note">
+            Your request, project rules, security constraints, and Core always
+            outrank Mode defaults.
+          </div>
+          <div className="mode-task-form">
+            <label className="core-field">
+              <span>Project</span>
+              <select
+                disabled={!nativeRuntime}
+                onChange={(event) => setProjectId(event.target.value)}
+                value={projectId}
+              >
+                {modeProjects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="core-field">
+              <span>Task</span>
+              <textarea
+                disabled={!nativeRuntime}
+                onChange={(event) => setTask(event.target.value)}
+                placeholder="Describe the frontend work for this one managed task"
+                rows={3}
+                value={task}
+              />
+            </label>
+            <p>
+              Uses a fresh isolated Codex session and your saved ChatGPT
+              authentication. Changes return for review; the Mode is removed
+              whether the task succeeds or fails.
+            </p>
+            {error ? (
+              <div className="portability-error" role="alert">
+                {error}
+              </div>
+            ) : null}
+          </div>
+          <div className="core-dialog__actions">
+            <Button onClick={onClose} tone="quiet">
+              Close
+            </Button>
+            <Button disabled={!canRun} onClick={startTask} tone="primary">
+              {busy
+                ? "Running isolated task…"
+                : nativeRuntime
+                  ? "Run with this Mode"
+                  : "Available in desktop app"}
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 

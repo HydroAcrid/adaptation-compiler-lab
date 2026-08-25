@@ -24,6 +24,11 @@ The package is signed with the exporting Temper identity, then encrypted with AE
 
 Preview decrypts the file, verifies its content digest and Ed25519 signature, and returns a raw-free summary. It shows the behavior summaries, kinds, source-key fingerprint, and which items need local scope mapping.
 
+In the Tauri desktop, Rust owns the open/save dialogs. React receives the preview and opaque token
+but never the chosen filesystem path. Export preview explicitly names what is omitted; import
+preview explicitly states that the package remains inactive and that source authority does not
+transfer.
+
 Import is deliberately a staging action:
 
 1. The user previews the exact signed package.

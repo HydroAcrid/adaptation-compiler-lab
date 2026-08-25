@@ -1,7 +1,9 @@
 # Temper React desktop visual gallery
 
-These images are deterministic Playwright baselines rendered from synthetic, raw-free data. They
-are the visual approval gate before the React surface is connected to the governed Python engine.
+These images are deterministic Playwright baselines rendered from synthetic, raw-free browser
+data. The installed Tauri surface uses the same components but now loads Core, projects, profile
+portability, and Modes through the governed Python engine. Browser native-write controls remain
+disabled so the gallery never pretends to mutate real state.
 The defining surfaces use the **Quiet Folio** direction: restrained editorial typography, one
 continuous page, one current statement, a focused suggestion, plain scope/source/status context,
 and a readable personal Core. Persistent security badges, numbered navigation, proposal IDs,
@@ -46,6 +48,15 @@ shows one combined view and focused Kairn/Green Meadow views with meaningful sta
 ## Core
 
 ![Temper Core](../tests/gallery.spec.ts-snapshots/core-1280x800-light-linux.png)
+
+## Temporary Modes
+
+![Temper Modes, light](../tests/gallery.spec.ts-snapshots/modes-1280x800-light-linux.png)
+
+![Temper Modes, dark](../tests/gallery.spec.ts-snapshots/modes-1280x800-dark-linux.png)
+
+Frontend Studio is the first real built-in Mode: one exact task, no added tools, lower authority
+than Core and current project constraints, and clean removal after the managed task.
 
 ## Agent and project connections
 

@@ -3,5 +3,5 @@
   "identifier": "main",
   "description": "Minimal permissions for Temper's bundled main window.",
   "windows": ["main"],
-  "permissions": ["engine-read"]
+  "permissions": ["engine-product"]
 }

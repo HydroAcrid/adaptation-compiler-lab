@@ -1,18 +1,17 @@
 # adaptation-compiler-lab
 
-Temper's replacement customer desktop is now at its visual acceptance gate. A React 19/Vite
-prototype implements the calm tray-first product direction with Today, Core, Connections,
-Settings, onboarding, focused review, exact telemetry preview, and opt-in Advanced surfaces over
-synthetic raw-free data. Thirty light/dark and multi-window browser scenes pass visual regression
-and axe accessibility checks. It now defaults to an All projects workspace with focused
-repository views through an accessible custom menu. It is deliberately not connected to the
-governed runtime yet; the existing Qt application remains the internal diagnostic surface until
-Tauri reaches parity. See
+Temper's replacement customer desktop now connects React to the real local Python engine through
+a restrictive Tauri 2 shell and framed stdio protocol. A configured native runtime loads raw-free
+projects and approved Core items, offers native-path-hidden encrypted profile export/import with
+exact inactive previews, and exposes the first evaluated temporary **Frontend Studio Mode** for
+one fresh governed Codex task. Browser URLs remain synthetic visual-review scenes; they do not
+pretend to perform native writes. Thirty-four light/dark, accessibility, responsive, and product
+interaction checks pass. See
 [`TEMPER_DESKTOP_REBUILD.md`](TEMPER_DESKTOP_REBUILD.md) and the
 [`React visual gallery`](desktop_ui/docs/VISUAL_GALLERY.md). The
 [`alpha readiness audit`](TEMPER_ALPHA_READINESS_AUDIT.md) permits design-partner recruitment but
-blocks external installation until the renderer, Tauri shell, native security, and signed builds
-are real.
+blocks external installation until onboarding, remaining mutations/connections, native security,
+clean-machine validation, and signed builds are complete.
 
 The Adaptation Compiler desktop private-alpha foundation is now implemented over the same governed
 runtime as the Temper terminal surface. It provides a progressively disclosed Qt Quick interface,

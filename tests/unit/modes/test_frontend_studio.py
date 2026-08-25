@@ -1,14 +1,20 @@
 from __future__ import annotations
 
+import base64
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from adaptation_compiler_lab.governance.signing import GovernanceSigner
+from adaptation_compiler_lab.governance.signing import (
+    GovernanceSigner,
+    verify_detached_envelope,
+)
 from adaptation_compiler_lab.modes import (
     FRONTEND_STUDIO_MODE,
     ModeCompositionError,
+    ModePreparedTask,
     ModeReceiptStore,
     complete_mode_delivery,
     evaluate_frontend_studio_mode,
@@ -29,7 +35,9 @@ def _signer() -> GovernanceSigner:
     )
 
 
-def _prepared(*, project_id: str = "kairn", task: str = "Refine the settings page"):
+def _prepared(
+    *, project_id: str = "kairn", task: str = "Refine the settings page"
+) -> ModePreparedTask:
     return prepare_mode_task(
         FRONTEND_STUDIO_MODE,
         activation_id="mode-activation-1",
@@ -62,6 +70,23 @@ def test_mode_is_delivered_once_and_binds_exact_task_project_and_core() -> None:
     assert prepared.activation.task_digest == sha256_text("Refine the settings page")
     assert prepared.activation.prior_core_release_digest == CORE_DIGEST
     assert prepared.activation.ends_after_task is True
+
+
+def test_mode_activation_signature_detects_scope_tampering() -> None:
+    signer = _signer()
+    prepared = _prepared()
+    changed = prepared.activation.model_copy(update={"project_id": "green-meadow"})
+    public_key = base64.b64encode(signer.private_key.public_key().public_bytes_raw()).decode(
+        "ascii"
+    )
+
+    with pytest.raises(ValueError, match="signature"):
+        verify_detached_envelope(
+            changed.unsigned_payload,
+            changed.signature,
+            public_key_base64=public_key,
+            expected_purpose="mode_activation",
+        )
 
 
 def test_higher_authority_claim_suppresses_only_matching_mode_default() -> None:
@@ -139,7 +164,7 @@ def test_completion_restores_exact_core_and_leaves_no_mode_clauses() -> None:
         )
 
 
-def test_mode_receipts_are_append_only_raw_free_and_idempotent(tmp_path) -> None:
+def test_mode_receipts_are_append_only_raw_free_and_idempotent(tmp_path: Path) -> None:
     prepared = _prepared()
     completed = complete_mode_delivery(
         prepared,

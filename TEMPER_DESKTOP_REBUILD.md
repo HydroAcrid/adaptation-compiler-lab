@@ -1,7 +1,9 @@
 # Temper desktop rebuild
 
-Status: React visual direction accepted and merged in PR #53. The read-only Tauri/engine
-foundation is implemented; portability and temporary capability modes are the next active slices.
+Status: React visual direction accepted in PR #53. The Tauri/engine foundation, offline profile
+portability, Frontend Studio Mode, and their actual Core/Modes desktop surfaces are implemented.
+Native onboarding, connection management, the full review/mutation loop, signed packaging, and
+clean-machine release validation remain open.
 
 ## Tauri foundation
 
@@ -9,6 +11,13 @@ The native shell uses a pinned Tauri 2 release, restrictive CSP and capability m
 persistent Rust-supervised Python engine connection over bounded framed NDJSON. It handshakes
 before loading the existing raw-free `DesktopApplicationService` snapshot. A native renderer
 never receives demo suggestions; the browser URL remains a synthetic visual-review surface.
+
+React now receives live Core and project summaries in Tauri. Native file dialogs mediate encrypted
+profile export/import so renderer code never sees a path. Import is previewed and staged inactive;
+another installation's signature proves origin but grants no instruction authority. The Modes
+route loads an evaluated raw-free catalog and can launch the first-party Frontend Studio Mode for
+one exact registered project through the existing fresh governed Codex gateway. The permanent Core
+is restored whether that task succeeds or fails.
 
 Native compilation is checked on Linux, Windows, and macOS runners. This WSL host can run the
 Python and React checks but cannot install its missing GTK/WebKit headers without an interactive
@@ -95,9 +104,8 @@ answer a real user question.
   project-scoped, reversible preference class; engine mutation remains blocked pending shadow-mode
   and genuine-use admission under [the confidence policy](TEMPER_CONFIDENCE_POLICY.md).
 - Advanced mode is opt-in and contains diagnostics, provenance metadata, and the governed task lab.
-- No Modes route appears until Milestone 6B has real governed preset/package types. Core will own
-  private profile backup and sanitized shareable-pack import/export; temporary borrowed expertise
-  remains a separate Modes surface and authority layer.
+- Core owns encrypted offline profile export/import. Temporary expertise remains a separate Modes
+  surface and lower-authority lifecycle; Frontend Studio is the first real built-in Mode.
 - No account is required. Project registration is explicit and prospective.
 - Raw evidence never crosses the presentation boundary.
 - Telemetry is independent, unchecked, raw-free, previewable, and deletable.
@@ -105,24 +113,13 @@ answer a real user question.
 - A suggestion decision may preserve its displayed scope or narrow it to the current project; it
   may never silently widen scope. Core editing follows the same monotonic narrowing rule.
 
-## Next implementation slice after acceptance
+## Next implementation slice
 
-Create the Tauri foundation without changing evidence or artifact schemas:
-
-1. add a minimal Tauri 2 Rust shell around the accepted React assets;
-2. implement the tray/window lifecycle and restrictive renderer capability policy;
-3. introduce `temper-engine-protocol/v1` and a Python read-only `snapshot.get` endpoint;
-4. supervise the development Python sidecar and verify the protocol/version handshake;
-5. replace synthetic Today data with the existing raw-free application-service snapshot; and
-6. add Rust/Python/TypeScript golden contract tests before enabling any mutation.
-
-Immediately after this read-only foundation, implement the offline, non-activating package model
-for private profile backup, sanitized shareable behavior packs, and temporary capability modes.
-See [`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md). Do not reduce profile
-sharing to copied prompt text or let another person's authority silently become the recipient's.
-
-No Claude hook, telemetry upload, QML retirement, native signing claim, or Milestone 6 custody work
-belongs in that first wired slice.
+Build native onboarding and truthful Connections over the same protocol: governed identity/key
+initialization, explicit prospective project registration, Codex inspection, and delegated Claude
+inspection without receiving provider credentials. Then wire review, scope narrowing, revoke,
+undo, feedback, and consent renewal before retiring Qt. Do not add a Claude hook, telemetry upload,
+or external installer claim until its separate security and release gate passes.
 
 ## Prototype verification
 
@@ -140,7 +137,8 @@ pnpm test:visual
 ```
 
 Repository-wide Python, portal, build, schema, migration, and safety checks remain required before
-the prototype branch can merge. Passing the prototype gate is design and frontend-instrument
-evidence only; it is not a signed Tauri alpha and does not advance the longitudinal product gate.
+each branch can merge. Passing these gates proves the implemented desktop slice is internally
+coherent; it is not a signed external Tauri alpha and does not advance the longitudinal
+product-effectiveness gate.
 See [`TEMPER_ALPHA_READINESS_AUDIT.md`](TEMPER_ALPHA_READINESS_AUDIT.md) for the external-user
 admission decision and remaining product/platform blockers.

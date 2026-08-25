@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import os
 import re
 from datetime import datetime
@@ -78,7 +79,7 @@ class PortableProfileScope(FrozenModel):
     def from_governed_scope(cls, scope: Scope) -> Self:
         local_scope = bool(scope.workspace_ids or scope.repository_ids or scope.project_ids)
         return cls(
-            project_ids=scope.project_ids,
+            project_ids=(),
             task_classes=scope.task_classes,
             target_families=scope.target_families,
             environment_ids=scope.environment_ids,
@@ -370,6 +371,13 @@ def preview_portable_profile(
     envelope: EncryptedProfileEnvelope, *, passphrase: str
 ) -> PortableProfilePreview:
     package = decrypt_portable_profile(envelope, passphrase=passphrase)
+    return preview_profile_package(package)
+
+
+def preview_profile_package(package: PortableProfilePackage) -> PortableProfilePreview:
+    """Project a verified package into the exact raw-free owner preview."""
+
+    verify_portable_profile(package)
     mapping_count = sum(item.scope.scope_mapping_required for item in package.items)
     warnings = [
         "Imported guidance remains inactive until you review and approve it.",
@@ -396,6 +404,60 @@ def preview_portable_profile(
         scope_mapping_count=mapping_count,
         warnings=tuple(warnings),
     )
+
+
+def preview_profile_export(package: PortableProfilePackage) -> PortableProfilePreview:
+    """Project a verified local package into a truthful pre-export preview."""
+
+    verify_portable_profile(package)
+    mapping_count = sum(item.scope.scope_mapping_required for item in package.items)
+    warnings = [
+        "Raw conversations, private paths, and signing keys are not included.",
+        "The encrypted profile contains only approved behavioral specifications and lineage.",
+    ]
+    if mapping_count:
+        warnings.append(
+            "Project-specific guidance will require a local scope on another installation."
+        )
+    return PortableProfilePreview(
+        package_id=package.package_id,
+        display_name=package.display_name,
+        package_digest=package.content_digest,
+        source_key_fingerprint=package.source_key_fingerprint,
+        item_count=len(package.items),
+        items=tuple(
+            PortableProfileItemPreview(
+                item_id=item.item_id,
+                kind=item.artifact_kind,
+                summary=item.behavioral_contract.intent,
+                required_behavior_count=len(item.behavioral_contract.required_behaviors),
+                scope_mapping_required=item.scope.scope_mapping_required,
+            )
+            for item in package.items
+        ),
+        scope_mapping_count=mapping_count,
+        warnings=tuple(warnings),
+    )
+
+
+def read_portable_profile(source: Path) -> EncryptedProfileEnvelope:
+    """Read one bounded encrypted envelope chosen explicitly by the local user."""
+
+    resolved = source.expanduser().resolve()
+    if resolved.suffix != ".temper-profile":
+        raise ProfilePortabilityError("portable profile must use the .temper-profile extension")
+    try:
+        size = resolved.stat().st_size
+        if size <= 0 or size > MAX_PROFILE_BYTES * 2:
+            raise ProfilePortabilityError("portable profile file size is invalid")
+        payload = resolved.read_text(encoding="utf-8")
+    except OSError as error:
+        raise ProfilePortabilityError("portable profile file could not be read") from error
+    try:
+        decoded = json.loads(payload)
+        return EncryptedProfileEnvelope.model_validate(decoded, strict=True)
+    except (json.JSONDecodeError, ValueError) as error:
+        raise ProfilePortabilityError("portable profile envelope is invalid") from error
 
 
 def write_portable_profile(envelope: EncryptedProfileEnvelope, destination: Path) -> Path:
@@ -453,6 +515,14 @@ class ProfileImportStore:
             draft.unsigned_payload, purpose=IMPORT_PURPOSE, signed_at=imported_at
         )
         receipt = draft.model_copy(update={"signature": signature})
+        verify_detached_envelope(
+            receipt.unsigned_payload,
+            receipt.signature,
+            public_key_base64=base64.b64encode(
+                signer.private_key.public_key().public_bytes_raw()
+            ).decode("ascii"),
+            expected_purpose=IMPORT_PURPOSE,
+        )
         self._write_once(receipt_id, envelope, receipt)
         return receipt
 
