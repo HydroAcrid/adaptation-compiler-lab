@@ -1,7 +1,19 @@
 # Temper desktop rebuild
 
-Status: React visual prototype complete on 2026-08-24; governed backend wiring is intentionally
-blocked on owner visual acceptance.
+Status: React visual direction accepted and merged in PR #53. The read-only Tauri/engine
+foundation is implemented; portability and temporary capability modes are the next active slices.
+
+## Tauri foundation
+
+The native shell uses a pinned Tauri 2 release, restrictive CSP and capability manifest, and a
+persistent Rust-supervised Python engine connection over bounded framed NDJSON. It handshakes
+before loading the existing raw-free `DesktopApplicationService` snapshot. A native renderer
+never receives demo suggestions; the browser URL remains a synthetic visual-review surface.
+
+Native compilation is checked on Linux, Windows, and macOS runners. This WSL host can run the
+Python and React checks but cannot install its missing GTK/WebKit headers without an interactive
+sudo password. That is recorded as an environment limitation, not a passing local native-build
+claim.
 
 ## Architecture decision
 

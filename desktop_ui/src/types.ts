@@ -10,7 +10,7 @@ export type Screen =
 
 export type Theme = "light" | "dark" | "system";
 export type FeedbackValue = "helped" | "hurt" | "irrelevant";
-export type ProjectName = "Kairn" | "Green Meadow";
+export type ProjectName = string;
 export type WorkspaceScope = "all" | ProjectName;
 export type EvidenceStrength = "strong" | "promising" | "developing";
 export type AutomationDisposition =
@@ -34,7 +34,7 @@ export interface Suggestion {
 }
 
 export type CoreKind = "preference" | "memory" | "procedure" | "skill";
-export type CoreScope = "Everywhere" | "Kairn" | "Green Meadow";
+export type CoreScope = string;
 
 export interface CoreItem {
   id: string;

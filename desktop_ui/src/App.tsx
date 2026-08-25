@@ -13,6 +13,11 @@ import {
 import { ReviewDialog } from "./components/ReviewDialog";
 import { Shell } from "./components/Shell";
 import { suggestions } from "./data/demo";
+import {
+  isTauriRuntime,
+  loadEngineSnapshot,
+  type EngineDesktopSnapshot,
+} from "./engine";
 import type {
   FeedbackValue,
   Screen,
@@ -53,6 +58,7 @@ function initialTheme(): Theme {
 }
 
 export default function App() {
+  const [nativeRuntime] = useState(isTauriRuntime);
   const [firstScreen] = useState(initialScreen);
   const [screen, setScreen] = useState<Screen>(firstScreen);
   const [theme, setTheme] = useState<Theme>(initialTheme);
@@ -60,14 +66,18 @@ export default function App() {
   const [reviewOpen, setReviewOpen] = useState(firstScreen === "suggestion");
   const [activeWorkspace, setActiveWorkspace] =
     useState<WorkspaceScope>(initialWorkspace);
-  const [suggestionQueue, setSuggestionQueue] =
-    useState<Suggestion[]>(suggestions);
+  const [suggestionQueue, setSuggestionQueue] = useState<Suggestion[]>(
+    nativeRuntime ? [] : suggestions,
+  );
   const [selectedSuggestionId, setSelectedSuggestionId] = useState(
     suggestions[0]?.id ?? "",
   );
   const [automaticLearning, setAutomaticLearning] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackValue | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [engineSnapshot, setEngineSnapshot] =
+    useState<EngineDesktopSnapshot | null>(null);
+  const [engineError, setEngineError] = useState<string | null>(null);
   const selectedSuggestion =
     suggestionQueue.find((item) => item.id === selectedSuggestionId) ??
     suggestionQueue[0];
@@ -89,6 +99,35 @@ export default function App() {
     media.addEventListener("change", applyTheme);
     return () => media.removeEventListener("change", applyTheme);
   }, [theme]);
+
+  useEffect(() => {
+    if (!nativeRuntime) return;
+    let active = true;
+    loadEngineSnapshot()
+      .then(({ snapshot }) => {
+        if (active) setEngineSnapshot(snapshot);
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setEngineError(
+            error instanceof Error
+              ? error.message
+              : "Temper could not load your local state.",
+          );
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [nativeRuntime]);
+
+  const workspaces = engineSnapshot?.projects.map((project) => ({
+    id: project.display_name,
+    label: project.display_name,
+    description: project.registered_prospectively
+      ? "Connected"
+      : "Needs review",
+  }));
 
   function navigate(destination: Screen) {
     setScreen(destination);
@@ -132,6 +171,7 @@ export default function App() {
         onNavigate={navigate}
         onWorkspaceChange={setActiveWorkspace}
         screen={screen}
+        workspaces={workspaces}
       >
         {screen === "today" || screen === "suggestion" || screen === "tray" ? (
           <TodayPage
@@ -143,6 +183,32 @@ export default function App() {
             workspace={activeWorkspace}
             selectedSuggestionId={selectedSuggestion?.id ?? null}
             suggestions={suggestionQueue}
+            liveSummary={
+              engineSnapshot
+                ? {
+                    activeAdaptationCount:
+                      engineSnapshot.terminal.review_mode.active_artifact_count,
+                    health: engineSnapshot.health,
+                    pendingFeedbackCount:
+                      engineSnapshot.terminal.review_mode.metrics
+                        .pending_feedback_count,
+                    pendingReviewCount:
+                      engineSnapshot.terminal.review_mode.metrics
+                        .pending_review_count,
+                    projectCount: engineSnapshot.projects.length,
+                  }
+                : nativeRuntime
+                  ? {
+                      activeAdaptationCount: 0,
+                      health: engineError ? "needs_attention" : "paused",
+                      pendingFeedbackCount: 0,
+                      pendingReviewCount: 0,
+                      projectCount: 0,
+                      message:
+                        engineError ?? "Temper is opening your local work…",
+                    }
+                  : undefined
+            }
           />
         ) : null}
         {screen === "core" ? (

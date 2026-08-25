@@ -19,6 +19,7 @@ export function Shell({
   advancedMode,
   onNavigate,
   onWorkspaceChange,
+  workspaces,
   children,
 }: {
   screen: Screen;
@@ -26,6 +27,7 @@ export function Shell({
   advancedMode: boolean;
   onNavigate: (screen: Screen) => void;
   onWorkspaceChange: (workspace: WorkspaceScope) => void;
+  workspaces?: Array<{ id: string; label: string; description: string }>;
   children: ReactNode;
 }) {
   return (
@@ -73,6 +75,7 @@ export function Shell({
           <WorkspacePicker
             activeWorkspace={activeWorkspace}
             onWorkspaceChange={onWorkspaceChange}
+            workspaces={workspaces}
           />
         </header>
         <main className="main-content">
@@ -111,13 +114,24 @@ const workspaceOptions: Array<{
 function WorkspacePicker({
   activeWorkspace,
   onWorkspaceChange,
+  workspaces,
 }: {
   activeWorkspace: WorkspaceScope;
   onWorkspaceChange: (workspace: WorkspaceScope) => void;
+  workspaces?: Array<{ id: string; label: string; description: string }>;
 }) {
+  const options = workspaces
+    ? [
+        {
+          id: "all",
+          label: "All projects",
+          description: `${workspaces.length} active project${workspaces.length === 1 ? "" : "s"}`,
+        },
+        ...workspaces,
+      ]
+    : workspaceOptions;
   const current =
-    workspaceOptions.find((option) => option.id === activeWorkspace) ??
-    workspaceOptions[0];
+    options.find((option) => option.id === activeWorkspace) ?? options[0];
   return (
     <DropdownMenu.Root modal={false}>
       <DropdownMenu.Trigger
@@ -144,7 +158,7 @@ function WorkspacePicker({
         sideOffset={8}
       >
         <DropdownMenu.Label>Workspace view</DropdownMenu.Label>
-        {workspaceOptions.map((option) => (
+        {options.map((option) => (
           <DropdownMenu.Item
             className="workspace-picker-item"
             key={option.id}
