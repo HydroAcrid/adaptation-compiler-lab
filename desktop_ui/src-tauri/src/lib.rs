@@ -179,7 +179,9 @@ mod tests {
     #[test]
     fn renderer_contract_has_no_generic_engine_command() {
         let source = include_str!("lib.rs");
-        assert!(!source.contains("fn engine_request("));
-        assert!(!source.contains("fn process_run("));
+        let generic_engine_command = ["fn engine_", "request("].concat();
+        let generic_process_command = ["fn process_", "run("].concat();
+        assert!(!source.contains(&generic_engine_command));
+        assert!(!source.contains(&generic_process_command));
     }
 }
