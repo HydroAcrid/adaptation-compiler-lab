@@ -489,6 +489,38 @@ def verify_signed_governance(
         raise SignatureVerificationError("Ed25519 signature verification failed") from error
 
 
+def verify_detached_envelope(
+    payload: Mapping[str, object],
+    envelope: SignatureEnvelope,
+    *,
+    public_key_base64: str,
+    expected_purpose: str,
+) -> None:
+    """Verify a canonical detached signature without granting governance authority."""
+
+    if envelope.purpose != expected_purpose:
+        raise SignatureVerificationError("detached signature purpose does not match")
+    try:
+        public_bytes = base64.b64decode(public_key_base64, validate=True)
+    except ValueError as error:
+        raise SignatureVerificationError("detached public key is invalid") from error
+    if len(public_bytes) != 32:
+        raise SignatureVerificationError("detached public key length is invalid")
+    fingerprint = f"sha256:{hashlib.sha256(public_bytes).hexdigest()}"
+    if fingerprint != envelope.key_fingerprint:
+        raise SignatureVerificationError("detached public key fingerprint does not match")
+    public_key = Ed25519PublicKey.from_public_bytes(public_bytes)
+    try:
+        public_key.verify(
+            base64.b64decode(envelope.signature_base64, validate=True),
+            _message(payload, envelope),
+        )
+    except (InvalidSignature, ValueError) as error:
+        raise SignatureVerificationError(
+            "detached Ed25519 signature verification failed"
+        ) from error
+
+
 def _required_role(value: SignedGovernanceObject) -> SignerRole | None:
     if isinstance(value, ConsentReceipt):
         return SignerRole.CONSENT
