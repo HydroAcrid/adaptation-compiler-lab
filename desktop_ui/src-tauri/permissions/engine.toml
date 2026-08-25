@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "engine-read"
+description = "Allows only raw-free handshake and snapshot reads from the local Temper engine."
+commands.allow = ["engine_handshake", "snapshot_get"]

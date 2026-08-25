@@ -9,6 +9,9 @@
   },
   "scripts": {
     "dev": "vite",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
     "build": "tsc -b && vite build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -20,9 +23,11 @@
     "test:compat": "playwright test --config playwright.compat.config.ts --project=windows-webview2",
     "test:compat:webkit": "playwright test --config playwright.compat.config.ts --project=macos-wkwebview",
     "test:visual:update": "playwright test --update-snapshots",
-    "screenshots": "playwright test tests/gallery.spec.ts --update-snapshots"
+    "screenshots": "playwright test tests/gallery.spec.ts --update-snapshots",
+    "icon:render": "node scripts/render-app-icon.mjs && tauri icon src-tauri/icons/icon.png"
   },
   "dependencies": {
+    "@tauri-apps/api": "2.11.1",
     "@fontsource-variable/instrument-sans": "^5.3.0",
     "@fontsource-variable/newsreader": "^5.3.0",
     "@radix-ui/react-collapsible": "^1.1.12",
@@ -38,6 +43,7 @@
     "@axe-core/playwright": "^4.11.0",
     "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.62.1",
+    "@tauri-apps/cli": "2.11.4",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",

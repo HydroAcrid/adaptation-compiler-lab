@@ -48,6 +48,7 @@ export function TodayPage({
   suggestions,
   selectedSuggestionId,
   automaticLearning,
+  liveSummary,
 }: {
   onReview: (suggestionId: string) => void;
   onOpenCore: () => void;
@@ -57,6 +58,14 @@ export function TodayPage({
   suggestions: Suggestion[];
   selectedSuggestionId: string | null;
   automaticLearning: boolean;
+  liveSummary?: {
+    activeAdaptationCount: number;
+    health: "ready" | "needs_attention" | "paused" | "consent_expired";
+    pendingFeedbackCount: number;
+    pendingReviewCount: number;
+    projectCount: number;
+    message?: string;
+  };
 }) {
   const selectedSuggestion =
     suggestions.find((item) => item.id === selectedSuggestionId) ??
@@ -98,13 +107,16 @@ export function TodayPage({
           </h1>
         </div>
         <p>
-          {isAllProjects
-            ? `${suggestionCount} suggestions are ready in Kairn. Green Meadow has nothing waiting.`
-            : hasSuggestion
-              ? suggestionCount === 1
-                ? "Approved guidance is ready when it is relevant. One suggestion needs your attention."
-                : `${suggestionCount} suggestions are ready. Temper has put the clearest one first.`
-              : "Approved guidance is ready when it is relevant. Nothing needs your review."}
+          {liveSummary
+            ? (liveSummary.message ??
+              `${liveSummary.activeAdaptationCount} approved adaptation${liveSummary.activeAdaptationCount === 1 ? " is" : "s are"} available across ${liveSummary.projectCount} project${liveSummary.projectCount === 1 ? "" : "s"}.`)
+            : isAllProjects
+              ? `${suggestionCount} suggestions are ready in Kairn. Green Meadow has nothing waiting.`
+              : hasSuggestion
+                ? suggestionCount === 1
+                  ? "Approved guidance is ready when it is relevant. One suggestion needs your attention."
+                  : `${suggestionCount} suggestions are ready. Temper has put the clearest one first.`
+                : "Approved guidance is ready when it is relevant. Nothing needs your review."}
         </p>
       </section>
       <div className="folio-divider" aria-hidden="true">
@@ -134,12 +146,28 @@ export function TodayPage({
           ) : (
             <>
               <span className="folio-kicker">Current project</span>
-              <h2>Green Meadow is ready.</h2>
-              <blockquote>“Use PowerShell 7 for release work.”</blockquote>
-              <p>
-                One project memory and the relevant shared guidance are
-                available here. Kairn-only knowledge stays out.
-              </p>
+              <h2>
+                {liveSummary
+                  ? liveSummary.health === "ready"
+                    ? `${isAllProjects ? "Your work" : workspace} is ready.`
+                    : "Temper needs your attention."
+                  : "Green Meadow is ready."}
+              </h2>
+              {liveSummary ? (
+                <p>
+                  {liveSummary.pendingReviewCount
+                    ? `${liveSummary.pendingReviewCount} suggestion${liveSummary.pendingReviewCount === 1 ? " is" : "s are"} waiting for review.`
+                    : "Nothing needs your review right now."}
+                </p>
+              ) : (
+                <>
+                  <blockquote>“Use PowerShell 7 for release work.”</blockquote>
+                  <p>
+                    One project memory and the relevant shared guidance are
+                    available here. Kairn-only knowledge stays out.
+                  </p>
+                </>
+              )}
               <button
                 className="folio-primary-action"
                 onClick={onOpenCore}
@@ -177,15 +205,25 @@ export function TodayPage({
               <>
                 <div>
                   <dt>Project</dt>
-                  <dd>Green Meadow</dd>
+                  <dd>{isAllProjects ? "All projects" : workspace}</dd>
                 </div>
                 <div>
                   <dt>Available here</dt>
-                  <dd>Seven approved items</dd>
+                  <dd>
+                    {liveSummary
+                      ? `${liveSummary.activeAdaptationCount} approved item${liveSummary.activeAdaptationCount === 1 ? "" : "s"}`
+                      : "Seven approved items"}
+                  </dd>
                 </div>
                 <div>
                   <dt>Status</dt>
-                  <dd>Ready</dd>
+                  <dd>
+                    {liveSummary
+                      ? liveSummary.health === "ready"
+                        ? "Ready"
+                        : "Needs attention"
+                      : "Ready"}
+                  </dd>
                 </div>
               </>
             )}

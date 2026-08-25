@@ -17,6 +17,7 @@ dependencies = [
 adaptation-compiler-lab = "adaptation_compiler_lab.cli:app"
 adaptation-compiler = "adaptation_compiler_lab.desktop.app:main"
 temper = "adaptation_compiler_lab.temper_cli:app"
+temper-engine = "adaptation_compiler_lab.desktop.engine_main:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -14,6 +14,7 @@ node_modules/
 .next/
 test-results/
 playwright-report/
+desktop_ui/src-tauri/target/
 *.tsbuildinfo
 .env
 .env.*
