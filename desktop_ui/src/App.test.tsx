@@ -61,6 +61,65 @@ describe("Temper prototype", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows temporary capability Modes as separate from Core", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Modes" }));
+
+    expect(screen.getByRole("heading", { name: "Modes" })).toBeInTheDocument();
+    expect(screen.getByText("Frontend Studio")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Core stays yours and stays unchanged/i),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "View Mode" }));
+    expect(
+      screen.getByRole("dialog", { name: "Frontend Studio" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/One exact managed task/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/6 conformance checks passed/i),
+    ).toBeInTheDocument();
+  });
+
+  it("previews profile portability without pretending browser writes are native", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState({}, "", "/?screen=core");
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Export" }));
+    expect(
+      screen.getByRole("dialog", { name: "Take your Core with you" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/private paths are not included/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Save encrypted profile" }),
+    ).toBeDisabled();
+    expect(screen.getByText(/visual browser preview/i)).toBeInTheDocument();
+  });
+
+  it("shows that imported profiles remain inactive until review", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState({}, "", "/?screen=core");
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    await user.type(
+      screen.getByLabelText("Profile passphrase"),
+      "correct horse battery staple",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Open example preview" }),
+    );
+    expect(
+      screen.getByText(/remains inactive until you review/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Stage for review" }),
+    ).toBeDisabled();
+  });
+
   it("reviews one suggestion without mutating from a notification", async () => {
     const user = userEvent.setup();
     render(<App />);

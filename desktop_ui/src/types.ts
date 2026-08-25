@@ -3,6 +3,7 @@ export type Screen =
   | "today"
   | "suggestion"
   | "core"
+  | "modes"
   | "connections"
   | "settings"
   | "advanced"
@@ -43,6 +44,43 @@ export interface CoreItem {
   description: string;
   scope: CoreScope;
   sourceSummary: string;
+}
+
+export interface PortableProfileItemPreview {
+  item_id: string;
+  kind: string;
+  summary: string;
+  required_behavior_count: number;
+  scope_mapping_required: boolean;
+}
+
+export interface PortableProfilePreview {
+  package_id: string;
+  display_name: string;
+  package_digest: string;
+  source_key_fingerprint: string;
+  source_signature_verified: true;
+  item_count: number;
+  items: PortableProfileItemPreview[];
+  scope_mapping_count: number;
+  warnings: string[];
+  activates_nothing: true;
+  raw_payloads_exposed: false;
+}
+
+export interface CapabilityModeSummary {
+  mode_id: string;
+  mode_version: string;
+  name: string;
+  summary: string;
+  activation_default: "one_task";
+  applicable_task_classes: string[];
+  compatible_target_families: string[];
+  requested_tools: string[];
+  projection_utf8_bytes: number;
+  evaluation_valid: boolean;
+  evaluation_case_count: number;
+  mutates_permanent_core: false;
 }
 
 export interface AgentConnection {

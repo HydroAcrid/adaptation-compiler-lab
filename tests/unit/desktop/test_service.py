@@ -34,6 +34,7 @@ class FakeDesktopBackend:
     renewal_count: int = 0
     applied: list[tuple[str, str]] = field(default_factory=list)
     discarded: list[str] = field(default_factory=list)
+    mode_ids: list[str | None] = field(default_factory=list)
 
     def config(self) -> DesktopRuntimeConfiguration:
         return DesktopRuntimeConfiguration(
@@ -80,9 +81,12 @@ class FakeDesktopBackend:
     def feedback(self, *, activation_id: str, outcome: RuntimeFeedbackOutcome) -> None:
         self.feedback_rows.append((activation_id, outcome))
 
-    def run_task(self, *, task: str, project_id: str) -> FreshCodexTaskResult:
+    def run_task(
+        self, *, task: str, project_id: str, mode_id: str | None = None
+    ) -> FreshCodexTaskResult:
         assert task == "Do the bounded task."
         assert project_id == "green-meadow"
+        self.mode_ids.append(mode_id)
         return FreshCodexTaskResult(
             activation_id="desktop-activation-1",
             material_utf8_bytes=144,
@@ -175,6 +179,24 @@ def test_task_result_preserves_transient_message_but_action_is_raw_free(tmp_path
     assert "Done" not in action.message
 
 
+def test_temporary_mode_is_forwarded_without_changing_the_normal_task_path(
+    tmp_path: Path,
+) -> None:
+    terminal, _state = _empty_snapshot(tmp_path)
+    backend = FakeDesktopBackend(terminal)
+    service = DesktopApplicationService(backend, clock=lambda: NOW)
+
+    action, task = service.run_task(
+        task="Do the bounded task.",
+        project_id="green-meadow",
+        mode_id="frontend-studio",
+    )
+
+    assert action.ok is True
+    assert task is not None
+    assert backend.mode_ids == ["frontend-studio"]
+
+
 def test_empty_task_is_rejected_before_backend_execution(tmp_path: Path) -> None:
     terminal, _state = _empty_snapshot(tmp_path)
     service = DesktopApplicationService(FakeDesktopBackend(terminal), clock=lambda: NOW)
@@ -192,8 +214,10 @@ def test_runtime_pin_drift_is_returned_as_a_safe_raw_free_failure(
     terminal, _state = _empty_snapshot(tmp_path)
 
     class DriftBackend(FakeDesktopBackend):
-        def run_task(self, *, task: str, project_id: str) -> FreshCodexTaskResult:
-            del task, project_id
+        def run_task(
+            self, *, task: str, project_id: str, mode_id: str | None = None
+        ) -> FreshCodexTaskResult:
+            del task, project_id, mode_id
             raise RuntimeConformanceError("private executable path and digest detail")
 
     service = DesktopApplicationService(DriftBackend(terminal), clock=lambda: NOW)

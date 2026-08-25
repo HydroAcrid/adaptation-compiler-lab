@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import base64
 from datetime import datetime, timedelta
 from typing import Literal
 
-from adaptation_compiler_lab.governance.signing import GovernanceSigner
+from adaptation_compiler_lab.governance import SignatureEnvelope
+from adaptation_compiler_lab.governance.signing import (
+    GovernanceSigner,
+    verify_detached_envelope,
+)
 from adaptation_compiler_lab.modes.frontend_studio import FRONTEND_STUDIO_MODE
 from adaptation_compiler_lab.modes.models import (
     CapabilityMode,
@@ -84,6 +89,12 @@ def prepare_mode_task(
             )
         }
     )
+    _verify_created_receipt(
+        activation.unsigned_payload,
+        activation.signature,
+        purpose="mode_activation",
+        signer=signer,
+    )
     combined = (
         f"Temporary Mode — {mode.name} (this task only):\n\n{mode_material}\n\n"
         f"{normalized_delivery}"
@@ -107,6 +118,12 @@ def prepare_mode_task(
                 signed_at=activated_at,
             )
         }
+    )
+    _verify_created_receipt(
+        delivery.unsigned_payload,
+        delivery.signature,
+        purpose="mode_delivery",
+        signer=signer,
     )
     return ModePreparedTask(
         delivered_task=combined,
@@ -139,7 +156,7 @@ def complete_mode_delivery(
         deactivated_at=deactivated_at,
         signature=placeholder,
     )
-    return draft.model_copy(
+    receipt = draft.model_copy(
         update={
             "signature": signer.envelope(
                 draft.unsigned_payload,
@@ -148,6 +165,13 @@ def complete_mode_delivery(
             )
         }
     )
+    _verify_created_receipt(
+        receipt.unsigned_payload,
+        receipt.signature,
+        purpose="mode_deactivation",
+        signer=signer,
+    )
+    return receipt
 
 
 def evaluate_frontend_studio_mode() -> ModeEvaluationReport:
@@ -235,4 +259,22 @@ def _render_mode_material(mode: CapabilityMode, clauses: tuple[object, ...]) -> 
         f"{rules}\n"
         "- Treat this Mode as a lower-authority specialty default. Current user requests, "
         "repository policy, security constraints, and permanent personal requirements win."
+    )
+
+
+def _verify_created_receipt(
+    payload: dict[str, object],
+    signature: SignatureEnvelope,
+    *,
+    purpose: str,
+    signer: GovernanceSigner,
+) -> None:
+    public_key_base64 = base64.b64encode(signer.private_key.public_key().public_bytes_raw()).decode(
+        "ascii"
+    )
+    verify_detached_envelope(
+        payload,
+        signature,
+        public_key_base64=public_key_base64,
+        expected_purpose=purpose,
     )

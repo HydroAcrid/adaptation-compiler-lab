@@ -6,6 +6,7 @@ const screens = [
   "today",
   "suggestion",
   "core",
+  "modes",
   "connections",
   "settings",
   "advanced",

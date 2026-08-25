@@ -4,26 +4,26 @@ Last updated: 2026-08-24
 
 ## Temper React/Tauri rebuild
 
-The first rebuild phase is implemented in an owner-directed visual direction. `desktop_ui/` is a
-standalone React 19/Vite prototype using synthetic raw-free data; it does not call the compiler,
-credentials, agents, Supabase, or sealed-study code. It establishes the custom warm-neutral design
-system, Today/Core/Connections/Settings navigation, a custom All projects workspace plus two
-focused repository views, a scoped Core for preferences, memories, procedures, and skills, focused
-review and Core-edit sheets, onboarding,
-explicit Codex and Claude capability language, telemetry preview, tray/notification previews, dark
-mode, compact window behavior, and a hidden Advanced task lab. Core edits remain synthetic
-in-memory prototype behavior until the typed engine protocol is wired.
+The accepted React 19/Vite product now runs inside a restrictive Tauri 2 shell and communicates
+with the existing Python engine over `temper-engine-protocol/v1` framed stdio. Native state loads
+registered projects and approved Core items from the real raw-free application service. Browser
+URLs remain deterministic synthetic showcases and explicitly disable native writes.
 
-Frontend formatting, ESLint, strict TypeScript, 22 component and asset tests, production build, and
-30 Playwright visual-plus-axe scenes pass. A 720×540 compatibility gate passes nine
-Windows/WebView2-proxy checks and repaired scope widening, blank Core edits, minimum-window dark
-contrast, keyboard access to scrollable content, workspace-menu behavior, and one-shot system-theme
-behavior. Account connection and project-folder controls are now explicitly disabled in the
-browser prototype instead of appearing functional. The configured WebKit proxy cannot launch on
-this WSL host without administrator-installed system libraries, so native macOS validation
-remains open. The next slice remains the Tauri shell and a read-only versioned sidecar handshake before any
-governed mutation is exposed. Qt remains the internal diagnostic application and no release claim,
-native installer, Claude hook, or external-study action has occurred. See
+Core now exposes real encrypted offline profile export/import through Rust-owned file dialogs.
+Exports contain only signed active behavioral specifications and digested lineage. Imports verify
+an exact preview and stage a locally signed inactive receipt; the source signature never transfers
+instruction authority. Modes is now a separate actual route backed by the evaluated first-party
+Frontend Studio Mode. It can run one exact registered-project task through the existing fresh
+isolated Codex subscription gateway, records signed activation/delivery/deactivation, and returns
+changes for review without directly writing the canonical project.
+
+Frontend formatting, ESLint, strict TypeScript, 33 component/engine tests, production build, and
+34 Playwright visual/accessibility/product-interaction scenes pass. The Chromium interaction suite
+caught and repaired an overlay stacking defect that made Core dialog controls unclickable. The
+configured WebKit proxy still cannot launch on this WSL host without administrator-installed
+system libraries, so native macOS validation remains open. Qt remains the internal diagnostic and
+recovery application; no release claim, signed installer, Claude hook, or external-study action has
+occurred. See
 [`TEMPER_DESKTOP_REBUILD.md`](TEMPER_DESKTOP_REBUILD.md) and
 [`TEMPER_ALPHA_READINESS_AUDIT.md`](TEMPER_ALPHA_READINESS_AUDIT.md).
 
@@ -33,16 +33,15 @@ The portal now pins Next.js and its matching ESLint configuration to 16.2.11, ov
 production vulnerabilities. This repairs the dependency tree; it does not make invitation
 enrollment or telemetry upload operational.
 
-Milestone 6B now defines three separate future package classes: private same-owner profile backup,
-sanitized shareable behavior packs whose sender authority never transfers, and temporary
-capability Modes. The runtime already contains composition seams, but no package import or Mode
-activation exists. Offline package schemas follow the read-only Tauri/engine handshake; the UI
-will not expose fake import/export or Modes controls before those governed services exist.
+Milestone 6B distinguishes private profile portability, future sanitized shareable behavior packs,
+and lower-authority temporary Modes. The first and third now have real governed types and desktop
+flows; a public Mode marketplace, third-party pack activation, and automatic preset generation do
+not exist.
 
-Repository-wide Ruff, strict mypy over 365 source files, source/wheel builds, and the serial Python
-suite also pass: 999 tests with two expected platform skips. One verification invocation omitted
-`/usr/sbin` from `PATH`, causing fail-closed sandbox tests to report missing `chroot`; restoring the
-normal system path produced the clean full result without a code change.
+Repository-wide Ruff, strict mypy over 380 source files, source/wheel builds, and the serial Python
+suite pass: 1,025 tests with two expected platform skips. Rust formatting passes locally. Native
+Rust linking remains intentionally delegated to the Linux/Windows/macOS CI matrix because this WSL
+host lacks `pkg-config` and Wayland/GTK/WebKit development libraries.
 
 ## Desktop private-alpha foundation
 

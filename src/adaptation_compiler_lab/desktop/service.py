@@ -96,7 +96,9 @@ class DesktopBackend(Protocol):
 
     def feedback(self, *, activation_id: str, outcome: RuntimeFeedbackOutcome) -> None: ...
 
-    def run_task(self, *, task: str, project_id: str) -> FreshCodexTaskResult: ...
+    def run_task(
+        self, *, task: str, project_id: str, mode_id: str | None = None
+    ) -> FreshCodexTaskResult: ...
 
     def change_review(self, *, session_id: str) -> DesktopChangeReview: ...
 
@@ -170,7 +172,9 @@ class CodexDogfoodDesktopBackend:
             outcome=outcome,
         )
 
-    def run_task(self, *, task: str, project_id: str) -> FreshCodexTaskResult:
+    def run_task(
+        self, *, task: str, project_id: str, mode_id: str | None = None
+    ) -> FreshCodexTaskResult:
         config = _load_config(self.config_path)
         project = next((item for item in config.projects if item.project_id == project_id), None)
         if project is None:
@@ -181,10 +185,12 @@ class CodexDogfoodDesktopBackend:
             self.config_path,
             task=task,
             project_id=project_id,
+            mode_id=mode_id,
         )
+        session = _gateway_ledger(config).session(session_id)
         return FreshCodexTaskResult(
             activation_id=session_id,
-            material_utf8_bytes=0,
+            material_utf8_bytes=(0 if session is None else session.projection_utf8_bytes),
             status="review_available",
             final_message="Changes are ready for explicit review before they reach your project.",
         )
@@ -442,11 +448,16 @@ class DesktopApplicationService:
         *,
         task: str,
         project_id: str,
+        mode_id: str | None = None,
     ) -> tuple[ActionResult, DesktopTaskResult | None]:
         if not task.strip():
             return self._failure("run_task", "invalid_task", "Enter a task before running."), None
         try:
-            result = self._backend.run_task(task=task, project_id=project_id)
+            result = (
+                self._backend.run_task(task=task, project_id=project_id)
+                if mode_id is None
+                else self._backend.run_task(task=task, project_id=project_id, mode_id=mode_id)
+            )
             review = (
                 None
                 if result.status != "review_available"

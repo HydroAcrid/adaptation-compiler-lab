@@ -12,6 +12,9 @@ from adaptation_compiler_lab.portability.profile import (
     decrypt_portable_profile,
     encrypt_portable_profile,
     preview_portable_profile,
+    preview_profile_export,
+    preview_profile_package,
+    read_portable_profile,
     verify_portable_profile,
     write_portable_profile,
 )
@@ -28,6 +31,9 @@ __all__ = [
     "decrypt_portable_profile",
     "encrypt_portable_profile",
     "preview_portable_profile",
+    "preview_profile_export",
+    "preview_profile_package",
+    "read_portable_profile",
     "verify_portable_profile",
     "write_portable_profile",
 ]

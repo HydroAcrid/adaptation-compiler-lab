@@ -6,6 +6,7 @@ import {
   AdvancedPage,
   ConnectionsPage,
   CorePage,
+  ModesPage,
   SettingsPage,
   TodayPage,
   TrayPreview,
@@ -16,9 +17,13 @@ import { suggestions } from "./data/demo";
 import {
   isTauriRuntime,
   loadEngineSnapshot,
+  loadModes,
   type EngineDesktopSnapshot,
 } from "./engine";
 import type {
+  CapabilityModeSummary,
+  CoreItem,
+  CoreKind,
   FeedbackValue,
   Screen,
   Suggestion,
@@ -32,6 +37,7 @@ const supportedScreens = new Set<Screen>([
   "today",
   "suggestion",
   "core",
+  "modes",
   "connections",
   "settings",
   "advanced",
@@ -77,6 +83,10 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [engineSnapshot, setEngineSnapshot] =
     useState<EngineDesktopSnapshot | null>(null);
+  const [snapshotDigest, setSnapshotDigest] = useState<string | null>(null);
+  const [modeCatalog, setModeCatalog] = useState<CapabilityModeSummary[]>(
+    nativeRuntime ? [] : browserModes,
+  );
   const [engineError, setEngineError] = useState<string | null>(null);
   const selectedSuggestion =
     suggestionQueue.find((item) => item.id === selectedSuggestionId) ??
@@ -103,9 +113,13 @@ export default function App() {
   useEffect(() => {
     if (!nativeRuntime) return;
     let active = true;
-    loadEngineSnapshot()
-      .then(({ snapshot }) => {
-        if (active) setEngineSnapshot(snapshot);
+    Promise.all([loadEngineSnapshot(), loadModes()])
+      .then(([{ snapshot, snapshotDigest: digest }, modes]) => {
+        if (active) {
+          setEngineSnapshot(snapshot);
+          setSnapshotDigest(digest);
+          setModeCatalog(modes);
+        }
       })
       .catch((error: unknown) => {
         if (active) {
@@ -128,6 +142,11 @@ export default function App() {
       ? "Connected"
       : "Needs review",
   }));
+  const liveCoreItems = engineSnapshot
+    ? engineSnapshot.terminal.active_adaptations.map((item) =>
+        coreItemFromEngine(item, engineSnapshot),
+      )
+    : undefined;
 
   function navigate(destination: Screen) {
     setScreen(destination);
@@ -158,6 +177,27 @@ export default function App() {
           ? `Adaptation kept for ${selectedSuggestion.sourceProject} only.`
           : "Suggestion ignored. Nothing changed.",
     );
+  }
+
+  async function refreshAfterNativeAction(message: string) {
+    setToast(message);
+    if (!nativeRuntime) return;
+    try {
+      const [{ snapshot, snapshotDigest: digest }, modes] = await Promise.all([
+        loadEngineSnapshot(),
+        loadModes(),
+      ]);
+      setEngineSnapshot(snapshot);
+      setSnapshotDigest(digest);
+      setModeCatalog(modes);
+      setEngineError(null);
+    } catch (error: unknown) {
+      setEngineError(
+        error instanceof Error
+          ? error.message
+          : "Temper could not refresh your local state.",
+      );
+    }
   }
 
   if (screen === "onboarding")
@@ -212,7 +252,37 @@ export default function App() {
           />
         ) : null}
         {screen === "core" ? (
-          <CorePage activeWorkspace={activeWorkspace} key={activeWorkspace} />
+          <CorePage
+            activeWorkspace={activeWorkspace}
+            availableWorkspaces={engineSnapshot?.projects.map(
+              (project) => project.display_name,
+            )}
+            initialItems={liveCoreItems}
+            key={`${activeWorkspace}-${snapshotDigest ?? "browser"}`}
+            nativeRuntime={nativeRuntime}
+            onNotice={setToast}
+            snapshotDigest={snapshotDigest}
+          />
+        ) : null}
+        {screen === "modes" ? (
+          <ModesPage
+            error={nativeRuntime ? engineError : null}
+            loading={nativeRuntime && !engineError && !engineSnapshot}
+            modes={modeCatalog}
+            nativeRuntime={nativeRuntime}
+            onOpenCore={() => navigate("core")}
+            onTaskComplete={refreshAfterNativeAction}
+            projects={
+              engineSnapshot?.projects.map((project) => ({
+                id: project.project_id,
+                label: project.display_name,
+              })) ?? [
+                { id: "kairn", label: "Kairn" },
+                { id: "green-meadow", label: "Green Meadow" },
+              ]
+            }
+            snapshotDigest={snapshotDigest}
+          />
         ) : null}
         {screen === "connections" ? <ConnectionsPage /> : null}
         {screen === "settings" ? (
@@ -258,4 +328,51 @@ export default function App() {
       ) : null}
     </Tooltip.Provider>
   );
+}
+
+const browserModes: CapabilityModeSummary[] = [
+  {
+    activation_default: "one_task",
+    applicable_task_classes: [
+      "design_system",
+      "frontend_design",
+      "frontend_implementation",
+    ],
+    compatible_target_families: ["claude-code", "codex"],
+    evaluation_case_count: 6,
+    evaluation_valid: true,
+    mode_id: "frontend-studio",
+    mode_version: "1.0.0",
+    mutates_permanent_core: false,
+    name: "Frontend Studio",
+    projection_utf8_bytes: 1128,
+    requested_tools: [],
+    summary:
+      "A focused frontend workflow for distinctive, accessible, responsive product interfaces.",
+  },
+];
+
+function coreItemFromEngine(
+  item: EngineDesktopSnapshot["terminal"]["active_adaptations"][number],
+  snapshot: EngineDesktopSnapshot,
+): CoreItem {
+  const projectNames = item.scope.project_ids.map(
+    (projectId) =>
+      snapshot.projects.find((project) => project.project_id === projectId)
+        ?.display_name ?? projectId,
+  );
+  return {
+    description: item.required_behaviors.join(" "),
+    id: item.artifact_id,
+    kind: coreKind(item.artifact_type),
+    scope: projectNames.length ? projectNames.join(", ") : "Everywhere",
+    sourceSummary: `Approved from ${item.evidence_count} supporting source${item.evidence_count === 1 ? "" : "s"}`,
+    title: item.intent,
+  };
+}
+
+function coreKind(value: string): CoreKind {
+  if (value === "preference" || value === "memory") return value;
+  if (value === "procedure" || value === "prompt_rule") return "procedure";
+  return "skill";
 }

@@ -9,6 +9,7 @@ import { BrandMark } from "./BrandMark";
 const primaryNavigation = [
   { id: "today" as const, label: "Today" },
   { id: "core" as const, label: "Core" },
+  { id: "modes" as const, label: "Modes" },
   { id: "connections" as const, label: "Connections" },
   { id: "settings" as const, label: "Settings" },
 ];
