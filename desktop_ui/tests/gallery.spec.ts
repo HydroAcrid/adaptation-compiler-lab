@@ -32,6 +32,17 @@ for (const theme of ["light", "dark"] as const) {
     );
   });
 
+  test(`workspace menu ${theme} visual`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await openScene(page, "today", theme);
+    await page.getByRole("button", { name: "Workspace: All projects" }).click();
+    await expect(page.getByRole("menu")).toBeVisible();
+    await expect(page).toHaveScreenshot(`workspace-menu-${theme}.png`, {
+      fullPage: true,
+    });
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  });
+
   test(`today with Green Meadow ${theme} visual`, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.emulateMedia({ reducedMotion: "reduce" });

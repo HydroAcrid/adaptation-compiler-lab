@@ -39,13 +39,18 @@ diagnostic client are substantially further along.
    the old Next.js/Sharp/PostCSS tree. Next.js is now 16.2.11, the matching ESLint configuration is
    pinned, patched Sharp and PostCSS versions are enforced, and the portal declares its exact
    Turbopack root. The rebuilt production tree has no known vulnerability.
+8. **Multi-project ambiguity.** The native two-item select looked platform-inconsistent, omitted
+   concurrent work, and did not make state changes obvious. The custom workspace menu now defaults
+   to All projects, exposes both focused repository views, visibly changes Today and Core, and is
+   covered in its open and closed states. Browser-only native account and folder actions are
+   disabled and explained instead of behaving like broken controls.
 
 ## Evidence that currently passes
 
 - Frozen dependency installation with the exact pnpm lock.
-- Prettier, ESLint, strict TypeScript, 20 component/asset tests, and the optimized Vite build.
-- Eight Windows/WebView2-proxy compatibility checks at 720×540.
-- Twenty-eight Chromium visual/accessibility scenes in both themes and compact/wide layouts.
+- Prettier, ESLint, strict TypeScript, 22 component/asset tests, and the optimized Vite build.
+- Nine Windows/WebView2-proxy compatibility checks at 720×540.
+- Thirty Chromium visual/accessibility scenes in both themes and compact/wide layouts.
 - React prototype and invitation-portal production dependency audits: no known vulnerabilities;
   the prototype's production licenses are 0BSD, ISC, MIT, and OFL-1.1.
 - Local-only font, ornament, and product-mark loading with exact asset digests and active-content

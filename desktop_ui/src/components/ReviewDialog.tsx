@@ -3,18 +3,16 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Check, ChevronDown, Folder, X } from "lucide-react";
 import { useState } from "react";
 
-import type { ProjectName, Suggestion, SuggestionDecision } from "../types";
+import type { Suggestion, SuggestionDecision } from "../types";
 import { Button } from "./ui";
 
 export function ReviewDialog({
   suggestion,
-  activeProject,
   open,
   onOpenChange,
   onDecision,
 }: {
   suggestion: Suggestion;
-  activeProject: ProjectName;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDecision: (decision: SuggestionDecision) => void;
@@ -31,9 +29,7 @@ export function ReviewDialog({
       : suggestion.automationDisposition === "review-required"
         ? "Your review stays required because this adaptation could materially guide how an agent works."
         : "Temper will keep gathering support unless you choose to keep this now.";
-  const suggestedScopeIsCurrentProject =
-    suggestion.suggestedScope === activeProject ||
-    suggestion.projectScope === `${activeProject} only`;
+  const canNarrowToSourceProject = suggestion.suggestedScope === "All projects";
   return (
     <Dialog.Root onOpenChange={onOpenChange} open={open}>
       <Dialog.Portal>
@@ -79,16 +75,16 @@ export function ReviewDialog({
             >
               Keep as suggested
             </Button>
-            {suggestedScopeIsCurrentProject ? null : (
+            {canNarrowToSourceProject ? (
               <Button
                 className="review-action--scope"
                 icon={<Folder aria-hidden="true" size={17} />}
                 onClick={() => onDecision("project")}
                 tone="quiet"
               >
-                Only in {activeProject}
+                Only in {suggestion.sourceProject}
               </Button>
-            )}
+            ) : null}
             <Button
               className="review-action--ignore"
               onClick={() => onDecision("ignore")}

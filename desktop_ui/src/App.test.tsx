@@ -11,9 +11,13 @@ describe("Temper prototype", () => {
   it("keeps the everyday Today surface calm and raw-free", () => {
     render(<App />);
     expect(
-      screen.getByRole("heading", { name: "Temper is active in Kairn." }),
+      screen.getByRole("heading", {
+        name: "Temper is active across your work.",
+      }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/3 suggestions are ready/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/3 suggestions are ready in Kairn/i),
+    ).toBeInTheDocument();
     expect(screen.getByText("Automatic option available")).toBeInTheDocument();
     expect(screen.queryByText(/sha256/i)).not.toBeInTheDocument();
   });
@@ -51,7 +55,9 @@ describe("Temper prototype", () => {
       "page",
     );
     expect(
-      screen.getByRole("heading", { name: "Temper is active in Kairn." }),
+      screen.getByRole("heading", {
+        name: "Temper is active across your work.",
+      }),
     ).toBeInTheDocument();
   });
 
@@ -104,10 +110,10 @@ describe("Temper prototype", () => {
   it("records lightweight usefulness feedback", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "Current project" }),
-      "Green Meadow",
+    await user.click(
+      screen.getByRole("button", { name: "Workspace: All projects" }),
     );
+    await user.click(screen.getByRole("menuitem", { name: /Green Meadow/i }));
     await user.click(screen.getByRole("button", { name: "Helped" }));
     expect(screen.getByText(/Recorded as helped/i)).toBeInTheDocument();
   });
@@ -126,10 +132,10 @@ describe("Temper prototype", () => {
   it("switches projects without leaking another project's knowledge", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "Current project" }),
-      "Green Meadow",
+    await user.click(
+      screen.getByRole("button", { name: "Workspace: All projects" }),
     );
+    await user.click(screen.getByRole("menuitem", { name: /Green Meadow/i }));
     expect(
       screen.getByRole("heading", {
         name: "Temper is active in Green Meadow.",
@@ -145,6 +151,41 @@ describe("Temper prototype", () => {
     );
     expect(screen.getByText("Green Meadow release shell")).toBeInTheDocument();
     expect(screen.queryByText("Kairn notes can lag")).not.toBeInTheDocument();
+  });
+
+  it("shows all project knowledge together and supports a focused Kairn view", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState({}, "", "/?screen=core");
+    render(<App />);
+    expect(screen.getByText("Kairn notes can lag")).toBeInTheDocument();
+    expect(screen.getByText("Green Meadow release shell")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Workspace: All projects" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: /^Kairn/i }));
+    expect(screen.getByText("Kairn notes can lag")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Green Meadow release shell"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not present native connection actions as working in the browser preview", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Connections" }));
+    expect(
+      screen.getByText(/browser preview cannot change agent accounts/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Desktop setup" }),
+    ).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "View details" }));
+    expect(screen.getByRole("dialog", { name: "Codex" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Done" }));
+    expect(
+      screen.getByRole("button", { name: "Add in desktop app" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Manage Kairn" })).toBeDisabled();
   });
 
   it("edits Core wording and scope from a focused sheet", async () => {
@@ -291,7 +332,9 @@ describe("Temper prototype", () => {
     ).not.toBeChecked();
     await user.click(screen.getByRole("button", { name: "Open Temper" }));
     expect(
-      screen.getByRole("heading", { name: "Temper is active in Kairn." }),
+      screen.getByRole("heading", {
+        name: "Temper is active across your work.",
+      }),
     ).toBeInTheDocument();
   });
 });

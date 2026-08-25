@@ -12,7 +12,7 @@ export const suggestions: Suggestion[] = [
     explanation:
       "You gave the same direction in three completed tasks. Temper reads it as a clear communication preference for Kairn.",
     suggestedScope: "Kairn",
-    projectScope: "Kairn only",
+    sourceProject: "Kairn",
     sourceCount: 3,
     authority: "Repeated explicit user corrections",
     capturedAt: "August 24, 2026 at 10:42 AM",
@@ -31,7 +31,7 @@ export const suggestions: Suggestion[] = [
     explanation:
       "Two corrections point to the same verification habit. It is strongly supported, but it would guide a procedure rather than express a simple preference.",
     suggestedScope: "Kairn",
-    projectScope: "Kairn only",
+    sourceProject: "Kairn",
     sourceCount: 2,
     authority: "Repeated explicit user corrections",
     capturedAt: "August 24, 2026 at 11:18 AM",
@@ -50,7 +50,7 @@ export const suggestions: Suggestion[] = [
     explanation:
       "You stated this directly once. Temper can preserve it now if you want, or wait for another ordinary-work example.",
     suggestedScope: "All projects",
-    projectScope: "All projects",
+    sourceProject: "Kairn",
     sourceCount: 1,
     authority: "Direct user preference",
     capturedAt: "August 24, 2026 at 12:03 PM",

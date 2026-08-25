@@ -15,8 +15,13 @@ pnpm test:visual
 ```
 
 Deterministic product states are selected with `?screen=<name>&theme=<light|dark>`. Supported
-screens are `onboarding`, `today`, `suggestion`, `adaptations`, `connections`, `settings`,
+screens are `onboarding`, `today`, `suggestion`, `core`, `connections`, `settings`,
 `advanced`, and `tray`.
+
+The default workspace is `All projects`. Use the custom masthead menu to focus Kairn or Green
+Meadow; `?project=kairn` and `?project=green-meadow` select deterministic focused states. Native
+account and folder mutations are intentionally disabled in this browser-only package because the
+Tauri/engine bridge is not present.
 
 `test:compat` exercises the everyday surfaces at the supported 720×540 minimum in Chromium as a
 practical Windows WebView2 proxy. It verifies accessibility, horizontal overflow, console

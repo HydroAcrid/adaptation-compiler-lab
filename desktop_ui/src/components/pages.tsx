@@ -31,9 +31,11 @@ import type {
   CoreKind,
   EvidenceStrength,
   FeedbackValue,
+  AgentConnection,
   ProjectName,
   Suggestion,
   Theme,
+  WorkspaceScope,
 } from "../types";
 import { Button, Divider, SectionHeading, StatusPill, Toggle } from "./ui";
 
@@ -42,7 +44,7 @@ export function TodayPage({
   onOpenCore,
   feedback,
   onFeedback,
-  project,
+  workspace,
   suggestions,
   selectedSuggestionId,
   automaticLearning,
@@ -51,7 +53,7 @@ export function TodayPage({
   onOpenCore: () => void;
   feedback: FeedbackValue | null;
   onFeedback: (value: FeedbackValue) => void;
-  project: ProjectName;
+  workspace: WorkspaceScope;
   suggestions: Suggestion[];
   selectedSuggestionId: string | null;
   automaticLearning: boolean;
@@ -59,7 +61,9 @@ export function TodayPage({
   const selectedSuggestion =
     suggestions.find((item) => item.id === selectedSuggestionId) ??
     suggestions[0];
-  const hasSuggestion = project === "Kairn" && Boolean(selectedSuggestion);
+  const hasSuggestion =
+    workspace !== "Green Meadow" && Boolean(selectedSuggestion);
+  const isAllProjects = workspace === "all";
   const selectedIndex = selectedSuggestion
     ? suggestions.findIndex((item) => item.id === selectedSuggestion.id)
     : -1;
@@ -87,14 +91,20 @@ export function TodayPage({
       </header>
       <section className="folio-statement" aria-labelledby="today-heading">
         <div className="folio-statement__line">
-          <h1 id="today-heading">Temper is active in {project}.</h1>
+          <h1 id="today-heading">
+            {isAllProjects
+              ? "Temper is active across your work."
+              : `Temper is active in ${workspace}.`}
+          </h1>
         </div>
         <p>
-          {hasSuggestion
-            ? suggestionCount === 1
-              ? "Approved guidance is ready when it is relevant. One suggestion needs your attention."
-              : `${suggestionCount} suggestions are ready. Temper has put the clearest one first.`
-            : "Approved guidance is ready when it is relevant. Nothing needs your review."}
+          {isAllProjects
+            ? `${suggestionCount} suggestions are ready in Kairn. Green Meadow has nothing waiting.`
+            : hasSuggestion
+              ? suggestionCount === 1
+                ? "Approved guidance is ready when it is relevant. One suggestion needs your attention."
+                : `${suggestionCount} suggestions are ready. Temper has put the clearest one first.`
+              : "Approved guidance is ready when it is relevant. Nothing needs your review."}
         </p>
       </section>
       <div className="folio-divider" aria-hidden="true">
@@ -105,7 +115,8 @@ export function TodayPage({
           {hasSuggestion ? (
             <>
               <span className="folio-kicker">
-                Suggestion {selectedIndex + 1} of {suggestionCount}
+                {isAllProjects ? "Kairn · " : ""}Suggestion {selectedIndex + 1}{" "}
+                of {suggestionCount}
               </span>
               <h2>Temper noticed a pattern worth considering.</h2>
               <blockquote>“{selectedSuggestion?.behavior}”</blockquote>
@@ -139,7 +150,7 @@ export function TodayPage({
             </>
           )}
         </article>
-        <aside className="folio-margin" aria-label="Current project notes">
+        <aside className="folio-margin" aria-label="Current workspace notes">
           <dl className="margin-register">
             {hasSuggestion ? (
               <>
@@ -278,10 +289,14 @@ const coreKinds: Array<{
   },
 ];
 
-export function CorePage({ activeProject }: { activeProject: ProjectName }) {
+export function CorePage({
+  activeWorkspace,
+}: {
+  activeWorkspace: WorkspaceScope;
+}) {
   const [items, setItems] = useState(coreItems);
   const [kind, setKind] = useState<CoreKind | "all">("all");
-  const [scope, setScope] = useState<ProjectName | "all">("all");
+  const [scope, setScope] = useState<ProjectName | "all">(activeWorkspace);
   const [selected, setSelected] = useState<CoreItem | null>(null);
   const [removed, setRemoved] = useState<{
     item: CoreItem;
@@ -331,15 +346,36 @@ export function CorePage({ activeProject }: { activeProject: ProjectName }) {
           </p>
         </div>
         <div className="core-current-project">
-          <span>Current project</span>
-          <strong>{activeProject}</strong>
+          <span>Workspace view</span>
+          <strong>
+            {activeWorkspace === "all" ? "All projects" : activeWorkspace}
+          </strong>
         </div>
       </header>
       <section className="core-overview" aria-label="Core summary">
         <p>
-          <strong>{items.length} approved items</strong> across two projects.
-          Shared guidance forms the trunk; project knowledge branches only where
-          it applies.
+          {activeWorkspace === "all" ? (
+            <>
+              <strong>{items.length} approved items</strong> across two
+              projects. Shared guidance forms the trunk; project knowledge
+              branches only where it applies.
+            </>
+          ) : (
+            <>
+              <strong>
+                {
+                  items.filter(
+                    (item) =>
+                      item.scope === "Everywhere" ||
+                      item.scope === activeWorkspace,
+                  ).length
+                }{" "}
+                approved items
+              </strong>{" "}
+              apply in {activeWorkspace}. Shared guidance is combined with this
+              project's branch.
+            </>
+          )}
         </p>
       </section>
       <div className="core-toolbar">
@@ -370,7 +406,7 @@ export function CorePage({ activeProject }: { activeProject: ProjectName }) {
             }
             value={scope}
           >
-            <option value="all">All knowledge</option>
+            <option value="all">All projects</option>
             <option value="Kairn">Kairn</option>
             <option value="Green Meadow">Green Meadow</option>
           </select>
@@ -557,6 +593,8 @@ function CoreItemDialog({
 }
 
 export function ConnectionsPage() {
+  const [selectedConnection, setSelectedConnection] =
+    useState<AgentConnection | null>(null);
   return (
     <div className="page">
       <header className="page-topline">
@@ -564,8 +602,15 @@ export function ConnectionsPage() {
       </header>
       <SectionHeading
         title="Connections"
-        description="Choose where Temper can learn and where it can deliver adaptations."
+        description="Review where Temper can learn and where it can deliver adaptations."
       />
+      <div className="native-action-note" role="note">
+        <Laptop aria-hidden="true" size={16} />
+        <span>
+          This browser preview cannot change agent accounts or project folders.
+          Those controls become available in the installed desktop app.
+        </span>
+      </div>
       <section className="connection-list">
         {connections.map((connection) => (
           <article className="connection-card" key={connection.id}>
@@ -600,9 +645,13 @@ export function ConnectionsPage() {
               </div>
             </div>
             <Button
+              disabled={connection.status !== "connected"}
+              onClick={() => setSelectedConnection(connection)}
               tone={connection.status === "connected" ? "quiet" : "primary"}
             >
-              {connection.status === "connected" ? "Manage" : "Connect"}
+              {connection.status === "connected"
+                ? "View details"
+                : "Desktop setup"}
             </Button>
           </article>
         ))}
@@ -613,7 +662,9 @@ export function ConnectionsPage() {
             <h2>Active projects</h2>
             <p>Only new work after registration is eligible.</p>
           </div>
-          <Button icon={<Plus size={16} />}>Add project</Button>
+          <Button disabled icon={<Plus size={16} />}>
+            Add in desktop app
+          </Button>
         </div>
         <div className="project-list">
           {projects.map((project) => (
@@ -629,6 +680,8 @@ export function ConnectionsPage() {
               <button
                 aria-label={`Manage ${project.name}`}
                 className="icon-button"
+                disabled
+                title="Project management requires the installed desktop app"
                 type="button"
               >
                 <MoreHorizontal size={18} />
@@ -637,7 +690,58 @@ export function ConnectionsPage() {
           ))}
         </div>
       </section>
+      {selectedConnection ? (
+        <ConnectionDetailsDialog
+          connection={selectedConnection}
+          onClose={() => setSelectedConnection(null)}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function ConnectionDetailsDialog({
+  connection,
+  onClose,
+}: {
+  connection: AgentConnection;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog.Root onOpenChange={(open) => (open ? undefined : onClose())} open>
+      <Dialog.Portal>
+        <Dialog.Overlay className="dialog-overlay" />
+        <Dialog.Content className="core-dialog connection-dialog">
+          <Dialog.Close aria-label="Close" className="dialog-close">
+            <X size={18} />
+          </Dialog.Close>
+          <span className="folio-kicker">Connected agent</span>
+          <Dialog.Title>{connection.name}</Dialog.Title>
+          <Dialog.Description>
+            {connection.authDescription}. {connection.costDescription}.
+          </Dialog.Description>
+          <dl className="connection-detail-list">
+            <div>
+              <dt>Learning</dt>
+              <dd>{connection.sourceCapability}</dd>
+            </div>
+            <div>
+              <dt>Delivery</dt>
+              <dd>{connection.targetCapability}</dd>
+            </div>
+          </dl>
+          <p className="connection-dialog-note">
+            Account changes require the installed desktop app. This preview is
+            read-only.
+          </p>
+          <div className="core-dialog__actions">
+            <Button onClick={onClose} tone="primary">
+              Done
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 

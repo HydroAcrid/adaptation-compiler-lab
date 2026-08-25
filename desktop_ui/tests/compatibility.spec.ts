@@ -79,3 +79,15 @@ test("project-only Core knowledge cannot be widened", async ({ page }) => {
   await expect(scope.getByRole("option")).toHaveCount(1);
   await expect(scope).toHaveValue("Kairn");
 });
+
+test("workspace menu changes the minimum-window view", async ({ page }) => {
+  await openMinimumWindow(page, "today");
+  await page.getByRole("button", { name: "Workspace: All projects" }).click();
+  await expect(page.getByRole("menu")).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.getByRole("menuitem", { name: /Green Meadow/i }).click();
+  await expect(
+    page.getByRole("heading", { name: "Temper is active in Green Meadow." }),
+  ).toBeVisible();
+  await expect(page.getByText(/Kairn-only knowledge stays out/i)).toBeVisible();
+});

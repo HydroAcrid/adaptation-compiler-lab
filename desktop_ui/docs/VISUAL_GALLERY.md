@@ -25,7 +25,15 @@ small identity mark independently of whole-window screenshot thresholds.
 
 The current synthetic state contains three pending suggestions. Today keeps the strongest item in
 focus and renders the remainder as a quiet textual queue. Evidence strength is visible without a
-fake probability; automation safety remains a separate decision.
+fake probability; automation safety remains a separate decision. All projects is the default so
+concurrent work is visible without pretending the user has only one active repository.
+
+## Workspace menu
+
+![Temper workspace menu](../tests/gallery.spec.ts-snapshots/workspace-menu-dark-linux.png)
+
+The menu is a product-styled, keyboard-accessible control rather than a native browser select. It
+shows one combined view and focused Kairn/Green Meadow views with meaningful status summaries.
 
 ## A second connected project
 

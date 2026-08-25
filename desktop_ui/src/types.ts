@@ -11,6 +11,7 @@ export type Screen =
 export type Theme = "light" | "dark" | "system";
 export type FeedbackValue = "helped" | "hurt" | "irrelevant";
 export type ProjectName = "Kairn" | "Green Meadow";
+export type WorkspaceScope = "all" | ProjectName;
 export type EvidenceStrength = "strong" | "promising" | "developing";
 export type AutomationDisposition =
   "eligible" | "review-required" | "collect-more";
@@ -21,7 +22,7 @@ export interface Suggestion {
   behavior: string;
   explanation: string;
   suggestedScope: string;
-  projectScope: string;
+  sourceProject: ProjectName;
   sourceCount: number;
   authority: string;
   capturedAt: string;

@@ -15,11 +15,11 @@ import { Shell } from "./components/Shell";
 import { suggestions } from "./data/demo";
 import type {
   FeedbackValue,
-  ProjectName,
   Screen,
   Suggestion,
   SuggestionDecision,
   Theme,
+  WorkspaceScope,
 } from "./types";
 
 const supportedScreens = new Set<Screen>([
@@ -40,11 +40,11 @@ function initialScreen(): Screen {
   return value && supportedScreens.has(value) ? value : "today";
 }
 
-function initialProject(): ProjectName {
-  return new URLSearchParams(window.location.search).get("project") ===
-    "green-meadow"
-    ? "Green Meadow"
-    : "Kairn";
+function initialWorkspace(): WorkspaceScope {
+  const value = new URLSearchParams(window.location.search).get("project");
+  if (value === "green-meadow") return "Green Meadow";
+  if (value === "kairn") return "Kairn";
+  return "all";
 }
 
 function initialTheme(): Theme {
@@ -58,8 +58,8 @@ export default function App() {
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [advancedMode, setAdvancedMode] = useState(firstScreen === "advanced");
   const [reviewOpen, setReviewOpen] = useState(firstScreen === "suggestion");
-  const [activeProject, setActiveProject] =
-    useState<ProjectName>(initialProject);
+  const [activeWorkspace, setActiveWorkspace] =
+    useState<WorkspaceScope>(initialWorkspace);
   const [suggestionQueue, setSuggestionQueue] =
     useState<Suggestion[]>(suggestions);
   const [selectedSuggestionId, setSelectedSuggestionId] = useState(
@@ -116,7 +116,7 @@ export default function App() {
           ? "Adaptation kept for all projects."
           : `Adaptation kept for ${suggestedScope}.`
         : decision === "project"
-          ? `Adaptation kept for ${activeProject} only.`
+          ? `Adaptation kept for ${selectedSuggestion.sourceProject} only.`
           : "Suggestion ignored. Nothing changed.",
     );
   }
@@ -127,10 +127,10 @@ export default function App() {
   return (
     <Tooltip.Provider delayDuration={500}>
       <Shell
-        activeProject={activeProject}
+        activeWorkspace={activeWorkspace}
         advancedMode={advancedMode}
         onNavigate={navigate}
-        onProjectChange={setActiveProject}
+        onWorkspaceChange={setActiveWorkspace}
         screen={screen}
       >
         {screen === "today" || screen === "suggestion" || screen === "tray" ? (
@@ -140,12 +140,14 @@ export default function App() {
             onFeedback={setFeedback}
             onOpenCore={() => navigate("core")}
             onReview={reviewSuggestion}
-            project={activeProject}
+            workspace={activeWorkspace}
             selectedSuggestionId={selectedSuggestion?.id ?? null}
             suggestions={suggestionQueue}
           />
         ) : null}
-        {screen === "core" ? <CorePage activeProject={activeProject} /> : null}
+        {screen === "core" ? (
+          <CorePage activeWorkspace={activeWorkspace} key={activeWorkspace} />
+        ) : null}
         {screen === "connections" ? <ConnectionsPage /> : null}
         {screen === "settings" ? (
           <SettingsPage
@@ -161,7 +163,6 @@ export default function App() {
       </Shell>
       {selectedSuggestion ? (
         <ReviewDialog
-          activeProject={activeProject}
           onDecision={decide}
           onOpenChange={setReviewOpen}
           open={reviewOpen}

@@ -36,7 +36,8 @@ contains:
   banner, icon tiles, and status pills on the defining Today, review, and Core surfaces with
   restrained editorial typography, one current statement, a focused suggestion, plain
   scope/source/status context, and readable approved knowledge;
-- an explicit Kairn/Green Meadow project selector that changes Today without leaking another
+- a custom workspace control with an All projects default plus Kairn and Green Meadow focus views;
+  Today visibly summarizes concurrent work while focused views continue excluding another
   project's guidance;
 - a user-facing Core that groups preferences, stable memories, procedures, and reusable skills,
   filters them by applicable repository, and prototypes focused edit, rescope, remove, and undo;
@@ -52,7 +53,7 @@ The visual package has no engine, filesystem, process, credential, Supabase, Cod
 sealed-study access. Its working edit and project controls mutate synthetic in-memory presentation
 state only. The screenshot suite covers eight product scenes in both themes, both registered
 project contexts, a three-item suggestion queue, Today at compact and wide widths, and compact
-suggestion/Core states. All 28 browser scenes pass their required visual, accessibility, and
+suggestion/Core states plus the open workspace menu. All 30 browser scenes pass their required visual, accessibility, and
 overflow checks. See
 the [visual gallery](desktop_ui/docs/VISUAL_GALLERY.md).
 
@@ -82,7 +83,9 @@ answer a real user question.
   project-scoped, reversible preference class; engine mutation remains blocked pending shadow-mode
   and genuine-use admission under [the confidence policy](TEMPER_CONFIDENCE_POLICY.md).
 - Advanced mode is opt-in and contains diagnostics, provenance metadata, and the governed task lab.
-- No Presets route appears until Milestone 6B has real governed preset types.
+- No Modes route appears until Milestone 6B has real governed preset/package types. Core will own
+  private profile backup and sanitized shareable-pack import/export; temporary borrowed expertise
+  remains a separate Modes surface and authority layer.
 - No account is required. Project registration is explicit and prospective.
 - Raw evidence never crosses the presentation boundary.
 - Telemetry is independent, unchecked, raw-free, previewable, and deletable.
@@ -100,6 +103,11 @@ Create the Tauri foundation without changing evidence or artifact schemas:
 4. supervise the development Python sidecar and verify the protocol/version handshake;
 5. replace synthetic Today data with the existing raw-free application-service snapshot; and
 6. add Rust/Python/TypeScript golden contract tests before enabling any mutation.
+
+Immediately after this read-only foundation, implement the offline, non-activating package model
+for private profile backup, sanitized shareable behavior packs, and temporary capability modes.
+See [`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md). Do not reduce profile
+sharing to copied prompt text or let another person's authority silently become the recipient's.
 
 No Claude hook, telemetry upload, QML retirement, native signing claim, or Milestone 6 custody work
 belongs in that first wired slice.
