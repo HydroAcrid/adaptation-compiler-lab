@@ -1,5 +1,19 @@
 # adaptation-compiler-lab
 
+Temper's replacement customer desktop is now at its visual acceptance gate. A React 19/Vite
+prototype implements the calm tray-first product direction with Today, Core, Connections,
+Settings, onboarding, focused review, exact telemetry preview, and opt-in Advanced surfaces over
+synthetic raw-free data. Thirty light/dark and multi-window browser scenes pass visual regression
+and axe accessibility checks. It now defaults to an All projects workspace with focused
+repository views through an accessible custom menu. It is deliberately not connected to the
+governed runtime yet; the existing Qt application remains the internal diagnostic surface until
+Tauri reaches parity. See
+[`TEMPER_DESKTOP_REBUILD.md`](TEMPER_DESKTOP_REBUILD.md) and the
+[`React visual gallery`](desktop_ui/docs/VISUAL_GALLERY.md). The
+[`alpha readiness audit`](TEMPER_ALPHA_READINESS_AUDIT.md) permits design-partner recruitment but
+blocks external installation until the renderer, Tauri shell, native security, and signed builds
+are real.
+
 The Adaptation Compiler desktop private-alpha foundation is now implemented over the same governed
 runtime as the Temper terminal surface. It provides a progressively disclosed Qt Quick interface,
 exact review/undo/feedback actions, explicit 30-day renewal, and a fresh governed Codex work surface.
@@ -60,6 +74,12 @@ personal profile, the current task/project/environment, and an optional temporar
 preset, then sends each assistant only the smallest applicable projection. Personal preset
 overlays can refine temporary expertise without changing either the imported preset or permanent
 profile.
+
+Portable sharing is split into three authority-safe packages: a private same-owner profile backup,
+a sanitized behavior pack that another user reviews as external material, and a temporary
+capability **Mode** such as Frontend Studio. A sender's signature proves origin and integrity; it
+does not make their preferences the recipient's user-authority memories. See
+[`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md).
 
 Milestones 6A.2D–6A.2F now include a governed automatic-runtime core, restart-safe host coordinator,
 concrete pinned Codex dogfood integration, a same-user background watcher, and a writable

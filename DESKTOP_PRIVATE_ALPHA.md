@@ -2,6 +2,10 @@
 
 Status: engineering foundation implemented on 2026-08-23; not yet an externally installable build.
 
+> **Superseded customer UI direction:** the Qt implementation remains an internal diagnostic and
+> recovery surface. The customer desktop is being rebuilt as Temper with React/Tauri; its synthetic
+> visual prototype is awaiting approval. See [`TEMPER_DESKTOP_REBUILD.md`](TEMPER_DESKTOP_REBUILD.md).
+
 ## Purpose
 
 The desktop application is a calm owner-facing surface over the existing governed runtime. It does
