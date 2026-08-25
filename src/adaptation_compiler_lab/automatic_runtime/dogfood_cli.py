@@ -137,6 +137,13 @@ from adaptation_compiler_lab.governance.signing import (
     sign_governance_event,
     verify_signed_governance,
 )
+from adaptation_compiler_lab.modes import (
+    FRONTEND_STUDIO_MODE,
+    ModePreparedTask,
+    ModeReceiptStore,
+    complete_mode_delivery,
+    prepare_mode_task,
+)
 from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore
 from adaptation_compiler_lab.persistence.sqlite import SqliteUnitOfWorkFactory
 from adaptation_compiler_lab.runtime import RuntimeProjectionContext
@@ -3055,6 +3062,7 @@ def _execute_gateway_session(
     project: CodexDogfoodProjectConfig,
     initial_task: str,
     followups: Iterable[str],
+    mode_id: str | None = None,
 ) -> str:
     if config.config_version not in {"1.3.0", "1.4.0"} or config.gateway_workspace_root is None:
         raise AutomaticRuntimeError("writable gateway requires configured dogfood v1.3+")
@@ -3117,6 +3125,41 @@ def _execute_gateway_session(
         raise AutomaticRuntimeError(
             "gateway baseline failed independent verification: " + ", ".join(failed_preflight)
         )
+    mode_prepared: ModePreparedTask | None = None
+    mode_store: ModeReceiptStore | None = None
+    if mode_id is not None:
+        if mode_id != FRONTEND_STUDIO_MODE.mode_id:
+            provider.teardown(canonical_root=project.root, workspace=workspace.root)
+            raise AutomaticRuntimeError("the requested temporary Mode is unavailable")
+        mode_prepared = prepare_mode_task(
+            FRONTEND_STUDIO_MODE,
+            activation_id=f"mode-{session_id}",
+            subject_id=config.subject_id,
+            project_id=project.project_id,
+            target_family="codex",
+            task=normalized,
+            base_delivered_task=prepared.task.delivered_task,
+            base_delivery_digest=prepared.task.receipt.delivered_task_digest,
+            prior_core_release_digest=state.release.content_digest,
+            signer=_registration_signer(config),
+            activated_at=started,
+        )
+        mode_store = ModeReceiptStore(config.state_root / "modes" / "receipts")
+        mode_store.append_activation(mode_prepared.activation, mode_prepared.delivery)
+    effective_task = (
+        prepared.task.delivered_task if mode_prepared is None else mode_prepared.delivered_task
+    )
+    effective_projection_digest = canonical_digest(
+        {
+            "core_material_digest": prepared.task.rendered_material.content_digest,
+            "mode_delivery_digest": (
+                None if mode_prepared is None else mode_prepared.delivery.content_digest
+            ),
+        }
+    )
+    effective_projection_utf8_bytes = prepared.task.receipt.material_utf8_bytes + (
+        0 if mode_prepared is None else mode_prepared.delivery.mode_material_utf8_bytes
+    )
     runtime_ledger.append_activation(prepared)
     turns: list[GatewayTurnReceipt] = []
     transcript: list[dict[str, object]] = []
@@ -3124,6 +3167,7 @@ def _execute_gateway_session(
     last_turn_id: str | None = None
     captured: CapturedChangeBundle | None = None
     postflight: tuple[VerificationReceipt, ...] = ()
+    mode_outcome: Literal["completed", "failed", "cancelled"] = "failed"
     try:
         pins = load_dogfood_runtime_pins(config.effective_target_runtime_pin_path)
         with (
@@ -3151,7 +3195,7 @@ def _execute_gateway_session(
             )
             conversation.start()
             target_thread_id = conversation.thread_id
-            messages = chain((prepared.task.delivered_task,), followups)
+            messages = chain((effective_task,), followups)
             session_deadline = monotonic() + config.gateway_maximum_session_seconds
             for sequence, message in enumerate(messages, start=1):
                 if monotonic() >= session_deadline:
@@ -3198,7 +3242,7 @@ def _execute_gateway_session(
             workspace=workspace.root,
             baseline=workspace.baseline,
             release_digest=prepared.activation.external_release_digest,
-            projection_digest=canonical_digest(prepared.task.rendered_material),
+            projection_digest=effective_projection_digest,
             verification_receipts=(),
         )
         require_protected_paths_unchanged(
@@ -3237,14 +3281,14 @@ def _execute_gateway_session(
             project_id=project.project_id,
             activation_id=prepared.activation.activation_id,
             release_digest=prepared.activation.external_release_digest,
-            projection_digest=canonical_digest(prepared.task.rendered_material),
+            projection_digest=effective_projection_digest,
             baseline_digest=canonical_digest(workspace.baseline),
             model=config.gateway_model,
             reasoning_effort=config.gateway_reasoning_effort,
             maximum_turns=config.gateway_maximum_turns,
             maximum_session_seconds=config.gateway_maximum_session_seconds,
             maximum_turn_seconds=config.gateway_maximum_turn_seconds,
-            projection_utf8_bytes=prepared.task.receipt.material_utf8_bytes,
+            projection_utf8_bytes=effective_projection_utf8_bytes,
             encrypted_trace_digest=Sha256Digest(f"sha256:{trace_reference.sha256}"),
             started_at=started,
             completed_at=completed,
@@ -3261,7 +3305,7 @@ def _execute_gateway_session(
             workspace=workspace.root,
             baseline=workspace.baseline,
             release_digest=prepared.activation.external_release_digest,
-            projection_digest=canonical_digest(prepared.task.rendered_material),
+            projection_digest=effective_projection_digest,
             verification_receipts=postflight,
         )
         gateway_ledger.append_change_bundle(captured)
@@ -3282,6 +3326,7 @@ def _execute_gateway_session(
             acknowledged_at=completed,
         )
         runtime_ledger.acknowledge_delivery(acknowledgement)
+        mode_outcome = "completed"
     except BaseException as error:
         gateway_ledger = _gateway_ledger(config)
         if gateway_ledger.session(session_id) is None:
@@ -3305,14 +3350,14 @@ def _execute_gateway_session(
                     project_id=project.project_id,
                     activation_id=prepared.activation.activation_id,
                     release_digest=prepared.activation.external_release_digest,
-                    projection_digest=canonical_digest(prepared.task.rendered_material),
+                    projection_digest=effective_projection_digest,
                     baseline_digest=canonical_digest(workspace.baseline),
                     model=config.gateway_model,
                     reasoning_effort=config.gateway_reasoning_effort,
                     maximum_turns=config.gateway_maximum_turns,
                     maximum_session_seconds=config.gateway_maximum_session_seconds,
                     maximum_turn_seconds=config.gateway_maximum_turn_seconds,
-                    projection_utf8_bytes=prepared.task.receipt.material_utf8_bytes,
+                    projection_utf8_bytes=effective_projection_utf8_bytes,
                     encrypted_trace_digest=Sha256Digest(f"sha256:{failed_trace.sha256}"),
                     started_at=started,
                     completed_at=_now(),
@@ -3331,7 +3376,7 @@ def _execute_gateway_session(
                         workspace=workspace.root,
                         baseline=workspace.baseline,
                         release_digest=prepared.activation.external_release_digest,
-                        projection_digest=canonical_digest(prepared.task.rendered_material),
+                        projection_digest=effective_projection_digest,
                         verification_receipts=postflight,
                     )
                     gateway_ledger.append_change_bundle(failed_bundle)
@@ -3360,6 +3405,15 @@ def _execute_gateway_session(
             )
         raise
     finally:
+        if mode_prepared is not None and mode_store is not None:
+            deactivation = complete_mode_delivery(
+                mode_prepared,
+                outcome=mode_outcome,
+                restored_core_release_digest=state.release.content_digest,
+                signer=_registration_signer(config),
+                deactivated_at=_now(),
+            )
+            mode_store.append_deactivation(deactivation)
         provider.teardown(canonical_root=project.root, workspace=workspace.root)
     if captured is None:
         raise AutomaticRuntimeError("gateway did not capture its change bundle")
@@ -3371,6 +3425,7 @@ def run_gateway_task(
     config_path: ConfigOption,
     task: Annotated[str, typer.Argument(help="Exact task for the governed fresh session.")],
     project_id: Annotated[str, typer.Option("--project")],
+    mode_id: Annotated[str | None, typer.Option("--mode")] = None,
 ) -> None:
     """Run one writable, independently verified Codex task and preserve its review bundle."""
 
@@ -3379,6 +3434,7 @@ def run_gateway_task(
             config_path,
             task=task,
             project_id=project_id,
+            mode_id=mode_id,
         )
     except (OSError, ValueError, RuntimeConformanceError) as error:
         _fail(str(error))
@@ -3390,6 +3446,7 @@ def execute_governed_gateway_task(
     *,
     task: str,
     project_id: str,
+    mode_id: str | None = None,
 ) -> str:
     """Run one isolated task and retain changes for explicit review rather than direct apply."""
 
@@ -3399,6 +3456,7 @@ def execute_governed_gateway_task(
         project=_gateway_project(config, project_id),
         initial_task=task,
         followups=(),
+        mode_id=mode_id,
     )
 
 

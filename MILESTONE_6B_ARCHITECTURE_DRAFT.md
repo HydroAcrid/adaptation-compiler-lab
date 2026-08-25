@@ -1,7 +1,8 @@
 # Milestone 6B architecture draft: Portable Capability Modes and Profile Exchange
 
-Status: composition seams exist in the governed runtime, but no portable package has been
-imported, activated, or evaluated. The customer UI therefore does not yet pretend these operations
+Status: the encrypted offline profile package and the first bounded Frontend Studio Mode are now
+implemented. Imports remain staged and inactive; Frontend Studio has a signed exact-task lifecycle
+and deterministic conformance evaluation. General mode import and efficacy evidence remain future
 work.
 
 Milestone 6B is reserved for composing temporary specialty capability with the compact runtime
