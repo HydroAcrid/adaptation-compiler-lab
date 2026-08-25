@@ -23,7 +23,8 @@
     "test:compat": "playwright test --config playwright.compat.config.ts --project=windows-webview2",
     "test:compat:webkit": "playwright test --config playwright.compat.config.ts --project=macos-wkwebview",
     "test:visual:update": "playwright test --update-snapshots",
-    "screenshots": "playwright test tests/gallery.spec.ts --update-snapshots"
+    "screenshots": "playwright test tests/gallery.spec.ts --update-snapshots",
+    "icon:render": "node scripts/render-app-icon.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.11.1",
