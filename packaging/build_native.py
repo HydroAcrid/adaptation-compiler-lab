@@ -48,7 +48,7 @@ def build_command(
     """Return the bounded target-native Nuitka command without reading credentials."""
 
     root = repository.expanduser().resolve()
-    entry = root / "src" / "adaptation_compiler_lab" / "desktop" / "engine_main.py"
+    entry = root / "packaging" / "engine_sidecar_entry.py"
     tauri_root = root / "desktop_ui" / "src-tauri"
     if not entry.is_file() or not (tauri_root / "tauri.conf.json").is_file():
         raise ValueError("native build must run from the Temper repository")
