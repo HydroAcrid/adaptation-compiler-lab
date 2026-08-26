@@ -27,7 +27,8 @@ A native Windows x64 rebuild now passes the mandatory post-build handshake with 
 `configured=false`, and `mutation_enabled=false`. Ten fresh process launches completed in
 1.02–1.19 seconds. The separate clean-runner workflow installs the unsigned internal NSIS
 candidate, repeats the engine handshake, launches the installed Tauri application, and removes the
-temporary installation. Its development-signature exception exists only inside CI; the default
+temporary installation through its packaged uninstaller before residue cleanup. Its
+development-signature exception exists only inside CI; the default
 local smoke gate still rejects any installer without a trusted Authenticode publisher.
 
 This does not create an external alpha release. The Windows CurrentUser certificate store and the
@@ -73,8 +74,8 @@ and lower-authority temporary Modes. The first and third now have real governed 
 flows; a public Mode marketplace, third-party pack activation, and automatic preset generation do
 not exist.
 
-Repository-wide Ruff, strict mypy over 380 source files, source/wheel builds, and the serial Python
-suite pass: 1,025 tests with two expected platform skips. Rust formatting passes locally. Native
+Repository-wide Ruff, strict mypy over 382 source files, source/wheel builds, and the serial Python
+suite pass: 1,037 tests with two expected platform skips. Rust formatting passes locally. Native
 Rust linking remains intentionally delegated to the Linux/Windows/macOS CI matrix because this WSL
 host lacks `pkg-config` and Wayland/GTK/WebKit development libraries.
 

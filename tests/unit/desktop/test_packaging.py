@@ -242,5 +242,8 @@ def test_windows_smoke_defaults_to_trusted_signature_and_safe_temp_cleanup() -> 
     assert tauri_config["productName"] == "Temper"
     assert tauri_config["mainBinaryName"] == "Temper"
     assert "temper-clean-smoke-" in source
+    assert 'Filter "uninstall.exe"' in source
+    assert 'ArgumentList "/S"' in source
+    assert '"uninstall_completed"' in source
     assert "Remove-Item -LiteralPath $confirmed" in source
     assert "New-SelfSignedCertificate" not in source

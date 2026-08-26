@@ -76,7 +76,8 @@ close would still create a misleading product.
   seconds with exact protocol, version, and schema binding and mutations disabled.
 - The Tauri CI matrix exercises Rust clippy/tests and the React contract on Linux, Windows, and
   macOS; a separate Windows job builds an internal NSIS candidate and a clean runner installs,
-  handshakes, launches, and removes it.
+  handshakes, launches, uninstalls, verifies binary removal, and cleans any bounded temporary
+  residue.
 
 Playwright WebKit is configured as a practical macOS rendering proxy, but this WSL host lacks the
 administrator-installed GTK/GStreamer libraries needed to launch it. That is an environment

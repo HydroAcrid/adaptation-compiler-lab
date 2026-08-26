@@ -99,6 +99,9 @@ if (-not $resolvedSmoke.StartsWith($resolvedTemp, [System.StringComparison]::Ord
 }
 
 $appProcess = $null
+$uninstaller = $null
+$uninstallCompleted = $false
+$receipt = $null
 try {
     New-Item -ItemType Directory -Path $installRoot -Force | Out-Null
     $installerProcess = Start-Process -FilePath $installer -ArgumentList @("/S", "/D=$installRoot") -PassThru -Wait -WindowStyle Hidden
@@ -110,11 +113,16 @@ try {
         Select-Object -First 1
     $engine = Get-ChildItem -LiteralPath $installRoot -Filter "temper-engine.exe" -File -Recurse |
         Select-Object -First 1
+    $uninstaller = Get-ChildItem -LiteralPath $installRoot -Filter "uninstall.exe" -File -Recurse |
+        Select-Object -First 1
     if ($null -eq $app) {
         throw "The installed Temper.exe application is unavailable."
     }
     if ($null -eq $engine) {
         throw "The installed temper-engine.exe sidecar is unavailable."
+    }
+    if ($null -eq $uninstaller) {
+        throw "The installed Temper uninstaller is unavailable."
     }
 
     $handshake = Start-EngineHandshake -EnginePath $engine.FullName
@@ -134,7 +142,7 @@ try {
         throw "Temper application exited during startup."
     }
 
-    [ordered]@{
+    $receipt = [ordered]@{
         receipt_version = "1.0.0"
         installer_filename = [System.IO.Path]::GetFileName($installer)
         signature_policy = $SignaturePolicy
@@ -145,10 +153,40 @@ try {
         app_startup_seconds = $StartupSeconds
         app_remained_running = $true
         clean_install_root = $true
-    } | ConvertTo-Json -Compress
+    }
 }
 finally {
     Stop-SmokeProcess -Process $appProcess
+    $uninstallError = $null
+    if ($null -ne $uninstaller -and (Test-Path -LiteralPath $uninstaller.FullName -PathType Leaf)) {
+        try {
+            $uninstallerProcess = Start-Process `
+                -FilePath $uninstaller.FullName `
+                -ArgumentList "/S" `
+                -PassThru `
+                -Wait `
+                -WindowStyle Hidden
+            if ($uninstallerProcess.ExitCode -ne 0) {
+                throw "The Temper uninstaller returned a failure."
+            }
+            for ($attempt = 0; $attempt -lt 25; $attempt++) {
+                if (
+                    -not (Test-Path -LiteralPath $app.FullName -PathType Leaf) -and
+                    -not (Test-Path -LiteralPath $engine.FullName -PathType Leaf)
+                ) {
+                    $uninstallCompleted = $true
+                    break
+                }
+                Start-Sleep -Milliseconds 200
+            }
+            if (-not $uninstallCompleted) {
+                throw "The Temper uninstaller left application binaries behind."
+            }
+        }
+        catch {
+            $uninstallError = $_.Exception.Message
+        }
+    }
     if (Test-Path -LiteralPath $resolvedSmoke) {
         $confirmed = [System.IO.Path]::GetFullPath($resolvedSmoke)
         if (
@@ -161,4 +199,10 @@ finally {
             Remove-Item -LiteralPath $confirmed -Recurse -Force
         }
     }
+    if ($null -ne $uninstallError) {
+        throw $uninstallError
+    }
 }
+
+$receipt["uninstall_completed"] = $uninstallCompleted
+$receipt | ConvertTo-Json -Compress

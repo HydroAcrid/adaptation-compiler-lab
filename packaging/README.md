@@ -23,7 +23,9 @@ private alpha.
    ```
 
 The development policy exists only for local and ephemeral CI validation. An unsigned candidate is
-not an alpha release and must not be published or offered to a tester.
+not an alpha release and must not be published or offered to a tester. The smoke requires the
+packaged uninstaller to remove the application and sidecar before its bounded temporary residue
+cleanup runs.
 
 ## Trusted Windows alpha
 
