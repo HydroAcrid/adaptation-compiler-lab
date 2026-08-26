@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import platform
 import subprocess
 import sys
@@ -37,6 +38,28 @@ def sidecar_filename(target_triple: str, *, platform_name: str) -> str:
 
     suffix = ".exe" if platform_name == "win32" else ""
     return f"temper-engine-{target_triple}{suffix}"
+
+
+def sidecar_path(
+    repository: Path,
+    *,
+    platform_name: str,
+    machine_name: str | None = None,
+) -> Path:
+    """Resolve the exact native sidecar path admitted by the Tauri bundle."""
+
+    root = repository.expanduser().resolve()
+    target_triple = resolve_target_triple(
+        platform_name=platform_name,
+        machine_name=machine_name or platform.machine(),
+    )
+    return (
+        root
+        / "desktop_ui"
+        / "src-tauri"
+        / "binaries"
+        / sidecar_filename(target_triple, platform_name=platform_name)
+    )
 
 
 def build_command(
@@ -101,6 +124,72 @@ def _snapshot_schema_digest(root: Path) -> str:
     return value
 
 
+def verify_native_sidecar(
+    repository: Path,
+    *,
+    platform_name: str,
+    machine_name: str | None = None,
+    timeout_seconds: int = 15,
+) -> None:
+    """Require the compiled sidecar to complete its closed-world startup handshake."""
+
+    root = repository.expanduser().resolve()
+    binary = sidecar_path(
+        root,
+        platform_name=platform_name,
+        machine_name=machine_name,
+    )
+    if not binary.is_file():
+        raise ValueError("native engine sidecar was not produced")
+    request = {
+        "protocol_version": "temper-engine-protocol/v1",
+        "request_id": "native-build-handshake",
+        "method": "system.handshake",
+        "params": {},
+        "expected_snapshot_digest": None,
+        "idempotency_key": None,
+    }
+    environment = os.environ.copy()
+    environment.pop("TEMPER_RUNTIME_CONFIG", None)
+    try:
+        completed = subprocess.run(
+            [binary],
+            cwd=root,
+            input=json.dumps(request, separators=(",", ":")) + "\n",
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+            check=False,
+            env=environment,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise ValueError("native engine sidecar handshake timed out") from error
+    if completed.returncode != 0:
+        raise ValueError("native engine sidecar failed during its startup handshake")
+    lines = completed.stdout.splitlines()
+    if len(lines) != 1:
+        raise ValueError("native engine sidecar emitted an invalid handshake frame count")
+    try:
+        response = json.loads(lines[0])
+    except json.JSONDecodeError as error:
+        raise ValueError("native engine sidecar emitted an invalid handshake frame") from error
+    result = response.get("result") if isinstance(response, dict) else None
+    expected = {
+        "engine_version": _project_version(root),
+        "snapshot_schema_digest": _snapshot_schema_digest(root),
+        "configured": False,
+        "mutation_enabled": False,
+    }
+    if (
+        response.get("ok") is not True
+        or response.get("protocol_version") != "temper-engine-protocol/v1"
+        or response.get("request_id") != "native-build-handshake"
+        or not isinstance(result, dict)
+        or any(result.get(key) != value for key, value in expected.items())
+    ):
+        raise ValueError("native engine sidecar failed closed-world handshake validation")
+
+
 def write_build_manifest(
     repository: Path,
     *,
@@ -114,12 +203,10 @@ def write_build_manifest(
         platform_name=platform_name,
         machine_name=machine_name or platform.machine(),
     )
-    binary = (
-        root
-        / "desktop_ui"
-        / "src-tauri"
-        / "binaries"
-        / sidecar_filename(target_triple, platform_name=platform_name)
+    binary = sidecar_path(
+        root,
+        platform_name=platform_name,
+        machine_name=machine_name,
     )
     if not binary.is_file():
         raise ValueError("native engine sidecar was not produced")
@@ -163,6 +250,11 @@ def main(argv: list[str] | None = None) -> int:
     if completed.returncode:
         return completed.returncode
     try:
+        verify_native_sidecar(
+            arguments.repository,
+            platform_name=arguments.platform,
+            machine_name=arguments.machine,
+        )
         manifest = write_build_manifest(
             arguments.repository,
             platform_name=arguments.platform,
