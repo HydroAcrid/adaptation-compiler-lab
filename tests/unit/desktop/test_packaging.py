@@ -247,3 +247,10 @@ def test_windows_smoke_defaults_to_trusted_signature_and_safe_temp_cleanup() -> 
     assert '"uninstall_completed"' in source
     assert "Remove-Item -LiteralPath $confirmed" in source
     assert "New-SelfSignedCertificate" not in source
+
+
+def test_desktop_workflow_supersedes_stale_branch_builds() -> None:
+    source = (ROOT / ".github" / "workflows" / "desktop-tauri.yml").read_text(encoding="utf-8")
+
+    assert "group: temper-desktop-${{ github.head_ref || github.ref }}" in source
+    assert "cancel-in-progress: true" in source

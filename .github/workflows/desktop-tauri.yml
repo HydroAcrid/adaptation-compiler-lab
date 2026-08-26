@@ -15,6 +15,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: temper-desktop-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   native-contract:
     name: ${{ matrix.os }} native contract
