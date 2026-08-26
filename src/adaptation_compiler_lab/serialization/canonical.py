@@ -3,6 +3,7 @@
 import hashlib
 import json
 from collections.abc import Mapping
+from typing import TypeVar
 
 from pydantic import BaseModel
 
@@ -30,6 +31,8 @@ from adaptation_compiler_lab.domain.references import (
     TargetPackRef,
     TaskRecordRef,
 )
+
+RecordT = TypeVar("RecordT", bound=VersionedRecord)
 
 RECORD_MODELS: Mapping[RecordKind, type[VersionedRecord]] = {
     RecordKind.TASK_RECORD: TaskRecord,
@@ -162,7 +165,7 @@ def deserialize_record(payload: str | bytes) -> VersionedRecord:
     return model.model_validate_json(payload)
 
 
-def round_trip[RecordT: VersionedRecord](record: RecordT) -> RecordT:
+def round_trip(record: RecordT) -> RecordT:  # noqa: UP047
     parsed = deserialize_record(canonical_json(record))
     if type(parsed) is not type(record):
         raise TypeError("record type changed during canonical round trip")

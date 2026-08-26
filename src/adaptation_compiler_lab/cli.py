@@ -17,7 +17,7 @@ from contextlib import contextmanager
 from dataclasses import asdict, is_dataclass
 from datetime import timedelta
 from pathlib import Path
-from typing import Annotated, Literal, NoReturn, cast
+from typing import Annotated, Literal, NoReturn, TypeVar, cast
 
 import typer
 from pydantic import BaseModel, TypeAdapter, ValidationError
@@ -141,6 +141,9 @@ from adaptation_compiler_lab.workspace import (
     load_workspace,
     prepare_new_output_directory,
 )
+
+ModelT = TypeVar("ModelT", bound=BaseModel)
+RecordT = TypeVar("RecordT", bound=BaseModel)
 
 app = typer.Typer(
     name="adaptation-compiler-lab",
@@ -359,7 +362,7 @@ def _read_mapping(path: Path) -> Mapping[str, object]:
     return cast(Mapping[str, object], value)
 
 
-def _load_model[ModelT: BaseModel](path: Path, model: type[ModelT]) -> ModelT:
+def _load_model(path: Path, model: type[ModelT]) -> ModelT:  # noqa: UP047
     return model.model_validate_json(_read_text(path))
 
 
@@ -928,7 +931,7 @@ def _list_records_of_kind(
     )
 
 
-def _show_record_of_type[RecordT: BaseModel](
+def _show_record_of_type(  # noqa: UP047
     workspace: Path,
     kind: RecordKind,
     record_id: str,
@@ -942,7 +945,7 @@ def _show_record_of_type[RecordT: BaseModel](
     return record
 
 
-def _load_domain_record[RecordT: BaseModel](
+def _load_domain_record(  # noqa: UP047
     path: Path, expected_type: type[RecordT], *, label: str
 ) -> RecordT:
     record = deserialize_record(_read_text(path))
