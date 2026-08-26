@@ -3,14 +3,18 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::env;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{self, BufRead, BufReader, Read, Write};
 use std::path::Path;
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::Mutex;
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
 use uuid::Uuid;
 
 const PROTOCOL_VERSION: &str = "temper-engine-protocol/v1";
 const MAX_FRAME_BYTES: usize = 1_048_576;
+const ENGINE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(15);
 const EXPECTED_ENGINE_VERSION: &str = match option_env!("TEMPER_EXPECTED_ENGINE_VERSION") {
     Some(value) => value,
     None => "",
@@ -49,9 +53,10 @@ struct PublicError {
 }
 
 struct EngineProcess {
-    _child: Child,
+    child: Child,
     stdin: ChildStdin,
-    stdout: BufReader<ChildStdout>,
+    responses: Receiver<io::Result<String>>,
+    reader: Option<JoinHandle<()>>,
 }
 
 impl EngineProcess {
@@ -64,10 +69,13 @@ impl EngineProcess {
         let mut child = command.spawn().map_err(|_| unavailable())?;
         let stdin = child.stdin.take().ok_or_else(unavailable)?;
         let stdout = child.stdout.take().ok_or_else(unavailable)?;
+        let (sender, responses) = mpsc::sync_channel(1);
+        let reader = thread::spawn(move || read_engine_frames(stdout, sender));
         Ok(Self {
-            _child: child,
+            child,
             stdin,
-            stdout: BufReader::new(stdout),
+            responses,
+            reader: Some(reader),
         })
     }
 
@@ -95,10 +103,7 @@ impl EngineProcess {
         self.stdin.write_all(b"\n").map_err(|_| unavailable())?;
         self.stdin.flush().map_err(|_| unavailable())?;
 
-        let mut line = String::new();
-        self.stdout
-            .read_line(&mut line)
-            .map_err(|_| unavailable())?;
+        let line = receive_engine_frame(&self.responses, ENGINE_RESPONSE_TIMEOUT)?;
         if line.is_empty() || line.len() > MAX_FRAME_BYTES {
             return Err(unavailable());
         }
@@ -110,6 +115,55 @@ impl EngineProcess {
             validate_handshake(&response, EXPECTED_ENGINE_VERSION, EXPECTED_SCHEMA_DIGEST)?;
         }
         Ok(response)
+    }
+}
+
+impl Drop for EngineProcess {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+        let (_replacement_sender, replacement_receiver) = mpsc::sync_channel(1);
+        let responses = std::mem::replace(&mut self.responses, replacement_receiver);
+        drop(responses);
+        if let Some(reader) = self.reader.take() {
+            let _ = reader.join();
+        }
+    }
+}
+
+fn read_engine_frames(stdout: ChildStdout, sender: mpsc::SyncSender<io::Result<String>>) {
+    let mut reader = BufReader::new(stdout);
+    loop {
+        let mut line = String::new();
+        let result = reader
+            .by_ref()
+            .take((MAX_FRAME_BYTES + 1) as u64)
+            .read_line(&mut line)
+            .and_then(|read| {
+                if read == 0 {
+                    Err(io::Error::new(
+                        io::ErrorKind::UnexpectedEof,
+                        "Temper engine closed its response stream",
+                    ))
+                } else {
+                    Ok(line)
+                }
+            });
+        if sender.send(result).is_err() {
+            break;
+        }
+    }
+}
+
+fn receive_engine_frame(
+    responses: &Receiver<io::Result<String>>,
+    timeout: Duration,
+) -> Result<String, PublicError> {
+    match responses.recv_timeout(timeout) {
+        Ok(Ok(line)) => Ok(line),
+        Ok(Err(_)) | Err(RecvTimeoutError::Disconnected | RecvTimeoutError::Timeout) => {
+            Err(unavailable())
+        }
     }
 }
 
@@ -363,6 +417,7 @@ pub fn run() {
 mod tests {
     use super::*;
     use std::fs;
+    use std::time::Instant;
 
     #[test]
     fn public_errors_do_not_include_process_or_path_details() {
@@ -424,5 +479,15 @@ mod tests {
         assert!(verify_engine_digest(&binary, &exact).is_ok());
         fs::write(&binary, b"tampered engine").expect("tamper fixture");
         assert!(verify_engine_digest(&binary, &exact).is_err());
+    }
+
+    #[test]
+    fn missing_engine_response_times_out() {
+        let (_sender, responses) = mpsc::sync_channel(1);
+        let timeout = Duration::from_millis(5);
+        let started = Instant::now();
+
+        assert!(receive_engine_frame(&responses, timeout).is_err());
+        assert!(started.elapsed() < Duration::from_secs(1));
     }
 }
