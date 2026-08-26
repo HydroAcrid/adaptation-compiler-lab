@@ -4,7 +4,7 @@
     "report": {
       "activations": 4,
       "active_days": 4,
-      "app_version": "0.2.0a1",
+      "app_version": "0.3.0a1",
       "architecture": "x86_64",
       "correct_activations": 4,
       "correct_learning": 7,
@@ -31,7 +31,7 @@
       "resolved_reviews": 2
     },
     "reporting_key_fingerprint": "sha256:9db8f2600edf5d78d2a9830c97c29ac072aa2faf5863b5aa1789257410ad7e20",
-    "signature_base64": "PGnLW3EvydWQuiuIFEH6Nn2B5Z0wVSDVZLcRxSWMqjeAqmRdCafoe0XL/BsA2tT6VbpBMiQH5RhvEkwUSwHTAw=="
+    "signature_base64": "4fIXQNgNpTvGC1qx+//7UrtrjQwvXwdUXAYfTnoT1fuW6SbwNSeJAQuiwu8wkenDsWNTHaLbDVroHyIgRY9VBg=="
   },
   "public_key_base64": "A6EHv/POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg="
 }

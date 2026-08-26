@@ -36,7 +36,7 @@ export interface EngineProject {
 
 export interface EngineDesktopSnapshot {
   snapshot_version: "1.0.0";
-  product_name: "Adaptation Compiler";
+  product_name: "Temper";
   health: "ready" | "needs_attention" | "paused" | "consent_expired";
   background_enabled: boolean;
   aggregate_reporting_enabled: boolean;

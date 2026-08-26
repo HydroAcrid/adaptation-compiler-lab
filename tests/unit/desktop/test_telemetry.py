@@ -39,7 +39,7 @@ def _report(tmp_path: Path) -> AggregateReport:
         snapshot,
         report_id="report-" + "a" * 32,
         installation_id="installation-" + "b" * 32,
-        app_version="0.2.0a1",
+        app_version="0.3.0a1",
         platform="windows",
         architecture="x86_64",
         period_started_at=NOW - timedelta(days=7),
@@ -99,7 +99,7 @@ def test_typescript_fixture_is_the_exact_python_signature_vector(tmp_path: Path)
     report = AggregateReport(
         report_id="report-" + "a" * 32,
         installation_id="installation-" + "b" * 32,
-        app_version="0.2.0a1",
+        app_version="0.3.0a1",
         platform="windows",
         architecture="x86_64",
         period_started_at=datetime(2026, 8, 1, tzinfo=UTC),

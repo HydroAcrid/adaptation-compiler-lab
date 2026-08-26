@@ -1,13 +1,28 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use std::env;
-use std::io::{BufRead, BufReader, Write};
+use std::fs::File;
+use std::io::{BufRead, BufReader, Read, Write};
+use std::path::Path;
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::Mutex;
 use uuid::Uuid;
 
 const PROTOCOL_VERSION: &str = "temper-engine-protocol/v1";
 const MAX_FRAME_BYTES: usize = 1_048_576;
+const EXPECTED_ENGINE_VERSION: &str = match option_env!("TEMPER_EXPECTED_ENGINE_VERSION") {
+    Some(value) => value,
+    None => "",
+};
+const EXPECTED_SCHEMA_DIGEST: &str = match option_env!("TEMPER_EXPECTED_SCHEMA_DIGEST") {
+    Some(value) => value,
+    None => "",
+};
+const EXPECTED_ENGINE_SHA256: &str = match option_env!("TEMPER_EXPECTED_ENGINE_SHA256") {
+    Some(value) => value,
+    None => "",
+};
 
 #[derive(Debug, Deserialize, Serialize)]
 struct EngineError {
@@ -91,18 +106,23 @@ impl EngineProcess {
         if response.protocol_version != PROTOCOL_VERSION || response.request_id != request_id {
             return Err(incompatible());
         }
+        if method == "system.handshake" {
+            validate_handshake(&response, EXPECTED_ENGINE_VERSION, EXPECTED_SCHEMA_DIGEST)?;
+        }
         Ok(response)
     }
 }
 
 fn engine_command() -> Result<Command, PublicError> {
-    let mut command = if let Ok(binary) = env::var("TEMPER_ENGINE_BINARY") {
-        Command::new(binary)
-    } else if cfg!(debug_assertions) {
-        let python = env::var("TEMPER_PYTHON").unwrap_or_else(|_| "python3".to_owned());
-        let mut value = Command::new(python);
-        value.args(["-m", "adaptation_compiler_lab.desktop.engine_main"]);
-        value
+    let mut command = if cfg!(debug_assertions) {
+        if let Ok(binary) = env::var("TEMPER_ENGINE_BINARY") {
+            Command::new(binary)
+        } else {
+            let python = env::var("TEMPER_PYTHON").unwrap_or_else(|_| "python3".to_owned());
+            let mut value = Command::new(python);
+            value.args(["-m", "adaptation_compiler_lab.desktop.engine_main"]);
+            value
+        }
     } else {
         let current = env::current_exe().map_err(|_| unavailable())?;
         let extension = current
@@ -114,7 +134,9 @@ fn engine_command() -> Result<Command, PublicError> {
         } else {
             "temper-engine"
         };
-        Command::new(current.with_file_name(name))
+        let binary = current.with_file_name(name);
+        verify_engine_digest(&binary, EXPECTED_ENGINE_SHA256)?;
+        Command::new(binary)
     };
     if let Ok(config) = env::var("TEMPER_RUNTIME_CONFIG") {
         command.arg("--config").arg(config);
@@ -123,6 +145,45 @@ fn engine_command() -> Result<Command, PublicError> {
         command.arg("--predecessor-config").arg(predecessor);
     }
     Ok(command)
+}
+
+fn validate_handshake(
+    response: &EngineResponse,
+    expected_engine_version: &str,
+    expected_schema_digest: &str,
+) -> Result<(), PublicError> {
+    if !response.ok || expected_engine_version.is_empty() || expected_schema_digest.is_empty() {
+        return Ok(());
+    }
+    let result = response.result.as_ref().ok_or_else(incompatible)?;
+    if result.get("engine_version").and_then(Value::as_str) != Some(expected_engine_version)
+        || result.get("snapshot_schema_digest").and_then(Value::as_str)
+            != Some(expected_schema_digest)
+    {
+        return Err(incompatible());
+    }
+    Ok(())
+}
+
+fn verify_engine_digest(path: &Path, expected_digest: &str) -> Result<(), PublicError> {
+    if expected_digest.len() != 64 {
+        return Err(incompatible());
+    }
+    let mut source = File::open(path).map_err(|_| unavailable())?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0_u8; 64 * 1024];
+    loop {
+        let read = source.read(&mut buffer).map_err(|_| unavailable())?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    let actual = format!("{:x}", hasher.finalize());
+    if actual != expected_digest {
+        return Err(incompatible());
+    }
+    Ok(())
 }
 
 fn unavailable() -> PublicError {
@@ -301,6 +362,7 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
 
     #[test]
     fn public_errors_do_not_include_process_or_path_details() {
@@ -329,5 +391,38 @@ mod tests {
         assert!(!source.contains(
             "fn profile_import_preview(\n    state: tauri::State<'_, EngineState>,\n    source"
         ));
+    }
+
+    #[test]
+    fn handshake_validation_rejects_version_or_schema_drift() {
+        let response = EngineResponse {
+            protocol_version: PROTOCOL_VERSION.to_owned(),
+            request_id: "request-1".to_owned(),
+            ok: true,
+            result: Some(json!({
+                "engine_version": "0.3.0a1",
+                "snapshot_schema_digest": format!("sha256:{}", "a".repeat(64)),
+            })),
+            error: None,
+            snapshot_digest: None,
+        };
+
+        assert!(
+            validate_handshake(&response, "0.3.0a1", &format!("sha256:{}", "a".repeat(64)),)
+                .is_ok()
+        );
+        assert!(validate_handshake(&response, "0.3.0a2", &"a".repeat(71)).is_err());
+    }
+
+    #[test]
+    fn sidecar_digest_tampering_fails_closed() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let binary = directory.path().join("temper-engine");
+        fs::write(&binary, b"exact engine").expect("write fixture");
+        let exact = format!("{:x}", Sha256::digest(b"exact engine"));
+
+        assert!(verify_engine_digest(&binary, &exact).is_ok());
+        fs::write(&binary, b"tampered engine").expect("tamper fixture");
+        assert!(verify_engine_digest(&binary, &exact).is_err());
     }
 }
