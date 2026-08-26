@@ -1,124 +1,280 @@
-"""Automatic governed adaptation runtime."""
+"""Lazy public API for the governed automatic adaptation runtime.
 
-from adaptation_compiler_lab.automatic_runtime.compiler import (
-    AutomaticRuntimeCompilerError,
-    compile_runtime_release,
-    compile_runtime_releases,
+The desktop engine imports a few runtime submodules directly. Lazy exports keep simulations, CLI
+adapters, and unrelated host integrations out of the packaged sidecar startup path.
+"""
+
+from __future__ import annotations
+
+from importlib import import_module
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from adaptation_compiler_lab.automatic_runtime.compiler import (
+        AutomaticRuntimeCompilerError,
+        compile_runtime_release,
+        compile_runtime_releases,
+    )
+    from adaptation_compiler_lab.automatic_runtime.detector import (
+        detect_explicit_feedback,
+        detect_feedback,
+    )
+    from adaptation_compiler_lab.automatic_runtime.feedback import summarize_runtime
+    from adaptation_compiler_lab.automatic_runtime.gate import (
+        CodexDogfoodGateReport,
+        build_codex_dogfood_gate_report,
+    )
+    from adaptation_compiler_lab.automatic_runtime.gateway_models import (
+        ChangeApplicationReceipt,
+        ChangeApplicationStatus,
+        CredentialEnvelopeMetadata,
+        GatewayInstrumentMetrics,
+        GatewaySession,
+        GatewaySessionStatus,
+        GatewayTurnReceipt,
+        NotificationInboxEntry,
+        RuntimeNotificationReceipt,
+        RuntimeWatcherHeartbeat,
+        RuntimeWatcherLease,
+        VerificationCommandSpec,
+        VerificationReceipt,
+        WorkspaceBaseline,
+        WorkspaceChangeReceipt,
+        WorkspaceFileChange,
+        WorkspaceLease,
+    )
+    from adaptation_compiler_lab.automatic_runtime.host import (
+        AutomaticRuntimeHost,
+        RuntimeDeliverySink,
+        RuntimeHostBatch,
+        RuntimeHostRunReceipt,
+        RuntimeHostWorkItem,
+        RuntimeInteractionSource,
+        RuntimeNoticeSink,
+        RuntimeReviewSink,
+    )
+    from adaptation_compiler_lab.automatic_runtime.ledger import AutomaticRuntimeLedger
+    from adaptation_compiler_lab.automatic_runtime.longitudinal_simulation import (
+        LongitudinalSimulationActivation,
+        LongitudinalSimulationChecks,
+        LongitudinalSimulationReport,
+        run_longitudinal_simulation,
+    )
+    from adaptation_compiler_lab.automatic_runtime.models import (
+        AdaptationLayer,
+        AutomaticRenderedMaterial,
+        AutomaticRuntimeMetrics,
+        AutomaticRuntimeState,
+        AutomationDisposition,
+        CapabilityPresetRef,
+        CapturedInteraction,
+        CodexProjectRegistration,
+        ComposedRuntimeRelease,
+        DetectedFeedback,
+        FeedbackDetectorMode,
+        FeedbackSignalKind,
+        InteractionObservation,
+        PreparedRuntimeActivation,
+        PreparedRuntimeTask,
+        RuntimeActivationFeedback,
+        RuntimeCycleReceipt,
+        RuntimeDeliveryReceipt,
+        RuntimeEvaluationReceipt,
+        RuntimeFeedbackOutcome,
+        RuntimeLayerBinding,
+        RuntimeLearningAssessment,
+        RuntimeLearningAssessmentOutcome,
+        RuntimeLearningCycleReceipt,
+        RuntimeLearningReviewResolution,
+        RuntimeLearningTransition,
+        RuntimeNotice,
+        RuntimeNoticeKind,
+        RuntimeReviewQueueItem,
+        RuntimeReviewScopeRefinement,
+        RuntimeSourceCheckpoint,
+        RuntimeTargetDeliveryAcknowledgement,
+        RuntimeTaskActivationReceipt,
+        RuntimeTransitionKind,
+        SemanticAssertionKind,
+        SemanticExampleIntent,
+        SemanticFeatureVector,
+        SemanticFeedbackInterpretation,
+        SemanticFeedbackSignal,
+        SemanticInterpreterReceipt,
+        SemanticNormStrength,
+        SemanticRouteResolution,
+        SemanticScopeHint,
+        SemanticSignalClarity,
+        SemanticSignalDurability,
+        SemanticTransitionIntent,
+        SemanticWorkflowStructure,
+        StandingAutomationPolicy,
+        infer_layer,
+    )
+    from adaptation_compiler_lab.automatic_runtime.product_dogfood import (
+        ActivationFeedbackCard,
+        ActiveAdaptationCard,
+        GateAllowanceCard,
+        ReviewModeDogfoodMetrics,
+        ReviewModeDogfoodSnapshot,
+        ReviewProposalCard,
+        TerminalAlphaSnapshot,
+        build_review_mode_dogfood_snapshot,
+        build_terminal_alpha_snapshot,
+    )
+    from adaptation_compiler_lab.automatic_runtime.service import (
+        AutomaticAdaptationRuntime,
+        AutomaticLearningResult,
+        AutomaticReviewResolutionResult,
+        AutomaticRuntimeError,
+        AutomaticRuntimeResult,
+        initial_runtime_state,
+    )
+
+_LAZY_EXPORTS: dict[str, str] = {}
+
+
+def _register(module: str, names: tuple[str, ...]) -> None:
+    for name in names:
+        _LAZY_EXPORTS[name] = module
+
+
+_register(
+    "adaptation_compiler_lab.automatic_runtime.compiler",
+    ("AutomaticRuntimeCompilerError", "compile_runtime_release", "compile_runtime_releases"),
 )
-from adaptation_compiler_lab.automatic_runtime.detector import (
-    detect_explicit_feedback,
-    detect_feedback,
+_register(
+    "adaptation_compiler_lab.automatic_runtime.detector",
+    ("detect_explicit_feedback", "detect_feedback"),
 )
-from adaptation_compiler_lab.automatic_runtime.feedback import summarize_runtime
-from adaptation_compiler_lab.automatic_runtime.gate import (
-    CodexDogfoodGateReport,
-    build_codex_dogfood_gate_report,
+_register("adaptation_compiler_lab.automatic_runtime.feedback", ("summarize_runtime",))
+_register(
+    "adaptation_compiler_lab.automatic_runtime.gate",
+    ("CodexDogfoodGateReport", "build_codex_dogfood_gate_report"),
 )
-from adaptation_compiler_lab.automatic_runtime.gateway_models import (
-    ChangeApplicationReceipt,
-    ChangeApplicationStatus,
-    CredentialEnvelopeMetadata,
-    GatewayInstrumentMetrics,
-    GatewaySession,
-    GatewaySessionStatus,
-    GatewayTurnReceipt,
-    NotificationInboxEntry,
-    RuntimeNotificationReceipt,
-    RuntimeWatcherHeartbeat,
-    RuntimeWatcherLease,
-    VerificationCommandSpec,
-    VerificationReceipt,
-    WorkspaceBaseline,
-    WorkspaceChangeReceipt,
-    WorkspaceFileChange,
-    WorkspaceLease,
+_register(
+    "adaptation_compiler_lab.automatic_runtime.gateway_models",
+    (
+        "ChangeApplicationReceipt",
+        "ChangeApplicationStatus",
+        "CredentialEnvelopeMetadata",
+        "GatewayInstrumentMetrics",
+        "GatewaySession",
+        "GatewaySessionStatus",
+        "GatewayTurnReceipt",
+        "NotificationInboxEntry",
+        "RuntimeNotificationReceipt",
+        "RuntimeWatcherHeartbeat",
+        "RuntimeWatcherLease",
+        "VerificationCommandSpec",
+        "VerificationReceipt",
+        "WorkspaceBaseline",
+        "WorkspaceChangeReceipt",
+        "WorkspaceFileChange",
+        "WorkspaceLease",
+    ),
 )
-from adaptation_compiler_lab.automatic_runtime.host import (
-    AutomaticRuntimeHost,
-    RuntimeDeliverySink,
-    RuntimeHostBatch,
-    RuntimeHostRunReceipt,
-    RuntimeHostWorkItem,
-    RuntimeInteractionSource,
-    RuntimeNoticeSink,
-    RuntimeReviewSink,
+_register(
+    "adaptation_compiler_lab.automatic_runtime.host",
+    (
+        "AutomaticRuntimeHost",
+        "RuntimeDeliverySink",
+        "RuntimeHostBatch",
+        "RuntimeHostRunReceipt",
+        "RuntimeHostWorkItem",
+        "RuntimeInteractionSource",
+        "RuntimeNoticeSink",
+        "RuntimeReviewSink",
+    ),
 )
-from adaptation_compiler_lab.automatic_runtime.ledger import AutomaticRuntimeLedger
-from adaptation_compiler_lab.automatic_runtime.longitudinal_simulation import (
-    LongitudinalSimulationActivation,
-    LongitudinalSimulationChecks,
-    LongitudinalSimulationReport,
-    run_longitudinal_simulation,
+_register("adaptation_compiler_lab.automatic_runtime.ledger", ("AutomaticRuntimeLedger",))
+_register(
+    "adaptation_compiler_lab.automatic_runtime.longitudinal_simulation",
+    (
+        "LongitudinalSimulationActivation",
+        "LongitudinalSimulationChecks",
+        "LongitudinalSimulationReport",
+        "run_longitudinal_simulation",
+    ),
 )
-from adaptation_compiler_lab.automatic_runtime.models import (
-    AdaptationLayer,
-    AutomaticRenderedMaterial,
-    AutomaticRuntimeMetrics,
-    AutomaticRuntimeState,
-    AutomationDisposition,
-    CapabilityPresetRef,
-    CapturedInteraction,
-    CodexProjectRegistration,
-    ComposedRuntimeRelease,
-    DetectedFeedback,
-    FeedbackDetectorMode,
-    FeedbackSignalKind,
-    InteractionObservation,
-    PreparedRuntimeActivation,
-    PreparedRuntimeTask,
-    RuntimeActivationFeedback,
-    RuntimeCycleReceipt,
-    RuntimeDeliveryReceipt,
-    RuntimeEvaluationReceipt,
-    RuntimeFeedbackOutcome,
-    RuntimeLayerBinding,
-    RuntimeLearningAssessment,
-    RuntimeLearningAssessmentOutcome,
-    RuntimeLearningCycleReceipt,
-    RuntimeLearningReviewResolution,
-    RuntimeLearningTransition,
-    RuntimeNotice,
-    RuntimeNoticeKind,
-    RuntimeReviewQueueItem,
-    RuntimeReviewScopeRefinement,
-    RuntimeSourceCheckpoint,
-    RuntimeTargetDeliveryAcknowledgement,
-    RuntimeTaskActivationReceipt,
-    RuntimeTransitionKind,
-    SemanticAssertionKind,
-    SemanticExampleIntent,
-    SemanticFeatureVector,
-    SemanticFeedbackInterpretation,
-    SemanticFeedbackSignal,
-    SemanticInterpreterReceipt,
-    SemanticNormStrength,
-    SemanticRouteResolution,
-    SemanticScopeHint,
-    SemanticSignalClarity,
-    SemanticSignalDurability,
-    SemanticTransitionIntent,
-    SemanticWorkflowStructure,
-    StandingAutomationPolicy,
-    infer_layer,
+_register(
+    "adaptation_compiler_lab.automatic_runtime.models",
+    (
+        "AdaptationLayer",
+        "AutomaticRenderedMaterial",
+        "AutomaticRuntimeMetrics",
+        "AutomaticRuntimeState",
+        "AutomationDisposition",
+        "CapabilityPresetRef",
+        "CapturedInteraction",
+        "CodexProjectRegistration",
+        "ComposedRuntimeRelease",
+        "DetectedFeedback",
+        "FeedbackDetectorMode",
+        "FeedbackSignalKind",
+        "InteractionObservation",
+        "PreparedRuntimeActivation",
+        "PreparedRuntimeTask",
+        "RuntimeActivationFeedback",
+        "RuntimeCycleReceipt",
+        "RuntimeDeliveryReceipt",
+        "RuntimeEvaluationReceipt",
+        "RuntimeFeedbackOutcome",
+        "RuntimeLayerBinding",
+        "RuntimeLearningAssessment",
+        "RuntimeLearningAssessmentOutcome",
+        "RuntimeLearningCycleReceipt",
+        "RuntimeLearningReviewResolution",
+        "RuntimeLearningTransition",
+        "RuntimeNotice",
+        "RuntimeNoticeKind",
+        "RuntimeReviewQueueItem",
+        "RuntimeReviewScopeRefinement",
+        "RuntimeSourceCheckpoint",
+        "RuntimeTargetDeliveryAcknowledgement",
+        "RuntimeTaskActivationReceipt",
+        "RuntimeTransitionKind",
+        "SemanticAssertionKind",
+        "SemanticExampleIntent",
+        "SemanticFeatureVector",
+        "SemanticFeedbackInterpretation",
+        "SemanticFeedbackSignal",
+        "SemanticInterpreterReceipt",
+        "SemanticNormStrength",
+        "SemanticRouteResolution",
+        "SemanticScopeHint",
+        "SemanticSignalClarity",
+        "SemanticSignalDurability",
+        "SemanticTransitionIntent",
+        "SemanticWorkflowStructure",
+        "StandingAutomationPolicy",
+        "infer_layer",
+    ),
 )
-from adaptation_compiler_lab.automatic_runtime.product_dogfood import (
-    ActivationFeedbackCard,
-    ActiveAdaptationCard,
-    GateAllowanceCard,
-    ReviewModeDogfoodMetrics,
-    ReviewModeDogfoodSnapshot,
-    ReviewProposalCard,
-    TerminalAlphaSnapshot,
-    build_review_mode_dogfood_snapshot,
-    build_terminal_alpha_snapshot,
+_register(
+    "adaptation_compiler_lab.automatic_runtime.product_dogfood",
+    (
+        "ActivationFeedbackCard",
+        "ActiveAdaptationCard",
+        "GateAllowanceCard",
+        "ReviewModeDogfoodMetrics",
+        "ReviewModeDogfoodSnapshot",
+        "ReviewProposalCard",
+        "TerminalAlphaSnapshot",
+        "build_review_mode_dogfood_snapshot",
+        "build_terminal_alpha_snapshot",
+    ),
 )
-from adaptation_compiler_lab.automatic_runtime.service import (
-    AutomaticAdaptationRuntime,
-    AutomaticLearningResult,
-    AutomaticReviewResolutionResult,
-    AutomaticRuntimeError,
-    AutomaticRuntimeResult,
-    initial_runtime_state,
+_register(
+    "adaptation_compiler_lab.automatic_runtime.service",
+    (
+        "AutomaticAdaptationRuntime",
+        "AutomaticLearningResult",
+        "AutomaticReviewResolutionResult",
+        "AutomaticRuntimeError",
+        "AutomaticRuntimeResult",
+        "initial_runtime_state",
+    ),
 )
 
 __all__ = [
@@ -225,3 +381,20 @@ __all__ = [
     "run_longitudinal_simulation",
     "summarize_runtime",
 ]
+
+assert set(__all__) == set(_LAZY_EXPORTS)
+
+
+def __getattr__(name: str) -> Any:
+    """Load one explicitly exported runtime API only when requested."""
+
+    module_name = _LAZY_EXPORTS.get(name)
+    if module_name is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    value = getattr(import_module(module_name), name)
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    return sorted((*globals(), *__all__))

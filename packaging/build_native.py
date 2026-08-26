@@ -62,6 +62,7 @@ def build_command(
         "-m",
         "nuitka",
         "--onefile",
+        "--onefile-no-compression",
         "--assume-yes-for-downloads",
         "--include-package-data=adaptation_compiler_lab",
         f"--output-dir={output_directory}",

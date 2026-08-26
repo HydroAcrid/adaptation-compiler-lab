@@ -9,16 +9,11 @@ from collections.abc import Mapping, Sequence
 from importlib.metadata import version
 from pathlib import Path
 from time import monotonic
-from typing import Any, Final, Literal, TextIO
+from typing import TYPE_CHECKING, Any, Final, Literal, TextIO
 
 from pydantic import Field
 
 from adaptation_compiler_lab.desktop.models import DesktopSnapshot
-from adaptation_compiler_lab.desktop.portability_service import LocalProfilePortabilityService
-from adaptation_compiler_lab.desktop.service import (
-    CodexDogfoodDesktopBackend,
-    DesktopApplicationService,
-)
 from adaptation_compiler_lab.domain import FrozenModel, NonEmptyStr, Sha256Digest
 from adaptation_compiler_lab.modes import FRONTEND_STUDIO_MODE, evaluate_frontend_studio_mode
 from adaptation_compiler_lab.portability import (
@@ -26,6 +21,10 @@ from adaptation_compiler_lab.portability import (
     PortableProfilePackage,
 )
 from adaptation_compiler_lab.serialization import canonical_digest
+
+if TYPE_CHECKING:
+    from adaptation_compiler_lab.desktop.portability_service import LocalProfilePortabilityService
+    from adaptation_compiler_lab.desktop.service import DesktopApplicationService
 
 PROTOCOL_VERSION: Final[Literal["temper-engine-protocol/v1"]] = "temper-engine-protocol/v1"
 MAX_FRAME_BYTES = 1_048_576
@@ -456,6 +455,12 @@ def build_router(
 
     if config_path is None:
         return EngineProtocolRouter(None, None)
+    from adaptation_compiler_lab.desktop.portability_service import LocalProfilePortabilityService
+    from adaptation_compiler_lab.desktop.service import (
+        CodexDogfoodDesktopBackend,
+        DesktopApplicationService,
+    )
+
     service = DesktopApplicationService(
         CodexDogfoodDesktopBackend(
             config_path.expanduser().resolve(),

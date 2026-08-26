@@ -30,6 +30,7 @@ def test_native_builder_produces_target_suffixed_tauri_sidecar() -> None:
     rendered = "\n".join(command)
 
     assert "--onefile" in command
+    assert "--onefile-no-compression" in command
     assert "--include-package-data=adaptation_compiler_lab" in command
     assert "temper-engine-x86_64-pc-windows-msvc.exe" in rendered
     assert "desktop_ui" in rendered
