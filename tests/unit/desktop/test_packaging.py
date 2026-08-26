@@ -103,9 +103,15 @@ def test_sidecar_manifest_binds_binary_version_schema_and_target(
 
 def test_windows_smoke_defaults_to_trusted_signature_and_safe_temp_cleanup() -> None:
     source = (ROOT / "packaging" / "windows" / "smoke_package.ps1").read_text(encoding="utf-8")
+    tauri_config = json.loads(
+        (ROOT / "desktop_ui" / "src-tauri" / "tauri.conf.json").read_text(encoding="utf-8")
+    )
 
     assert '[string]$SignaturePolicy = "trusted"' in source
     assert "Get-AuthenticodeSignature" in source
+    assert 'Filter "Temper.exe"' in source
+    assert tauri_config["productName"] == "Temper"
+    assert tauri_config["mainBinaryName"] == "Temper"
     assert "temper-clean-smoke-" in source
     assert "Remove-Item -LiteralPath $confirmed" in source
     assert "New-SelfSignedCertificate" not in source

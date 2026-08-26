@@ -110,8 +110,11 @@ try {
         Select-Object -First 1
     $engine = Get-ChildItem -LiteralPath $installRoot -Filter "temper-engine.exe" -File -Recurse |
         Select-Object -First 1
-    if ($null -eq $app -or $null -eq $engine) {
-        throw "The installed Temper application is incomplete."
+    if ($null -eq $app) {
+        throw "The installed Temper.exe application is unavailable."
+    }
+    if ($null -eq $engine) {
+        throw "The installed temper-engine.exe sidecar is unavailable."
     }
 
     $handshake = Start-EngineHandshake -EnginePath $engine.FullName
