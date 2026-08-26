@@ -78,6 +78,12 @@ close would still create a misleading product.
   macOS; a separate Windows job builds an internal NSIS candidate and a clean runner installs,
   handshakes, launches, uninstalls, verifies binary removal, and cleans any bounded temporary
   residue.
+- Final native run
+  [`32987944410`](https://github.com/HydroAcrid/adaptation-compiler-lab/actions/runs/32987944410)
+  passed all five jobs. The clean receipt binds `Temper_0.3.0-alpha.1_x64-setup.exe`, engine
+  `0.3.0a1`, the expected schema digest, an unconfigured mutation-disabled engine, a healthy
+  six-second app launch, and successful packaged uninstall. The default trusted smoke separately
+  refused that exact unsigned artifact before installation.
 
 Playwright WebKit is configured as a practical macOS rendering proxy, but this WSL host lacks the
 administrator-installed GTK/GStreamer libraries needed to launch it. That is an environment

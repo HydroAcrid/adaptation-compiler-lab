@@ -31,6 +31,15 @@ temporary installation through its packaged uninstaller before residue cleanup. 
 development-signature exception exists only inside CI; the default
 local smoke gate still rejects any installer without a trusted Authenticode publisher.
 
+Final-head workflow run
+[`32987944410`](https://github.com/HydroAcrid/adaptation-compiler-lab/actions/runs/32987944410)
+passed the Linux, macOS, and Windows native contracts, the Windows package build, and the separate
+clean-runner smoke. Its immutable console receipt records installer
+`Temper_0.3.0-alpha.1_x64-setup.exe`, `signature_status=NotSigned`, exact engine/schema binding,
+six seconds of healthy application startup, and `uninstall_completed=true`. A local invocation of
+the same smoke script with its default `trusted` policy rejected that exact downloaded candidate
+before installation. The one-day artifact is verification evidence only.
+
 This does not create an external alpha release. The Windows CurrentUser certificate store and the
 private repository's Actions secrets contain no code-signing identity. Temper will not create a
 self-signed substitute, publish an unsigned installer, or describe the development candidate as
