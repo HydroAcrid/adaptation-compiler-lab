@@ -11,7 +11,7 @@ import hashlib
 import json
 from collections.abc import Iterable
 from datetime import datetime
-from typing import cast
+from typing import TypeVar, cast
 
 from pydantic import BaseModel, Field, ValidationError
 
@@ -82,6 +82,9 @@ from adaptation_compiler_lab.targets.models import (
     TargetSurface,
 )
 
+ModelT = TypeVar("ModelT", bound=BaseModel)
+RecordT = TypeVar("RecordT", bound=VersionedRecord)
+
 
 class TargetingError(ValueError):
     """An exact release or rendered pack could not cross a targeting boundary safely."""
@@ -137,7 +140,9 @@ _REQUIRED_SURFACES: dict[TargetKind, frozenset[TargetSurface]] = {
 }
 
 
-def _strict[ModelT: BaseModel](value: ModelT, model_type: type[ModelT], *, label: str) -> ModelT:
+def _strict(  # noqa: UP047
+    value: ModelT, model_type: type[ModelT], *, label: str
+) -> ModelT:
     """Rerun validators, including for instances made with copy/construct escape hatches."""
 
     try:
@@ -167,7 +172,7 @@ def _strict_records(records: Iterable[VersionedRecord]) -> tuple[VersionedRecord
     return materialized
 
 
-def _resolve_exact[RecordT: VersionedRecord](
+def _resolve_exact(  # noqa: UP047
     index: RecordIndex,
     reference: AnyRecordRef | ExactRecordRef,
     expected_type: type[RecordT],

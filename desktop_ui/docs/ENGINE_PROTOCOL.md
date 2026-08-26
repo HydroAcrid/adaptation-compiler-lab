@@ -55,4 +55,8 @@ Development can locate the engine with `TEMPER_ENGINE_BINARY` or use
 `python -m adaptation_compiler_lab.desktop.engine_main`. The optional
 `TEMPER_RUNTIME_CONFIG` and `TEMPER_PREDECESSOR_CONFIG` values are read only by Rust and passed to
 the sidecar; they are never delivered to the renderer. Packaged builds resolve the bundled
-`temper-engine` executable beside the Tauri binary.
+`temper-engine` executable beside the Tauri binary. Release compilation refuses a missing
+target-specific build manifest. At runtime Rust hashes the sidecar before launch and verifies the
+engine version plus public snapshot-schema digest returned by the handshake.
+`TEMPER_ENGINE_BINARY` is a debug-only override and cannot replace the bundled engine in a release
+application.

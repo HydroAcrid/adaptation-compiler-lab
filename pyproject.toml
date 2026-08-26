@@ -1,6 +1,6 @@
 [project]
 name = "adaptation-compiler-lab"
-version = "0.2.0a1"
+version = "0.3.0a1"
 description = "Governed behavior compiler and private desktop alpha for coding agents"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"

@@ -33,7 +33,7 @@ describe("Tauri engine boundary", () => {
         ok: true,
         result: {
           protocol_version: ENGINE_PROTOCOL_VERSION,
-          engine_version: "0.2.0a1",
+          engine_version: "0.3.0a1",
           snapshot_schema_digest: "sha256:" + "a".repeat(64),
           mutation_enabled: false,
           configured: true,
@@ -47,7 +47,7 @@ describe("Tauri engine boundary", () => {
         ok: true,
         result: {
           snapshot_version: "1.0.0",
-          product_name: "Adaptation Compiler",
+          product_name: "Temper",
           health: "ready",
           background_enabled: true,
           aggregate_reporting_enabled: false,
@@ -101,7 +101,7 @@ describe("Tauri engine boundary", () => {
         ok: true,
         result: {
           protocol_version: ENGINE_PROTOCOL_VERSION,
-          engine_version: "0.2.0a1",
+          engine_version: "0.3.0a1",
           snapshot_schema_digest: "sha256:" + "a".repeat(64),
           mutation_enabled: false,
           configured: true,

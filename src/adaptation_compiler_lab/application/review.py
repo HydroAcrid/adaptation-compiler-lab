@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
+from typing import TypeVar
 
 from pydantic import BaseModel
 
@@ -40,6 +41,8 @@ from adaptation_compiler_lab.release.transitions import validate_artifact_transi
 from adaptation_compiler_lab.routing.policy import route_lesson
 from adaptation_compiler_lab.sanitization import ExportSafetyError, assert_export_safe
 from adaptation_compiler_lab.serialization import canonical_digest, canonical_json
+
+RecordT = TypeVar("RecordT", bound=VersionedRecord)
 
 
 class ReviewWorkflowError(ValueError):
@@ -577,7 +580,7 @@ class HumanReviewWorkflow:
         self._store.add_with_lifecycle(artifact, (event,))
 
 
-def _require_record[RecordT: VersionedRecord](
+def _require_record(  # noqa: UP047
     records: tuple[VersionedRecord, ...],
     key: RecordKey,
     expected: type[RecordT],

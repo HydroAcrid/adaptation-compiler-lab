@@ -121,7 +121,7 @@ def test_snapshot_is_raw_free_and_uses_calm_health(tmp_path: Path) -> None:
         clock=lambda: NOW,
     ).load()
 
-    assert snapshot.product_name == "Adaptation Compiler"
+    assert snapshot.product_name == "Temper"
     assert snapshot.health == "ready"
     assert snapshot.consent.days_remaining == 20
     assert snapshot.aggregate_reporting_enabled is False

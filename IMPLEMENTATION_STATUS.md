@@ -1,6 +1,51 @@
 # Implementation Status
 
-Last updated: 2026-08-24
+Last updated: 2026-08-26
+
+## Windows native alpha gate
+
+Temper now has a target-native Windows packaging path rather than the historical Qt/Inno
+prototype path. The release-group builder compiles the Python engine as the exact target-suffixed
+Nuitka sidecar expected by Tauri, writes a manifest binding the engine version, public snapshot
+schema digest, binary digest, filename, size, and target triple, and requires the compiled binary
+itself to pass an unconfigured closed-world protocol handshake before the manifest is admitted.
+The Tauri release build binds those values at compile time and verifies the bundled sidecar digest
+again before launch.
+
+The first real Windows builds exposed four packaging defects that source tests could not reveal:
+the sidecar entry point collided with Python's standard-library `platform` module; the Rust bridge
+could wait forever for a failed child; Tauri preserved the internal `temper-desktop.exe` name; and
+Nuitka 2.8.10 could compile but not execute several Python 3.12 PEP 695 generic functions. Each
+failed attempt remains visible in branch and CI history. The repaired engine uses an isolated
+entry point, bounded response reads and teardown, the customer-facing `Temper.exe` identity, lazy
+public imports for a small startup path, and equivalent `TypeVar` generic contracts for native
+compiler compatibility.
+
+A native Windows x64 rebuild now passes the mandatory post-build handshake with version
+`0.3.0a1`, schema digest
+`sha256:b45e9ad4a58ceb9d080a9886323b18678e92f48cd2745b00adfacc03d4f16cf2`,
+`configured=false`, and `mutation_enabled=false`. Ten fresh process launches completed in
+1.02–1.19 seconds. The separate clean-runner workflow installs the unsigned internal NSIS
+candidate, repeats the engine handshake, launches the installed Tauri application, and removes the
+temporary installation through its packaged uninstaller before residue cleanup. Its
+development-signature exception exists only inside CI; the default
+local smoke gate still rejects any installer without a trusted Authenticode publisher.
+
+Final-head workflow run
+[`32987944410`](https://github.com/HydroAcrid/adaptation-compiler-lab/actions/runs/32987944410)
+passed the Linux, macOS, and Windows native contracts, the Windows package build, and the separate
+clean-runner smoke. Its immutable console receipt records installer
+`Temper_0.3.0-alpha.1_x64-setup.exe`, `signature_status=NotSigned`, exact engine/schema binding,
+six seconds of healthy application startup, and `uninstall_completed=true`. A local invocation of
+the same smoke script with its default `trusted` policy rejected that exact downloaded candidate
+before installation. The one-day artifact is verification evidence only.
+
+This does not create an external alpha release. The Windows CurrentUser certificate store and the
+private repository's Actions secrets contain no code-signing identity. Temper will not create a
+self-signed substitute, publish an unsigned installer, or describe the development candidate as
+safe for invitees. Authenticode acquisition and a trusted clean-machine rerun remain external
+release blockers, alongside the product/onboarding and Apple Silicon blockers in the readiness
+audit.
 
 ## Temper React/Tauri rebuild
 
@@ -38,8 +83,8 @@ and lower-authority temporary Modes. The first and third now have real governed 
 flows; a public Mode marketplace, third-party pack activation, and automatic preset generation do
 not exist.
 
-Repository-wide Ruff, strict mypy over 380 source files, source/wheel builds, and the serial Python
-suite pass: 1,025 tests with two expected platform skips. Rust formatting passes locally. Native
+Repository-wide Ruff, strict mypy over 382 source files, source/wheel builds, and the serial Python
+suite pass: 1,038 tests with two expected platform skips. Rust formatting passes locally. Native
 Rust linking remains intentionally delegated to the Linux/Windows/macOS CI matrix because this WSL
 host lacks `pkg-config` and Wayland/GTK/WebKit development libraries.
 

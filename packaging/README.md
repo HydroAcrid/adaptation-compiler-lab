@@ -1,17 +1,49 @@
-# Native preview packaging
+# Temper native packaging
 
-Build on the target architecture. Cross-compilation is not accepted for the private alpha.
+Build each desktop artifact on its target architecture. Cross-compilation is not accepted for the
+private alpha.
 
-1. Run `uv sync --locked --dev --group release` on a clean native checkout.
-2. Run `uv run python packaging/build_native.py`. The checked-in builder uses Nuitka standalone
-   mode, includes only the product QML data directory, and refuses a non-Windows/non-macOS host.
-3. On Windows x64, sign the application binaries and the Inno Setup installer with the dedicated
-   Authenticode certificate, then verify with `signtool verify /pa`.
-4. On Apple Silicon macOS 14+, sign the `.app` with hardened runtime and the supplied entitlements,
-   create the DMG, notarize it, staple it, and verify with `codesign` and `spctl`.
-5. Generate a `DesktopReleaseManifest` only after both signatures and macOS notarization verify.
-6. Upload artifacts to the private `adaptation-compiler-preview-builds` bucket and distribute only
-   15-minute invitation-bound URLs.
+## Windows x64 development candidate
 
-Signing keys remain in the native certificate store/Keychain. They must never be committed, placed
-in `.env`, or uploaded with an application artifact. No unsigned external installation is allowed.
+1. Start from a clean native Windows checkout.
+2. Run `uv sync --locked --dev --group release`.
+3. Run `uv run python packaging/build_native.py`. This compiles the governed Python engine as the
+   target-suffixed Nuitka sidecar required by Tauri and writes a build manifest binding its binary
+   digest, engine version, target triple, and public schema digest. Before the manifest is written,
+   the builder launches the compiled binary and requires an exact unconfigured closed-world
+   handshake within 15 seconds. A binary that merely compiled is not admitted.
+4. In `desktop_ui`, run `pnpm install --frozen-lockfile` followed by
+   `pnpm tauri build --bundles nsis`.
+5. Exercise an internal unsigned development candidate with:
+
+   ```powershell
+   ./packaging/windows/smoke_package.ps1 `
+     -InstallerPath ./desktop_ui/src-tauri/target/release/bundle/nsis/Temper_0.3.0-alpha.1_x64-setup.exe `
+     -SignaturePolicy development
+   ```
+
+The development policy exists only for local and ephemeral CI validation. An unsigned candidate is
+not an alpha release and must not be published or offered to a tester. The smoke requires the
+packaged uninstaller to remove the application and sidecar before its bounded temporary residue
+cleanup runs.
+
+## Trusted Windows alpha
+
+Configure a real Authenticode code-signing identity through the Windows certificate store, Azure
+Artifact Signing, or another Tauri-supported signing command. Keep every credential outside the
+repository. After `pnpm tauri build --bundles nsis`, run the same smoke script without overriding
+its default `trusted` signature policy. It refuses unsigned or untrusted installers before
+installation.
+
+Only an installer that passes the trusted signature gate on a separate clean Windows runner may
+enter a private release manifest. The current repository contains no signing credential and never
+generates a self-signed certificate to imitate this gate.
+
+## macOS Apple Silicon
+
+The same sidecar builder produces `temper-engine-aarch64-apple-darwin`. A distributable macOS alpha
+still requires Developer ID signing, hardened runtime, notarization, stapling, and clean-machine
+verification on Apple Silicon. None of those states may be inferred from a Windows build.
+
+Signing keys remain in the native certificate store, Keychain, or managed signing service. They
+must never be committed, placed in `.env`, or uploaded with raw governed data.

@@ -51,7 +51,7 @@ class DesktopSnapshot(FrozenModel):
     """One immutable raw-free desktop read model."""
 
     snapshot_version: Literal["1.0.0"] = "1.0.0"
-    product_name: Literal["Adaptation Compiler"] = "Adaptation Compiler"
+    product_name: Literal["Temper"] = "Temper"
     health: DesktopHealth
     consent: ConsentStatus
     background_enabled: bool

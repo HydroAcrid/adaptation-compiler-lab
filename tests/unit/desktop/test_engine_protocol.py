@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import io
 import json
+import subprocess
+import sys
 from typing import Any, cast
 from unittest.mock import MagicMock
 
@@ -14,6 +16,24 @@ from adaptation_compiler_lab.desktop.engine_protocol import (
     snapshot_schema_digest,
 )
 from adaptation_compiler_lab.desktop.models import ActionResult, DesktopTaskResult
+
+
+def test_unconfigured_engine_import_does_not_load_managed_runtime_service() -> None:
+    script = """
+import sys
+from adaptation_compiler_lab.desktop.engine_protocol import build_router
+assert build_router(None) is not None
+assert 'adaptation_compiler_lab.desktop.service' not in sys.modules
+assert 'adaptation_compiler_lab.automatic_runtime.dogfood_cli' not in sys.modules
+"""
+    completed = subprocess.run(
+        [sys.executable, "-c", script],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
 
 
 def _request(method: str, *, request_id: str = "request-1") -> EngineRequest:

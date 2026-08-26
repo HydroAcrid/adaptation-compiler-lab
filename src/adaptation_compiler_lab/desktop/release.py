@@ -36,7 +36,7 @@ class DesktopReleaseArtifact(FrozenModel):
 
 class DesktopReleaseManifest(FrozenModel):
     manifest_version: Literal["1.0.0"] = "1.0.0"
-    product_name: Literal["Adaptation Compiler"] = "Adaptation Compiler"
+    product_name: Literal["Temper"] = "Temper"
     app_version: NonEmptyStr
     created_at: datetime
     artifacts: tuple[DesktopReleaseArtifact, DesktopReleaseArtifact]

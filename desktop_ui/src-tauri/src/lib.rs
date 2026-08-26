@@ -1,13 +1,32 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use std::env;
-use std::io::{BufRead, BufReader, Write};
+use std::fs::File;
+use std::io::{self, BufRead, BufReader, Read, Write};
+use std::path::Path;
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::Mutex;
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
 use uuid::Uuid;
 
 const PROTOCOL_VERSION: &str = "temper-engine-protocol/v1";
 const MAX_FRAME_BYTES: usize = 1_048_576;
+const ENGINE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(15);
+const EXPECTED_ENGINE_VERSION: &str = match option_env!("TEMPER_EXPECTED_ENGINE_VERSION") {
+    Some(value) => value,
+    None => "",
+};
+const EXPECTED_SCHEMA_DIGEST: &str = match option_env!("TEMPER_EXPECTED_SCHEMA_DIGEST") {
+    Some(value) => value,
+    None => "",
+};
+const EXPECTED_ENGINE_SHA256: &str = match option_env!("TEMPER_EXPECTED_ENGINE_SHA256") {
+    Some(value) => value,
+    None => "",
+};
 
 #[derive(Debug, Deserialize, Serialize)]
 struct EngineError {
@@ -34,9 +53,10 @@ struct PublicError {
 }
 
 struct EngineProcess {
-    _child: Child,
+    child: Child,
     stdin: ChildStdin,
-    stdout: BufReader<ChildStdout>,
+    responses: Receiver<io::Result<String>>,
+    reader: Option<JoinHandle<()>>,
 }
 
 impl EngineProcess {
@@ -49,10 +69,13 @@ impl EngineProcess {
         let mut child = command.spawn().map_err(|_| unavailable())?;
         let stdin = child.stdin.take().ok_or_else(unavailable)?;
         let stdout = child.stdout.take().ok_or_else(unavailable)?;
+        let (sender, responses) = mpsc::sync_channel(1);
+        let reader = thread::spawn(move || read_engine_frames(stdout, sender));
         Ok(Self {
-            _child: child,
+            child,
             stdin,
-            stdout: BufReader::new(stdout),
+            responses,
+            reader: Some(reader),
         })
     }
 
@@ -80,10 +103,7 @@ impl EngineProcess {
         self.stdin.write_all(b"\n").map_err(|_| unavailable())?;
         self.stdin.flush().map_err(|_| unavailable())?;
 
-        let mut line = String::new();
-        self.stdout
-            .read_line(&mut line)
-            .map_err(|_| unavailable())?;
+        let line = receive_engine_frame(&self.responses, ENGINE_RESPONSE_TIMEOUT)?;
         if line.is_empty() || line.len() > MAX_FRAME_BYTES {
             return Err(unavailable());
         }
@@ -91,18 +111,72 @@ impl EngineProcess {
         if response.protocol_version != PROTOCOL_VERSION || response.request_id != request_id {
             return Err(incompatible());
         }
+        if method == "system.handshake" {
+            validate_handshake(&response, EXPECTED_ENGINE_VERSION, EXPECTED_SCHEMA_DIGEST)?;
+        }
         Ok(response)
     }
 }
 
+impl Drop for EngineProcess {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+        let (_replacement_sender, replacement_receiver) = mpsc::sync_channel(1);
+        let responses = std::mem::replace(&mut self.responses, replacement_receiver);
+        drop(responses);
+        if let Some(reader) = self.reader.take() {
+            let _ = reader.join();
+        }
+    }
+}
+
+fn read_engine_frames(stdout: ChildStdout, sender: mpsc::SyncSender<io::Result<String>>) {
+    let mut reader = BufReader::new(stdout);
+    loop {
+        let mut line = String::new();
+        let result = reader
+            .by_ref()
+            .take((MAX_FRAME_BYTES + 1) as u64)
+            .read_line(&mut line)
+            .and_then(|read| {
+                if read == 0 {
+                    Err(io::Error::new(
+                        io::ErrorKind::UnexpectedEof,
+                        "Temper engine closed its response stream",
+                    ))
+                } else {
+                    Ok(line)
+                }
+            });
+        if sender.send(result).is_err() {
+            break;
+        }
+    }
+}
+
+fn receive_engine_frame(
+    responses: &Receiver<io::Result<String>>,
+    timeout: Duration,
+) -> Result<String, PublicError> {
+    match responses.recv_timeout(timeout) {
+        Ok(Ok(line)) => Ok(line),
+        Ok(Err(_)) | Err(RecvTimeoutError::Disconnected | RecvTimeoutError::Timeout) => {
+            Err(unavailable())
+        }
+    }
+}
+
 fn engine_command() -> Result<Command, PublicError> {
-    let mut command = if let Ok(binary) = env::var("TEMPER_ENGINE_BINARY") {
-        Command::new(binary)
-    } else if cfg!(debug_assertions) {
-        let python = env::var("TEMPER_PYTHON").unwrap_or_else(|_| "python3".to_owned());
-        let mut value = Command::new(python);
-        value.args(["-m", "adaptation_compiler_lab.desktop.engine_main"]);
-        value
+    let mut command = if cfg!(debug_assertions) {
+        if let Ok(binary) = env::var("TEMPER_ENGINE_BINARY") {
+            Command::new(binary)
+        } else {
+            let python = env::var("TEMPER_PYTHON").unwrap_or_else(|_| "python3".to_owned());
+            let mut value = Command::new(python);
+            value.args(["-m", "adaptation_compiler_lab.desktop.engine_main"]);
+            value
+        }
     } else {
         let current = env::current_exe().map_err(|_| unavailable())?;
         let extension = current
@@ -114,7 +188,9 @@ fn engine_command() -> Result<Command, PublicError> {
         } else {
             "temper-engine"
         };
-        Command::new(current.with_file_name(name))
+        let binary = current.with_file_name(name);
+        verify_engine_digest(&binary, EXPECTED_ENGINE_SHA256)?;
+        Command::new(binary)
     };
     if let Ok(config) = env::var("TEMPER_RUNTIME_CONFIG") {
         command.arg("--config").arg(config);
@@ -123,6 +199,45 @@ fn engine_command() -> Result<Command, PublicError> {
         command.arg("--predecessor-config").arg(predecessor);
     }
     Ok(command)
+}
+
+fn validate_handshake(
+    response: &EngineResponse,
+    expected_engine_version: &str,
+    expected_schema_digest: &str,
+) -> Result<(), PublicError> {
+    if !response.ok || expected_engine_version.is_empty() || expected_schema_digest.is_empty() {
+        return Ok(());
+    }
+    let result = response.result.as_ref().ok_or_else(incompatible)?;
+    if result.get("engine_version").and_then(Value::as_str) != Some(expected_engine_version)
+        || result.get("snapshot_schema_digest").and_then(Value::as_str)
+            != Some(expected_schema_digest)
+    {
+        return Err(incompatible());
+    }
+    Ok(())
+}
+
+fn verify_engine_digest(path: &Path, expected_digest: &str) -> Result<(), PublicError> {
+    if expected_digest.len() != 64 {
+        return Err(incompatible());
+    }
+    let mut source = File::open(path).map_err(|_| unavailable())?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0_u8; 64 * 1024];
+    loop {
+        let read = source.read(&mut buffer).map_err(|_| unavailable())?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    let actual = format!("{:x}", hasher.finalize());
+    if actual != expected_digest {
+        return Err(incompatible());
+    }
+    Ok(())
 }
 
 fn unavailable() -> PublicError {
@@ -301,6 +416,8 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::time::Instant;
 
     #[test]
     fn public_errors_do_not_include_process_or_path_details() {
@@ -329,5 +446,48 @@ mod tests {
         assert!(!source.contains(
             "fn profile_import_preview(\n    state: tauri::State<'_, EngineState>,\n    source"
         ));
+    }
+
+    #[test]
+    fn handshake_validation_rejects_version_or_schema_drift() {
+        let response = EngineResponse {
+            protocol_version: PROTOCOL_VERSION.to_owned(),
+            request_id: "request-1".to_owned(),
+            ok: true,
+            result: Some(json!({
+                "engine_version": "0.3.0a1",
+                "snapshot_schema_digest": format!("sha256:{}", "a".repeat(64)),
+            })),
+            error: None,
+            snapshot_digest: None,
+        };
+
+        assert!(
+            validate_handshake(&response, "0.3.0a1", &format!("sha256:{}", "a".repeat(64)),)
+                .is_ok()
+        );
+        assert!(validate_handshake(&response, "0.3.0a2", &"a".repeat(71)).is_err());
+    }
+
+    #[test]
+    fn sidecar_digest_tampering_fails_closed() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let binary = directory.path().join("temper-engine");
+        fs::write(&binary, b"exact engine").expect("write fixture");
+        let exact = format!("{:x}", Sha256::digest(b"exact engine"));
+
+        assert!(verify_engine_digest(&binary, &exact).is_ok());
+        fs::write(&binary, b"tampered engine").expect("tamper fixture");
+        assert!(verify_engine_digest(&binary, &exact).is_err());
+    }
+
+    #[test]
+    fn missing_engine_response_times_out() {
+        let (_sender, responses) = mpsc::sync_channel(1);
+        let timeout = Duration::from_millis(5);
+        let started = Instant::now();
+
+        assert!(receive_engine_frame(&responses, timeout).is_err());
+        assert!(started.elapsed() < Duration::from_secs(1));
     }
 }
