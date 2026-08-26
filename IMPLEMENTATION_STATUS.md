@@ -75,7 +75,7 @@ flows; a public Mode marketplace, third-party pack activation, and automatic pre
 not exist.
 
 Repository-wide Ruff, strict mypy over 382 source files, source/wheel builds, and the serial Python
-suite pass: 1,037 tests with two expected platform skips. Rust formatting passes locally. Native
+suite pass: 1,038 tests with two expected platform skips. Rust formatting passes locally. Native
 Rust linking remains intentionally delegated to the Linux/Windows/macOS CI matrix because this WSL
 host lacks `pkg-config` and Wayland/GTK/WebKit development libraries.
 
