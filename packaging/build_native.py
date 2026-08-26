@@ -181,7 +181,8 @@ def verify_native_sidecar(
         "mutation_enabled": False,
     }
     if (
-        response.get("ok") is not True
+        not isinstance(response, dict)
+        or response.get("ok") is not True
         or response.get("protocol_version") != "temper-engine-protocol/v1"
         or response.get("request_id") != "native-build-handshake"
         or not isinstance(result, dict)

@@ -199,6 +199,37 @@ def test_native_builder_rejects_drifted_or_unconfigured_handshake(
         )
 
 
+def test_native_builder_rejects_non_object_handshake(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _build_module()
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "temper-test"\nversion = "0.3.0a1"\n',
+        encoding="utf-8",
+    )
+    binary_root = tmp_path / "desktop_ui" / "src-tauri" / "binaries"
+    binary_root.mkdir(parents=True)
+    (binary_root / "temper-engine-x86_64-pc-windows-msvc.exe").write_bytes(b"synthetic")
+    monkeypatch.setattr(
+        module.subprocess,
+        "run",
+        lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 0, "[]\n", ""),
+    )
+    monkeypatch.setattr(
+        module,
+        "_snapshot_schema_digest",
+        lambda _root: f"sha256:{'a' * 64}",
+    )
+
+    with pytest.raises(ValueError, match="closed-world handshake validation"):
+        module.verify_native_sidecar(
+            tmp_path,
+            platform_name="win32",
+            machine_name="AMD64",
+        )
+
+
 def test_windows_smoke_defaults_to_trusted_signature_and_safe_temp_cleanup() -> None:
     source = (ROOT / "packaging" / "windows" / "smoke_package.ps1").read_text(encoding="utf-8")
     tauri_config = json.loads(

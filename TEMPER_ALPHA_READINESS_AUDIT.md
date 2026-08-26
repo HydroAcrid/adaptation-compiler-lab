@@ -1,6 +1,6 @@
 # Temper alpha readiness audit
 
-Date: 2026-08-24
+Date: 2026-08-26
 Scope: React/Tauri product slice, governed-engine boundary, platform compatibility, dependency safety,
 and external-user admission. The deferred Milestone 6 study was not accessed.
 
@@ -49,6 +49,17 @@ close would still create a misleading product.
    actual Chromium pointer events could not reach import or Mode controls even though DOM-only
    tests passed. The dialog now shares the overlay-safe stacking layer and real-browser interaction
    tests cover import preview and Mode disclosure.
+10. **Sidecar import collision.** Building from the packaging directory allowed a local
+    `platform.py` to shadow Python's standard library. A dedicated packaging entry point now
+    establishes only the repository source root before importing the engine.
+11. **Unbounded failed-engine wait.** The Rust bridge previously blocked on a line read when a
+    compiled child failed before producing a frame. Reads are now bounded to 15 seconds; timeout or
+    channel closure kills and reaps the child and joins the reader before returning a sanitized
+    error.
+12. **Compiled-runtime compatibility.** Nuitka 2.8.10 accepted Python 3.12 PEP 695 generic
+    functions but produced a sidecar that failed at runtime. The seven affected internal helpers
+    now use behaviorally equivalent `TypeVar` contracts, and the native builder must execute and
+    validate the compiled engine handshake before writing its release manifest.
 
 ## Evidence that currently passes
 
@@ -61,6 +72,11 @@ close would still create a misleading product.
 - Local-only font, ornament, and product-mark loading with exact asset digests and active-content
   rejection.
 - Full locked Python formatting, linting, typing, tests, and source/wheel builds.
+- A real Windows x64 Nuitka sidecar completes ten clean unconfigured handshakes in 1.02–1.19
+  seconds with exact protocol, version, and schema binding and mutations disabled.
+- The Tauri CI matrix exercises Rust clippy/tests and the React contract on Linux, Windows, and
+  macOS; a separate Windows job builds an internal NSIS candidate and a clean runner installs,
+  handshakes, launches, and removes it.
 
 Playwright WebKit is configured as a practical macOS rendering proxy, but this WSL host lacks the
 administrator-installed GTK/GStreamer libraries needed to launch it. That is an environment
@@ -82,14 +98,14 @@ Apple Silicon Tauri build.
 
 ### Platform and release blockers
 
-- Add Windows WebView2 and native macOS WKWebView build lanes; the current Chromium result is only
-  a proxy.
+- Complete native macOS WKWebView and Apple Silicon package validation; Chromium remains only a
+  browser proxy for that platform.
 - Implement macOS Keychain parity and verify Windows CurrentUser DPAPI through the Tauri path.
-- Expand continuous integration beyond the existing native Tauri platform matrix to cover every
-  frontend, Python, protocol, security, and packaging gate in one release workflow.
+- Expand the release workflow beyond the native contract and Windows package smoke to cover every
+  Python, protocol, security, signing, and portal gate in one provenance-bound release job.
 - Pass keyboard-only and screen-reader manual audits in addition to axe.
-- Produce clean Windows x64 and Apple Silicon builds, then test install, upgrade, recovery, and
-  uninstall on clean machines.
+- Add Windows upgrade/recovery coverage and produce the Apple Silicon build, then test install,
+  upgrade, recovery, and uninstall on clean machines.
 - Obtain Authenticode and Apple Developer ID credentials; notarize and staple the macOS artifact.
 - Complete naming/trademark clearance and native icon exports before public branding claims.
 
@@ -116,7 +132,9 @@ Not safe yet:
 - Claim that the desktop app is continuously learning from their work today.
 - Distribute an unsigned installer or collect governed user data through the synthetic renderer.
 
-The next engineering slice is native onboarding and truthful Connections: governed identity/key
-initialization, explicit prospective project registration, Codex inspection, and delegated Claude
-inspection without handling provider credentials. External installation begins only after the
-complete product and platform blockers above are closed.
+The next engineering slice is still native onboarding and truthful Connections: governed
+identity/key initialization, explicit prospective project registration, Codex inspection, and
+delegated Claude inspection without handling provider credentials. In parallel, a real
+Authenticode identity can be acquired and connected to the already fail-closed package gate.
+External installation begins only after the complete product and platform blockers above are
+closed; an unsigned clean-machine smoke is engineering evidence, not distribution approval.

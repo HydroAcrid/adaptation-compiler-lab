@@ -9,7 +9,9 @@ private alpha.
 2. Run `uv sync --locked --dev --group release`.
 3. Run `uv run python packaging/build_native.py`. This compiles the governed Python engine as the
    target-suffixed Nuitka sidecar required by Tauri and writes a build manifest binding its binary
-   digest, engine version, target triple, and public schema digest.
+   digest, engine version, target triple, and public schema digest. Before the manifest is written,
+   the builder launches the compiled binary and requires an exact unconfigured closed-world
+   handshake within 15 seconds. A binary that merely compiled is not admitted.
 4. In `desktop_ui`, run `pnpm install --frozen-lockfile` followed by
    `pnpm tauri build --bundles nsis`.
 5. Exercise an internal unsigned development candidate with:
