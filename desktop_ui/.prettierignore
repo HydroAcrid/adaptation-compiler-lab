@@ -3,5 +3,7 @@ node_modules/
 playwright-report/
 test-results/
 src-tauri/target/
+src-tauri/binaries/
+src-tauri/gen/
 docs/screenshots/
 tests/**/*-snapshots/

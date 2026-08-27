@@ -98,7 +98,9 @@ export function TodayPage({
   const hasSuggestion = Boolean(selectedSuggestion);
   const isAllProjects = workspace === "all";
   const selectedIndex = selectedSuggestion
-    ? suggestions.findIndex((item) => item.id === selectedSuggestion.id)
+    ? applicableSuggestions.findIndex(
+        (item) => item.id === selectedSuggestion.id,
+      )
     : -1;
   const suggestionCount = applicableSuggestions.length;
   const automationStatus = selectedSuggestion

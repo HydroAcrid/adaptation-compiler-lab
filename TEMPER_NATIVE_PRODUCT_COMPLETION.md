@@ -1,9 +1,11 @@
 # Temper native product completion
 
 Status: native onboarding, the everyday governed React loop, platform credential parity, React
-recovery parity, Qt retirement, and the Apple Silicon build/smoke contract are implemented. The
-Apple candidate has not yet run because the private repository's GitHub Actions budget currently
-prevents jobs from starting. This is recorded as unavailable evidence, not a passing result.
+recovery parity, Qt retirement, and the Apple Silicon build/smoke contract are implemented. A
+fresh same-host Windows checkout has built and passed the current `0.3.0a2` development smoke; it
+is not an independent clean-runner result. The Apple candidate has not yet run because the private
+repository's GitHub Actions budget currently prevents jobs from starting. WSL cannot substitute
+for the native macOS runtime, so this remains unavailable evidence rather than a passing result.
 
 ## Product boundary
 
@@ -44,9 +46,8 @@ stale-state protected.
 
 ## Continuous sequence
 
-1. Restore GitHub Actions execution (or authorize an equivalent native clean runner), then execute
-   the exact Windows x64 and Apple Silicon `0.3.0a2` candidate jobs already defined in the
-   repository.
+1. Reuse the repository smoke on an independent Windows machine or self-hosted runner, and execute
+   the Apple Silicon `0.3.0a2` build/smoke on a native Mac. GitHub-hosted Actions is optional.
 2. Add genuine publisher signing and notarization only when external installer distribution is
    authorized, and rerun both default trusted gates on clean machines.
 
@@ -141,5 +142,15 @@ Apple `.app`/`.dmg` build and fresh-runner smoke are **not yet observed results*
 rejects new Actions jobs for budget reasons. An unsigned or ad-hoc candidate cannot satisfy the
 trusted policy, and this source implementation must not be described as a distributable macOS
 alpha until the native job actually passes.
+
+The Windows half has stronger current-head local evidence: product commit `253083e` and desktop
+tree `aec90f0` produced the actual MSVC/Nuitka sidecar and Tauri NSIS installer from a fresh native
+checkout. The explicit development
+policy passed install, exact sidecar handshake, six-second application liveness, packaged
+uninstall, and cleanup; the default trusted policy rejected the unsigned candidate before any
+installation. See
+[`conformance/windows-native-local-smoke-0.3.0a2.json`](conformance/windows-native-local-smoke-0.3.0a2.json).
+Because the builder and smoke shared one Windows host, this does not replace independent
+clean-machine or signed-release admission.
 
 The sealed deferred Milestone 6 external-validation study remains outside this work and unchanged.

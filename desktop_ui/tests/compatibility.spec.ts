@@ -89,5 +89,11 @@ test("workspace menu changes the minimum-window view", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Temper is active in Green Meadow." }),
   ).toBeVisible();
-  await expect(page.getByText(/Kairn-only knowledge stays out/i)).toBeVisible();
+  await expect(page.getByText("Suggestion 1 of 1")).toBeVisible();
+  await expect(
+    page.getByText(/Prefer names that represent real things/i),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/Lead with the purpose before setup steps/i),
+  ).toHaveCount(0);
 });

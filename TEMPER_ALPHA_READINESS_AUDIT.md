@@ -16,12 +16,15 @@ capabilities are described truthfully, the everyday review/revoke/undo/feedback 
 Windows DPAPI and macOS Keychain fail closed, Advanced task review is governed, and Qt has been
 retired. Browser routes remain synthetic demonstrations; installed Tauri state is authoritative.
 
-The remaining boundary is native release evidence. A previous unsigned Windows `0.3.0a1`
-candidate passed its development-policy clean-runner smoke. The current `0.3.0a2` Windows and Apple
-Silicon candidates have not run because GitHub currently prevents Actions jobs from starting for
-budget reasons. The source contains the Apple build and clean-smoke jobs, but source inspection is
-not a substitute for an arm64 `.app`/`.dmg` result. External distribution additionally requires
-genuine Authenticode and Developer ID credentials plus the default trusted clean-machine gates.
+The remaining boundary is independent native release evidence. A previous unsigned Windows
+`0.3.0a1` candidate passed its development-policy clean-runner smoke. The current `0.3.0a2` Windows
+candidate now passes the equivalent build/install/handshake/launch/uninstall flow on the same
+Windows host from a fresh checkout, with its default trusted policy independently confirmed to
+reject the unsigned bytes. This is useful current-head instrument evidence, but it is not a clean
+runner. The Apple Silicon candidate has not run because GitHub currently prevents Actions jobs
+from starting for budget reasons, and WSL cannot execute the relevant macOS surfaces. External
+distribution additionally requires genuine Authenticode and Developer ID credentials plus the
+default trusted clean-machine gates.
 
 ## Product behavior now implemented
 
@@ -58,11 +61,18 @@ Observed:
   cleanup. The default trusted policy rejected the unsigned installer.
 - Local locked Python, React, protocol, packaging-policy, and cross-target Rust checks cover the
   `0.3.0a2` source contract.
+- A fresh same-host native Windows checkout at product commit `253083e` and desktop tree `aec90f0`
+  built the real `0.3.0a2` MSVC
+  sidecar and NSIS installer. The explicit development smoke verified the bundled engine, launched
+  the installed app, uninstalled it, and left a clean install root. The exact raw-free receipt and
+  installer digest are in
+  [`conformance/windows-native-local-smoke-0.3.0a2.json`](conformance/windows-native-local-smoke-0.3.0a2.json).
+  The default trusted gate rejected the same unsigned candidate before installation.
 - A real Security.framework Keychain round trip previously passed on GitHub's macOS arm64 runner.
 
 Implemented but not yet observed:
 
-- `0.3.0a2` Windows candidate and clean-runner smoke.
+- Independent clean-runner confirmation of the current `0.3.0a2` Windows candidate.
 - `0.3.0a2` arm64-only sidecar, Tauri `.app`/`.dmg`, and independent Apple Silicon clean smoke.
 - First-run WKWebView rendering from the packaged app.
 
@@ -74,8 +84,9 @@ and bounded cleanup. The default trusted policy separately requires Developer ID
 
 ## Remaining external-user gates
 
-1. Restore Actions execution or authorize equivalent clean native runners, then obtain passing
-   current-head Windows x64 and Apple Silicon development-policy package receipts.
+1. Use an independent Windows machine/self-hosted runner for current-head confirmation and a
+   native Apple Silicon Mac for the unobserved app/DMG development-policy receipt; GitHub-hosted
+   Actions is not required.
 2. Obtain genuine organization-backed Authenticode and Apple Developer ID Application identities.
 3. Sign nested binaries and installers in the required order, notarize/staple macOS artifacts, and
    pass the unchanged default trusted smoke on clean machines.
