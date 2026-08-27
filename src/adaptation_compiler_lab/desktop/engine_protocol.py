@@ -20,6 +20,7 @@ from adaptation_compiler_lab.desktop.models import (
     ActivationFeedbackSummaryV1,
     AdaptationSummaryV1,
     DesktopSnapshot,
+    DiagnosticsSummaryV1,
     MutationReceiptV1,
     ProjectCandidatePreviewV1,
     RecentUndoSummaryV1,
@@ -276,6 +277,14 @@ class EngineProtocolRouter:
             return self._stage_import(request)
         if request.method == "mode.task.run":
             return self._run_mode_task(request)
+        if request.method == "task.run":
+            return self._run_task(request)
+        if request.method == "task.apply":
+            return self._apply_task(request)
+        if request.method == "task.discard":
+            return self._discard_task(request)
+        if request.method == "diagnostics.get":
+            return self._diagnostics(request)
         if request.method == "mode.list":
             if request.params:
                 return self._error(request, "invalid_params", "mode.list takes no parameters.")
@@ -485,16 +494,34 @@ class EngineProtocolRouter:
         _snapshot_digest, fingerprint = checked
         if self._service is None:
             return self._not_configured(request)
-        if set(request.params) != {"background_enabled", "aggregate_reporting_enabled"}:
+        allowed = {
+            "background_enabled",
+            "aggregate_reporting_enabled",
+            "decision_notifications_enabled",
+            "launch_at_login_enabled",
+        }
+        if not set(request.params) <= allowed or not {
+            "background_enabled",
+            "aggregate_reporting_enabled",
+        } <= set(request.params):
             return self._error(request, "invalid_params", "The preference request was invalid.")
         background = request.params.get("background_enabled")
         reporting = request.params.get("aggregate_reporting_enabled")
-        if not isinstance(background, bool) or not isinstance(reporting, bool):
+        notifications = request.params.get("decision_notifications_enabled")
+        launch = request.params.get("launch_at_login_enabled")
+        if (
+            not isinstance(background, bool)
+            or not isinstance(reporting, bool)
+            or (notifications is not None and not isinstance(notifications, bool))
+            or (launch is not None and not isinstance(launch, bool))
+        ):
             return self._error(request, "invalid_params", "The preference request was invalid.")
         try:
             current = self._service.set_local_preferences(
                 background_enabled=background,
                 aggregate_reporting_enabled=reporting,
+                decision_notifications_enabled=notifications,
+                launch_at_login_enabled=launch,
             )
         except (OSError, ValueError):
             return self._error(request, "preferences_failed", "Temper could not save settings.")
@@ -847,11 +874,118 @@ class EngineProtocolRouter:
                 "status": task_result.status,
                 "projection_utf8_bytes": task_result.projection_utf8_bytes,
                 "review_available": task_result.change_review is not None,
+                "final_message": task_result.final_message,
+                "change_review": (
+                    None
+                    if task_result.change_review is None
+                    else task_result.change_review.model_dump(mode="json")
+                ),
                 "raw_payloads_exposed": False,
             },
             snapshot_digest=current.content_digest,
         )
         return self._remember_mutation(request, request_fingerprint, response)
+
+    def _run_task(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        _snapshot_digest, request_fingerprint = checked
+        if self._service is None:
+            return self._not_configured(request)
+        try:
+            project_id = _required_string(request.params, "project_id")
+            task = _required_string(request.params, "task")
+            if set(request.params) != {"project_id", "task"} or len(task.encode("utf-8")) > 32_000:
+                raise ValueError
+        except ValueError:
+            return self._error(request, "invalid_params", "The managed task request was invalid.")
+        action, task_result = self._service.run_task(task=task, project_id=project_id)
+        if not action.ok or task_result is None:
+            return self._error(request, action.code, action.message)
+        try:
+            current = self._service.load()
+        except (OSError, ValueError):
+            return self._error(
+                request, "snapshot_unavailable", "Temper could not verify the resulting state."
+            )
+        response = EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result={
+                **task_result.model_dump(mode="json"),
+                "review_available": task_result.change_review is not None,
+                "raw_payloads_exposed": False,
+            },
+            snapshot_digest=current.content_digest,
+        )
+        return self._remember_mutation(request, request_fingerprint, response)
+
+    def _apply_task(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        _snapshot_digest, fingerprint = checked
+        if self._service is None:
+            return self._not_configured(request)
+        try:
+            session_id = _required_string(request.params, "session_id")
+            expected_head = _required_string(request.params, "expected_head")
+            if set(request.params) != {"session_id", "expected_head"}:
+                raise ValueError
+        except ValueError:
+            return self._error(request, "invalid_params", "The task application was invalid.")
+        return self._action_response(
+            request,
+            fingerprint,
+            session_id,
+            self._service.apply_changes(session_id=session_id, expected_head=expected_head),
+        )
+
+    def _discard_task(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        _snapshot_digest, fingerprint = checked
+        if self._service is None:
+            return self._not_configured(request)
+        try:
+            session_id = _required_string(request.params, "session_id")
+            if set(request.params) != {"session_id"}:
+                raise ValueError
+        except ValueError:
+            return self._error(request, "invalid_params", "The task discard was invalid.")
+        return self._action_response(
+            request,
+            fingerprint,
+            session_id,
+            self._service.discard_changes(session_id=session_id),
+        )
+
+    def _diagnostics(self, request: EngineRequest) -> EngineResponse:
+        if request.params:
+            return self._error(request, "invalid_params", "diagnostics.get takes no parameters.")
+        if self._service is None:
+            return self._not_configured(request)
+        try:
+            snapshot = self._service.load()
+        except (OSError, ValueError):
+            return self._error(request, "diagnostics_unavailable", "Diagnostics are unavailable.")
+        summary = DiagnosticsSummaryV1(
+            snapshot_version=snapshot.snapshot_version,
+            project_count=len(snapshot.projects),
+            pending_review_count=len(snapshot.suggestions),
+            active_adaptation_count=len(snapshot.adaptations),
+            pending_feedback_count=len(snapshot.activation_feedback),
+            consent_current=not snapshot.consent.renewal_required,
+            secure_store_ready=snapshot.terminal.review_mode.credential_enrolled,
+        )
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result=summary.model_dump(mode="json"),
+            snapshot_digest=snapshot.content_digest,
+        )
 
     def _mutation_request(
         self, request: EngineRequest
@@ -962,12 +1096,19 @@ def build_router(
     except (OSError, ValueError):
         preferences = DesktopPreferences()
 
-    def save_preferences(background_enabled: bool, reporting_enabled: bool) -> None:
+    def save_preferences(
+        background_enabled: bool,
+        reporting_enabled: bool,
+        notifications_enabled: bool,
+        launch_at_login_enabled: bool,
+    ) -> None:
         preferences_store.save(
             preferences_store.load().model_copy(
                 update={
                     "background_enabled": background_enabled,
                     "aggregate_reporting_enabled": reporting_enabled,
+                    "decision_notifications_enabled": notifications_enabled,
+                    "launch_at_login_enabled": launch_at_login_enabled,
                 }
             )
         )
@@ -983,6 +1124,8 @@ def build_router(
         ),
         background_enabled=preferences.background_enabled,
         aggregate_reporting_enabled=preferences.aggregate_reporting_enabled,
+        decision_notifications_enabled=preferences.decision_notifications_enabled,
+        launch_at_login_enabled=preferences.launch_at_login_enabled,
         preference_writer=save_preferences,
     )
     return EngineProtocolRouter(

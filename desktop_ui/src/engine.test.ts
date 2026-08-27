@@ -10,10 +10,14 @@ import {
   decideEngineSuggestion,
   isTauriRuntime,
   loadEngineSnapshot,
+  loadDiagnostics,
   loadModes,
   loadProfileImportPreview,
   previewExistingInstallation,
   runModeTask,
+  runManagedTask,
+  applyManagedTask,
+  discardManagedTask,
   updateEnginePreferences,
 } from "./engine";
 
@@ -375,7 +379,7 @@ describe("Tauri engine boundary", () => {
     expect(JSON.stringify(invoke.mock.calls)).not.toContain("evidence_digest");
   });
 
-  it("persists only the two allowlisted local observation preferences", async () => {
+  it("persists only the four allowlisted local product preferences", async () => {
     invoke.mockResolvedValueOnce({
       protocol_version: ENGINE_PROTOCOL_VERSION,
       request_id: "one",
@@ -397,6 +401,8 @@ describe("Tauri engine boundary", () => {
     await updateEnginePreferences(
       true,
       false,
+      true,
+      false,
       "sha256:" + "b".repeat(64),
       "preferences-click-1",
     );
@@ -404,8 +410,136 @@ describe("Tauri engine boundary", () => {
     expect(invoke).toHaveBeenCalledWith("preferences_update", {
       aggregateReportingEnabled: false,
       backgroundEnabled: true,
+      decisionNotificationsEnabled: true,
+      launchAtLoginEnabled: false,
       expectedSnapshotDigest: "sha256:" + "b".repeat(64),
       idempotencyKey: "preferences-click-1",
     });
+  });
+
+  it("binds managed task run, apply, and discard to one exact review", async () => {
+    const review = {
+      session_id: "session-1",
+      expected_head: "0123456789abcdef",
+      changed_files: ["src/example.py"],
+      diff_text: "diff --git a/src/example.py b/src/example.py",
+      binary_change_count: 0,
+    };
+    invoke
+      .mockResolvedValueOnce({
+        protocol_version: ENGINE_PROTOCOL_VERSION,
+        request_id: "run",
+        ok: true,
+        result: {
+          activation_id: "activation-1",
+          status: "review_available",
+          projection_utf8_bytes: 400,
+          final_message: "Prepared a change.",
+          change_review: review,
+          review_available: true,
+          raw_payloads_exposed: false,
+        },
+        error: null,
+        snapshot_digest: "sha256:" + "c".repeat(64),
+      })
+      .mockResolvedValueOnce({
+        protocol_version: ENGINE_PROTOCOL_VERSION,
+        request_id: "apply",
+        ok: true,
+        result: {
+          receipt_version: "1.0.0",
+          action: "apply_changes",
+          target_id: "session-1",
+          status: "applied",
+          code: "ok",
+          message: "Applied.",
+          resulting_snapshot_digest: "sha256:" + "c".repeat(64),
+          raw_payloads_exposed: false,
+        },
+        error: null,
+        snapshot_digest: "sha256:" + "c".repeat(64),
+      })
+      .mockResolvedValueOnce({
+        protocol_version: ENGINE_PROTOCOL_VERSION,
+        request_id: "discard",
+        ok: true,
+        result: {
+          receipt_version: "1.0.0",
+          action: "discard_changes",
+          target_id: "session-1",
+          status: "applied",
+          code: "ok",
+          message: "Discarded.",
+          resulting_snapshot_digest: "sha256:" + "c".repeat(64),
+          raw_payloads_exposed: false,
+        },
+        error: null,
+        snapshot_digest: "sha256:" + "c".repeat(64),
+      });
+
+    await runManagedTask(
+      "kairn",
+      "Fix the verified issue.",
+      "sha256:" + "b".repeat(64),
+      "run-click-1",
+    );
+    await applyManagedTask(review, "sha256:" + "c".repeat(64), "apply-click-1");
+    await discardManagedTask(
+      "session-1",
+      "sha256:" + "c".repeat(64),
+      "discard-click-1",
+    );
+
+    expect(invoke.mock.calls).toEqual([
+      [
+        "task_run",
+        {
+          expectedSnapshotDigest: "sha256:" + "b".repeat(64),
+          idempotencyKey: "run-click-1",
+          projectId: "kairn",
+          task: "Fix the verified issue.",
+        },
+      ],
+      [
+        "task_apply",
+        {
+          expectedHead: "0123456789abcdef",
+          expectedSnapshotDigest: "sha256:" + "c".repeat(64),
+          idempotencyKey: "apply-click-1",
+          sessionId: "session-1",
+        },
+      ],
+      [
+        "task_discard",
+        {
+          expectedSnapshotDigest: "sha256:" + "c".repeat(64),
+          idempotencyKey: "discard-click-1",
+          sessionId: "session-1",
+        },
+      ],
+    ]);
+  });
+
+  it("rejects diagnostics that claim to expose raw content", async () => {
+    invoke.mockResolvedValueOnce({
+      protocol_version: ENGINE_PROTOCOL_VERSION,
+      request_id: "diagnostics",
+      ok: true,
+      result: {
+        diagnostics_version: "1.0.0",
+        snapshot_version: "1.1.0",
+        project_count: 2,
+        pending_review_count: 1,
+        active_adaptation_count: 3,
+        pending_feedback_count: 0,
+        consent_current: true,
+        secure_store_ready: true,
+        raw_payloads_exposed: true,
+      },
+      error: null,
+      snapshot_digest: "sha256:" + "c".repeat(64),
+    });
+
+    await expect(loadDiagnostics()).rejects.toThrow("unsafe diagnostics");
   });
 });

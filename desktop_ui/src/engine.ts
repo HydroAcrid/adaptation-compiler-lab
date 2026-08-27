@@ -203,6 +203,8 @@ export interface EngineDesktopSnapshot {
   health: "ready" | "needs_attention" | "paused" | "consent_expired";
   background_enabled: boolean;
   aggregate_reporting_enabled: boolean;
+  decision_notifications_enabled: boolean;
+  launch_at_login_enabled: boolean;
   projects: EngineProject[];
   generated_at: string;
   raw_payloads_exposed: false;
@@ -220,8 +222,8 @@ export interface EngineDesktopSnapshot {
   terminal: {
     review_mode: {
       active_artifact_count: number;
-      proposals: unknown[];
-      activation_feedback: unknown[];
+      proposals: EngineTerminalProposal[];
+      activation_feedback: EngineTerminalActivationFeedback[];
       metrics: {
         pending_review_count: number;
         pending_feedback_count: number;
@@ -246,6 +248,37 @@ export interface EngineDesktopSnapshot {
     latest_delivered_projection_utf8_bytes: number;
     raw_payloads_exposed: false;
   };
+}
+
+export interface EngineTerminalProposal {
+  card_version: "1.1.0";
+  review_number: number;
+  queue_id: string;
+  cycle_id: string;
+  proposal_digest: string;
+  signal_kind: string;
+  behavior: string | null;
+  affected_artifact_id: string | null;
+  route: string | null;
+  layer: string;
+  scope: EngineScope;
+  reasons: string[];
+  available_actions: Array<"approve" | "reject" | "refine_scope">;
+  created_at: string;
+  raw_payload_exposed: false;
+}
+
+export interface EngineTerminalActivationFeedback {
+  card_version: "1.0.0";
+  activation_id: string;
+  task_ref_id: string;
+  delivery_receipt_digest: string;
+  active_artifact_ids: string[];
+  projection_utf8_bytes: number;
+  activated_at: string;
+  completed_at: string;
+  available_actions: Array<"helped" | "hurt" | "irrelevant">;
+  raw_payload_exposed: false;
 }
 
 async function invokeMutation(
@@ -346,12 +379,16 @@ export async function renewEngineConsent(
 export async function updateEnginePreferences(
   backgroundEnabled: boolean,
   aggregateReportingEnabled: boolean,
+  decisionNotificationsEnabled: boolean,
+  launchAtLoginEnabled: boolean,
   snapshotDigest: string,
   idempotencyKey: string,
 ): Promise<EngineMutationReceipt> {
   return invokeMutation("preferences_update", {
     aggregateReportingEnabled,
     backgroundEnabled,
+    decisionNotificationsEnabled,
+    launchAtLoginEnabled,
     expectedSnapshotDigest: snapshotDigest,
     idempotencyKey,
   });
@@ -647,6 +684,8 @@ export async function runModeTask(
   status: string;
   projection_utf8_bytes: number;
   review_available: boolean;
+  final_message: string | null;
+  change_review: EngineTaskChangeReview | null;
 }> {
   return assertSuccessful(
     await invoke<
@@ -655,6 +694,8 @@ export async function runModeTask(
         status: string;
         projection_utf8_bytes: number;
         review_available: boolean;
+        final_message: string | null;
+        change_review: EngineTaskChangeReview | null;
       }>
     >("mode_run_task", {
       expectedSnapshotDigest: snapshotDigest,
@@ -664,4 +705,85 @@ export async function runModeTask(
       task,
     }),
   );
+}
+
+export interface EngineTaskChangeReview {
+  session_id: string;
+  expected_head: string;
+  changed_files: string[];
+  diff_text: string;
+  binary_change_count: number;
+}
+
+export interface EngineTaskResult {
+  activation_id: string;
+  status: string;
+  projection_utf8_bytes: number;
+  final_message: string | null;
+  change_review: EngineTaskChangeReview | null;
+  review_available: boolean;
+  raw_payloads_exposed: false;
+}
+
+export interface EngineDiagnostics {
+  diagnostics_version: "1.0.0";
+  snapshot_version: string;
+  project_count: number;
+  pending_review_count: number;
+  active_adaptation_count: number;
+  pending_feedback_count: number;
+  consent_current: boolean;
+  secure_store_ready: boolean;
+  raw_payloads_exposed: false;
+}
+
+export async function runManagedTask(
+  projectId: string,
+  task: string,
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<EngineTaskResult> {
+  return assertSuccessful(
+    await invoke<EngineResponse<EngineTaskResult>>("task_run", {
+      expectedSnapshotDigest: snapshotDigest,
+      idempotencyKey,
+      projectId,
+      task,
+    }),
+  );
+}
+
+export async function applyManagedTask(
+  review: EngineTaskChangeReview,
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<EngineMutationReceipt> {
+  return invokeMutation("task_apply", {
+    expectedHead: review.expected_head,
+    expectedSnapshotDigest: snapshotDigest,
+    idempotencyKey,
+    sessionId: review.session_id,
+  });
+}
+
+export async function discardManagedTask(
+  sessionId: string,
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<EngineMutationReceipt> {
+  return invokeMutation("task_discard", {
+    expectedSnapshotDigest: snapshotDigest,
+    idempotencyKey,
+    sessionId,
+  });
+}
+
+export async function loadDiagnostics(): Promise<EngineDiagnostics> {
+  const diagnostics = assertSuccessful(
+    await invoke<EngineResponse<EngineDiagnostics>>("diagnostics_get"),
+  );
+  if (diagnostics.raw_payloads_exposed) {
+    throw new Error("Temper refused unsafe diagnostics.");
+  }
+  return diagnostics;
 }

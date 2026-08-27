@@ -307,6 +307,8 @@ class DesktopSnapshot(FrozenModel):
     consent: ConsentStatus
     background_enabled: bool
     aggregate_reporting_enabled: bool
+    decision_notifications_enabled: bool
+    launch_at_login_enabled: bool
     terminal: TerminalAlphaSnapshot
     projects: tuple[DesktopProject, ...]
     suggestions: tuple[SuggestionSummaryV1, ...]
@@ -357,6 +359,20 @@ class DesktopTaskResult(FrozenModel):
     projection_utf8_bytes: int = Field(ge=0)
     final_message: str | None = None
     change_review: DesktopChangeReview | None = None
+
+
+class DiagnosticsSummaryV1(FrozenModel):
+    """Raw-free local instrument posture for the native Advanced surface."""
+
+    diagnostics_version: Literal["1.0.0"] = "1.0.0"
+    snapshot_version: NonEmptyStr
+    project_count: int = Field(ge=0)
+    pending_review_count: int = Field(ge=0)
+    active_adaptation_count: int = Field(ge=0)
+    pending_feedback_count: int = Field(ge=0)
+    consent_current: bool
+    secure_store_ready: bool
+    raw_payloads_exposed: Literal[False] = False
 
 
 class DesktopChangeReview(FrozenModel):

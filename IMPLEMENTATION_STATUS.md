@@ -19,7 +19,8 @@ Claude is detection-only and has no Connect action, hook, provider login, or API
 Configured Tauri now receives desktop snapshot v1.1 with typed live suggestions, approved
 adaptations, pending activation feedback, and still-valid 24-hour undo handles. React can approve,
 project-narrow, explicitly narrow, ignore, approve/reject revocation, revoke, undo, rate an exact
-delivery, renew consent, and persist the two existing observation preferences. Every mutation is
+delivery, renew consent, and persist learning, telemetry, notification, and launch-at-login
+preferences. Every mutation is
 bound to the current snapshot, exact proposal/artifact/delivery/notice identity, a strict parameter
 allowlist, and an idempotency key. Core no longer pretends native artifacts can be edited directly.
 
@@ -37,10 +38,16 @@ tamper detection, atomic rebind rollback, revocation, cross-subject denial, and 
 reading historical preferences without moving raw evidence or creating a second identity. Every
 new observation/startup preference defaults off.
 
-This is not the external release gate. React recovery parity, Qt retirement, and the Apple
-Silicon clean-runner package remain in the continuous completion sequence. Unsigned internal
-candidates are permitted only by an explicit development policy; default trusted distribution
-remains blocked on genuine publisher credentials.
+React/Tauri now also exposes the existing governed fresh-task runner, transient agent report,
+exact diff review, commit-bound Apply, Discard, and raw-free diagnostics. Agent reports are labeled
+untrusted and the native UI does not claim checks passed without an independent receipt. Rust owns
+transactional OS launch-at-login changes and proposal notifications respect the separate
+notification preference. PySide6, QML, Qt controllers, `pytest-qt`, and the old Qt entry point are
+removed; the `temper` terminal command remains the recovery surface.
+
+This is not the external release gate. The Apple Silicon clean-runner package remains in the
+continuous completion sequence. Unsigned internal candidates are permitted only by an explicit
+development policy; default trusted distribution remains blocked on genuine publisher credentials.
 
 ## Windows native alpha gate
 
@@ -131,9 +138,9 @@ host lacks `pkg-config` and Wayland/GTK/WebKit development libraries.
 ## Desktop private-alpha foundation
 
 The native desktop foundation is engineering-complete for internal existing-runtime dogfood. A
-typed raw-free application service, PySide6 controller, and Qt Quick UI expose the same signed
-runtime operations as the terminal product: polling, exact proposal approval/rejection, exact
-artifact revocation, activation feedback, explicit 30-day renewal, and a fresh governed Codex task.
+typed raw-free application service and React/Tauri UI expose the same signed runtime operations as
+the terminal product: polling, exact proposal approval/rejection, exact artifact revocation,
+activation feedback, explicit 30-day renewal, and a fresh governed Codex task.
 The default interface hides operator detail; Advanced mode exposes route, evidence, digest, and
 scope data.
 
@@ -160,7 +167,7 @@ not distribute an unsigned installer. See [`DESKTOP_PRIVATE_ALPHA.md`](DESKTOP_P
 
 Final branch verification passes: locked Python 3.12 dependency sync, 747-file format check, Ruff,
 strict mypy across 365 source files, **1,000 tests passed with one expected Windows-only skip**, source
-and wheel builds, wheel QML/package-data inspection, schema/migration regressions, Git whitespace
+and wheel builds, package-data inspection, schema/migration regressions, Git whitespace
 and changed-file safety scans, plus the portal's TypeScript check, four Node tests, ESLint, and
 optimized Next.js production build.
 

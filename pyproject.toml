@@ -8,14 +8,12 @@ dependencies = [
     "cryptography>=44,<47",
     "jsonschema>=4.23,<5",
     "pydantic>=2.10,<3",
-    "pyside6>=6.10,<6.11",
     "rich>=14,<16",
     "typer>=0.15,<1",
 ]
 
 [project.scripts]
 adaptation-compiler-lab = "adaptation_compiler_lab.cli:app"
-adaptation-compiler = "adaptation_compiler_lab.desktop.app:main"
 temper = "adaptation_compiler_lab.temper_cli:app"
 temper-engine = "adaptation_compiler_lab.desktop.engine_main:main"
 
@@ -28,7 +26,6 @@ dev = [
     "hypothesis>=6.120",
     "mypy>=1.18.2",
     "pytest>=8.4.2",
-    "pytest-qt>=4.5,<5",
     "ruff>=0.14.0",
     "types-jsonschema>=4.23",
 ]

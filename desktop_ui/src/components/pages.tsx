@@ -37,6 +37,8 @@ import {
   type EngineProjectPreview,
   type EngineProject,
   type EngineRecentUndo,
+  type EngineTaskResult,
+  type EngineDiagnostics,
 } from "../engine";
 import type {
   CapabilityModeSummary,
@@ -1328,6 +1330,8 @@ export function SettingsPage({
   nativeRuntime = false,
   backgroundLearning = false,
   telemetryEnabled = false,
+  decisionNotificationsEnabled = false,
+  launchAtLoginEnabled = false,
   onGovernedPreferencesChange,
 }: {
   theme: Theme;
@@ -1339,15 +1343,19 @@ export function SettingsPage({
   nativeRuntime?: boolean;
   backgroundLearning?: boolean;
   telemetryEnabled?: boolean;
+  decisionNotificationsEnabled?: boolean;
+  launchAtLoginEnabled?: boolean;
   onGovernedPreferencesChange?: (
     learningEnabled: boolean,
     reportingEnabled: boolean,
+    notificationsEnabled: boolean,
+    launchAtLoginEnabled: boolean,
   ) => Promise<void>;
 }) {
   const [learning, setLearning] = useState(
     nativeRuntime ? backgroundLearning : true,
   );
-  const [notifications, setNotifications] = useState(true);
+  const [notifications, setNotifications] = useState(false);
   const [launch, setLaunch] = useState(false);
   const [telemetry, setTelemetry] = useState(
     nativeRuntime ? telemetryEnabled : false,
@@ -1370,15 +1378,30 @@ export function SettingsPage({
           onCheckedChange={(enabled) => {
             setLearning(enabled);
             if (nativeRuntime) {
-              void onGovernedPreferencesChange?.(enabled, telemetryEnabled);
+              void onGovernedPreferencesChange?.(
+                enabled,
+                telemetryEnabled,
+                decisionNotificationsEnabled,
+                launchAtLoginEnabled,
+              );
             }
           }}
         />
         <Toggle
-          checked={notifications}
+          checked={nativeRuntime ? decisionNotificationsEnabled : notifications}
           description="Show a quiet notification when a decision is ready."
           label="Decision notifications"
-          onCheckedChange={setNotifications}
+          onCheckedChange={(enabled) => {
+            setNotifications(enabled);
+            if (nativeRuntime) {
+              void onGovernedPreferencesChange?.(
+                backgroundLearning,
+                telemetryEnabled,
+                enabled,
+                launchAtLoginEnabled,
+              );
+            }
+          }}
         />
         <Toggle
           checked={automaticLearning}
@@ -1420,10 +1443,20 @@ export function SettingsPage({
           </div>
         </div>
         <Toggle
-          checked={launch}
+          checked={nativeRuntime ? launchAtLoginEnabled : launch}
           description="Keep Temper available in the tray after you sign in."
           label="Launch at sign-in"
-          onCheckedChange={setLaunch}
+          onCheckedChange={(enabled) => {
+            setLaunch(enabled);
+            if (nativeRuntime) {
+              void onGovernedPreferencesChange?.(
+                backgroundLearning,
+                telemetryEnabled,
+                decisionNotificationsEnabled,
+                enabled,
+              );
+            }
+          }}
         />
       </SettingsGroup>
       <SettingsGroup title="Privacy and telemetry">
@@ -1445,7 +1478,12 @@ export function SettingsPage({
           onCheckedChange={(enabled) => {
             setTelemetry(enabled);
             if (nativeRuntime) {
-              void onGovernedPreferencesChange?.(backgroundLearning, enabled);
+              void onGovernedPreferencesChange?.(
+                backgroundLearning,
+                enabled,
+                decisionNotificationsEnabled,
+                launchAtLoginEnabled,
+              );
             }
           }}
         />
@@ -1571,9 +1609,57 @@ function ReportRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function AdvancedPage() {
+export function AdvancedPage({
+  nativeRuntime = false,
+  projects: liveProjects = [],
+  taskResult = null,
+  diagnostics = null,
+  onRun,
+  onApply,
+  onDiscard,
+  onDiagnostics,
+}: {
+  nativeRuntime?: boolean;
+  projects?: Array<{ id: string; label: string }>;
+  taskResult?: EngineTaskResult | null;
+  diagnostics?: EngineDiagnostics | null;
+  onRun?: (projectId: string, task: string) => Promise<void>;
+  onApply?: () => Promise<void>;
+  onDiscard?: () => Promise<void>;
+  onDiagnostics?: () => Promise<void>;
+}) {
   const [running, setRunning] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const [showDiff, setShowDiff] = useState(true);
+  const [task, setTask] = useState(
+    "Review the release handoff and fix only the verified blocker.",
+  );
+  const [projectId, setProjectId] = useState(liveProjects[0]?.id ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const browserReview = !nativeRuntime && showDiff;
+  const review = taskResult?.change_review;
+  const selectedProjectId = projectId || liveProjects[0]?.id || "";
+
+  async function run() {
+    if (!nativeRuntime) {
+      setShowDiff(true);
+      return;
+    }
+    if (!selectedProjectId || !task.trim() || !onRun) return;
+    setRunning(true);
+    setError(null);
+    try {
+      await onRun(selectedProjectId, task);
+    } catch (caught: unknown) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Temper could not run that governed task.",
+      );
+    } finally {
+      setRunning(false);
+    }
+  }
   return (
     <div className="page">
       <header className="page-topline">
@@ -1587,17 +1673,31 @@ export function AdvancedPage() {
       <section className="lab-card">
         <div className="lab-field-row">
           <label htmlFor="lab-project">Project</label>
-          <select id="lab-project">
-            <option>Kairn</option>
-            <option>Green Meadow</option>
+          <select
+            id="lab-project"
+            onChange={(event) => setProjectId(event.target.value)}
+            value={nativeRuntime ? selectedProjectId : "kairn"}
+          >
+            {(nativeRuntime
+              ? liveProjects
+              : [
+                  { id: "kairn", label: "Kairn" },
+                  { id: "green-meadow", label: "Green Meadow" },
+                ]
+            ).map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.label}
+              </option>
+            ))}
           </select>
         </div>
         <label className="lab-label" htmlFor="lab-task">
           Task
         </label>
         <textarea
-          defaultValue="Review the release handoff and fix only the verified blocker."
           id="lab-task"
+          onChange={(event) => setTask(event.target.value)}
+          value={task}
         />
         <div className="lab-contract">
           <ShieldCheck size={16} />
@@ -1608,16 +1708,27 @@ export function AdvancedPage() {
         </div>
         <Button
           icon={running ? <Pause size={16} /> : <Play size={16} />}
-          onClick={() => {
-            setRunning((value) => !value);
-            setShowDiff(true);
-          }}
+          disabled={
+            running || (nativeRuntime && (!selectedProjectId || !task.trim()))
+          }
+          onClick={() => void run()}
           tone="primary"
         >
-          {running ? "Stop task" : "Run task"}
+          {running ? "Running…" : "Run task"}
         </Button>
+        {error ? <p role="alert">{error}</p> : null}
       </section>
-      {showDiff ? (
+      {taskResult?.final_message ? (
+        <section className="settings-group">
+          <h2>Agent report</h2>
+          <p>
+            This is untrusted agent output. Review the diff and independent
+            checks before applying anything.
+          </p>
+          <p>{taskResult.final_message}</p>
+        </section>
+      ) : null}
+      {review || browserReview ? (
         <section className="diff-card">
           <div className="diff-heading">
             <div className="card-icon">
@@ -1625,32 +1736,42 @@ export function AdvancedPage() {
             </div>
             <div>
               <h2>Review before applying</h2>
-              <p>2 files changed. Nothing has touched Kairn yet.</p>
+              <p>
+                {review
+                  ? `${review.changed_files.length} files changed. Nothing has touched the project yet.`
+                  : "2 files changed. Nothing has touched Kairn yet."}
+              </p>
             </div>
-            <StatusPill tone="positive">Checks passed</StatusPill>
+            <StatusPill tone={nativeRuntime ? "neutral" : "positive"}>
+              {nativeRuntime ? "Review ready" : "Checks passed"}
+            </StatusPill>
           </div>
           <pre aria-label="Proposed code changes">
-            <code>
-              <span className="diff-line diff-line--muted">
-                @@ release/checks.py:18 @@
-              </span>
-              {"\n"}
-              <span className="diff-line diff-line--remove">
-                - return note.status == "ready"
-              </span>
-              {"\n"}
-              <span className="diff-line diff-line--add">
-                + return note.status == "ready" and note.verified
-              </span>
-              {"\n"}
-              <span className="diff-line diff-line--muted">
-                @@ tests/test_checks.py:41 @@
-              </span>
-              {"\n"}
-              <span className="diff-line diff-line--add">
-                + assert not can_release(unverified_note)
-              </span>
-            </code>
+            {review ? (
+              <code>{review.diff_text}</code>
+            ) : (
+              <code>
+                <span className="diff-line diff-line--muted">
+                  @@ release/checks.py:18 @@
+                </span>
+                {"\n"}
+                <span className="diff-line diff-line--remove">
+                  - return note.status == "ready"
+                </span>
+                {"\n"}
+                <span className="diff-line diff-line--add">
+                  + return note.status == "ready" and note.verified
+                </span>
+                {"\n"}
+                <span className="diff-line diff-line--muted">
+                  @@ tests/test_checks.py:41 @@
+                </span>
+                {"\n"}
+                <span className="diff-line diff-line--add">
+                  + assert not can_release(unverified_note)
+                </span>
+              </code>
+            )}
           </pre>
           <div className="diff-warning">
             <Info size={15} />
@@ -1660,15 +1781,70 @@ export function AdvancedPage() {
             </span>
           </div>
           <div className="diff-actions">
-            <Button icon={<Check size={16} />} tone="primary">
+            <Button
+              icon={<Check size={16} />}
+              disabled={resolving}
+              onClick={() => {
+                if (!onApply) return;
+                setResolving(true);
+                setError(null);
+                void onApply()
+                  .catch((caught: unknown) =>
+                    setError(
+                      caught instanceof Error
+                        ? caught.message
+                        : "Temper could not safely apply those changes.",
+                    ),
+                  )
+                  .finally(() => setResolving(false));
+              }}
+              tone="primary"
+            >
               Apply reviewed changes
             </Button>
-            <Button onClick={() => setShowDiff(false)} tone="quiet">
+            <Button
+              onClick={() => {
+                if (!nativeRuntime) {
+                  setShowDiff(false);
+                  return;
+                }
+                if (!onDiscard) return;
+                setResolving(true);
+                setError(null);
+                void onDiscard()
+                  .catch((caught: unknown) =>
+                    setError(
+                      caught instanceof Error
+                        ? caught.message
+                        : "Temper could not safely discard that review.",
+                    ),
+                  )
+                  .finally(() => setResolving(false));
+              }}
+              disabled={resolving}
+              tone="quiet"
+            >
               Discard
             </Button>
           </div>
         </section>
       ) : null}
+      <section className="settings-group">
+        <h2>Instrument status</h2>
+        {diagnostics ? (
+          <p>
+            {diagnostics.project_count} projects ·{" "}
+            {diagnostics.active_adaptation_count} active adaptations ·{" "}
+            {diagnostics.pending_review_count} reviews · secure store{" "}
+            {diagnostics.secure_store_ready ? "ready" : "needs attention"}
+          </p>
+        ) : (
+          <p>Load a raw-free local instrument summary when you need it.</p>
+        )}
+        <Button onClick={() => void onDiagnostics?.()} tone="quiet">
+          Refresh diagnostics
+        </Button>
+      </section>
     </div>
   );
 }
