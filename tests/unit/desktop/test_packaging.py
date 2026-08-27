@@ -22,6 +22,15 @@ def _build_module() -> ModuleType:
     return module
 
 
+def _macos_smoke_module() -> ModuleType:
+    path = ROOT / "packaging" / "macos" / "smoke_package.py"
+    spec = importlib.util.spec_from_file_location("temper_macos_smoke", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def test_native_builder_produces_target_suffixed_tauri_sidecar() -> None:
     command = _build_module().build_command(
         ROOT,
@@ -67,6 +76,24 @@ def test_macos_sidecar_uses_apple_silicon_target_without_exe_suffix() -> None:
     )
 
     assert any(item.endswith("temper-engine-aarch64-apple-darwin") for item in command)
+    assert "--macos-target-arch=arm64" in command
+
+
+def test_macos_architecture_check_requires_arm64_only(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _build_module()
+    binary = tmp_path / "temper-engine"
+    binary.write_bytes(b"synthetic")
+    monkeypatch.setattr(
+        module.subprocess,
+        "run",
+        lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 0, "x86_64 arm64\n", ""),
+    )
+
+    with pytest.raises(ValueError, match="arm64-only"):
+        module.verify_macos_arm64(binary)
 
 
 def test_sidecar_manifest_binds_binary_version_schema_and_target(
@@ -103,6 +130,37 @@ def test_sidecar_manifest_binds_binary_version_schema_and_target(
     assert ".env" not in manifest_path.read_text(encoding="utf-8")
 
 
+def test_apple_manifest_binds_macos_minimum_and_arm64_target(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _build_module()
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "temper-test"\nversion = "0.3.0a2"\n',
+        encoding="utf-8",
+    )
+    binary_root = tmp_path / "desktop_ui" / "src-tauri" / "binaries"
+    binary_root.mkdir(parents=True)
+    binary = binary_root / "temper-engine-aarch64-apple-darwin"
+    binary.write_bytes(b"synthetic arm64 sidecar")
+    monkeypatch.setattr(
+        module,
+        "_snapshot_schema_digest",
+        lambda _root: f"sha256:{'a' * 64}",
+    )
+
+    manifest_path = module.write_build_manifest(
+        tmp_path,
+        platform_name="darwin",
+        machine_name="arm64",
+    )
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    assert manifest["engine_version"] == "0.3.0a2"
+    assert manifest["target_triple"] == "aarch64-apple-darwin"
+    assert manifest["minimum_system_version"] == "13.0"
+
+
 def test_native_builder_requires_exact_unconfigured_engine_handshake(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -136,7 +194,15 @@ def test_native_builder_requires_exact_unconfigured_engine_handshake(
         return subprocess.CompletedProcess(command, 0, json.dumps(response) + "\n", "")
 
     monkeypatch.setattr(module.subprocess, "run", fake_run)
-    monkeypatch.setenv("TEMPER_RUNTIME_CONFIG", "must-not-reach-sidecar")
+    stripped_environment = (
+        "TEMPER_RUNTIME_CONFIG",
+        "TEMPER_PREDECESSOR_CONFIG",
+        "OPENAI_API_KEY",
+        "CODEX_API_KEY",
+        "CLAUDE_API_KEY",
+    )
+    for name in stripped_environment:
+        monkeypatch.setenv(name, "must-not-reach-sidecar")
 
     module.verify_native_sidecar(
         tmp_path,
@@ -152,7 +218,7 @@ def test_native_builder_requires_exact_unconfigured_engine_handshake(
     )
     environment = captured["env"]
     assert isinstance(environment, dict)
-    assert "TEMPER_RUNTIME_CONFIG" not in environment
+    assert all(name not in environment for name in stripped_environment)
 
 
 def test_native_builder_rejects_drifted_or_unconfigured_handshake(
@@ -254,3 +320,112 @@ def test_desktop_workflow_supersedes_stale_branch_builds() -> None:
 
     assert "group: temper-desktop-${{ github.head_ref || github.ref }}" in source
     assert "cancel-in-progress: true" in source
+
+
+def test_apple_silicon_workflow_is_native_ephemeral_and_development_only() -> None:
+    source = (ROOT / ".github" / "workflows" / "desktop-tauri.yml").read_text(encoding="utf-8")
+
+    assert "apple-silicon-package-candidate:" in source
+    assert "apple-silicon-clean-smoke:" in source
+    assert source.count("runs-on: macos-15") == 2
+    assert source.count('test "$(uname -m)" = "arm64"') == 2
+    assert "pnpm tauri build --bundles app,dmg" in source
+    assert "--signature-policy development" in source
+    assert "retention-days: 1" in source
+    assert 'test "$app" = "$temp_root/Applications/Temper.app"' in source
+
+
+def test_macos_bundle_targets_13_with_minimal_non_sandbox_entitlements() -> None:
+    tauri_config = json.loads(
+        (ROOT / "desktop_ui" / "src-tauri" / "tauri.conf.json").read_text(encoding="utf-8")
+    )
+    entitlements = (ROOT / "packaging" / "macos" / "entitlements.plist").read_text(encoding="utf-8")
+
+    assert tauri_config["version"] == "0.3.0-alpha.2"
+    assert tauri_config["bundle"]["macOS"]["minimumSystemVersion"] == "13.0"
+    assert tauri_config["bundle"]["macOS"]["entitlements"].endswith("entitlements.plist")
+    assert "com.apple.security.app-sandbox" not in entitlements
+    assert "com.apple.security.network.client" not in entitlements
+    assert "disable-library-validation" not in entitlements
+
+
+def test_macos_smoke_defaults_to_trusted_and_checks_every_admission_layer() -> None:
+    source = (ROOT / "packaging" / "macos" / "smoke_package.py").read_text(encoding="utf-8")
+
+    assert 'default="trusted"' in source
+    assert "Developer ID Application:" in source
+    assert 'verify.append("--deep")' in source
+    assert 'app / "Contents" / "MacOS" / "temper-engine"' in source
+    assert "_require_developer_id(dmg)" in source
+    assert '"stapler", "validate", str(app)' in source
+    assert '"stapler", "validate", str(dmg)' in source
+    assert '"--assess", "--type", "execute"' in source
+    assert '"--context",' in source
+    assert '"context:primary-signature"' in source
+    assert "first_run_window_visible" in source
+    assert "TEMPER_RUNTIME_CONFIG" in source
+    assert "OPENAI_API_KEY" in source
+
+
+def test_macos_development_policy_never_runs_trusted_admission(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _macos_smoke_module()
+    app = tmp_path / "Temper.app"
+    dmg = tmp_path / "Temper.dmg"
+    app.mkdir()
+    dmg.write_bytes(b"synthetic")
+    calls: list[list[str]] = []
+
+    def fake_run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 1, "", "not signed")
+
+    monkeypatch.setattr(module, "_run", fake_run)
+
+    assert module._verify_signature(app, dmg, policy="development") == "unsigned"
+    assert len(calls) == 1
+    assert calls[0][1:3] == ["--display", "--verbose=2"]
+
+
+def test_macos_trusted_policy_rejects_missing_developer_id(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _macos_smoke_module()
+    app = tmp_path / "Temper.app"
+    dmg = tmp_path / "Temper.dmg"
+    app.mkdir()
+    dmg.write_bytes(b"synthetic")
+
+    def fake_run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(command, 0, "", "Signature=adhoc\n")
+
+    monkeypatch.setattr(module, "_run", fake_run)
+
+    with pytest.raises(ValueError, match="Developer ID Application"):
+        module._verify_signature(app, dmg, policy="trusted")
+
+
+def test_macos_smoke_rejects_sidecar_manifest_tampering(
+    tmp_path: Path,
+) -> None:
+    module = _macos_smoke_module()
+    sidecar = tmp_path / "temper-engine"
+    sidecar.write_bytes(b"exact sidecar")
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "target_triple": "aarch64-apple-darwin",
+                "engine_version": "0.3.0a2",
+                "binary_sha256": "0" * 64,
+                "minimum_system_version": "13.0",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="exact Apple manifest"):
+        module._verify_engine(sidecar, manifest, expected_version="0.3.0a2")

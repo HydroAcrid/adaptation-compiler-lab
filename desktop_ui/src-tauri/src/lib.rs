@@ -1041,7 +1041,7 @@ mod tests {
             request_id: "request-1".to_owned(),
             ok: true,
             result: Some(json!({
-                "engine_version": "0.3.0a1",
+                "engine_version": "0.3.0a2",
                 "snapshot_schema_digest": format!("sha256:{}", "a".repeat(64)),
             })),
             error: None,
@@ -1049,10 +1049,10 @@ mod tests {
         };
 
         assert!(
-            validate_handshake(&response, "0.3.0a1", &format!("sha256:{}", "a".repeat(64)),)
+            validate_handshake(&response, "0.3.0a2", &format!("sha256:{}", "a".repeat(64)),)
                 .is_ok()
         );
-        assert!(validate_handshake(&response, "0.3.0a2", &"a".repeat(71)).is_err());
+        assert!(validate_handshake(&response, "0.3.0a3", &"a".repeat(71)).is_err());
     }
 
     #[test]

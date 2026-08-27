@@ -8,8 +8,10 @@ application service. Codex is pinned to exact `codex-cli 0.150.0-alpha.8` confor
 ChatGPT login; Claude remains explicitly detection-only. Windows DPAPI and native macOS Keychain
 stores both fail closed. The retired PySide6/QML interface has been removed; `temper` remains the
 recovery CLI. See [`TEMPER_NATIVE_PRODUCT_COMPLETION.md`](TEMPER_NATIVE_PRODUCT_COMPLETION.md).
-The remaining functional phase is the unsigned internal Apple Silicon package and clean-runner
-smoke. Publisher certificates remain a later external-distribution gate.
+The `0.3.0a2` source also defines the unsigned internal Apple Silicon build and independent
+clean-runner smoke. Those jobs have not yet started because the repository's GitHub Actions budget
+is currently unavailable, so the app/DMG are not claimed as validated. Publisher certificates and
+the unchanged default trusted clean-machine gates remain a later external-distribution boundary.
 
 Temper's replacement customer desktop now connects React to the real local Python engine through
 a restrictive Tauri 2 shell and framed stdio protocol. A configured native runtime loads raw-free
@@ -31,9 +33,11 @@ Agent-written files remain in an isolated worktree until the owner reviews a loc
 Apply or Discard; application checks the reviewed Git head, reruns bounded tests, and rolls back on
 failure. Background observation and aggregate reporting are independent and off by default.
 
-This is not yet a downloadable external alpha. First-run setup currently imports an existing
-governed config, native Codex/macOS credential pins remain to be completed, the invite-bound
-telemetry client is not connected, and no Windows or Apple signing credentials exist. The separate
+This is not yet a downloadable external alpha. First-run setup and current Codex/macOS credential
+paths are implemented, but the current native package jobs have not executed, the invite-bound
+telemetry client is not connected, and no Windows or Apple signing credentials exist. Native
+Settings therefore disables unavailable cloud reporting instead of presenting inert upload
+controls. The separate
 Supabase/Vercel foundation stores only strict signed aggregates in isolated
 `adaptation_compiler_*` tables; raw evidence stays local. See
 [`DESKTOP_PRIVATE_ALPHA.md`](DESKTOP_PRIVATE_ALPHA.md) for the exact UX, privacy boundary, release

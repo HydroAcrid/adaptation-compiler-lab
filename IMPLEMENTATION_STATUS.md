@@ -45,9 +45,25 @@ transactional OS launch-at-login changes and proposal notifications respect the 
 notification preference. PySide6, QML, Qt controllers, `pytest-qt`, and the old Qt entry point are
 removed; the `temper` terminal command remains the recovery surface.
 
-This is not the external release gate. The Apple Silicon clean-runner package remains in the
-continuous completion sequence. Unsigned internal candidates are permitted only by an explicit
-development policy; default trusted distribution remains blocked on genuine publisher credentials.
+The `0.3.0a2` source now includes the complete Apple Silicon build and clean-runner admission
+contract. It builds an arm64-only Nuitka sidecar and Tauri app/DMG on `macos-15`, then a separate
+arm64 runner verifies checksums, Mach-O architecture, bundle metadata, the exact unconfigured
+engine handshake, DMG contents, a visible first-run window, a native Keychain round trip, and
+cleanup. The internal job opts into a `development` signature policy explicitly; the smoke
+script's default `trusted` policy requires Developer ID Application signing, Gatekeeper approval,
+and stapled notarization. These jobs have not executed on this revision because the repository's
+GitHub Actions budget currently prevents jobs from starting. That is an instrumentation blocker,
+not positive package evidence.
+
+Native Settings now exposes the current raw-free consent state and no longer displays inert upload
+history or cloud-deletion actions. Aggregate reporting remains off and disabled when unavailable;
+an inherited enabled permission can be turned off. Nothing in the internal build uploads data, and
+the browser-only report remains clearly sample data.
+
+This is not the external release gate. Unsigned internal candidates are permitted only by an
+explicit development policy. Current `0.3.0a2` Windows and Apple packages still require observed
+clean-runner results, and default trusted distribution remains blocked on genuine publisher
+credentials and final signed/notarized verification.
 
 ## Windows native alpha gate
 
@@ -109,13 +125,13 @@ Frontend Studio Mode. It can run one exact registered-project task through the e
 isolated Codex subscription gateway, records signed activation/delivery/deactivation, and returns
 changes for review without directly writing the canonical project.
 
-Frontend formatting, ESLint, strict TypeScript, 33 component/engine tests, production build, and
+Frontend formatting, ESLint, strict TypeScript, component/engine tests, production build, and
 34 Playwright visual/accessibility/product-interaction scenes pass. The Chromium interaction suite
 caught and repaired an overlay stacking defect that made Core dialog controls unclickable. The
 configured WebKit proxy still cannot launch on this WSL host without administrator-installed
-system libraries, so native macOS validation remains open. Qt remains the internal diagnostic and
-recovery application; no release claim, signed installer, Claude hook, or external-study action has
-occurred. See
+system libraries, so native macOS validation remains open until the new Apple workflow executes.
+Qt has been retired; the `temper` terminal command remains the internal diagnostic and recovery
+surface. No release claim, signed installer, Claude hook, or external-study action has occurred. See
 [`TEMPER_DESKTOP_REBUILD.md`](TEMPER_DESKTOP_REBUILD.md) and
 [`TEMPER_ALPHA_READINESS_AUDIT.md`](TEMPER_ALPHA_READINESS_AUDIT.md).
 

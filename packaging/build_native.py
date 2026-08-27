@@ -19,6 +19,7 @@ TARGET_TRIPLES: Final = {
     ("darwin", "arm64"): "aarch64-apple-darwin",
     ("darwin", "aarch64"): "aarch64-apple-darwin",
 }
+MACOS_MINIMUM_VERSION: Final = "13.0"
 
 
 def resolve_target_triple(*, platform_name: str, machine_name: str) -> str:
@@ -80,7 +81,7 @@ def build_command(
         machine_name=machine_name or platform.machine(),
     )
     output_directory = tauri_root / "binaries"
-    return [
+    command = [
         sys.executable,
         "-m",
         "nuitka",
@@ -92,6 +93,26 @@ def build_command(
         f"--output-filename={sidecar_filename(target_triple, platform_name=platform_name)}",
         str(entry),
     ]
+    if platform_name.lower() == "darwin":
+        command.insert(-1, "--macos-target-arch=arm64")
+    return command
+
+
+def verify_macos_arm64(binary: Path) -> None:
+    """Require one arm64-only Mach-O sidecar before any macOS package is admitted."""
+
+    try:
+        completed = subprocess.run(
+            ["/usr/bin/lipo", "-archs", str(binary)],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise ValueError("macOS sidecar architecture inspection failed") from error
+    if completed.returncode != 0 or completed.stdout.strip().split() != ["arm64"]:
+        raise ValueError("macOS sidecar must be an arm64-only Mach-O binary")
 
 
 def _project_version(root: Path) -> str:
@@ -141,6 +162,8 @@ def verify_native_sidecar(
     )
     if not binary.is_file():
         raise ValueError("native engine sidecar was not produced")
+    if platform_name.lower() == "darwin":
+        verify_macos_arm64(binary)
     request = {
         "protocol_version": "temper-engine-protocol/v1",
         "request_id": "native-build-handshake",
@@ -150,7 +173,14 @@ def verify_native_sidecar(
         "idempotency_key": None,
     }
     environment = os.environ.copy()
-    environment.pop("TEMPER_RUNTIME_CONFIG", None)
+    for name in (
+        "TEMPER_RUNTIME_CONFIG",
+        "TEMPER_PREDECESSOR_CONFIG",
+        "OPENAI_API_KEY",
+        "CODEX_API_KEY",
+        "CLAUDE_API_KEY",
+    ):
+        environment.pop(name, None)
     try:
         completed = subprocess.run(
             [binary],
@@ -220,6 +250,9 @@ def write_build_manifest(
         "binary_filename": binary.name,
         "binary_size_bytes": binary.stat().st_size,
         "binary_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
+        "minimum_system_version": (
+            MACOS_MINIMUM_VERSION if platform_name.lower() == "darwin" else None
+        ),
     }
     manifest_path.write_text(
         json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n",

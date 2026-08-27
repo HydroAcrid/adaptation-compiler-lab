@@ -160,3 +160,120 @@ jobs:
           ./packaging/windows/smoke_package.ps1 `
             -InstallerPath $installer.FullName `
             -SignaturePolicy development
+
+  apple-silicon-package-candidate:
+    name: Apple Silicon app and DMG candidate
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require native Apple Silicon
+        run: test "$(uname -m)" = "arm64"
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          python-version: "3.12"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.31.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: desktop_ui/pnpm-lock.yaml
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.85"
+      - name: Install locked Python environment
+        run: uv sync --locked --dev --group release
+      - name: Build arm64 engine sidecar
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "13.0"
+        run: uv run python packaging/build_native.py
+      - name: Install desktop dependencies
+        working-directory: desktop_ui
+        run: pnpm install --frozen-lockfile
+      - name: Build unsigned internal app and DMG
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "13.0"
+        working-directory: desktop_ui
+        run: pnpm tauri build --bundles app,dmg
+      - name: Stage exact ephemeral candidates
+        run: |
+          set -euo pipefail
+          candidate_root="$RUNNER_TEMP/temper-apple-candidate"
+          mkdir -p "$candidate_root"
+          app="desktop_ui/src-tauri/target/release/bundle/macos/Temper.app"
+          dmg="$(find desktop_ui/src-tauri/target/release/bundle/dmg -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          manifest="desktop_ui/src-tauri/binaries/temper-engine-aarch64-apple-darwin.manifest.json"
+          test -d "$app"
+          test -f "$dmg"
+          test -f "$manifest"
+          ditto -c -k --sequesterRsrc --keepParent "$app" "$candidate_root/Temper.app.zip"
+          cp "$dmg" "$candidate_root/Temper.dmg"
+          cp "$manifest" "$candidate_root/temper-engine-aarch64-apple-darwin.manifest.json"
+          (
+            cd "$candidate_root"
+            shasum -a 256 \
+              Temper.app.zip \
+              Temper.dmg \
+              temper-engine-aarch64-apple-darwin.manifest.json \
+              > candidate-sha256.txt
+          )
+      - uses: actions/upload-artifact@v4
+        with:
+          name: temper-apple-silicon-unsigned-smoke-candidate
+          path: ${{ runner.temp }}/temper-apple-candidate/*
+          if-no-files-found: error
+          retention-days: 1
+
+  apple-silicon-clean-smoke:
+    name: Apple Silicon clean-runner smoke
+    needs: apple-silicon-package-candidate
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require native Apple Silicon
+        run: test "$(uname -m)" = "arm64"
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: temper-apple-silicon-unsigned-smoke-candidate
+          path: ${{ runner.temp }}/temper-apple-candidate
+      - name: Verify artifact checksums and unpack into an Applications-style directory
+        run: |
+          set -euo pipefail
+          candidate_root="$RUNNER_TEMP/temper-apple-candidate"
+          (cd "$candidate_root" && shasum -a 256 -c candidate-sha256.txt)
+          mkdir -p "$RUNNER_TEMP/Applications"
+          ditto -x -k "$candidate_root/Temper.app.zip" "$RUNNER_TEMP/Applications"
+          test -d "$RUNNER_TEMP/Applications/Temper.app"
+      - name: Install locked smoke dependencies
+        run: uv sync --locked --dev
+      - name: Verify package, first-run rendering, and clean teardown
+        run: |
+          set -euo pipefail
+          uv run python packaging/macos/smoke_package.py \
+            --app "$RUNNER_TEMP/Applications/Temper.app" \
+            --dmg "$RUNNER_TEMP/temper-apple-candidate/Temper.dmg" \
+            --manifest "$RUNNER_TEMP/temper-apple-candidate/temper-engine-aarch64-apple-darwin.manifest.json" \
+            --expected-version 0.3.0a2 \
+            --signature-policy development
+      - name: Exercise and delete one unique Keychain item
+        run: |
+          uv run pytest \
+            tests/unit/automatic_runtime/test_gateway_credentials.py::test_real_security_framework_keychain_synthetic_round_trip \
+            -q
+      - name: Remove all temporary application state
+        if: always()
+        run: |
+          set -euo pipefail
+          pkill -x Temper || true
+          temp_root="$(cd "$RUNNER_TEMP" && pwd -P)"
+          app="$temp_root/Applications/Temper.app"
+          candidate="$temp_root/temper-apple-candidate"
+          test "$app" = "$temp_root/Applications/Temper.app"
+          test "$candidate" = "$temp_root/temper-apple-candidate"
+          rm -rf -- "$app" "$candidate"

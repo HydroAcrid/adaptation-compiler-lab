@@ -1161,6 +1161,19 @@ strong {
   margin-left: auto;
   color: var(--danger);
 }
+.settings-links > span,
+.settings-availability-note {
+  color: var(--muted);
+  font-size: 10.5px;
+}
+.settings-links > span {
+  margin-left: auto;
+}
+.settings-availability-note {
+  margin: 0;
+  padding: 13px 16px;
+  line-height: 1.45;
+}
 
 .telemetry-dialog {
   width: min(490px, calc(100vw - 32px));

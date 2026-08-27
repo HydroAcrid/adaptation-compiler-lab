@@ -1,147 +1,99 @@
 # Temper alpha readiness audit
 
-Date: 2026-08-26
-Scope: React/Tauri product slice, governed-engine boundary, platform compatibility, dependency safety,
-and external-user admission. The deferred Milestone 6 study was not accessed.
+Date: 2026-08-27
+Scope: current React/Tauri product, governed-engine boundary, Windows/macOS credential stores,
+target-native packaging contracts, and external-user admission. The sealed deferred Milestone 6
+study was not accessed.
 
 ## Verdict
 
-**Temper is ready to recruit a small set of design partners for interviews, screenshot review, and
-an eventual private alpha. It is not yet ready to invite people to install or rely on the desktop
-product.**
+**Temper's planned native product behavior is implemented in source, but Temper is not yet ready
+for external installer invitations.**
 
-The visual direction is coherent and the implemented product slice is healthy. Tauri now
-supervises the local Python engine, loads a live raw-free snapshot, performs offline encrypted
-profile portability through native file dialogs, and exposes one exact-task Frontend Studio Mode.
-Native enrollment, Connections mutations, the complete review/revoke/undo/feedback loop, secure
-two-platform credential parity, and signed installers remain incomplete. Several browser-only
-controls still depict future behavior and are explicitly disabled. Shipping before those gaps
-close would still create a misleading product.
+The prior product blockers are closed: first-run setup is live, an existing governed identity can
+be adopted without rewriting lineage, projects are registered prospectively, Codex and Claude
+capabilities are described truthfully, the everyday review/revoke/undo/feedback loop is live,
+Windows DPAPI and macOS Keychain fail closed, Advanced task review is governed, and Qt has been
+retired. Browser routes remain synthetic demonstrations; installed Tauri state is authoritative.
 
-## Findings repaired during this audit
+The remaining boundary is native release evidence. A previous unsigned Windows `0.3.0a1`
+candidate passed its development-policy clean-runner smoke. The current `0.3.0a2` Windows and Apple
+Silicon candidates have not run because GitHub currently prevents Actions jobs from starting for
+budget reasons. The source contains the Apple build and clean-smoke jobs, but source inspection is
+not a substitute for an arm64 `.app`/`.dmg` result. External distribution additionally requires
+genuine Authenticode and Developer ID credentials plus the default trusted clean-machine gates.
 
-1. **Suggestion scope widening.** `Keep` widened a Kairn-scoped proposal to all coding work. The
-   action now means `Keep as suggested`, applies the displayed scope exactly, and offers a
-   project-only alternative only when it is genuinely narrower.
-2. **Core scope widening.** The Core editor said it could narrow scope but allowed a Kairn-only
-   item to become global or move to another project. Project-only items now expose only their
-   current scope; global items may still be narrowed.
-3. **Invalid Core edits.** Empty names or descriptions could be saved. Both fields are required,
-   blank submissions are disabled, and saved wording is trimmed.
-4. **Minimum-window dark contrast.** At 720×540, browser-default color inheritance made some
-   headings and emphasized text black against the dark surface. Explicit theme colors now preserve
-   WCAG contrast at the supported minimum.
-5. **System-theme chrome.** Theme changes now update the document theme color, and System mode
-   listens for operating-system appearance changes instead of sampling only once.
-6. **Coverage gap.** A second compatibility harness now exercises onboarding, Today, review,
-   Core, Connections, and Settings at 720×540, checks accessibility and horizontal overflow,
-   rejects console errors and non-local requests, and probes scope-preserving mutations.
-7. **Invitation-portal dependencies.** The production audit found seven high-severity advisories in
-   the old Next.js/Sharp/PostCSS tree. Next.js is now 16.2.11, the matching ESLint configuration is
-   pinned, patched Sharp and PostCSS versions are enforced, and the portal declares its exact
-   Turbopack root. The rebuilt production tree has no known vulnerability.
-8. **Multi-project ambiguity.** The native two-item select looked platform-inconsistent, omitted
-   concurrent work, and did not make state changes obvious. The custom workspace menu now defaults
-   to All projects, exposes both focused repository views, visibly changes Today and Core, and is
-   covered in its open and closed states. Browser-only native account and folder actions are
-   disabled and explained instead of behaving like broken controls.
-9. **Core dialog click interception.** The Core dialog rendered beneath its modal overlay, so
-   actual Chromium pointer events could not reach import or Mode controls even though DOM-only
-   tests passed. The dialog now shares the overlay-safe stacking layer and real-browser interaction
-   tests cover import preview and Mode disclosure.
-10. **Sidecar import collision.** Building from the packaging directory allowed a local
-    `platform.py` to shadow Python's standard library. A dedicated packaging entry point now
-    establishes only the repository source root before importing the engine.
-11. **Unbounded failed-engine wait.** The Rust bridge previously blocked on a line read when a
-    compiled child failed before producing a frame. Reads are now bounded to 15 seconds; timeout or
-    channel closure kills and reaps the child and joins the reader before returning a sanitized
-    error.
-12. **Compiled-runtime compatibility.** Nuitka 2.8.10 accepted Python 3.12 PEP 695 generic
-    functions but produced a sidecar that failed at runtime. The seven affected internal helpers
-    now use behaviorally equivalent `TypeVar` contracts, and the native builder must execute and
-    validate the compiled engine handshake before writing its release manifest.
+## Product behavior now implemented
 
-## Evidence that currently passes
+- New setup and existing-runtime adoption preserve one identity, signer, consent ledger, project
+  registry, and evidence lineage.
+- Learning, automatic promotion, telemetry, notifications, and launch at login start off.
+- Native folder selection keeps paths in Rust/Python and gives React only content-free project
+  previews and opaque expiring tokens.
+- Codex is admitted only at exact pinned version/schema/binary conformance with saved ChatGPT
+  authentication. Learning is prospective and delivery is limited to fresh Temper-managed tasks;
+  arbitrary existing task injection is not claimed.
+- Claude is detection-only. Temper neither connects it nor initiates authentication or billed use.
+- Multiple proposals can be kept, project-narrowed, explicitly narrowed, ignored, or adjudicated
+  as revocations. Active adaptations can be revoked; exact recent promotions can be undone for 24
+  hours; exact delivery receipts can be rated Helped, Hurt, or Irrelevant.
+- Every mutation is target/digest-bound, stale-state protected, idempotent, and parameter
+  allowlisted. React receives no raw evidence, credentials, private paths, or tool transcripts.
+- Closing hides to the tray; explicit Quit terminates. Background polling is bounded and disabled
+  while learning is off or consent is expired.
+- Windows CurrentUser DPAPI and native Security.framework Keychain stores reject tampering,
+  cross-subject access, unavailable protection, and identity drift without plaintext fallback.
+- The governed task lab keeps changes isolated until exact diff review and Apply; agent prose is
+  labeled untrusted and cannot stand in for independent verification.
+- Native telemetry controls no longer imply a service exists. This internal build uploads nothing;
+  the browser preview says it is sample data.
 
-- Frozen dependency installation with the exact pnpm lock.
-- Prettier, ESLint, strict TypeScript, 33 component/engine tests, and the optimized Vite build.
-- Nine Windows/WebView2-proxy compatibility checks at 720×540.
-- Thirty-four Chromium visual/accessibility/interaction scenes in both themes and compact/wide layouts.
-- React prototype and invitation-portal production dependency audits: no known vulnerabilities;
-  the prototype's production licenses are 0BSD, ISC, MIT, and OFL-1.1.
-- Local-only font, ornament, and product-mark loading with exact asset digests and active-content
-  rejection.
-- Full locked Python formatting, linting, typing, tests, and source/wheel builds.
-- A real Windows x64 Nuitka sidecar completes ten clean unconfigured handshakes in 1.02–1.19
-  seconds with exact protocol, version, and schema binding and mutations disabled.
-- The Tauri CI matrix exercises Rust clippy/tests and the React contract on Linux, Windows, and
-  macOS; a separate Windows job builds an internal NSIS candidate and a clean runner installs,
-  handshakes, launches, uninstalls, verifies binary removal, and cleans any bounded temporary
-  residue.
-- Final native run
+## Package evidence
+
+Observed:
+
+- Prior Windows unsigned-development run
   [`32987944410`](https://github.com/HydroAcrid/adaptation-compiler-lab/actions/runs/32987944410)
-  passed all five jobs. The clean receipt binds `Temper_0.3.0-alpha.1_x64-setup.exe`, engine
-  `0.3.0a1`, the expected schema digest, an unconfigured mutation-disabled engine, a healthy
-  six-second app launch, and successful packaged uninstall. The default trusted smoke separately
-  refused that exact unsigned artifact before installation.
+  passed all five `0.3.0a1` jobs, including install, exact sidecar handshake, launch, uninstall, and
+  cleanup. The default trusted policy rejected the unsigned installer.
+- Local locked Python, React, protocol, packaging-policy, and cross-target Rust checks cover the
+  `0.3.0a2` source contract.
+- A real Security.framework Keychain round trip previously passed on GitHub's macOS arm64 runner.
 
-Playwright WebKit is configured as a practical macOS rendering proxy, but this WSL host lacks the
-administrator-installed GTK/GStreamer libraries needed to launch it. That is an environment
-limitation, not a passing macOS result. Actual WKWebView behavior must be verified in the native
-Apple Silicon Tauri build.
+Implemented but not yet observed:
 
-## External-user blockers
+- `0.3.0a2` Windows candidate and clean-runner smoke.
+- `0.3.0a2` arm64-only sidecar, Tauri `.app`/`.dmg`, and independent Apple Silicon clean smoke.
+- First-run WKWebView rendering from the packaged app.
 
-### Product blockers
+The Apple development smoke verifies file and `lipo` architecture, bundle ID, macOS 13 minimum,
+manifest and sidecar SHA-256 binding, exact unconfigured protocol handshake, read-only DMG
+contents, a PID-bound visible window of at least 720×540, a unique temporary Keychain round trip,
+and bounded cleanup. The default trusted policy separately requires Developer ID Application,
+`spctl`, and stapled tickets for app and DMG.
 
-- Replace remaining synthetic customer-facing state with typed engine presentation models. No inert
-  Connect, Manage, Add project, consent, telemetry, Apply, tray, or notification action may ship.
-- Complete prospective first-run identity, consent, and project registration with learning and
-  telemetry still off by default.
-- Wire the signed review, scope, revoke, undo, feedback, and stale-snapshot paths before exposing
-  mutations.
-- Refresh and verify the Codex connector; do not claim ambient delivery into arbitrary existing
-  Codex tasks.
+## Remaining external-user gates
 
-### Platform and release blockers
+1. Restore Actions execution or authorize equivalent clean native runners, then obtain passing
+   current-head Windows x64 and Apple Silicon development-policy package receipts.
+2. Obtain genuine organization-backed Authenticode and Apple Developer ID Application identities.
+3. Sign nested binaries and installers in the required order, notarize/staple macOS artifacts, and
+   pass the unchanged default trusted smoke on clean machines.
+4. Complete final manual keyboard/screen-reader review, branding/trademark clearance, installer
+   icon exports, support/recovery copy, and invitation-bound download handling before public
+   distribution.
 
-- Complete native macOS WKWebView and Apple Silicon package validation; Chromium remains only a
-  browser proxy for that platform.
-- Implement macOS Keychain parity and verify Windows CurrentUser DPAPI through the Tauri path.
-- Expand the release workflow beyond the native contract and Windows package smoke to cover every
-  Python, protocol, security, signing, and portal gate in one provenance-bound release job.
-- Pass keyboard-only and screen-reader manual audits in addition to axe.
-- Add Windows upgrade/recovery coverage and produce the Apple Silicon build, then test install,
-  upgrade, recovery, and uninstall on clean machines.
-- Obtain Authenticode and Apple Developer ID credentials; notarize and staple the macOS artifact.
-- Complete naming/trademark clearance and native icon exports before public branding claims.
+No automatic updater, Claude hooks, provider API key flow, cloud evidence sync, automatic broad
+promotion, or public preset marketplace is required or claimed for this alpha.
 
-### Evidence blockers
+## Evidence and marketing boundary
 
-- Finish the unchanged genuine 6A.2C ordinary-use gate and the frozen Base-versus-Temper
-  comparison. This is not required to continue engineering, but it is required before marketing
-  broad automatic-learning effectiveness.
-- Keep automatic promotion off until the signed shadow policy and genuine-use admission criteria
-  pass. The current synthetic evidence supports ranking recommendations, not broad silent learning.
+Temper may now be shown to design partners through screenshots, browser demonstrations labeled
+synthetic, and owner-run native development builds. It should not yet be offered as a general
+download or described as signed, notarized, Apple-validated, or ready for users to entrust with
+their work.
 
-## Invitation boundary
-
-Safe now:
-
-- Post reviewed screenshots and a truthful product explanation.
-- Recruit three to five design partners for interviews and an invite waitlist.
-- Conduct guided prototype walkthroughs while clearly labeling the data as synthetic.
-
-Not safe yet:
-
-- Offer a downloadable desktop alpha.
-- Ask external users to connect real Codex or Claude accounts through this React prototype.
-- Claim that the desktop app is continuously learning from their work today.
-- Distribute an unsigned installer or collect governed user data through the synthetic renderer.
-
-The next engineering slice is still native onboarding and truthful Connections: governed
-identity/key initialization, explicit prospective project registration, Codex inspection, and
-delegated Claude inspection without handling provider credentials. In parallel, a real
-Authenticode identity can be acquired and connected to the already fail-closed package gate.
-External installation begins only after the complete product and platform blockers above are
-closed; an unsigned clean-machine smoke is engineering evidence, not distribution approval.
+The product evidence shows that governed adaptation works end to end and that the native UI can
+operate the governed services. It still does not prove that compiled adaptation generally beats an
+excellent static profile or that silent automatic learning is broadly safe. Those claims remain
+subject to genuine longitudinal use and future optional comparative research.
