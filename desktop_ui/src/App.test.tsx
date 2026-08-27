@@ -203,6 +203,7 @@ describe("Temper prototype", () => {
     expect(
       screen.getByText(/Prefer names that represent real things/i),
     ).toBeInTheDocument();
+    expect(screen.getByText("Suggestion 1 of 1")).toBeInTheDocument();
     expect(
       screen.queryByText(/Lead with the purpose before setup steps/i),
     ).not.toBeInTheDocument();
