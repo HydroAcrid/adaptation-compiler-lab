@@ -51,9 +51,11 @@ arm64 runner verifies checksums, Mach-O architecture, bundle metadata, the exact
 engine handshake, DMG contents, a visible first-run window, a native Keychain round trip, and
 cleanup. The internal job opts into a `development` signature policy explicitly; the smoke
 script's default `trusted` policy requires Developer ID Application signing, Gatekeeper approval,
-and stapled notarization. These jobs have not executed on this revision because the repository's
-GitHub Actions budget currently prevents jobs from starting. That is an instrumentation blocker,
-not positive package evidence.
+and stapled notarization. The Apple jobs have not executed on this revision because the
+repository's GitHub Actions budget currently prevents jobs from starting. WSL cannot substitute
+for native macOS execution because it cannot run the arm64 Mach-O app, Security.framework
+Keychain, WKWebView, Gatekeeper, or DMG mount path. That is unavailable evidence, not a passing
+result.
 
 Native Settings now exposes the current raw-free consent state and no longer displays inert upload
 history or cloud-deletion actions. Aggregate reporting remains off and disabled when unavailable;
@@ -61,9 +63,10 @@ an inherited enabled permission can be turned off. Nothing in the internal build
 the browser-only report remains clearly sample data.
 
 This is not the external release gate. Unsigned internal candidates are permitted only by an
-explicit development policy. Current `0.3.0a2` Windows and Apple packages still require observed
-clean-runner results, and default trusted distribution remains blocked on genuine publisher
-credentials and final signed/notarized verification.
+explicit development policy. The current `0.3.0a2` Windows package has now passed a same-host
+native development smoke from a fresh checkout, but not an independent clean runner. Apple remains
+unobserved. Default trusted distribution remains blocked on genuine publisher credentials and
+final signed/notarized clean-machine verification.
 
 ## Windows native alpha gate
 
@@ -110,6 +113,21 @@ safe for invitees. Authenticode acquisition and a trusted clean-machine rerun re
 release blockers, alongside the product/onboarding and Apple Silicon blockers in the readiness
 audit.
 
+The current `0.3.0a2` product source commit
+`253083e2d83e4c6b01a2f55a89a4560a409ef5b7` (desktop tree `aec90f0`) was also rebuilt from a fresh
+checkout directly on the Windows host without GitHub Actions. Nuitka used MSVC, the compiled
+sidecar passed its mandatory
+closed-world handshake, and Tauri produced
+`Temper_0.3.0-alpha.2_x64-setup.exe` (20,235,800 bytes; SHA-256
+`0226DD35A7AA31D1283531798C8BADFB9A22488D5B9AF85D41B160C58048E8BD`). The explicit development
+smoke installed it, verified engine `0.3.0a2` and schema digest
+`sha256:7319765ed344bbccd4d0302c6e518f5e735bb7f0f88e0b1034180169ba618c24`, kept the app alive for
+six seconds, uninstalled it, and found a clean install root. The default trusted policy rejected
+the same unsigned bytes before installation. This closes the current-head same-host Windows
+instrument check; it is deliberately not described as an independent clean-machine result or
+external-release admission. The raw-free local receipt is
+[`conformance/windows-native-local-smoke-0.3.0a2.json`](conformance/windows-native-local-smoke-0.3.0a2.json).
+
 ## Temper React/Tauri rebuild
 
 The accepted React 19/Vite product now runs inside a restrictive Tauri 2 shell and communicates
@@ -146,10 +164,12 @@ and lower-authority temporary Modes. The first and third now have real governed 
 flows; a public Mode marketplace, third-party pack activation, and automatic preset generation do
 not exist.
 
-Repository-wide Ruff, strict mypy over 387 source files, source/wheel builds, and the serial Python
-suite pass: 1,055 tests with three expected platform skips on WSL. Rust formatting passes locally. Native
-Rust linking remains intentionally delegated to the Linux/Windows/macOS CI matrix because this WSL
-host lacks `pkg-config` and Wayland/GTK/WebKit development libraries.
+Repository-wide Ruff, strict mypy over 380 source files, source/wheel builds, and the serial Python
+suite pass: 1,058 tests with three expected platform skips on WSL. React formatting, ESLint,
+TypeScript, 40 unit tests, production build, and nine Windows WebView2 compatibility checks also
+pass after the native package build. Rust formatting passes locally, and native Windows Rust
+linking/package construction is observed above. Linux GUI and macOS native linking remain delegated
+to suitable hosts because this WSL environment cannot supply or emulate their system runtimes.
 
 ## Desktop private-alpha foundation
 

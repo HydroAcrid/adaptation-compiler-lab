@@ -1,0 +1,32 @@
+{
+  "receipt_version": "1.0.0",
+  "observed_at": "2026-08-27T13:59:25-04:00",
+  "source_commit": "253083e2d83e4c6b01a2f55a89a4560a409ef5b7",
+  "desktop_source_tree": "aec90f020b4c38696165fb17cae7944d343ca402",
+  "execution_topology": "fresh_checkout_same_windows_host",
+  "independent_clean_runner": false,
+  "github_actions_used": false,
+  "installer_filename": "Temper_0.3.0-alpha.2_x64-setup.exe",
+  "installer_size_bytes": 20235800,
+  "installer_sha256": "0226DD35A7AA31D1283531798C8BADFB9A22488D5B9AF85D41B160C58048E8BD",
+  "development_smoke": {
+    "signature_policy": "development",
+    "signature_status": "NotSigned",
+    "engine_version": "0.3.0a2",
+    "schema_digest": "sha256:7319765ed344bbccd4d0302c6e518f5e735bb7f0f88e0b1034180169ba618c24",
+    "engine_configured": false,
+    "app_startup_seconds": 6,
+    "app_remained_running": true,
+    "clean_install_root": true,
+    "uninstall_completed": true
+  },
+  "trusted_gate": {
+    "rejected": true,
+    "reason": "The Temper installer is not signed by a trusted publisher."
+  },
+  "limitations": [
+    "The candidate was built and smoked on the same Windows host, not an independent clean runner.",
+    "This receipt is unsigned local development evidence and is not external-release admission.",
+    "Apple Silicon packaging and macOS runtime behavior were not exercised."
+  ]
+}
