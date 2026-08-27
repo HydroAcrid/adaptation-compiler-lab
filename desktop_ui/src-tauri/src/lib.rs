@@ -996,6 +996,45 @@ mod tests {
     }
 
     #[test]
+    fn app_manifest_declares_every_renderer_command() {
+        let manifest = include_str!("../build.rs");
+        for command in [
+            "engine_handshake",
+            "snapshot_get",
+            "learning_poll",
+            "review_decide",
+            "adaptation_revoke",
+            "adaptation_undo",
+            "feedback_record",
+            "consent_renew",
+            "preferences_update",
+            "setup_status",
+            "connection_inspect",
+            "setup_existing_preview",
+            "setup_existing_adopt",
+            "setup_project_preview",
+            "setup_initialize",
+            "project_registration_preview",
+            "project_register",
+            "profile_export_preview",
+            "profile_export",
+            "profile_import_preview",
+            "profile_import_stage",
+            "modes_list",
+            "mode_run_task",
+            "task_run",
+            "task_apply",
+            "task_discard",
+            "diagnostics_get",
+        ] {
+            assert!(
+                manifest.contains(&format!("\"{command}\"")),
+                "missing command in app manifest: {command}"
+            );
+        }
+    }
+
+    #[test]
     fn handshake_validation_rejects_version_or_schema_drift() {
         let response = EngineResponse {
             protocol_version: PROTOCOL_VERSION.to_owned(),
