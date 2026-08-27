@@ -4,7 +4,8 @@ Last updated: 2026-08-27
 
 ## Native product completion
 
-The native onboarding phase now replaces synthetic first-run assumptions with typed engine state.
+The native onboarding and everyday governed-loop phases now replace synthetic first-run and
+mutation assumptions with typed engine state.
 Unconfigured startup, explicit new setup, explicit existing-runtime adoption, prospective project
 registration, live connection inspection, and configured restart are implemented across Python,
 Rust, and React. All setup mutations are bound to the reviewed state digest and an idempotency key;
@@ -15,10 +16,22 @@ generated schema digests. Connection readiness requires saved ChatGPT authentica
 separately describes source learning, fresh managed delivery, and unavailable ambient delivery.
 Claude is detection-only and has no Connect action, hook, provider login, or API-key path.
 
-This is not the external release gate. The live review/revoke/undo/feedback loop, macOS Keychain,
-React recovery parity, Qt retirement, and Apple Silicon clean-runner package remain in the
-continuous completion sequence. Unsigned internal candidates are permitted only by an explicit
-development policy; default trusted distribution remains blocked on genuine publisher credentials.
+Configured Tauri now receives desktop snapshot v1.1 with typed live suggestions, approved
+adaptations, pending activation feedback, and still-valid 24-hour undo handles. React can approve,
+project-narrow, explicitly narrow, ignore, approve/reject revocation, revoke, undo, rate an exact
+delivery, renew consent, and persist the two existing observation preferences. Every mutation is
+bound to the current snapshot, exact proposal/artifact/delivery/notice identity, a strict parameter
+allowlist, and an idempotency key. Core no longer pretends native artifacts can be edited directly.
+
+Closing Temper now hides it to a native tray. A Rust-owned five-minute scheduler first reads the
+governed state and performs no poll while learning is off or consent is expired. New proposals may
+produce a generic native notification only when OS permission is already granted; raw evidence and
+behavior text never enter the notification. Browser preview state remains explicitly synthetic.
+
+This is not the external release gate. macOS Keychain, React recovery parity, Qt retirement, and
+the Apple Silicon clean-runner package remain in the continuous completion sequence. Unsigned
+internal candidates are permitted only by an explicit development policy; default trusted
+distribution remains blocked on genuine publisher credentials.
 
 ## Windows native alpha gate
 

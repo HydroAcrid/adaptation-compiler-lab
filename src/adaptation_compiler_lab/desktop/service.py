@@ -6,7 +6,7 @@ import base64
 import difflib
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Protocol
 
@@ -14,6 +14,7 @@ from adaptation_compiler_lab.automatic_runtime.dogfood_cli import (
     FreshCodexTaskResult,
     _gateway_ledger,
     _gateway_project,
+    _ledger,
     _load_config,
     _now,
     _raw_store,
@@ -41,6 +42,8 @@ from adaptation_compiler_lab.automatic_runtime.workspace_gateway import (
 from adaptation_compiler_lab.connectors.pins import RuntimeConformanceError
 from adaptation_compiler_lab.desktop.models import (
     ActionResult,
+    ActivationFeedbackSummaryV1,
+    AdaptationSummaryV1,
     ConsentStatus,
     DesktopAction,
     DesktopChangeReview,
@@ -48,8 +51,11 @@ from adaptation_compiler_lab.desktop.models import (
     DesktopProject,
     DesktopSnapshot,
     DesktopTaskResult,
+    RecentUndoSummaryV1,
+    SuggestionSummaryV1,
 )
 from adaptation_compiler_lab.domain import ApprovalDecision, Scope
+from adaptation_compiler_lab.serialization import canonical_digest
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,7 +100,13 @@ class DesktopBackend(Protocol):
 
     def renew_consent(self) -> None: ...
 
-    def feedback(self, *, activation_id: str, outcome: RuntimeFeedbackOutcome) -> None: ...
+    def feedback(
+        self,
+        *,
+        activation_id: str,
+        delivery_receipt_digest: str,
+        outcome: RuntimeFeedbackOutcome,
+    ) -> None: ...
 
     def run_task(
         self, *, task: str, project_id: str, mode_id: str | None = None
@@ -165,7 +177,17 @@ class CodexDogfoodDesktopBackend:
     def renew_consent(self) -> None:
         renew_codex_dogfood_consent(self.config_path, confirm_renewal=True)
 
-    def feedback(self, *, activation_id: str, outcome: RuntimeFeedbackOutcome) -> None:
+    def feedback(
+        self,
+        *,
+        activation_id: str,
+        delivery_receipt_digest: str,
+        outcome: RuntimeFeedbackOutcome,
+    ) -> None:
+        config = _load_config(self.config_path)
+        activation = _ledger(config).activation(activation_id)
+        if activation is None or str(activation.delivery_receipt_digest) != delivery_receipt_digest:
+            raise ValueError("activation delivery receipt changed")
         save_codex_activation_feedback(
             self.config_path,
             activation_id=activation_id,
@@ -294,12 +316,14 @@ class CodexDogfoodDesktopBackend:
 def _scope_options(scope: Scope | None) -> dict[str, list[str] | None]:
     if scope is None:
         return {
+            "refine_project_id": None,
             "refine_task_class": None,
             "refine_environment_id": None,
             "refine_activation_condition": None,
             "refine_exclusion": None,
         }
     return {
+        "refine_project_id": list(scope.project_ids),
         "refine_task_class": list(scope.task_classes),
         "refine_environment_id": list(scope.environment_ids),
         "refine_activation_condition": list(scope.activation_conditions),
@@ -327,11 +351,13 @@ class DesktopApplicationService:
         *,
         background_enabled: bool = False,
         aggregate_reporting_enabled: bool = False,
+        preference_writer: Callable[[bool, bool], None] | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self._backend = backend
         self._background_enabled = background_enabled
         self._reporting_enabled = aggregate_reporting_enabled
+        self._preference_writer = preference_writer
         self._clock = clock or (lambda: datetime.now(UTC))
 
     def load(self, *, poll_now: bool = False) -> DesktopSnapshot:
@@ -367,6 +393,72 @@ class DesktopApplicationService:
             )
             for item in config.projects
         )
+        suggestions = tuple(
+            SuggestionSummaryV1(
+                review_number=item.review_number,
+                queue_id=item.queue_id,
+                proposal_digest=item.proposal_digest,
+                signal_kind=item.signal_kind,
+                proposed_behavior=item.behavior,
+                affected_artifact_id=item.affected_artifact_id,
+                route=item.route,
+                layer=item.layer,
+                suggested_scope=item.scope,
+                reason_summary=item.reasons,
+                evidence_digest=item.evidence_ref.content_digest,
+                consent_digest=item.consent_ref.content_digest,
+                capture_digest=item.capture_ref.content_digest,
+                available_actions=(
+                    ("approve_revocation", "reject_revocation")
+                    if item.signal_kind.value == "revocation"
+                    else ("keep_suggested", "keep_project", "keep_narrowed", "ignore")
+                ),
+                created_at=item.created_at,
+            )
+            for item in terminal.review_mode.proposals
+        )
+        adaptations = tuple(
+            AdaptationSummaryV1(
+                artifact_id=item.artifact_id,
+                artifact_version=item.artifact_version,
+                artifact_digest=canonical_digest(item),
+                artifact_type=item.artifact_type,
+                layer=item.layer,
+                intent=item.intent,
+                required_behaviors=item.required_behaviors,
+                scope=item.scope,
+                evidence_count=item.evidence_count,
+                review_at=item.review_at,
+                expires_at=item.expires_at,
+            )
+            for item in terminal.active_adaptations
+        )
+        activation_feedback = tuple(
+            ActivationFeedbackSummaryV1(
+                activation_id=item.activation_id,
+                delivery_receipt_digest=item.delivery_receipt_digest,
+                active_artifact_ids=item.active_artifact_ids,
+                projection_utf8_bytes=item.projection_utf8_bytes,
+                activated_at=item.activated_at,
+                completed_at=item.completed_at,
+            )
+            for item in terminal.review_mode.activation_feedback
+        )
+        active_ids = {item.artifact_id for item in adaptations}
+        recent_undos = tuple(
+            RecentUndoSummaryV1(
+                notice_id=notice.notice_id,
+                notice_digest=canonical_digest(notice),
+                artifact_id=notice.undo_artifact_id,
+                summary=notice.summary,
+                created_at=notice.created_at,
+                expires_at=notice.created_at + timedelta(hours=24),
+            )
+            for notice in terminal.review_mode.recent_notices
+            if notice.undo_artifact_id is not None
+            and notice.undo_artifact_id in active_ids
+            and notice.created_at <= now <= notice.created_at + timedelta(hours=24)
+        )
         return DesktopSnapshot(
             health=health,
             consent=ConsentStatus(
@@ -380,10 +472,19 @@ class DesktopApplicationService:
             aggregate_reporting_enabled=self._reporting_enabled,
             terminal=terminal,
             projects=projects,
+            suggestions=suggestions,
+            adaptations=adaptations,
+            activation_feedback=activation_feedback,
+            recent_undos=recent_undos,
             generated_at=now,
         )
 
     def poll(self) -> ActionResult:
+        snapshot = self.load()
+        if not snapshot.background_enabled:
+            return self._failure("poll", "learning_paused", "Turn on learning before polling.")
+        if snapshot.consent.renewal_required:
+            return self._failure("poll", "consent_expired", "Renew consent before polling.")
         return self._mutate("poll", self._backend.poll)
 
     def set_local_preferences(
@@ -392,6 +493,8 @@ class DesktopApplicationService:
         background_enabled: bool,
         aggregate_reporting_enabled: bool,
     ) -> DesktopSnapshot:
+        if self._preference_writer is not None:
+            self._preference_writer(background_enabled, aggregate_reporting_enabled)
         self._background_enabled = background_enabled
         self._reporting_enabled = aggregate_reporting_enabled
         return self.load()
@@ -426,8 +529,35 @@ class DesktopApplicationService:
             ),
         )
 
-    def revoke(self, *, artifact_id: str) -> ActionResult:
+    def revoke(self, *, artifact_id: str, artifact_digest: str) -> ActionResult:
+        current = next(
+            (item for item in self.load().adaptations if item.artifact_id == artifact_id),
+            None,
+        )
+        if current is None or str(current.artifact_digest) != artifact_digest:
+            return self._failure(
+                "revoke", "artifact_changed", "This adaptation changed; review it again."
+            )
         return self._mutate("revoke", lambda: self._backend.revoke(artifact_id=artifact_id))
+
+    def undo(
+        self,
+        *,
+        notice_id: str,
+        notice_digest: str,
+        artifact_id: str,
+    ) -> ActionResult:
+        current = next(
+            (
+                item
+                for item in self.load().recent_undos
+                if item.notice_id == notice_id and item.artifact_id == artifact_id
+            ),
+            None,
+        )
+        if current is None or str(current.notice_digest) != notice_digest:
+            return self._failure("undo", "undo_expired", "This undo is no longer available.")
+        return self._mutate("undo", lambda: self._backend.revoke(artifact_id=artifact_id))
 
     def renew_consent(self) -> ActionResult:
         return self._mutate("renew", self._backend.renew_consent)
@@ -436,11 +566,28 @@ class DesktopApplicationService:
         self,
         *,
         activation_id: str,
+        delivery_receipt_digest: str,
         outcome: RuntimeFeedbackOutcome,
     ) -> ActionResult:
+        current = next(
+            (
+                item
+                for item in self.load().activation_feedback
+                if item.activation_id == activation_id
+            ),
+            None,
+        )
+        if current is None or str(current.delivery_receipt_digest) != delivery_receipt_digest:
+            return self._failure(
+                "feedback", "activation_changed", "This activation changed; review it again."
+            )
         return self._mutate(
             "feedback",
-            lambda: self._backend.feedback(activation_id=activation_id, outcome=outcome),
+            lambda: self._backend.feedback(
+                activation_id=activation_id,
+                delivery_receipt_digest=delivery_receipt_digest,
+                outcome=outcome,
+            ),
         )
 
     def run_task(

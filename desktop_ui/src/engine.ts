@@ -104,8 +104,101 @@ export interface EngineProject {
   task_runner_enabled: boolean;
 }
 
+export interface EngineScope {
+  subject_ids: string[];
+  workspace_ids: string[];
+  project_ids: string[];
+  repository_ids: string[];
+  task_classes: string[];
+  target_families: string[];
+  environment_ids: string[];
+  activation_conditions: string[];
+  exclusions: string[];
+  valid_from: string | null;
+  valid_until: string | null;
+}
+
+export interface EngineSuggestion {
+  summary_version: "1.0.0";
+  review_number: number;
+  queue_id: string;
+  proposal_digest: string;
+  signal_kind: string;
+  proposed_behavior: string | null;
+  affected_artifact_id: string | null;
+  route: string | null;
+  layer: string;
+  suggested_scope: EngineScope;
+  reason_summary: string[];
+  evidence_digest: string;
+  consent_digest: string;
+  capture_digest: string;
+  available_actions: EngineSuggestionDecision[];
+  created_at: string;
+  raw_payloads_exposed: false;
+}
+
+export type EngineSuggestionDecision =
+  | "keep_suggested"
+  | "keep_project"
+  | "keep_narrowed"
+  | "ignore"
+  | "approve_revocation"
+  | "reject_revocation";
+
+export interface EngineAdaptation {
+  summary_version: "1.0.0";
+  artifact_id: string;
+  artifact_version: string;
+  artifact_digest: string;
+  artifact_type: string;
+  layer: string;
+  intent: string;
+  required_behaviors: string[];
+  scope: EngineScope;
+  evidence_count: number;
+  review_at: string | null;
+  expires_at: string | null;
+  available_actions: ["revoke"];
+  raw_payloads_exposed: false;
+}
+
+export interface EngineActivationFeedback {
+  summary_version: "1.0.0";
+  activation_id: string;
+  delivery_receipt_digest: string;
+  active_artifact_ids: string[];
+  projection_utf8_bytes: number;
+  activated_at: string;
+  completed_at: string;
+  available_outcomes: Array<"helped" | "hurt" | "irrelevant">;
+  raw_payloads_exposed: false;
+}
+
+export interface EngineRecentUndo {
+  summary_version: "1.0.0";
+  notice_id: string;
+  notice_digest: string;
+  artifact_id: string;
+  summary: string;
+  created_at: string;
+  expires_at: string;
+  raw_payloads_exposed: false;
+}
+
+export interface EngineMutationReceipt {
+  receipt_version: "1.0.0";
+  action: string;
+  target_id: string;
+  status: "applied";
+  code: string;
+  message: string;
+  resulting_snapshot_digest: string;
+  raw_payloads_exposed: false;
+}
+
 export interface EngineDesktopSnapshot {
-  snapshot_version: "1.0.0";
+  snapshot_version: "1.1.0";
   product_name: "Temper";
   health: "ready" | "needs_attention" | "paused" | "consent_expired";
   background_enabled: boolean;
@@ -113,6 +206,17 @@ export interface EngineDesktopSnapshot {
   projects: EngineProject[];
   generated_at: string;
   raw_payloads_exposed: false;
+  consent: {
+    effective_at: string;
+    expires_at: string;
+    retention_days: number;
+    days_remaining: number;
+    renewal_required: boolean;
+  };
+  suggestions: EngineSuggestion[];
+  adaptations: EngineAdaptation[];
+  activation_feedback: EngineActivationFeedback[];
+  recent_undos: EngineRecentUndo[];
   terminal: {
     review_mode: {
       active_artifact_count: number;
@@ -142,6 +246,115 @@ export interface EngineDesktopSnapshot {
     latest_delivered_projection_utf8_bytes: number;
     raw_payloads_exposed: false;
   };
+}
+
+async function invokeMutation(
+  command: string,
+  args: Record<string, unknown>,
+): Promise<EngineMutationReceipt> {
+  const receipt = assertSuccessful(
+    await invoke<EngineResponse<EngineMutationReceipt>>(command, args),
+  );
+  if (receipt.raw_payloads_exposed) {
+    throw new Error("Temper refused an unsafe mutation receipt.");
+  }
+  return receipt;
+}
+
+export async function pollLearning(
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<EngineMutationReceipt> {
+  return invokeMutation("learning_poll", {
+    expectedSnapshotDigest: snapshotDigest,
+    idempotencyKey,
+  });
+}
+
+export async function decideEngineSuggestion(
+  suggestion: EngineSuggestion,
+  decision: EngineSuggestionDecision,
+  snapshotDigest: string,
+  idempotencyKey: string,
+  options: { projectId?: string; refinedScope?: EngineScope } = {},
+): Promise<EngineMutationReceipt> {
+  return invokeMutation("review_decide", {
+    decision,
+    expectedSnapshotDigest: snapshotDigest,
+    idempotencyKey,
+    projectId: options.projectId ?? null,
+    proposalDigest: suggestion.proposal_digest,
+    queueId: suggestion.queue_id,
+    refinedScope: options.refinedScope ?? null,
+  });
+}
+
+export async function revokeEngineAdaptation(
+  adaptation: EngineAdaptation,
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<EngineMutationReceipt> {
+  return invokeMutation("adaptation_revoke", {
+    artifactDigest: adaptation.artifact_digest,
+    artifactId: adaptation.artifact_id,
+    expectedSnapshotDigest: snapshotDigest,
+    idempotencyKey,
+  });
+}
+
+export async function undoEngineAdaptation(
+  undo: EngineRecentUndo,
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<EngineMutationReceipt> {
+  return invokeMutation("adaptation_undo", {
+    artifactId: undo.artifact_id,
+    expectedSnapshotDigest: snapshotDigest,
+    idempotencyKey,
+    noticeDigest: undo.notice_digest,
+    noticeId: undo.notice_id,
+  });
+}
+
+export async function recordEngineFeedback(
+  activation: EngineActivationFeedback,
+  outcome: "helped" | "hurt" | "irrelevant",
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<EngineMutationReceipt> {
+  return invokeMutation("feedback_record", {
+    activationId: activation.activation_id,
+    deliveryReceiptDigest: activation.delivery_receipt_digest,
+    expectedSnapshotDigest: snapshotDigest,
+    idempotencyKey,
+    outcome,
+  });
+}
+
+export async function renewEngineConsent(
+  currentExpiresAt: string,
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<EngineMutationReceipt> {
+  return invokeMutation("consent_renew", {
+    currentExpiresAt,
+    expectedSnapshotDigest: snapshotDigest,
+    idempotencyKey,
+  });
+}
+
+export async function updateEnginePreferences(
+  backgroundEnabled: boolean,
+  aggregateReportingEnabled: boolean,
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<EngineMutationReceipt> {
+  return invokeMutation("preferences_update", {
+    aggregateReportingEnabled,
+    backgroundEnabled,
+    expectedSnapshotDigest: snapshotDigest,
+    idempotencyKey,
+  });
 }
 
 declare global {

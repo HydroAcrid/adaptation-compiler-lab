@@ -36,6 +36,7 @@ import {
   type EngineAgentConnection,
   type EngineProjectPreview,
   type EngineProject,
+  type EngineRecentUndo,
 } from "../engine";
 import type {
   CapabilityModeSummary,
@@ -80,16 +81,23 @@ export function TodayPage({
     message?: string;
   };
 }) {
+  const applicableSuggestions =
+    workspace === "all"
+      ? suggestions
+      : suggestions.filter(
+          (item) =>
+            item.suggestedScope === "All projects" ||
+            item.suggestedScope.split(", ").includes(workspace),
+        );
   const selectedSuggestion =
-    suggestions.find((item) => item.id === selectedSuggestionId) ??
-    suggestions[0];
-  const hasSuggestion =
-    workspace !== "Green Meadow" && Boolean(selectedSuggestion);
+    applicableSuggestions.find((item) => item.id === selectedSuggestionId) ??
+    applicableSuggestions[0];
+  const hasSuggestion = Boolean(selectedSuggestion);
   const isAllProjects = workspace === "all";
   const selectedIndex = selectedSuggestion
     ? suggestions.findIndex((item) => item.id === selectedSuggestion.id)
     : -1;
-  const suggestionCount = suggestions.length;
+  const suggestionCount = applicableSuggestions.length;
   const automationStatus = selectedSuggestion
     ? selectedSuggestion.automationDisposition === "eligible"
       ? automaticLearning
@@ -102,7 +110,11 @@ export function TodayPage({
   return (
     <div className="page folio-page folio-page--today">
       <header className="folio-page-meta">
-        <span>Monday, August 24</span>
+        <span>
+          {new Intl.DateTimeFormat(undefined, {
+            dateStyle: "full",
+          }).format(new Date())}
+        </span>
         <button
           aria-label="Notifications"
           className="folio-icon-button"
@@ -248,7 +260,7 @@ export function TodayPage({
                 <span>{suggestionCount} ready</span>
               </div>
               <ol>
-                {suggestions.map((item, index) => (
+                {applicableSuggestions.map((item, index) => (
                   <li key={item.id}>
                     <button
                       aria-current={
@@ -274,13 +286,21 @@ export function TodayPage({
           ) : (
             <div className="margin-feedback">
               <span className="folio-kicker">Last task</span>
-              <h2>Was Temper useful?</h2>
-              <p>One scoped behavior was included in a release handoff.</p>
+              <h2>
+                {liveSummary?.pendingFeedbackCount
+                  ? "Was Temper useful?"
+                  : "No rating is waiting."}
+              </h2>
+              <p>
+                {liveSummary?.pendingFeedbackCount
+                  ? "A completed activation is ready for your feedback."
+                  : "Temper will ask after it delivers an approved adaptation."}
+              </p>
               {feedback ? (
                 <div className="feedback-thanks">
                   <Check aria-hidden="true" size={15} /> Recorded as {feedback}
                 </div>
-              ) : (
+              ) : !liveSummary || liveSummary.pendingFeedbackCount ? (
                 <div
                   className="feedback-row feedback-row--folio"
                   aria-label="Rate the recent adaptation"
@@ -298,7 +318,7 @@ export function TodayPage({
                     Irrelevant
                   </button>
                 </div>
-              )}
+              ) : null}
             </div>
           )}
         </aside>
@@ -347,6 +367,9 @@ export function CorePage({
   nativeRuntime = false,
   snapshotDigest = null,
   onNotice,
+  onRevoke,
+  recentUndo,
+  onUndo,
 }: {
   activeWorkspace: WorkspaceScope;
   availableWorkspaces?: ProjectName[];
@@ -354,11 +377,15 @@ export function CorePage({
   nativeRuntime?: boolean;
   snapshotDigest?: string | null;
   onNotice?: (message: string) => void;
+  onRevoke?: (artifactId: string) => Promise<void>;
+  recentUndo?: EngineRecentUndo;
+  onUndo?: () => Promise<void>;
 }) {
   const [items, setItems] = useState(initialItems);
   const [kind, setKind] = useState<CoreKind | "all">("all");
   const [scope, setScope] = useState<ProjectName | "all">(activeWorkspace);
   const [selected, setSelected] = useState<CoreItem | null>(null);
+  const [revokeSelected, setRevokeSelected] = useState<CoreItem | null>(null);
   const [removed, setRemoved] = useState<{
     item: CoreItem;
     index: number;
@@ -490,7 +517,14 @@ export function CorePage({
           </select>
         </label>
       </div>
-      {removed ? (
+      {nativeRuntime && recentUndo ? (
+        <div className="undo-banner">
+          <span>{recentUndo.summary}</span>
+          <button onClick={() => void onUndo?.()} type="button">
+            <RotateCcw size={14} /> Undo
+          </button>
+        </div>
+      ) : removed ? (
         <div className="undo-banner">
           <span>“{removed.item.title}” was removed from Core.</span>
           <button onClick={restoreItem} type="button">
@@ -512,6 +546,7 @@ export function CorePage({
               label={entry.label}
               onEdit={setSelected}
               onRemove={removeItem}
+              onRevoke={setRevokeSelected}
               readOnly={nativeRuntime}
             />
           );
@@ -528,6 +563,16 @@ export function CorePage({
           key={selected.id}
           onClose={() => setSelected(null)}
           onSave={saveItem}
+        />
+      ) : null}
+      {revokeSelected ? (
+        <CoreRevocationDialog
+          item={revokeSelected}
+          onClose={() => setRevokeSelected(null)}
+          onConfirm={async () => {
+            await onRevoke?.(revokeSelected.id);
+            setRevokeSelected(null);
+          }}
         />
       ) : null}
       {portabilityMode ? (
@@ -552,6 +597,7 @@ function CoreGroup({
   items,
   onEdit,
   onRemove,
+  onRevoke,
   readOnly,
 }: {
   label: string;
@@ -559,6 +605,7 @@ function CoreGroup({
   items: CoreItem[];
   onEdit: (item: CoreItem) => void;
   onRemove: (item: CoreItem) => void;
+  onRevoke: (item: CoreItem) => void;
   readOnly: boolean;
 }) {
   return (
@@ -579,7 +626,12 @@ function CoreGroup({
                 </span>
               </div>
               {readOnly ? (
-                <span className="core-entry__governed">Approved</span>
+                <div className="core-entry__actions">
+                  <span className="core-entry__governed">Approved</span>
+                  <button onClick={() => onRevoke(item)} type="button">
+                    Revoke
+                  </button>
+                </div>
               ) : (
                 <div className="core-entry__actions">
                   <button onClick={() => onEdit(item)} type="button">
@@ -595,6 +647,48 @@ function CoreGroup({
         ))}
       </ul>
     </section>
+  );
+}
+
+function CoreRevocationDialog({
+  item,
+  onClose,
+  onConfirm,
+}: {
+  item: CoreItem;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Dialog.Root onOpenChange={(open) => (open ? null : onClose())} open>
+      <Dialog.Portal>
+        <Dialog.Overlay className="dialog-overlay" />
+        <Dialog.Content className="core-dialog">
+          <Dialog.Title>Remove “{item.title}” from Core?</Dialog.Title>
+          <Dialog.Description>
+            Temper will record a governed revocation and rebuild future
+            projections without this behavior. Its lineage stays available in
+            Advanced.
+          </Dialog.Description>
+          <div className="core-dialog__actions">
+            <Button disabled={busy} onClick={onClose} tone="quiet">
+              Keep it
+            </Button>
+            <Button
+              disabled={busy}
+              onClick={() => {
+                setBusy(true);
+                void onConfirm().finally(() => setBusy(false));
+              }}
+              tone="primary"
+            >
+              Revoke adaptation
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
@@ -1231,6 +1325,10 @@ export function SettingsPage({
   onAdvancedModeChange,
   automaticLearning,
   onAutomaticLearningChange,
+  nativeRuntime = false,
+  backgroundLearning = false,
+  telemetryEnabled = false,
+  onGovernedPreferencesChange,
 }: {
   theme: Theme;
   onThemeChange: (theme: Theme) => void;
@@ -1238,11 +1336,22 @@ export function SettingsPage({
   onAdvancedModeChange: (enabled: boolean) => void;
   automaticLearning: boolean;
   onAutomaticLearningChange: (enabled: boolean) => void;
+  nativeRuntime?: boolean;
+  backgroundLearning?: boolean;
+  telemetryEnabled?: boolean;
+  onGovernedPreferencesChange?: (
+    learningEnabled: boolean,
+    reportingEnabled: boolean,
+  ) => Promise<void>;
 }) {
-  const [learning, setLearning] = useState(true);
+  const [learning, setLearning] = useState(
+    nativeRuntime ? backgroundLearning : true,
+  );
   const [notifications, setNotifications] = useState(true);
   const [launch, setLaunch] = useState(false);
-  const [telemetry, setTelemetry] = useState(false);
+  const [telemetry, setTelemetry] = useState(
+    nativeRuntime ? telemetryEnabled : false,
+  );
   const [previewOpen, setPreviewOpen] = useState(false);
   return (
     <div className="page settings-page">
@@ -1255,10 +1364,15 @@ export function SettingsPage({
       />
       <SettingsGroup title="Learning">
         <Toggle
-          checked={learning}
+          checked={nativeRuntime ? backgroundLearning : learning}
           description="Notice possible preferences in completed work from registered projects."
           label="Background learning"
-          onCheckedChange={setLearning}
+          onCheckedChange={(enabled) => {
+            setLearning(enabled);
+            if (nativeRuntime) {
+              void onGovernedPreferencesChange?.(enabled, telemetryEnabled);
+            }
+          }}
         />
         <Toggle
           checked={notifications}
@@ -1268,7 +1382,12 @@ export function SettingsPage({
         />
         <Toggle
           checked={automaticLearning}
-          description="Keep only strong, low-impact project preferences. Temper notifies you and gives you 24 hours to undo."
+          description={
+            nativeRuntime
+              ? "Not enabled in this build. Every proposed adaptation still receives a governed review."
+              : "Keep only strong, low-impact project preferences. Temper notifies you and gives you 24 hours to undo."
+          }
+          disabled={nativeRuntime}
           label="Automatic low-risk learning"
           onCheckedChange={onAutomaticLearningChange}
         />
@@ -1320,10 +1439,15 @@ export function SettingsPage({
           <Button tone="quiet">View consent</Button>
         </div>
         <Toggle
-          checked={telemetry}
+          checked={nativeRuntime ? telemetryEnabled : telemetry}
           description="Send signed, raw-free product health counts. Off by default."
           label="Help improve Temper"
-          onCheckedChange={setTelemetry}
+          onCheckedChange={(enabled) => {
+            setTelemetry(enabled);
+            if (nativeRuntime) {
+              void onGovernedPreferencesChange?.(backgroundLearning, enabled);
+            }
+          }}
         />
         <div className="settings-links">
           <button onClick={() => setPreviewOpen(true)} type="button">

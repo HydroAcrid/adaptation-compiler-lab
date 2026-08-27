@@ -15,9 +15,10 @@ export function ReviewDialog({
   suggestion: Suggestion;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onDecision: (decision: SuggestionDecision) => void;
+  onDecision: (decision: SuggestionDecision) => void | Promise<void>;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
   const evidenceLabel = {
     strong: "Strong evidence",
     promising: "Promising evidence",
@@ -29,7 +30,12 @@ export function ReviewDialog({
       : suggestion.automationDisposition === "review-required"
         ? "Your review stays required because this adaptation could materially guide how an agent works."
         : "Temper will keep gathering support unless you choose to keep this now.";
-  const canNarrowToSourceProject = suggestion.suggestedScope === "All projects";
+  const canNarrowToSourceProject =
+    !suggestion.isRevocation && suggestion.suggestedScope === "All projects";
+  function submit(decision: SuggestionDecision) {
+    setBusy(true);
+    void Promise.resolve(onDecision(decision)).finally(() => setBusy(false));
+  }
   return (
     <Dialog.Root onOpenChange={onOpenChange} open={open}>
       <Dialog.Portal>
@@ -69,17 +75,21 @@ export function ReviewDialog({
           <div className="review-actions">
             <Button
               className="review-action--primary"
+              disabled={busy}
               icon={<Check aria-hidden="true" size={17} />}
-              onClick={() => onDecision("suggested")}
+              onClick={() => submit("suggested")}
               tone="primary"
             >
-              Keep as suggested
+              {suggestion.isRevocation
+                ? "Approve removal"
+                : "Keep as suggested"}
             </Button>
             {canNarrowToSourceProject ? (
               <Button
                 className="review-action--scope"
+                disabled={busy}
                 icon={<Folder aria-hidden="true" size={17} />}
-                onClick={() => onDecision("project")}
+                onClick={() => submit("project")}
                 tone="quiet"
               >
                 Only in {suggestion.sourceProject}
@@ -87,10 +97,11 @@ export function ReviewDialog({
             ) : null}
             <Button
               className="review-action--ignore"
-              onClick={() => onDecision("ignore")}
+              disabled={busy}
+              onClick={() => submit("ignore")}
               tone="quiet"
             >
-              Ignore
+              {suggestion.isRevocation ? "Keep adaptation" : "Ignore"}
             </Button>
           </div>
           <Collapsible.Root onOpenChange={setDetailsOpen} open={detailsOpen}>

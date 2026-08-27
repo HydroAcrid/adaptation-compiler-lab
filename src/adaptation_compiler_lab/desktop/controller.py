@@ -235,7 +235,20 @@ class DesktopController(QObject):
 
     @Slot(str)
     def revoke(self, artifact_id: str) -> None:
-        self._handle(self._service.revoke(artifact_id=artifact_id))
+        snapshot = self._service.load()
+        artifact = next(
+            (item for item in snapshot.adaptations if item.artifact_id == artifact_id),
+            None,
+        )
+        if artifact is None:
+            self._set_message("That adaptation is no longer active.", error=True)
+            return
+        self._handle(
+            self._service.revoke(
+                artifact_id=artifact_id,
+                artifact_digest=str(artifact.artifact_digest),
+            )
+        )
 
     @Slot(str, str)
     def recordFeedback(self, activation_id: str, outcome: str) -> None:
@@ -244,7 +257,21 @@ class DesktopController(QObject):
         except ValueError:
             self._set_message("That feedback option is not supported.", error=True)
             return
-        self._handle(self._service.feedback(activation_id=activation_id, outcome=typed_outcome))
+        snapshot = self._service.load()
+        activation = next(
+            (item for item in snapshot.activation_feedback if item.activation_id == activation_id),
+            None,
+        )
+        if activation is None:
+            self._set_message("That activation is no longer waiting for feedback.", error=True)
+            return
+        self._handle(
+            self._service.feedback(
+                activation_id=activation_id,
+                delivery_receipt_digest=str(activation.delivery_receipt_digest),
+                outcome=typed_outcome,
+            )
+        )
 
     @Slot(str, str)
     def runTask(self, task: str, workspace: str) -> None:

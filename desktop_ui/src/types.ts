@@ -32,6 +32,7 @@ export interface Suggestion {
   confidenceReason: string;
   automationDisposition: AutomationDisposition;
   automationReason: string;
+  isRevocation?: boolean;
 }
 
 export type CoreKind = "preference" | "memory" | "procedure" | "skill";

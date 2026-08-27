@@ -7,8 +7,20 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
+from adaptation_compiler_lab.automatic_runtime.models import (
+    AdaptationLayer,
+    FeedbackSignalKind,
+    RuntimeFeedbackOutcome,
+)
 from adaptation_compiler_lab.automatic_runtime.product_dogfood import TerminalAlphaSnapshot
-from adaptation_compiler_lab.domain import FrozenModel, Identifier, NonEmptyStr, Sha256Digest
+from adaptation_compiler_lab.domain import (
+    ArtifactRoute,
+    FrozenModel,
+    Identifier,
+    NonEmptyStr,
+    Scope,
+    Sha256Digest,
+)
 from adaptation_compiler_lab.serialization import canonical_digest
 
 DesktopHealth = Literal["ready", "needs_attention", "paused", "consent_expired"]
@@ -39,6 +51,16 @@ DesktopAction = Literal[
     "renew",
     "apply_changes",
     "discard_changes",
+    "undo",
+    "preferences",
+]
+SuggestionDecision = Literal[
+    "keep_suggested",
+    "keep_project",
+    "keep_narrowed",
+    "ignore",
+    "approve_revocation",
+    "reject_revocation",
 ]
 
 
@@ -148,10 +170,138 @@ class SetupCompletionReceiptV1(FrozenModel):
     raw_payloads_exposed: Literal[False] = False
 
 
+class SuggestionSummaryV1(FrozenModel):
+    """One raw-free governed proposal safe for the everyday review interface."""
+
+    summary_version: Literal["1.0.0"] = "1.0.0"
+    review_number: int = Field(ge=1)
+    queue_id: Identifier
+    proposal_digest: Sha256Digest
+    signal_kind: FeedbackSignalKind
+    proposed_behavior: NonEmptyStr | None = None
+    affected_artifact_id: Identifier | None = None
+    route: ArtifactRoute | None = None
+    layer: AdaptationLayer
+    suggested_scope: Scope
+    reason_summary: tuple[NonEmptyStr, ...]
+    evidence_digest: Sha256Digest
+    consent_digest: Sha256Digest
+    capture_digest: Sha256Digest
+    available_actions: tuple[SuggestionDecision, ...]
+    created_at: datetime
+    raw_payloads_exposed: Literal[False] = False
+
+    @model_validator(mode="after")
+    def shape_matches_signal(self) -> Self:
+        if self.signal_kind.value == "revocation":
+            if (
+                self.proposed_behavior is not None
+                or self.route is not None
+                or self.affected_artifact_id is None
+                or self.available_actions != ("approve_revocation", "reject_revocation")
+            ):
+                raise ValueError("revocation suggestion is inconsistent")
+        elif (
+            self.proposed_behavior is None
+            or self.route is None
+            or self.affected_artifact_id is not None
+            or self.available_actions
+            != ("keep_suggested", "keep_project", "keep_narrowed", "ignore")
+        ):
+            raise ValueError("learning suggestion is inconsistent")
+        return self
+
+
+class SuggestionDecisionRequestV1(FrozenModel):
+    """Exact review decision, including only deterministic scope narrowing."""
+
+    request_version: Literal["1.0.0"] = "1.0.0"
+    queue_id: Identifier
+    proposal_digest: Sha256Digest
+    decision: SuggestionDecision
+    project_id: Identifier | None = None
+    refined_scope: Scope | None = None
+
+    @model_validator(mode="after")
+    def decision_parameters_are_exact(self) -> Self:
+        if self.decision == "keep_project":
+            if self.project_id is None or self.refined_scope is not None:
+                raise ValueError("project-only decisions require exactly one project")
+        elif self.decision == "keep_narrowed":
+            if self.project_id is not None or self.refined_scope is None:
+                raise ValueError("narrowed decisions require one explicit scope")
+        elif self.project_id is not None or self.refined_scope is not None:
+            raise ValueError("this decision does not accept scope parameters")
+        return self
+
+
+class AdaptationSummaryV1(FrozenModel):
+    """Approved behavioral artifact without supporting raw evidence."""
+
+    summary_version: Literal["1.0.0"] = "1.0.0"
+    artifact_id: Identifier
+    artifact_version: NonEmptyStr
+    artifact_digest: Sha256Digest
+    artifact_type: NonEmptyStr
+    layer: AdaptationLayer
+    intent: NonEmptyStr
+    required_behaviors: tuple[NonEmptyStr, ...]
+    scope: Scope
+    evidence_count: int = Field(ge=1)
+    review_at: datetime | None = None
+    expires_at: datetime | None = None
+    available_actions: tuple[Literal["revoke"], ...] = ("revoke",)
+    raw_payloads_exposed: Literal[False] = False
+
+
+class ActivationFeedbackSummaryV1(FrozenModel):
+    """Exact completed delivery that can receive one owner rating."""
+
+    summary_version: Literal["1.0.0"] = "1.0.0"
+    activation_id: Identifier
+    delivery_receipt_digest: Sha256Digest
+    active_artifact_ids: tuple[Identifier, ...]
+    projection_utf8_bytes: int = Field(ge=0)
+    activated_at: datetime
+    completed_at: datetime
+    available_outcomes: tuple[RuntimeFeedbackOutcome, ...] = (
+        RuntimeFeedbackOutcome.HELPED,
+        RuntimeFeedbackOutcome.HURT,
+        RuntimeFeedbackOutcome.IRRELEVANT,
+    )
+    raw_payloads_exposed: Literal[False] = False
+
+
+class RecentUndoSummaryV1(FrozenModel):
+    """A still-valid 24-hour undo handle bound to its immutable notice."""
+
+    summary_version: Literal["1.0.0"] = "1.0.0"
+    notice_id: Identifier
+    notice_digest: Sha256Digest
+    artifact_id: Identifier
+    summary: NonEmptyStr
+    created_at: datetime
+    expires_at: datetime
+    raw_payloads_exposed: Literal[False] = False
+
+
+class MutationReceiptV1(FrozenModel):
+    """Stable raw-free receipt returned for a product mutation."""
+
+    receipt_version: Literal["1.0.0"] = "1.0.0"
+    action: DesktopAction
+    target_id: Identifier
+    status: Literal["applied"] = "applied"
+    code: NonEmptyStr
+    message: NonEmptyStr
+    resulting_snapshot_digest: Sha256Digest
+    raw_payloads_exposed: Literal[False] = False
+
+
 class DesktopSnapshot(FrozenModel):
     """One immutable raw-free desktop read model."""
 
-    snapshot_version: Literal["1.0.0"] = "1.0.0"
+    snapshot_version: Literal["1.1.0"] = "1.1.0"
     product_name: Literal["Temper"] = "Temper"
     health: DesktopHealth
     consent: ConsentStatus
@@ -159,6 +309,10 @@ class DesktopSnapshot(FrozenModel):
     aggregate_reporting_enabled: bool
     terminal: TerminalAlphaSnapshot
     projects: tuple[DesktopProject, ...]
+    suggestions: tuple[SuggestionSummaryV1, ...]
+    adaptations: tuple[AdaptationSummaryV1, ...]
+    activation_feedback: tuple[ActivationFeedbackSummaryV1, ...]
+    recent_undos: tuple[RecentUndoSummaryV1, ...]
     generated_at: datetime
     raw_payloads_exposed: Literal[False] = False
 
@@ -167,6 +321,17 @@ class DesktopSnapshot(FrozenModel):
         project_ids = tuple(item.project_id for item in self.projects)
         if project_ids != self.terminal.configured_project_ids:
             raise ValueError("desktop projects do not match the governed runtime snapshot")
+        if len(self.suggestions) != self.terminal.review_mode.metrics.pending_review_count:
+            raise ValueError("desktop suggestions do not match the governed runtime snapshot")
+        if (
+            len(self.activation_feedback)
+            != self.terminal.review_mode.metrics.pending_feedback_count
+        ):
+            raise ValueError("desktop feedback does not match the governed runtime snapshot")
+        if tuple(item.artifact_id for item in self.adaptations) != tuple(
+            item.artifact_id for item in self.terminal.active_adaptations
+        ):
+            raise ValueError("desktop adaptations do not match the governed runtime snapshot")
         return self
 
     @property
