@@ -399,15 +399,16 @@ fn toggle_learning(app: &tauri::AppHandle) {
 }
 
 fn stop_scheduler(app: &tauri::AppHandle) {
-    if let Some(scheduler) = app.try_state::<PollScheduler>()
-        && let Ok(mut sender) = scheduler.0.lock()
-        && let Some(stop) = sender.take()
-    {
-        let _ = stop.send(());
+    if let Some(scheduler) = app.try_state::<PollScheduler>() {
+        if let Ok(mut sender) = scheduler.0.lock() {
+            if let Some(stop) = sender.take() {
+                let _ = stop.send(());
+            }
+        }
     }
 }
 
-fn install_tray_and_scheduler(app: &mut tauri::App) -> tauri::Result<()> {
+fn install_tray_and_scheduler(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let open_item = MenuItem::with_id(app, "open", "Open Temper", true, None::<&str>)?;
     let learning_item = MenuItem::with_id(
         app,
