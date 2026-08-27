@@ -1,8 +1,8 @@
 # Temper native product completion
 
-Status: native onboarding, the everyday governed React loop, and platform credential parity are
-implemented; React/Qt parity and Apple Silicon packaging remain in the continuous completion
-sequence.
+Status: native onboarding, the everyday governed React loop, platform credential parity, React
+recovery parity, and Qt retirement are implemented. Apple Silicon packaging remains in the
+continuous completion sequence.
 
 ## Product boundary
 
@@ -43,10 +43,9 @@ stale-state protected.
 
 ## Continuous sequence
 
-1. Remove Qt only after React/Tauri reaches application-service and recovery parity.
-2. Build and smoke-test unsigned internal Apple Silicon `.app` and `.dmg` candidates on an arm64
+1. Build and smoke-test unsigned internal Apple Silicon `.app` and `.dmg` candidates on an arm64
    clean runner while keeping the default trusted policy closed.
-3. Add genuine publisher signing and notarization only when external installer distribution is
+2. Add genuine publisher signing and notarization only when external installer distribution is
    authorized.
 
 ## Phase 2: everyday governed loop
@@ -93,5 +92,24 @@ Implemented:
 Learning, telemetry, decision notifications, and launch at login remain off when absent from old
 preferences. A locked or unavailable native credential store disables mutations rather than
 falling back to environment variables, renderer IPC, repository files, or plaintext storage.
+
+## Phase 4: React parity and Qt retirement
+
+Implemented:
+
+- live learning, telemetry, decision-notification, and launch-at-login controls through one
+  digest-bound preference mutation;
+- transactional native launch-at-login through Tauri's platform autostart integration, with
+  rollback if the engine refuses the matching preference write;
+- live Advanced task execution, untrusted agent-result presentation, exact diff review,
+  commit-bound Apply, Discard, and content-free diagnostics;
+- exact protocol and renderer tests for task/run/apply/discard, diagnostics, preference allowlists,
+  stale state, idempotency, and raw-payload denial;
+- notification delivery only when the separate notification preference is enabled; and
+- retirement of PySide6, QML, Qt controllers, `pytest-qt`, and the old Qt executable entry point.
+
+React, Rust, and the retained `temper` terminal CLI all consume the same governed Python
+application services. The renderer has no generic process or filesystem command, and browser
+preview controls remain explicitly synthetic.
 
 The sealed deferred Milestone 6 external-validation study remains outside this work and unchanged.

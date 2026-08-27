@@ -20,6 +20,7 @@ from adaptation_compiler_lab.desktop.engine_protocol import (
 from adaptation_compiler_lab.desktop.models import (
     ActionResult,
     AgentConnectionV1,
+    DesktopChangeReview,
     DesktopTaskResult,
     ExistingInstallationSummary,
     ProjectCandidatePreviewV1,
@@ -392,6 +393,159 @@ def test_governed_mutations_refuse_stale_snapshots_before_side_effects() -> None
     assert response.error is not None
     assert response.error.code == "stale_snapshot"
     service.feedback.assert_not_called()
+
+
+def test_preferences_update_persists_all_four_allowlisted_values() -> None:
+    digest = f"sha256:{'a' * 64}"
+    service = MagicMock()
+    snapshot = MagicMock()
+    snapshot.content_digest = digest
+    service.load.return_value = snapshot
+    service.set_local_preferences.return_value = snapshot
+    router = EngineProtocolRouter(cast(Any, service))
+
+    response = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="preferences-request",
+            method="preferences.update",
+            params={
+                "background_enabled": True,
+                "aggregate_reporting_enabled": False,
+                "decision_notifications_enabled": True,
+                "launch_at_login_enabled": True,
+            },
+            expected_snapshot_digest=digest,
+            idempotency_key="preferences-click-1",
+        )
+    )
+
+    assert response.ok is True
+    service.set_local_preferences.assert_called_once_with(
+        background_enabled=True,
+        aggregate_reporting_enabled=False,
+        decision_notifications_enabled=True,
+        launch_at_login_enabled=True,
+    )
+
+
+def test_managed_task_run_returns_exact_review_without_raw_evidence() -> None:
+    digest = f"sha256:{'a' * 64}"
+    service = MagicMock()
+    snapshot = MagicMock()
+    snapshot.content_digest = digest
+    service.load.return_value = snapshot
+    service.run_task.return_value = (
+        ActionResult(action="run_task", ok=True, code="ok", message="Ready."),
+        DesktopTaskResult(
+            activation_id="activation-1",
+            status="review_available",
+            projection_utf8_bytes=400,
+            final_message="I prepared a focused change.",
+            change_review=DesktopChangeReview(
+                session_id="session-1",
+                expected_head="0123456789abcdef",
+                changed_files=("src/example.py",),
+                diff_text="diff --git a/src/example.py b/src/example.py",
+                binary_change_count=0,
+            ),
+        ),
+    )
+    router = EngineProtocolRouter(cast(Any, service))
+
+    response = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="task-request",
+            method="task.run",
+            params={"project_id": "kairn", "task": "Fix the verified issue."},
+            expected_snapshot_digest=digest,
+            idempotency_key="task-click-1",
+        )
+    )
+
+    assert response.ok is True
+    assert response.result is not None
+    assert response.result["review_available"] is True
+    assert response.result["raw_payloads_exposed"] is False
+    assert response.result["change_review"]["session_id"] == "session-1"
+    assert "evidence" not in json.dumps(response.result).lower()
+    service.run_task.assert_called_once_with(task="Fix the verified issue.", project_id="kairn")
+
+
+def test_managed_task_apply_and_discard_are_exactly_bound() -> None:
+    digest = f"sha256:{'a' * 64}"
+    service = MagicMock()
+    snapshot = MagicMock()
+    snapshot.content_digest = digest
+    service.load.return_value = snapshot
+    service.apply_changes.return_value = ActionResult(
+        action="apply_changes",
+        ok=True,
+        code="ok",
+        message="Applied.",
+        snapshot_digest=digest,
+    )
+    service.discard_changes.return_value = ActionResult(
+        action="discard_changes",
+        ok=True,
+        code="ok",
+        message="Discarded.",
+        snapshot_digest=digest,
+    )
+    router = EngineProtocolRouter(cast(Any, service))
+
+    applied = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="apply-request",
+            method="task.apply",
+            params={"session_id": "session-1", "expected_head": "0123456789abcdef"},
+            expected_snapshot_digest=digest,
+            idempotency_key="apply-click-1",
+        )
+    )
+    discarded = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="discard-request",
+            method="task.discard",
+            params={"session_id": "session-2"},
+            expected_snapshot_digest=digest,
+            idempotency_key="discard-click-1",
+        )
+    )
+
+    assert applied.ok is True
+    assert discarded.ok is True
+    service.apply_changes.assert_called_once_with(
+        session_id="session-1", expected_head="0123456789abcdef"
+    )
+    service.discard_changes.assert_called_once_with(session_id="session-2")
+
+
+def test_diagnostics_are_content_free_and_derived_from_current_snapshot() -> None:
+    digest = f"sha256:{'a' * 64}"
+    service = MagicMock()
+    snapshot = MagicMock()
+    snapshot.content_digest = digest
+    snapshot.snapshot_version = "1.1.0"
+    snapshot.projects = (MagicMock(), MagicMock())
+    snapshot.suggestions = (MagicMock(),)
+    snapshot.adaptations = (MagicMock(), MagicMock(), MagicMock())
+    snapshot.activation_feedback = ()
+    snapshot.consent.renewal_required = False
+    snapshot.terminal.review_mode.credential_enrolled = True
+    service.load.return_value = snapshot
+
+    response = EngineProtocolRouter(cast(Any, service)).handle(_request("diagnostics.get"))
+
+    assert response.ok is True
+    assert response.result is not None
+    assert response.result["project_count"] == 2
+    assert response.result["active_adaptation_count"] == 3
+    assert response.result["raw_payloads_exposed"] is False
+    assert "path" not in json.dumps(response.result).lower()
 
 
 def test_stdio_server_handles_malformed_and_valid_frames_without_crashing() -> None:

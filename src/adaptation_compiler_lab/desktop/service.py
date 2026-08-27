@@ -78,7 +78,7 @@ class DesktopRuntimeConfiguration:
 
 
 class DesktopBackend(Protocol):
-    """Narrow seam that keeps QML, tests, and future adapters out of persistence."""
+    """Narrow seam that keeps presentation layers and tests out of persistence."""
 
     def config(self) -> DesktopRuntimeConfiguration: ...
 
@@ -351,12 +351,16 @@ class DesktopApplicationService:
         *,
         background_enabled: bool = False,
         aggregate_reporting_enabled: bool = False,
-        preference_writer: Callable[[bool, bool], None] | None = None,
+        decision_notifications_enabled: bool = False,
+        launch_at_login_enabled: bool = False,
+        preference_writer: Callable[[bool, bool, bool, bool], None] | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self._backend = backend
         self._background_enabled = background_enabled
         self._reporting_enabled = aggregate_reporting_enabled
+        self._decision_notifications_enabled = decision_notifications_enabled
+        self._launch_at_login_enabled = launch_at_login_enabled
         self._preference_writer = preference_writer
         self._clock = clock or (lambda: datetime.now(UTC))
 
@@ -470,6 +474,8 @@ class DesktopApplicationService:
             ),
             background_enabled=self._background_enabled,
             aggregate_reporting_enabled=self._reporting_enabled,
+            decision_notifications_enabled=self._decision_notifications_enabled,
+            launch_at_login_enabled=self._launch_at_login_enabled,
             terminal=terminal,
             projects=projects,
             suggestions=suggestions,
@@ -492,11 +498,30 @@ class DesktopApplicationService:
         *,
         background_enabled: bool,
         aggregate_reporting_enabled: bool,
+        decision_notifications_enabled: bool | None = None,
+        launch_at_login_enabled: bool | None = None,
     ) -> DesktopSnapshot:
+        notifications = (
+            self._decision_notifications_enabled
+            if decision_notifications_enabled is None
+            else decision_notifications_enabled
+        )
+        launch = (
+            self._launch_at_login_enabled
+            if launch_at_login_enabled is None
+            else launch_at_login_enabled
+        )
         if self._preference_writer is not None:
-            self._preference_writer(background_enabled, aggregate_reporting_enabled)
+            self._preference_writer(
+                background_enabled,
+                aggregate_reporting_enabled,
+                notifications,
+                launch,
+            )
         self._background_enabled = background_enabled
         self._reporting_enabled = aggregate_reporting_enabled
+        self._decision_notifications_enabled = notifications
+        self._launch_at_login_enabled = launch
         return self.load()
 
     def approve(

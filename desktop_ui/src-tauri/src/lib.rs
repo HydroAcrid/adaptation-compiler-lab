@@ -14,6 +14,7 @@ use tauri::menu::{Menu, MenuItem};
 use tauri::plugin::PermissionState;
 use tauri::tray::TrayIconBuilder;
 use tauri::{Manager, WindowEvent};
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt as AutostartManagerExt};
 use tauri_plugin_notification::NotificationExt;
 use uuid::Uuid;
 
@@ -278,6 +279,8 @@ struct PollEligibility {
     consent_current: bool,
     pending_review_count: u64,
     aggregate_reporting_enabled: bool,
+    decision_notifications_enabled: bool,
+    launch_at_login_enabled: bool,
 }
 
 fn call_engine(
@@ -318,6 +321,8 @@ fn poll_eligibility(response: &EngineResponse) -> Option<PollEligibility> {
             .try_into()
             .ok()?,
         aggregate_reporting_enabled: value.get("aggregate_reporting_enabled")?.as_bool()?,
+        decision_notifications_enabled: value.get("decision_notifications_enabled")?.as_bool()?,
+        launch_at_login_enabled: value.get("launch_at_login_enabled")?.as_bool()?,
     })
 }
 
@@ -371,7 +376,9 @@ fn run_background_poll(app: &tauri::AppHandle) {
     let Some(after_eligibility) = poll_eligibility(&after) else {
         return;
     };
-    if after_eligibility.pending_review_count > eligibility.pending_review_count {
+    if after_eligibility.decision_notifications_enabled
+        && after_eligibility.pending_review_count > eligibility.pending_review_count
+    {
         show_review_notification(app);
     }
 }
@@ -393,6 +400,8 @@ fn toggle_learning(app: &tauri::AppHandle) {
         json!({
             "background_enabled": !eligibility.background_enabled,
             "aggregate_reporting_enabled": eligibility.aggregate_reporting_enabled,
+            "decision_notifications_enabled": eligibility.decision_notifications_enabled,
+            "launch_at_login_enabled": eligibility.launch_at_login_enabled,
         }),
         Some(snapshot_digest),
         Some(&Uuid::new_v4().to_string()),
@@ -592,22 +601,43 @@ fn consent_renew(
 
 #[tauri::command]
 fn preferences_update(
+    app: tauri::AppHandle,
     state: tauri::State<'_, EngineState>,
     background_enabled: bool,
     aggregate_reporting_enabled: bool,
+    decision_notifications_enabled: bool,
+    launch_at_login_enabled: bool,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
+    let autostart = app.autolaunch();
+    let was_enabled = autostart.is_enabled().map_err(|_| unavailable())?;
+    let native_result = if launch_at_login_enabled {
+        autostart.enable()
+    } else {
+        autostart.disable()
+    };
+    native_result.map_err(|_| unavailable())?;
+    let response = call_engine(
         &state,
         "preferences.update",
         json!({
             "background_enabled": background_enabled,
             "aggregate_reporting_enabled": aggregate_reporting_enabled,
+            "decision_notifications_enabled": decision_notifications_enabled,
+            "launch_at_login_enabled": launch_at_login_enabled,
         }),
         Some(&expected_snapshot_digest),
         Some(&idempotency_key),
-    )
+    );
+    if !matches!(&response, Ok(value) if value.ok) {
+        let _ = if was_enabled {
+            autostart.enable()
+        } else {
+            autostart.disable()
+        };
+    }
+    response
 }
 
 #[tauri::command]
@@ -826,9 +856,68 @@ fn mode_run_task(
     )
 }
 
+#[tauri::command]
+fn task_run(
+    state: tauri::State<'_, EngineState>,
+    project_id: String,
+    task: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "task.run",
+        json!({"project_id": project_id, "task": task}),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+fn task_apply(
+    state: tauri::State<'_, EngineState>,
+    session_id: String,
+    expected_head: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "task.apply",
+        json!({"session_id": session_id, "expected_head": expected_head}),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+fn task_discard(
+    state: tauri::State<'_, EngineState>,
+    session_id: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "task.discard",
+        json!({"session_id": session_id}),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+fn diagnostics_get(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
+    call_engine(&state, "diagnostics.get", json!({}), None, None)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            None,
+        ))
         .plugin(tauri_plugin_notification::init())
         .manage(EngineState(Mutex::new(None)))
         .setup(install_tray_and_scheduler)
@@ -861,7 +950,11 @@ pub fn run() {
             profile_import_preview,
             profile_import_stage,
             modes_list,
-            mode_run_task
+            mode_run_task,
+            task_run,
+            task_apply,
+            task_discard,
+            diagnostics_get
         ])
         .run(tauri::generate_context!())
         .expect("error while running Temper");
@@ -947,7 +1040,11 @@ mod tests {
 
     #[test]
     fn background_polling_is_disabled_by_learning_or_expired_consent() {
-        fn response(background_enabled: bool, renewal_required: bool) -> EngineResponse {
+        fn response(
+            background_enabled: bool,
+            renewal_required: bool,
+            notifications_enabled: bool,
+        ) -> EngineResponse {
             EngineResponse {
                 protocol_version: PROTOCOL_VERSION.to_owned(),
                 request_id: "snapshot".to_owned(),
@@ -955,6 +1052,8 @@ mod tests {
                 result: Some(json!({
                     "background_enabled": background_enabled,
                     "aggregate_reporting_enabled": false,
+                    "decision_notifications_enabled": notifications_enabled,
+                    "launch_at_login_enabled": false,
                     "consent": {"renewal_required": renewal_required},
                     "suggestions": [],
                 })),
@@ -963,13 +1062,15 @@ mod tests {
             }
         }
 
-        let disabled = poll_eligibility(&response(false, false)).expect("eligible shape");
-        let expired = poll_eligibility(&response(true, true)).expect("eligible shape");
-        let enabled = poll_eligibility(&response(true, false)).expect("eligible shape");
+        let disabled = poll_eligibility(&response(false, false, true)).expect("eligible shape");
+        let expired = poll_eligibility(&response(true, true, true)).expect("eligible shape");
+        let enabled = poll_eligibility(&response(true, false, true)).expect("eligible shape");
+        let quiet = poll_eligibility(&response(true, false, false)).expect("eligible shape");
 
         assert!(!disabled.background_enabled);
         assert!(!expired.consent_current);
         assert!(enabled.background_enabled && enabled.consent_current);
+        assert!(!quiet.decision_notifications_enabled);
     }
 
     #[test]

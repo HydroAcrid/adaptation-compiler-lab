@@ -22,12 +22,18 @@ import {
   loadModes,
   loadSetupSnapshot,
   recordEngineFeedback,
+  runManagedTask,
+  applyManagedTask,
+  discardManagedTask,
+  loadDiagnostics,
   revokeEngineAdaptation,
   undoEngineAdaptation,
   updateEnginePreferences,
   type EngineSuggestion,
   type EngineDesktopSnapshot,
   type EngineSetupSnapshot,
+  type EngineTaskResult,
+  type EngineDiagnostics,
 } from "./engine";
 import type {
   CapabilityModeSummary,
@@ -100,6 +106,10 @@ export default function App() {
     nativeRuntime ? [] : browserModes,
   );
   const [engineError, setEngineError] = useState<string | null>(null);
+  const [taskResult, setTaskResult] = useState<EngineTaskResult | null>(null);
+  const [diagnostics, setDiagnostics] = useState<EngineDiagnostics | null>(
+    null,
+  );
   const displayedSuggestions = engineSnapshot
     ? engineSnapshot.suggestions.map((item) =>
         suggestionFromEngine(item, engineSnapshot),
@@ -341,12 +351,16 @@ export default function App() {
   async function updateGovernedPreferences(
     learningEnabled: boolean,
     reportingEnabled: boolean,
+    notificationsEnabled: boolean,
+    launchAtLoginEnabled: boolean,
   ) {
     if (!engineSnapshot || !snapshotDigest) return;
     try {
       const receipt = await updateEnginePreferences(
         learningEnabled,
         reportingEnabled,
+        notificationsEnabled,
+        launchAtLoginEnabled,
         snapshotDigest,
         crypto.randomUUID(),
       );
@@ -358,6 +372,44 @@ export default function App() {
           : "Temper could not safely save that setting.",
       );
     }
+  }
+
+  async function runAdvancedTask(projectId: string, task: string) {
+    if (!snapshotDigest) return;
+    const result = await runManagedTask(
+      projectId,
+      task,
+      snapshotDigest,
+      crypto.randomUUID(),
+    );
+    setTaskResult(result);
+  }
+
+  async function applyAdvancedTask() {
+    if (!taskResult?.change_review || !snapshotDigest) return;
+    const receipt = await applyManagedTask(
+      taskResult.change_review,
+      snapshotDigest,
+      crypto.randomUUID(),
+    );
+    setTaskResult(null);
+    await refreshAfterNativeAction(receipt.message);
+  }
+
+  async function discardAdvancedTask() {
+    if (!taskResult?.change_review || !snapshotDigest) return;
+    const receipt = await discardManagedTask(
+      taskResult.change_review.session_id,
+      snapshotDigest,
+      crypto.randomUUID(),
+    );
+    setTaskResult(null);
+    await refreshAfterNativeAction(receipt.message);
+  }
+
+  async function refreshDiagnostics() {
+    if (!nativeRuntime) return;
+    setDiagnostics(await loadDiagnostics());
   }
 
   async function refreshAfterNativeAction(message: string) {
@@ -502,9 +554,31 @@ export default function App() {
             telemetryEnabled={
               engineSnapshot?.aggregate_reporting_enabled ?? false
             }
+            decisionNotificationsEnabled={
+              engineSnapshot?.decision_notifications_enabled ?? false
+            }
+            launchAtLoginEnabled={
+              engineSnapshot?.launch_at_login_enabled ?? false
+            }
           />
         ) : null}
-        {screen === "advanced" ? <AdvancedPage /> : null}
+        {screen === "advanced" ? (
+          <AdvancedPage
+            diagnostics={diagnostics}
+            nativeRuntime={nativeRuntime}
+            onApply={applyAdvancedTask}
+            onDiagnostics={refreshDiagnostics}
+            onDiscard={discardAdvancedTask}
+            onRun={runAdvancedTask}
+            projects={
+              engineSnapshot?.projects.map((project) => ({
+                id: project.project_id,
+                label: project.display_name,
+              })) ?? []
+            }
+            taskResult={taskResult}
+          />
+        ) : null}
       </Shell>
       {selectedSuggestion ? (
         <ReviewDialog

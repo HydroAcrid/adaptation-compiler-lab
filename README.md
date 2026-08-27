@@ -1,14 +1,15 @@
 # adaptation-compiler-lab
 
-Temper's native product-completion sequence is active. The Tauri application can now start before
-a governed runtime exists, inspect Codex and Claude truthfully, create a new local identity and
-30-day consent with privacy-sensitive switches off, adopt an existing identity without rewriting
-lineage, and register project folders prospectively through Rust-owned dialogs. Codex is pinned to
-the locally installed `codex-cli 0.150.0-alpha.8` and admitted only when exact binary/schema
-conformance and saved ChatGPT login both pass. Claude remains explicitly detection-only. See
-[`TEMPER_NATIVE_PRODUCT_COMPLETION.md`](TEMPER_NATIVE_PRODUCT_COMPLETION.md). The next continuous
-phase wires the live review/revoke/undo/feedback loop; publisher certificates remain a later
-external-distribution gate rather than a prerequisite for product functionality.
+Temper's native product-completion sequence is active. The Tauri application now supports live
+first-run setup, existing-runtime adoption, truthful Codex/Claude inspection, prospective project
+registration, review/scope decisions, revoke/undo, activation feedback, consent renewal, four
+product preferences, and the governed task/diff/apply/discard flow through one typed Python
+application service. Codex is pinned to exact `codex-cli 0.150.0-alpha.8` conformance and saved
+ChatGPT login; Claude remains explicitly detection-only. Windows DPAPI and native macOS Keychain
+stores both fail closed. The retired PySide6/QML interface has been removed; `temper` remains the
+recovery CLI. See [`TEMPER_NATIVE_PRODUCT_COMPLETION.md`](TEMPER_NATIVE_PRODUCT_COMPLETION.md).
+The remaining functional phase is the unsigned internal Apple Silicon package and clean-runner
+smoke. Publisher certificates remain a later external-distribution gate.
 
 Temper's replacement customer desktop now connects React to the real local Python engine through
 a restrictive Tauri 2 shell and framed stdio protocol. A configured native runtime loads raw-free
@@ -23,9 +24,9 @@ interaction checks pass. See
 blocks external installation until onboarding, remaining mutations/connections, native security,
 clean-machine validation, and signed builds are complete.
 
-The Adaptation Compiler desktop private-alpha foundation is now implemented over the same governed
-runtime as the Temper terminal surface. It provides a progressively disclosed Qt Quick interface,
-exact review/undo/feedback actions, explicit 30-day renewal, and a fresh governed Codex work surface.
+The historical Qt Quick private-alpha surface has been retired after React/Tauri reached recovery
+and governed-operation parity. The native product and `temper` terminal recovery command now share
+the same typed application services.
 Agent-written files remain in an isolated worktree until the owner reviews a local diff and chooses
 Apply or Discard; application checks the reviewed Git head, reruns bounded tests, and rolls back on
 failure. Background observation and aggregate reporting are independent and off by default.
