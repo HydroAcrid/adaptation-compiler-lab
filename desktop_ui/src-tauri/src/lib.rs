@@ -21,6 +21,7 @@ const PROTOCOL_VERSION: &str = "temper-engine-protocol/v1";
 const MAX_FRAME_BYTES: usize = 1_048_576;
 const ENGINE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(15);
 const BACKGROUND_POLL_INTERVAL: Duration = Duration::from_secs(5 * 60);
+const REVIEW_NOTIFICATION_BODY: &str = "A possible adaptation is ready for review.";
 const EXPECTED_ENGINE_VERSION: &str = match option_env!("TEMPER_EXPECTED_ENGINE_VERSION") {
     Some(value) => value,
     None => "",
@@ -335,7 +336,7 @@ fn show_review_notification(app: &tauri::AppHandle) {
         .notification()
         .builder()
         .title("Temper")
-        .body("A possible adaptation is ready for review.")
+        .body(REVIEW_NOTIFICATION_BODY)
         .show();
 }
 
@@ -973,9 +974,12 @@ mod tests {
 
     #[test]
     fn notification_copy_does_not_expose_behavior_or_evidence() {
-        let source = include_str!("lib.rs");
-        assert!(source.contains("A possible adaptation is ready for review."));
-        assert!(!source.contains("evidence_text"));
-        assert!(!source.contains("raw_prompt"));
+        assert_eq!(
+            REVIEW_NOTIFICATION_BODY,
+            "A possible adaptation is ready for review."
+        );
+        for forbidden in ["evidence", "behavior", "prompt", "transcript", "project"] {
+            assert!(!REVIEW_NOTIFICATION_BODY.to_lowercase().contains(forbidden));
+        }
     }
 }
