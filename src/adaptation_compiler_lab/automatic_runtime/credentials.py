@@ -1,4 +1,4 @@
-"""Same-user Windows credential enrollment for unattended local dogfood operation."""
+"""Fail-closed platform credential enrollment for unattended local operation."""
 
 from __future__ import annotations
 
@@ -6,8 +6,10 @@ import base64
 import json
 import os
 import subprocess
+import sys
 import tempfile
 from collections.abc import Mapping
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
@@ -17,7 +19,16 @@ from typing import Final, Protocol
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from adaptation_compiler_lab.automatic_runtime.gateway_models import CredentialEnvelopeMetadata
+from adaptation_compiler_lab.automatic_runtime.gateway_models import (
+    CredentialEnvelopeMetadata,
+    CredentialEnvelopeMetadataRecord,
+    CredentialEnvelopeMetadataV1_1,
+)
+from adaptation_compiler_lab.automatic_runtime.macos_keychain import (
+    KeychainBackend,
+    KeychainBackendError,
+    SecurityFrameworkKeychainBackend,
+)
 from adaptation_compiler_lab.domain import Sha256Digest
 from adaptation_compiler_lab.governance.signing import (
     SIGNING_KEY_FILE_ENV,
@@ -38,6 +49,42 @@ class ByteProtector(Protocol):
     def protect(self, plaintext: bytes, *, entropy: bytes) -> bytes: ...
 
     def unprotect(self, ciphertext: bytes, *, entropy: bytes) -> bytes: ...
+
+
+class PlatformCredentialStore(Protocol):
+    """Common same-user store contract used by setup, desktop, and recovery CLI surfaces."""
+
+    def enroll(
+        self,
+        secrets: RuntimeSecrets,
+        *,
+        subject_id: str,
+        config_digest: Sha256Digest,
+        signer_fingerprint: Sha256Digest,
+        enrolled_at: datetime | None = None,
+    ) -> CredentialEnvelopeMetadataRecord: ...
+
+    def status(self) -> CredentialEnvelopeMetadataRecord | None: ...
+
+    def unlock(
+        self,
+        *,
+        subject_id: str,
+        config_digest: Sha256Digest,
+        signer_fingerprint: Sha256Digest,
+    ) -> RuntimeSecrets: ...
+
+    def revoke(self) -> bool: ...
+
+    def rebind(
+        self,
+        *,
+        subject_id: str,
+        current_config_digest: Sha256Digest,
+        new_config_digest: Sha256Digest,
+        signer_fingerprint: Sha256Digest,
+        enrolled_at: datetime | None = None,
+    ) -> CredentialEnvelopeMetadataRecord: ...
 
 
 class WindowsDpapiProtector:
@@ -268,7 +315,7 @@ class DpapiCredentialStore:
         config_digest: Sha256Digest,
         signer_fingerprint: Sha256Digest,
         enrolled_at: datetime | None = None,
-    ) -> CredentialEnvelopeMetadata:
+    ) -> CredentialEnvelopeMetadataV1_1:
         if self._path.exists():
             raise CredentialStoreError("credential enrollment already exists; revoke it first")
         self._root.mkdir(parents=True, exist_ok=True)
@@ -280,13 +327,13 @@ class DpapiCredentialStore:
         )
         ciphertext = self._protector.protect(secrets.to_bytes(), entropy=entropy)
         digest = Sha256Digest(f"sha256:{sha256(ciphertext).hexdigest()}")
-        metadata = CredentialEnvelopeMetadata(
+        metadata = CredentialEnvelopeMetadataV1_1(
             envelope_id=f"credentials-{subject_id}",
             subject_id=subject_id,
             config_digest=config_digest,
             signer_fingerprint=signer_fingerprint,
             protector="windows-dpapi-current-user",
-            ciphertext_digest=digest,
+            protected_payload_digest=digest,
             enrolled_at=enrolled_at or datetime.now(UTC),
         )
         payload = {
@@ -304,7 +351,7 @@ class DpapiCredentialStore:
             raise
         return metadata
 
-    def status(self) -> CredentialEnvelopeMetadata | None:
+    def status(self) -> CredentialEnvelopeMetadataRecord | None:
         if not self._path.is_file():
             return None
         return self._read()[0]
@@ -346,7 +393,7 @@ class DpapiCredentialStore:
         new_config_digest: Sha256Digest,
         signer_fingerprint: Sha256Digest,
         enrolled_at: datetime | None = None,
-    ) -> CredentialEnvelopeMetadata:
+    ) -> CredentialEnvelopeMetadataV1_1:
         """Atomically bind an existing same-user enrollment to an explicit config update."""
 
         secrets = self.unlock(
@@ -360,13 +407,13 @@ class DpapiCredentialStore:
             signer_fingerprint=signer_fingerprint,
         )
         ciphertext = self._protector.protect(secrets.to_bytes(), entropy=entropy)
-        metadata = CredentialEnvelopeMetadata(
+        metadata = CredentialEnvelopeMetadataV1_1(
             envelope_id=f"credentials-{subject_id}",
             subject_id=subject_id,
             config_digest=new_config_digest,
             signer_fingerprint=signer_fingerprint,
             protector="windows-dpapi-current-user",
-            ciphertext_digest=Sha256Digest(f"sha256:{sha256(ciphertext).hexdigest()}"),
+            protected_payload_digest=Sha256Digest(f"sha256:{sha256(ciphertext).hexdigest()}"),
             enrolled_at=enrolled_at or datetime.now(UTC),
         )
         payload = {
@@ -390,16 +437,332 @@ class DpapiCredentialStore:
             temporary.unlink(missing_ok=True)
         return metadata
 
-    def _read(self) -> tuple[CredentialEnvelopeMetadata, bytes]:
+    def _read(self) -> tuple[CredentialEnvelopeMetadataRecord, bytes]:
         try:
             value = json.loads(self._path.read_text(encoding="utf-8"))
-            metadata = CredentialEnvelopeMetadata.model_validate_json(
-                canonical_json(value["metadata"]), strict=True
-            )
+            metadata_payload = value["metadata"]
+            version = metadata_payload.get("envelope_version", "1.0.0")
+            if version == "1.0.0":
+                metadata: CredentialEnvelopeMetadataRecord = (
+                    CredentialEnvelopeMetadata.model_validate_json(
+                        canonical_json(metadata_payload), strict=True
+                    )
+                )
+            elif version == "1.1.0":
+                metadata = CredentialEnvelopeMetadataV1_1.model_validate_json(
+                    canonical_json(metadata_payload), strict=True
+                )
+            else:
+                raise ValueError("unsupported credential metadata version")
             ciphertext = base64.b64decode(value["ciphertext"], validate=True)
-        except (OSError, KeyError, ValueError, json.JSONDecodeError) as error:
+        except (AttributeError, OSError, KeyError, ValueError, json.JSONDecodeError) as error:
             raise CredentialStoreError("credential envelope is invalid") from error
         actual = Sha256Digest(f"sha256:{sha256(ciphertext).hexdigest()}")
-        if actual != metadata.ciphertext_digest:
+        expected = (
+            metadata.ciphertext_digest
+            if isinstance(metadata, CredentialEnvelopeMetadata)
+            else metadata.protected_payload_digest
+        )
+        if actual != expected:
             raise CredentialStoreError("credential envelope ciphertext was tampered with")
         return metadata, ciphertext
+
+
+class MacOSKeychainCredentialStore:
+    """Keep one identity-bound secret payload in the same-user macOS Keychain."""
+
+    _SERVICE: Final = "com.hydroacrid.temper.runtime-secrets"
+
+    def __init__(self, state_root: Path, *, backend: KeychainBackend | None = None) -> None:
+        self._root = state_root.expanduser().resolve()
+        self._path = self._root / _ENVELOPE_FILE
+        try:
+            self._backend = backend or SecurityFrameworkKeychainBackend()
+        except KeychainBackendError as error:
+            raise CredentialStoreError(str(error)) from error
+
+    def enroll(
+        self,
+        secrets: RuntimeSecrets,
+        *,
+        subject_id: str,
+        config_digest: Sha256Digest,
+        signer_fingerprint: Sha256Digest,
+        enrolled_at: datetime | None = None,
+    ) -> CredentialEnvelopeMetadataV1_1:
+        if self._path.exists():
+            raise CredentialStoreError("credential enrollment already exists; revoke it first")
+        payload = self._bound_payload(
+            secrets,
+            subject_id=subject_id,
+            config_digest=config_digest,
+            signer_fingerprint=signer_fingerprint,
+        )
+        metadata = self._metadata(
+            subject_id=subject_id,
+            config_digest=config_digest,
+            signer_fingerprint=signer_fingerprint,
+            payload=payload,
+            enrolled_at=enrolled_at,
+        )
+        self._root.mkdir(parents=True, exist_ok=True)
+        self._root.chmod(0o700)
+        try:
+            self._backend.add(service=self._SERVICE, account=subject_id, payload=payload)
+            self._write_metadata(metadata)
+        except (KeychainBackendError, OSError) as error:
+            with suppress(KeychainBackendError):
+                self._backend.delete(service=self._SERVICE, account=subject_id)
+            self._path.unlink(missing_ok=True)
+            raise CredentialStoreError("macOS Keychain enrollment failed closed") from error
+        return metadata
+
+    def status(self) -> CredentialEnvelopeMetadataV1_1 | None:
+        if not self._path.is_file():
+            return None
+        metadata = self._read_metadata()
+        payload = self._get_payload(metadata.subject_id)
+        self._verify_payload_digest(metadata, payload)
+        return metadata
+
+    def unlock(
+        self,
+        *,
+        subject_id: str,
+        config_digest: Sha256Digest,
+        signer_fingerprint: Sha256Digest,
+    ) -> RuntimeSecrets:
+        metadata = self._read_metadata()
+        self._require_binding(
+            metadata,
+            subject_id=subject_id,
+            config_digest=config_digest,
+            signer_fingerprint=signer_fingerprint,
+        )
+        payload = self._get_payload(subject_id)
+        self._verify_payload_digest(metadata, payload)
+        return self._secrets_from_bound_payload(
+            payload,
+            subject_id=subject_id,
+            config_digest=config_digest,
+            signer_fingerprint=signer_fingerprint,
+        )
+
+    def revoke(self) -> bool:
+        if not self._path.exists():
+            return False
+        metadata = self._read_metadata()
+        try:
+            self._backend.delete(service=self._SERVICE, account=metadata.subject_id)
+        except KeychainBackendError as error:
+            raise CredentialStoreError("macOS Keychain revocation failed closed") from error
+        self._path.unlink()
+        return True
+
+    def rebind(
+        self,
+        *,
+        subject_id: str,
+        current_config_digest: Sha256Digest,
+        new_config_digest: Sha256Digest,
+        signer_fingerprint: Sha256Digest,
+        enrolled_at: datetime | None = None,
+    ) -> CredentialEnvelopeMetadataV1_1:
+        secrets = self.unlock(
+            subject_id=subject_id,
+            config_digest=current_config_digest,
+            signer_fingerprint=signer_fingerprint,
+        )
+        old_payload = self._get_payload(subject_id)
+        new_payload = self._bound_payload(
+            secrets,
+            subject_id=subject_id,
+            config_digest=new_config_digest,
+            signer_fingerprint=signer_fingerprint,
+        )
+        metadata = self._metadata(
+            subject_id=subject_id,
+            config_digest=new_config_digest,
+            signer_fingerprint=signer_fingerprint,
+            payload=new_payload,
+            enrolled_at=enrolled_at,
+        )
+        try:
+            self._backend.update(
+                service=self._SERVICE,
+                account=subject_id,
+                payload=new_payload,
+            )
+            self._replace_metadata(metadata)
+        except (KeychainBackendError, OSError) as error:
+            try:
+                self._backend.update(
+                    service=self._SERVICE,
+                    account=subject_id,
+                    payload=old_payload,
+                )
+            except KeychainBackendError as rollback_error:
+                raise CredentialStoreError(
+                    "macOS Keychain rebind and rollback both failed closed"
+                ) from rollback_error
+            raise CredentialStoreError("macOS Keychain rebind failed closed") from error
+        return metadata
+
+    def _read_metadata(self) -> CredentialEnvelopeMetadataV1_1:
+        try:
+            value = json.loads(self._path.read_text(encoding="utf-8"))
+            metadata = CredentialEnvelopeMetadataV1_1.model_validate_json(
+                canonical_json(value["metadata"]), strict=True
+            )
+            keychain = value["keychain"]
+            if metadata.protector != "macos-keychain-security-framework" or keychain != {
+                "account": metadata.subject_id,
+                "service": self._SERVICE,
+            }:
+                raise ValueError("credential metadata names another protector")
+            return metadata
+        except (OSError, KeyError, ValueError, json.JSONDecodeError) as error:
+            raise CredentialStoreError("macOS Keychain metadata is invalid") from error
+
+    def _write_metadata(self, metadata: CredentialEnvelopeMetadataV1_1) -> None:
+        descriptor = os.open(self._path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(self._serialized_metadata(metadata))
+            stream.flush()
+            os.fsync(stream.fileno())
+
+    def _replace_metadata(self, metadata: CredentialEnvelopeMetadataV1_1) -> None:
+        descriptor, temporary_name = tempfile.mkstemp(
+            prefix=f".{_ENVELOPE_FILE}.", suffix=".tmp", dir=self._root
+        )
+        temporary = Path(temporary_name)
+        try:
+            with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+                stream.write(self._serialized_metadata(metadata))
+                stream.flush()
+                os.fsync(stream.fileno())
+            temporary.chmod(0o600)
+            os.replace(temporary, self._path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+    def _serialized_metadata(self, metadata: CredentialEnvelopeMetadataV1_1) -> str:
+        return (
+            canonical_json(
+                {
+                    "keychain": {"account": metadata.subject_id, "service": self._SERVICE},
+                    "metadata": metadata.model_dump(mode="json"),
+                }
+            )
+            + "\n"
+        )
+
+    def _get_payload(self, subject_id: str) -> bytes:
+        try:
+            payload = self._backend.get(service=self._SERVICE, account=subject_id)
+        except KeychainBackendError as error:
+            raise CredentialStoreError(str(error)) from error
+        if payload is None:
+            raise CredentialStoreError("macOS Keychain enrollment is unavailable")
+        return payload
+
+    @staticmethod
+    def _metadata(
+        *,
+        subject_id: str,
+        config_digest: Sha256Digest,
+        signer_fingerprint: Sha256Digest,
+        payload: bytes,
+        enrolled_at: datetime | None,
+    ) -> CredentialEnvelopeMetadataV1_1:
+        return CredentialEnvelopeMetadataV1_1(
+            envelope_id=f"credentials-{subject_id}",
+            subject_id=subject_id,
+            config_digest=config_digest,
+            signer_fingerprint=signer_fingerprint,
+            protector="macos-keychain-security-framework",
+            protected_payload_digest=Sha256Digest(f"sha256:{sha256(payload).hexdigest()}"),
+            enrolled_at=enrolled_at or datetime.now(UTC),
+        )
+
+    @staticmethod
+    def _require_binding(
+        metadata: CredentialEnvelopeMetadataV1_1,
+        *,
+        subject_id: str,
+        config_digest: Sha256Digest,
+        signer_fingerprint: Sha256Digest,
+    ) -> None:
+        if metadata.revoked_at is not None:
+            raise CredentialStoreError("credential enrollment is revoked")
+        if (
+            metadata.subject_id != subject_id
+            or metadata.config_digest != config_digest
+            or metadata.signer_fingerprint != signer_fingerprint
+        ):
+            raise CredentialStoreError("credential envelope is bound to another runtime identity")
+
+    @staticmethod
+    def _verify_payload_digest(metadata: CredentialEnvelopeMetadataV1_1, payload: bytes) -> None:
+        actual = Sha256Digest(f"sha256:{sha256(payload).hexdigest()}")
+        if actual != metadata.protected_payload_digest:
+            raise CredentialStoreError("macOS Keychain payload was changed outside Temper")
+
+    @staticmethod
+    def _bound_payload(
+        secrets: RuntimeSecrets,
+        *,
+        subject_id: str,
+        config_digest: Sha256Digest,
+        signer_fingerprint: Sha256Digest,
+    ) -> bytes:
+        return canonical_json(
+            {
+                "binding": {
+                    "config_digest": str(config_digest),
+                    "signer_fingerprint": str(signer_fingerprint),
+                    "subject_id": subject_id,
+                },
+                "secrets_base64": base64.b64encode(secrets.to_bytes()).decode("ascii"),
+                "version": 1,
+            }
+        ).encode("utf-8")
+
+    @staticmethod
+    def _secrets_from_bound_payload(
+        payload: bytes,
+        *,
+        subject_id: str,
+        config_digest: Sha256Digest,
+        signer_fingerprint: Sha256Digest,
+    ) -> RuntimeSecrets:
+        try:
+            value = json.loads(payload)
+            expected = {
+                "config_digest": str(config_digest),
+                "signer_fingerprint": str(signer_fingerprint),
+                "subject_id": subject_id,
+            }
+            if value.get("version") != 1 or value.get("binding") != expected:
+                raise ValueError("binding mismatch")
+            secrets = base64.b64decode(value["secrets_base64"], validate=True)
+        except (AttributeError, KeyError, ValueError, json.JSONDecodeError) as error:
+            raise CredentialStoreError(
+                "macOS Keychain payload is bound to another runtime identity"
+            ) from error
+        return RuntimeSecrets.from_bytes(secrets)
+
+
+def platform_credential_store(
+    state_root: Path,
+    *,
+    platform_name: str | None = None,
+    keychain_backend: KeychainBackend | None = None,
+    dpapi_protector: ByteProtector | None = None,
+) -> PlatformCredentialStore:
+    """Select exactly one native protector; no plaintext fallback exists."""
+
+    selected = sys.platform if platform_name is None else platform_name
+    if selected == "darwin":
+        return MacOSKeychainCredentialStore(state_root, backend=keychain_backend)
+    return DpapiCredentialStore(state_root, protector=dpapi_protector)

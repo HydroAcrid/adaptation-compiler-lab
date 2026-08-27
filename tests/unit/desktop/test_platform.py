@@ -22,9 +22,11 @@ def test_windows_and_macos_paths_never_depend_on_repository_root(tmp_path: Path)
     )
     macos = native.platform_paths(platform_name="darwin", environ={}, home=tmp_path)
 
-    assert windows.state_root == tmp_path / "Local" / "AdaptationCompiler"
-    assert windows.config_root == tmp_path / "Roaming" / "AdaptationCompiler"
-    assert macos.state_root == (
+    assert windows.state_root == tmp_path / "Local" / "Temper"
+    assert windows.config_root == tmp_path / "Roaming" / "Temper"
+    assert windows.historical_state_root == tmp_path / "Local" / "AdaptationCompiler"
+    assert macos.state_root == tmp_path / "Library" / "Application Support" / "Temper"
+    assert macos.historical_state_root == (
         tmp_path / "Library" / "Application Support" / "Adaptation Compiler"
     )
     assert "projects" not in str(windows.state_root)

@@ -89,7 +89,7 @@ class SecureStoreStatus(FrozenModel):
     platform: Literal["windows", "macos", "development"]
     protector: Literal[
         "windows-dpapi-current-user",
-        "macos-keychain-current-user",
+        "macos-keychain-security-framework",
         "unavailable",
     ]
     status: Literal["not_created", "ready", "locked", "unavailable"]

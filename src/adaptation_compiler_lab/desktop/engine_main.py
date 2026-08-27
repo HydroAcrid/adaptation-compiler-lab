@@ -6,8 +6,7 @@ import argparse
 from pathlib import Path
 
 from adaptation_compiler_lab.desktop.engine_protocol import build_router, serve
-from adaptation_compiler_lab.desktop.platform import platform_paths
-from adaptation_compiler_lab.desktop.preferences import LocalDesktopPreferencesStore
+from adaptation_compiler_lab.desktop.platform import platform_paths, product_preferences_store
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -23,7 +22,7 @@ def main(argv: list[str] | None = None) -> int:
     predecessor_path = arguments.predecessor_config
     if config_path is None:
         try:
-            preferences = LocalDesktopPreferencesStore(platform_paths().config_root).load()
+            preferences = product_preferences_store(platform_paths()).load()
         except (OSError, ValueError):
             preferences = None
         if preferences is not None:

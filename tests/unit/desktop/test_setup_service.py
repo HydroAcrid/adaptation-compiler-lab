@@ -55,6 +55,8 @@ def test_first_run_snapshot_and_project_preview_are_raw_free(tmp_path: Path) -> 
             platform="development",
             state_root=tmp_path / "state",
             config_root=tmp_path / "config",
+            historical_state_root=tmp_path / "old-state",
+            historical_config_root=tmp_path / "old-config",
         ),
         inspector=FakeInspector(),  # type: ignore[arg-type]
         clock=lambda: now,
@@ -80,6 +82,8 @@ def test_setup_requires_explicit_consent_before_any_native_work(tmp_path: Path) 
             platform="development",
             state_root=tmp_path / "state",
             config_root=tmp_path / "config",
+            historical_state_root=tmp_path / "old-state",
+            historical_config_root=tmp_path / "old-config",
         ),
         inspector=FakeInspector(),  # type: ignore[arg-type]
     )
@@ -106,6 +110,8 @@ def test_existing_runtime_adoption_preserves_identity_and_hides_path(
             platform="development",
             state_root=tmp_path / "state",
             config_root=tmp_path / "preferences",
+            historical_state_root=tmp_path / "old-state",
+            historical_config_root=tmp_path / "old-preferences",
         ),
         inspector=FakeInspector(),  # type: ignore[arg-type]
         clock=lambda: now,

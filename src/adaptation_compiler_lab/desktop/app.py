@@ -19,8 +19,8 @@ from adaptation_compiler_lab.desktop.platform import (
     MacOSAutostartManager,
     WindowsAutostartManager,
     platform_paths,
+    product_preferences_store,
 )
-from adaptation_compiler_lab.desktop.preferences import LocalDesktopPreferencesStore
 from adaptation_compiler_lab.desktop.service import (
     CodexDogfoodDesktopBackend,
     DesktopApplicationService,
@@ -56,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
     QCoreApplication.setOrganizationDomain("local.adaptation-compiler")
     QCoreApplication.setApplicationName("Adaptation Compiler")
     paths = platform_paths()
-    preference_store = LocalDesktopPreferencesStore(paths.state_root)
+    preference_store = product_preferences_store(paths)
     preferences = preference_store.load()
     if arguments.config is not None:
         preferences = preferences.model_copy(
