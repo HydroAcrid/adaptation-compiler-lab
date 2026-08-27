@@ -28,10 +28,19 @@ governed state and performs no poll while learning is off or consent is expired.
 produce a generic native notification only when OS permission is already granted; raw evidence and
 behavior text never enter the notification. Browser preview state remains explicitly synthetic.
 
-This is not the external release gate. macOS Keychain, React recovery parity, Qt retirement, and
-the Apple Silicon clean-runner package remain in the continuous completion sequence. Unsigned
-internal candidates are permitted only by an explicit development policy; default trusted
-distribution remains blocked on genuine publisher credentials.
+Platform credential parity is now implemented. New Windows and macOS enrollments use raw-free
+credential metadata v1.1; immutable v1.0 Windows DPAPI envelopes remain readable. Windows retains
+same-user CurrentUser DPAPI. macOS stores the managed Ed25519 and AES keys as one
+subject/configuration/signer-bound Keychain value through native Security.framework calls, with
+tamper detection, atomic rebind rollback, revocation, cross-subject denial, and no plaintext or
+`security`-CLI fallback. Preferences v1.1 use Temper-branded paths for new installations while
+reading historical preferences without moving raw evidence or creating a second identity. Every
+new observation/startup preference defaults off.
+
+This is not the external release gate. React recovery parity, Qt retirement, and the Apple
+Silicon clean-runner package remain in the continuous completion sequence. Unsigned internal
+candidates are permitted only by an explicit development policy; default trusted distribution
+remains blocked on genuine publisher credentials.
 
 ## Windows native alpha gate
 
@@ -114,8 +123,8 @@ and lower-authority temporary Modes. The first and third now have real governed 
 flows; a public Mode marketplace, third-party pack activation, and automatic preset generation do
 not exist.
 
-Repository-wide Ruff, strict mypy over 382 source files, source/wheel builds, and the serial Python
-suite pass: 1,038 tests with two expected platform skips. Rust formatting passes locally. Native
+Repository-wide Ruff, strict mypy over 387 source files, source/wheel builds, and the serial Python
+suite pass: 1,055 tests with three expected platform skips on WSL. Rust formatting passes locally. Native
 Rust linking remains intentionally delegated to the Linux/Windows/macOS CI matrix because this WSL
 host lacks `pkg-config` and Wayland/GTK/WebKit development libraries.
 

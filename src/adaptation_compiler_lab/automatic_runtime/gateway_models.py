@@ -72,6 +72,30 @@ class CredentialEnvelopeMetadata(FrozenModel):
         return canonical_digest(self)
 
 
+class CredentialEnvelopeMetadataV1_1(FrozenModel):
+    """Raw-free metadata for current Windows and macOS platform credential stores."""
+
+    envelope_id: Identifier
+    envelope_version: Literal["1.1.0"] = "1.1.0"
+    subject_id: Identifier
+    config_digest: Sha256Digest
+    signer_fingerprint: Sha256Digest
+    protector: Literal[
+        "windows-dpapi-current-user",
+        "macos-keychain-security-framework",
+    ]
+    protected_payload_digest: Sha256Digest
+    enrolled_at: UtcDateTime
+    revoked_at: UtcDateTime | None = None
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+CredentialEnvelopeMetadataRecord = CredentialEnvelopeMetadata | CredentialEnvelopeMetadataV1_1
+
+
 class RuntimeSuccessorReceipt(FrozenModel):
     """New-key attestation that preserves an unavailable-key predecessor as history."""
 

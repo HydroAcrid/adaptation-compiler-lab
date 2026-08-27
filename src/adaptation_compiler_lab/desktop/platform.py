@@ -8,7 +8,10 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
+
+if TYPE_CHECKING:
+    from adaptation_compiler_lab.desktop.preferences import LocalDesktopPreferencesStore
 
 HostPlatform = Literal["windows", "macos", "development"]
 
@@ -22,6 +25,8 @@ class PlatformPaths:
     platform: HostPlatform
     state_root: Path
     config_root: Path
+    historical_state_root: Path
+    historical_config_root: Path
 
 
 def platform_paths(
@@ -42,17 +47,39 @@ def platform_paths(
             raise PlatformIntegrationError("Windows application-data roots are unavailable")
         return PlatformPaths(
             platform="windows",
-            state_root=Path(local) / "AdaptationCompiler",
-            config_root=Path(roaming) / "AdaptationCompiler",
+            state_root=Path(local) / "Temper",
+            config_root=Path(roaming) / "Temper",
+            historical_state_root=Path(local) / "AdaptationCompiler",
+            historical_config_root=Path(roaming) / "AdaptationCompiler",
         )
     if selected == "darwin":
-        support = user_home / "Library" / "Application Support" / "Adaptation Compiler"
-        return PlatformPaths(platform="macos", state_root=support, config_root=support)
-    development = user_home / ".local" / "state" / "adaptation-compiler"
+        support = user_home / "Library" / "Application Support" / "Temper"
+        historical = user_home / "Library" / "Application Support" / "Adaptation Compiler"
+        return PlatformPaths(
+            platform="macos",
+            state_root=support,
+            config_root=support,
+            historical_state_root=historical,
+            historical_config_root=historical,
+        )
+    development = user_home / ".local" / "state" / "temper"
     return PlatformPaths(
         platform="development",
         state_root=development,
-        config_root=user_home / ".config" / "adaptation-compiler",
+        config_root=user_home / ".config" / "temper",
+        historical_state_root=user_home / ".local" / "state" / "adaptation-compiler",
+        historical_config_root=user_home / ".config" / "adaptation-compiler",
+    )
+
+
+def product_preferences_store(paths: PlatformPaths) -> LocalDesktopPreferencesStore:
+    """Use Temper-branded preferences while reading the historical product path once."""
+
+    from adaptation_compiler_lab.desktop.preferences import LocalDesktopPreferencesStore
+
+    return LocalDesktopPreferencesStore(
+        paths.config_root,
+        legacy_roots=(paths.historical_config_root, paths.historical_state_root),
     )
 
 

@@ -306,7 +306,7 @@ def test_runtime_review_decide_and_daily_commands_form_one_raw_free_loop(
     monkeypatch.setattr(dogfood_cli, "_load_config", lambda _path: config)
     monkeypatch.setattr(dogfood_cli, "_ledger", lambda _config: ledger)
     monkeypatch.setattr(dogfood_cli, "_runtime", lambda _config: runtime)
-    monkeypatch.setattr(dogfood_cli, "DpapiCredentialStore", EnrolledCredentials)
+    monkeypatch.setattr(dogfood_cli, "platform_credential_store", EnrolledCredentials)
     monkeypatch.setattr(dogfood_cli, "_watcher_is_active", lambda *_args, **_kwargs: False)
     monkeypatch.setattr(
         dogfood_cli,
@@ -430,7 +430,7 @@ def test_runtime_init_defaults_to_invisible_managed_credentials(
     def fake_open_codex_dogfood(**_kwargs: object) -> Iterator[None]:
         yield None
 
-    monkeypatch.setattr(dogfood_cli, "DpapiCredentialStore", CapturingCredentialStore)
+    monkeypatch.setattr(dogfood_cli, "platform_credential_store", CapturingCredentialStore)
     monkeypatch.setattr(dogfood_cli, "open_codex_dogfood", fake_open_codex_dogfood)
     monkeypatch.delenv("ACLAB_SIGNING_KEY_FILE", raising=False)
     monkeypatch.delenv("ACLAB_SIGNING_KEY_PASSPHRASE", raising=False)
@@ -627,7 +627,7 @@ def test_runtime_init_writes_no_secret_config_and_status_is_local(
             self.enrollments[self.state_root] = (secrets, metadata)
             return metadata
 
-    monkeypatch.setattr(dogfood_cli, "DpapiCredentialStore", NoEnrollmentCredentialStore)
+    monkeypatch.setattr(dogfood_cli, "platform_credential_store", NoEnrollmentCredentialStore)
     before_registration = config_path.read_text(encoding="utf-8")
     refused_registration = runner.invoke(
         app,
@@ -877,7 +877,7 @@ def test_runtime_init_writes_no_secret_config_and_status_is_local(
         def status(self) -> CredentialEnvelopeMetadata:
             return metadata
 
-    monkeypatch.setattr(dogfood_cli, "DpapiCredentialStore", FakeCredentialStore)
+    monkeypatch.setattr(dogfood_cli, "platform_credential_store", FakeCredentialStore)
     credential_status = runner.invoke(
         app,
         ["runtime", "credentials", "status", "--config", str(config_path)],

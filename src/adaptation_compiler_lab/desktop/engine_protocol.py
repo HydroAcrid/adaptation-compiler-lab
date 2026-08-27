@@ -28,7 +28,7 @@ from adaptation_compiler_lab.desktop.models import (
     SuggestionDecisionRequestV1,
     SuggestionSummaryV1,
 )
-from adaptation_compiler_lab.domain import FrozenModel, NonEmptyStr, Sha256Digest
+from adaptation_compiler_lab.domain import FrozenModel, NonEmptyStr, Scope, Sha256Digest
 from adaptation_compiler_lab.modes import FRONTEND_STUDIO_MODE, evaluate_frontend_studio_mode
 from adaptation_compiler_lab.portability import (
     EncryptedProfileEnvelope,
@@ -946,18 +946,17 @@ def build_router(
 
     if config_path is None:
         return EngineProtocolRouter(None, None)
-    from adaptation_compiler_lab.desktop.platform import platform_paths
+    from adaptation_compiler_lab.desktop.platform import platform_paths, product_preferences_store
     from adaptation_compiler_lab.desktop.portability_service import LocalProfilePortabilityService
     from adaptation_compiler_lab.desktop.preferences import (
         DesktopPreferences,
-        LocalDesktopPreferencesStore,
     )
     from adaptation_compiler_lab.desktop.service import (
         CodexDogfoodDesktopBackend,
         DesktopApplicationService,
     )
 
-    preferences_store = LocalDesktopPreferencesStore(platform_paths().config_root)
+    preferences_store = product_preferences_store(platform_paths())
     try:
         preferences = preferences_store.load()
     except (OSError, ValueError):

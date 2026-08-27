@@ -1,7 +1,8 @@
 # Temper native product completion
 
-Status: native onboarding and the everyday governed React loop are implemented; credential
-parity, React/Qt parity, and Apple Silicon phases remain in the continuous completion sequence.
+Status: native onboarding, the everyday governed React loop, and platform credential parity are
+implemented; React/Qt parity and Apple Silicon packaging remain in the continuous completion
+sequence.
 
 ## Product boundary
 
@@ -42,12 +43,10 @@ stale-state protected.
 
 ## Continuous sequence
 
-1. Introduce the platform credential-store abstraction, preserve DPAPI compatibility, and add
-   fail-closed Security.framework Keychain support plus preferences/path migration.
-2. Remove Qt only after React/Tauri reaches application-service and recovery parity.
-3. Build and smoke-test unsigned internal Apple Silicon `.app` and `.dmg` candidates on an arm64
+1. Remove Qt only after React/Tauri reaches application-service and recovery parity.
+2. Build and smoke-test unsigned internal Apple Silicon `.app` and `.dmg` candidates on an arm64
    clean runner while keeping the default trusted policy closed.
-4. Add genuine publisher signing and notarization only when external installer distribution is
+3. Add genuine publisher signing and notarization only when external installer distribution is
    authorized.
 
 ## Phase 2: everyday governed loop
@@ -70,5 +69,29 @@ Implemented:
 
 React no longer maintains a second native suggestion or adaptation state. Browser routes remain
 explicit synthetic scenes; installed Tauri state comes entirely from the local engine.
+
+## Phase 3: platform credential parity
+
+Implemented:
+
+- one `PlatformCredentialStore` contract used by setup and recovery operations;
+- immutable read compatibility for Windows DPAPI metadata v1.0 and v1.1 metadata for new Windows
+  and macOS enrollments;
+- unchanged CurrentUser DPAPI protection with plaintext carried only through the fixed PowerShell
+  operation's standard input;
+- native macOS generic-password storage through Security.framework FFI, without the `security`
+  command-line tool or a plaintext fallback;
+- one Keychain value containing both managed keys and an embedded subject/configuration/signer
+  binding, plus raw-free local metadata and protected-payload digest verification;
+- fail-closed Keychain status, unlock, atomic rebind with rollback, revocation, cross-subject
+  denial, and external-change detection;
+- an exact macOS CI round trip that uses a unique temporary Keychain service and deletes it; and
+- desktop preferences v1.1 plus Temper-branded new-install paths, while reading historical
+  AdaptationCompiler preferences and preserving their governed runtime pointers without moving
+  raw evidence.
+
+Learning, telemetry, decision notifications, and launch at login remain off when absent from old
+preferences. A locked or unavailable native credential store disables mutations rather than
+falling back to environment variables, renderer IPC, repository files, or plaintext storage.
 
 The sealed deferred Milestone 6 external-validation study remains outside this work and unchanged.

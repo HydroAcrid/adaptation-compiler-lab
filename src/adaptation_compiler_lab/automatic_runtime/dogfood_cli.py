@@ -36,8 +36,8 @@ from adaptation_compiler_lab.automatic_runtime.codex_host import (
 )
 from adaptation_compiler_lab.automatic_runtime.credentials import (
     CredentialStoreError,
-    DpapiCredentialStore,
     RuntimeSecrets,
+    platform_credential_store,
 )
 from adaptation_compiler_lab.automatic_runtime.gate import (
     CodexDogfoodGateReport,
@@ -45,7 +45,7 @@ from adaptation_compiler_lab.automatic_runtime.gate import (
 )
 from adaptation_compiler_lab.automatic_runtime.gateway_ledger import GatewayLedger
 from adaptation_compiler_lab.automatic_runtime.gateway_models import (
-    CredentialEnvelopeMetadata,
+    CredentialEnvelopeMetadataRecord,
     GatewaySession,
     GatewaySessionStatus,
     GatewayTurnReceipt,
@@ -686,7 +686,7 @@ def _replace_config_with_credential_rebind(
 ) -> None:
     """Atomically replace config and roll back if an enrolled envelope cannot rebind."""
 
-    credential_store = DpapiCredentialStore(current.state_root)
+    credential_store = platform_credential_store(current.state_root)
     enrolled = credential_store.status()
     _write_config(path, updated)
     if enrolled is not None:
@@ -789,7 +789,7 @@ def _gateway_ledger(config: CodexDogfoodLocalConfig) -> GatewayLedger:
 
 
 def _runtime_secrets(config: CodexDogfoodLocalConfig) -> RuntimeSecrets:
-    store = DpapiCredentialStore(config.state_root)
+    store = platform_credential_store(config.state_root)
     metadata = store.status()
     if metadata is None:
         return RuntimeSecrets.from_environment()
@@ -802,7 +802,7 @@ def _runtime_secrets(config: CodexDogfoodLocalConfig) -> RuntimeSecrets:
 
 def _enrollment_binding_digest(
     config: CodexDogfoodLocalConfig,
-    metadata: CredentialEnvelopeMetadata,
+    metadata: CredentialEnvelopeMetadataRecord,
 ) -> Sha256Digest:
     if metadata.config_digest == config.credential_binding_digest:
         return config.credential_binding_digest
@@ -1287,7 +1287,7 @@ def initialize_codex_dogfood(
         config_path.write_text(canonical_json(config) + "\n", encoding="utf-8")
         config_path.chmod(0o600)
         if credential_mode == "managed":
-            DpapiCredentialStore(config.state_root).enroll(
+            platform_credential_store(config.state_root).enroll(
                 secrets,
                 subject_id=config.subject_id,
                 config_digest=config.credential_binding_digest,
@@ -2028,7 +2028,7 @@ def load_terminal_alpha_snapshot(
         subject_id=config.subject_id,
         generated_at=observed_at,
         detector_mode=config.feedback_detector_mode,
-        credential_enrolled=DpapiCredentialStore(config.state_root).status() is not None,
+        credential_enrolled=platform_credential_store(config.state_root).status() is not None,
         watcher_active=_watcher_is_active(config, observed_at=observed_at),
     )
     review_mode = review_mode.model_copy(
@@ -2614,7 +2614,7 @@ def rebootstrap_runtime_credentials(
                 "rebootstrap requires --confirm-lost-credentials because prior ciphertext "
                 "will not be copied or recoverable"
             )
-        if DpapiCredentialStore(predecessor.state_root).status() is not None:
+        if platform_credential_store(predecessor.state_root).status() is not None:
             raise CredentialStoreError(
                 "predecessor credential enrollment still exists; unlock or revoke it explicitly"
             )
@@ -2709,7 +2709,7 @@ def rebootstrap_runtime_credentials(
         )
         successor_config_path = state / "config.json"
         _write_config(successor_config_path, successor)
-        DpapiCredentialStore(state).enroll(
+        platform_credential_store(state).enroll(
             secrets,
             subject_id=successor.subject_id,
             config_digest=successor.credential_binding_digest,
@@ -2790,7 +2790,7 @@ def enroll_runtime_credentials(config_path: ConfigOption) -> None:
         # Validate every external dependency before protecting its locator and passphrase.
         secrets.private_key(workspace_root=config.repository_root)
         secrets.raw_encryption_key(workspace_root=config.repository_root)
-        metadata = DpapiCredentialStore(config.state_root).enroll(
+        metadata = platform_credential_store(config.state_root).enroll(
             secrets,
             subject_id=config.subject_id,
             config_digest=config.credential_binding_digest,
@@ -2807,7 +2807,7 @@ def show_runtime_credential_status(config_path: ConfigOption) -> None:
 
     try:
         config = _load_config(config_path)
-        metadata = DpapiCredentialStore(config.state_root).status()
+        metadata = platform_credential_store(config.state_root).status()
     except (OSError, ValueError) as error:
         _fail(str(error))
     typer.echo(
@@ -2826,7 +2826,7 @@ def revoke_runtime_credentials(config_path: ConfigOption) -> None:
 
     try:
         config = _load_config(config_path)
-        removed = DpapiCredentialStore(config.state_root).revoke()
+        removed = platform_credential_store(config.state_root).revoke()
     except (OSError, ValueError) as error:
         _fail(str(error))
     typer.echo(canonical_json({"revoked": removed}))
@@ -2865,7 +2865,7 @@ def execute_runtime_watcher(
     """Run the restart-safe watcher without crossing through Typer presentation code."""
 
     config = _load_config(config_path)
-    if DpapiCredentialStore(config.state_root).status() is None:
+    if platform_credential_store(config.state_root).status() is None:
         raise CredentialStoreError("watcher requires explicit DPAPI credential enrollment")
     watcher = AutomaticRuntimeWatcher(
         poll=lambda: _execute_poll(
@@ -2893,7 +2893,7 @@ def install_runtime_watcher(config_path: ConfigOption) -> None:
 
     try:
         config = _load_config(config_path)
-        if DpapiCredentialStore(config.state_root).status() is None:
+        if platform_credential_store(config.state_root).status() is None:
             raise CredentialStoreError("watcher installation requires credential enrollment")
         runtime_python = (config.repository_root / ".venv" / "bin" / "python3").resolve()
         if not runtime_python.is_file():

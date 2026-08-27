@@ -6,10 +6,12 @@ import shutil
 import sys
 import uuid
 from collections.abc import Callable
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from time import monotonic
+from typing import Literal
 
 from adaptation_compiler_lab.automatic_runtime.codex_dogfood import (
     DEFAULT_CODEX_DOGFOOD_SCHEMA_ROOT,
@@ -17,8 +19,10 @@ from adaptation_compiler_lab.automatic_runtime.codex_dogfood import (
     open_codex_dogfood,
 )
 from adaptation_compiler_lab.automatic_runtime.credentials import (
-    DpapiCredentialStore,
+    CredentialStoreError,
+    PlatformCredentialStore,
     RuntimeSecrets,
+    platform_credential_store,
 )
 from adaptation_compiler_lab.automatic_runtime.dogfood_cli import (
     CodexDogfoodLocalConfig,
@@ -49,7 +53,11 @@ from adaptation_compiler_lab.desktop.models import (
     SetupCompletionReceiptV1,
     SetupSnapshotV1,
 )
-from adaptation_compiler_lab.desktop.platform import PlatformPaths, platform_paths
+from adaptation_compiler_lab.desktop.platform import (
+    PlatformPaths,
+    platform_paths,
+    product_preferences_store,
+)
 from adaptation_compiler_lab.desktop.preferences import (
     DesktopPreferences,
     LocalDesktopPreferencesStore,
@@ -91,7 +99,7 @@ class DesktopSetupApplicationService:
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self._paths = paths or platform_paths()
-        self._preferences = LocalDesktopPreferencesStore(self._paths.config_root)
+        self._preferences = product_preferences_store(self._paths)
         self._inspector = inspector or AgentConnectionInspector(
             platform_name="win32" if self._paths.platform == "windows" else sys.platform
         )
@@ -460,8 +468,9 @@ class DesktopSetupApplicationService:
         config_path = state / "config.json"
         config_path.write_text(canonical_json(config) + "\n", encoding="utf-8")
         config_path.chmod(0o600)
+        credential_store = self._credential_store(state)
         try:
-            DpapiCredentialStore(state).enroll(
+            credential_store.enroll(
                 secrets,
                 subject_id=subject_id,
                 config_digest=config.credential_binding_digest,
@@ -469,6 +478,8 @@ class DesktopSetupApplicationService:
             )
             _ledger(config).initialize(initial_runtime_state(policy))
         except BaseException:
+            with suppress(CredentialStoreError):
+                credential_store.revoke()
             self._cleanup_failed_runtime(state)
             raise
         return config_path, SetupCompletionReceiptV1(
@@ -491,7 +502,7 @@ class DesktopSetupApplicationService:
     def _summarize_config(self, path: Path) -> ExistingInstallationSummary:
         config = _load_config(path)
         _verify_current_policy(config, effective_at=self._clock())
-        enrolled = DpapiCredentialStore(config.state_root).status() is not None
+        enrolled = self._credential_store(config.state_root).status() is not None
         return ExistingInstallationSummary(
             signer_fingerprint=config.signer_identity.key_fingerprint,
             project_count=len(config.projects),
@@ -501,24 +512,57 @@ class DesktopSetupApplicationService:
 
     def _secure_store(self, preferences: DesktopPreferences) -> SecureStoreStatus:
         platform = self._paths.platform
+        protector: Literal[
+            "windows-dpapi-current-user",
+            "macos-keychain-security-framework",
+            "unavailable",
+        ]
         if platform == "macos":
+            protector = "macos-keychain-security-framework"
+        elif platform == "windows":
+            protector = "windows-dpapi-current-user"
+        else:
+            protector = "unavailable"
+        if platform not in {"macos", "windows"}:
             return SecureStoreStatus(
                 platform=platform,
-                protector="macos-keychain-current-user",
-                status="not_created" if preferences.runtime_config_path is None else "unavailable",
-            )
-        if platform != "windows":
-            return SecureStoreStatus(
-                platform=platform,
-                protector="unavailable",
+                protector=protector,
                 status="unavailable",
             )
-        existing = self._existing(preferences)
+        path = preferences.runtime_config_path
+        if path is None or not path.is_file():
+            return SecureStoreStatus(
+                platform=platform,
+                protector=protector,
+                status="not_created",
+            )
+        try:
+            config = _load_config(path)
+            ready = self._credential_store(config.state_root).status() is not None
+        except CredentialStoreError as error:
+            status: Literal["locked", "unavailable"] = (
+                "locked" if "locked" in str(error).casefold() else "unavailable"
+            )
+            return SecureStoreStatus(
+                platform=platform,
+                protector=protector,
+                status=status,
+            )
+        except (OSError, ValueError):
+            return SecureStoreStatus(
+                platform=platform,
+                protector=protector,
+                status="unavailable",
+            )
         return SecureStoreStatus(
             platform=platform,
-            protector="windows-dpapi-current-user",
-            status="ready" if existing and existing.secure_store_ready else "not_created",
+            protector=protector,
+            status="ready" if ready else "not_created",
         )
+
+    def _credential_store(self, state_root: Path) -> PlatformCredentialStore:
+        selected = {"windows": "win32", "macos": "darwin"}.get(self._paths.platform, sys.platform)
+        return platform_credential_store(state_root, platform_name=selected)
 
     def _purge_projects(self) -> None:
         cutoff = monotonic() - SETUP_PREVIEW_TTL_SECONDS

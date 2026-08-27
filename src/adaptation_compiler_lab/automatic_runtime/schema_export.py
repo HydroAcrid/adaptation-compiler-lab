@@ -11,6 +11,7 @@ from adaptation_compiler_lab.automatic_runtime.gate import CodexDogfoodGateRepor
 from adaptation_compiler_lab.automatic_runtime.gateway_models import (
     ChangeApplicationReceipt,
     CredentialEnvelopeMetadata,
+    CredentialEnvelopeMetadataV1_1,
     GatewayInstrumentMetrics,
     GatewaySession,
     GatewayTurnReceipt,
@@ -102,6 +103,7 @@ _MODELS: dict[str, type[BaseModel]] = {
     "codex_dogfood_gate_report": CodexDogfoodGateReport,
     "composed_runtime_release": ComposedRuntimeRelease,
     "credential_envelope_metadata": CredentialEnvelopeMetadata,
+    "credential_envelope_metadata_v1_1": CredentialEnvelopeMetadataV1_1,
     "change_application_receipt": ChangeApplicationReceipt,
     "gateway_session": GatewaySession,
     "gateway_instrument_metrics": GatewayInstrumentMetrics,
