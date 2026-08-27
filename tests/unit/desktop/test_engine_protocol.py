@@ -310,6 +310,90 @@ def test_mode_run_is_bound_to_snapshot_and_forwards_exact_mode_scope() -> None:
     )
 
 
+def test_review_decision_is_digest_bound_idempotent_and_strictly_allowlisted() -> None:
+    digest = f"sha256:{'a' * 64}"
+    proposal_digest = f"sha256:{'b' * 64}"
+    service = MagicMock()
+    snapshot = MagicMock()
+    snapshot.content_digest = digest
+    service.load.return_value = snapshot
+    service.approve.return_value = ActionResult(
+        action="approve",
+        ok=True,
+        code="ok",
+        message="Saved.",
+        snapshot_digest=digest,
+    )
+    router = EngineProtocolRouter(cast(Any, service))
+    request = EngineRequest(
+        protocol_version=PROTOCOL_VERSION,
+        request_id="review-request-1",
+        method="review.decide",
+        params={
+            "queue_id": "review-1",
+            "proposal_digest": proposal_digest,
+            "decision": "keep_suggested",
+        },
+        expected_snapshot_digest=digest,
+        idempotency_key="review-click-1",
+    )
+
+    first = router.handle(request)
+    replay = router.handle(request.model_copy(update={"request_id": "review-request-2"}))
+    tampered = router.handle(
+        request.model_copy(
+            update={
+                "request_id": "review-request-3",
+                "params": {**request.params, "unexpected": True},
+            }
+        )
+    )
+
+    assert first.ok is True
+    assert first.result is not None
+    assert first.result["target_id"] == "review-1"
+    assert first.result["raw_payloads_exposed"] is False
+    assert replay.ok is True
+    assert replay.request_id == "review-request-2"
+    assert tampered.ok is False
+    assert tampered.error is not None
+    assert tampered.error.code == "idempotency_conflict"
+    service.approve.assert_called_once_with(
+        queue_id="review-1",
+        proposal_digest=proposal_digest,
+        scope=None,
+    )
+
+
+def test_governed_mutations_refuse_stale_snapshots_before_side_effects() -> None:
+    current_digest = f"sha256:{'c' * 64}"
+    service = MagicMock()
+    snapshot = MagicMock()
+    snapshot.content_digest = current_digest
+    service.load.return_value = snapshot
+    router = EngineProtocolRouter(cast(Any, service))
+
+    response = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="stale-feedback",
+            method="feedback.record",
+            params={
+                "activation_id": "activation-1",
+                "delivery_receipt_digest": f"sha256:{'d' * 64}",
+                "outcome": "helped",
+            },
+            expected_snapshot_digest=f"sha256:{'e' * 64}",
+            idempotency_key="feedback-click-1",
+        )
+    )
+
+    assert response.ok is False
+    assert response.error is not None
+    assert response.error.code == "stale_snapshot"
+    service.feedback.assert_not_called()
+
+
 def test_stdio_server_handles_malformed_and_valid_frames_without_crashing() -> None:
     valid = _request("system.handshake").model_dump_json()
     source = io.StringIO("not-json\n" + valid + "\n")

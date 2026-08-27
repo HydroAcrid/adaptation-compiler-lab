@@ -7,12 +7,14 @@ import {
   adoptExistingInstallation,
   ENGINE_PROTOCOL_VERSION,
   exportProfile,
+  decideEngineSuggestion,
   isTauriRuntime,
   loadEngineSnapshot,
   loadModes,
   loadProfileImportPreview,
   previewExistingInstallation,
   runModeTask,
+  updateEnginePreferences,
 } from "./engine";
 
 describe("Tauri engine boundary", () => {
@@ -48,12 +50,23 @@ describe("Tauri engine boundary", () => {
         request_id: "two",
         ok: true,
         result: {
-          snapshot_version: "1.0.0",
+          snapshot_version: "1.1.0",
           product_name: "Temper",
           health: "ready",
           background_enabled: true,
           aggregate_reporting_enabled: false,
           projects: [],
+          consent: {
+            effective_at: "2026-08-24T00:00:00Z",
+            expires_at: "2026-09-23T00:00:00Z",
+            retention_days: 30,
+            days_remaining: 27,
+            renewal_required: false,
+          },
+          suggestions: [],
+          adaptations: [],
+          activation_feedback: [],
+          recent_undos: [],
           generated_at: "2026-08-24T00:00:00Z",
           raw_payloads_exposed: false,
           terminal: {
@@ -286,6 +299,113 @@ describe("Tauri engine boundary", () => {
       modeId: "frontend-studio",
       projectId: "kairn",
       task: "Refine the settings page",
+    });
+  });
+
+  it("binds a governed review decision without sending evidence or paths", async () => {
+    invoke.mockResolvedValueOnce({
+      protocol_version: ENGINE_PROTOCOL_VERSION,
+      request_id: "one",
+      ok: true,
+      result: {
+        receipt_version: "1.0.0",
+        action: "approve",
+        target_id: "review-1",
+        status: "applied",
+        code: "ok",
+        message: "Saved.",
+        resulting_snapshot_digest: "sha256:" + "c".repeat(64),
+        raw_payloads_exposed: false,
+      },
+      error: null,
+      snapshot_digest: "sha256:" + "c".repeat(64),
+    });
+
+    await decideEngineSuggestion(
+      {
+        summary_version: "1.0.0",
+        review_number: 1,
+        queue_id: "review-1",
+        proposal_digest: "sha256:" + "a".repeat(64),
+        signal_kind: "preference",
+        proposed_behavior: "Explain purpose first.",
+        affected_artifact_id: null,
+        route: "preference",
+        layer: "permanent_profile",
+        suggested_scope: {
+          subject_ids: ["kevin"],
+          workspace_ids: [],
+          project_ids: [],
+          repository_ids: [],
+          task_classes: [],
+          target_families: [],
+          environment_ids: [],
+          activation_conditions: [],
+          exclusions: [],
+          valid_from: null,
+          valid_until: null,
+        },
+        reason_summary: ["Direct user preference."],
+        evidence_digest: "sha256:" + "d".repeat(64),
+        consent_digest: "sha256:" + "e".repeat(64),
+        capture_digest: "sha256:" + "f".repeat(64),
+        available_actions: [
+          "keep_suggested",
+          "keep_project",
+          "keep_narrowed",
+          "ignore",
+        ],
+        created_at: "2026-08-27T00:00:00Z",
+        raw_payloads_exposed: false,
+      },
+      "keep_suggested",
+      "sha256:" + "b".repeat(64),
+      "review-click-1",
+    );
+
+    expect(invoke).toHaveBeenCalledWith("review_decide", {
+      decision: "keep_suggested",
+      expectedSnapshotDigest: "sha256:" + "b".repeat(64),
+      idempotencyKey: "review-click-1",
+      projectId: null,
+      proposalDigest: "sha256:" + "a".repeat(64),
+      queueId: "review-1",
+      refinedScope: null,
+    });
+    expect(JSON.stringify(invoke.mock.calls)).not.toContain("evidence_digest");
+  });
+
+  it("persists only the two allowlisted local observation preferences", async () => {
+    invoke.mockResolvedValueOnce({
+      protocol_version: ENGINE_PROTOCOL_VERSION,
+      request_id: "one",
+      ok: true,
+      result: {
+        receipt_version: "1.0.0",
+        action: "preferences",
+        target_id: "local-preferences",
+        status: "applied",
+        code: "ok",
+        message: "Saved.",
+        resulting_snapshot_digest: "sha256:" + "c".repeat(64),
+        raw_payloads_exposed: false,
+      },
+      error: null,
+      snapshot_digest: "sha256:" + "c".repeat(64),
+    });
+
+    await updateEnginePreferences(
+      true,
+      false,
+      "sha256:" + "b".repeat(64),
+      "preferences-click-1",
+    );
+
+    expect(invoke).toHaveBeenCalledWith("preferences_update", {
+      aggregateReportingEnabled: false,
+      backgroundEnabled: true,
+      expectedSnapshotDigest: "sha256:" + "b".repeat(64),
+      idempotencyKey: "preferences-click-1",
     });
   });
 });

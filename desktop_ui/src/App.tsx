@@ -16,10 +16,16 @@ import { Shell } from "./components/Shell";
 import { suggestions } from "./data/demo";
 import {
   isTauriRuntime,
+  decideEngineSuggestion,
   loadEngineHandshake,
   loadEngineSnapshot,
   loadModes,
   loadSetupSnapshot,
+  recordEngineFeedback,
+  revokeEngineAdaptation,
+  undoEngineAdaptation,
+  updateEnginePreferences,
+  type EngineSuggestion,
   type EngineDesktopSnapshot,
   type EngineSetupSnapshot,
 } from "./engine";
@@ -94,9 +100,14 @@ export default function App() {
     nativeRuntime ? [] : browserModes,
   );
   const [engineError, setEngineError] = useState<string | null>(null);
+  const displayedSuggestions = engineSnapshot
+    ? engineSnapshot.suggestions.map((item) =>
+        suggestionFromEngine(item, engineSnapshot),
+      )
+    : suggestionQueue;
   const selectedSuggestion =
-    suggestionQueue.find((item) => item.id === selectedSuggestionId) ??
-    suggestionQueue[0];
+    displayedSuggestions.find((item) => item.id === selectedSuggestionId) ??
+    displayedSuggestions[0];
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
@@ -185,7 +196,7 @@ export default function App() {
       : "Needs review",
   }));
   const liveCoreItems = engineSnapshot
-    ? engineSnapshot.terminal.active_adaptations.map((item) =>
+    ? engineSnapshot.adaptations.map((item) =>
         coreItemFromEngine(item, engineSnapshot),
       )
     : undefined;
@@ -200,8 +211,47 @@ export default function App() {
     setReviewOpen(true);
   }
 
-  function decide(decision: SuggestionDecision) {
+  async function decide(decision: SuggestionDecision) {
     if (!selectedSuggestion) return;
+    if (nativeRuntime && engineSnapshot && snapshotDigest) {
+      const suggestion = engineSnapshot.suggestions.find(
+        (item) => item.queue_id === selectedSuggestion.id,
+      );
+      if (!suggestion) return;
+      const projectId = projectIdForSuggestion(
+        suggestion,
+        engineSnapshot,
+        activeWorkspace,
+      );
+      try {
+        const receipt = await decideEngineSuggestion(
+          suggestion,
+          decision === "suggested"
+            ? suggestion.signal_kind === "revocation"
+              ? "approve_revocation"
+              : "keep_suggested"
+            : decision === "project"
+              ? "keep_project"
+              : suggestion.signal_kind === "revocation"
+                ? "reject_revocation"
+                : "ignore",
+          snapshotDigest,
+          crypto.randomUUID(),
+          decision === "project" && projectId ? { projectId } : {},
+        );
+        setReviewOpen(false);
+        setScreen(decision === "ignore" ? "today" : "core");
+        await refreshAfterNativeAction(receipt.message);
+      } catch (error: unknown) {
+        setReviewOpen(false);
+        await refreshAfterNativeAction(
+          error instanceof Error
+            ? error.message
+            : "Temper could not safely save that decision.",
+        );
+      }
+      return;
+    }
     const remaining = suggestionQueue.filter(
       (item) => item.id !== selectedSuggestion.id,
     );
@@ -219,6 +269,95 @@ export default function App() {
           ? `Adaptation kept for ${selectedSuggestion.sourceProject} only.`
           : "Suggestion ignored. Nothing changed.",
     );
+  }
+
+  async function recordFeedback(value: FeedbackValue) {
+    if (!nativeRuntime || !engineSnapshot || !snapshotDigest) {
+      setFeedback(value);
+      return;
+    }
+    const activation = engineSnapshot.activation_feedback[0];
+    if (!activation) return;
+    try {
+      const receipt = await recordEngineFeedback(
+        activation,
+        value,
+        snapshotDigest,
+        crypto.randomUUID(),
+      );
+      setFeedback(value);
+      await refreshAfterNativeAction(receipt.message);
+    } catch (error: unknown) {
+      await refreshAfterNativeAction(
+        error instanceof Error
+          ? error.message
+          : "Temper could not safely record that feedback.",
+      );
+    }
+  }
+
+  async function revokeAdaptation(artifactId: string) {
+    if (!engineSnapshot || !snapshotDigest) return;
+    const adaptation = engineSnapshot.adaptations.find(
+      (item) => item.artifact_id === artifactId,
+    );
+    if (!adaptation) return;
+    try {
+      const receipt = await revokeEngineAdaptation(
+        adaptation,
+        snapshotDigest,
+        crypto.randomUUID(),
+      );
+      await refreshAfterNativeAction(receipt.message);
+    } catch (error: unknown) {
+      await refreshAfterNativeAction(
+        error instanceof Error
+          ? error.message
+          : "Temper could not safely revoke that adaptation.",
+      );
+    }
+  }
+
+  async function undoRecentAdaptation() {
+    if (!engineSnapshot || !snapshotDigest) return;
+    const undo = engineSnapshot.recent_undos[0];
+    if (!undo) return;
+    try {
+      const receipt = await undoEngineAdaptation(
+        undo,
+        snapshotDigest,
+        crypto.randomUUID(),
+      );
+      await refreshAfterNativeAction(receipt.message);
+    } catch (error: unknown) {
+      await refreshAfterNativeAction(
+        error instanceof Error
+          ? error.message
+          : "That undo is no longer available.",
+      );
+    }
+  }
+
+  async function updateGovernedPreferences(
+    learningEnabled: boolean,
+    reportingEnabled: boolean,
+  ) {
+    if (!engineSnapshot || !snapshotDigest) return;
+    try {
+      const receipt = await updateEnginePreferences(
+        learningEnabled,
+        reportingEnabled,
+        snapshotDigest,
+        crypto.randomUUID(),
+      );
+      await refreshAfterNativeAction(receipt.message);
+    } catch (error: unknown) {
+      await refreshAfterNativeAction(
+        error instanceof Error
+          ? error.message
+          : "Temper could not safely save that setting.",
+      );
+    }
   }
 
   async function refreshAfterNativeAction(message: string) {
@@ -270,12 +409,12 @@ export default function App() {
           <TodayPage
             automaticLearning={automaticLearning}
             feedback={feedback}
-            onFeedback={setFeedback}
+            onFeedback={recordFeedback}
             onOpenCore={() => navigate("core")}
             onReview={reviewSuggestion}
             workspace={activeWorkspace}
             selectedSuggestionId={selectedSuggestion?.id ?? null}
-            suggestions={suggestionQueue}
+            suggestions={displayedSuggestions}
             liveSummary={
               engineSnapshot
                 ? {
@@ -313,7 +452,10 @@ export default function App() {
             initialItems={liveCoreItems}
             key={`${activeWorkspace}-${snapshotDigest ?? "browser"}`}
             nativeRuntime={nativeRuntime}
+            onRevoke={revokeAdaptation}
+            onUndo={undoRecentAdaptation}
             onNotice={setToast}
+            recentUndo={engineSnapshot?.recent_undos[0]}
             snapshotDigest={snapshotDigest}
           />
         ) : null}
@@ -350,10 +492,16 @@ export default function App() {
           <SettingsPage
             advancedMode={advancedMode}
             automaticLearning={automaticLearning}
+            backgroundLearning={engineSnapshot?.background_enabled ?? false}
+            nativeRuntime={nativeRuntime}
             onAdvancedModeChange={setAdvancedMode}
             onAutomaticLearningChange={setAutomaticLearning}
+            onGovernedPreferencesChange={updateGovernedPreferences}
             onThemeChange={setTheme}
             theme={theme}
+            telemetryEnabled={
+              engineSnapshot?.aggregate_reporting_enabled ?? false
+            }
           />
         ) : null}
         {screen === "advanced" ? <AdvancedPage /> : null}
@@ -414,7 +562,7 @@ const browserModes: CapabilityModeSummary[] = [
 ];
 
 function coreItemFromEngine(
-  item: EngineDesktopSnapshot["terminal"]["active_adaptations"][number],
+  item: EngineDesktopSnapshot["adaptations"][number],
   snapshot: EngineDesktopSnapshot,
 ): CoreItem {
   const projectNames = item.scope.project_ids.map(
@@ -430,6 +578,63 @@ function coreItemFromEngine(
     sourceSummary: `Approved from ${item.evidence_count} supporting source${item.evidence_count === 1 ? "" : "s"}`,
     title: item.intent,
   };
+}
+
+function suggestionFromEngine(
+  item: EngineSuggestion,
+  snapshot: EngineDesktopSnapshot,
+): Suggestion {
+  const projectNames = item.suggested_scope.project_ids.map(
+    (projectId) =>
+      snapshot.projects.find((project) => project.project_id === projectId)
+        ?.display_name ?? projectId,
+  );
+  const affected = item.affected_artifact_id
+    ? snapshot.adaptations.find(
+        (adaptation) => adaptation.artifact_id === item.affected_artifact_id,
+      )
+    : null;
+  return {
+    authority: "Approved user feedback",
+    automationDisposition: "review-required",
+    automationReason: "No learning is approved without a governed decision.",
+    behavior:
+      item.proposed_behavior ??
+      `Remove ${affected?.intent ?? "the affected adaptation"}`,
+    capturedAt: new Date(item.created_at).toLocaleString(),
+    confidenceReason: item.reason_summary.join(" "),
+    digest: item.proposal_digest,
+    evidenceStrength: "promising",
+    explanation:
+      item.reason_summary.join(" ") ||
+      "This proposal came from approved, prospectively captured feedback.",
+    id: item.queue_id,
+    isRevocation: item.signal_kind === "revocation",
+    sourceCount: 1,
+    sourceProject: projectNames[0] ?? "a registered project",
+    suggestedScope: projectNames.length
+      ? projectNames.join(", ")
+      : "All projects",
+  };
+}
+
+function projectIdForSuggestion(
+  suggestion: EngineSuggestion,
+  snapshot: EngineDesktopSnapshot,
+  activeWorkspace: WorkspaceScope,
+): string | null {
+  if (activeWorkspace !== "all") {
+    return (
+      snapshot.projects.find(
+        (project) => project.display_name === activeWorkspace,
+      )?.project_id ?? null
+    );
+  }
+  return (
+    suggestion.suggested_scope.project_ids[0] ??
+    snapshot.projects[0]?.project_id ??
+    null
+  );
 }
 
 function coreKind(value: string): CoreKind {

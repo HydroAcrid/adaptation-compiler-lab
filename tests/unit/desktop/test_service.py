@@ -7,7 +7,11 @@ from datetime import timedelta
 from pathlib import Path
 
 from adaptation_compiler_lab.automatic_runtime.dogfood_cli import FreshCodexTaskResult
-from adaptation_compiler_lab.automatic_runtime.models import RuntimeFeedbackOutcome
+from adaptation_compiler_lab.automatic_runtime.models import (
+    RuntimeFeedbackOutcome,
+    RuntimeNotice,
+    RuntimeNoticeKind,
+)
 from adaptation_compiler_lab.automatic_runtime.product_dogfood import TerminalAlphaSnapshot
 from adaptation_compiler_lab.connectors.pins import RuntimeConformanceError
 from adaptation_compiler_lab.desktop.models import DesktopChangeReview
@@ -18,7 +22,10 @@ from adaptation_compiler_lab.desktop.service import (
 )
 from adaptation_compiler_lab.domain import ApprovalDecision, Scope
 from tests.unit.automatic_runtime.test_runtime import NOW
-from tests.unit.automatic_runtime.test_terminal_alpha import _empty_snapshot
+from tests.unit.automatic_runtime.test_terminal_alpha import (
+    _empty_snapshot,
+    _review_and_active_snapshots,
+)
 
 
 @dataclass
@@ -78,7 +85,14 @@ class FakeDesktopBackend:
     def renew_consent(self) -> None:
         self.renewal_count += 1
 
-    def feedback(self, *, activation_id: str, outcome: RuntimeFeedbackOutcome) -> None:
+    def feedback(
+        self,
+        *,
+        activation_id: str,
+        delivery_receipt_digest: str,
+        outcome: RuntimeFeedbackOutcome,
+    ) -> None:
+        assert delivery_receipt_digest.startswith("sha256:")
         self.feedback_rows.append((activation_id, outcome))
 
     def run_task(
@@ -127,6 +141,93 @@ def test_snapshot_is_raw_free_and_uses_calm_health(tmp_path: Path) -> None:
     assert snapshot.aggregate_reporting_enabled is False
     assert snapshot.raw_payloads_exposed is False
     assert tuple(item.project_id for item in snapshot.projects) == terminal.configured_project_ids
+
+
+def test_snapshot_v11_projects_live_suggestions_adaptations_and_feedback(tmp_path: Path) -> None:
+    pending, active = _review_and_active_snapshots(tmp_path)
+
+    pending_snapshot = DesktopApplicationService(
+        FakeDesktopBackend(pending),
+        background_enabled=True,
+        clock=lambda: NOW + timedelta(minutes=2),
+    ).load()
+    active_snapshot = DesktopApplicationService(
+        FakeDesktopBackend(active),
+        background_enabled=True,
+        clock=lambda: NOW + timedelta(minutes=5),
+    ).load()
+
+    assert pending_snapshot.snapshot_version == "1.1.0"
+    assert len(pending_snapshot.suggestions) == 1
+    assert pending_snapshot.suggestions[0].raw_payloads_exposed is False
+    assert len(active_snapshot.adaptations) == 1
+    assert len(active_snapshot.activation_feedback) == 1
+    assert active_snapshot.adaptations[0].artifact_digest.startswith("sha256:")
+
+
+def test_revoke_and_feedback_require_exact_current_digests(tmp_path: Path) -> None:
+    _pending, active = _review_and_active_snapshots(tmp_path)
+    backend = FakeDesktopBackend(active)
+    service = DesktopApplicationService(
+        backend,
+        background_enabled=True,
+        clock=lambda: NOW + timedelta(minutes=5),
+    )
+    snapshot = service.load()
+    artifact = snapshot.adaptations[0]
+    activation = snapshot.activation_feedback[0]
+
+    refused = service.revoke(
+        artifact_id=artifact.artifact_id,
+        artifact_digest=f"sha256:{'f' * 64}",
+    )
+    recorded = service.feedback(
+        activation_id=activation.activation_id,
+        delivery_receipt_digest=str(activation.delivery_receipt_digest),
+        outcome=RuntimeFeedbackOutcome.HELPED,
+    )
+
+    assert refused.ok is False
+    assert backend.revoked == []
+    assert recorded.ok is True
+    assert backend.feedback_rows == [(activation.activation_id, RuntimeFeedbackOutcome.HELPED)]
+
+
+def test_undo_is_available_for_24_hours_and_binds_the_exact_notice(tmp_path: Path) -> None:
+    _pending, active = _review_and_active_snapshots(tmp_path)
+    artifact_id = active.active_adaptations[0].artifact_id
+    notice = RuntimeNotice(
+        notice_id="notice-desktop-undo",
+        kind=RuntimeNoticeKind.LEARNED,
+        summary="A behavior was added.",
+        undo_artifact_id=artifact_id,
+        created_at=NOW,
+    )
+    review = active.review_mode.model_copy(update={"recent_notices": (notice,)})
+    terminal = active.model_copy(update={"review_mode": review})
+    backend = FakeDesktopBackend(terminal)
+    service = DesktopApplicationService(
+        backend,
+        background_enabled=True,
+        clock=lambda: NOW + timedelta(hours=23),
+    )
+    undo = service.load().recent_undos[0]
+
+    result = service.undo(
+        notice_id=undo.notice_id,
+        notice_digest=str(undo.notice_digest),
+        artifact_id=undo.artifact_id,
+    )
+
+    assert result.ok is True
+    assert backend.revoked == [artifact_id]
+
+    expired = DesktopApplicationService(
+        FakeDesktopBackend(terminal),
+        background_enabled=True,
+        clock=lambda: NOW + timedelta(hours=25),
+    ).load()
+    assert expired.recent_undos == ()
 
 
 def test_expired_consent_fails_closed_in_snapshot(tmp_path: Path) -> None:

@@ -1,8 +1,7 @@
 # Temper native product completion
 
-Status: native onboarding and truthful local connection inspection implemented on
-`codex/temper-native-onboarding`; governed-loop, credential-parity, React-parity, and Apple
-Silicon phases remain in the continuous completion sequence.
+Status: native onboarding and the everyday governed React loop are implemented; credential
+parity, React/Qt parity, and Apple Silicon phases remain in the continuous completion sequence.
 
 ## Product boundary
 
@@ -43,15 +42,33 @@ stale-state protected.
 
 ## Continuous sequence
 
-1. Complete the typed everyday review, narrow-scope, ignore, revoke, undo, feedback, consent,
-   preferences, polling, tray, and notification loop.
-2. Introduce the platform credential-store abstraction, preserve DPAPI compatibility, and add
+1. Introduce the platform credential-store abstraction, preserve DPAPI compatibility, and add
    fail-closed Security.framework Keychain support plus preferences/path migration.
-3. Remove Qt only after React/Tauri reaches application-service and recovery parity.
-4. Build and smoke-test unsigned internal Apple Silicon `.app` and `.dmg` candidates on an arm64
+2. Remove Qt only after React/Tauri reaches application-service and recovery parity.
+3. Build and smoke-test unsigned internal Apple Silicon `.app` and `.dmg` candidates on an arm64
    clean runner while keeping the default trusted policy closed.
-5. Add genuine publisher signing and notarization only when external installer distribution is
+4. Add genuine publisher signing and notarization only when external installer distribution is
    authorized.
 
-The sealed deferred Milestone 6 external-validation study remains outside this work and unchanged.
+## Phase 2: everyday governed loop
 
+Implemented:
+
+- desktop snapshot v1.1 raw-free suggestions, adaptations, activation feedback, and 24-hour undo
+  handles, leaving persisted governed schemas unchanged;
+- multiple live review suggestions with exact proposal/digest decisions, project-only or explicit
+  scope narrowing, ignore, and revocation approval/rejection;
+- exact active-artifact revocation, immutable-notice undo, delivery-receipt feedback, consent
+  renewal, and persistent observation preferences;
+- stale-snapshot rejection, strict parameter allowlists, proposal/artifact/delivery tamper checks,
+  and in-process idempotent replay protection for every mutation;
+- live Core revoke confirmation and recent undo, plus helped/hurt/irrelevant on Today;
+- Rust-owned tray lifecycle and five-minute scheduler that never polls while learning is off or
+  consent is expired; and
+- generic native proposal notifications only when OS permission is already granted, with no raw
+  behavior or evidence text.
+
+React no longer maintains a second native suggestion or adaptation state. Browser routes remain
+explicit synthetic scenes; installed Tauri state comes entirely from the local engine.
+
+The sealed deferred Milestone 6 external-validation study remains outside this work and unchanged.

@@ -14,6 +14,13 @@ unknown method fails closed with a sanitized message.
 
 - `engine_handshake`
 - `snapshot_get`
+- `learning_poll`
+- `review_decide`
+- `adaptation_revoke`
+- `adaptation_undo`
+- `feedback_record`
+- `consent_renew`
+- `preferences_update`
 - `profile_export_preview`
 - `profile_export`
 - `profile_import_preview`
@@ -31,6 +38,17 @@ logged, cached in mutation fingerprints, written to profile files, or returned t
 - `system.handshake` reports protocol, engine version, snapshot-schema digest, and configuration
   state.
 - `snapshot.get` returns the existing raw-free `DesktopApplicationService` snapshot.
+- `learning.poll` performs one bounded poll only while local learning is enabled and consent is
+  current.
+- `review.decide` approves, project-narrows, explicitly narrows, ignores, or resolves a revocation
+  against one exact queue item and proposal digest.
+- `adaptation.revoke` removes one exact active artifact only when its current product digest still
+  matches.
+- `adaptation.undo` uses an immutable notice digest and active artifact ID and expires after 24
+  hours.
+- `feedback.record` binds helped/hurt/irrelevant to one exact activation and delivery receipt.
+- `consent.renew` binds renewal to the currently displayed expiration.
+- `preferences.update` persists only background learning and aggregate reporting switches.
 - `portability.export.preview` builds a signed raw-free preview from the active governed release.
 - `portability.export.create` encrypts and exclusively writes the previewed package.
 - `portability.import.preview` decrypts and verifies one selected profile and returns an opaque
@@ -50,6 +68,18 @@ The Python side exposes the existing presentation-neutral application service; i
 reimplement the compiler or persistence. Browser development remains a synthetic visual showcase,
 while a configured Tauri runtime removes demo state and loads registered projects, Core items, and
 Mode availability from the local engine.
+
+The transient renderer snapshot is `1.1.0`. It adds typed `SuggestionSummaryV1`,
+`AdaptationSummaryV1`, `ActivationFeedbackSummaryV1`, and `RecentUndoSummaryV1` collections while
+retaining the raw-free terminal projection temporarily for Advanced/recovery parity. Persisted
+governed schemas are unchanged. All mutation responses use `MutationReceiptV1`; cached idempotent
+replays return the original result and a conflicting reuse fails closed.
+
+Tauri owns the five-minute scheduler. It reads the exact snapshot before polling, performs no poll
+while learning is off or consent is expired, and sends only generic behavior-free notification
+copy when a new proposal appears and OS permission is already granted. Closing the main window
+hides it to the tray. The tray can reopen Temper, pause/resume learning through the same typed
+preference method, or explicitly quit and tear down the scheduler.
 
 Development can locate the engine with `TEMPER_ENGINE_BINARY` or use
 `python -m adaptation_compiler_lab.desktop.engine_main`. The optional

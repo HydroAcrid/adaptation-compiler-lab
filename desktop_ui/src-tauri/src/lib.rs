@@ -10,11 +10,17 @@ use std::sync::Mutex;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
+use tauri::menu::{Menu, MenuItem};
+use tauri::plugin::PermissionState;
+use tauri::tray::TrayIconBuilder;
+use tauri::{Manager, WindowEvent};
+use tauri_plugin_notification::NotificationExt;
 use uuid::Uuid;
 
 const PROTOCOL_VERSION: &str = "temper-engine-protocol/v1";
 const MAX_FRAME_BYTES: usize = 1_048_576;
 const ENGINE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(15);
+const BACKGROUND_POLL_INTERVAL: Duration = Duration::from_secs(5 * 60);
 const EXPECTED_ENGINE_VERSION: &str = match option_env!("TEMPER_EXPECTED_ENGINE_VERSION") {
     Some(value) => value,
     None => "",
@@ -263,6 +269,16 @@ fn cancelled() -> PublicError {
 
 struct EngineState(Mutex<Option<EngineProcess>>);
 
+struct PollScheduler(Mutex<Option<mpsc::Sender<()>>>);
+
+#[derive(Debug, PartialEq, Eq)]
+struct PollEligibility {
+    background_enabled: bool,
+    consent_current: bool,
+    pending_review_count: u64,
+    aggregate_reporting_enabled: bool,
+}
+
 fn call_engine(
     state: &EngineState,
     method: &str,
@@ -286,6 +302,158 @@ fn call_engine(
     response
 }
 
+fn poll_eligibility(response: &EngineResponse) -> Option<PollEligibility> {
+    if !response.ok {
+        return None;
+    }
+    let value = response.result.as_ref()?;
+    Some(PollEligibility {
+        background_enabled: value.get("background_enabled")?.as_bool()?,
+        consent_current: !value.get("consent")?.get("renewal_required")?.as_bool()?,
+        pending_review_count: value
+            .get("suggestions")?
+            .as_array()?
+            .len()
+            .try_into()
+            .ok()?,
+        aggregate_reporting_enabled: value.get("aggregate_reporting_enabled")?.as_bool()?,
+    })
+}
+
+fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
+fn show_review_notification(app: &tauri::AppHandle) {
+    if app.notification().permission_state().ok() != Some(PermissionState::Granted) {
+        return;
+    }
+    let _ = app
+        .notification()
+        .builder()
+        .title("Temper")
+        .body("A possible adaptation is ready for review.")
+        .show();
+}
+
+fn run_background_poll(app: &tauri::AppHandle) {
+    let state = app.state::<EngineState>();
+    let before = match call_engine(state.inner(), "snapshot.get", json!({}), None, None) {
+        Ok(response) => response,
+        Err(_) => return,
+    };
+    let Some(eligibility) = poll_eligibility(&before) else {
+        return;
+    };
+    if !eligibility.background_enabled || !eligibility.consent_current {
+        return;
+    }
+    let Some(snapshot_digest) = before.snapshot_digest.as_deref() else {
+        return;
+    };
+    let polled = call_engine(
+        state.inner(),
+        "learning.poll",
+        json!({}),
+        Some(snapshot_digest),
+        Some(&Uuid::new_v4().to_string()),
+    );
+    if !matches!(polled, Ok(EngineResponse { ok: true, .. })) {
+        return;
+    }
+    let Ok(after) = call_engine(state.inner(), "snapshot.get", json!({}), None, None) else {
+        return;
+    };
+    let Some(after_eligibility) = poll_eligibility(&after) else {
+        return;
+    };
+    if after_eligibility.pending_review_count > eligibility.pending_review_count {
+        show_review_notification(app);
+    }
+}
+
+fn toggle_learning(app: &tauri::AppHandle) {
+    let state = app.state::<EngineState>();
+    let Ok(snapshot) = call_engine(state.inner(), "snapshot.get", json!({}), None, None) else {
+        return;
+    };
+    let Some(eligibility) = poll_eligibility(&snapshot) else {
+        return;
+    };
+    let Some(snapshot_digest) = snapshot.snapshot_digest.as_deref() else {
+        return;
+    };
+    let _ = call_engine(
+        state.inner(),
+        "preferences.update",
+        json!({
+            "background_enabled": !eligibility.background_enabled,
+            "aggregate_reporting_enabled": eligibility.aggregate_reporting_enabled,
+        }),
+        Some(snapshot_digest),
+        Some(&Uuid::new_v4().to_string()),
+    );
+}
+
+fn stop_scheduler(app: &tauri::AppHandle) {
+    if let Some(scheduler) = app.try_state::<PollScheduler>()
+        && let Ok(mut sender) = scheduler.0.lock()
+        && let Some(stop) = sender.take()
+    {
+        let _ = stop.send(());
+    }
+}
+
+fn install_tray_and_scheduler(app: &mut tauri::App) -> tauri::Result<()> {
+    let open_item = MenuItem::with_id(app, "open", "Open Temper", true, None::<&str>)?;
+    let learning_item = MenuItem::with_id(
+        app,
+        "learning",
+        "Pause / resume learning",
+        true,
+        None::<&str>,
+    )?;
+    let quit_item = MenuItem::with_id(app, "quit", "Quit Temper", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&open_item, &learning_item, &quit_item])?;
+    TrayIconBuilder::with_id("temper-tray")
+        .icon(
+            app.default_window_icon()
+                .cloned()
+                .ok_or_else(|| std::io::Error::other("Temper tray icon is unavailable"))?,
+        )
+        .tooltip("Temper")
+        .menu(&menu)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "open" => show_main_window(app),
+            "learning" => {
+                let handle = app.clone();
+                tauri::async_runtime::spawn_blocking(move || toggle_learning(&handle));
+            }
+            "quit" => {
+                stop_scheduler(app);
+                app.exit(0);
+            }
+            _ => {}
+        })
+        .build(app)?;
+
+    let (stop_sender, stop_receiver) = mpsc::channel();
+    app.manage(PollScheduler(Mutex::new(Some(stop_sender))));
+    let handle = app.handle().clone();
+    thread::spawn(move || {
+        loop {
+            match stop_receiver.recv_timeout(BACKGROUND_POLL_INTERVAL) {
+                Ok(()) | Err(RecvTimeoutError::Disconnected) => break,
+                Err(RecvTimeoutError::Timeout) => run_background_poll(&handle),
+            }
+        }
+    });
+    Ok(())
+}
+
 #[tauri::command]
 fn engine_handshake(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
     call_engine(&state, "system.handshake", json!({}), None, None)
@@ -294,6 +462,150 @@ fn engine_handshake(state: tauri::State<'_, EngineState>) -> Result<EngineRespon
 #[tauri::command]
 fn snapshot_get(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
     call_engine(&state, "snapshot.get", json!({}), None, None)
+}
+
+#[tauri::command]
+fn learning_poll(
+    state: tauri::State<'_, EngineState>,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "learning.poll",
+        json!({}),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+fn review_decide(
+    state: tauri::State<'_, EngineState>,
+    queue_id: String,
+    proposal_digest: String,
+    decision: String,
+    project_id: Option<String>,
+    refined_scope: Option<Value>,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    let mut params = serde_json::Map::from_iter([
+        ("queue_id".to_owned(), json!(queue_id)),
+        ("proposal_digest".to_owned(), json!(proposal_digest)),
+        ("decision".to_owned(), json!(decision)),
+    ]);
+    if let Some(project) = project_id {
+        params.insert("project_id".to_owned(), json!(project));
+    }
+    if let Some(scope) = refined_scope {
+        params.insert("refined_scope".to_owned(), scope);
+    }
+    call_engine(
+        &state,
+        "review.decide",
+        Value::Object(params),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+fn adaptation_revoke(
+    state: tauri::State<'_, EngineState>,
+    artifact_id: String,
+    artifact_digest: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "adaptation.revoke",
+        json!({"artifact_id": artifact_id, "artifact_digest": artifact_digest}),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+fn adaptation_undo(
+    state: tauri::State<'_, EngineState>,
+    notice_id: String,
+    notice_digest: String,
+    artifact_id: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "adaptation.undo",
+        json!({
+            "notice_id": notice_id,
+            "notice_digest": notice_digest,
+            "artifact_id": artifact_id,
+        }),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+fn feedback_record(
+    state: tauri::State<'_, EngineState>,
+    activation_id: String,
+    delivery_receipt_digest: String,
+    outcome: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "feedback.record",
+        json!({
+            "activation_id": activation_id,
+            "delivery_receipt_digest": delivery_receipt_digest,
+            "outcome": outcome,
+        }),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+fn consent_renew(
+    state: tauri::State<'_, EngineState>,
+    current_expires_at: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "consent.renew",
+        json!({"current_expires_at": current_expires_at}),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+fn preferences_update(
+    state: tauri::State<'_, EngineState>,
+    background_enabled: bool,
+    aggregate_reporting_enabled: bool,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "preferences.update",
+        json!({
+            "background_enabled": background_enabled,
+            "aggregate_reporting_enabled": aggregate_reporting_enabled,
+        }),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
 }
 
 #[tauri::command]
@@ -515,10 +827,25 @@ fn mode_run_task(
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .manage(EngineState(Mutex::new(None)))
+        .setup(install_tray_and_scheduler)
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             engine_handshake,
             snapshot_get,
+            learning_poll,
+            review_decide,
+            adaptation_revoke,
+            adaptation_undo,
+            feedback_record,
+            consent_renew,
+            preferences_update,
             setup_status,
             connection_inspect,
             setup_existing_preview,
@@ -614,5 +941,40 @@ mod tests {
 
         assert!(receive_engine_frame(&responses, timeout).is_err());
         assert!(started.elapsed() < Duration::from_secs(1));
+    }
+
+    #[test]
+    fn background_polling_is_disabled_by_learning_or_expired_consent() {
+        fn response(background_enabled: bool, renewal_required: bool) -> EngineResponse {
+            EngineResponse {
+                protocol_version: PROTOCOL_VERSION.to_owned(),
+                request_id: "snapshot".to_owned(),
+                ok: true,
+                result: Some(json!({
+                    "background_enabled": background_enabled,
+                    "aggregate_reporting_enabled": false,
+                    "consent": {"renewal_required": renewal_required},
+                    "suggestions": [],
+                })),
+                error: None,
+                snapshot_digest: Some(format!("sha256:{}", "a".repeat(64))),
+            }
+        }
+
+        let disabled = poll_eligibility(&response(false, false)).expect("eligible shape");
+        let expired = poll_eligibility(&response(true, true)).expect("eligible shape");
+        let enabled = poll_eligibility(&response(true, false)).expect("eligible shape");
+
+        assert!(!disabled.background_enabled);
+        assert!(!expired.consent_current);
+        assert!(enabled.background_enabled && enabled.consent_current);
+    }
+
+    #[test]
+    fn notification_copy_does_not_expose_behavior_or_evidence() {
+        let source = include_str!("lib.rs");
+        assert!(source.contains("A possible adaptation is ready for review."));
+        assert!(!source.contains("evidence_text"));
+        assert!(!source.contains("raw_prompt"));
     }
 }

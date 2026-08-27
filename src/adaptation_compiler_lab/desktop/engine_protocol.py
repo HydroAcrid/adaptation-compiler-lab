@@ -14,11 +14,19 @@ from typing import TYPE_CHECKING, Any, Final, Literal, TextIO
 
 from pydantic import Field
 
+from adaptation_compiler_lab.automatic_runtime.models import RuntimeFeedbackOutcome
 from adaptation_compiler_lab.desktop.models import (
+    ActionResult,
+    ActivationFeedbackSummaryV1,
+    AdaptationSummaryV1,
     DesktopSnapshot,
+    MutationReceiptV1,
     ProjectCandidatePreviewV1,
+    RecentUndoSummaryV1,
     SetupCompletionReceiptV1,
     SetupSnapshotV1,
+    SuggestionDecisionRequestV1,
+    SuggestionSummaryV1,
 )
 from adaptation_compiler_lab.domain import FrozenModel, NonEmptyStr, Sha256Digest
 from adaptation_compiler_lab.modes import FRONTEND_STUDIO_MODE, evaluate_frontend_studio_mode
@@ -244,6 +252,20 @@ class EngineProtocolRouter:
                 result=snapshot.model_dump(mode="json"),
                 snapshot_digest=snapshot.content_digest,
             )
+        if request.method == "learning.poll":
+            return self._run_simple_mutation(request, (), "learning", self._service_poll)
+        if request.method == "review.decide":
+            return self._decide_review(request)
+        if request.method == "adaptation.revoke":
+            return self._revoke_adaptation(request)
+        if request.method == "adaptation.undo":
+            return self._undo_adaptation(request)
+        if request.method == "feedback.record":
+            return self._record_feedback(request)
+        if request.method == "consent.renew":
+            return self._renew_consent(request)
+        if request.method == "preferences.update":
+            return self._update_preferences(request)
         if request.method == "portability.export.preview":
             return self._preview_export(request)
         if request.method == "portability.export.create":
@@ -286,6 +308,228 @@ class EngineProtocolRouter:
                 },
             )
         return self._error(request, "unknown_method", "The requested operation is not supported.")
+
+    def _service_poll(self) -> ActionResult:
+        if self._service is None:
+            raise ValueError
+        return self._service.poll()
+
+    def _run_simple_mutation(
+        self,
+        request: EngineRequest,
+        allowed_params: tuple[str, ...],
+        target_id: str,
+        operation: Callable[[], ActionResult],
+    ) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        _snapshot_digest, fingerprint = checked
+        if set(request.params) != set(allowed_params):
+            return self._error(request, "invalid_params", "The mutation request was invalid.")
+        action = operation()
+        return self._action_response(request, fingerprint, target_id, action)
+
+    def _decide_review(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        _snapshot_digest, fingerprint = checked
+        if self._service is None:
+            return self._not_configured(request)
+        try:
+            allowed = {"queue_id", "proposal_digest", "decision"}
+            decision_name = _required_string(request.params, "decision")
+            if decision_name == "keep_project":
+                allowed.add("project_id")
+            elif decision_name == "keep_narrowed":
+                allowed.add("refined_scope")
+            if set(request.params) != allowed:
+                raise ValueError
+            decision_payload = dict(request.params)
+            if "refined_scope" in decision_payload:
+                decision_payload["refined_scope"] = Scope.model_validate(
+                    decision_payload["refined_scope"], strict=False
+                )
+            decision = SuggestionDecisionRequestV1.model_validate(decision_payload)
+            if decision.decision in {
+                "keep_suggested",
+                "keep_project",
+                "keep_narrowed",
+                "approve_revocation",
+            }:
+                refined_scope = decision.refined_scope
+                if decision.decision == "keep_project":
+                    current = next(
+                        (
+                            item
+                            for item in self._service.load().suggestions
+                            if item.queue_id == decision.queue_id
+                            and item.proposal_digest == decision.proposal_digest
+                        ),
+                        None,
+                    )
+                    if current is None:
+                        raise ValueError
+                    refined_scope = current.suggested_scope.model_copy(
+                        update={"project_ids": (str(decision.project_id),)}
+                    )
+                action = self._service.approve(
+                    queue_id=decision.queue_id,
+                    proposal_digest=str(decision.proposal_digest),
+                    scope=refined_scope,
+                )
+            else:
+                action = self._service.reject(
+                    queue_id=decision.queue_id,
+                    proposal_digest=str(decision.proposal_digest),
+                )
+        except (TypeError, ValueError):
+            return self._error(request, "invalid_params", "The review decision was invalid.")
+        return self._action_response(request, fingerprint, decision.queue_id, action)
+
+    def _revoke_adaptation(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        _snapshot_digest, fingerprint = checked
+        if self._service is None:
+            return self._not_configured(request)
+        try:
+            if set(request.params) != {"artifact_id", "artifact_digest"}:
+                raise ValueError
+            artifact_id = _required_string(request.params, "artifact_id")
+            artifact_digest = _required_string(request.params, "artifact_digest")
+        except ValueError:
+            return self._error(request, "invalid_params", "The revocation request was invalid.")
+        action = self._service.revoke(
+            artifact_id=artifact_id,
+            artifact_digest=artifact_digest,
+        )
+        return self._action_response(request, fingerprint, artifact_id, action)
+
+    def _undo_adaptation(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        _snapshot_digest, fingerprint = checked
+        if self._service is None:
+            return self._not_configured(request)
+        try:
+            if set(request.params) != {"notice_id", "notice_digest", "artifact_id"}:
+                raise ValueError
+            notice_id = _required_string(request.params, "notice_id")
+            notice_digest = _required_string(request.params, "notice_digest")
+            artifact_id = _required_string(request.params, "artifact_id")
+        except ValueError:
+            return self._error(request, "invalid_params", "The undo request was invalid.")
+        action = self._service.undo(
+            notice_id=notice_id,
+            notice_digest=notice_digest,
+            artifact_id=artifact_id,
+        )
+        return self._action_response(request, fingerprint, notice_id, action)
+
+    def _record_feedback(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        _snapshot_digest, fingerprint = checked
+        if self._service is None:
+            return self._not_configured(request)
+        try:
+            if set(request.params) != {
+                "activation_id",
+                "delivery_receipt_digest",
+                "outcome",
+            }:
+                raise ValueError
+            activation_id = _required_string(request.params, "activation_id")
+            delivery_digest = _required_string(request.params, "delivery_receipt_digest")
+            outcome = RuntimeFeedbackOutcome(_required_string(request.params, "outcome"))
+        except ValueError:
+            return self._error(request, "invalid_params", "The feedback request was invalid.")
+        action = self._service.feedback(
+            activation_id=activation_id,
+            delivery_receipt_digest=delivery_digest,
+            outcome=outcome,
+        )
+        return self._action_response(request, fingerprint, activation_id, action)
+
+    def _renew_consent(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        _snapshot_digest, fingerprint = checked
+        if self._service is None:
+            return self._not_configured(request)
+        try:
+            if set(request.params) != {"current_expires_at"}:
+                raise ValueError
+            expires_at = _required_string(request.params, "current_expires_at")
+            if self._service.load().consent.expires_at.isoformat() != expires_at:
+                raise ValueError
+        except ValueError:
+            return self._error(request, "invalid_params", "The consent renewal was invalid.")
+        return self._action_response(
+            request,
+            fingerprint,
+            "local-consent",
+            self._service.renew_consent(),
+        )
+
+    def _update_preferences(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        _snapshot_digest, fingerprint = checked
+        if self._service is None:
+            return self._not_configured(request)
+        if set(request.params) != {"background_enabled", "aggregate_reporting_enabled"}:
+            return self._error(request, "invalid_params", "The preference request was invalid.")
+        background = request.params.get("background_enabled")
+        reporting = request.params.get("aggregate_reporting_enabled")
+        if not isinstance(background, bool) or not isinstance(reporting, bool):
+            return self._error(request, "invalid_params", "The preference request was invalid.")
+        try:
+            current = self._service.set_local_preferences(
+                background_enabled=background,
+                aggregate_reporting_enabled=reporting,
+            )
+        except (OSError, ValueError):
+            return self._error(request, "preferences_failed", "Temper could not save settings.")
+        action = ActionResult(
+            action="preferences",
+            ok=True,
+            code="ok",
+            message="Your settings were saved.",
+            snapshot_digest=current.content_digest,
+        )
+        return self._action_response(request, fingerprint, "local-preferences", action)
+
+    def _action_response(
+        self,
+        request: EngineRequest,
+        fingerprint: Sha256Digest,
+        target_id: str,
+        action: ActionResult,
+    ) -> EngineResponse:
+        if not action.ok or action.snapshot_digest is None:
+            return self._error(request, action.code, action.message)
+        receipt = MutationReceiptV1(
+            action=action.action,
+            target_id=target_id,
+            code=action.code,
+            message=action.message,
+            resulting_snapshot_digest=action.snapshot_digest,
+        )
+        response = EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result=receipt.model_dump(mode="json"),
+            snapshot_digest=action.snapshot_digest,
+        )
+        return self._remember_mutation(request, fingerprint, response)
 
     def _initialize_setup(self, request: EngineRequest) -> EngineResponse:
         if request.expected_snapshot_digest is None or request.idempotency_key is None:
@@ -702,11 +946,32 @@ def build_router(
 
     if config_path is None:
         return EngineProtocolRouter(None, None)
+    from adaptation_compiler_lab.desktop.platform import platform_paths
     from adaptation_compiler_lab.desktop.portability_service import LocalProfilePortabilityService
+    from adaptation_compiler_lab.desktop.preferences import (
+        DesktopPreferences,
+        LocalDesktopPreferencesStore,
+    )
     from adaptation_compiler_lab.desktop.service import (
         CodexDogfoodDesktopBackend,
         DesktopApplicationService,
     )
+
+    preferences_store = LocalDesktopPreferencesStore(platform_paths().config_root)
+    try:
+        preferences = preferences_store.load()
+    except (OSError, ValueError):
+        preferences = DesktopPreferences()
+
+    def save_preferences(background_enabled: bool, reporting_enabled: bool) -> None:
+        preferences_store.save(
+            preferences_store.load().model_copy(
+                update={
+                    "background_enabled": background_enabled,
+                    "aggregate_reporting_enabled": reporting_enabled,
+                }
+            )
+        )
 
     service = DesktopApplicationService(
         CodexDogfoodDesktopBackend(
@@ -716,7 +981,10 @@ def build_router(
                 if predecessor_config_path is None
                 else predecessor_config_path.expanduser().resolve()
             ),
-        )
+        ),
+        background_enabled=preferences.background_enabled,
+        aggregate_reporting_enabled=preferences.aggregate_reporting_enabled,
+        preference_writer=save_preferences,
     )
     return EngineProtocolRouter(
         service,
@@ -771,6 +1039,12 @@ def protocol_schema_models() -> Sequence[type[FrozenModel]]:
         SetupSnapshotV1,
         ProjectCandidatePreviewV1,
         SetupCompletionReceiptV1,
+        SuggestionSummaryV1,
+        SuggestionDecisionRequestV1,
+        AdaptationSummaryV1,
+        ActivationFeedbackSummaryV1,
+        RecentUndoSummaryV1,
+        MutationReceiptV1,
     )
 
 

@@ -540,6 +540,7 @@ def _validate_review_decision_intent(
 def _review_refined_scope(
     scope: Scope,
     *,
+    project_ids: list[str] | None = None,
     task_classes: list[str] | None,
     environment_ids: list[str] | None,
     activation_conditions: list[str] | None,
@@ -549,12 +550,19 @@ def _review_refined_scope(
 
     supplied = any(
         value is not None
-        for value in (task_classes, environment_ids, activation_conditions, exclusions)
+        for value in (
+            project_ids,
+            task_classes,
+            environment_ids,
+            activation_conditions,
+            exclusions,
+        )
     )
     if not supplied:
         return None
     updates: dict[str, tuple[str, ...]] = {}
     for name, values in (
+        ("project_ids", project_ids),
         ("task_classes", task_classes),
         ("environment_ids", environment_ids),
     ):
@@ -2119,6 +2127,7 @@ def resolve_codex_dogfood_review(
     decision: ApprovalDecision,
     proposal_digest: str,
     confirm_future_use: bool = False,
+    refine_project_id: list[str] | None = None,
     refine_task_class: list[str] | None = None,
     refine_environment_id: list[str] | None = None,
     refine_activation_condition: list[str] | None = None,
@@ -2137,6 +2146,7 @@ def resolve_codex_dogfood_review(
         raise AutomaticRuntimeError("review proposal digest changed")
     refined_scope = _review_refined_scope(
         item.detection.scope,
+        project_ids=refine_project_id,
         task_classes=refine_task_class,
         environment_ids=refine_environment_id,
         activation_conditions=refine_activation_condition,
@@ -2229,6 +2239,13 @@ def decide_codex_dogfood_review(
             ),
         ),
     ] = False,
+    refine_project_id: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--refine-project-id",
+            help="Approve only for these registered projects; repeat for multiple values.",
+        ),
+    ] = None,
     refine_task_class: Annotated[
         list[str] | None,
         typer.Option(
@@ -2267,6 +2284,7 @@ def decide_codex_dogfood_review(
             decision=decision,
             proposal_digest=proposal_digest,
             confirm_future_use=confirm_future_use,
+            refine_project_id=refine_project_id,
             refine_task_class=refine_task_class,
             refine_environment_id=refine_environment_id,
             refine_activation_condition=refine_activation_condition,

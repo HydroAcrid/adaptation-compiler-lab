@@ -201,8 +201,11 @@ describe("Temper prototype", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Kairn-only knowledge stays out/i),
+      screen.getByText(/Prefer names that represent real things/i),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Lead with the purpose before setup steps/i),
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Core" }));
     await user.selectOptions(
       screen.getByRole("combobox", { name: "Show for" }),
