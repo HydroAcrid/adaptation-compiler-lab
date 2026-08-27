@@ -560,6 +560,7 @@ export default function App() {
             launchAtLoginEnabled={
               engineSnapshot?.launch_at_login_enabled ?? false
             }
+            consent={engineSnapshot?.consent ?? null}
           />
         ) : null}
         {screen === "advanced" ? (

@@ -1,8 +1,9 @@
 # Temper native product completion
 
 Status: native onboarding, the everyday governed React loop, platform credential parity, React
-recovery parity, and Qt retirement are implemented. Apple Silicon packaging remains in the
-continuous completion sequence.
+recovery parity, Qt retirement, and the Apple Silicon build/smoke contract are implemented. The
+Apple candidate has not yet run because the private repository's GitHub Actions budget currently
+prevents jobs from starting. This is recorded as unavailable evidence, not a passing result.
 
 ## Product boundary
 
@@ -43,10 +44,11 @@ stale-state protected.
 
 ## Continuous sequence
 
-1. Build and smoke-test unsigned internal Apple Silicon `.app` and `.dmg` candidates on an arm64
-   clean runner while keeping the default trusted policy closed.
+1. Restore GitHub Actions execution (or authorize an equivalent native clean runner), then execute
+   the exact Windows x64 and Apple Silicon `0.3.0a2` candidate jobs already defined in the
+   repository.
 2. Add genuine publisher signing and notarization only when external installer distribution is
-   authorized.
+   authorized, and rerun both default trusted gates on clean machines.
 
 ## Phase 2: everyday governed loop
 
@@ -111,5 +113,33 @@ Implemented:
 React, Rust, and the retained `temper` terminal CLI all consume the same governed Python
 application services. The renderer has no generic process or filesystem command, and browser
 preview controls remain explicitly synthetic.
+
+## Phase 5: Apple Silicon package contract
+
+Implemented in source:
+
+- product version `0.3.0a2`, Apple Silicon-only target `aarch64-apple-darwin`, and macOS 13 minimum;
+- target-native Nuitka arm64 sidecar compilation plus `lipo` rejection of universal or non-arm64
+  output before manifest admission;
+- a manifest binding the engine version, target, minimum OS, public schema digest, binary name,
+  size, and SHA-256 digest;
+- Tauri `.app` and `.dmg` candidate construction on GitHub's `macos-15` arm64 runner with an empty
+  entitlement set—no false App Sandbox, network, JIT, or library-validation exception claims;
+- a separate clean-runner smoke that verifies checksums, arm64 Mach-O binaries, bundle identity,
+  minimum OS, exact sidecar handshake, read-only DMG contents, a visible first-run window, a real
+  temporary Security.framework Keychain round trip, bounded teardown, and residue cleanup;
+- an explicit `development` policy for the ephemeral unsigned internal candidate; and
+- a default `trusted` policy that requires Developer ID Application signing, Gatekeeper
+  assessment, and stapled notarization on both the app and DMG.
+
+The native Settings screen also no longer presents inactive cloud-reporting controls as working.
+It shows current governed consent, allows an inherited reporting permission to be turned off, and
+states that this internal build uploads nothing. The browser report is labeled as sample data.
+
+The workflow YAML and package policy have passed local structural/unit validation, but the actual
+Apple `.app`/`.dmg` build and fresh-runner smoke are **not yet observed results**. GitHub currently
+rejects new Actions jobs for budget reasons. An unsigned or ad-hoc candidate cannot satisfy the
+trusted policy, and this source implementation must not be described as a distributable macOS
+alpha until the native job actually passes.
 
 The sealed deferred Milestone 6 external-validation study remains outside this work and unchanged.

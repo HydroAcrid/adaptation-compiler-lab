@@ -39,6 +39,7 @@ import {
   type EngineRecentUndo,
   type EngineTaskResult,
   type EngineDiagnostics,
+  type EngineDesktopSnapshot,
 } from "../engine";
 import type {
   CapabilityModeSummary,
@@ -1332,6 +1333,7 @@ export function SettingsPage({
   telemetryEnabled = false,
   decisionNotificationsEnabled = false,
   launchAtLoginEnabled = false,
+  consent = null,
   onGovernedPreferencesChange,
 }: {
   theme: Theme;
@@ -1345,6 +1347,7 @@ export function SettingsPage({
   telemetryEnabled?: boolean;
   decisionNotificationsEnabled?: boolean;
   launchAtLoginEnabled?: boolean;
+  consent?: EngineDesktopSnapshot["consent"] | null;
   onGovernedPreferencesChange?: (
     learningEnabled: boolean,
     reportingEnabled: boolean,
@@ -1361,6 +1364,7 @@ export function SettingsPage({
     nativeRuntime ? telemetryEnabled : false,
   );
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [consentOpen, setConsentOpen] = useState(false);
   return (
     <div className="page settings-page">
       <header className="page-topline">
@@ -1469,11 +1473,20 @@ export function SettingsPage({
               in telemetry.
             </span>
           </div>
-          <Button tone="quiet">View consent</Button>
+          <Button onClick={() => setConsentOpen(true)} tone="quiet">
+            View consent
+          </Button>
         </div>
         <Toggle
           checked={nativeRuntime ? telemetryEnabled : telemetry}
-          description="Send signed, raw-free product health counts. Off by default."
+          description={
+            nativeRuntime
+              ? telemetryEnabled
+                ? "Permission was enabled previously, but cloud reporting is unavailable in this build. You can turn the permission off; nothing is uploaded."
+                : "Cloud reporting is not available in this internal build. Nothing is uploaded."
+              : "Send signed, raw-free product health counts. Off by default."
+          }
+          disabled={nativeRuntime && !telemetryEnabled}
           label="Help improve Temper"
           onCheckedChange={(enabled) => {
             setTelemetry(enabled);
@@ -1487,15 +1500,19 @@ export function SettingsPage({
             }
           }}
         />
-        <div className="settings-links">
-          <button onClick={() => setPreviewOpen(true)} type="button">
-            Preview exact report
-          </button>
-          <button type="button">Upload history</button>
-          <button className="danger-link" type="button">
-            Delete cloud reports
-          </button>
-        </div>
+        {nativeRuntime ? (
+          <p className="settings-availability-note">
+            Report preview, history, and deletion will appear only when the
+            signed reporting service is enabled in a future build.
+          </p>
+        ) : (
+          <div className="settings-links">
+            <button onClick={() => setPreviewOpen(true)} type="button">
+              Preview sample report
+            </button>
+            <span>Browser preview only</span>
+          </div>
+        )}
       </SettingsGroup>
       <SettingsGroup title="Advanced">
         <Toggle
@@ -1506,7 +1523,90 @@ export function SettingsPage({
         />
       </SettingsGroup>
       <TelemetryDialog onOpenChange={setPreviewOpen} open={previewOpen} />
+      <ConsentDialog
+        consent={consent}
+        nativeRuntime={nativeRuntime}
+        onOpenChange={setConsentOpen}
+        open={consentOpen}
+      />
     </div>
+  );
+}
+
+function ConsentDialog({
+  consent,
+  nativeRuntime,
+  open,
+  onOpenChange,
+}: {
+  consent: EngineDesktopSnapshot["consent"] | null;
+  nativeRuntime: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const expiresAt = consent
+    ? new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(
+        new Date(consent.expires_at),
+      )
+    : null;
+  return (
+    <Dialog.Root onOpenChange={onOpenChange} open={open}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="dialog-overlay" />
+        <Dialog.Content className="telemetry-dialog">
+          <Dialog.Close
+            aria-label="Close consent details"
+            className="icon-button dialog-close"
+          >
+            <X size={18} />
+          </Dialog.Close>
+          <div className="dialog-heading-icon">
+            <ShieldCheck size={20} />
+          </div>
+          <Dialog.Title>Local consent</Dialog.Title>
+          <Dialog.Description>
+            {nativeRuntime
+              ? "This is the current governed consent state reported by your local Temper engine."
+              : "This browser preview uses sample consent details and cannot change your local Temper installation."}
+          </Dialog.Description>
+          <div className="report-preview">
+            <ReportRow
+              label="Status"
+              value={
+                consent
+                  ? consent.renewal_required
+                    ? "Renewal required"
+                    : "Current"
+                  : nativeRuntime
+                    ? "Unavailable"
+                    : "Sample only"
+              }
+            />
+            <ReportRow
+              label="Raw retention"
+              value={`${consent?.retention_days ?? 30} days`}
+            />
+            <ReportRow label="Expires" value={expiresAt ?? "Not configured"} />
+            <ReportRow
+              label="Time remaining"
+              value={consent ? `${consent.days_remaining} days` : "—"}
+            />
+          </div>
+          <div className="report-retention">
+            <Info size={15} />
+            <span>
+              Evidence content stays encrypted locally. This screen never
+              reveals raw prompts, repository paths, or signing material.
+            </span>
+          </div>
+          <div className="dialog-footer">
+            <Button onClick={() => onOpenChange(false)} tone="primary">
+              Done
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
@@ -1575,7 +1675,7 @@ function TelemetryDialog({
             paths, project names, or behavior text.
           </Dialog.Description>
           <div className="report-preview">
-            <ReportRow label="App version" value="0.3.0a1" />
+            <ReportRow label="App version" value="0.3.0a2" />
             <ReportRow label="Platform" value="macOS arm64" />
             <ReportRow label="Eligible interactions" value="13" />
             <ReportRow label="Correct activations" value="1" />

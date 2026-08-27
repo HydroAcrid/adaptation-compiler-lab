@@ -41,7 +41,7 @@ describe("Tauri engine boundary", () => {
         ok: true,
         result: {
           protocol_version: ENGINE_PROTOCOL_VERSION,
-          engine_version: "0.3.0a1",
+          engine_version: "0.3.0a2",
           snapshot_schema_digest: "sha256:" + "a".repeat(64),
           mutation_enabled: false,
           configured: true,
@@ -120,7 +120,7 @@ describe("Tauri engine boundary", () => {
         ok: true,
         result: {
           protocol_version: ENGINE_PROTOCOL_VERSION,
-          engine_version: "0.3.0a1",
+          engine_version: "0.3.0a2",
           snapshot_schema_digest: "sha256:" + "a".repeat(64),
           mutation_enabled: false,
           configured: true,

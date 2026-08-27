@@ -342,7 +342,7 @@ describe("Temper prototype", () => {
     themeColor.remove();
   });
 
-  it("keeps telemetry off and previews the exact bounded report", async () => {
+  it("keeps telemetry off and labels browser telemetry as a sample", async () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole("button", { name: "Settings" }));
@@ -350,7 +350,7 @@ describe("Temper prototype", () => {
       screen.getByRole("switch", { name: "Help improve Temper" }),
     ).not.toBeChecked();
     await user.click(
-      screen.getByRole("button", { name: "Preview exact report" }),
+      screen.getByRole("button", { name: "Preview sample report" }),
     );
     expect(
       screen.getByRole("dialog", { name: "Exact report preview" }),
@@ -359,6 +359,31 @@ describe("Temper prototype", () => {
     expect(
       screen.getByText(/There are no prompts, paths, project names/i),
     ).toBeInTheDocument();
+  });
+
+  it("shows consent without exposing governed internals", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+    await user.click(screen.getByRole("button", { name: "View consent" }));
+    expect(
+      screen.getByRole("dialog", { name: "Local consent" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Sample only")).toBeInTheDocument();
+    expect(screen.queryByText(/sha256/i)).not.toBeInTheDocument();
+  });
+
+  it("does not pretend the browser telemetry sample is a live cloud control", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+    expect(screen.getByText("Browser preview only")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Upload history" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Delete cloud reports" }),
+    ).not.toBeInTheDocument();
   });
 
   it("supports onboarding without requiring a Temper account", () => {

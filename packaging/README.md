@@ -18,7 +18,7 @@ private alpha.
 
    ```powershell
    ./packaging/windows/smoke_package.ps1 `
-     -InstallerPath ./desktop_ui/src-tauri/target/release/bundle/nsis/Temper_0.3.0-alpha.1_x64-setup.exe `
+     -InstallerPath ./desktop_ui/src-tauri/target/release/bundle/nsis/Temper_0.3.0-alpha.2_x64-setup.exe `
      -SignaturePolicy development
    ```
 
@@ -41,9 +41,28 @@ generates a self-signed certificate to imitate this gate.
 
 ## macOS Apple Silicon
 
-The same sidecar builder produces `temper-engine-aarch64-apple-darwin`. A distributable macOS alpha
-still requires Developer ID signing, hardened runtime, notarization, stapling, and clean-machine
-verification on Apple Silicon. None of those states may be inferred from a Windows build.
+The same sidecar builder produces the arm64-only `temper-engine-aarch64-apple-darwin`. Internal
+candidate builds run only on a native `macos-15` Apple Silicon runner, set macOS 13 as the minimum,
+and produce both `Temper.app` and a DMG. The separate clean-runner job verifies both Mach-O
+architectures, the exact sidecar digest and unconfigured handshake, bundle metadata, DMG contents,
+a visible first-run window, clean teardown, and one unique Keychain round trip that is deleted.
+
+The clean-runner package command defaults to the trusted policy:
+
+```bash
+uv run python packaging/macos/smoke_package.py \
+  --app /path/to/Temper.app \
+  --dmg /path/to/Temper.dmg \
+  --manifest /path/to/temper-engine-aarch64-apple-darwin.manifest.json \
+  --expected-version 0.3.0a2
+```
+
+CI must pass `--signature-policy development` explicitly for an unsigned one-day internal
+candidate. That exception verifies functionality only. A distributable macOS alpha still requires
+a Developer ID Application identity, nested-code signing, hardened runtime, notarization,
+stapling, and the same clean-machine smoke under the default trusted policy. The trusted policy
+checks `codesign`, Gatekeeper assessment, and stapled tickets for the app and DMG. None of those
+states may be inferred from an internal or Windows build.
 
 Signing keys remain in the native certificate store, Keychain, or managed signing service. They
 must never be committed, placed in `.env`, or uploaded with raw governed data.
