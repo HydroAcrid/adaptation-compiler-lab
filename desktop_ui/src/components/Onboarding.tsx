@@ -10,22 +10,130 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
+import {
+  adoptExistingInstallation,
+  initializeSetup,
+  previewExistingInstallation,
+  previewSetupProject,
+  type EngineExistingInstallationPreview,
+  type EngineProjectPreview,
+  type EngineSetupSnapshot,
+} from "../engine";
 import { BotanicalFlourish } from "./BotanicalFlourish";
 import { BrandMark } from "./BrandMark";
 import { Button, Toggle } from "./ui";
 
 const steps = ["Welcome", "Privacy", "Agents", "Projects", "Ready"];
 
-export function Onboarding({ onComplete }: { onComplete: () => void }) {
+export function Onboarding({
+  onComplete,
+  nativeRuntime = false,
+  setupSnapshot = null,
+  setupDigest = null,
+}: {
+  onComplete: () => void | Promise<void>;
+  nativeRuntime?: boolean;
+  setupSnapshot?: EngineSetupSnapshot | null;
+  setupDigest?: string | null;
+}) {
   const [step, setStep] = useState(0);
-  const [telemetry, setTelemetry] = useState(false);
+  const [consent, setConsent] = useState(false);
+  const [project, setProject] = useState<EngineProjectPreview | null>(null);
+  const [existing, setExisting] =
+    useState<EngineExistingInstallationPreview | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const codex = setupSnapshot?.connections.find(
+    (connection) => connection.agent_id === "codex",
+  );
+  const claude = setupSnapshot?.connections.find(
+    (connection) => connection.agent_id === "claude",
+  );
+  const codexReady =
+    !nativeRuntime ||
+    (codex?.authentication_state === "signed_in" &&
+      codex.conformance_state === "compatible");
 
-  function next() {
+  async function next() {
     if (step === steps.length - 1) {
-      onComplete();
+      if (nativeRuntime) {
+        if (!project || !setupDigest || !consent) return;
+        setBusy(true);
+        setMessage(null);
+        try {
+          await initializeSetup(
+            project.preview_token,
+            setupDigest,
+            crypto.randomUUID(),
+          );
+          await onComplete();
+        } catch (error: unknown) {
+          setMessage(
+            error instanceof Error
+              ? error.message
+              : "Temper could not safely finish setup.",
+          );
+        } finally {
+          setBusy(false);
+        }
+      } else {
+        await onComplete();
+      }
       return;
     }
     setStep((current) => current + 1);
+  }
+
+  async function chooseProject() {
+    if (!nativeRuntime) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      setProject(await previewSetupProject());
+    } catch (error: unknown) {
+      setMessage(
+        error instanceof Error ? error.message : "Nothing was selected.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function chooseExisting() {
+    if (!nativeRuntime) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      setExisting(await previewExistingInstallation());
+    } catch (error: unknown) {
+      setMessage(
+        error instanceof Error ? error.message : "Nothing was selected.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function adoptExisting() {
+    if (!existing || !setupDigest) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      await adoptExistingInstallation(
+        existing.preview_token,
+        setupDigest,
+        crypto.randomUUID(),
+      );
+      await onComplete();
+    } catch (error: unknown) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Temper could not safely use that installation.",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -61,6 +169,43 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
               <Principle text="Learning stays scoped, inspectable, and reversible." />
               <Principle text="Your raw evidence remains encrypted on this device." />
             </div>
+            {nativeRuntime ? (
+              <div className="existing-installation-card">
+                {existing ? (
+                  <>
+                    <div>
+                      <strong>Existing Temper found</strong>
+                      <span>
+                        {existing.installation.project_count} registered{" "}
+                        {existing.installation.project_count === 1
+                          ? "project"
+                          : "projects"}
+                      </span>
+                      <span>
+                        Identity{" "}
+                        {existing.installation.signer_fingerprint.slice(7, 19)}…
+                      </span>
+                    </div>
+                    <Button
+                      disabled={busy}
+                      onClick={adoptExisting}
+                      tone="quiet"
+                    >
+                      Continue with this Temper
+                    </Button>
+                  </>
+                ) : (
+                  <button
+                    className="text-action"
+                    disabled={busy}
+                    onClick={chooseExisting}
+                    type="button"
+                  >
+                    Already use Temper? Choose your existing configuration
+                  </button>
+                )}
+              </div>
+            ) : null}
           </OnboardingPanel>
         ) : null}
         {step === 1 ? (
@@ -93,14 +238,21 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
           >
             <div className="setup-list">
               <SetupRow
-                detail="Signed in with ChatGPT"
+                detail={codex?.status_summary ?? "Signed in with ChatGPT"}
                 label="Codex"
-                status="Connected"
+                status={codexReady ? "Ready" : "Needs attention"}
               />
               <SetupRow
-                detail="Console sign-in; provider-billed"
+                detail={
+                  claude?.status_summary ??
+                  "Not integrated in this Temper build"
+                }
                 label="Claude Code"
-                status="Connect"
+                status={
+                  claude?.installation_state === "installed"
+                    ? "Detected"
+                    : "Not installed"
+                }
               />
             </div>
           </OnboardingPanel>
@@ -112,15 +264,30 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
             title="Choose where Temper is active."
           >
             <div className="project-setup-card">
-              <div className="project-monogram">K</div>
-              <div>
-                <strong>Kairn</strong>
-                <span>~/projects/kairn</span>
+              <div className="project-monogram">
+                {(project?.display_name ?? "Kairn")[0]}
               </div>
-              <CheckCircle2 aria-label="Selected" size={20} />
+              <div>
+                <strong>{project?.display_name ?? "Kairn"}</strong>
+                <span>
+                  {project
+                    ? "Only new work after registration is eligible"
+                    : nativeRuntime
+                      ? "No project selected"
+                      : "Example prospective project"}
+                </span>
+              </div>
+              {project || !nativeRuntime ? (
+                <CheckCircle2 aria-label="Selected" size={20} />
+              ) : null}
             </div>
-            <button className="text-action" type="button">
-              + Add another project
+            <button
+              className="text-action"
+              disabled={busy}
+              onClick={chooseProject}
+              type="button"
+            >
+              {project ? "Choose a different project" : "+ Choose a project"}
             </button>
           </OnboardingPanel>
         ) : null}
@@ -133,24 +300,38 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
             <div className="ready-summary">
               <div>
                 <Check size={16} />
-                <span>Local identity created</span>
+                <span>Local identity and secure store will be created</span>
               </div>
               <div>
                 <Check size={16} />
-                <span>Codex connected</span>
+                <span>
+                  {codexReady ? "Codex is ready" : "Codex needs attention"}
+                </span>
               </div>
               <div>
                 <Check size={16} />
-                <span>Kairn registered prospectively</span>
+                <span>
+                  {project?.display_name ?? "Selected project"} will be
+                  registered prospectively
+                </span>
               </div>
             </div>
             <Toggle
-              checked={telemetry}
-              description="Send raw-free product health counts. Preview everything before the first upload."
-              label="Help improve Temper"
-              onCheckedChange={setTelemetry}
+              checked={consent}
+              description="Authorize local construction, promotion, delivery, and audit for 30 days. You can revoke this later."
+              label="I agree to local governed learning"
+              onCheckedChange={setConsent}
             />
+            <p className="connection-dialog-note">
+              Learning, automatic promotion, telemetry, and launch at login all
+              start off.
+            </p>
           </OnboardingPanel>
+        ) : null}
+        {message ? (
+          <p className="connection-dialog-note" role="alert">
+            {message}
+          </p>
         ) : null}
       </main>
       <footer className="onboarding-footer">
@@ -163,11 +344,21 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
           Back
         </Button>
         <Button
+          disabled={
+            busy ||
+            (step === 2 && !codexReady) ||
+            (step === 3 && nativeRuntime && !project) ||
+            (step === steps.length - 1 && nativeRuntime && !consent)
+          }
           icon={<ArrowRight aria-hidden="true" size={16} />}
           onClick={next}
           tone="primary"
         >
-          {step === steps.length - 1 ? "Open Temper" : "Continue"}
+          {busy
+            ? "Finishing…"
+            : step === steps.length - 1
+              ? "Open Temper"
+              : "Continue"}
         </Button>
       </footer>
     </div>
@@ -222,7 +413,8 @@ function SetupRow({
         <span>{detail}</span>
       </div>
       <button
-        className={status === "Connected" ? "setup-status" : "text-action"}
+        className={status === "Ready" ? "setup-status" : "text-action"}
+        disabled
         type="button"
       >
         {status}

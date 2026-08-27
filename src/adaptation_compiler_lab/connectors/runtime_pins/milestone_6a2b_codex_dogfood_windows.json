@@ -3,16 +3,12 @@
   "codex": {
     "executable": {
       "package": "@openai/codex Windows x64",
-      "package_version": "0.146.0",
-      "package_integrity": "sha512-b3lxMYeR0+IhstNo4JjX1P9cPc1xwVcCVkPd1lD1wpWPJ0SBhpIkPczwbu3ZRkJcdyl342+rgyf4DUrbZLdrGA==",
-      "executable_sha256": "sha256:bc343ba420dc2e2e9f59e6fc5e5bf0aae1cd8c771fc319665241fc9c0271fddb",
-      "version_args": [
-        "--version"
-      ],
-      "version_stdout": "codex-cli 0.146.0",
-      "required_help_flags": [
-        "app-server"
-      ]
+      "package_version": "0.150.0-alpha.8",
+      "package_integrity": "codex-desktop-bundle-d5f4c71927a04589",
+      "executable_sha256": "sha256:799ff77125c47b0736ceb36e9b33975bb93d4162bca663730f3a4c90faf2add9",
+      "version_args": ["--version"],
+      "version_stdout": "codex-cli 0.150.0-alpha.8",
+      "required_help_flags": ["app-server"]
     },
     "schema_generation_args": [
       "app-server",
@@ -21,22 +17,22 @@
       "{output}",
       "--experimental"
     ],
-    "schema_bundle_sha256": "sha256:1af35d724750f55eebc5e76d1ce7a86e6024d5b31360137894f2f6b6ee7924ba",
+    "schema_bundle_sha256": "sha256:0367a9e3b1069d964fee4ddc92f30e4af37038ed5e30a21129b3103be12771ec",
     "schema_file_sha256": {
-      "v1/InitializeParams.json": "sha256:4f576f99e285beb28f71f48a72b887c1f517dada86fee348fe2af0a35511de23",
-      "v1/InitializeResponse.json": "sha256:86dcd236d0576a82c85b933586dc45731260eab1b6edb3447b03f790277322b1",
-      "v2/GetAccountParams.json": "sha256:d0dc3c0d428d37b1ec7887fa6b044244e6474578e1ff397c0872b2a6292073db",
-      "v2/GetAccountResponse.json": "sha256:a8b27a203541460d6593723f646900e1df4417e0de43dfc36c485643810e1f1a",
-      "v2/ItemCompletedNotification.json": "sha256:49ef255afe401aaeff455f99175532cbc5ff948f2055e5bde68792953a010252",
-      "v2/ThreadListParams.json": "sha256:ccc09fa6d5d89fa76afd474f6d7ef8cf14edbe0e037d8a52aebf5bd14f435c5b",
-      "v2/ThreadListResponse.json": "sha256:0c12f87cf3ab2c5fed95152a1e36873e6e56dadae39f46096267371ad65d1321",
-      "v2/ThreadReadParams.json": "sha256:db97080f82facc3259dbb9404e9f0df81e360619f4cd73983a9d99d25f5089ee",
-      "v2/ThreadReadResponse.json": "sha256:605e850635bd834685f5f22910ed344f30a674cd8ed88e03b979afcf42404263",
-      "v2/ThreadStartParams.json": "sha256:b3685411ceb8ad264a1920e8facd66301e5280948ef9c2a6871b95d4c19da639",
-      "v2/ThreadStartResponse.json": "sha256:c2899f35029734ed42c3d3b02b6077f0bebaf7724cbc655aead83bb1aa2adadf",
-      "v2/TurnCompletedNotification.json": "sha256:5b5f2ca515658ea6fcce7e961d1c3feddb3f48c0dcc813260c7ccf77a2d016af",
-      "v2/TurnStartParams.json": "sha256:f23021c02d28b60fccb6dcaaace9ff676127065f8254537265d6622656860dca",
-      "v2/TurnStartResponse.json": "sha256:099184dc9d6195cd965b8a90ee5d1cb05c87d9b329acecdfbd63f358e660d568"
+      "v1/InitializeParams.json": "sha256:6f0094be9a65242ec779a40794cbd4fdfa32fca1e45084a16adfb50501d33ea2",
+      "v1/InitializeResponse.json": "sha256:62ad689c2cb6379913c1d72749cfd8de5089d35760214123518eb92eef11acc9",
+      "v2/GetAccountParams.json": "sha256:30b545275f60975b55bd6fbaafd70f15505801d14168ee82d3931b6e93c78aab",
+      "v2/GetAccountResponse.json": "sha256:08a7dd8c570c905b0bb6998d43ed133e72e2445f08125f86dfc96887e288701a",
+      "v2/ItemCompletedNotification.json": "sha256:cf60fca3047de0d78ff476b3e0ab97fc1385c9b525e858301030d05f272d2634",
+      "v2/ThreadListParams.json": "sha256:e321f00bbc81b7e65e8596b8c286deaf2f5c48e76fa179db3abc4ff337d85199",
+      "v2/ThreadListResponse.json": "sha256:11dac863f5c72ea027b9340c07f8aae7b54588343154dd4c6d41530b3878447b",
+      "v2/ThreadReadParams.json": "sha256:7222da641029c071811f6bcb651de347fe037e6689db22b3fad0c5b17b7f1c21",
+      "v2/ThreadReadResponse.json": "sha256:d3e1e9fc8b2c0943f5942ae884cf749649a63072bb675db8441bf0079146a90d",
+      "v2/ThreadStartParams.json": "sha256:25f490368ec6df52a2a3b82a5469d2413307eb93439121b309f415b5648eee7a",
+      "v2/ThreadStartResponse.json": "sha256:2c5fcada6de5d745ef29715a807b323ef703a7e43bce42b5176efc58444f696f",
+      "v2/TurnCompletedNotification.json": "sha256:e410174644dac233f32a66e4933429f30ad57e6d8a4ed65422750ca1e514c252",
+      "v2/TurnStartParams.json": "sha256:95f35a9f01beea390cc4e478b4030e46ef37e5d769438d50f40b7aeabbf1ad74",
+      "v2/TurnStartResponse.json": "sha256:f9135743455be09b45285538b65757bee6a14862960385ee4fb452c40fbf476a"
     }
   }
 }

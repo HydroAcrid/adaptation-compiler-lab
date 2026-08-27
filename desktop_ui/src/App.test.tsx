@@ -235,15 +235,14 @@ describe("Temper prototype", () => {
     expect(
       screen.getByText(/browser preview cannot change agent accounts/i),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Desktop setup" }),
-    ).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: "View details" }));
+    const detailButtons = screen.getAllByRole("button", {
+      name: "View details",
+    });
+    expect(detailButtons).toHaveLength(2);
+    await user.click(detailButtons[0]);
     expect(screen.getByRole("dialog", { name: "Codex" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Done" }));
-    expect(
-      screen.getByRole("button", { name: "Add in desktop app" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Add project" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Manage Kairn" })).toBeDisabled();
   });
 
@@ -387,8 +386,11 @@ describe("Temper prototype", () => {
       ).toBeInTheDocument();
     }
     expect(
-      screen.getByRole("switch", { name: "Help improve Temper" }),
+      screen.getByRole("switch", {
+        name: "I agree to local governed learning",
+      }),
     ).not.toBeChecked();
+    expect(screen.getByText(/telemetry.*start off/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Open Temper" }));
     expect(
       screen.getByRole("heading", {

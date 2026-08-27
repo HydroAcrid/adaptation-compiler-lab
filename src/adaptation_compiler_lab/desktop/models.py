@@ -12,6 +12,20 @@ from adaptation_compiler_lab.domain import FrozenModel, Identifier, NonEmptyStr,
 from adaptation_compiler_lab.serialization import canonical_digest
 
 DesktopHealth = Literal["ready", "needs_attention", "paused", "consent_expired"]
+ConfigurationState = Literal[
+    "unconfigured",
+    "existing_available",
+    "configured",
+    "incompatible",
+]
+ConnectionInstallationState = Literal["not_installed", "installed"]
+ConnectionAuthenticationState = Literal["unknown", "signed_out", "signed_in"]
+ConnectionConformanceState = Literal[
+    "not_applicable",
+    "unverified",
+    "compatible",
+    "update_required",
+]
 DesktopAction = Literal[
     "load",
     "poll",
@@ -45,6 +59,93 @@ class DesktopProject(FrozenModel):
     display_name: NonEmptyStr
     registered_prospectively: bool
     task_runner_enabled: bool
+
+
+class SecureStoreStatus(FrozenModel):
+    """Raw-free native credential posture shown during setup and recovery."""
+
+    platform: Literal["windows", "macos", "development"]
+    protector: Literal[
+        "windows-dpapi-current-user",
+        "macos-keychain-current-user",
+        "unavailable",
+    ]
+    status: Literal["not_created", "ready", "locked", "unavailable"]
+
+
+class AgentConnectionV1(FrozenModel):
+    """Truthful source and target capabilities without executable or credential paths."""
+
+    connection_version: Literal["1.0.0"] = "1.0.0"
+    agent_id: Literal["codex", "claude"]
+    display_name: Literal["Codex", "Claude Code"]
+    installation_state: ConnectionInstallationState
+    authentication_state: ConnectionAuthenticationState
+    conformance_state: ConnectionConformanceState
+    version_label: str | None = None
+    status_summary: NonEmptyStr
+    learning_capability: NonEmptyStr
+    delivery_capability: NonEmptyStr
+    cost_posture: NonEmptyStr
+    available_actions: tuple[Literal["refresh", "use_for_setup"], ...] = ("refresh",)
+    raw_payloads_exposed: Literal[False] = False
+
+
+class ExistingInstallationSummary(FrozenModel):
+    """Safe first-run summary of a previously governed local installation."""
+
+    signer_fingerprint: Sha256Digest
+    project_count: int = Field(ge=0)
+    consent_expires_at: datetime
+    secure_store_ready: bool
+
+
+class ProjectCandidatePreviewV1(FrozenModel):
+    """Opaque prospective registration preview; the renderer never receives its path."""
+
+    preview_version: Literal["1.0.0"] = "1.0.0"
+    preview_token: NonEmptyStr
+    project_id: Identifier
+    display_name: NonEmptyStr
+    capture_after_epoch_seconds: int = Field(ge=0)
+    historical_tasks_eligible: Literal[False] = False
+    modifies_existing_tasks: Literal[False] = False
+    modifies_repository: Literal[False] = False
+    expires_at: datetime
+
+
+class SetupSnapshotV1(FrozenModel):
+    """Raw-free setup state available before a governed runtime exists."""
+
+    setup_version: Literal["1.0.0"] = "1.0.0"
+    product_name: Literal["Temper"] = "Temper"
+    configuration_state: ConfigurationState
+    secure_store: SecureStoreStatus
+    connections: tuple[AgentConnectionV1, AgentConnectionV1]
+    existing_installation: ExistingInstallationSummary | None = None
+    learning_enabled: Literal[False] = False
+    automatic_promotion_enabled: Literal[False] = False
+    aggregate_reporting_enabled: Literal[False] = False
+    launch_at_login_enabled: Literal[False] = False
+    raw_payloads_exposed: Literal[False] = False
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class SetupCompletionReceiptV1(FrozenModel):
+    """Safe completion receipt returned before the engine restarts configured."""
+
+    receipt_version: Literal["1.0.0"] = "1.0.0"
+    subject_id: Identifier
+    signer_fingerprint: Sha256Digest
+    project_id: Identifier
+    capture_after_epoch_seconds: int = Field(ge=0)
+    consent_expires_at: datetime
+    learning_enabled: Literal[False] = False
+    aggregate_reporting_enabled: Literal[False] = False
+    raw_payloads_exposed: Literal[False] = False
 
 
 class DesktopSnapshot(FrozenModel):

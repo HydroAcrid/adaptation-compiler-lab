@@ -1,9 +1,11 @@
 # Temper desktop rebuild
 
 Status: React visual direction accepted in PR #53. The Tauri/engine foundation, offline profile
-portability, Frontend Studio Mode, and their actual Core/Modes desktop surfaces are implemented.
-Native onboarding, connection management, the full review/mutation loop, signed packaging, and
-clean-machine release validation remain open.
+portability, Frontend Studio Mode, their actual Core/Modes surfaces, native first-run setup,
+existing-runtime adoption, prospective project registration, and truthful Codex/Claude inspection
+are implemented. The full review/mutation loop, macOS credential parity, Qt retirement, Apple
+Silicon internal package, and trusted external signing gate remain in the continuous completion
+sequence.
 
 ## Tauri foundation
 
@@ -115,11 +117,10 @@ answer a real user question.
 
 ## Next implementation slice
 
-Build native onboarding and truthful Connections over the same protocol: governed identity/key
-initialization, explicit prospective project registration, Codex inspection, and delegated Claude
-inspection without receiving provider credentials. Then wire review, scope narrowing, revoke,
-undo, feedback, and consent renewal before retiring Qt. Do not add a Claude hook, telemetry upload,
-or external installer claim until its separate security and release gate passes.
+Wire live review decisions, monotonic scope narrowing, revoke, 24-hour undo, activation feedback,
+consent renewal, preferences, bounded polling, tray behavior, and notifications through the same
+typed application services. Do not add a Claude hook, telemetry upload, or external installer
+claim until its separate security and release gate passes.
 
 ## Prototype verification
 

@@ -4,6 +4,8 @@ import io
 import json
 import subprocess
 import sys
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any, cast
 from unittest.mock import MagicMock
 
@@ -15,7 +17,16 @@ from adaptation_compiler_lab.desktop.engine_protocol import (
     serve,
     snapshot_schema_digest,
 )
-from adaptation_compiler_lab.desktop.models import ActionResult, DesktopTaskResult
+from adaptation_compiler_lab.desktop.models import (
+    ActionResult,
+    AgentConnectionV1,
+    DesktopTaskResult,
+    ExistingInstallationSummary,
+    ProjectCandidatePreviewV1,
+    SecureStoreStatus,
+    SetupCompletionReceiptV1,
+    SetupSnapshotV1,
+)
 
 
 def test_unconfigured_engine_import_does_not_load_managed_runtime_service() -> None:
@@ -51,6 +62,8 @@ def test_handshake_is_available_before_local_configuration() -> None:
     assert response.result is not None
     assert response.result["configured"] is False
     assert response.result["mutation_enabled"] is False
+    assert response.result["setup_available"] is True
+    assert response.result["configuration_state"] == "unconfigured"
     assert response.result["snapshot_schema_digest"] == snapshot_schema_digest()
 
 
@@ -60,6 +73,168 @@ def test_snapshot_fails_closed_before_local_configuration() -> None:
     assert response.ok is False
     assert response.error is not None
     assert response.error.code == "not_configured"
+
+
+class FakeSetupService:
+    def __init__(self) -> None:
+        now = datetime(2026, 8, 27, 12, tzinfo=UTC)
+        self.snapshot_value = SetupSnapshotV1(
+            configuration_state="unconfigured",
+            secure_store=SecureStoreStatus(
+                platform="windows",
+                protector="windows-dpapi-current-user",
+                status="not_created",
+            ),
+            connections=(
+                AgentConnectionV1(
+                    agent_id="codex",
+                    display_name="Codex",
+                    installation_state="installed",
+                    authentication_state="signed_in",
+                    conformance_state="compatible",
+                    status_summary="Ready.",
+                    learning_capability="Prospective completed tasks.",
+                    delivery_capability="Fresh managed tasks.",
+                    cost_posture="ChatGPT authentication.",
+                    available_actions=("refresh", "use_for_setup"),
+                ),
+                AgentConnectionV1(
+                    agent_id="claude",
+                    display_name="Claude Code",
+                    installation_state="not_installed",
+                    authentication_state="unknown",
+                    conformance_state="not_applicable",
+                    status_summary="Not installed.",
+                    learning_capability="Not integrated.",
+                    delivery_capability="Not integrated.",
+                    cost_posture="Provider-billed if added later.",
+                ),
+            ),
+        )
+        self.preview = ProjectCandidatePreviewV1(
+            preview_token="preview-1",
+            project_id="kairn",
+            display_name="Kairn",
+            capture_after_epoch_seconds=int(now.timestamp()),
+            expires_at=now + timedelta(minutes=15),
+        )
+
+    def snapshot(self) -> SetupSnapshotV1:
+        return self.snapshot_value
+
+    def preview_project(self, root: Path) -> ProjectCandidatePreviewV1:
+        assert root.name == "kairn"
+        return self.preview
+
+    def preview_existing(self, config_path: Path) -> tuple[str, ExistingInstallationSummary]:
+        assert config_path.name == "config.json"
+        return "existing-preview-1", self.existing_summary()
+
+    def adopt_existing(
+        self,
+        *,
+        preview_token: str,
+        expected_setup_digest: str,
+    ) -> ExistingInstallationSummary:
+        assert preview_token == "existing-preview-1"
+        assert expected_setup_digest == str(self.snapshot_value.content_digest)
+        return self.existing_summary()
+
+    @staticmethod
+    def existing_summary() -> ExistingInstallationSummary:
+        return ExistingInstallationSummary(
+            signer_fingerprint=f"sha256:{'c' * 64}",
+            project_count=2,
+            consent_expires_at=datetime(2026, 9, 20, tzinfo=UTC),
+            secure_store_ready=True,
+        )
+
+    def initialize(
+        self,
+        *,
+        preview_token: str,
+        expected_setup_digest: str,
+        consent_confirmed: bool,
+    ) -> SetupCompletionReceiptV1:
+        assert preview_token == self.preview.preview_token
+        assert expected_setup_digest == str(self.snapshot_value.content_digest)
+        assert consent_confirmed is True
+        return SetupCompletionReceiptV1(
+            subject_id="temper-owner",
+            signer_fingerprint=f"sha256:{'b' * 64}",
+            project_id="kairn",
+            capture_after_epoch_seconds=self.preview.capture_after_epoch_seconds,
+            consent_expires_at=self.preview.expires_at,
+        )
+
+
+def test_setup_status_preview_and_bound_initialization_are_allowlisted(tmp_path: Path) -> None:
+    setup = FakeSetupService()
+    router = EngineProtocolRouter(None, setup_factory=lambda: cast(Any, setup))
+    project = tmp_path / "kairn"
+    project.mkdir()
+
+    status = router.handle(_request("setup.status"))
+    preview = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="preview-request",
+            method="setup.project.preview",
+            params={"path": str(project)},
+        )
+    )
+    initialized = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="setup-request",
+            method="setup.initialize",
+            params={"preview_token": "preview-1", "consent_confirmed": True},
+            expected_snapshot_digest=setup.snapshot_value.content_digest,
+            idempotency_key="setup-click-1",
+        )
+    )
+
+    assert status.ok is True
+    assert status.snapshot_digest == setup.snapshot_value.content_digest
+    assert preview.ok is True
+    assert preview.result is not None
+    assert preview.result["historical_tasks_eligible"] is False
+    assert initialized.ok is True
+    assert initialized.result is not None
+    assert initialized.result["learning_enabled"] is False
+
+
+def test_existing_installation_adoption_is_previewed_and_digest_bound(tmp_path: Path) -> None:
+    setup = FakeSetupService()
+    router = EngineProtocolRouter(None, setup_factory=lambda: cast(Any, setup))
+    config = tmp_path / "config.json"
+    config.write_text("{}", encoding="utf-8")
+
+    preview = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="existing-preview-request",
+            method="setup.existing.preview",
+            params={"path": str(config)},
+        )
+    )
+    adopted = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="existing-adopt-request",
+            method="setup.existing.adopt",
+            params={"preview_token": "existing-preview-1"},
+            expected_snapshot_digest=setup.snapshot_value.content_digest,
+            idempotency_key="existing-adopt-click-1",
+        )
+    )
+
+    assert preview.ok is True
+    assert preview.result is not None
+    assert preview.result["raw_payloads_exposed"] is False
+    assert adopted.ok is True
+    assert adopted.result is not None
+    assert adopted.result["restart_required"] is True
 
 
 def test_unknown_method_does_not_expose_an_arbitrary_dispatch_surface() -> None:

@@ -1405,6 +1405,30 @@ strong {
 .ready-summary svg {
   color: var(--positive);
 }
+.existing-installation-card {
+  display: flex;
+  max-width: 480px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 22px auto 0;
+  padding: 13px 15px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.existing-installation-card > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.existing-installation-card strong {
+  font-size: 11.5px;
+}
+.existing-installation-card span {
+  color: var(--muted);
+  font-size: 9.5px;
+}
 .privacy-card {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -1,5 +1,15 @@
 # adaptation-compiler-lab
 
+Temper's native product-completion sequence is active. The Tauri application can now start before
+a governed runtime exists, inspect Codex and Claude truthfully, create a new local identity and
+30-day consent with privacy-sensitive switches off, adopt an existing identity without rewriting
+lineage, and register project folders prospectively through Rust-owned dialogs. Codex is pinned to
+the locally installed `codex-cli 0.150.0-alpha.8` and admitted only when exact binary/schema
+conformance and saved ChatGPT login both pass. Claude remains explicitly detection-only. See
+[`TEMPER_NATIVE_PRODUCT_COMPLETION.md`](TEMPER_NATIVE_PRODUCT_COMPLETION.md). The next continuous
+phase wires the live review/revoke/undo/feedback loop; publisher certificates remain a later
+external-distribution gate rather than a prerequisite for product functionality.
+
 Temper's replacement customer desktop now connects React to the real local Python engine through
 a restrictive Tauri 2 shell and framed stdio protocol. A configured native runtime loads raw-free
 projects and approved Core items, offers native-path-hidden encrypted profile export/import with
