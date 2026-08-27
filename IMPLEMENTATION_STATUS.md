@@ -1,6 +1,24 @@
 # Implementation Status
 
-Last updated: 2026-08-26
+Last updated: 2026-08-27
+
+## Native product completion
+
+The native onboarding phase now replaces synthetic first-run assumptions with typed engine state.
+Unconfigured startup, explicit new setup, explicit existing-runtime adoption, prospective project
+registration, live connection inspection, and configured restart are implemented across Python,
+Rust, and React. All setup mutations are bound to the reviewed state digest and an idempotency key;
+native paths remain outside renderer state.
+
+The Windows Codex product pin is refreshed to exact `codex-cli 0.150.0-alpha.8` executable and
+generated schema digests. Connection readiness requires saved ChatGPT authentication. The UI
+separately describes source learning, fresh managed delivery, and unavailable ambient delivery.
+Claude is detection-only and has no Connect action, hook, provider login, or API-key path.
+
+This is not the external release gate. The live review/revoke/undo/feedback loop, macOS Keychain,
+React recovery parity, Qt retirement, and Apple Silicon clean-runner package remain in the
+continuous completion sequence. Unsigned internal candidates are permitted only by an explicit
+development policy; default trusted distribution remains blocked on genuine publisher credentials.
 
 ## Windows native alpha gate
 

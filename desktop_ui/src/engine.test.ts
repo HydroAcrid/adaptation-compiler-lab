@@ -4,12 +4,14 @@ const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 
 import {
+  adoptExistingInstallation,
   ENGINE_PROTOCOL_VERSION,
   exportProfile,
   isTauriRuntime,
   loadEngineSnapshot,
   loadModes,
   loadProfileImportPreview,
+  previewExistingInstallation,
   runModeTask,
 } from "./engine";
 
@@ -184,6 +186,56 @@ describe("Tauri engine boundary", () => {
     expect(invoke).toHaveBeenCalledWith("profile_import_preview", {
       passphrase: "correct horse battery staple",
     });
+  });
+
+  it("adopts an existing identity through an opaque digest-bound preview", async () => {
+    const installation = {
+      signer_fingerprint: "sha256:" + "c".repeat(64),
+      project_count: 2,
+      consent_expires_at: "2026-09-20T00:00:00Z",
+      secure_store_ready: true,
+    };
+    invoke
+      .mockResolvedValueOnce({
+        protocol_version: ENGINE_PROTOCOL_VERSION,
+        request_id: "preview",
+        ok: true,
+        result: {
+          preview_token: "opaque-installation",
+          installation,
+          raw_payloads_exposed: false,
+        },
+        error: null,
+        snapshot_digest: null,
+      })
+      .mockResolvedValueOnce({
+        protocol_version: ENGINE_PROTOCOL_VERSION,
+        request_id: "adopt",
+        ok: true,
+        result: { installation, restart_required: true },
+        error: null,
+        snapshot_digest: null,
+      });
+
+    const preview = await previewExistingInstallation();
+    await adoptExistingInstallation(
+      preview.preview_token,
+      "sha256:" + "b".repeat(64),
+      "adopt-click-1",
+    );
+
+    expect(invoke.mock.calls).toEqual([
+      ["setup_existing_preview"],
+      [
+        "setup_existing_adopt",
+        {
+          expectedSnapshotDigest: "sha256:" + "b".repeat(64),
+          idempotencyKey: "adopt-click-1",
+          previewToken: "opaque-installation",
+        },
+      ],
+    ]);
+    expect(JSON.stringify(invoke.mock.calls)).not.toContain("config.json");
   });
 
   it("loads only the raw-free Mode catalog", async () => {

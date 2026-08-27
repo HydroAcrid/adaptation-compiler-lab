@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
+import platform
 import sys
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from importlib.metadata import version
 from pathlib import Path
 from time import monotonic
@@ -13,7 +14,12 @@ from typing import TYPE_CHECKING, Any, Final, Literal, TextIO
 
 from pydantic import Field
 
-from adaptation_compiler_lab.desktop.models import DesktopSnapshot
+from adaptation_compiler_lab.desktop.models import (
+    DesktopSnapshot,
+    ProjectCandidatePreviewV1,
+    SetupCompletionReceiptV1,
+    SetupSnapshotV1,
+)
 from adaptation_compiler_lab.domain import FrozenModel, NonEmptyStr, Sha256Digest
 from adaptation_compiler_lab.modes import FRONTEND_STUDIO_MODE, evaluate_frontend_studio_mode
 from adaptation_compiler_lab.portability import (
@@ -25,6 +31,7 @@ from adaptation_compiler_lab.serialization import canonical_digest
 if TYPE_CHECKING:
     from adaptation_compiler_lab.desktop.portability_service import LocalProfilePortabilityService
     from adaptation_compiler_lab.desktop.service import DesktopApplicationService
+    from adaptation_compiler_lab.desktop.setup_service import DesktopSetupApplicationService
 
 PROTOCOL_VERSION: Final[Literal["temper-engine-protocol/v1"]] = "temper-engine-protocol/v1"
 MAX_FRAME_BYTES = 1_048_576
@@ -69,6 +76,10 @@ class EngineHandshake(FrozenModel):
     snapshot_schema_digest: Sha256Digest
     mutation_enabled: bool
     configured: bool
+    setup_available: Literal[True] = True
+    configuration_state: Literal["unconfigured", "configured"]
+    platform: Literal["windows", "macos", "development"]
+    architecture: NonEmptyStr
 
 
 def snapshot_schema_digest() -> Sha256Digest:
@@ -84,9 +95,12 @@ class EngineProtocolRouter:
         self,
         service: DesktopApplicationService | None,
         portability: LocalProfilePortabilityService | None = None,
+        setup_factory: Callable[[], DesktopSetupApplicationService] | None = None,
     ) -> None:
         self._service = service
         self._portability = portability
+        self._setup_factory = setup_factory
+        self._setup: DesktopSetupApplicationService | None = None
         self._export_previews: dict[str, tuple[float, PortableProfilePackage]] = {}
         self._import_previews: dict[str, tuple[float, EncryptedProfileEnvelope]] = {}
         self._mutation_results: dict[str, tuple[Sha256Digest, EngineResponse]] = {}
@@ -98,12 +112,114 @@ class EngineProtocolRouter:
                 snapshot_schema_digest=snapshot_schema_digest(),
                 mutation_enabled=self._service is not None,
                 configured=self._service is not None,
+                configuration_state=("configured" if self._service is not None else "unconfigured"),
+                platform=_host_platform(),
+                architecture=platform.machine() or "unknown",
             )
             return EngineResponse(
                 request_id=request.request_id,
                 ok=True,
                 result=handshake.model_dump(mode="json"),
             )
+        if request.method in {"setup.status", "connection.inspect"}:
+            if request.params:
+                return self._error(
+                    request,
+                    "invalid_params",
+                    f"{request.method} takes no parameters.",
+                )
+            try:
+                setup_snapshot = self._setup_service().snapshot()
+            except (OSError, ValueError):
+                return self._error(
+                    request,
+                    "setup_unavailable",
+                    "Temper could not safely inspect this installation.",
+                    retryable=True,
+                )
+            return EngineResponse(
+                request_id=request.request_id,
+                ok=True,
+                result=setup_snapshot.model_dump(mode="json"),
+                snapshot_digest=setup_snapshot.content_digest,
+            )
+        if request.method == "setup.existing.preview":
+            try:
+                if set(request.params) != {"path"}:
+                    raise ValueError
+                token, summary = self._setup_service().preview_existing(
+                    Path(_required_string(request.params, "path"))
+                )
+            except (OSError, ValueError):
+                return self._error(
+                    request,
+                    "existing_installation_invalid",
+                    "Temper could not safely preview that existing installation.",
+                )
+            return EngineResponse(
+                request_id=request.request_id,
+                ok=True,
+                result={
+                    "preview_token": token,
+                    "installation": summary.model_dump(mode="json"),
+                    "raw_payloads_exposed": False,
+                },
+            )
+        if request.method == "setup.existing.adopt":
+            return self._adopt_existing(request)
+        if request.method in {"setup.project.preview", "project.registration.preview"}:
+            try:
+                if set(request.params) != {"path"}:
+                    raise ValueError
+                preview = self._setup_service().preview_project(
+                    Path(_required_string(request.params, "path"))
+                )
+            except (OSError, ValueError):
+                return self._error(
+                    request,
+                    "project_invalid",
+                    "Temper could not safely preview that project.",
+                )
+            return EngineResponse(
+                request_id=request.request_id,
+                ok=True,
+                result=preview.model_dump(mode="json"),
+            )
+        if request.method == "setup.initialize":
+            return self._initialize_setup(request)
+        if request.method == "project.register":
+            checked = self._mutation_request(request)
+            if isinstance(checked, EngineResponse):
+                return checked
+            _snapshot_digest, fingerprint = checked
+            try:
+                if set(request.params) != {"preview_token"}:
+                    raise ValueError
+                preview = self._setup_service().register_project(
+                    preview_token=_required_string(request.params, "preview_token")
+                )
+                if self._service is None:
+                    raise ValueError
+                current = self._service.load()
+            except (OSError, ValueError):
+                return self._error(
+                    request,
+                    "project_registration_refused",
+                    "Temper could not safely register that project.",
+                )
+            response = EngineResponse(
+                request_id=request.request_id,
+                ok=True,
+                result={
+                    "project_id": preview.project_id,
+                    "display_name": preview.display_name,
+                    "capture_after_epoch_seconds": preview.capture_after_epoch_seconds,
+                    "historical_tasks_eligible": False,
+                    "raw_payloads_exposed": False,
+                },
+                snapshot_digest=current.content_digest,
+            )
+            return self._remember_mutation(request, fingerprint, response)
         if request.method == "snapshot.get":
             if self._service is None:
                 return self._error(
@@ -170,6 +286,137 @@ class EngineProtocolRouter:
                 },
             )
         return self._error(request, "unknown_method", "The requested operation is not supported.")
+
+    def _initialize_setup(self, request: EngineRequest) -> EngineResponse:
+        if request.expected_snapshot_digest is None or request.idempotency_key is None:
+            return self._error(
+                request,
+                "mutation_binding_required",
+                "Review the current setup before trying again.",
+            )
+        fingerprint = canonical_digest(
+            {
+                "method": request.method,
+                "params": request.params,
+                "expected_snapshot_digest": request.expected_snapshot_digest,
+            }
+        )
+        cached = self._mutation_results.get(request.idempotency_key)
+        if cached is not None:
+            if cached[0] != fingerprint:
+                return self._error(
+                    request,
+                    "idempotency_conflict",
+                    "This setup action identifier was already used for something else.",
+                )
+            return cached[1].model_copy(update={"request_id": request.request_id})
+        try:
+            if set(request.params) != {"preview_token", "consent_confirmed"}:
+                raise ValueError
+            consent_confirmed = request.params.get("consent_confirmed")
+            if not isinstance(consent_confirmed, bool):
+                raise ValueError
+            receipt = self._setup_service().initialize(
+                preview_token=_required_string(request.params, "preview_token"),
+                expected_setup_digest=str(request.expected_snapshot_digest),
+                consent_confirmed=consent_confirmed,
+            )
+        except (OSError, ValueError):
+            return self._error(
+                request,
+                "setup_refused",
+                "Temper could not safely complete this setup.",
+            )
+        response = EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result=receipt.model_dump(mode="json"),
+        )
+        return self._remember_mutation(request, fingerprint, response)
+
+    def _adopt_existing(self, request: EngineRequest) -> EngineResponse:
+        checked = self._setup_mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        _snapshot_digest, fingerprint = checked
+        try:
+            if set(request.params) != {"preview_token"}:
+                raise ValueError
+            summary = self._setup_service().adopt_existing(
+                preview_token=_required_string(request.params, "preview_token"),
+                expected_setup_digest=str(request.expected_snapshot_digest),
+            )
+        except (OSError, ValueError):
+            return self._error(
+                request,
+                "existing_installation_adoption_refused",
+                "Temper could not safely adopt that existing installation.",
+            )
+        response = EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result={
+                "installation": summary.model_dump(mode="json"),
+                "restart_required": True,
+                "raw_payloads_exposed": False,
+            },
+        )
+        return self._remember_mutation(request, fingerprint, response)
+
+    def _setup_mutation_request(
+        self, request: EngineRequest
+    ) -> tuple[Sha256Digest, Sha256Digest] | EngineResponse:
+        if request.expected_snapshot_digest is None or request.idempotency_key is None:
+            return self._error(
+                request,
+                "mutation_binding_required",
+                "Review the current setup before trying again.",
+            )
+        fingerprint = canonical_digest(
+            {
+                "method": request.method,
+                "params": request.params,
+                "expected_snapshot_digest": request.expected_snapshot_digest,
+            }
+        )
+        cached = self._mutation_results.get(request.idempotency_key)
+        if cached is not None:
+            if cached[0] != fingerprint:
+                return self._error(
+                    request,
+                    "idempotency_conflict",
+                    "This setup action identifier was already used for something else.",
+                )
+            return cached[1].model_copy(update={"request_id": request.request_id})
+        try:
+            snapshot = self._setup_service().snapshot()
+        except (OSError, ValueError):
+            return self._error(
+                request,
+                "setup_unavailable",
+                "Temper could not safely inspect this installation.",
+                retryable=True,
+            )
+        if snapshot.content_digest != request.expected_snapshot_digest:
+            return self._error(
+                request,
+                "stale_snapshot",
+                "Temper changed since this preview; review the current setup and try again.",
+            )
+        return snapshot.content_digest, fingerprint
+
+    def _setup_service(self) -> DesktopSetupApplicationService:
+        if self._setup is not None:
+            return self._setup
+        if self._setup_factory is None:
+            from adaptation_compiler_lab.desktop.setup_service import (
+                DesktopSetupApplicationService,
+            )
+
+            self._setup = DesktopSetupApplicationService()
+        else:
+            self._setup = self._setup_factory()
+        return self._setup
 
     def _preview_export(self, request: EngineRequest) -> EngineResponse:
         if request.params:
@@ -515,7 +762,16 @@ def serve(
 def protocol_schema_models() -> Sequence[type[FrozenModel]]:
     """Return public models used to generate cross-language golden vectors."""
 
-    return (EngineRequest, EngineError, EngineResponse, EngineHandshake, DesktopSnapshot)
+    return (
+        EngineRequest,
+        EngineError,
+        EngineResponse,
+        EngineHandshake,
+        DesktopSnapshot,
+        SetupSnapshotV1,
+        ProjectCandidatePreviewV1,
+        SetupCompletionReceiptV1,
+    )
 
 
 def _required_string(params: Mapping[str, Any], key: str) -> str:
@@ -523,3 +779,11 @@ def _required_string(params: Mapping[str, Any], key: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"missing {key}")
     return value
+
+
+def _host_platform() -> Literal["windows", "macos", "development"]:
+    if sys.platform == "win32":
+        return "windows"
+    if sys.platform == "darwin":
+        return "macos"
+    return "development"

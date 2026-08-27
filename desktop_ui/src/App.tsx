@@ -16,9 +16,12 @@ import { Shell } from "./components/Shell";
 import { suggestions } from "./data/demo";
 import {
   isTauriRuntime,
+  loadEngineHandshake,
   loadEngineSnapshot,
   loadModes,
+  loadSetupSnapshot,
   type EngineDesktopSnapshot,
+  type EngineSetupSnapshot,
 } from "./engine";
 import type {
   CapabilityModeSummary,
@@ -84,6 +87,9 @@ export default function App() {
   const [engineSnapshot, setEngineSnapshot] =
     useState<EngineDesktopSnapshot | null>(null);
   const [snapshotDigest, setSnapshotDigest] = useState<string | null>(null);
+  const [setupSnapshot, setSetupSnapshot] =
+    useState<EngineSetupSnapshot | null>(null);
+  const [setupDigest, setSetupDigest] = useState<string | null>(null);
   const [modeCatalog, setModeCatalog] = useState<CapabilityModeSummary[]>(
     nativeRuntime ? [] : browserModes,
   );
@@ -113,13 +119,29 @@ export default function App() {
   useEffect(() => {
     if (!nativeRuntime) return;
     let active = true;
-    Promise.all([loadEngineSnapshot(), loadModes()])
-      .then(([{ snapshot, snapshotDigest: digest }, modes]) => {
-        if (active) {
-          setEngineSnapshot(snapshot);
-          setSnapshotDigest(digest);
-          setModeCatalog(modes);
+    loadEngineHandshake()
+      .then(async (handshake) => {
+        if (!handshake.configured) {
+          const setup = await loadSetupSnapshot();
+          if (active) {
+            setSetupSnapshot(setup.snapshot);
+            setSetupDigest(setup.snapshotDigest);
+            setScreen("onboarding");
+          }
+          return;
         }
+        const [{ snapshot, snapshotDigest: digest }, modes, setup] =
+          await Promise.all([
+            loadEngineSnapshot(),
+            loadModes(),
+            loadSetupSnapshot(),
+          ]);
+        if (!active) return;
+        setEngineSnapshot(snapshot);
+        setSnapshotDigest(digest);
+        setModeCatalog(modes);
+        setSetupSnapshot(setup.snapshot);
+        setSetupDigest(setup.snapshotDigest);
       })
       .catch((error: unknown) => {
         if (active) {
@@ -134,6 +156,26 @@ export default function App() {
       active = false;
     };
   }, [nativeRuntime]);
+
+  async function finishOnboarding() {
+    if (!nativeRuntime) {
+      setScreen("today");
+      return;
+    }
+    const [{ snapshot, snapshotDigest: digest }, modes, setup] =
+      await Promise.all([
+        loadEngineSnapshot(),
+        loadModes(),
+        loadSetupSnapshot(),
+      ]);
+    setEngineSnapshot(snapshot);
+    setSnapshotDigest(digest);
+    setModeCatalog(modes);
+    setSetupSnapshot(setup.snapshot);
+    setSetupDigest(setup.snapshotDigest);
+    setEngineError(null);
+    setScreen("today");
+  }
 
   const workspaces = engineSnapshot?.projects.map((project) => ({
     id: project.display_name,
@@ -183,13 +225,17 @@ export default function App() {
     setToast(message);
     if (!nativeRuntime) return;
     try {
-      const [{ snapshot, snapshotDigest: digest }, modes] = await Promise.all([
-        loadEngineSnapshot(),
-        loadModes(),
-      ]);
+      const [{ snapshot, snapshotDigest: digest }, modes, setup] =
+        await Promise.all([
+          loadEngineSnapshot(),
+          loadModes(),
+          loadSetupSnapshot(),
+        ]);
       setEngineSnapshot(snapshot);
       setSnapshotDigest(digest);
       setModeCatalog(modes);
+      setSetupSnapshot(setup.snapshot);
+      setSetupDigest(setup.snapshotDigest);
       setEngineError(null);
     } catch (error: unknown) {
       setEngineError(
@@ -201,7 +247,14 @@ export default function App() {
   }
 
   if (screen === "onboarding")
-    return <Onboarding onComplete={() => setScreen("today")} />;
+    return (
+      <Onboarding
+        nativeRuntime={nativeRuntime}
+        onComplete={finishOnboarding}
+        setupDigest={setupDigest}
+        setupSnapshot={setupSnapshot}
+      />
+    );
 
   return (
     <Tooltip.Provider delayDuration={500}>
@@ -284,7 +337,15 @@ export default function App() {
             snapshotDigest={snapshotDigest}
           />
         ) : null}
-        {screen === "connections" ? <ConnectionsPage /> : null}
+        {screen === "connections" ? (
+          <ConnectionsPage
+            liveConnections={setupSnapshot?.connections}
+            liveProjects={engineSnapshot?.projects}
+            nativeRuntime={nativeRuntime}
+            onProjectRegistered={refreshAfterNativeAction}
+            snapshotDigest={snapshotDigest}
+          />
+        ) : null}
         {screen === "settings" ? (
           <SettingsPage
             advancedMode={advancedMode}

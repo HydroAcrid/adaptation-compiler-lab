@@ -297,6 +297,123 @@ fn snapshot_get(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, 
 }
 
 #[tauri::command]
+fn setup_status(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
+    call_engine(&state, "setup.status", json!({}), None, None)
+}
+
+#[tauri::command]
+fn connection_inspect(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
+    call_engine(&state, "connection.inspect", json!({}), None, None)
+}
+
+#[tauri::command]
+fn setup_existing_preview(
+    state: tauri::State<'_, EngineState>,
+) -> Result<EngineResponse, PublicError> {
+    let config = rfd::FileDialog::new()
+        .add_filter("Temper configuration", &["json"])
+        .pick_file()
+        .ok_or_else(cancelled)?;
+    call_engine(
+        &state,
+        "setup.existing.preview",
+        json!({"path": config}),
+        None,
+        None,
+    )
+}
+
+#[tauri::command]
+fn setup_existing_adopt(
+    state: tauri::State<'_, EngineState>,
+    preview_token: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    let response = call_engine(
+        &state,
+        "setup.existing.adopt",
+        json!({"preview_token": preview_token}),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )?;
+    if response.ok {
+        let mut guard = state.0.lock().map_err(|_| unavailable())?;
+        *guard = None;
+    }
+    Ok(response)
+}
+
+#[tauri::command]
+fn setup_project_preview(
+    state: tauri::State<'_, EngineState>,
+) -> Result<EngineResponse, PublicError> {
+    let project = rfd::FileDialog::new().pick_folder().ok_or_else(cancelled)?;
+    call_engine(
+        &state,
+        "setup.project.preview",
+        json!({"path": project}),
+        None,
+        None,
+    )
+}
+
+#[tauri::command]
+fn setup_initialize(
+    state: tauri::State<'_, EngineState>,
+    preview_token: String,
+    consent_confirmed: bool,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    let response = call_engine(
+        &state,
+        "setup.initialize",
+        json!({
+            "preview_token": preview_token,
+            "consent_confirmed": consent_confirmed,
+        }),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )?;
+    if response.ok {
+        let mut guard = state.0.lock().map_err(|_| unavailable())?;
+        *guard = None;
+    }
+    Ok(response)
+}
+
+#[tauri::command]
+fn project_registration_preview(
+    state: tauri::State<'_, EngineState>,
+) -> Result<EngineResponse, PublicError> {
+    let project = rfd::FileDialog::new().pick_folder().ok_or_else(cancelled)?;
+    call_engine(
+        &state,
+        "project.registration.preview",
+        json!({"path": project}),
+        None,
+        None,
+    )
+}
+
+#[tauri::command]
+fn project_register(
+    state: tauri::State<'_, EngineState>,
+    preview_token: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "project.register",
+        json!({"preview_token": preview_token}),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
 fn profile_export_preview(
     state: tauri::State<'_, EngineState>,
 ) -> Result<EngineResponse, PublicError> {
@@ -402,6 +519,14 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             engine_handshake,
             snapshot_get,
+            setup_status,
+            connection_inspect,
+            setup_existing_preview,
+            setup_existing_adopt,
+            setup_project_preview,
+            setup_initialize,
+            project_registration_preview,
+            project_register,
             profile_export_preview,
             profile_export,
             profile_import_preview,

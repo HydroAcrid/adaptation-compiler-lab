@@ -1,9 +1,17 @@
 [[permission]]
 identifier = "engine-product"
-description = "Allows only typed product reads, user-mediated profile actions, and exact managed Mode tasks."
+description = "Allows only typed setup, product reads, user-mediated profile actions, and exact managed Mode tasks."
 commands.allow = [
   "engine_handshake",
   "snapshot_get",
+  "setup_status",
+  "connection_inspect",
+  "setup_existing_preview",
+  "setup_existing_adopt",
+  "setup_project_preview",
+  "setup_initialize",
+  "project_registration_preview",
+  "project_register",
   "profile_export_preview",
   "profile_export",
   "profile_import_preview",

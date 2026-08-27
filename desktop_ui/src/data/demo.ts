@@ -150,11 +150,11 @@ export const connections: AgentConnection[] = [
   {
     id: "claude",
     name: "Claude Code",
-    status: "available",
-    sourceCapability: "Can learn through a local hook",
-    targetCapability: "Can deliver scoped adaptations to new prompts",
-    authDescription: "Console sign-in required",
-    costDescription: "Provider-billed; Temper never stores the credential",
+    status: "attention",
+    sourceCapability: "Not integrated in this Temper build",
+    targetCapability: "Not integrated in this Temper build",
+    authDescription: "Not installed in this example",
+    costDescription: "Future Claude use would be provider-billed",
   },
 ];
 

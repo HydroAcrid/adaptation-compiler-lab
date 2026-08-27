@@ -29,7 +29,14 @@ import {
 import { useState, type ReactNode } from "react";
 
 import { connections, coreItems, projects } from "../data/demo";
-import { runModeTask } from "../engine";
+import {
+  previewProjectRegistration,
+  registerProject,
+  runModeTask,
+  type EngineAgentConnection,
+  type EngineProjectPreview,
+  type EngineProject,
+} from "../engine";
 import type {
   CapabilityModeSummary,
   CoreItem,
@@ -934,9 +941,90 @@ function CoreItemDialog({
   );
 }
 
-export function ConnectionsPage() {
+export function ConnectionsPage({
+  nativeRuntime = false,
+  liveConnections,
+  liveProjects,
+  snapshotDigest = null,
+  onProjectRegistered,
+}: {
+  nativeRuntime?: boolean;
+  liveConnections?: EngineAgentConnection[];
+  liveProjects?: EngineProject[];
+  snapshotDigest?: string | null;
+  onProjectRegistered?: (message: string) => void | Promise<void>;
+}) {
   const [selectedConnection, setSelectedConnection] =
     useState<AgentConnection | null>(null);
+  const [projectPreview, setProjectPreview] =
+    useState<EngineProjectPreview | null>(null);
+  const [projectBusy, setProjectBusy] = useState(false);
+  const [projectMessage, setProjectMessage] = useState<string | null>(null);
+  const shownConnections: AgentConnection[] = liveConnections
+    ? liveConnections.map((connection) => ({
+        authDescription: connection.status_summary,
+        costDescription: connection.cost_posture,
+        id: connection.agent_id,
+        name: connection.display_name,
+        sourceCapability: connection.learning_capability,
+        status:
+          connection.agent_id === "codex" &&
+          connection.authentication_state === "signed_in" &&
+          connection.conformance_state === "compatible"
+            ? "connected"
+            : connection.installation_state === "installed"
+              ? "attention"
+              : "available",
+        targetCapability: connection.delivery_capability,
+      }))
+    : connections;
+  const shownProjects = liveProjects
+    ? liveProjects.map((project) => ({
+        connectedAgents: ["Codex"],
+        id: project.project_id,
+        name: project.display_name,
+        pathLabel: "Prospectively registered",
+      }))
+    : projects;
+
+  async function chooseProject() {
+    setProjectBusy(true);
+    setProjectMessage(null);
+    try {
+      setProjectPreview(await previewProjectRegistration());
+    } catch (error: unknown) {
+      setProjectMessage(
+        error instanceof Error ? error.message : "Nothing was selected.",
+      );
+    } finally {
+      setProjectBusy(false);
+    }
+  }
+
+  async function confirmProject() {
+    if (!projectPreview || !snapshotDigest) return;
+    setProjectBusy(true);
+    setProjectMessage(null);
+    try {
+      await registerProject(
+        projectPreview.preview_token,
+        snapshotDigest,
+        crypto.randomUUID(),
+      );
+      setProjectPreview(null);
+      await onProjectRegistered?.(
+        `${projectPreview.display_name} is now eligible for new work.`,
+      );
+    } catch (error: unknown) {
+      setProjectMessage(
+        error instanceof Error
+          ? error.message
+          : "Temper could not register that project.",
+      );
+    } finally {
+      setProjectBusy(false);
+    }
+  }
   return (
     <div className="page">
       <header className="page-topline">
@@ -946,15 +1034,18 @@ export function ConnectionsPage() {
         title="Connections"
         description="Review where Temper can learn and where it can deliver adaptations."
       />
-      <div className="native-action-note" role="note">
-        <Laptop aria-hidden="true" size={16} />
-        <span>
-          This browser preview cannot change agent accounts or project folders.
-          Those controls become available in the installed desktop app.
-        </span>
-      </div>
+      {!nativeRuntime ? (
+        <div className="native-action-note" role="note">
+          <Laptop aria-hidden="true" size={16} />
+          <span>
+            This browser preview cannot change agent accounts or project
+            folders. Those controls become available in the installed desktop
+            app.
+          </span>
+        </div>
+      ) : null}
       <section className="connection-list">
-        {connections.map((connection) => (
+        {shownConnections.map((connection) => (
           <article className="connection-card" key={connection.id}>
             <div className={`agent-logo agent-logo--${connection.id}`}>
               <Bot size={22} />
@@ -987,13 +1078,10 @@ export function ConnectionsPage() {
               </div>
             </div>
             <Button
-              disabled={connection.status !== "connected"}
               onClick={() => setSelectedConnection(connection)}
-              tone={connection.status === "connected" ? "quiet" : "primary"}
+              tone="quiet"
             >
-              {connection.status === "connected"
-                ? "View details"
-                : "Desktop setup"}
+              View details
             </Button>
           </article>
         ))}
@@ -1004,12 +1092,16 @@ export function ConnectionsPage() {
             <h2>Active projects</h2>
             <p>Only new work after registration is eligible.</p>
           </div>
-          <Button disabled icon={<Plus size={16} />}>
-            Add in desktop app
+          <Button
+            disabled={!nativeRuntime || !snapshotDigest || projectBusy}
+            icon={<Plus size={16} />}
+            onClick={chooseProject}
+          >
+            Add project
           </Button>
         </div>
         <div className="project-list">
-          {projects.map((project) => (
+          {shownProjects.map((project) => (
             <div className="project-row" key={project.id}>
               <div className="project-monogram">{project.name[0]}</div>
               <div className="project-row__copy">
@@ -1037,6 +1129,50 @@ export function ConnectionsPage() {
           connection={selectedConnection}
           onClose={() => setSelectedConnection(null)}
         />
+      ) : null}
+      {projectPreview ? (
+        <Dialog.Root
+          onOpenChange={(open) => (open ? undefined : setProjectPreview(null))}
+          open
+        >
+          <Dialog.Portal>
+            <Dialog.Overlay className="dialog-overlay" />
+            <Dialog.Content className="core-dialog connection-dialog">
+              <Dialog.Close aria-label="Close" className="dialog-close">
+                <X size={18} />
+              </Dialog.Close>
+              <span className="folio-kicker">Prospective project</span>
+              <Dialog.Title>{projectPreview.display_name}</Dialog.Title>
+              <Dialog.Description>
+                Only tasks created after you register this project can become
+                eligible. Temper will not modify its repository or existing
+                tasks.
+              </Dialog.Description>
+              {projectMessage ? <p role="alert">{projectMessage}</p> : null}
+              <div className="core-dialog__actions">
+                <Button
+                  disabled={projectBusy}
+                  onClick={() => setProjectPreview(null)}
+                  tone="quiet"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  disabled={projectBusy}
+                  onClick={confirmProject}
+                  tone="primary"
+                >
+                  {projectBusy ? "Registering…" : "Register new work"}
+                </Button>
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      ) : null}
+      {projectMessage && !projectPreview ? (
+        <p className="connection-dialog-note" role="alert">
+          {projectMessage}
+        </p>
       ) : null}
     </div>
   );
@@ -1073,8 +1209,9 @@ function ConnectionDetailsDialog({
             </div>
           </dl>
           <p className="connection-dialog-note">
-            Account changes require the installed desktop app. This preview is
-            read-only.
+            {connection.id === "claude"
+              ? "Detection does not connect Claude to Temper or authorize provider-billed use."
+              : "Temper can learn only from prospectively registered completed work and deliver only to fresh Temper-managed tasks."}
           </p>
           <div className="core-dialog__actions">
             <Button onClick={onClose} tone="primary">
