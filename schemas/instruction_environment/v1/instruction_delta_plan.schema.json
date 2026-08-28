@@ -1,0 +1,309 @@
+{
+  "$defs": {
+    "InstructionConflictV1": {
+      "additionalProperties": false,
+      "properties": {
+        "conflict_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Conflict Id",
+          "type": "string"
+        },
+        "conflict_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Conflict Version",
+          "type": "string"
+        },
+        "native_clause_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Native Clause Id",
+          "type": "string"
+        },
+        "native_precedence": {
+          "minimum": 0,
+          "title": "Native Precedence",
+          "type": "integer"
+        },
+        "native_source_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Native Source Id",
+          "type": "string"
+        },
+        "project_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "rationale": {
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "relation": {
+          "$ref": "#/$defs/InstructionRelationKind"
+        },
+        "resolution_state": {
+          "enum": [
+            "unresolved",
+            "kept_native",
+            "narrowed_temper",
+            "ignored"
+          ],
+          "title": "Resolution State",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "notice",
+            "blocking"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/NativeTarget"
+        },
+        "temper_clause_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Temper Clause Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "conflict_id",
+        "project_id",
+        "target",
+        "temper_clause_digest",
+        "native_clause_id",
+        "native_source_id",
+        "relation",
+        "native_precedence",
+        "severity",
+        "resolution_state",
+        "rationale"
+      ],
+      "title": "InstructionConflictV1",
+      "type": "object"
+    },
+    "InstructionRelationKind": {
+      "enum": [
+        "exact_duplicate",
+        "semantic_equivalent",
+        "contradiction",
+        "narrower_exception",
+        "broader_overlap",
+        "complementary",
+        "unknown"
+      ],
+      "title": "InstructionRelationKind",
+      "type": "string"
+    },
+    "InstructionRelationV1": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "deterministic": {
+          "title": "Deterministic",
+          "type": "boolean"
+        },
+        "interpreter_digests": {
+          "default": [],
+          "items": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Interpreter Digests",
+          "type": "array"
+        },
+        "native_clause_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Native Clause Digest",
+          "type": "string"
+        },
+        "native_clause_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Native Clause Id",
+          "type": "string"
+        },
+        "rationale": {
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "relation": {
+          "$ref": "#/$defs/InstructionRelationKind"
+        },
+        "relation_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Relation Version",
+          "type": "string"
+        },
+        "resolution": {
+          "$ref": "#/$defs/InstructionResolution"
+        },
+        "temper_clause_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Temper Clause Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "temper_clause_digest",
+        "native_clause_id",
+        "native_clause_digest",
+        "relation",
+        "confidence",
+        "deterministic",
+        "resolution",
+        "rationale"
+      ],
+      "title": "InstructionRelationV1",
+      "type": "object"
+    },
+    "InstructionResolution": {
+      "enum": [
+        "omit_temper",
+        "include_temper",
+        "preserve_scoped",
+        "block_temper",
+        "needs_review"
+      ],
+      "title": "InstructionResolution",
+      "type": "string"
+    },
+    "NativeTarget": {
+      "enum": [
+        "codex",
+        "claude",
+        "copilot"
+      ],
+      "title": "NativeTarget",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "blocked_temper_clause_digests": {
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Blocked Temper Clause Digests",
+      "type": "array"
+    },
+    "conflicts": {
+      "items": {
+        "$ref": "#/$defs/InstructionConflictV1"
+      },
+      "title": "Conflicts",
+      "type": "array"
+    },
+    "environment_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Environment Digest",
+      "type": "string"
+    },
+    "fully_optimized": {
+      "title": "Fully Optimized",
+      "type": "boolean"
+    },
+    "included_temper_clause_digests": {
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Included Temper Clause Digests",
+      "type": "array"
+    },
+    "input_utf8_bytes": {
+      "minimum": 0,
+      "title": "Input Utf8 Bytes",
+      "type": "integer"
+    },
+    "omitted_temper_clause_digests": {
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Omitted Temper Clause Digests",
+      "type": "array"
+    },
+    "output_utf8_bytes": {
+      "minimum": 0,
+      "title": "Output Utf8 Bytes",
+      "type": "integer"
+    },
+    "plan_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Plan Version",
+      "type": "string"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "relations": {
+      "items": {
+        "$ref": "#/$defs/InstructionRelationV1"
+      },
+      "title": "Relations",
+      "type": "array"
+    },
+    "source_chain_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Chain Digest",
+      "type": "string"
+    },
+    "surface": {
+      "minLength": 1,
+      "title": "Surface",
+      "type": "string"
+    },
+    "surface_contract_version": {
+      "minLength": 1,
+      "title": "Surface Contract Version",
+      "type": "string"
+    },
+    "target": {
+      "$ref": "#/$defs/NativeTarget"
+    }
+  },
+  "required": [
+    "project_id",
+    "target",
+    "surface",
+    "surface_contract_version",
+    "environment_digest",
+    "source_chain_digest",
+    "included_temper_clause_digests",
+    "omitted_temper_clause_digests",
+    "blocked_temper_clause_digests",
+    "relations",
+    "conflicts",
+    "input_utf8_bytes",
+    "output_utf8_bytes",
+    "fully_optimized"
+  ],
+  "title": "InstructionDeltaPlanV1",
+  "type": "object"
+}

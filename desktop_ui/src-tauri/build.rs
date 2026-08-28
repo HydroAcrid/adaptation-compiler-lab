@@ -84,6 +84,15 @@ fn main() {
             "setup_initialize",
             "project_registration_preview",
             "project_register",
+            "instruction_environment_get",
+            "instruction_environment_refresh",
+            "instruction_environment_analyze",
+            "instruction_environment_global_preview",
+            "instruction_environment_global_enable",
+            "instruction_environment_global_disable",
+            "instruction_environment_change_preview",
+            "instruction_environment_change_apply",
+            "instruction_environment_change_rollback",
             "profile_export_preview",
             "profile_export",
             "profile_import_preview",
@@ -94,6 +103,7 @@ fn main() {
             "task_apply",
             "task_discard",
             "diagnostics_get",
+            "notification_permission",
         ]),
     ))
     .expect("failed to build Temper desktop metadata");

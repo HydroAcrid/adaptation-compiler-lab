@@ -1,0 +1,146 @@
+{
+  "$defs": {
+    "NativeTarget": {
+      "enum": [
+        "codex",
+        "claude",
+        "copilot"
+      ],
+      "title": "NativeTarget",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "after_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "After Digest",
+      "type": "string"
+    },
+    "applied_at": {
+      "format": "date-time",
+      "title": "Applied At",
+      "type": "string"
+    },
+    "backup_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Backup Digest",
+      "type": "string"
+    },
+    "before_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Before Digest",
+      "type": "string"
+    },
+    "environment_digest_after": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Environment Digest After",
+      "type": "string"
+    },
+    "environment_digest_before": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Environment Digest Before",
+      "type": "string"
+    },
+    "preview_token": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Preview Token",
+      "type": "string"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "raw_payloads_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Payloads Exposed",
+      "type": "boolean"
+    },
+    "receipt_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "receipt_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Receipt Version",
+      "type": "string"
+    },
+    "rollback_available_until": {
+      "format": "date-time",
+      "title": "Rollback Available Until",
+      "type": "string"
+    },
+    "rollback_of_receipt_id": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rollback Of Receipt Id"
+    },
+    "signature_base64": {
+      "minLength": 1,
+      "title": "Signature Base64",
+      "type": "string"
+    },
+    "signer_fingerprint": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Signer Fingerprint",
+      "type": "string"
+    },
+    "source_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Source Id",
+      "type": "string"
+    },
+    "status": {
+      "default": "applied",
+      "enum": [
+        "applied",
+        "rolled_back"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "target": {
+      "$ref": "#/$defs/NativeTarget"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "preview_token",
+    "project_id",
+    "target",
+    "source_id",
+    "before_digest",
+    "after_digest",
+    "environment_digest_before",
+    "environment_digest_after",
+    "backup_digest",
+    "applied_at",
+    "signer_fingerprint",
+    "signature_base64",
+    "rollback_available_until"
+  ],
+  "title": "NativeInstructionChangeReceiptV1",
+  "type": "object"
+}

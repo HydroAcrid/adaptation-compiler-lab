@@ -1,0 +1,106 @@
+{
+  "$defs": {
+    "NativeTarget": {
+      "enum": [
+        "codex",
+        "claude",
+        "copilot"
+      ],
+      "title": "NativeTarget",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "display_path": {
+      "minLength": 1,
+      "title": "Display Path",
+      "type": "string"
+    },
+    "expected_environment_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Expected Environment Digest",
+      "type": "string"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "operation": {
+      "enum": [
+        "create_temper_section",
+        "update_temper_section",
+        "remove_temper_section"
+      ],
+      "title": "Operation",
+      "type": "string"
+    },
+    "preview_token": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Preview Token",
+      "type": "string"
+    },
+    "preview_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Preview Version",
+      "type": "string"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "raw_payloads_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Payloads Exposed",
+      "type": "boolean"
+    },
+    "resulting_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Resulting Digest",
+      "type": "string"
+    },
+    "source_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Digest",
+      "type": "string"
+    },
+    "source_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Source Id",
+      "type": "string"
+    },
+    "target": {
+      "$ref": "#/$defs/NativeTarget"
+    },
+    "unified_diff": {
+      "minLength": 1,
+      "title": "Unified Diff",
+      "type": "string"
+    }
+  },
+  "required": [
+    "preview_token",
+    "project_id",
+    "target",
+    "source_id",
+    "source_digest",
+    "expected_environment_digest",
+    "operation",
+    "display_path",
+    "unified_diff",
+    "resulting_digest",
+    "expires_at"
+  ],
+  "title": "NativeInstructionChangePreviewV1",
+  "type": "object"
+}

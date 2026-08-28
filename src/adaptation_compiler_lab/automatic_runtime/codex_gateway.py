@@ -56,6 +56,7 @@ class CodexGatewayConversation:
         self._maximum_turns = maximum_turns
         self._timeout = turn_timeout_seconds
         self._thread_id: str | None = None
+        self._instruction_sources: tuple[Path, ...] = ()
         self._turn_count = 0
 
     @property
@@ -67,6 +68,14 @@ class CodexGatewayConversation:
     @property
     def turn_count(self) -> int:
         return self._turn_count
+
+    @property
+    def instruction_sources(self) -> tuple[Path, ...]:
+        """Exact native instruction files Codex reported for this fresh thread."""
+
+        if self._thread_id is None:
+            raise CodexProtocolError("gateway conversation has not started")
+        return self._instruction_sources
 
     def start(self) -> None:
         if self._thread_id is not None:
@@ -117,10 +126,13 @@ class CodexGatewayConversation:
         sources = response.get("instructionSources", [])
         if not isinstance(sources, list):
             raise CodexProtocolError("Codex instruction sources must be an array")
+        resolved_sources: list[Path] = []
         for raw in sources:
             source = _resolved_runtime_path(_string(raw, field="instruction source"))
             if source != self._workspace and not source.is_relative_to(self._workspace):
                 raise CodexProtocolError("Codex loaded an instruction source outside the workspace")
+            resolved_sources.append(source)
+        self._instruction_sources = tuple(resolved_sources)
         self._thread_id = thread_id
 
     def turn(self, message: str, *, client_message_id: str) -> GatewayTurnResult:

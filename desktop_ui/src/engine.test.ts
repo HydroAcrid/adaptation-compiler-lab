@@ -5,20 +5,27 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 
 import {
   adoptExistingInstallation,
+  applyNativeInstructionChange,
   ENGINE_PROTOCOL_VERSION,
   exportProfile,
   decideEngineSuggestion,
   isTauriRuntime,
   loadEngineSnapshot,
+  loadInstructionEnvironments,
   loadDiagnostics,
   loadModes,
   loadProfileImportPreview,
   previewExistingInstallation,
+  previewNativeInstructionChange,
+  previewPersonalInstructionSetup,
+  previewSetupProject,
+  requestNotificationPermission,
   runModeTask,
   runManagedTask,
   applyManagedTask,
   discardManagedTask,
   updateEnginePreferences,
+  enablePersonalInstructionSetup,
 } from "./engine";
 
 describe("Tauri engine boundary", () => {
@@ -31,6 +38,15 @@ describe("Tauri engine boundary", () => {
     expect(isTauriRuntime()).toBe(false);
     window.__TAURI_INTERNALS__ = {};
     expect(isTauriRuntime()).toBe(true);
+  });
+
+  it("requests notification permission through one allowlisted native command", async () => {
+    invoke.mockResolvedValueOnce("granted");
+
+    await expect(requestNotificationPermission()).resolves.toBe("granted");
+    expect(invoke).toHaveBeenCalledWith("notification_permission", {
+      request: true,
+    });
   });
 
   it("handshakes before loading a raw-free snapshot", async () => {
@@ -235,8 +251,9 @@ describe("Tauri engine boundary", () => {
       });
 
     const preview = await previewExistingInstallation();
+    expect(preview).not.toBeNull();
     await adoptExistingInstallation(
-      preview.preview_token,
+      preview!.preview_token,
       "sha256:" + "b".repeat(64),
       "adopt-click-1",
     );
@@ -253,6 +270,25 @@ describe("Tauri engine boundary", () => {
       ],
     ]);
     expect(JSON.stringify(invoke.mock.calls)).not.toContain("config.json");
+  });
+
+  it("treats a cancelled native picker as an unchanged state", async () => {
+    const cancelled = {
+      protocol_version: ENGINE_PROTOCOL_VERSION,
+      request_id: "cancelled",
+      ok: false,
+      result: null,
+      error: {
+        code: "cancelled",
+        message: "Nothing changed.",
+        retryable: false,
+      },
+      snapshot_digest: null,
+    };
+    invoke.mockResolvedValue(cancelled);
+
+    await expect(previewSetupProject()).resolves.toBeNull();
+    await expect(previewExistingInstallation()).resolves.toBeNull();
   });
 
   it("loads only the raw-free Mode catalog", async () => {
@@ -408,12 +444,14 @@ describe("Tauri engine boundary", () => {
     );
 
     expect(invoke).toHaveBeenCalledWith("preferences_update", {
-      aggregateReportingEnabled: false,
-      backgroundEnabled: true,
-      decisionNotificationsEnabled: true,
-      launchAtLoginEnabled: false,
       expectedSnapshotDigest: "sha256:" + "b".repeat(64),
       idempotencyKey: "preferences-click-1",
+      preferences: {
+        aggregateReportingEnabled: false,
+        backgroundEnabled: true,
+        decisionNotificationsEnabled: true,
+        launchAtLoginEnabled: false,
+      },
     });
   });
 
@@ -542,4 +580,198 @@ describe("Tauri engine boundary", () => {
 
     await expect(loadDiagnostics()).rejects.toThrow("unsafe diagnostics");
   });
+
+  it("loads only raw-free observed instruction-environment summaries", async () => {
+    invoke.mockResolvedValueOnce({
+      protocol_version: ENGINE_PROTOCOL_VERSION,
+      request_id: "instructions",
+      ok: true,
+      result: {
+        environments: [
+          {
+            summary_version: "1.0.0",
+            project_id: "project-alpha",
+            target: "codex",
+            status: "understood",
+            source_count: 1,
+            skill_count: 0,
+            instruction_count: 2,
+            blocking_conflict_count: 0,
+            semantic_analysis_status: "current",
+            last_analyzed_at: "2026-08-28T12:00:00Z",
+            environment_digest: "sha256:" + "a".repeat(64),
+            source_chain_digest: "sha256:" + "b".repeat(64),
+            global_sources_enabled: false,
+            sources: [
+              {
+                summary_version: "1.0.0",
+                source_id: "native-source-1",
+                target: "codex",
+                kind: "project_instructions",
+                display_path: "AGENTS.md",
+                scope_summary: "Project project-alpha",
+                status: "ready",
+                instruction_count: 2,
+                skill: false,
+                activation_status: "active",
+                observed_context_only: true,
+                raw_payloads_exposed: false,
+              },
+            ],
+            raw_payloads_exposed: false,
+          },
+        ],
+        raw_payloads_exposed: false,
+      },
+      error: null,
+      snapshot_digest: null,
+    });
+
+    await expect(loadInstructionEnvironments()).resolves.toHaveLength(1);
+    expect(invoke).toHaveBeenCalledWith("instruction_environment_get");
+    expect(JSON.stringify(invoke.mock.calls)).not.toMatch(/[A-Z]:\\|\/Users\//);
+  });
+
+  it("keeps personal inspection path selection native and enables only an opaque preview", async () => {
+    const preview = {
+      preview_version: "1.0.0" as const,
+      preview_token: "personal-preview-1",
+      target: "codex" as const,
+      categories: ["instructions", "skills"],
+      source_count: 2,
+      skill_count: 1,
+      modifies_files: false as const,
+      authorizes_learning: false as const,
+      expires_at: "2026-08-28T12:15:00Z",
+      raw_payloads_exposed: false as const,
+    };
+    invoke
+      .mockResolvedValueOnce(responseForTest(preview))
+      .mockResolvedValueOnce(
+        responseForTest({ environments: [], raw_payloads_exposed: false }),
+      );
+
+    await expect(previewPersonalInstructionSetup("codex")).resolves.toEqual(
+      preview,
+    );
+    await enablePersonalInstructionSetup(
+      preview.preview_token,
+      preview.target,
+      "sha256:" + "c".repeat(64),
+      "enable-personal-1",
+    );
+
+    expect(invoke.mock.calls).toEqual([
+      ["instruction_environment_global_preview", { target: "codex" }],
+      [
+        "instruction_environment_global_enable",
+        {
+          expectedSnapshotDigest: "sha256:" + "c".repeat(64),
+          idempotencyKey: "enable-personal-1",
+          previewToken: "personal-preview-1",
+          target: "codex",
+        },
+      ],
+    ]);
+  });
+
+  it("binds native writeback to the exact source and environment preview", async () => {
+    const environment = {
+      summary_version: "1.0.0" as const,
+      project_id: "project-alpha",
+      target: "codex" as const,
+      status: "understood" as const,
+      source_count: 1,
+      skill_count: 0,
+      instruction_count: 1,
+      blocking_conflict_count: 0,
+      semantic_analysis_status: "current" as const,
+      last_analyzed_at: "2026-08-28T12:00:00Z",
+      environment_digest: "sha256:" + "a".repeat(64),
+      source_chain_digest: "sha256:" + "b".repeat(64),
+      global_sources_enabled: false,
+      sources: [],
+      raw_payloads_exposed: false as const,
+    };
+    const preview = {
+      preview_version: "1.0.0" as const,
+      preview_token: "write-preview-1",
+      project_id: "project-alpha",
+      target: "codex" as const,
+      source_id: "native-source-1",
+      source_digest: "sha256:" + "d".repeat(64),
+      expected_environment_digest: environment.environment_digest,
+      operation: "update_temper_section" as const,
+      display_path: "AGENTS.md",
+      unified_diff: "--- a/AGENTS.md\n+++ b/AGENTS.md\n",
+      resulting_digest: "sha256:" + "e".repeat(64),
+      expires_at: "2026-08-28T12:15:00Z",
+      raw_payloads_exposed: false as const,
+    };
+    invoke
+      .mockResolvedValueOnce(responseForTest(preview))
+      .mockResolvedValueOnce(
+        responseForTest({
+          receipt_version: "1.0.0",
+          receipt_id: "native-receipt-1",
+          preview_token: preview.preview_token,
+          project_id: "project-alpha",
+          target: "codex",
+          source_id: "native-source-1",
+          before_digest: preview.source_digest,
+          after_digest: preview.resulting_digest,
+          environment_digest_before: environment.environment_digest,
+          environment_digest_after: "sha256:" + "f".repeat(64),
+          backup_digest: "sha256:" + "1".repeat(64),
+          applied_at: "2026-08-28T12:01:00Z",
+          signer_fingerprint: "sha256:" + "2".repeat(64),
+          signature_base64: "signed",
+          rollback_available_until: "2026-09-27T12:01:00Z",
+          status: "applied",
+          raw_payloads_exposed: false,
+        }),
+      );
+
+    const result = await previewNativeInstructionChange(
+      environment,
+      "native-source-1",
+      "Verify the focused test.",
+      "sha256:" + "c".repeat(64),
+    );
+    await applyNativeInstructionChange(
+      result,
+      "sha256:" + "c".repeat(64),
+      "apply-native-1",
+    );
+
+    expect(invoke.mock.calls[0]).toEqual([
+      "instruction_environment_change_preview",
+      {
+        expectedEnvironmentDigest: environment.environment_digest,
+        expectedSnapshotDigest: "sha256:" + "c".repeat(64),
+        instructionText: "Verify the focused test.",
+        projectId: "project-alpha",
+        sourceId: "native-source-1",
+        target: "codex",
+      },
+    ]);
+    expect(invoke.mock.calls[1]?.[1]).toEqual({
+      expectedEnvironmentDigest: environment.environment_digest,
+      expectedSnapshotDigest: "sha256:" + "c".repeat(64),
+      idempotencyKey: "apply-native-1",
+      previewToken: "write-preview-1",
+      target: "codex",
+    });
+  });
 });
+
+function responseForTest(result: unknown) {
+  return {
+    protocol_version: ENGINE_PROTOCOL_VERSION,
+    request_id: crypto.randomUUID(),
+    ok: true,
+    result,
+    error: null,
+    snapshot_digest: null,
+  };
+}

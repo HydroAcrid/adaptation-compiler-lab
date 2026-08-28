@@ -1,4 +1,21 @@
-# Temper desktop third-party assets
+# Temper desktop third-party notices
+
+## Tauri NSIS installer template
+
+- Bundled file: `src-tauri/windows/installer-template.nsi`
+- Project: [Tauri](https://github.com/tauri-apps/tauri)
+- Component: `tauri-bundler` 2.9.4
+- Tag commit: `8909f221d1515955fc843808032bdc5d62209c96`
+- License: [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) or
+  [MIT](https://opensource.org/license/mit/)
+- Upstream canonical-LF SHA-256:
+  `20f4ecc730defb71f1342eaeaec4021df13be3d843abba0effe88ea5835fa079`
+- Vendored canonical-LF SHA-256:
+  `aa0378477b4ee5e260f07bba4bf11343218634c15d70c1254144e60a31055ea1`
+- Modifications: set the visible current-user default to
+  `%LOCALAPPDATA%\\Programs\\Temper`; remove the generic uninstaller “delete app data” control
+  and its deletion branch because Temper evidence and preferences require the governed product
+  deletion flow. The package uninstaller preserves governed state.
 
 ## Typefaces
 
@@ -10,6 +27,27 @@ Temper self-hosts both fonts at build time. No runtime font request is made.
 - **Instrument Sans Variable 5.3.0** — interface text and metadata; distributed through
   [`@fontsource-variable/instrument-sans`](https://fontsource.org/fonts/instrument-sans) under the
   [SIL Open Font License 1.1](https://openfontlicense.org/open-font-license-official-text/).
+
+## Agent connection marks
+
+Temper bundles provider marks only beside the corresponding Codex and Claude Code connection
+status. They are descriptive identifiers, not Temper branding and not an endorsement or
+partnership claim. The paths are bundled in `src/components/AgentBrandMark.tsx`; Temper makes no
+runtime request for them.
+
+- **OpenAI knot** — sourced from Simple Icons 15.15.0
+  ([upstream SVG](https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/openai.svg)); Simple
+  Icons is distributed under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
+  OpenAI retains trademark rights and requires relevant, unaltered, non-endorsing use under its
+  [brand guidelines](https://openai.com/brand/). Temper removes only the SVG wrapper and title,
+  keeps the vector path unchanged, and renders the monochrome mark beside “Codex.”
+- **Claude starburst** — sourced from Simple Icons 16.28.0
+  ([upstream SVG](https://cdn.jsdelivr.net/npm/simple-icons@16.28.0/icons/claude.svg)); Simple
+  Icons is distributed under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
+  Anthropic retains trademark rights and publishes official assets through its
+  [press kit](https://www.anthropic.com/press-kit). Temper removes only the SVG wrapper and title,
+  keeps the vector path unchanged, and renders the mark in Claude's Crail color beside “Claude
+  Code.”
 
 ## Temper wind mark
 

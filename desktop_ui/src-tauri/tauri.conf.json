@@ -19,6 +19,9 @@
         "height": 640,
         "minWidth": 720,
         "minHeight": 540,
+        "decorations": true,
+        "maximizable": true,
+        "minimizable": true,
         "resizable": true,
         "fullscreen": false,
         "devtools": false
@@ -37,6 +40,11 @@
     "targets": "all",
     "createUpdaterArtifacts": false,
     "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "installerHooks": "./windows/installer-hooks.nsh",
+        "template": "./windows/installer-template.nsi"
+      },
       "webviewInstallMode": {
         "type": "skip"
       }

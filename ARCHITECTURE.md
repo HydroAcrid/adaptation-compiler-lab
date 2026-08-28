@@ -59,6 +59,21 @@ flowchart LR
     R --> A["Codex now; additional target adapters later"]
 ```
 
+### 1.2 Native instruction environment
+
+Before rendering a managed target projection, an `InstructionSourceAdapter` discovers only the
+exact native locations applicable to the target, project, working directory, and surface. The
+snapshot binds the platform contract version, native source chain, authority, activation state,
+and content digests. Optional isolated semantic passes propose relationships; deterministic policy
+decides whether each approved Temper clause is included, omitted with coverage lineage, preserved
+as a scoped exception, or withheld by a blocking conflict.
+
+Native contextual clauses never become Evidence or Artifacts. The runtime manifest binds the
+resulting delta to the environment digest and final byte count. A changed source invalidates the
+projection before launch. Previewed writeback is a separate mutation path with atomic replacement,
+an encrypted exact-byte backup, a signed receipt, and restart-safe rollback. See
+`TEMPER_NATIVE_INSTRUCTION_INTEROPERABILITY.md`.
+
 Explicit current user instructions and applicable project policy remain outside the adaptation
 asset and outrank it at use time. Permanent learning never silently absorbs a preset. A preset and
 its overlay require an exact source/version binding and explicit temporary activation; those

@@ -5,6 +5,9 @@ import App from "./App";
 
 afterEach(() => {
   window.history.replaceState({}, "", "/");
+  window.localStorage.clear();
+  document.body.style.removeProperty("pointer-events");
+  document.body.removeAttribute("data-scroll-locked");
 });
 
 describe("Temper prototype", () => {
@@ -12,11 +15,11 @@ describe("Temper prototype", () => {
     render(<App />);
     expect(
       screen.getByRole("heading", {
-        name: "Temper is active across your work.",
+        name: "3 suggestions to review.",
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/3 suggestions are ready in Kairn/i),
+      screen.getByText(/nothing changes until you decide/i),
     ).toBeInTheDocument();
     expect(screen.getByText("Automatic option available")).toBeInTheDocument();
     expect(screen.queryByText(/sha256/i)).not.toBeInTheDocument();
@@ -49,6 +52,14 @@ describe("Temper prototype", () => {
       "aria-current",
       "page",
     );
+    expect(document.querySelector(".screen-transition")).toHaveAttribute(
+      "data-screen",
+      "settings",
+    );
+    expect(document.querySelector(".screen-transition")).toHaveAttribute(
+      "data-direction",
+      "forward",
+    );
     await user.click(screen.getByRole("button", { name: "Today" }));
     expect(screen.getByRole("button", { name: "Today" })).toHaveAttribute(
       "aria-current",
@@ -56,9 +67,17 @@ describe("Temper prototype", () => {
     );
     expect(
       screen.getByRole("heading", {
-        name: "Temper is active across your work.",
+        name: "3 suggestions to review.",
       }),
     ).toBeInTheDocument();
+    expect(document.querySelector(".screen-transition")).toHaveAttribute(
+      "data-screen",
+      "today",
+    );
+    expect(document.querySelector(".screen-transition")).toHaveAttribute(
+      "data-direction",
+      "backward",
+    );
   });
 
   it("shows temporary capability Modes as separate from Core", async () => {
@@ -197,7 +216,7 @@ describe("Temper prototype", () => {
     await user.click(screen.getByRole("menuitem", { name: /Green Meadow/i }));
     expect(
       screen.getByRole("heading", {
-        name: "Temper is active in Green Meadow.",
+        name: "1 suggestion to review.",
       }),
     ).toBeInTheDocument();
     expect(
@@ -208,10 +227,11 @@ describe("Temper prototype", () => {
       screen.queryByText(/Lead with the purpose before setup steps/i),
     ).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Core" }));
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "Show for" }),
-      "Green Meadow",
-    );
+    const scope = screen.getByRole("combobox", { name: "Show for" });
+    expect(scope.tagName).toBe("BUTTON");
+    expect(document.querySelector("select")).not.toBeInTheDocument();
+    await user.click(scope);
+    await user.click(screen.getByRole("option", { name: "Green Meadow" }));
     expect(screen.getByText("Green Meadow release shell")).toBeInTheDocument();
     expect(screen.queryByText("Kairn notes can lag")).not.toBeInTheDocument();
   });
@@ -237,6 +257,12 @@ describe("Temper prototype", () => {
     render(<App />);
     await user.click(screen.getByRole("button", { name: "Connections" }));
     expect(
+      document.querySelectorAll('[data-agent-brand="openai"]'),
+    ).toHaveLength(1);
+    expect(
+      document.querySelectorAll('[data-agent-brand="claude"]'),
+    ).toHaveLength(1);
+    expect(
       screen.getByText(/browser preview cannot change agent accounts/i),
     ).toBeInTheDocument();
     const detailButtons = screen.getAllByRole("button", {
@@ -247,7 +273,9 @@ describe("Temper prototype", () => {
     expect(screen.getByRole("dialog", { name: "Codex" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Done" }));
     expect(screen.getByRole("button", { name: "Add project" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Manage Kairn" })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Manage Kairn" }),
+    ).not.toBeInTheDocument();
   });
 
   it("edits Core wording and scope from a focused sheet", async () => {
@@ -261,10 +289,8 @@ describe("Temper prototype", () => {
     const name = screen.getByRole("textbox", { name: "Name" });
     await user.clear(name);
     await user.type(name, "Purpose, then steps");
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "Use in" }),
-      "Kairn",
-    );
+    await user.click(screen.getByRole("combobox", { name: "Use in" }));
+    await user.click(screen.getByRole("option", { name: "Kairn" }));
     await user.click(screen.getByRole("button", { name: "Save changes" }));
     expect(screen.getByText("Purpose, then steps")).toBeInTheDocument();
     expect(
@@ -284,8 +310,10 @@ describe("Temper prototype", () => {
       within(kairnItem as HTMLElement).getByRole("button", { name: "Edit" }),
     );
     const scope = screen.getByRole("combobox", { name: "Use in" });
-    expect(within(scope).getAllByRole("option")).toHaveLength(1);
-    expect(within(scope).getByRole("option", { name: "Kairn" })).toBeVisible();
+    await user.click(scope);
+    expect(screen.getAllByRole("option")).toHaveLength(1);
+    expect(screen.getByRole("option", { name: "Kairn" })).toBeVisible();
+    await user.keyboard("[Escape]");
   });
 
   it("blocks empty Core wording", async () => {
@@ -405,9 +433,9 @@ describe("Temper prototype", () => {
     render(<App />);
     for (const heading of [
       "Local by design.",
-      "Connect your coding agents.",
-      "Choose where Temper is active.",
-      "Temper is ready.",
+      "Check your coding agents.",
+      "Register your first project.",
+      "Ready to set up Temper.",
     ]) {
       await user.click(screen.getByRole("button", { name: "Continue" }));
       expect(
@@ -416,14 +444,14 @@ describe("Temper prototype", () => {
     }
     expect(
       screen.getByRole("switch", {
-        name: "I agree to local governed learning",
+        name: "Allow Temper to learn in this project",
       }),
     ).not.toBeChecked();
-    expect(screen.getByText(/telemetry.*start off/i)).toBeInTheDocument();
+    expect(screen.getByText(/telemetry.*stay off/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Open Temper" }));
     expect(
       screen.getByRole("heading", {
-        name: "Temper is active across your work.",
+        name: "3 suggestions to review.",
       }),
     ).toBeInTheDocument();
   });

@@ -16,26 +16,37 @@ export type WorkspaceScope = "all" | ProjectName;
 export type EvidenceStrength = "strong" | "promising" | "developing";
 export type AutomationDisposition =
   "eligible" | "review-required" | "collect-more";
-export type SuggestionDecision = "suggested" | "project" | "ignore";
+export type SuggestionDecision =
+  "suggested" | "project" | "narrowed" | "ignore";
 
 export interface Suggestion {
   id: string;
   behavior: string;
   explanation: string;
   suggestedScope: string;
-  sourceProject: ProjectName;
-  sourceCount: number;
-  authority: string;
+  sourceProject: ProjectName | null;
+  projectNames?: ProjectName[];
+  isGlobal?: boolean;
+  availableDecisions?: SuggestionDecision[];
+  sourceCount?: number;
+  authority?: string;
   capturedAt: string;
   digest: string;
-  evidenceStrength: EvidenceStrength;
+  evidenceStrength?: EvidenceStrength;
   confidenceReason: string;
   automationDisposition: AutomationDisposition;
   automationReason: string;
   isRevocation?: boolean;
 }
 
-export type CoreKind = "preference" | "memory" | "procedure" | "skill";
+export type CoreKind =
+  | "preference"
+  | "memory"
+  | "example"
+  | "procedure"
+  | "prompt_rule"
+  | "skill"
+  | "tool_recommendation";
 export type CoreScope = string;
 
 export interface CoreItem {
@@ -44,6 +55,8 @@ export interface CoreItem {
   title: string;
   description: string;
   scope: CoreScope;
+  projectNames?: ProjectName[];
+  isGlobal?: boolean;
   sourceSummary: string;
 }
 
@@ -87,7 +100,13 @@ export interface CapabilityModeSummary {
 export interface AgentConnection {
   id: "codex" | "claude";
   name: string;
-  status: "connected" | "available" | "attention";
+  status:
+    | "connected"
+    | "available"
+    | "attention"
+    | "not_installed"
+    | "signed_out"
+    | "update_required";
   sourceCapability: string;
   targetCapability: string;
   authDescription: string;

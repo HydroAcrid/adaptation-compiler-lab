@@ -9,6 +9,7 @@ import os
 import platform
 import subprocess
 import sys
+import tempfile
 import tomllib
 from pathlib import Path
 from typing import Final
@@ -89,6 +90,7 @@ def build_command(
         "--onefile-no-compression",
         "--assume-yes-for-downloads",
         "--include-package-data=adaptation_compiler_lab",
+        "--include-package=adaptation_compiler_lab.persistence.sql",
         f"--output-dir={output_directory}",
         f"--output-filename={sidecar_filename(target_triple, platform_name=platform_name)}",
         str(entry),
@@ -152,7 +154,7 @@ def verify_native_sidecar(
     machine_name: str | None = None,
     timeout_seconds: int = 15,
 ) -> None:
-    """Require the compiled sidecar to complete its closed-world startup handshake."""
+    """Require the compiled sidecar to complete handshake and first-run setup admission."""
 
     root = repository.expanduser().resolve()
     binary = sidecar_path(
@@ -164,43 +166,74 @@ def verify_native_sidecar(
         raise ValueError("native engine sidecar was not produced")
     if platform_name.lower() == "darwin":
         verify_macos_arm64(binary)
-    request = {
-        "protocol_version": "temper-engine-protocol/v1",
-        "request_id": "native-build-handshake",
-        "method": "system.handshake",
-        "params": {},
-        "expected_snapshot_digest": None,
-        "idempotency_key": None,
-    }
-    environment = os.environ.copy()
-    for name in (
-        "TEMPER_RUNTIME_CONFIG",
-        "TEMPER_PREDECESSOR_CONFIG",
-        "OPENAI_API_KEY",
-        "CODEX_API_KEY",
-        "CLAUDE_API_KEY",
-    ):
-        environment.pop(name, None)
-    try:
-        completed = subprocess.run(
-            [binary],
-            cwd=root,
-            input=json.dumps(request, separators=(",", ":")) + "\n",
-            capture_output=True,
-            text=True,
-            timeout=timeout_seconds,
-            check=False,
-            env=environment,
+    requests: tuple[dict[str, object], ...] = (
+        {
+            "protocol_version": "temper-engine-protocol/v1",
+            "request_id": "native-build-handshake",
+            "method": "system.handshake",
+            "params": {},
+            "expected_snapshot_digest": None,
+            "idempotency_key": None,
+        },
+        {
+            "protocol_version": "temper-engine-protocol/v1",
+            "request_id": "native-build-setup",
+            "method": "setup.status",
+            "params": {},
+            "expected_snapshot_digest": None,
+            "idempotency_key": None,
+        },
+    )
+    with tempfile.TemporaryDirectory(prefix="temper-native-admission-") as profile:
+        profile_root = Path(profile).resolve()
+        environment = os.environ.copy()
+        for name in (
+            "TEMPER_RUNTIME_CONFIG",
+            "TEMPER_PREDECESSOR_CONFIG",
+            "CODEX_HOME",
+            "CLAUDE_CONFIG_DIR",
+            "OPENAI_API_KEY",
+            "CODEX_API_KEY",
+            "CLAUDE_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "ANTHROPIC_AUTH_TOKEN",
+            "ANTHROPIC_BASE_URL",
+            "ANTHROPIC_BEDROCK_BASE_URL",
+            "ANTHROPIC_VERTEX_BASE_URL",
+            "OPENAI_BASE_URL",
+        ):
+            environment.pop(name, None)
+        environment.update(
+            {
+                "HOME": str(profile_root),
+                "USERPROFILE": str(profile_root),
+                "APPDATA": str(profile_root / "AppData" / "Roaming"),
+                "LOCALAPPDATA": str(profile_root / "AppData" / "Local"),
+                "XDG_CONFIG_HOME": str(profile_root / ".config"),
+                "XDG_DATA_HOME": str(profile_root / ".local" / "share"),
+            }
         )
-    except subprocess.TimeoutExpired as error:
-        raise ValueError("native engine sidecar handshake timed out") from error
+        try:
+            completed = subprocess.run(
+                [binary],
+                cwd=root,
+                input="".join(json.dumps(item, separators=(",", ":")) + "\n" for item in requests),
+                capture_output=True,
+                text=True,
+                timeout=timeout_seconds,
+                check=False,
+                env=environment,
+            )
+        except subprocess.TimeoutExpired as error:
+            raise ValueError("native engine sidecar handshake timed out") from error
     if completed.returncode != 0:
         raise ValueError("native engine sidecar failed during its startup handshake")
     lines = completed.stdout.splitlines()
-    if len(lines) != 1:
-        raise ValueError("native engine sidecar emitted an invalid handshake frame count")
+    if len(lines) != 2:
+        raise ValueError("native engine sidecar emitted an invalid admission frame count")
     try:
         response = json.loads(lines[0])
+        setup_response = json.loads(lines[1])
     except json.JSONDecodeError as error:
         raise ValueError("native engine sidecar emitted an invalid handshake frame") from error
     result = response.get("result") if isinstance(response, dict) else None
@@ -219,6 +252,22 @@ def verify_native_sidecar(
         or any(result.get(key) != value for key, value in expected.items())
     ):
         raise ValueError("native engine sidecar failed closed-world handshake validation")
+    setup = setup_response.get("result") if isinstance(setup_response, dict) else None
+    setup_digest = (
+        setup_response.get("snapshot_digest") if isinstance(setup_response, dict) else None
+    )
+    if (
+        not isinstance(setup_response, dict)
+        or setup_response.get("ok") is not True
+        or setup_response.get("protocol_version") != "temper-engine-protocol/v1"
+        or setup_response.get("request_id") != "native-build-setup"
+        or not isinstance(setup, dict)
+        or setup.get("configuration_state") != "unconfigured"
+        or setup.get("raw_payloads_exposed") is not False
+        or not isinstance(setup_digest, str)
+        or not setup_digest.startswith("sha256:")
+    ):
+        raise ValueError("native engine sidecar failed first-run setup admission")
 
 
 def write_build_manifest(

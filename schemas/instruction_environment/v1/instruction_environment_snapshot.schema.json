@@ -1,0 +1,422 @@
+{
+  "$defs": {
+    "InstructionSourceManifestV1": {
+      "additionalProperties": false,
+      "description": "Raw-free metadata for one exact native source.",
+      "properties": {
+        "activation_status": {
+          "$ref": "#/$defs/NativeActivationStatus",
+          "default": "not_applicable"
+        },
+        "authority_class": {
+          "$ref": "#/$defs/NativeAuthorityClass"
+        },
+        "byte_length": {
+          "minimum": 0,
+          "title": "Byte Length",
+          "type": "integer"
+        },
+        "contains_executable_resources": {
+          "default": false,
+          "title": "Contains Executable Resources",
+          "type": "boolean"
+        },
+        "content_digest": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Digest"
+        },
+        "display_path": {
+          "minLength": 1,
+          "title": "Display Path",
+          "type": "string"
+        },
+        "encoding": {
+          "enum": [
+            "utf-8",
+            "utf-8-sig",
+            "unknown"
+          ],
+          "title": "Encoding",
+          "type": "string"
+        },
+        "manifest_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Manifest Version",
+          "type": "string"
+        },
+        "native_precedence": {
+          "minimum": 0,
+          "title": "Native Precedence",
+          "type": "integer"
+        },
+        "newline_style": {
+          "enum": [
+            "lf",
+            "crlf",
+            "mixed",
+            "none",
+            "unknown"
+          ],
+          "title": "Newline Style",
+          "type": "string"
+        },
+        "opt_in_basis": {
+          "enum": [
+            "registered_project",
+            "explicit_global_opt_in",
+            "managed"
+          ],
+          "title": "Opt In Basis",
+          "type": "string"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Id"
+        },
+        "raw_payloads_exposed": {
+          "const": false,
+          "default": false,
+          "title": "Raw Payloads Exposed",
+          "type": "boolean"
+        },
+        "read_status": {
+          "$ref": "#/$defs/NativeReadStatus"
+        },
+        "resolved_within_boundary": {
+          "title": "Resolved Within Boundary",
+          "type": "boolean"
+        },
+        "source_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "source_kind": {
+          "$ref": "#/$defs/NativeSourceKind"
+        },
+        "surface": {
+          "minLength": 1,
+          "title": "Surface",
+          "type": "string"
+        },
+        "surface_contract_version": {
+          "minLength": 1,
+          "title": "Surface Contract Version",
+          "type": "string"
+        },
+        "symlink": {
+          "title": "Symlink",
+          "type": "boolean"
+        },
+        "target": {
+          "$ref": "#/$defs/NativeTarget"
+        }
+      },
+      "required": [
+        "source_id",
+        "target",
+        "surface",
+        "surface_contract_version",
+        "source_kind",
+        "display_path",
+        "native_precedence",
+        "authority_class",
+        "opt_in_basis",
+        "byte_length",
+        "encoding",
+        "newline_style",
+        "read_status",
+        "symlink",
+        "resolved_within_boundary"
+      ],
+      "title": "InstructionSourceManifestV1",
+      "type": "object"
+    },
+    "NativeActivationStatus": {
+      "enum": [
+        "active",
+        "available",
+        "disabled",
+        "unknown",
+        "not_applicable"
+      ],
+      "title": "NativeActivationStatus",
+      "type": "string"
+    },
+    "NativeAuthorityClass": {
+      "enum": [
+        "managed_policy",
+        "project_policy",
+        "user_configured",
+        "agent_generated"
+      ],
+      "title": "NativeAuthorityClass",
+      "type": "string"
+    },
+    "NativeInstructionClauseV1": {
+      "additionalProperties": false,
+      "description": "Internal normalized clause with exact native lineage.\n\n``text`` is never returned through a raw-free desktop summary. If cached, this complete record\nmust be encrypted under the local raw-store key.",
+      "properties": {
+        "clause_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Clause Id",
+          "type": "string"
+        },
+        "clause_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Clause Version",
+          "type": "string"
+        },
+        "explicit_exception": {
+          "default": false,
+          "title": "Explicit Exception",
+          "type": "boolean"
+        },
+        "interpreter_digest": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interpreter Digest"
+        },
+        "kind": {
+          "$ref": "#/$defs/NativeInstructionKind",
+          "default": "unknown"
+        },
+        "norm_strength": {
+          "$ref": "#/$defs/NativeNormStrength",
+          "default": "none"
+        },
+        "polarity": {
+          "default": "neutral",
+          "enum": [
+            "positive",
+            "negative",
+            "neutral"
+          ],
+          "title": "Polarity",
+          "type": "string"
+        },
+        "scope_labels": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Scope Labels",
+          "type": "array"
+        },
+        "semantic_confidence": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Semantic Confidence",
+          "type": "number"
+        },
+        "source_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Source Digest",
+          "type": "string"
+        },
+        "source_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/NativeTarget"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "text_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Text Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "clause_id",
+        "text",
+        "text_digest",
+        "source_id",
+        "source_digest",
+        "target"
+      ],
+      "title": "NativeInstructionClauseV1",
+      "type": "object"
+    },
+    "NativeInstructionKind": {
+      "enum": [
+        "fact",
+        "preference",
+        "norm",
+        "procedure",
+        "example",
+        "exception",
+        "capability",
+        "unknown"
+      ],
+      "title": "NativeInstructionKind",
+      "type": "string"
+    },
+    "NativeNormStrength": {
+      "enum": [
+        "none",
+        "preference",
+        "invariant"
+      ],
+      "title": "NativeNormStrength",
+      "type": "string"
+    },
+    "NativeReadStatus": {
+      "enum": [
+        "ready",
+        "unreadable",
+        "invalid_encoding",
+        "too_large",
+        "outside_boundary",
+        "unsupported"
+      ],
+      "title": "NativeReadStatus",
+      "type": "string"
+    },
+    "NativeSourceKind": {
+      "enum": [
+        "project_instructions",
+        "project_rule",
+        "project_skill",
+        "personal_instructions",
+        "personal_memory",
+        "personal_skill",
+        "managed_instructions"
+      ],
+      "title": "NativeSourceKind",
+      "type": "string"
+    },
+    "NativeTarget": {
+      "enum": [
+        "codex",
+        "claude",
+        "copilot"
+      ],
+      "title": "NativeTarget",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Exact contextual instruction environment for one target and project.",
+  "properties": {
+    "clauses": {
+      "items": {
+        "$ref": "#/$defs/NativeInstructionClauseV1"
+      },
+      "title": "Clauses",
+      "type": "array"
+    },
+    "complete": {
+      "title": "Complete",
+      "type": "boolean"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "global_sources_enabled": {
+      "default": false,
+      "title": "Global Sources Enabled",
+      "type": "boolean"
+    },
+    "issues": {
+      "default": [],
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "snapshot_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Snapshot Version",
+      "type": "string"
+    },
+    "source_manifests": {
+      "items": {
+        "$ref": "#/$defs/InstructionSourceManifestV1"
+      },
+      "title": "Source Manifests",
+      "type": "array"
+    },
+    "surface": {
+      "minLength": 1,
+      "title": "Surface",
+      "type": "string"
+    },
+    "surface_contract_version": {
+      "minLength": 1,
+      "title": "Surface Contract Version",
+      "type": "string"
+    },
+    "target": {
+      "$ref": "#/$defs/NativeTarget"
+    }
+  },
+  "required": [
+    "project_id",
+    "target",
+    "surface",
+    "surface_contract_version",
+    "source_manifests",
+    "clauses",
+    "complete",
+    "generated_at"
+  ],
+  "title": "InstructionEnvironmentSnapshotV1",
+  "type": "object"
+}

@@ -1,9 +1,13 @@
 # Temper native product completion
 
 Status: native onboarding, the everyday governed React loop, platform credential parity, React
-recovery parity, Qt retirement, and the Apple Silicon build/smoke contract are implemented. A
-fresh same-host Windows checkout has built and passed the current `0.3.0a2` development smoke; it
-is not an independent clean-runner result. The Apple candidate has not yet run because the private
+recovery parity, Qt retirement, and the Apple Silicon build/smoke contract are implemented. The
+repaired compiled sidecar passes handshake plus `setup.status`. On 2026-08-28 its replacement
+unsigned installer completed a same-host normal-user install and clean onboarding through the
+configured Today/Core interface after repairing a sidecar-restart hang. The owner's original
+governed state was restored and reopened after the disposable run. Shortcut/uninstall coverage for
+these rebuilt bytes and independent clean-machine evidence remain open. The Apple
+candidate has not yet run because the private
 repository's GitHub Actions budget currently prevents jobs from starting. WSL cannot substitute
 for the native macOS runtime, so this remains unavailable evidence rather than a passing result.
 
@@ -12,8 +16,9 @@ for the native macOS runtime, so this remains unavailable evidence rather than a
 Temper is becoming useful before installer publisher credentials are treated as a release gate.
 The local Python engine remains authoritative for identity, consent, evidence, artifacts, project
 scope, and delivery. Rust owns native dialogs and process supervision. React receives only
-versioned raw-free presentation models and opaque preview tokens. Browser URLs remain synthetic
-design scenes; installed Tauri state is authoritative.
+versioned raw-free presentation models and opaque preview tokens. Browser URLs remain explicitly
+labeled synthetic design scenes. Installed Tauri state is authoritative and cannot fall back to
+those fixtures after an engine failure.
 
 External distribution stays fail-closed until genuine Authenticode and Apple Developer ID
 credentials are available. That gate is independent of telemetry and does not block product
@@ -38,7 +43,15 @@ Implemented:
   delivery, and unavailable ambient injection;
 - detection-only Claude inspection that offers no connection, authentication, hook, source, or
   target operation; and
-- sidecar restart after initialization or adoption, followed by a configured handshake.
+- sidecar restart after initialization or adoption, followed by a configured handshake;
+- bounded onefile-sidecar teardown that closes stdin before waiting, keeps forced shutdown from
+  blocking on a reader thread, and moves setup/adoption work off the Tauri UI thread; and
+- a full-page two-stage initialization handoff that truthfully distinguishes creating or adopting
+  local state from opening the configured workspace; and
+- a Windows no-console child-process flag that keeps the stdio engine invisible while retaining
+  direct protocol admission, fail-closed startup, and raw-free diagnostics; and
+- a Windows GUI-subsystem release entry point so launching the product never creates a Windows
+  Terminal host for the outer Tauri application.
 
 The renderer never receives executable paths, project paths, Codex homes, credentials, raw task
 content, or decrypted evidence. Setup and adoption mutations are digest-bound, idempotent, and
@@ -46,9 +59,12 @@ stale-state protected.
 
 ## Continuous sequence
 
-1. Reuse the repository smoke on an independent Windows machine or self-hosted runner, and execute
+1. Complete the remaining shortcut, packaged-uninstall, cleanup, and governed-data-preservation
+   receipt for the rebuilt Windows installer; clean install, onboarding, configured restart, and
+   responsive navigation now pass on the development host.
+2. Reuse the repository smoke on an independent Windows machine or self-hosted runner, and execute
    the Apple Silicon `0.3.0a2` build/smoke on a native Mac. GitHub-hosted Actions is optional.
-2. Add genuine publisher signing and notarization only when external installer distribution is
+3. Add genuine publisher signing and notarization only when external installer distribution is
    authorized, and rerun both default trusted gates on clean machines.
 
 ## Phase 2: everyday governed loop
@@ -67,7 +83,12 @@ Implemented:
 - Rust-owned tray lifecycle and five-minute scheduler that never polls while learning is off or
   consent is expired; and
 - generic native proposal notifications only when OS permission is already granted, with no raw
-  behavior or evidence text.
+  behavior or evidence text. Enabling the preference requests and verifies that permission before
+  persisting it.
+
+`needs_attention` is no longer used as an authorization shortcut. Pending review and feedback stay
+actionable and do not disable managed delivery. React derives each mutation from secure-store,
+consent, exact target identity, connection conformance, and project eligibility.
 
 React no longer maintains a second native suggestion or adaptation state. Browser routes remain
 explicit synthetic scenes; installed Tauri state comes entirely from the local engine.
@@ -143,14 +164,15 @@ rejects new Actions jobs for budget reasons. An unsigned or ad-hoc candidate can
 trusted policy, and this source implementation must not be described as a distributable macOS
 alpha until the native job actually passes.
 
-The Windows half has stronger current-head local evidence: product commit `253083e` and desktop
+The Windows half has historical same-host evidence: product commit `253083e` and desktop
 tree `aec90f0` produced the actual MSVC/Nuitka sidecar and Tauri NSIS installer from a fresh native
 checkout. The explicit development
 policy passed install, exact sidecar handshake, six-second application liveness, packaged
 uninstall, and cleanup; the default trusted policy rejected the unsigned candidate before any
 installation. See
 [`conformance/windows-native-local-smoke-0.3.0a2.json`](conformance/windows-native-local-smoke-0.3.0a2.json).
-Because the builder and smoke shared one Windows host, this does not replace independent
-clean-machine or signed-release admission.
+Because the builder and smoke shared one Windows host and preceded the repaired two-frame engine
+admission and native UI boundary, this does not prove the replacement installed workflow,
+independent clean-machine behavior, or signed-release admission.
 
 The sealed deferred Milestone 6 external-validation study remains outside this work and unchanged.

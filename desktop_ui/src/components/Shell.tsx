@@ -21,6 +21,7 @@ export function Shell({
   onNavigate,
   onWorkspaceChange,
   workspaces,
+  previewMode = false,
   children,
 }: {
   screen: Screen;
@@ -28,19 +29,21 @@ export function Shell({
   advancedMode: boolean;
   onNavigate: (screen: Screen) => void;
   onWorkspaceChange: (workspace: WorkspaceScope) => void;
-  workspaces?: Array<{ id: string; label: string; description: string }>;
+  workspaces: Array<{ id: string; label: string; description: string }>;
+  previewMode?: boolean;
   children: ReactNode;
 }) {
   return (
     <div className="window-shell">
-      <div aria-hidden="true" className="window-dragbar">
-        <span className="window-title">Temper</span>
-        <div className="window-controls">
-          <span />
-          <span />
-          <span className="window-close" />
-        </div>
-      </div>
+      {previewMode ? (
+        <aside
+          aria-label="Browser preview notice"
+          className="browser-preview-banner"
+        >
+          Browser preview · sample data · controls do not change your local
+          Temper state
+        </aside>
+      ) : null}
       <div className="app-layout">
         <header className="folio-masthead">
           <BrandMark />
@@ -90,28 +93,6 @@ export function Shell({
   );
 }
 
-const workspaceOptions: Array<{
-  id: WorkspaceScope;
-  label: string;
-  description: string;
-}> = [
-  {
-    id: "all",
-    label: "All projects",
-    description: "2 active projects",
-  },
-  {
-    id: "Kairn",
-    label: "Kairn",
-    description: "3 suggestions",
-  },
-  {
-    id: "Green Meadow",
-    label: "Green Meadow",
-    description: "Ready",
-  },
-];
-
 function WorkspacePicker({
   activeWorkspace,
   onWorkspaceChange,
@@ -119,18 +100,18 @@ function WorkspacePicker({
 }: {
   activeWorkspace: WorkspaceScope;
   onWorkspaceChange: (workspace: WorkspaceScope) => void;
-  workspaces?: Array<{ id: string; label: string; description: string }>;
+  workspaces: Array<{ id: string; label: string; description: string }>;
 }) {
-  const options = workspaces
-    ? [
-        {
-          id: "all",
-          label: "All projects",
-          description: `${workspaces.length} active project${workspaces.length === 1 ? "" : "s"}`,
-        },
-        ...workspaces,
-      ]
-    : workspaceOptions;
+  const options = [
+    {
+      id: "all",
+      label: "All projects",
+      description: workspaces.length
+        ? `${workspaces.length} registered project${workspaces.length === 1 ? "" : "s"}`
+        : "No registered projects",
+    },
+    ...workspaces,
+  ];
   const current =
     options.find((option) => option.id === activeWorkspace) ?? options[0];
   return (

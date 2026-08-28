@@ -634,12 +634,51 @@ class RuntimeProjectionManifest(FrozenModel):
     rendered_content_digest: Sha256Digest
     rendered_utf8_bytes: int = Field(ge=0)
     clause_bindings: tuple[ClauseProvenanceBinding, ...]
+    instruction_environment_digest: Sha256Digest | None = None
+    native_target_id: Identifier | None = None
+    native_target_surface: NonEmptyStr | None = None
+    native_target_surface_version: NonEmptyStr | None = None
+    native_source_chain_digest: Sha256Digest | None = None
+    native_included_clause_digests: tuple[Sha256Digest, ...] = ()
+    native_omitted_clause_digests: tuple[Sha256Digest, ...] = ()
+    native_blocked_clause_digests: tuple[Sha256Digest, ...] = ()
+    native_relation_digests: tuple[Sha256Digest, ...] = ()
+    native_delta_fully_optimized: bool | None = None
 
     @model_validator(mode="after")
     def clauses_are_unique(self) -> Self:
         digests = tuple(item.clause_digest for item in self.clause_bindings)
         if digests != tuple(dict.fromkeys(digests)):
             raise ValueError("runtime manifest contains duplicate clause bindings")
+        native_sets = (
+            self.native_included_clause_digests,
+            self.native_omitted_clause_digests,
+            self.native_blocked_clause_digests,
+        )
+        for values in (*native_sets, self.native_relation_digests):
+            if values != tuple(sorted(set(values))):
+                raise ValueError("native runtime manifest digests must be sorted and unique")
+        overlaps = any(
+            set(left) & set(right)
+            for index, left in enumerate(native_sets)
+            for right in native_sets[index + 1 :]
+        )
+        if overlaps:
+            raise ValueError("native runtime manifest dispositions overlap")
+        native_bound = self.instruction_environment_digest is not None
+        if native_bound != (self.native_source_chain_digest is not None):
+            raise ValueError("native runtime manifest requires both environment digests")
+        if not native_bound and any((*native_sets, self.native_relation_digests)):
+            raise ValueError("native runtime manifest dispositions require an environment")
+        if native_bound != (self.native_delta_fully_optimized is not None):
+            raise ValueError("native runtime manifest optimization state is incomplete")
+        target_binding = (
+            self.native_target_id,
+            self.native_target_surface,
+            self.native_target_surface_version,
+        )
+        if native_bound != all(value is not None for value in target_binding):
+            raise ValueError("native runtime manifest target surface is incomplete")
         return self
 
     @property

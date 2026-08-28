@@ -13,18 +13,53 @@ clean-runner smoke. Those jobs have not yet started because the repository's Git
 is currently unavailable, so the app/DMG are not claimed as validated. Publisher certificates and
 the unchanged default trusted clean-machine gates remain a later external-distribution boundary.
 
+Temper now also models the native instruction environment around each registered project before it
+compiles a target projection. Codex `AGENTS.md` chains and skills, Claude project rules/skills, and
+Copilot instruction files/skills remain contextual native policy rather than silently becoming
+Core knowledge. Exact duplicates are omitted with lineage, contradictions withhold only affected
+clauses, personal roots require a separate opt-in, and native edits require an exact preview,
+signed receipt, encrypted backup, and rollback. See
+[`TEMPER_NATIVE_INSTRUCTION_INTEROPERABILITY.md`](TEMPER_NATIVE_INSTRUCTION_INTEROPERABILITY.md).
+
+The 2026-08-27 native truthfulness audit removed a browser-style title bar and fixed-size shell
+that had rendered a second fake window inside the real Tauri window. The product now fills its
+actual viewport from the minimum 720×540 size through large desktop windows. Installed startup is
+fail-closed: it renders only verified engine state, live onboarding, or a single explicit recovery
+screen. It cannot fall through to the visual gallery's sample projects, suggestions, or optimistic
+status copy. The browser gallery remains an internal, clearly labeled sample surface whose controls
+cannot change local Temper state. Production builds replace the gallery-data module with an empty
+typed module; a bundle scan proves that development personas, project names, suggestions, and
+profile records are absent from the shipped renderer. The compiled-engine admission now proves
+both handshake and the first `setup.status` request in one isolated process; this caught and
+repaired a native-only recursive JSON failure that source tests had missed. The rebuilt unsigned
+Windows installer has now also completed a real same-host normal-user install and clean onboarding
+through verified Today/Core state. That run found and repaired a onefile-sidecar teardown hang
+during the configured-engine restart and replaced the corner-only “Finishing…” label with a
+full-page two-stage setup transition. The Windows release application is now compiled as a GUI
+subsystem executable, and it starts the console-subsystem engine with `CREATE_NO_WINDOW`. PE-header
+inspection and a rebuilt installed launch now show one standalone Temper window without the Windows
+Terminal tab exposed by the earlier incomplete repair. Independent-machine, shortcut, and rebuilt
+uninstall evidence is still required before this branch can make an installer-readiness claim.
+Primary navigation now follows tab order with a restrained 260 ms horizontal page transition,
+never displaces content vertically, and retains a reduced-motion fallback. This removes the
+transient scrollbar caused by the earlier vertical settle animation.
+Every choice control in the renderer uses an accessible Temper/Radix select or menu—there are no
+native Windows `<select>` controls left in Core, Modes, review, or Advanced surfaces.
+
 Temper's replacement customer desktop now connects React to the real local Python engine through
 a restrictive Tauri 2 shell and framed stdio protocol. A configured native runtime loads raw-free
 projects and approved Core items, offers native-path-hidden encrypted profile export/import with
 exact inactive previews, and exposes the first evaluated temporary **Frontend Studio Mode** for
 one fresh governed Codex task. Browser URLs remain synthetic visual-review scenes; they do not
-pretend to perform native writes. Thirty-four light/dark, accessibility, responsive, and product
-interaction checks pass. See
+pretend to perform native writes. Fifty-seven component/engine tests, seven product viewport,
+motion, and
+truthfulness checks, nine WebView2 compatibility/accessibility checks, and 32 light/dark visual
+scenes pass. See
 [`TEMPER_DESKTOP_REBUILD.md`](TEMPER_DESKTOP_REBUILD.md) and the
 [`React visual gallery`](desktop_ui/docs/VISUAL_GALLERY.md). The
 [`alpha readiness audit`](TEMPER_ALPHA_READINESS_AUDIT.md) permits design-partner recruitment but
-blocks external installation until onboarding, remaining mutations/connections, native security,
-clean-machine validation, and signed builds are complete.
+blocks external installation until the repaired candidate passes a normal-user Windows lifecycle,
+native Apple Silicon validation is observed, and the target installers are genuinely signed.
 
 The historical Qt Quick private-alpha surface has been retired after React/Tauri reached recovery
 and governed-operation parity. The native product and `temper` terminal recovery command now share
@@ -34,8 +69,11 @@ Apply or Discard; application checks the reviewed Git head, reruns bounded tests
 failure. Background observation and aggregate reporting are independent and off by default.
 
 This is not yet a downloadable external alpha. First-run setup and current Codex/macOS credential
-paths are implemented, but the current native package jobs have not executed, the invite-bound
-telemetry client is not connected, and no Windows or Apple signing credentials exist. Native
+paths are implemented. The repaired `0.3.0a2` branch now passes a same-host normal-user install,
+first-run setup, configured restart, and responsive navigation check; its rebuilt shortcut and
+uninstall lifecycle and an independent Windows machine remain unverified. Apple remains
+unobserved. The invite-bound telemetry client is not connected, and no Windows or
+Apple signing credentials exist. Native
 Settings therefore disables unavailable cloud reporting instead of presenting inert upload
 controls. The separate
 Supabase/Vercel foundation stores only strict signed aggregates in isolated
@@ -324,7 +362,7 @@ worked; its current target-visible projection did not beat an excellent profile.
 - A cohesive review-mode daily snapshot with compact raw-free proposal cards, exact lineage,
   append-only approve/reject/strict-scope-refine decisions, pending activation feedback, health,
   friction, and longitudinal gate measures. `Temper` is an internal working display name only.
-- A pinned Codex 0.146.0 pickup and fresh-session target integration that requires saved ChatGPT
+- A pinned Codex 0.150.0-alpha.8 pickup and fresh-session target integration that requires saved ChatGPT
   authentication, admits only post-cutoff user-authored text from allowlisted completed interactive
   tasks, checkpoints hashed prefixes, separates learning from later activation, validates the
   returned network/workspace/instruction boundary, and exposes local poll, review, notice, undo,
@@ -332,8 +370,9 @@ worked; its current target-visible projection did not beat an excellent profile.
 - A generic replay-safe host coordinator with narrow interaction, delivery, review, and notice
   ports; atomic raw-free review/signed-event persistence; duplicate-observation rejection; and
   deterministic recovery after append-before-delivery interruption.
-- Typed capability-preset and personal-overlay composition seams. These are identity and layer
-  contracts only; no preset has been imported, activated, or evaluated.
+- Typed capability-preset and personal-overlay composition seams plus the first governed,
+  evaluated temporary Frontend Studio Mode. Shareable third-party preset import, marketplace
+  discovery, and automatic preset creation remain unimplemented.
 - Immutable failed v1.11 instrument, v1.13 role, v1.14 resolver, v1.15 inner-sandbox, v1.16
   pre-session smoke, and v1.17–v1.18 live-smoke results plus a v1.19 compact-projection protocol with
   three entirely fresh task fixtures, an independent scorer, six

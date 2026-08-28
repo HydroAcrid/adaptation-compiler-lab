@@ -1,0 +1,339 @@
+{
+  "$defs": {
+    "InstructionConflictSummaryV1": {
+      "additionalProperties": false,
+      "properties": {
+        "conflict_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Conflict Id",
+          "type": "string"
+        },
+        "native_behavior": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Native Behavior",
+          "type": "string"
+        },
+        "project_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "rationale": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "raw_payloads_exposed": {
+          "const": false,
+          "default": false,
+          "title": "Raw Payloads Exposed",
+          "type": "boolean"
+        },
+        "resolution_state": {
+          "enum": [
+            "unresolved",
+            "kept_native",
+            "narrowed_temper",
+            "ignored"
+          ],
+          "title": "Resolution State",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "notice",
+            "blocking"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "source_display_path": {
+          "minLength": 1,
+          "title": "Source Display Path",
+          "type": "string"
+        },
+        "summary_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Summary Version",
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/NativeTarget"
+        },
+        "temper_behavior": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Temper Behavior",
+          "type": "string"
+        }
+      },
+      "required": [
+        "conflict_id",
+        "project_id",
+        "target",
+        "source_display_path",
+        "temper_behavior",
+        "native_behavior",
+        "severity",
+        "resolution_state",
+        "rationale"
+      ],
+      "title": "InstructionConflictSummaryV1",
+      "type": "object"
+    },
+    "InstructionSourceSummaryV1": {
+      "additionalProperties": false,
+      "properties": {
+        "activation_status": {
+          "$ref": "#/$defs/NativeActivationStatus"
+        },
+        "display_path": {
+          "minLength": 1,
+          "title": "Display Path",
+          "type": "string"
+        },
+        "instruction_count": {
+          "minimum": 0,
+          "title": "Instruction Count",
+          "type": "integer"
+        },
+        "kind": {
+          "$ref": "#/$defs/NativeSourceKind"
+        },
+        "observed_context_only": {
+          "const": true,
+          "default": true,
+          "title": "Observed Context Only",
+          "type": "boolean"
+        },
+        "raw_payloads_exposed": {
+          "const": false,
+          "default": false,
+          "title": "Raw Payloads Exposed",
+          "type": "boolean"
+        },
+        "scope_summary": {
+          "minLength": 1,
+          "title": "Scope Summary",
+          "type": "string"
+        },
+        "skill": {
+          "title": "Skill",
+          "type": "boolean"
+        },
+        "source_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/NativeReadStatus"
+        },
+        "summary_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Summary Version",
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/NativeTarget"
+        }
+      },
+      "required": [
+        "source_id",
+        "target",
+        "kind",
+        "display_path",
+        "scope_summary",
+        "status",
+        "instruction_count",
+        "skill",
+        "activation_status"
+      ],
+      "title": "InstructionSourceSummaryV1",
+      "type": "object"
+    },
+    "NativeActivationStatus": {
+      "enum": [
+        "active",
+        "available",
+        "disabled",
+        "unknown",
+        "not_applicable"
+      ],
+      "title": "NativeActivationStatus",
+      "type": "string"
+    },
+    "NativeReadStatus": {
+      "enum": [
+        "ready",
+        "unreadable",
+        "invalid_encoding",
+        "too_large",
+        "outside_boundary",
+        "unsupported"
+      ],
+      "title": "NativeReadStatus",
+      "type": "string"
+    },
+    "NativeSourceKind": {
+      "enum": [
+        "project_instructions",
+        "project_rule",
+        "project_skill",
+        "personal_instructions",
+        "personal_memory",
+        "personal_skill",
+        "managed_instructions"
+      ],
+      "title": "NativeSourceKind",
+      "type": "string"
+    },
+    "NativeTarget": {
+      "enum": [
+        "codex",
+        "claude",
+        "copilot"
+      ],
+      "title": "NativeTarget",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "blocking_conflict_count": {
+      "minimum": 0,
+      "title": "Blocking Conflict Count",
+      "type": "integer"
+    },
+    "conflicts": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/InstructionConflictSummaryV1"
+      },
+      "title": "Conflicts",
+      "type": "array"
+    },
+    "environment_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Environment Digest",
+      "type": "string"
+    },
+    "global_sources_enabled": {
+      "title": "Global Sources Enabled",
+      "type": "boolean"
+    },
+    "instruction_count": {
+      "minimum": 0,
+      "title": "Instruction Count",
+      "type": "integer"
+    },
+    "last_analyzed_at": {
+      "format": "date-time",
+      "title": "Last Analyzed At",
+      "type": "string"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "raw_payloads_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Payloads Exposed",
+      "type": "boolean"
+    },
+    "semantic_analysis_status": {
+      "enum": [
+        "not_requested",
+        "current",
+        "stale",
+        "unavailable"
+      ],
+      "title": "Semantic Analysis Status",
+      "type": "string"
+    },
+    "skill_count": {
+      "minimum": 0,
+      "title": "Skill Count",
+      "type": "integer"
+    },
+    "source_chain_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Chain Digest",
+      "type": "string"
+    },
+    "source_count": {
+      "minimum": 0,
+      "title": "Source Count",
+      "type": "integer"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/InstructionSourceSummaryV1"
+      },
+      "title": "Sources",
+      "type": "array"
+    },
+    "status": {
+      "enum": [
+        "understood",
+        "changed",
+        "incomplete",
+        "conflicting"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "summary_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Summary Version",
+      "type": "string"
+    },
+    "surface": {
+      "minLength": 1,
+      "title": "Surface",
+      "type": "string"
+    },
+    "surface_contract_version": {
+      "minLength": 1,
+      "title": "Surface Contract Version",
+      "type": "string"
+    },
+    "target": {
+      "$ref": "#/$defs/NativeTarget"
+    }
+  },
+  "required": [
+    "project_id",
+    "target",
+    "status",
+    "source_count",
+    "skill_count",
+    "instruction_count",
+    "blocking_conflict_count",
+    "semantic_analysis_status",
+    "last_analyzed_at",
+    "environment_digest",
+    "source_chain_digest",
+    "surface",
+    "surface_contract_version",
+    "global_sources_enabled",
+    "sources"
+  ],
+  "title": "InstructionEnvironmentSummaryV1",
+  "type": "object"
+}

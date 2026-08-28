@@ -35,8 +35,11 @@ function Stop-SmokeProcess {
     }
 }
 
-function Start-EngineHandshake {
-    param([Parameter(Mandatory = $true)][string]$EnginePath)
+function Start-EngineAdmission {
+    param(
+        [Parameter(Mandatory = $true)][string]$EnginePath,
+        [Parameter(Mandatory = $true)][string]$ProfileRoot
+    )
 
     $start = [System.Diagnostics.ProcessStartInfo]::new()
     $start.FileName = $EnginePath
@@ -46,13 +49,29 @@ function Start-EngineHandshake {
     $start.RedirectStandardOutput = $true
     $start.RedirectStandardError = $true
     $start.Environment.Remove("TEMPER_RUNTIME_CONFIG") | Out-Null
+    $start.Environment.Remove("TEMPER_PREDECESSOR_CONFIG") | Out-Null
+    $start.Environment.Remove("CODEX_HOME") | Out-Null
+    $start.Environment.Remove("CLAUDE_CONFIG_DIR") | Out-Null
+    $start.Environment.Remove("OPENAI_API_KEY") | Out-Null
+    $start.Environment.Remove("CODEX_API_KEY") | Out-Null
+    $start.Environment.Remove("CLAUDE_API_KEY") | Out-Null
+    $start.Environment.Remove("ANTHROPIC_API_KEY") | Out-Null
+    $start.Environment.Remove("ANTHROPIC_AUTH_TOKEN") | Out-Null
+    $start.Environment.Remove("ANTHROPIC_BASE_URL") | Out-Null
+    $start.Environment.Remove("ANTHROPIC_BEDROCK_BASE_URL") | Out-Null
+    $start.Environment.Remove("ANTHROPIC_VERTEX_BASE_URL") | Out-Null
+    $start.Environment.Remove("OPENAI_BASE_URL") | Out-Null
+    $start.Environment["HOME"] = $ProfileRoot
+    $start.Environment["USERPROFILE"] = $ProfileRoot
+    $start.Environment["APPDATA"] = Join-Path $ProfileRoot "AppData\Roaming"
+    $start.Environment["LOCALAPPDATA"] = Join-Path $ProfileRoot "AppData\Local"
     $process = [System.Diagnostics.Process]::new()
     $process.StartInfo = $start
     try {
         if (-not $process.Start()) {
             throw "Temper engine did not start."
         }
-        $request = @{
+        $handshakeRequest = @{
             protocol_version = "temper-engine-protocol/v1"
             request_id = "windows-clean-smoke"
             method = "system.handshake"
@@ -60,13 +79,27 @@ function Start-EngineHandshake {
             expected_snapshot_digest = $null
             idempotency_key = $null
         } | ConvertTo-Json -Compress
-        $process.StandardInput.WriteLine($request)
+        $setupRequest = @{
+            protocol_version = "temper-engine-protocol/v1"
+            request_id = "windows-clean-smoke-setup"
+            method = "setup.status"
+            params = @{}
+            expected_snapshot_digest = $null
+            idempotency_key = $null
+        } | ConvertTo-Json -Compress
+        $process.StandardInput.WriteLine($handshakeRequest)
+        $process.StandardInput.WriteLine($setupRequest)
         $process.StandardInput.Flush()
-        $read = $process.StandardOutput.ReadLineAsync()
-        if (-not $read.Wait(15000)) {
-            throw "Temper engine handshake timed out."
+        $handshakeRead = $process.StandardOutput.ReadLineAsync()
+        if (-not $handshakeRead.Wait(15000)) {
+            throw "Temper engine admission timed out."
         }
-        $response = $read.Result | ConvertFrom-Json
+        $setupRead = $process.StandardOutput.ReadLineAsync()
+        if (-not $setupRead.Wait(15000)) {
+            throw "Temper engine setup admission timed out."
+        }
+        $response = $handshakeRead.Result | ConvertFrom-Json
+        $setupResponse = $setupRead.Result | ConvertFrom-Json
         if (
             -not $response.ok -or
             $response.protocol_version -ne "temper-engine-protocol/v1" -or
@@ -76,6 +109,16 @@ function Start-EngineHandshake {
             -not $response.result.snapshot_schema_digest.StartsWith("sha256:")
         ) {
             throw "Temper engine handshake failed closed-world validation."
+        }
+        if (
+            -not $setupResponse.ok -or
+            $setupResponse.protocol_version -ne "temper-engine-protocol/v1" -or
+            $setupResponse.request_id -ne "windows-clean-smoke-setup" -or
+            $setupResponse.result.configuration_state -ne "unconfigured" -or
+            $setupResponse.result.raw_payloads_exposed -ne $false -or
+            -not $setupResponse.snapshot_digest.StartsWith("sha256:")
+        ) {
+            throw "Temper engine setup admission failed closed-world validation."
         }
         return $response.result
     }
@@ -90,8 +133,30 @@ if ($SignaturePolicy -eq "trusted" -and $signature.Status -ne "Valid") {
     throw "The Temper installer is not signed by a trusted publisher."
 }
 
+$manufacturerKey = "HKCU:\Software\hydroacrid\Temper"
+$uninstallKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Temper"
+$desktopShortcut = Join-Path ([Environment]::GetFolderPath("DesktopDirectory")) "Temper.lnk"
+$programsShortcut = Join-Path ([Environment]::GetFolderPath("Programs")) "Temper.lnk"
+$legacyExecutable = Join-Path $env:LOCALAPPDATA "Temper\Temper.exe"
+$programsExecutable = Join-Path $env:LOCALAPPDATA "Programs\Temper\Temper.exe"
+$savedInstallLocation = $null
+if (Test-Path -LiteralPath $manufacturerKey) {
+    $savedInstallLocation = (Get-Item -LiteralPath $manufacturerKey).GetValue("")
+}
+if (
+    (Test-Path -LiteralPath $uninstallKey) -or
+    -not [string]::IsNullOrWhiteSpace([string]$savedInstallLocation) -or
+    (Test-Path -LiteralPath $desktopShortcut) -or
+    (Test-Path -LiteralPath $programsShortcut) -or
+    (Test-Path -LiteralPath $legacyExecutable -PathType Leaf) -or
+    (Test-Path -LiteralPath $programsExecutable -PathType Leaf)
+) {
+    throw "The clean package smoke requires a disposable Windows user without an existing Temper installation."
+}
+
 $smokeRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("temper-clean-smoke-" + [guid]::NewGuid())
 $installRoot = Join-Path $smokeRoot "installed"
+$profileRoot = Join-Path $smokeRoot "profile"
 $resolvedTemp = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
 $resolvedSmoke = [System.IO.Path]::GetFullPath($smokeRoot)
 if (-not $resolvedSmoke.StartsWith($resolvedTemp, [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -101,10 +166,14 @@ if (-not $resolvedSmoke.StartsWith($resolvedTemp, [System.StringComparison]::Ord
 $appProcess = $null
 $uninstaller = $null
 $uninstallCompleted = $false
+$installLocationClean = $false
+$uninstallRegistryClean = $false
+$shortcutsClean = $false
 $receipt = $null
 try {
     New-Item -ItemType Directory -Path $installRoot -Force | Out-Null
-    $installerProcess = Start-Process -FilePath $installer -ArgumentList @("/S", "/D=$installRoot") -PassThru -Wait -WindowStyle Hidden
+    New-Item -ItemType Directory -Path $profileRoot -Force | Out-Null
+    $installerProcess = Start-Process -FilePath $installer -ArgumentList @("/S", "/NS", "/D=$installRoot") -PassThru -Wait -WindowStyle Hidden
     if ($installerProcess.ExitCode -ne 0) {
         throw "Temper installer returned a failure."
     }
@@ -125,7 +194,7 @@ try {
         throw "The installed Temper uninstaller is unavailable."
     }
 
-    $handshake = Start-EngineHandshake -EnginePath $engine.FullName
+    $handshake = Start-EngineAdmission -EnginePath $engine.FullName -ProfileRoot $profileRoot
 
     $appStart = [System.Diagnostics.ProcessStartInfo]::new()
     $appStart.FileName = $app.FullName
@@ -133,6 +202,22 @@ try {
     $appStart.UseShellExecute = $false
     $appStart.CreateNoWindow = $true
     $appStart.Environment.Remove("TEMPER_RUNTIME_CONFIG") | Out-Null
+    $appStart.Environment.Remove("TEMPER_PREDECESSOR_CONFIG") | Out-Null
+    $appStart.Environment.Remove("CODEX_HOME") | Out-Null
+    $appStart.Environment.Remove("CLAUDE_CONFIG_DIR") | Out-Null
+    $appStart.Environment.Remove("OPENAI_API_KEY") | Out-Null
+    $appStart.Environment.Remove("CODEX_API_KEY") | Out-Null
+    $appStart.Environment.Remove("CLAUDE_API_KEY") | Out-Null
+    $appStart.Environment.Remove("ANTHROPIC_API_KEY") | Out-Null
+    $appStart.Environment.Remove("ANTHROPIC_AUTH_TOKEN") | Out-Null
+    $appStart.Environment.Remove("ANTHROPIC_BASE_URL") | Out-Null
+    $appStart.Environment.Remove("ANTHROPIC_BEDROCK_BASE_URL") | Out-Null
+    $appStart.Environment.Remove("ANTHROPIC_VERTEX_BASE_URL") | Out-Null
+    $appStart.Environment.Remove("OPENAI_BASE_URL") | Out-Null
+    $appStart.Environment["HOME"] = $profileRoot
+    $appStart.Environment["USERPROFILE"] = $profileRoot
+    $appStart.Environment["APPDATA"] = Join-Path $profileRoot "AppData\Roaming"
+    $appStart.Environment["LOCALAPPDATA"] = Join-Path $profileRoot "AppData\Local"
     $appProcess = [System.Diagnostics.Process]::Start($appStart)
     if ($null -eq $appProcess) {
         throw "Temper application did not start."
@@ -143,7 +228,7 @@ try {
     }
 
     $receipt = [ordered]@{
-        receipt_version = "1.0.0"
+        receipt_version = "1.1.0"
         installer_filename = [System.IO.Path]::GetFileName($installer)
         signature_policy = $SignaturePolicy
         signature_status = [string]$signature.Status
@@ -199,10 +284,25 @@ finally {
             Remove-Item -LiteralPath $confirmed -Recurse -Force
         }
     }
+    $remainingInstallLocation = $null
+    if (Test-Path -LiteralPath $manufacturerKey) {
+        $remainingInstallLocation = (Get-Item -LiteralPath $manufacturerKey).GetValue("")
+    }
+    $installLocationClean = [string]::IsNullOrWhiteSpace([string]$remainingInstallLocation)
+    $uninstallRegistryClean = -not (Test-Path -LiteralPath $uninstallKey)
+    $shortcutsClean =
+        -not (Test-Path -LiteralPath $desktopShortcut) -and
+        -not (Test-Path -LiteralPath $programsShortcut)
+    if (-not $installLocationClean -or -not $uninstallRegistryClean -or -not $shortcutsClean) {
+        throw "The Temper uninstaller left Windows installation metadata behind."
+    }
     if ($null -ne $uninstallError) {
         throw $uninstallError
     }
 }
 
 $receipt["uninstall_completed"] = $uninstallCompleted
+$receipt["saved_install_location_removed"] = $installLocationClean
+$receipt["uninstall_registry_removed"] = $uninstallRegistryClean
+$receipt["shortcut_residue_absent"] = $shortcutsClean
 $receipt | ConvertTo-Json -Compress

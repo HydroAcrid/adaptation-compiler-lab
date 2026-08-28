@@ -76,8 +76,11 @@ test("project-only Core knowledge cannot be widened", async ({ page }) => {
     .locator("xpath=ancestor::article");
   await item.getByRole("button", { name: "Edit" }).click();
   const scope = page.getByRole("combobox", { name: "Use in" });
-  await expect(scope.getByRole("option")).toHaveCount(1);
-  await expect(scope).toHaveValue("Kairn");
+  await expect(scope).toHaveText("Kairn");
+  await scope.click();
+  await expect(page.getByRole("option")).toHaveCount(1);
+  await expect(page.getByRole("option", { name: "Kairn" })).toBeVisible();
+  await page.keyboard.press("Escape");
 });
 
 test("workspace menu changes the minimum-window view", async ({ page }) => {
@@ -87,7 +90,7 @@ test("workspace menu changes the minimum-window view", async ({ page }) => {
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.getByRole("menuitem", { name: /Green Meadow/i }).click();
   await expect(
-    page.getByRole("heading", { name: "Temper is active in Green Meadow." }),
+    page.getByRole("heading", { name: "1 suggestion to review." }),
   ).toBeVisible();
   await expect(page.getByText("Suggestion 1 of 1")).toBeVisible();
   await expect(

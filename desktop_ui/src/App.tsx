@@ -2,6 +2,7 @@ import * as Tooltip from "@radix-ui/react-tooltip";
 import { useEffect, useState } from "react";
 
 import { Onboarding } from "./components/Onboarding";
+import { DesktopHostRequired, NativeStartup } from "./components/NativeStartup";
 import {
   AdvancedPage,
   ConnectionsPage,
@@ -13,19 +14,31 @@ import {
 } from "./components/pages";
 import { ReviewDialog } from "./components/ReviewDialog";
 import { Shell } from "./components/Shell";
-import { suggestions } from "./data/demo";
+import {
+  connections as demoConnections,
+  coreItems as demoCoreItems,
+  modeProjects as browserProjects,
+  modes as browserModes,
+  projects as demoProjects,
+  suggestions as demoSuggestions,
+  workspaceOptions as browserWorkspaceOptions,
+} from "./data/demo";
 import {
   isTauriRuntime,
   decideEngineSuggestion,
   loadEngineHandshake,
   loadEngineSnapshot,
+  loadInstructionEnvironments,
   loadModes,
   loadSetupSnapshot,
+  inspectConnections,
   recordEngineFeedback,
+  renewEngineConsent,
   runManagedTask,
   applyManagedTask,
   discardManagedTask,
   loadDiagnostics,
+  normalizeEngineFailure,
   revokeEngineAdaptation,
   undoEngineAdaptation,
   updateEnginePreferences,
@@ -34,6 +47,8 @@ import {
   type EngineSetupSnapshot,
   type EngineTaskResult,
   type EngineDiagnostics,
+  type EngineClientFailure,
+  type EngineInstructionEnvironmentSummary,
 } from "./engine";
 import type {
   CapabilityModeSummary,
@@ -59,6 +74,23 @@ const supportedScreens = new Set<Screen>([
   "tray",
 ]);
 
+type NavigationDirection = "backward" | "forward" | "neutral";
+
+const navigationPositions: Partial<Record<Screen, number>> = {
+  today: 0,
+  suggestion: 0,
+  tray: 0,
+  core: 1,
+  modes: 2,
+  connections: 3,
+  settings: 4,
+  advanced: 5,
+};
+
+function navigationPosition(screen: Screen): number | null {
+  return navigationPositions[screen] ?? null;
+}
+
 function initialScreen(): Screen {
   const rawValue = new URLSearchParams(window.location.search).get("screen");
   if (rawValue === "adaptations") return "core";
@@ -67,6 +99,7 @@ function initialScreen(): Screen {
 }
 
 function initialWorkspace(): WorkspaceScope {
+  if (!import.meta.env.DEV) return "all";
   const value = new URLSearchParams(window.location.search).get("project");
   if (value === "green-meadow") return "Green Meadow";
   if (value === "kairn") return "Kairn";
@@ -75,23 +108,35 @@ function initialWorkspace(): WorkspaceScope {
 
 function initialTheme(): Theme {
   const value = new URLSearchParams(window.location.search).get("theme");
-  return value === "dark" || value === "system" ? value : "light";
+  if (value === "light" || value === "dark" || value === "system") {
+    return value;
+  }
+  const saved = window.localStorage.getItem("temper.theme");
+  return saved === "dark" || saved === "system" ? saved : "light";
 }
 
 export default function App() {
   const [nativeRuntime] = useState(isTauriRuntime);
-  const [firstScreen] = useState(initialScreen);
+  const browserPreviewRuntime = !nativeRuntime && import.meta.env.DEV;
+  const [firstScreen] = useState<Screen>(() =>
+    nativeRuntime ? "today" : initialScreen(),
+  );
   const [screen, setScreen] = useState<Screen>(firstScreen);
+  const [navigationDirection, setNavigationDirection] =
+    useState<NavigationDirection>("neutral");
   const [theme, setTheme] = useState<Theme>(initialTheme);
-  const [advancedMode, setAdvancedMode] = useState(firstScreen === "advanced");
+  const [advancedMode, setAdvancedMode] = useState(
+    firstScreen === "advanced" ||
+      window.localStorage.getItem("temper.advanced") === "true",
+  );
   const [reviewOpen, setReviewOpen] = useState(firstScreen === "suggestion");
   const [activeWorkspace, setActiveWorkspace] =
     useState<WorkspaceScope>(initialWorkspace);
   const [suggestionQueue, setSuggestionQueue] = useState<Suggestion[]>(
-    nativeRuntime ? [] : suggestions,
+    browserPreviewRuntime ? demoSuggestions : [],
   );
   const [selectedSuggestionId, setSelectedSuggestionId] = useState(
-    suggestions[0]?.id ?? "",
+    browserPreviewRuntime ? (demoSuggestions[0]?.id ?? "") : "",
   );
   const [automaticLearning, setAutomaticLearning] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackValue | null>(null);
@@ -103,13 +148,24 @@ export default function App() {
     useState<EngineSetupSnapshot | null>(null);
   const [setupDigest, setSetupDigest] = useState<string | null>(null);
   const [modeCatalog, setModeCatalog] = useState<CapabilityModeSummary[]>(
-    nativeRuntime ? [] : browserModes,
+    browserPreviewRuntime ? browserModes : [],
   );
-  const [engineError, setEngineError] = useState<string | null>(null);
+  const [bootstrapState, setBootstrapState] = useState<
+    "loading" | "onboarding" | "ready" | "error"
+  >(nativeRuntime ? "loading" : "ready");
+  const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
+  const [engineFailure, setEngineFailure] =
+    useState<EngineClientFailure | null>(null);
+  const [failureStage, setFailureStage] = useState<"startup" | "refresh">(
+    "startup",
+  );
   const [taskResult, setTaskResult] = useState<EngineTaskResult | null>(null);
   const [diagnostics, setDiagnostics] = useState<EngineDiagnostics | null>(
     null,
   );
+  const [instructionEnvironments, setInstructionEnvironments] = useState<
+    EngineInstructionEnvironmentSummary[]
+  >([]);
   const displayedSuggestions = engineSnapshot
     ? engineSnapshot.suggestions.map((item) =>
         suggestionFromEngine(item, engineSnapshot),
@@ -132,10 +188,15 @@ export default function App() {
     }
 
     applyTheme();
+    window.localStorage.setItem("temper.theme", theme);
     if (theme !== "system") return;
     media.addEventListener("change", applyTheme);
     return () => media.removeEventListener("change", applyTheme);
   }, [theme]);
+
+  useEffect(() => {
+    window.localStorage.setItem("temper.advanced", String(advancedMode));
+  }, [advancedMode]);
 
   useEffect(() => {
     if (!nativeRuntime) return;
@@ -148,53 +209,67 @@ export default function App() {
             setSetupSnapshot(setup.snapshot);
             setSetupDigest(setup.snapshotDigest);
             setScreen("onboarding");
+            setBootstrapState("onboarding");
           }
           return;
         }
-        const [{ snapshot, snapshotDigest: digest }, modes, setup] =
-          await Promise.all([
-            loadEngineSnapshot(),
-            loadModes(),
-            loadSetupSnapshot(),
-          ]);
+        const [
+          { snapshot, snapshotDigest: digest },
+          modes,
+          setup,
+          environments,
+        ] = await Promise.all([
+          loadEngineSnapshot(),
+          loadModes(),
+          loadSetupSnapshot(),
+          loadInstructionEnvironments(),
+        ]);
         if (!active) return;
         setEngineSnapshot(snapshot);
         setSnapshotDigest(digest);
         setModeCatalog(modes);
         setSetupSnapshot(setup.snapshot);
         setSetupDigest(setup.snapshotDigest);
+        setInstructionEnvironments(environments);
+        setBootstrapState("ready");
       })
       .catch((error: unknown) => {
         if (active) {
-          setEngineError(
-            error instanceof Error
-              ? error.message
-              : "Temper could not load your local state.",
+          setFailureStage("startup");
+          setEngineFailure(
+            normalizeEngineFailure(
+              error,
+              "Temper could not load your local state.",
+            ),
           );
+          setBootstrapState("error");
         }
       });
     return () => {
       active = false;
     };
-  }, [nativeRuntime]);
+  }, [bootstrapAttempt, nativeRuntime]);
 
   async function finishOnboarding() {
-    if (!nativeRuntime) {
+    if (browserPreviewRuntime) {
       setScreen("today");
       return;
     }
-    const [{ snapshot, snapshotDigest: digest }, modes, setup] =
+    const [{ snapshot, snapshotDigest: digest }, modes, setup, environments] =
       await Promise.all([
         loadEngineSnapshot(),
         loadModes(),
         loadSetupSnapshot(),
+        loadInstructionEnvironments(),
       ]);
     setEngineSnapshot(snapshot);
     setSnapshotDigest(digest);
     setModeCatalog(modes);
     setSetupSnapshot(setup.snapshot);
     setSetupDigest(setup.snapshotDigest);
-    setEngineError(null);
+    setInstructionEnvironments(environments);
+    setEngineFailure(null);
+    setBootstrapState("ready");
     setScreen("today");
   }
 
@@ -202,7 +277,7 @@ export default function App() {
     id: project.display_name,
     label: project.display_name,
     description: project.registered_prospectively
-      ? "Connected"
+      ? "Registered for new work"
       : "Needs review",
   }));
   const liveCoreItems = engineSnapshot
@@ -210,9 +285,78 @@ export default function App() {
         coreItemFromEngine(item, engineSnapshot),
       )
     : undefined;
+  const selectedProjectId =
+    activeWorkspace === "all"
+      ? null
+      : (engineSnapshot?.projects.find(
+          (project) => project.display_name === activeWorkspace,
+        )?.project_id ?? null);
+  const scopedAdaptationCount = liveCoreItems
+    ? liveCoreItems.filter(
+        (item) =>
+          activeWorkspace === "all" ||
+          item.isGlobal === true ||
+          item.projectNames?.includes(activeWorkspace),
+      ).length
+    : 0;
+  const scopedSuggestionCount = displayedSuggestions.filter(
+    (item) =>
+      activeWorkspace === "all" ||
+      item.isGlobal === true ||
+      item.projectNames?.includes(activeWorkspace) ||
+      item.suggestedScope === "All projects" ||
+      item.suggestedScope === "All registered projects",
+  ).length;
+  const secureStoreReady = setupSnapshot?.secure_store.status === "ready";
+  const governedActionsAvailable = Boolean(
+    engineSnapshot &&
+    engineSnapshot.health !== "consent_expired" &&
+    secureStoreReady,
+  );
+  const governedMutationUnavailableReason = !secureStoreReady
+    ? "Secure storage must be available before Temper can save governed changes."
+    : engineSnapshot?.health === "consent_expired"
+      ? "Renew local consent before Temper can save governed changes."
+      : null;
+  const taskRunnerProjects =
+    engineSnapshot?.projects.filter((project) => project.task_runner_enabled) ??
+    [];
+  const codexConnectionReady = Boolean(
+    setupSnapshot?.connections.some(
+      (connection) =>
+        connection.agent_id === "codex" &&
+        connection.authentication_state === "signed_in" &&
+        connection.conformance_state === "compatible",
+    ),
+  );
+  const managedTaskUnavailableReason = !secureStoreReady
+    ? "Secure storage must be available before Temper can deliver a managed task."
+    : engineSnapshot?.health === "consent_expired"
+      ? "Renew local consent before Temper can deliver a managed task."
+      : !codexConnectionReady
+        ? "A compatible Codex installation signed in with ChatGPT is required."
+        : taskRunnerProjects.length === 0
+          ? "Register a project that allows managed tasks before running this Mode."
+          : null;
+
+  function transitionTo(destination: Screen) {
+    if (destination === screen) return;
+    const currentPosition = navigationPosition(screen);
+    const destinationPosition = navigationPosition(destination);
+    setNavigationDirection(
+      currentPosition === null ||
+        destinationPosition === null ||
+        currentPosition === destinationPosition
+        ? "neutral"
+        : destinationPosition > currentPosition
+          ? "forward"
+          : "backward",
+    );
+    setScreen(destination);
+  }
 
   function navigate(destination: Screen) {
-    setScreen(destination);
+    transitionTo(destination);
     if (destination === "suggestion") setReviewOpen(true);
   }
 
@@ -221,44 +365,76 @@ export default function App() {
     setReviewOpen(true);
   }
 
-  async function decide(decision: SuggestionDecision) {
+  async function decide(
+    decision: SuggestionDecision,
+    projectNames: string[] = [],
+  ) {
     if (!selectedSuggestion) return;
     if (nativeRuntime && engineSnapshot && snapshotDigest) {
       const suggestion = engineSnapshot.suggestions.find(
         (item) => item.queue_id === selectedSuggestion.id,
       );
       if (!suggestion) return;
-      const projectId = projectIdForSuggestion(
-        suggestion,
-        engineSnapshot,
-        activeWorkspace,
-      );
+      const selectedProjectIds = projectNames
+        .map(
+          (projectName) =>
+            engineSnapshot.projects.find(
+              (project) => project.display_name === projectName,
+            )?.project_id,
+        )
+        .filter((projectId): projectId is string => Boolean(projectId))
+        .sort();
+      const projectId =
+        selectedProjectIds[0] ??
+        projectIdForSuggestion(suggestion, engineSnapshot, activeWorkspace);
+      const engineDecision =
+        decision === "suggested"
+          ? suggestion.signal_kind === "revocation"
+            ? "approve_revocation"
+            : "keep_suggested"
+          : decision === "project"
+            ? "keep_project"
+            : decision === "narrowed"
+              ? "keep_narrowed"
+              : suggestion.signal_kind === "revocation"
+                ? "reject_revocation"
+                : "ignore";
+      if (!suggestion.available_actions.includes(engineDecision)) {
+        throw new Error("That decision is not available for this suggestion.");
+      }
+      if (decision === "project" && !projectId) {
+        throw new Error("Choose one registered project first.");
+      }
+      if (decision === "narrowed" && selectedProjectIds.length === 0) {
+        throw new Error("Choose at least one registered project first.");
+      }
       try {
         const receipt = await decideEngineSuggestion(
           suggestion,
-          decision === "suggested"
-            ? suggestion.signal_kind === "revocation"
-              ? "approve_revocation"
-              : "keep_suggested"
-            : decision === "project"
-              ? "keep_project"
-              : suggestion.signal_kind === "revocation"
-                ? "reject_revocation"
-                : "ignore",
+          engineDecision,
           snapshotDigest,
           crypto.randomUUID(),
-          decision === "project" && projectId ? { projectId } : {},
+          decision === "project" && projectId
+            ? { projectId }
+            : decision === "narrowed"
+              ? {
+                  refinedScope: {
+                    ...suggestion.suggested_scope,
+                    project_ids: selectedProjectIds,
+                  },
+                }
+              : {},
         );
         setReviewOpen(false);
-        setScreen(decision === "ignore" ? "today" : "core");
+        transitionTo(decision === "ignore" ? "today" : "core");
         await refreshAfterNativeAction(receipt.message);
       } catch (error: unknown) {
-        setReviewOpen(false);
-        await refreshAfterNativeAction(
-          error instanceof Error
-            ? error.message
-            : "Temper could not safely save that decision.",
+        const failure = normalizeEngineFailure(
+          error,
+          "Temper could not safely save that decision.",
         );
+        await refreshAfterNativeAction(failure.message);
+        throw new Error(failure.message);
       }
       return;
     }
@@ -268,7 +444,7 @@ export default function App() {
     setSuggestionQueue(remaining);
     setSelectedSuggestionId(remaining[0]?.id ?? "");
     setReviewOpen(false);
-    setScreen(decision === "ignore" ? "today" : "core");
+    transitionTo(decision === "ignore" ? "today" : "core");
     const suggestedScope = selectedSuggestion.suggestedScope;
     setToast(
       decision === "suggested"
@@ -320,11 +496,12 @@ export default function App() {
       );
       await refreshAfterNativeAction(receipt.message);
     } catch (error: unknown) {
-      await refreshAfterNativeAction(
-        error instanceof Error
-          ? error.message
-          : "Temper could not safely revoke that adaptation.",
+      const failure = normalizeEngineFailure(
+        error,
+        "Temper could not safely revoke that adaptation.",
       );
+      await refreshAfterNativeAction(failure.message);
+      throw new Error(failure.message);
     }
   }
 
@@ -366,16 +543,55 @@ export default function App() {
       );
       await refreshAfterNativeAction(receipt.message);
     } catch (error: unknown) {
-      await refreshAfterNativeAction(
-        error instanceof Error
-          ? error.message
-          : "Temper could not safely save that setting.",
+      const failure = normalizeEngineFailure(
+        error,
+        "Temper could not safely save that setting.",
       );
+      await refreshAfterNativeAction(failure.message);
+      throw new Error(failure.message);
+    }
+  }
+
+  async function renewConsent() {
+    if (!engineSnapshot || !snapshotDigest) return;
+    const receipt = await renewEngineConsent(
+      engineSnapshot.consent.expires_at,
+      snapshotDigest,
+      crypto.randomUUID(),
+    );
+    await refreshAfterNativeAction(receipt.message);
+  }
+
+  async function refreshConnectionState() {
+    const inspected = await inspectConnections();
+    setSetupSnapshot(inspected.snapshot);
+    setSetupDigest(inspected.snapshotDigest);
+    setToast("Connection status refreshed.");
+  }
+
+  async function completeModeTask(
+    message: string,
+    result: EngineTaskResult | null,
+  ) {
+    if (result) setTaskResult(result);
+    await refreshAfterNativeAction(message);
+    if (result?.change_review) {
+      setAdvancedMode(true);
+      transitionTo("advanced");
     }
   }
 
   async function runAdvancedTask(projectId: string, task: string) {
-    if (!snapshotDigest) return;
+    if (
+      !snapshotDigest ||
+      !codexConnectionReady ||
+      !governedActionsAvailable ||
+      !taskRunnerProjects.some((project) => project.project_id === projectId)
+    ) {
+      throw new Error(
+        "Managed tasks are unavailable for that project in the current state.",
+      );
+    }
     const result = await runManagedTask(
       projectId,
       task,
@@ -416,28 +632,59 @@ export default function App() {
     setToast(message);
     if (!nativeRuntime) return;
     try {
-      const [{ snapshot, snapshotDigest: digest }, modes, setup] =
+      const [{ snapshot, snapshotDigest: digest }, modes, setup, environments] =
         await Promise.all([
           loadEngineSnapshot(),
           loadModes(),
           loadSetupSnapshot(),
+          loadInstructionEnvironments(),
         ]);
       setEngineSnapshot(snapshot);
       setSnapshotDigest(digest);
       setModeCatalog(modes);
       setSetupSnapshot(setup.snapshot);
       setSetupDigest(setup.snapshotDigest);
-      setEngineError(null);
+      setInstructionEnvironments(environments);
+      setEngineFailure(null);
+      setFeedback(null);
     } catch (error: unknown) {
-      setEngineError(
-        error instanceof Error
-          ? error.message
-          : "Temper could not refresh your local state.",
+      setFailureStage("refresh");
+      setEngineFailure(
+        normalizeEngineFailure(
+          error,
+          "Temper could not refresh your local state.",
+        ),
       );
+      setBootstrapState("error");
     }
   }
 
-  if (screen === "onboarding")
+  if (!nativeRuntime && !browserPreviewRuntime) {
+    return <DesktopHostRequired />;
+  }
+
+  if (
+    nativeRuntime &&
+    (bootstrapState === "loading" || bootstrapState === "error")
+  ) {
+    return (
+      <NativeStartup
+        failure={bootstrapState === "error" ? engineFailure : null}
+        failureStage={failureStage}
+        onRetry={() => {
+          setFailureStage("startup");
+          setBootstrapState("loading");
+          setEngineFailure(null);
+          setBootstrapAttempt((attempt) => attempt + 1);
+        }}
+      />
+    );
+  }
+
+  if (
+    (nativeRuntime && bootstrapState === "onboarding") ||
+    (browserPreviewRuntime && screen === "onboarding")
+  )
     return (
       <Onboarding
         nativeRuntime={nativeRuntime}
@@ -454,142 +701,206 @@ export default function App() {
         advancedMode={advancedMode}
         onNavigate={navigate}
         onWorkspaceChange={setActiveWorkspace}
+        previewMode={browserPreviewRuntime}
         screen={screen}
-        workspaces={workspaces}
+        workspaces={
+          nativeRuntime
+            ? (workspaces ?? [])
+            : browserPreviewRuntime
+              ? browserWorkspaceOptions
+              : []
+        }
       >
-        {screen === "today" || screen === "suggestion" || screen === "tray" ? (
-          <TodayPage
-            automaticLearning={automaticLearning}
-            feedback={feedback}
-            onFeedback={recordFeedback}
-            onOpenCore={() => navigate("core")}
-            onReview={reviewSuggestion}
-            workspace={activeWorkspace}
-            selectedSuggestionId={selectedSuggestion?.id ?? null}
-            suggestions={displayedSuggestions}
-            liveSummary={
-              engineSnapshot
-                ? {
-                    activeAdaptationCount:
-                      engineSnapshot.terminal.review_mode.active_artifact_count,
-                    health: engineSnapshot.health,
-                    pendingFeedbackCount:
-                      engineSnapshot.terminal.review_mode.metrics
-                        .pending_feedback_count,
-                    pendingReviewCount:
-                      engineSnapshot.terminal.review_mode.metrics
-                        .pending_review_count,
-                    projectCount: engineSnapshot.projects.length,
-                  }
-                : nativeRuntime
+        <div
+          className="screen-transition"
+          data-direction={navigationDirection}
+          data-screen={screen}
+          key={screen}
+        >
+          {screen === "today" ||
+          screen === "suggestion" ||
+          screen === "tray" ? (
+            <TodayPage
+              automaticLearning={automaticLearning}
+              feedback={feedback}
+              onFeedback={recordFeedback}
+              onOpenCore={() => navigate("core")}
+              onReview={reviewSuggestion}
+              workspace={activeWorkspace}
+              selectedSuggestionId={selectedSuggestion?.id ?? null}
+              suggestions={displayedSuggestions}
+              liveSummary={
+                engineSnapshot
                   ? {
-                      activeAdaptationCount: 0,
-                      health: engineError ? "needs_attention" : "paused",
-                      pendingFeedbackCount: 0,
-                      pendingReviewCount: 0,
-                      projectCount: 0,
-                      message:
-                        engineError ?? "Temper is opening your local work…",
+                      activeAdaptationCount: scopedAdaptationCount,
+                      health: engineSnapshot.health,
+                      pendingFeedbackCount:
+                        activeWorkspace === "all"
+                          ? engineSnapshot.activation_feedback.length
+                          : 0,
+                      feedbackAvailable: governedActionsAvailable,
+                      pendingReviewCount: scopedSuggestionCount,
+                      projectCount:
+                        activeWorkspace === "all"
+                          ? engineSnapshot.projects.length
+                          : selectedProjectId
+                            ? 1
+                            : 0,
+                      secureStoreReady,
                     }
                   : undefined
-            }
-          />
-        ) : null}
-        {screen === "core" ? (
-          <CorePage
-            activeWorkspace={activeWorkspace}
-            availableWorkspaces={engineSnapshot?.projects.map(
-              (project) => project.display_name,
-            )}
-            initialItems={liveCoreItems}
-            key={`${activeWorkspace}-${snapshotDigest ?? "browser"}`}
-            nativeRuntime={nativeRuntime}
-            onRevoke={revokeAdaptation}
-            onUndo={undoRecentAdaptation}
-            onNotice={setToast}
-            recentUndo={engineSnapshot?.recent_undos[0]}
-            snapshotDigest={snapshotDigest}
-          />
-        ) : null}
-        {screen === "modes" ? (
-          <ModesPage
-            error={nativeRuntime ? engineError : null}
-            loading={nativeRuntime && !engineError && !engineSnapshot}
-            modes={modeCatalog}
-            nativeRuntime={nativeRuntime}
-            onOpenCore={() => navigate("core")}
-            onTaskComplete={refreshAfterNativeAction}
-            projects={
-              engineSnapshot?.projects.map((project) => ({
+              }
+              instructionEnvironments={instructionEnvironments}
+              liveProjects={engineSnapshot?.projects ?? []}
+            />
+          ) : null}
+          {screen === "core" ? (
+            <CorePage
+              activeWorkspace={activeWorkspace}
+              initialItems={
+                nativeRuntime
+                  ? (liveCoreItems ?? [])
+                  : browserPreviewRuntime
+                    ? demoCoreItems
+                    : []
+              }
+              instructionEnvironments={instructionEnvironments}
+              liveProjects={engineSnapshot?.projects ?? []}
+              availableWorkspaces={
+                nativeRuntime
+                  ? engineSnapshot?.projects.map(
+                      (project) => project.display_name,
+                    )
+                  : browserPreviewRuntime
+                    ? demoProjects.map((project) => project.name)
+                    : []
+              }
+              key={`${activeWorkspace}-${snapshotDigest ?? "browser"}`}
+              governedMutationUnavailableReason={
+                governedMutationUnavailableReason
+              }
+              governedMutationsAvailable={governedActionsAvailable}
+              nativeRuntime={nativeRuntime}
+              onRevoke={revokeAdaptation}
+              onUndo={undoRecentAdaptation}
+              onNotice={(message) => {
+                if (nativeRuntime) {
+                  void refreshAfterNativeAction(message);
+                } else {
+                  setToast(message);
+                }
+              }}
+              recentUndo={engineSnapshot?.recent_undos[0]}
+              snapshotDigest={snapshotDigest}
+            />
+          ) : null}
+          {screen === "modes" ? (
+            <ModesPage
+              error={null}
+              loading={false}
+              modes={modeCatalog}
+              nativeRuntime={nativeRuntime}
+              onOpenCore={() => navigate("core")}
+              onTaskComplete={completeModeTask}
+              projects={
+                nativeRuntime
+                  ? (taskRunnerProjects.map((project) => ({
+                      id: project.project_id,
+                      label: project.display_name,
+                    })) ?? [])
+                  : browserPreviewRuntime
+                    ? browserProjects
+                    : []
+              }
+              runnerReady={
+                nativeRuntime
+                  ? codexConnectionReady && governedActionsAvailable
+                  : false
+              }
+              runnerUnavailableReason={managedTaskUnavailableReason}
+              snapshotDigest={snapshotDigest}
+              instructionEnvironments={instructionEnvironments}
+            />
+          ) : null}
+          {screen === "connections" ? (
+            <ConnectionsPage
+              liveConnections={
+                nativeRuntime ? (setupSnapshot?.connections ?? []) : undefined
+              }
+              liveProjects={
+                nativeRuntime ? (engineSnapshot?.projects ?? []) : undefined
+              }
+              instructionEnvironments={instructionEnvironments}
+              nativeRuntime={nativeRuntime}
+              previewConnections={browserPreviewRuntime ? demoConnections : []}
+              previewProjects={browserPreviewRuntime ? demoProjects : []}
+              onRefresh={refreshConnectionState}
+              onProjectRegistered={refreshAfterNativeAction}
+              onInstructionChanged={refreshAfterNativeAction}
+              registrationAvailable={governedActionsAvailable}
+              registrationUnavailableReason={governedMutationUnavailableReason}
+              snapshotDigest={snapshotDigest}
+            />
+          ) : null}
+          {screen === "settings" ? (
+            <SettingsPage
+              advancedMode={advancedMode}
+              automaticLearning={automaticLearning}
+              backgroundLearning={engineSnapshot?.background_enabled ?? false}
+              nativeRuntime={nativeRuntime}
+              onAdvancedModeChange={setAdvancedMode}
+              onAutomaticLearningChange={setAutomaticLearning}
+              onGovernedPreferencesChange={updateGovernedPreferences}
+              onRenewConsent={renewConsent}
+              onThemeChange={setTheme}
+              theme={theme}
+              telemetryEnabled={
+                engineSnapshot?.aggregate_reporting_enabled ?? false
+              }
+              decisionNotificationsEnabled={
+                engineSnapshot?.decision_notifications_enabled ?? false
+              }
+              launchAtLoginEnabled={
+                engineSnapshot?.launch_at_login_enabled ?? false
+              }
+              consent={engineSnapshot?.consent ?? null}
+              secureStoreReady={setupSnapshot?.secure_store.status === "ready"}
+            />
+          ) : null}
+          {screen === "advanced" ? (
+            <AdvancedPage
+              diagnostics={diagnostics}
+              nativeRuntime={nativeRuntime}
+              onApply={applyAdvancedTask}
+              onDiagnostics={refreshDiagnostics}
+              onDiscard={discardAdvancedTask}
+              onRun={runAdvancedTask}
+              projects={taskRunnerProjects.map((project) => ({
                 id: project.project_id,
                 label: project.display_name,
-              })) ?? [
-                { id: "kairn", label: "Kairn" },
-                { id: "green-meadow", label: "Green Meadow" },
-              ]
-            }
-            snapshotDigest={snapshotDigest}
-          />
-        ) : null}
-        {screen === "connections" ? (
-          <ConnectionsPage
-            liveConnections={setupSnapshot?.connections}
-            liveProjects={engineSnapshot?.projects}
-            nativeRuntime={nativeRuntime}
-            onProjectRegistered={refreshAfterNativeAction}
-            snapshotDigest={snapshotDigest}
-          />
-        ) : null}
-        {screen === "settings" ? (
-          <SettingsPage
-            advancedMode={advancedMode}
-            automaticLearning={automaticLearning}
-            backgroundLearning={engineSnapshot?.background_enabled ?? false}
-            nativeRuntime={nativeRuntime}
-            onAdvancedModeChange={setAdvancedMode}
-            onAutomaticLearningChange={setAutomaticLearning}
-            onGovernedPreferencesChange={updateGovernedPreferences}
-            onThemeChange={setTheme}
-            theme={theme}
-            telemetryEnabled={
-              engineSnapshot?.aggregate_reporting_enabled ?? false
-            }
-            decisionNotificationsEnabled={
-              engineSnapshot?.decision_notifications_enabled ?? false
-            }
-            launchAtLoginEnabled={
-              engineSnapshot?.launch_at_login_enabled ?? false
-            }
-            consent={engineSnapshot?.consent ?? null}
-          />
-        ) : null}
-        {screen === "advanced" ? (
-          <AdvancedPage
-            diagnostics={diagnostics}
-            nativeRuntime={nativeRuntime}
-            onApply={applyAdvancedTask}
-            onDiagnostics={refreshDiagnostics}
-            onDiscard={discardAdvancedTask}
-            onRun={runAdvancedTask}
-            projects={
-              engineSnapshot?.projects.map((project) => ({
-                id: project.project_id,
-                label: project.display_name,
-              })) ?? []
-            }
-            taskResult={taskResult}
-          />
-        ) : null}
+              }))}
+              previewProjects={browserPreviewRuntime ? browserProjects : []}
+              runnerReady={codexConnectionReady && governedActionsAvailable}
+              runnerUnavailableReason={managedTaskUnavailableReason}
+              taskResult={taskResult}
+            />
+          ) : null}
+        </div>
       </Shell>
-      {selectedSuggestion ? (
+      {selectedSuggestion && (!nativeRuntime || governedActionsAvailable) ? (
         <ReviewDialog
+          availableProjects={engineSnapshot?.projects.map(
+            (project) => project.display_name,
+          )}
+          key={selectedSuggestion.id}
           onDecision={decide}
           onOpenChange={setReviewOpen}
           open={reviewOpen}
+          previewMode={browserPreviewRuntime}
           suggestion={selectedSuggestion}
         />
       ) : null}
-      {screen === "tray" ? (
+      {!nativeRuntime && screen === "tray" ? (
         <TrayPreview
           onOpen={() =>
             selectedSuggestion
@@ -614,28 +925,6 @@ export default function App() {
   );
 }
 
-const browserModes: CapabilityModeSummary[] = [
-  {
-    activation_default: "one_task",
-    applicable_task_classes: [
-      "design_system",
-      "frontend_design",
-      "frontend_implementation",
-    ],
-    compatible_target_families: ["claude-code", "codex"],
-    evaluation_case_count: 6,
-    evaluation_valid: true,
-    mode_id: "frontend-studio",
-    mode_version: "1.0.0",
-    mutates_permanent_core: false,
-    name: "Frontend Studio",
-    projection_utf8_bytes: 1128,
-    requested_tools: [],
-    summary:
-      "A focused frontend workflow for distinctive, accessible, responsive product interfaces.",
-  },
-];
-
 function coreItemFromEngine(
   item: EngineDesktopSnapshot["adaptations"][number],
   snapshot: EngineDesktopSnapshot,
@@ -649,7 +938,9 @@ function coreItemFromEngine(
     description: item.required_behaviors.join(" "),
     id: item.artifact_id,
     kind: coreKind(item.artifact_type),
-    scope: projectNames.length ? projectNames.join(", ") : "Everywhere",
+    isGlobal: scopeIsGlobal(item.scope),
+    projectNames,
+    scope: describeScope(item.scope, snapshot),
     sourceSummary: `Approved from ${item.evidence_count} supporting source${item.evidence_count === 1 ? "" : "s"}`,
     title: item.intent,
   };
@@ -670,26 +961,41 @@ function suggestionFromEngine(
       )
     : null;
   return {
-    authority: "Approved user feedback",
     automationDisposition: "review-required",
-    automationReason: "No learning is approved without a governed decision.",
+    automationReason: "A decision is required before anything changes.",
     behavior:
       item.proposed_behavior ??
       `Remove ${affected?.intent ?? "the affected adaptation"}`,
     capturedAt: new Date(item.created_at).toLocaleString(),
     confidenceReason: item.reason_summary.join(" "),
     digest: item.proposal_digest,
-    evidenceStrength: "promising",
     explanation:
       item.reason_summary.join(" ") ||
       "This proposal came from approved, prospectively captured feedback.",
     id: item.queue_id,
     isRevocation: item.signal_kind === "revocation",
-    sourceCount: 1,
-    sourceProject: projectNames[0] ?? "a registered project",
-    suggestedScope: projectNames.length
-      ? projectNames.join(", ")
-      : "All projects",
+    isGlobal: scopeIsGlobal(item.suggested_scope),
+    availableDecisions: [
+      ...(item.available_actions.some((action) =>
+        ["keep_suggested", "approve_revocation"].includes(action),
+      )
+        ? (["suggested"] as const)
+        : []),
+      ...(item.available_actions.includes("keep_project")
+        ? (["project"] as const)
+        : []),
+      ...(item.available_actions.includes("keep_narrowed")
+        ? (["narrowed"] as const)
+        : []),
+      ...(item.available_actions.some((action) =>
+        ["ignore", "reject_revocation"].includes(action),
+      )
+        ? (["ignore"] as const)
+        : []),
+    ],
+    projectNames,
+    sourceProject: projectNames.length === 1 ? projectNames[0] : null,
+    suggestedScope: describeScope(item.suggested_scope, snapshot),
   };
 }
 
@@ -705,15 +1011,70 @@ function projectIdForSuggestion(
       )?.project_id ?? null
     );
   }
-  return (
-    suggestion.suggested_scope.project_ids[0] ??
-    snapshot.projects[0]?.project_id ??
-    null
-  );
+  return suggestion.suggested_scope.project_ids.length === 1
+    ? suggestion.suggested_scope.project_ids[0]
+    : null;
 }
 
 function coreKind(value: string): CoreKind {
-  if (value === "preference" || value === "memory") return value;
-  if (value === "procedure" || value === "prompt_rule") return "procedure";
-  return "skill";
+  if (
+    value === "preference" ||
+    value === "memory" ||
+    value === "example" ||
+    value === "procedure" ||
+    value === "prompt_rule" ||
+    value === "skill" ||
+    value === "tool_recommendation"
+  ) {
+    return value;
+  }
+  throw new Error("Temper received an unsupported adaptation kind.");
+}
+
+function scopeIsGlobal(scope: EngineSuggestion["suggested_scope"]): boolean {
+  return (
+    scope.workspace_ids.length === 0 &&
+    scope.project_ids.length === 0 &&
+    scope.repository_ids.length === 0 &&
+    scope.task_classes.length === 0 &&
+    scope.target_families.length === 0 &&
+    scope.environment_ids.length === 0 &&
+    scope.activation_conditions.length === 0 &&
+    scope.exclusions.length === 0 &&
+    scope.valid_from === null &&
+    scope.valid_until === null
+  );
+}
+
+function describeScope(
+  scope: EngineSuggestion["suggested_scope"],
+  snapshot: EngineDesktopSnapshot,
+): string {
+  if (scopeIsGlobal(scope)) return "All registered projects";
+  const parts: string[] = [];
+  const projectNames = scope.project_ids.map(
+    (projectId) =>
+      snapshot.projects.find((project) => project.project_id === projectId)
+        ?.display_name ?? projectId,
+  );
+  if (projectNames.length) parts.push(projectNames.join(", "));
+  if (scope.workspace_ids.length)
+    parts.push(`Workspaces: ${scope.workspace_ids.join(", ")}`);
+  if (scope.repository_ids.length)
+    parts.push(`Repositories: ${scope.repository_ids.join(", ")}`);
+  if (scope.task_classes.length)
+    parts.push(`Tasks: ${scope.task_classes.join(", ")}`);
+  if (scope.target_families.length)
+    parts.push(`Agents: ${scope.target_families.join(", ")}`);
+  if (scope.environment_ids.length)
+    parts.push(`Environments: ${scope.environment_ids.join(", ")}`);
+  if (scope.activation_conditions.length)
+    parts.push(`When ${scope.activation_conditions.join(", ")}`);
+  if (scope.exclusions.length)
+    parts.push(`Excluding ${scope.exclusions.join(", ")}`);
+  if (scope.valid_from)
+    parts.push(`From ${new Date(scope.valid_from).toLocaleDateString()}`);
+  if (scope.valid_until)
+    parts.push(`Until ${new Date(scope.valid_until).toLocaleDateString()}`);
+  return parts.length ? parts.join(" · ") : "Scoped adaptation";
 }

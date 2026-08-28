@@ -1,0 +1,83 @@
+{
+  "$defs": {
+    "NativeTarget": {
+      "enum": [
+        "codex",
+        "claude",
+        "copilot"
+      ],
+      "title": "NativeTarget",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "authorizes_learning": {
+      "const": false,
+      "default": false,
+      "title": "Authorizes Learning",
+      "type": "boolean"
+    },
+    "categories": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Categories",
+      "type": "array"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "modifies_files": {
+      "const": false,
+      "default": false,
+      "title": "Modifies Files",
+      "type": "boolean"
+    },
+    "preview_token": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Preview Token",
+      "type": "string"
+    },
+    "preview_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Preview Version",
+      "type": "string"
+    },
+    "raw_payloads_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Payloads Exposed",
+      "type": "boolean"
+    },
+    "skill_count": {
+      "minimum": 0,
+      "title": "Skill Count",
+      "type": "integer"
+    },
+    "source_count": {
+      "minimum": 0,
+      "title": "Source Count",
+      "type": "integer"
+    },
+    "target": {
+      "$ref": "#/$defs/NativeTarget"
+    }
+  },
+  "required": [
+    "preview_token",
+    "target",
+    "categories",
+    "source_count",
+    "skill_count",
+    "expires_at"
+  ],
+  "title": "InstructionGlobalPreviewV1",
+  "type": "object"
+}

@@ -48,11 +48,126 @@
       "title": "External Release Digest",
       "type": "string"
     },
+    "instruction_environment_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Instruction Environment Digest"
+    },
     "manifest_version": {
       "const": "1.0.0",
       "default": "1.0.0",
       "title": "Manifest Version",
       "type": "string"
+    },
+    "native_blocked_clause_digests": {
+      "default": [],
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Native Blocked Clause Digests",
+      "type": "array"
+    },
+    "native_delta_fully_optimized": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Native Delta Fully Optimized"
+    },
+    "native_included_clause_digests": {
+      "default": [],
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Native Included Clause Digests",
+      "type": "array"
+    },
+    "native_omitted_clause_digests": {
+      "default": [],
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Native Omitted Clause Digests",
+      "type": "array"
+    },
+    "native_relation_digests": {
+      "default": [],
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Native Relation Digests",
+      "type": "array"
+    },
+    "native_source_chain_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Native Source Chain Digest"
+    },
+    "native_target_id": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Native Target Id"
+    },
+    "native_target_surface": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Native Target Surface"
+    },
+    "native_target_surface_version": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Native Target Surface Version"
     },
     "rendered_content_digest": {
       "pattern": "^sha256:[0-9a-f]{64}$",

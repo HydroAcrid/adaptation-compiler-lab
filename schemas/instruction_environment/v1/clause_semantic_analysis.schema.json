@@ -1,0 +1,105 @@
+{
+  "$defs": {
+    "NativeInstructionKind": {
+      "enum": [
+        "fact",
+        "preference",
+        "norm",
+        "procedure",
+        "example",
+        "exception",
+        "capability",
+        "unknown"
+      ],
+      "title": "NativeInstructionKind",
+      "type": "string"
+    },
+    "NativeNormStrength": {
+      "enum": [
+        "none",
+        "preference",
+        "invariant"
+      ],
+      "title": "NativeNormStrength",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One model proposal bound to exact untrusted native text.",
+  "properties": {
+    "analysis_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Analysis Version",
+      "type": "string"
+    },
+    "clause_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Clause Id",
+      "type": "string"
+    },
+    "clause_text_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Clause Text Digest",
+      "type": "string"
+    },
+    "confidence": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "explicit_exception": {
+      "title": "Explicit Exception",
+      "type": "boolean"
+    },
+    "interpreter_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Interpreter Digest",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/NativeInstructionKind"
+    },
+    "norm_strength": {
+      "$ref": "#/$defs/NativeNormStrength"
+    },
+    "polarity": {
+      "enum": [
+        "positive",
+        "negative",
+        "neutral"
+      ],
+      "title": "Polarity",
+      "type": "string"
+    },
+    "scope_labels": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Scope Labels",
+      "type": "array"
+    },
+    "source_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Digest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "clause_id",
+    "clause_text_digest",
+    "source_digest",
+    "kind",
+    "norm_strength",
+    "polarity",
+    "explicit_exception",
+    "confidence",
+    "interpreter_digest"
+  ],
+  "title": "ClauseSemanticAnalysisV1",
+  "type": "object"
+}

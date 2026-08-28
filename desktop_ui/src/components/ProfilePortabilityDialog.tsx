@@ -10,53 +10,12 @@ import {
   type ProfileExportPreview,
   type ProfileImportPreview,
 } from "../engine";
+import {
+  profileExportPreview as browserExportPreview,
+  profileImportPreview as browserImportPreview,
+} from "../data/demo";
 import type { PortableProfilePreview } from "../types";
 import { Button } from "./ui";
-
-const browserExportPreview: ProfileExportPreview = {
-  activates_nothing: true,
-  display_name: "Temper Core",
-  export_token: "browser-preview",
-  item_count: 8,
-  items: [
-    {
-      item_id: "profile-item-0001",
-      kind: "preference",
-      required_behavior_count: 1,
-      scope_mapping_required: false,
-      summary: "Make handoffs understandable",
-    },
-    {
-      item_id: "profile-item-0002",
-      kind: "procedure",
-      required_behavior_count: 2,
-      scope_mapping_required: true,
-      summary: "Synchronize work safely",
-    },
-  ],
-  package_digest: `sha256:${"a".repeat(64)}`,
-  package_id: "temper-core-preview",
-  raw_payloads_exposed: false,
-  scope_mapping_count: 1,
-  source_key_fingerprint: `sha256:${"b".repeat(64)}`,
-  source_signature_verified: true,
-  warnings: [
-    "Raw conversations and private paths are not included.",
-    "Project-specific guidance needs a local scope on another installation.",
-  ],
-};
-
-const browserImportPreview: ProfileImportPreview = {
-  ...browserExportPreview,
-  display_name: "Shared Temper profile",
-  import_token: "browser-import-preview",
-  item_count: 4,
-  package_id: "shared-profile-preview",
-  warnings: [
-    "Imported guidance remains inactive until you review and approve it.",
-    "The source signature proves origin; it does not become your instruction authority.",
-  ],
-};
 
 export function ProfilePortabilityDialog({
   mode,
@@ -72,7 +31,9 @@ export function ProfilePortabilityDialog({
   onComplete: (message: string) => void;
 }) {
   const initialExportPreview =
-    mode === "export" && !nativeRuntime ? browserExportPreview : null;
+    mode === "export" && !nativeRuntime && import.meta.env.DEV
+      ? browserExportPreview
+      : null;
   const [preview, setPreview] = useState<PortableProfilePreview | null>(
     initialExportPreview,
   );
@@ -117,6 +78,7 @@ export function ProfilePortabilityDialog({
       const value = nativeRuntime
         ? await loadProfileImportPreview(passphrase)
         : browserImportPreview;
+      if (!value) throw new Error("Open the Temper desktop app.");
       setImportPreview(value);
       setPreview(value);
     } catch (reason: unknown) {
@@ -288,7 +250,7 @@ function ProfilePreview({ value }: { value: PortableProfilePreview }) {
         </div>
         <div>
           <span>Includes</span>
-          <strong>{value.item_count} approved items</strong>
+          <strong>{value.item_count} items to review</strong>
         </div>
       </header>
       <ul>

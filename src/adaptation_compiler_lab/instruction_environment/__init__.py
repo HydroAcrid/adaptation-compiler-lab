@@ -1,0 +1,71 @@
+"""Native agent-instruction discovery, comparison, and governed writeback."""
+
+from adaptation_compiler_lab.instruction_environment.adapters import (
+    ClaudeInstructionSourceAdapter,
+    CodexInstructionSourceAdapter,
+    CopilotInstructionSourceAdapter,
+    InstructionSourceAdapter,
+)
+from adaptation_compiler_lab.instruction_environment.models import (
+    InstructionChangePreviewV1,
+    InstructionChangeReceiptV1,
+    InstructionConflictSummaryV1,
+    InstructionConflictV1,
+    InstructionDeltaPlanV1,
+    InstructionEnvironmentSnapshotV1,
+    InstructionEnvironmentSummaryV1,
+    InstructionRelationKind,
+    InstructionRelationV1,
+    InstructionSourceManifestV1,
+    InstructionSourceSummaryV1,
+    NativeActivationStatus,
+    NativeInstructionChangePreviewV1,
+    NativeInstructionChangeReceiptV1,
+    NativeInstructionClauseV1,
+    NativeInstructionKind,
+    NativeReadStatus,
+    NativeSourceKind,
+    NativeTarget,
+)
+from adaptation_compiler_lab.instruction_environment.resolver import (
+    apply_instruction_environment,
+    bind_instruction_delta_manifest,
+    build_instruction_delta_plan,
+    compare_instruction_clauses,
+)
+from adaptation_compiler_lab.instruction_environment.service import (
+    InstructionEnvironmentError,
+    InstructionEnvironmentService,
+)
+
+__all__ = [
+    "ClaudeInstructionSourceAdapter",
+    "CodexInstructionSourceAdapter",
+    "CopilotInstructionSourceAdapter",
+    "InstructionChangePreviewV1",
+    "InstructionChangeReceiptV1",
+    "InstructionConflictSummaryV1",
+    "InstructionConflictV1",
+    "InstructionDeltaPlanV1",
+    "InstructionEnvironmentError",
+    "InstructionEnvironmentService",
+    "InstructionEnvironmentSnapshotV1",
+    "InstructionEnvironmentSummaryV1",
+    "InstructionRelationKind",
+    "InstructionRelationV1",
+    "InstructionSourceAdapter",
+    "InstructionSourceManifestV1",
+    "InstructionSourceSummaryV1",
+    "NativeActivationStatus",
+    "NativeInstructionChangePreviewV1",
+    "NativeInstructionChangeReceiptV1",
+    "NativeInstructionClauseV1",
+    "NativeInstructionKind",
+    "NativeReadStatus",
+    "NativeSourceKind",
+    "NativeTarget",
+    "apply_instruction_environment",
+    "bind_instruction_delta_manifest",
+    "build_instruction_delta_plan",
+    "compare_instruction_clauses",
+]
