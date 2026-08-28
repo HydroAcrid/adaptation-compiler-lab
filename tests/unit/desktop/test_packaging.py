@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import subprocess
@@ -42,12 +43,19 @@ def test_native_builder_produces_target_suffixed_tauri_sidecar() -> None:
     assert "--onefile" in command
     assert "--onefile-no-compression" in command
     assert "--include-package-data=adaptation_compiler_lab" in command
+    assert "--include-package=adaptation_compiler_lab.persistence.sql" in command
     assert "temper-engine-x86_64-pc-windows-msvc.exe" in rendered
     assert "desktop_ui" in rendered
     assert "src-tauri" in rendered
     assert "PySide6" not in rendered
     assert "qml" not in rendered
     assert ".env" not in rendered
+
+
+def test_windows_release_application_uses_the_gui_subsystem() -> None:
+    entrypoint = (ROOT / "desktop_ui" / "src-tauri" / "src" / "main.rs").read_text(encoding="utf-8")
+
+    assert '#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]' in entrypoint
 
 
 def test_native_builder_refuses_unsupported_cross_platform_output() -> None:
@@ -161,7 +169,7 @@ def test_apple_manifest_binds_macos_minimum_and_arm64_target(
     assert manifest["minimum_system_version"] == "13.0"
 
 
-def test_native_builder_requires_exact_unconfigured_engine_handshake(
+def test_native_builder_requires_exact_unconfigured_engine_admission(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -191,15 +199,34 @@ def test_native_builder_requires_exact_unconfigured_engine_handshake(
                 "mutation_enabled": False,
             },
         }
-        return subprocess.CompletedProcess(command, 0, json.dumps(response) + "\n", "")
+        setup_response = {
+            "protocol_version": "temper-engine-protocol/v1",
+            "request_id": "native-build-setup",
+            "ok": True,
+            "result": {
+                "configuration_state": "unconfigured",
+                "raw_payloads_exposed": False,
+            },
+            "snapshot_digest": schema_digest,
+        }
+        output = json.dumps(response) + "\n" + json.dumps(setup_response) + "\n"
+        return subprocess.CompletedProcess(command, 0, output, "")
 
     monkeypatch.setattr(module.subprocess, "run", fake_run)
     stripped_environment = (
         "TEMPER_RUNTIME_CONFIG",
         "TEMPER_PREDECESSOR_CONFIG",
+        "CODEX_HOME",
+        "CLAUDE_CONFIG_DIR",
         "OPENAI_API_KEY",
         "CODEX_API_KEY",
         "CLAUDE_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN",
+        "ANTHROPIC_BASE_URL",
+        "ANTHROPIC_BEDROCK_BASE_URL",
+        "ANTHROPIC_VERTEX_BASE_URL",
+        "OPENAI_BASE_URL",
     )
     for name in stripped_environment:
         monkeypatch.setenv(name, "must-not-reach-sidecar")
@@ -215,10 +242,17 @@ def test_native_builder_requires_exact_unconfigured_engine_handshake(
         '{"protocol_version":"temper-engine-protocol/v1",'
         '"request_id":"native-build-handshake","method":"system.handshake",'
         '"params":{},"expected_snapshot_digest":null,"idempotency_key":null}\n'
+        '{"protocol_version":"temper-engine-protocol/v1",'
+        '"request_id":"native-build-setup","method":"setup.status",'
+        '"params":{},"expected_snapshot_digest":null,"idempotency_key":null}\n'
     )
     environment = captured["env"]
     assert isinstance(environment, dict)
     assert all(name not in environment for name in stripped_environment)
+    assert "temper-native-admission-" in str(environment["HOME"])
+    assert environment["USERPROFILE"] == environment["HOME"]
+    assert str(environment["APPDATA"]).startswith(str(environment["HOME"]))
+    assert str(environment["LOCALAPPDATA"]).startswith(str(environment["HOME"]))
 
 
 def test_native_builder_rejects_drifted_or_unconfigured_handshake(
@@ -249,11 +283,24 @@ def test_native_builder_rejects_drifted_or_unconfigured_handshake(
             "mutation_enabled": True,
         },
     }
+    setup_response = {
+        "protocol_version": "temper-engine-protocol/v1",
+        "request_id": "native-build-setup",
+        "ok": True,
+        "result": {
+            "configuration_state": "unconfigured",
+            "raw_payloads_exposed": False,
+        },
+        "snapshot_digest": f"sha256:{'a' * 64}",
+    }
     monkeypatch.setattr(
         module.subprocess,
         "run",
         lambda *args, **kwargs: subprocess.CompletedProcess(
-            args[0], 0, json.dumps(response) + "\n", ""
+            args[0],
+            0,
+            json.dumps(response) + "\n" + json.dumps(setup_response) + "\n",
+            "",
         ),
     )
 
@@ -280,7 +327,7 @@ def test_native_builder_rejects_non_object_handshake(
     monkeypatch.setattr(
         module.subprocess,
         "run",
-        lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 0, "[]\n", ""),
+        lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 0, "[]\n{}\n", ""),
     )
     monkeypatch.setattr(
         module,
@@ -309,10 +356,57 @@ def test_windows_smoke_defaults_to_trusted_signature_and_safe_temp_cleanup() -> 
     assert tauri_config["mainBinaryName"] == "Temper"
     assert "temper-clean-smoke-" in source
     assert 'Filter "uninstall.exe"' in source
-    assert 'ArgumentList "/S"' in source
+    assert 'ArgumentList @("/S", "/NS", "/D=$installRoot")' in source
+    assert 'method = "setup.status"' in source
+    assert "windows-clean-smoke-setup" in source
+    assert "HKCU:\\Software\\hydroacrid\\Temper" in source
+    assert "saved_install_location_removed" in source
+    assert "uninstall_registry_removed" in source
+    assert "shortcut_residue_absent" in source
+    assert '$start.Environment["APPDATA"]' in source
+    assert '$appStart.Environment["APPDATA"]' in source
+    assert '$setupResponse.result.configuration_state -ne "unconfigured"' in source
     assert '"uninstall_completed"' in source
     assert "Remove-Item -LiteralPath $confirmed" in source
     assert "New-SelfSignedCertificate" not in source
+    nsis = tauri_config["bundle"]["windows"]["nsis"]
+    assert nsis["installMode"] == "currentUser"
+    assert nsis["installerHooks"] == "./windows/installer-hooks.nsh"
+    assert nsis["template"] == "./windows/installer-template.nsi"
+    hooks = (ROOT / "desktop_ui" / "src-tauri" / "windows" / "installer-hooks.nsh").read_text(
+        encoding="utf-8"
+    )
+    assert "NSIS_HOOK_PREINSTALL" not in hooks
+    assert "NSIS_HOOK_POSTUNINSTALL" in hooks
+    assert 'DeleteRegKey SHCTX "${MANUPRODUCTKEY}"' in hooks
+    assert 'DeleteRegKey /ifempty SHCTX "${MANUPRODUCTKEY}"' not in hooks
+
+
+def test_vendored_nsis_template_has_truthful_path_and_preserves_governed_data() -> None:
+    template = ROOT / "desktop_ui" / "src-tauri" / "windows" / "installer-template.nsi"
+    source = template.read_text(encoding="utf-8")
+    digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
+
+    assert "tauri-bundler 2.9.4" in source
+    assert "8909f221d1515955fc843808032bdc5d62209c96" in source
+    assert "20f4ecc730defb71f1342eaeaec4021df13be3d843abba0effe88ea5835fa079" in source
+    assert digest == "aa0378477b4ee5e260f07bba4bf11343218634c15d70c1254144e60a31055ea1"
+    on_init = source.split("Function .onInit", maxsplit=1)[1].split("FunctionEnd", maxsplit=1)[0]
+    assert 'StrCpy $INSTDIR "$LOCALAPPDATA\\Programs\\${PRODUCTNAME}"' in on_init
+    assert on_init.index("$LOCALAPPDATA\\Programs") < on_init.index(
+        "Call RestorePreviousInstallLocation"
+    )
+    assert 'StrCpy $INSTDIR "$LOCALAPPDATA\\${PRODUCTNAME}"' not in source
+    assert "!insertmacro MUI_UNPAGE_CONFIRM" in source
+    assert "DeleteAppDataCheckbox" not in source
+    assert "deleteAppData" not in source
+    assert 'RmDir /r "$APPDATA\\${BUNDLEID}"' not in source
+    assert 'RmDir /r "$LOCALAPPDATA\\${BUNDLEID}"' not in source
+    assert "NSIS_HOOK_POSTUNINSTALL" in source
+
+    notices = (ROOT / "desktop_ui" / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    assert "tauri-bundler` 2.9.4" in notices
+    assert digest in notices
 
 
 def test_desktop_workflow_supersedes_stale_branch_builds() -> None:
@@ -365,6 +459,9 @@ def test_macos_smoke_defaults_to_trusted_and_checks_every_admission_layer() -> N
     assert "first_run_window_visible" in source
     assert "TEMPER_RUNTIME_CONFIG" in source
     assert "OPENAI_API_KEY" in source
+    assert "CODEX_HOME" in source
+    assert "CLAUDE_CONFIG_DIR" in source
+    assert "ANTHROPIC_BASE_URL" in source
 
 
 def test_macos_development_policy_never_runs_trusted_admission(

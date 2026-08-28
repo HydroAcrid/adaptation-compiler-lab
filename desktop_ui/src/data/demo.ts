@@ -1,9 +1,12 @@
 import type {
   AgentConnection,
+  CapabilityModeSummary,
   CoreItem,
+  PortableProfilePreview,
   RegisteredProject,
   Suggestion,
 } from "../types";
+import type { ProfileExportPreview, ProfileImportPreview } from "../engine";
 
 export const suggestions: Suggestion[] = [
   {
@@ -150,7 +153,7 @@ export const connections: AgentConnection[] = [
   {
     id: "claude",
     name: "Claude Code",
-    status: "attention",
+    status: "not_installed",
     sourceCapability: "Not integrated in this Temper build",
     targetCapability: "Not integrated in this Temper build",
     authDescription: "Not installed in this example",
@@ -172,3 +175,82 @@ export const projects: RegisteredProject[] = [
     connectedAgents: ["Codex"],
   },
 ];
+
+export const modes: CapabilityModeSummary[] = [
+  {
+    activation_default: "one_task",
+    applicable_task_classes: [
+      "design_system",
+      "frontend_design",
+      "frontend_implementation",
+    ],
+    compatible_target_families: ["claude-code", "codex"],
+    evaluation_case_count: 6,
+    evaluation_valid: true,
+    mode_id: "frontend-studio",
+    mode_version: "1.0.0",
+    mutates_permanent_core: false,
+    name: "Frontend Studio",
+    projection_utf8_bytes: 1128,
+    requested_tools: [],
+    summary:
+      "A focused frontend workflow for distinctive, accessible, responsive product interfaces.",
+  },
+];
+
+export const workspaceOptions = [
+  { id: "Kairn", label: "Kairn", description: "3 suggestions" },
+  { id: "Green Meadow", label: "Green Meadow", description: "No suggestions" },
+];
+
+export const modeProjects = [
+  { id: "kairn", label: "Kairn" },
+  { id: "green-meadow", label: "Green Meadow" },
+];
+
+export const profileExportPreview: ProfileExportPreview &
+  PortableProfilePreview = {
+  activates_nothing: true,
+  display_name: "Temper Core",
+  export_token: "browser-preview",
+  item_count: 8,
+  items: [
+    {
+      item_id: "profile-item-0001",
+      kind: "preference",
+      required_behavior_count: 1,
+      scope_mapping_required: false,
+      summary: "Make handoffs understandable",
+    },
+    {
+      item_id: "profile-item-0002",
+      kind: "procedure",
+      required_behavior_count: 2,
+      scope_mapping_required: true,
+      summary: "Synchronize work safely",
+    },
+  ],
+  package_digest: `sha256:${"a".repeat(64)}`,
+  package_id: "temper-core-preview",
+  raw_payloads_exposed: false,
+  scope_mapping_count: 1,
+  source_key_fingerprint: `sha256:${"b".repeat(64)}`,
+  source_signature_verified: true,
+  warnings: [
+    "Raw conversations and private paths are not included.",
+    "Project-specific guidance needs a local scope on another installation.",
+  ],
+};
+
+export const profileImportPreview: ProfileImportPreview &
+  PortableProfilePreview = {
+  ...profileExportPreview,
+  display_name: "Shared Temper profile",
+  import_token: "browser-import-preview",
+  item_count: 4,
+  package_id: "shared-profile-preview",
+  warnings: [
+    "Imported guidance remains inactive until you review and approve it.",
+    "The source signature proves origin; it does not become your instruction authority.",
+  ],
+};

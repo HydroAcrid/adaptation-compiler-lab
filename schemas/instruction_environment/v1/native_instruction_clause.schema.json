@@ -1,0 +1,140 @@
+{
+  "$defs": {
+    "NativeInstructionKind": {
+      "enum": [
+        "fact",
+        "preference",
+        "norm",
+        "procedure",
+        "example",
+        "exception",
+        "capability",
+        "unknown"
+      ],
+      "title": "NativeInstructionKind",
+      "type": "string"
+    },
+    "NativeNormStrength": {
+      "enum": [
+        "none",
+        "preference",
+        "invariant"
+      ],
+      "title": "NativeNormStrength",
+      "type": "string"
+    },
+    "NativeTarget": {
+      "enum": [
+        "codex",
+        "claude",
+        "copilot"
+      ],
+      "title": "NativeTarget",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Internal normalized clause with exact native lineage.\n\n``text`` is never returned through a raw-free desktop summary. If cached, this complete record\nmust be encrypted under the local raw-store key.",
+  "properties": {
+    "clause_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Clause Id",
+      "type": "string"
+    },
+    "clause_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Clause Version",
+      "type": "string"
+    },
+    "explicit_exception": {
+      "default": false,
+      "title": "Explicit Exception",
+      "type": "boolean"
+    },
+    "interpreter_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Interpreter Digest"
+    },
+    "kind": {
+      "$ref": "#/$defs/NativeInstructionKind",
+      "default": "unknown"
+    },
+    "norm_strength": {
+      "$ref": "#/$defs/NativeNormStrength",
+      "default": "none"
+    },
+    "polarity": {
+      "default": "neutral",
+      "enum": [
+        "positive",
+        "negative",
+        "neutral"
+      ],
+      "title": "Polarity",
+      "type": "string"
+    },
+    "scope_labels": {
+      "default": [],
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Scope Labels",
+      "type": "array"
+    },
+    "semantic_confidence": {
+      "default": 0.0,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Semantic Confidence",
+      "type": "number"
+    },
+    "source_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Digest",
+      "type": "string"
+    },
+    "source_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Source Id",
+      "type": "string"
+    },
+    "target": {
+      "$ref": "#/$defs/NativeTarget"
+    },
+    "text": {
+      "minLength": 1,
+      "title": "Text",
+      "type": "string"
+    },
+    "text_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Text Digest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "clause_id",
+    "text",
+    "text_digest",
+    "source_id",
+    "source_digest",
+    "target"
+  ],
+  "title": "NativeInstructionClauseV1",
+  "type": "object"
+}

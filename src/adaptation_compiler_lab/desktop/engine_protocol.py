@@ -30,6 +30,14 @@ from adaptation_compiler_lab.desktop.models import (
     SuggestionSummaryV1,
 )
 from adaptation_compiler_lab.domain import FrozenModel, NonEmptyStr, Scope, Sha256Digest
+from adaptation_compiler_lab.instruction_environment.models import (
+    InstructionChangePreviewV1,
+    InstructionChangeReceiptV1,
+    InstructionEnvironmentSummaryV1,
+    InstructionGlobalPreviewV1,
+    InstructionSourceSummaryV1,
+    NativeTarget,
+)
 from adaptation_compiler_lab.modes import FRONTEND_STUDIO_MODE, evaluate_frontend_studio_mode
 from adaptation_compiler_lab.portability import (
     EncryptedProfileEnvelope,
@@ -41,6 +49,9 @@ if TYPE_CHECKING:
     from adaptation_compiler_lab.desktop.portability_service import LocalProfilePortabilityService
     from adaptation_compiler_lab.desktop.service import DesktopApplicationService
     from adaptation_compiler_lab.desktop.setup_service import DesktopSetupApplicationService
+    from adaptation_compiler_lab.instruction_environment.service import (
+        InstructionEnvironmentService,
+    )
 
 PROTOCOL_VERSION: Final[Literal["temper-engine-protocol/v1"]] = "temper-engine-protocol/v1"
 MAX_FRAME_BYTES = 1_048_576
@@ -105,11 +116,14 @@ class EngineProtocolRouter:
         service: DesktopApplicationService | None,
         portability: LocalProfilePortabilityService | None = None,
         setup_factory: Callable[[], DesktopSetupApplicationService] | None = None,
+        instruction_factory: Callable[[], InstructionEnvironmentService] | None = None,
     ) -> None:
         self._service = service
         self._portability = portability
         self._setup_factory = setup_factory
+        self._instruction_factory = instruction_factory
         self._setup: DesktopSetupApplicationService | None = None
+        self._instruction_environment: InstructionEnvironmentService | None = None
         self._export_previews: dict[str, tuple[float, PortableProfilePackage]] = {}
         self._import_previews: dict[str, tuple[float, EncryptedProfileEnvelope]] = {}
         self._mutation_results: dict[str, tuple[Sha256Digest, EngineResponse]] = {}
@@ -210,6 +224,7 @@ class EngineProtocolRouter:
                 if self._service is None:
                     raise ValueError
                 current = self._service.load()
+                self._instruction_environment = None
             except (OSError, ValueError):
                 return self._error(
                     request,
@@ -229,6 +244,24 @@ class EngineProtocolRouter:
                 snapshot_digest=current.content_digest,
             )
             return self._remember_mutation(request, fingerprint, response)
+        if request.method == "instruction_environment.get":
+            return self._instruction_environment_get(request)
+        if request.method == "instruction_environment.refresh":
+            return self._instruction_environment_refresh(request)
+        if request.method == "instruction_environment.analyze":
+            return self._instruction_environment_analyze(request)
+        if request.method == "instruction_environment.global.preview":
+            return self._instruction_global_preview(request)
+        if request.method == "instruction_environment.global.enable":
+            return self._instruction_global_enable(request)
+        if request.method == "instruction_environment.global.disable":
+            return self._instruction_global_disable(request)
+        if request.method == "instruction_environment.change.preview":
+            return self._instruction_change_preview(request)
+        if request.method == "instruction_environment.change.apply":
+            return self._instruction_change_apply(request)
+        if request.method == "instruction_environment.change.rollback":
+            return self._instruction_change_rollback(request)
         if request.method == "snapshot.get":
             if self._service is None:
                 return self._error(
@@ -317,6 +350,297 @@ class EngineProtocolRouter:
                 },
             )
         return self._error(request, "unknown_method", "The requested operation is not supported.")
+
+    def _instruction_environment_get(self, request: EngineRequest) -> EngineResponse:
+        if self._service is None:
+            return self._not_configured(request)
+        try:
+            instruction_service = self._instruction_service()
+            if not request.params:
+                summaries = instruction_service.summaries()
+            else:
+                if set(request.params) != {"project_id", "target"}:
+                    raise ValueError
+                summaries = (
+                    instruction_service.summary(
+                        project_id=_required_string(request.params, "project_id"),
+                        target=NativeTarget(_required_string(request.params, "target")),
+                    ),
+                )
+        except (OSError, TypeError, ValueError):
+            return self._error(
+                request,
+                "instruction_environment_unavailable",
+                "Temper could not safely inspect existing agent instructions.",
+                retryable=True,
+            )
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result={
+                "environments": [item.model_dump(mode="json") for item in summaries],
+                "raw_payloads_exposed": False,
+            },
+        )
+
+    def _instruction_environment_refresh(self, request: EngineRequest) -> EngineResponse:
+        if self._service is None:
+            return self._not_configured(request)
+        try:
+            if set(request.params) != {"project_id", "target"}:
+                raise ValueError
+            project_id = _required_string(request.params, "project_id")
+            target = NativeTarget(_required_string(request.params, "target"))
+            instruction_service = self._instruction_service()
+            instruction_service.refresh(project_id=project_id, target=target)
+            summary = instruction_service.summary(project_id=project_id, target=target)
+        except (OSError, TypeError, ValueError):
+            return self._error(
+                request,
+                "instruction_environment_refresh_failed",
+                "Temper could not safely refresh existing agent instructions.",
+                retryable=True,
+            )
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result=summary.model_dump(mode="json"),
+        )
+
+    def _instruction_environment_analyze(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        snapshot_digest, fingerprint = checked
+        try:
+            if set(request.params) != {"project_id", "target"}:
+                raise ValueError
+            project_id = _required_string(request.params, "project_id")
+            target = NativeTarget(_required_string(request.params, "target"))
+            instruction_service = self._instruction_service()
+            instruction_service.analyze(project_id=project_id, target=target)
+            summary = instruction_service.summary(project_id=project_id, target=target)
+        except (OSError, TypeError, ValueError):
+            return self._error(
+                request,
+                "instruction_analysis_unavailable",
+                "Temper could not complete isolated semantic setup analysis.",
+                retryable=True,
+            )
+        response = EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result=summary.model_dump(mode="json"),
+            snapshot_digest=snapshot_digest,
+        )
+        return self._remember_mutation(request, fingerprint, response)
+
+    def _instruction_global_preview(self, request: EngineRequest) -> EngineResponse:
+        if self._service is None:
+            return self._not_configured(request)
+        try:
+            if set(request.params) != {"path", "target"}:
+                raise ValueError
+            preview = self._instruction_service().preview_global(
+                target=NativeTarget(_required_string(request.params, "target")),
+                root=Path(_required_string(request.params, "path")),
+            )
+        except (OSError, TypeError, ValueError):
+            return self._error(
+                request,
+                "personal_instruction_preview_refused",
+                "Temper could not safely preview that personal agent setup.",
+            )
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result=preview.model_dump(mode="json"),
+        )
+
+    def _instruction_global_enable(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        snapshot_digest, fingerprint = checked
+        try:
+            if (
+                set(request.params) != {"preview_token", "target"}
+                or request.idempotency_key is None
+            ):
+                raise ValueError
+            summaries = self._instruction_service().enable_global(
+                preview_token=_required_string(request.params, "preview_token"),
+                target=NativeTarget(_required_string(request.params, "target")),
+                idempotency_key=request.idempotency_key,
+            )
+        except (OSError, TypeError, ValueError):
+            return self._error(
+                request,
+                "personal_instruction_enable_refused",
+                "Temper could not safely enable personal agent inspection.",
+            )
+        response = EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result={
+                "environments": [item.model_dump(mode="json") for item in summaries],
+                "raw_payloads_exposed": False,
+            },
+            snapshot_digest=snapshot_digest,
+        )
+        return self._remember_mutation(request, fingerprint, response)
+
+    def _instruction_global_disable(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        snapshot_digest, fingerprint = checked
+        try:
+            if set(request.params) != {"target"} or request.idempotency_key is None:
+                raise ValueError
+            summaries = self._instruction_service().disable_global(
+                target=NativeTarget(_required_string(request.params, "target")),
+                idempotency_key=request.idempotency_key,
+            )
+        except (OSError, TypeError, ValueError):
+            return self._error(
+                request,
+                "personal_instruction_disable_refused",
+                "Temper could not safely disable personal agent inspection.",
+            )
+        response = EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result={
+                "environments": [item.model_dump(mode="json") for item in summaries],
+                "raw_payloads_exposed": False,
+            },
+            snapshot_digest=snapshot_digest,
+        )
+        return self._remember_mutation(request, fingerprint, response)
+
+    def _instruction_change_preview(self, request: EngineRequest) -> EngineResponse:
+        if self._service is None:
+            return self._not_configured(request)
+        if request.expected_snapshot_digest is None:
+            return self._error(
+                request,
+                "snapshot_binding_required",
+                "Review the current Temper state before previewing this edit.",
+            )
+        try:
+            if set(request.params) != {
+                "project_id",
+                "target",
+                "source_id",
+                "expected_environment_digest",
+                "instruction_text",
+            }:
+                raise ValueError
+            current = self._service.load()
+            if current.content_digest != request.expected_snapshot_digest:
+                return self._error(
+                    request,
+                    "stale_snapshot",
+                    "Temper changed; review the current state before editing instructions.",
+                )
+            raw_text = request.params.get("instruction_text")
+            if raw_text is not None and not isinstance(raw_text, str):
+                raise ValueError
+            preview = self._instruction_service().preview_change(
+                project_id=_required_string(request.params, "project_id"),
+                target=NativeTarget(_required_string(request.params, "target")),
+                source_id=_required_string(request.params, "source_id"),
+                expected_environment_digest=_required_string(
+                    request.params, "expected_environment_digest"
+                ),
+                instruction_text=raw_text,
+            )
+        except (OSError, TypeError, ValueError):
+            return self._error(
+                request,
+                "native_instruction_preview_refused",
+                "Temper could not safely preview that native instruction edit.",
+            )
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result=preview.model_dump(mode="json"),
+            snapshot_digest=request.expected_snapshot_digest,
+        )
+
+    def _instruction_change_apply(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        snapshot_digest, fingerprint = checked
+        try:
+            if (
+                set(request.params) != {"preview_token", "target", "expected_environment_digest"}
+                or request.idempotency_key is None
+            ):
+                raise ValueError
+            receipt = self._instruction_service().apply_change(
+                preview_token=_required_string(request.params, "preview_token"),
+                target=NativeTarget(_required_string(request.params, "target")),
+                expected_environment_digest=_required_string(
+                    request.params, "expected_environment_digest"
+                ),
+                idempotency_key=request.idempotency_key,
+            )
+        except (OSError, TypeError, ValueError):
+            return self._error(
+                request,
+                "native_instruction_write_refused",
+                "Existing instructions changed or could not be updated safely.",
+            )
+        response = EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result=receipt.model_dump(mode="json"),
+            snapshot_digest=snapshot_digest,
+        )
+        return self._remember_mutation(request, fingerprint, response)
+
+    def _instruction_change_rollback(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        snapshot_digest, fingerprint = checked
+        try:
+            if (
+                set(request.params) != {"receipt_id", "target", "expected_environment_digest"}
+                or request.idempotency_key is None
+            ):
+                raise ValueError
+            receipt = self._instruction_service().rollback_change(
+                receipt_id=_required_string(request.params, "receipt_id"),
+                target=NativeTarget(_required_string(request.params, "target")),
+                expected_environment_digest=_required_string(
+                    request.params, "expected_environment_digest"
+                ),
+                idempotency_key=request.idempotency_key,
+            )
+        except (OSError, TypeError, ValueError):
+            return self._error(
+                request,
+                "native_instruction_rollback_refused",
+                "Temper could not safely restore that native instruction source.",
+            )
+        response = EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result=receipt.model_dump(mode="json"),
+            snapshot_digest=snapshot_digest,
+        )
+        return self._remember_mutation(request, fingerprint, response)
+
+    def _instruction_service(self) -> InstructionEnvironmentService:
+        if self._instruction_environment is None:
+            if self._instruction_factory is None:
+                raise ValueError("instruction environment service is unavailable")
+            self._instruction_environment = self._instruction_factory()
+        return self._instruction_environment
 
     def _service_poll(self) -> ActionResult:
         if self._service is None:
@@ -1080,6 +1404,14 @@ def build_router(
 
     if config_path is None:
         return EngineProtocolRouter(None, None)
+    from adaptation_compiler_lab.automatic_runtime.dogfood_cli import (
+        _context,
+        _ledger,
+        _load_config,
+        _now,
+        _raw_store,
+        _registration_signer,
+    )
     from adaptation_compiler_lab.desktop.platform import platform_paths, product_preferences_store
     from adaptation_compiler_lab.desktop.portability_service import LocalProfilePortabilityService
     from adaptation_compiler_lab.desktop.preferences import (
@@ -1088,6 +1420,19 @@ def build_router(
     from adaptation_compiler_lab.desktop.service import (
         CodexDogfoodDesktopBackend,
         DesktopApplicationService,
+    )
+    from adaptation_compiler_lab.instruction_environment.codex_semantic import (
+        ConfiguredCodexInstructionRelationAnalyzer,
+        ConfiguredCodexInstructionSemanticAnalyzer,
+        instruction_relation_analyzer_digest,
+        instruction_semantic_analyzer_digest,
+    )
+    from adaptation_compiler_lab.instruction_environment.service import (
+        InstructionEnvironmentService,
+    )
+    from adaptation_compiler_lab.runtime import (
+        CanonicalRuntimeProjection,
+        build_runtime_projection,
     )
 
     preferences_store = product_preferences_store(platform_paths())
@@ -1128,9 +1473,57 @@ def build_router(
         launch_at_login_enabled=preferences.launch_at_login_enabled,
         preference_writer=save_preferences,
     )
+
+    def instruction_factory() -> InstructionEnvironmentService:
+        config = _load_config(config_path)
+        try:
+            raw_store = _raw_store(config)
+            signer = _registration_signer(config)
+        except (OSError, ValueError):
+            raw_store = None
+            signer = None
+
+        def projection_provider(
+            project_id: str, target: NativeTarget
+        ) -> CanonicalRuntimeProjection | None:
+            if target is not NativeTarget.CODEX:
+                return None
+            state = _ledger(config).current()
+            if state is None or state.release is None:
+                return None
+            project = next(
+                (item for item in config.projects if item.project_id == project_id),
+                None,
+            )
+            if project is None:
+                return None
+            return build_runtime_projection(
+                state.release.governed_release,
+                _context(config, project, evaluated_at=_now()),
+            )
+
+        return InstructionEnvironmentService(
+            projects={item.project_id: item.root for item in config.projects},
+            state_root=config.state_root,
+            raw_store=raw_store,
+            signer=signer,
+            semantic_analyzer=ConfiguredCodexInstructionSemanticAnalyzer(config_path),
+            analyzer_digest=instruction_semantic_analyzer_digest(
+                model=config.semantic_model,
+                reasoning_effort=config.semantic_reasoning_effort,
+            ),
+            relation_analyzer=ConfiguredCodexInstructionRelationAnalyzer(config_path),
+            relation_analyzer_digest=instruction_relation_analyzer_digest(
+                model=config.semantic_model,
+                reasoning_effort=config.semantic_reasoning_effort,
+            ),
+            projection_provider=projection_provider,
+        )
+
     return EngineProtocolRouter(
         service,
         LocalProfilePortabilityService(config_path.expanduser().resolve()),
+        instruction_factory=instruction_factory,
     )
 
 
@@ -1187,6 +1580,11 @@ def protocol_schema_models() -> Sequence[type[FrozenModel]]:
         ActivationFeedbackSummaryV1,
         RecentUndoSummaryV1,
         MutationReceiptV1,
+        InstructionSourceSummaryV1,
+        InstructionEnvironmentSummaryV1,
+        InstructionGlobalPreviewV1,
+        InstructionChangePreviewV1,
+        InstructionChangeReceiptV1,
     )
 
 
@@ -1198,8 +1596,9 @@ def _required_string(params: Mapping[str, Any], key: str) -> str:
 
 
 def _host_platform() -> Literal["windows", "macos", "development"]:
-    if sys.platform == "win32":
+    host = platform.system()
+    if host == "Windows":
         return "windows"
-    if sys.platform == "darwin":
+    if host == "Darwin":
         return "macos"
     return "development"

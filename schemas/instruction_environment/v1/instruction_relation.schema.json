@@ -1,0 +1,96 @@
+{
+  "$defs": {
+    "InstructionRelationKind": {
+      "enum": [
+        "exact_duplicate",
+        "semantic_equivalent",
+        "contradiction",
+        "narrower_exception",
+        "broader_overlap",
+        "complementary",
+        "unknown"
+      ],
+      "title": "InstructionRelationKind",
+      "type": "string"
+    },
+    "InstructionResolution": {
+      "enum": [
+        "omit_temper",
+        "include_temper",
+        "preserve_scoped",
+        "block_temper",
+        "needs_review"
+      ],
+      "title": "InstructionResolution",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "confidence": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "deterministic": {
+      "title": "Deterministic",
+      "type": "boolean"
+    },
+    "interpreter_digests": {
+      "default": [],
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Interpreter Digests",
+      "type": "array"
+    },
+    "native_clause_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Native Clause Digest",
+      "type": "string"
+    },
+    "native_clause_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Native Clause Id",
+      "type": "string"
+    },
+    "rationale": {
+      "minLength": 1,
+      "title": "Rationale",
+      "type": "string"
+    },
+    "relation": {
+      "$ref": "#/$defs/InstructionRelationKind"
+    },
+    "relation_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Relation Version",
+      "type": "string"
+    },
+    "resolution": {
+      "$ref": "#/$defs/InstructionResolution"
+    },
+    "temper_clause_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Temper Clause Digest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "temper_clause_digest",
+    "native_clause_id",
+    "native_clause_digest",
+    "relation",
+    "confidence",
+    "deterministic",
+    "resolution",
+    "rationale"
+  ],
+  "title": "InstructionRelationV1",
+  "type": "object"
+}

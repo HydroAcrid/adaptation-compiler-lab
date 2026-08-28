@@ -28,6 +28,10 @@ from adaptation_compiler_lab.desktop.models import (
     SetupCompletionReceiptV1,
     SetupSnapshotV1,
 )
+from adaptation_compiler_lab.instruction_environment.models import (
+    InstructionEnvironmentSummaryV1,
+    NativeTarget,
+)
 
 
 def test_unconfigured_engine_import_does_not_load_managed_runtime_service() -> None:
@@ -568,3 +572,95 @@ def test_stdio_server_rejects_oversized_frames() -> None:
 
     response = json.loads(sink.getvalue())
     assert response["error"]["code"] == "frame_too_large"
+
+
+def _instruction_summary() -> InstructionEnvironmentSummaryV1:
+    digest = f"sha256:{'f' * 64}"
+    return InstructionEnvironmentSummaryV1(
+        project_id="kairn",
+        target=NativeTarget.CODEX,
+        status="understood",
+        source_count=0,
+        skill_count=0,
+        instruction_count=0,
+        blocking_conflict_count=0,
+        semantic_analysis_status="current",
+        last_analyzed_at=datetime(2026, 8, 28, tzinfo=UTC),
+        environment_digest=digest,
+        source_chain_digest=digest,
+        surface="codex-cli",
+        surface_contract_version="codex-cli-0.150.0-alpha.8",
+        global_sources_enabled=False,
+        sources=(),
+    )
+
+
+def test_instruction_environment_get_is_raw_free_and_strictly_allowlisted() -> None:
+    service = MagicMock()
+    instruction_service = MagicMock()
+    instruction_service.summaries.return_value = (_instruction_summary(),)
+    router = EngineProtocolRouter(
+        cast(Any, service),
+        instruction_factory=lambda: cast(Any, instruction_service),
+    )
+
+    response = router.handle(_request("instruction_environment.get"))
+    invalid = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="unsafe-instruction-request",
+            method="instruction_environment.get",
+            params={"path": "C:/private"},
+        )
+    )
+
+    assert response.ok is True
+    assert response.result is not None
+    assert response.result["raw_payloads_exposed"] is False
+    assert "path" not in json.dumps(response.result).casefold()
+    assert invalid.ok is False
+    assert invalid.error is not None
+    assert invalid.error.code == "instruction_environment_unavailable"
+
+
+def test_native_instruction_write_requires_current_snapshot_and_exact_preview() -> None:
+    digest = f"sha256:{'a' * 64}"
+    service = MagicMock()
+    snapshot = MagicMock()
+    snapshot.content_digest = digest
+    service.load.return_value = snapshot
+    instruction_service = MagicMock()
+    instruction_service.apply_change.return_value = MagicMock(
+        model_dump=lambda **_: {
+            "receipt_id": "native-change-1",
+            "raw_payloads_exposed": False,
+        }
+    )
+    router = EngineProtocolRouter(
+        cast(Any, service),
+        instruction_factory=lambda: cast(Any, instruction_service),
+    )
+    request = EngineRequest(
+        protocol_version=PROTOCOL_VERSION,
+        request_id="native-apply",
+        method="instruction_environment.change.apply",
+        params={
+            "preview_token": "native-preview-1",
+            "target": "codex",
+            "expected_environment_digest": f"sha256:{'b' * 64}",
+        },
+        expected_snapshot_digest=digest,
+        idempotency_key="native-write-click-1",
+    )
+
+    response = router.handle(request)
+    replay = router.handle(request.model_copy(update={"request_id": "native-apply-replay"}))
+
+    assert response.ok is True
+    assert replay.ok is True
+    instruction_service.apply_change.assert_called_once_with(
+        preview_token="native-preview-1",
+        target=NativeTarget.CODEX,
+        expected_environment_digest=f"sha256:{'b' * 64}",
+        idempotency_key="native-write-click-1",
+    )

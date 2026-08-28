@@ -5,6 +5,7 @@ import {
   Check,
   CheckCircle2,
   FolderPlus,
+  LoaderCircle,
   LockKeyhole,
   Radio,
 } from "lucide-react";
@@ -24,6 +25,7 @@ import { BrandMark } from "./BrandMark";
 import { Button, Toggle } from "./ui";
 
 const steps = ["Welcome", "Privacy", "Agents", "Projects", "Ready"];
+type SetupPhase = "idle" | "creating" | "adopting" | "opening";
 
 export function Onboarding({
   onComplete,
@@ -42,6 +44,7 @@ export function Onboarding({
   const [existing, setExisting] =
     useState<EngineExistingInstallationPreview | null>(null);
   const [busy, setBusy] = useState(false);
+  const [setupPhase, setSetupPhase] = useState<SetupPhase>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const codex = setupSnapshot?.connections.find(
     (connection) => connection.agent_id === "codex",
@@ -59,6 +62,7 @@ export function Onboarding({
       if (nativeRuntime) {
         if (!project || !setupDigest || !consent) return;
         setBusy(true);
+        setSetupPhase("creating");
         setMessage(null);
         try {
           await initializeSetup(
@@ -66,6 +70,7 @@ export function Onboarding({
             setupDigest,
             crypto.randomUUID(),
           );
+          setSetupPhase("opening");
           await onComplete();
         } catch (error: unknown) {
           setMessage(
@@ -75,6 +80,7 @@ export function Onboarding({
           );
         } finally {
           setBusy(false);
+          setSetupPhase("idle");
         }
       } else {
         await onComplete();
@@ -89,7 +95,8 @@ export function Onboarding({
     setBusy(true);
     setMessage(null);
     try {
-      setProject(await previewSetupProject());
+      const preview = await previewSetupProject();
+      if (preview) setProject(preview);
     } catch (error: unknown) {
       setMessage(
         error instanceof Error ? error.message : "Nothing was selected.",
@@ -104,7 +111,8 @@ export function Onboarding({
     setBusy(true);
     setMessage(null);
     try {
-      setExisting(await previewExistingInstallation());
+      const preview = await previewExistingInstallation();
+      if (preview) setExisting(preview);
     } catch (error: unknown) {
       setMessage(
         error instanceof Error ? error.message : "Nothing was selected.",
@@ -117,6 +125,7 @@ export function Onboarding({
   async function adoptExisting() {
     if (!existing || !setupDigest) return;
     setBusy(true);
+    setSetupPhase("adopting");
     setMessage(null);
     try {
       await adoptExistingInstallation(
@@ -124,6 +133,7 @@ export function Onboarding({
         setupDigest,
         crypto.randomUUID(),
       );
+      setSetupPhase("opening");
       await onComplete();
     } catch (error: unknown) {
       setMessage(
@@ -133,11 +143,27 @@ export function Onboarding({
       );
     } finally {
       setBusy(false);
+      setSetupPhase("idle");
     }
   }
 
+  if (nativeRuntime && setupPhase !== "idle") {
+    return <SetupProgress phase={setupPhase} />;
+  }
+
   return (
-    <div className="onboarding-shell">
+    <div
+      className={`onboarding-shell ${nativeRuntime ? "" : "onboarding-shell--preview"}`}
+    >
+      {!nativeRuntime ? (
+        <aside
+          aria-label="Browser preview notice"
+          className="browser-preview-banner"
+        >
+          Browser preview · sample data · controls do not change your local
+          Temper state
+        </aside>
+      ) : null}
       <BotanicalFlourish placement="onboarding" />
       <header className="onboarding-header">
         <BrandMark />
@@ -160,7 +186,7 @@ export function Onboarding({
       <main className="onboarding-content">
         {step === 0 ? (
           <OnboardingPanel
-            description="Temper learns how you work, turns approved feedback into small scoped adaptations, and carries them between coding agents."
+            description="Temper learns how you work, turns approved feedback into small scoped adaptations, and keeps that guidance portable between supported agents."
             icon={<Radio size={28} strokeWidth={1.6} />}
             title="Your way of working, wherever you work."
           >
@@ -224,21 +250,21 @@ export function Onboarding({
                 <span>remote raw storage</span>
               </div>
               <div>
-                <strong>Any time</strong>
-                <span>revoke or pause</span>
+                <strong>Your choice</strong>
+                <span>learning starts off</span>
               </div>
             </div>
           </OnboardingPanel>
         ) : null}
         {step === 2 ? (
           <OnboardingPanel
-            description="Temper checks what is already installed. Connecting does not share credentials with Temper."
+            description="Temper checks what is already installed. It does not sign in, copy credentials, or change either agent."
             icon={<Bot size={28} strokeWidth={1.6} />}
-            title="Connect your coding agents."
+            title="Check your coding agents."
           >
             <div className="setup-list">
               <SetupRow
-                detail={codex?.status_summary ?? "Signed in with ChatGPT"}
+                detail={codex?.status_summary ?? "Not checked"}
                 label="Codex"
                 status={codexReady ? "Ready" : "Needs attention"}
               />
@@ -261,14 +287,17 @@ export function Onboarding({
           <OnboardingPanel
             description="Temper only learns from projects you choose. Existing history stays out of scope."
             icon={<FolderPlus size={28} strokeWidth={1.6} />}
-            title="Choose where Temper is active."
+            title="Register your first project."
           >
             <div className="project-setup-card">
               <div className="project-monogram">
-                {(project?.display_name ?? "Kairn")[0]}
+                {project?.display_name[0] ?? "—"}
               </div>
               <div>
-                <strong>{project?.display_name ?? "Kairn"}</strong>
+                <strong>
+                  {project?.display_name ??
+                    (nativeRuntime ? "No project selected" : "Example project")}
+                </strong>
                 <span>
                   {project
                     ? "Only new work after registration is eligible"
@@ -283,24 +312,28 @@ export function Onboarding({
             </div>
             <button
               className="text-action"
-              disabled={busy}
+              disabled={busy || !nativeRuntime}
               onClick={chooseProject}
               type="button"
             >
-              {project ? "Choose a different project" : "+ Choose a project"}
+              {nativeRuntime
+                ? project
+                  ? "Choose a different project"
+                  : "+ Choose a project"
+                : "Project selection is available in the desktop app"}
             </button>
           </OnboardingPanel>
         ) : null}
         {step === 4 ? (
           <OnboardingPanel
-            description="Temper will work quietly in the tray and only interrupt when a decision needs you."
+            description="Review what Temper will set up. Nothing starts running in the background yet."
             icon={<CheckCircle2 size={28} strokeWidth={1.6} />}
-            title="Temper is ready."
+            title="Ready to set up Temper."
           >
             <div className="ready-summary">
               <div>
                 <Check size={16} />
-                <span>Local identity and secure store will be created</span>
+                <span>A secure local identity will be created</span>
               </div>
               <div>
                 <Check size={16} />
@@ -311,25 +344,25 @@ export function Onboarding({
               <div>
                 <Check size={16} />
                 <span>
-                  {project?.display_name ?? "Selected project"} will be
-                  registered prospectively
+                  {project?.display_name ?? "Your project"} will start with new
+                  work only
                 </span>
               </div>
             </div>
             <Toggle
               checked={consent}
-              description="Authorize local construction, promotion, delivery, and audit for 30 days. You can revoke this later."
-              label="I agree to local governed learning"
+              description="For 30 days, Temper can notice new feedback here, suggest adaptations, and deliver only what you approve. You can revoke access anytime."
+              label="Allow Temper to learn in this project"
               onCheckedChange={setConsent}
             />
-            <p className="connection-dialog-note">
-              Learning, automatic promotion, telemetry, and launch at login all
-              start off.
+            <p className="onboarding-footnote">
+              Learning, notifications, telemetry, and launch at sign-in stay off
+              until you choose otherwise.
             </p>
           </OnboardingPanel>
         ) : null}
         {message ? (
-          <p className="connection-dialog-note" role="alert">
+          <p className="onboarding-message" role="alert">
             {message}
           </p>
         ) : null}
@@ -354,13 +387,86 @@ export function Onboarding({
           onClick={next}
           tone="primary"
         >
-          {busy
+          {busy && step === steps.length - 1
             ? "Finishing…"
             : step === steps.length - 1
               ? "Open Temper"
               : "Continue"}
         </Button>
       </footer>
+    </div>
+  );
+}
+
+function SetupProgress({ phase }: { phase: Exclude<SetupPhase, "idle"> }) {
+  const opening = phase === "opening";
+  const adopting = phase === "adopting";
+  const firstStage = adopting
+    ? "Link existing Temper"
+    : "Create local identity";
+  return (
+    <div className="setup-progress" aria-busy="true">
+      <BotanicalFlourish placement="onboarding" />
+      <header className="onboarding-header">
+        <BrandMark />
+        <span>{opening ? "2 of 2" : "1 of 2"}</span>
+      </header>
+      <div className="setup-progress__track" aria-hidden="true">
+        <span className={opening ? "setup-progress__bar--complete" : ""} />
+      </div>
+      <main
+        aria-live="polite"
+        className="setup-progress__content"
+        role="status"
+      >
+        <div className="setup-progress__mark" aria-hidden="true">
+          <LoaderCircle className="setup-progress__spinner" size={28} />
+        </div>
+        <span className="setup-progress__stage">
+          Step {opening ? "2" : "1"} of 2
+        </span>
+        <h1>
+          {opening
+            ? "Opening Temper"
+            : adopting
+              ? "Linking your existing Temper"
+              : "Creating your Temper"}
+        </h1>
+        <p>
+          {opening
+            ? "Starting the governed local engine and loading your project."
+            : adopting
+              ? "Verifying the existing identity and reconnecting its governed local state."
+              : "Creating your local identity, secure store, and prospective project registration."}
+        </p>
+        <div className="setup-progress__stages" aria-label="Setup stages">
+          <div className={opening ? "setup-progress__stage-complete" : ""}>
+            {opening ? (
+              <Check aria-hidden="true" size={16} />
+            ) : (
+              <LoaderCircle
+                aria-hidden="true"
+                className="setup-progress__spinner"
+                size={16}
+              />
+            )}
+            <span>{firstStage}</span>
+          </div>
+          <div className={opening ? "setup-progress__stage-active" : ""}>
+            {opening ? (
+              <LoaderCircle
+                aria-hidden="true"
+                className="setup-progress__spinner"
+                size={16}
+              />
+            ) : (
+              <span aria-hidden="true" className="setup-progress__dot" />
+            )}
+            <span>Open your workspace</span>
+          </div>
+        </div>
+        <small>Keep Temper open while setup finishes.</small>
+      </main>
     </div>
   );
 }
@@ -412,13 +518,9 @@ function SetupRow({
         <strong>{label}</strong>
         <span>{detail}</span>
       </div>
-      <button
-        className={status === "Ready" ? "setup-status" : "text-action"}
-        disabled
-        type="button"
-      >
+      <span className={status === "Ready" ? "setup-status" : "setup-state"}>
         {status}
-      </button>
+      </span>
     </div>
   );
 }

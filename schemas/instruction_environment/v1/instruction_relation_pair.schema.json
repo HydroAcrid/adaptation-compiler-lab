@@ -1,0 +1,56 @@
+{
+  "additionalProperties": false,
+  "description": "Internal untrusted clause pair sent only to an isolated semantic sensor.",
+  "properties": {
+    "native_clause_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Native Clause Digest",
+      "type": "string"
+    },
+    "native_clause_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Native Clause Id",
+      "type": "string"
+    },
+    "native_text": {
+      "minLength": 1,
+      "title": "Native Text",
+      "type": "string"
+    },
+    "pair_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Pair Id",
+      "type": "string"
+    },
+    "pair_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Pair Version",
+      "type": "string"
+    },
+    "temper_clause_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Temper Clause Digest",
+      "type": "string"
+    },
+    "temper_text": {
+      "minLength": 1,
+      "title": "Temper Text",
+      "type": "string"
+    }
+  },
+  "required": [
+    "pair_id",
+    "temper_clause_digest",
+    "temper_text",
+    "native_clause_id",
+    "native_clause_digest",
+    "native_text"
+  ],
+  "title": "InstructionRelationPairV1",
+  "type": "object"
+}

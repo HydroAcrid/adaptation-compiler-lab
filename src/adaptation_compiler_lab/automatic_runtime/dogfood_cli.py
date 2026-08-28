@@ -137,6 +137,15 @@ from adaptation_compiler_lab.governance.signing import (
     sign_governance_event,
     verify_signed_governance,
 )
+from adaptation_compiler_lab.instruction_environment import (
+    InstructionEnvironmentService,
+    NativeReadStatus,
+    NativeSourceKind,
+    NativeTarget,
+)
+from adaptation_compiler_lab.instruction_environment.codex_semantic import (
+    instruction_relation_analyzer_digest,
+)
 from adaptation_compiler_lab.modes import (
     FRONTEND_STUDIO_MODE,
     ModePreparedTask,
@@ -146,7 +155,7 @@ from adaptation_compiler_lab.modes import (
 )
 from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore
 from adaptation_compiler_lab.persistence.sqlite import SqliteUnitOfWorkFactory
-from adaptation_compiler_lab.runtime import RuntimeProjectionContext
+from adaptation_compiler_lab.runtime import RuntimeProjectionContext, build_runtime_projection
 from adaptation_compiler_lab.serialization import canonical_digest, canonical_json
 from adaptation_compiler_lab.targets.base import sha256_text
 from adaptation_compiler_lab.targets.models import ScopeDimension
@@ -3111,13 +3120,43 @@ def _execute_gateway_session(
         f"gateway-{started.strftime('%Y%m%dT%H%M%S')}-"
         f"{str(sha256_text(normalized)).removeprefix('sha256:')[:12]}"
     )
+    instruction_service = InstructionEnvironmentService(
+        projects={project.project_id: project.root},
+        state_root=config.state_root / "instruction-environment",
+        raw_store=_raw_store(config),
+        relation_analyzer_digest=instruction_relation_analyzer_digest(
+            model=config.semantic_model,
+            reasoning_effort=config.semantic_reasoning_effort,
+        ),
+        include_persisted_global_roots=False,
+    )
+    instruction_environment = instruction_service.refresh(
+        project_id=project.project_id,
+        target=NativeTarget.CODEX,
+        working_directory=project.root,
+    )
+    if not instruction_environment.complete:
+        raise AutomaticRuntimeError(
+            "managed delivery requires a complete readable Codex instruction environment"
+        )
+    projection_context = _context(config, project, evaluated_at=started)
+    base_projection = build_runtime_projection(
+        state.release.governed_release,
+        projection_context,
+    )
+    cached_relations = instruction_service.cached_relations(
+        base_projection,
+        instruction_environment,
+    )
     prepared = runtime.activate(
         activation_id=session_id,
         task_ref=TaskRecordRef(record_id=f"task-{session_id}", record_version="1.0.0"),
         state=state,
-        context=_context(config, project, evaluated_at=started),
+        context=projection_context,
         target_task=normalized,
         activated_at=started,
+        instruction_environment=instruction_environment,
+        instruction_relations=cached_relations,
     )
     provider = GitWorktreeProvider(config.gateway_workspace_root)
     workspace = provider.create(
@@ -3211,7 +3250,34 @@ def _execute_gateway_session(
                 maximum_turns=config.gateway_maximum_turns,
                 turn_timeout_seconds=config.gateway_maximum_turn_seconds,
             )
+            current_instruction_environment = instruction_service.refresh(
+                project_id=project.project_id,
+                target=NativeTarget.CODEX,
+                working_directory=project.root,
+            )
+            if (
+                not current_instruction_environment.complete
+                or current_instruction_environment.content_digest
+                != instruction_environment.content_digest
+            ):
+                raise AutomaticRuntimeError(
+                    "Codex instructions changed after projection; review the refreshed delta"
+                )
             conversation.start()
+            reported_sources = {
+                source.relative_to(workspace.root).as_posix()
+                for source in conversation.instruction_sources
+            }
+            predicted_sources = {
+                item.display_path.replace("\\", "/")
+                for item in instruction_environment.source_manifests
+                if item.read_status is NativeReadStatus.READY
+                and item.source_kind is NativeSourceKind.PROJECT_INSTRUCTIONS
+            }
+            if reported_sources != predicted_sources:
+                raise AutomaticRuntimeError(
+                    "Codex instruction discovery disagreed with Temper's source prediction"
+                )
             target_thread_id = conversation.thread_id
             messages = chain((effective_task,), followups)
             session_deadline = monotonic() + config.gateway_maximum_session_seconds

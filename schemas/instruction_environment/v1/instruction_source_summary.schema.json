@@ -1,0 +1,121 @@
+{
+  "$defs": {
+    "NativeActivationStatus": {
+      "enum": [
+        "active",
+        "available",
+        "disabled",
+        "unknown",
+        "not_applicable"
+      ],
+      "title": "NativeActivationStatus",
+      "type": "string"
+    },
+    "NativeReadStatus": {
+      "enum": [
+        "ready",
+        "unreadable",
+        "invalid_encoding",
+        "too_large",
+        "outside_boundary",
+        "unsupported"
+      ],
+      "title": "NativeReadStatus",
+      "type": "string"
+    },
+    "NativeSourceKind": {
+      "enum": [
+        "project_instructions",
+        "project_rule",
+        "project_skill",
+        "personal_instructions",
+        "personal_memory",
+        "personal_skill",
+        "managed_instructions"
+      ],
+      "title": "NativeSourceKind",
+      "type": "string"
+    },
+    "NativeTarget": {
+      "enum": [
+        "codex",
+        "claude",
+        "copilot"
+      ],
+      "title": "NativeTarget",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "activation_status": {
+      "$ref": "#/$defs/NativeActivationStatus"
+    },
+    "display_path": {
+      "minLength": 1,
+      "title": "Display Path",
+      "type": "string"
+    },
+    "instruction_count": {
+      "minimum": 0,
+      "title": "Instruction Count",
+      "type": "integer"
+    },
+    "kind": {
+      "$ref": "#/$defs/NativeSourceKind"
+    },
+    "observed_context_only": {
+      "const": true,
+      "default": true,
+      "title": "Observed Context Only",
+      "type": "boolean"
+    },
+    "raw_payloads_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Payloads Exposed",
+      "type": "boolean"
+    },
+    "scope_summary": {
+      "minLength": 1,
+      "title": "Scope Summary",
+      "type": "string"
+    },
+    "skill": {
+      "title": "Skill",
+      "type": "boolean"
+    },
+    "source_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Source Id",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/NativeReadStatus"
+    },
+    "summary_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Summary Version",
+      "type": "string"
+    },
+    "target": {
+      "$ref": "#/$defs/NativeTarget"
+    }
+  },
+  "required": [
+    "source_id",
+    "target",
+    "kind",
+    "display_path",
+    "scope_summary",
+    "status",
+    "instruction_count",
+    "skill",
+    "activation_status"
+  ],
+  "title": "InstructionSourceSummaryV1",
+  "type": "object"
+}

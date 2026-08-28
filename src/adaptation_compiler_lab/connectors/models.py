@@ -5,9 +5,17 @@ from __future__ import annotations
 import hashlib
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, TypeAlias
 
-from pydantic import Field, StringConstraints, field_validator, model_validator
+from pydantic import (
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
+from pydantic import (
+    JsonValue as JsonValue,
+)
 
 from adaptation_compiler_lab.domain.base import (
     FrozenModel,
@@ -18,9 +26,10 @@ from adaptation_compiler_lab.domain.base import (
 )
 from adaptation_compiler_lab.domain.values import strings_are_sorted_unique
 
-type JsonPrimitive = None | bool | int | float | str
-type JsonValue = JsonPrimitive | list[JsonValue] | dict[str, JsonValue]
-type JsonObject = dict[str, JsonValue]
+# Use Pydantic's maintained recursive JSON alias. Re-declaring this alias locally caused
+# two different compiled-only failures under Nuitka 2.8 (an unresolved forward name and a
+# stack overflow) even though the source interpreter accepted both declarations.
+JsonObject: TypeAlias = dict[str, JsonValue]  # noqa: UP040
 
 BlindRunId = Annotated[
     str,

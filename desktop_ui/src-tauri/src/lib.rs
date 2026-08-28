@@ -4,12 +4,14 @@ use sha2::{Digest, Sha256};
 use std::env;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Read, Write};
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 use std::path::Path;
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::Mutex;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::menu::{Menu, MenuItem};
 use tauri::plugin::PermissionState;
 use tauri::tray::TrayIconBuilder;
@@ -21,6 +23,10 @@ use uuid::Uuid;
 const PROTOCOL_VERSION: &str = "temper-engine-protocol/v1";
 const MAX_FRAME_BYTES: usize = 1_048_576;
 const ENGINE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(15);
+const ENGINE_ANALYSIS_TIMEOUT: Duration = Duration::from_secs(240);
+const ENGINE_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 const BACKGROUND_POLL_INTERVAL: Duration = Duration::from_secs(5 * 60);
 const REVIEW_NOTIFICATION_BODY: &str = "A possible adaptation is ready for review.";
 const EXPECTED_ENGINE_VERSION: &str = match option_env!("TEMPER_EXPECTED_ENGINE_VERSION") {
@@ -60,9 +66,18 @@ struct PublicError {
     message: &'static str,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct PreferencesUpdateRequest {
+    background_enabled: bool,
+    aggregate_reporting_enabled: bool,
+    decision_notifications_enabled: bool,
+    launch_at_login_enabled: bool,
+}
+
 struct EngineProcess {
     child: Child,
-    stdin: ChildStdin,
+    stdin: Option<ChildStdin>,
     responses: Receiver<io::Result<String>>,
     reader: Option<JoinHandle<()>>,
 }
@@ -70,10 +85,7 @@ struct EngineProcess {
 impl EngineProcess {
     fn spawn() -> Result<Self, PublicError> {
         let mut command = engine_command()?;
-        command
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null());
+        configure_engine_process(&mut command);
         let mut child = command.spawn().map_err(|_| unavailable())?;
         let stdin = child.stdin.take().ok_or_else(unavailable)?;
         let stdout = child.stdout.take().ok_or_else(unavailable)?;
@@ -81,7 +93,7 @@ impl EngineProcess {
         let reader = thread::spawn(move || read_engine_frames(stdout, sender));
         Ok(Self {
             child,
-            stdin,
+            stdin: Some(stdin),
             responses,
             reader: Some(reader),
         })
@@ -107,11 +119,17 @@ impl EngineProcess {
         if encoded.len() > MAX_FRAME_BYTES {
             return Err(unavailable());
         }
-        self.stdin.write_all(&encoded).map_err(|_| unavailable())?;
-        self.stdin.write_all(b"\n").map_err(|_| unavailable())?;
-        self.stdin.flush().map_err(|_| unavailable())?;
+        let stdin = self.stdin.as_mut().ok_or_else(unavailable)?;
+        stdin.write_all(&encoded).map_err(|_| unavailable())?;
+        stdin.write_all(b"\n").map_err(|_| unavailable())?;
+        stdin.flush().map_err(|_| unavailable())?;
 
-        let line = receive_engine_frame(&self.responses, ENGINE_RESPONSE_TIMEOUT)?;
+        let timeout = if method == "instruction_environment.analyze" {
+            ENGINE_ANALYSIS_TIMEOUT
+        } else {
+            ENGINE_RESPONSE_TIMEOUT
+        };
+        let line = receive_engine_frame(&self.responses, timeout)?;
         if line.is_empty() || line.len() > MAX_FRAME_BYTES {
             return Err(unavailable());
         }
@@ -126,15 +144,50 @@ impl EngineProcess {
     }
 }
 
+fn configure_engine_process(command: &mut Command) {
+    command
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+    #[cfg(target_os = "windows")]
+    {
+        // The engine is an stdio sidecar, not a user-facing terminal. Keep its
+        // console subsystem intact for direct admission tests while preventing
+        // Windows from creating or attaching a console for the desktop child.
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+}
+
 impl Drop for EngineProcess {
     fn drop(&mut self) {
-        let _ = self.child.kill();
-        let _ = self.child.wait();
+        // Closing stdin lets a onefile sidecar's inner process observe EOF and
+        // exit before its bootstrap parent. Killing only the bootstrap can
+        // orphan the inner process while it still owns stdout, which would
+        // make joining the reader block the desktop forever.
+        self.stdin.take();
+        let graceful = wait_for_child_exit(&mut self.child, ENGINE_SHUTDOWN_TIMEOUT);
+        if !graceful {
+            let _ = self.child.kill();
+            let _ = self.child.wait();
+        }
         let (_replacement_sender, replacement_receiver) = mpsc::sync_channel(1);
         let responses = std::mem::replace(&mut self.responses, replacement_receiver);
         drop(responses);
         if let Some(reader) = self.reader.take() {
-            let _ = reader.join();
+            if graceful {
+                let _ = reader.join();
+            }
+        }
+    }
+}
+
+fn wait_for_child_exit(child: &mut Child, timeout: Duration) -> bool {
+    let deadline = Instant::now() + timeout;
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => return true,
+            Ok(None) if Instant::now() < deadline => thread::sleep(Duration::from_millis(10)),
+            Ok(None) | Err(_) => return false,
         }
     }
 }
@@ -367,8 +420,30 @@ fn run_background_poll(app: &tauri::AppHandle) {
         Some(snapshot_digest),
         Some(&Uuid::new_v4().to_string()),
     );
-    if !matches!(polled, Ok(EngineResponse { ok: true, .. })) {
+    let Ok(polled) = polled else { return };
+    if !polled.ok {
         return;
+    }
+    let current_snapshot_digest = polled
+        .snapshot_digest
+        .as_deref()
+        .unwrap_or(snapshot_digest)
+        .to_owned();
+    if let Ok(environments) = call_engine(
+        state.inner(),
+        "instruction_environment.get",
+        json!({}),
+        None,
+        None,
+    ) && let Some((project_id, target)) = pending_instruction_analysis(&environments)
+    {
+        let _ = call_engine(
+            state.inner(),
+            "instruction_environment.analyze",
+            json!({"project_id": project_id, "target": target}),
+            Some(&current_snapshot_digest),
+            Some(&Uuid::new_v4().to_string()),
+        );
     }
     let Ok(after) = call_engine(state.inner(), "snapshot.get", json!({}), None, None) else {
         return;
@@ -381,6 +456,34 @@ fn run_background_poll(app: &tauri::AppHandle) {
     {
         show_review_notification(app);
     }
+}
+
+fn pending_instruction_analysis(response: &EngineResponse) -> Option<(String, String)> {
+    if !response.ok {
+        return None;
+    }
+    response
+        .result
+        .as_ref()?
+        .get("environments")?
+        .as_array()?
+        .iter()
+        .find(|environment| {
+            environment.get("source_count").and_then(Value::as_u64) > Some(0)
+                && !matches!(
+                    environment
+                        .get("semantic_analysis_status")
+                        .and_then(Value::as_str),
+                    Some("current" | "unavailable")
+                )
+                && environment.get("status").and_then(Value::as_str) != Some("incomplete")
+        })
+        .and_then(|environment| {
+            Some((
+                environment.get("project_id")?.as_str()?.to_owned(),
+                environment.get("target")?.as_str()?.to_owned(),
+            ))
+        })
 }
 
 fn toggle_learning(app: &tauri::AppHandle) {
@@ -603,16 +706,13 @@ fn consent_renew(
 fn preferences_update(
     app: tauri::AppHandle,
     state: tauri::State<'_, EngineState>,
-    background_enabled: bool,
-    aggregate_reporting_enabled: bool,
-    decision_notifications_enabled: bool,
-    launch_at_login_enabled: bool,
+    preferences: PreferencesUpdateRequest,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
     let autostart = app.autolaunch();
     let was_enabled = autostart.is_enabled().map_err(|_| unavailable())?;
-    let native_result = if launch_at_login_enabled {
+    let native_result = if preferences.launch_at_login_enabled {
         autostart.enable()
     } else {
         autostart.disable()
@@ -622,10 +722,10 @@ fn preferences_update(
         &state,
         "preferences.update",
         json!({
-            "background_enabled": background_enabled,
-            "aggregate_reporting_enabled": aggregate_reporting_enabled,
-            "decision_notifications_enabled": decision_notifications_enabled,
-            "launch_at_login_enabled": launch_at_login_enabled,
+            "background_enabled": preferences.background_enabled,
+            "aggregate_reporting_enabled": preferences.aggregate_reporting_enabled,
+            "decision_notifications_enabled": preferences.decision_notifications_enabled,
+            "launch_at_login_enabled": preferences.launch_at_login_enabled,
         }),
         Some(&expected_snapshot_digest),
         Some(&idempotency_key),
@@ -668,24 +768,29 @@ fn setup_existing_preview(
 }
 
 #[tauri::command]
-fn setup_existing_adopt(
-    state: tauri::State<'_, EngineState>,
+async fn setup_existing_adopt(
+    app: tauri::AppHandle,
     preview_token: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    let response = call_engine(
-        &state,
-        "setup.existing.adopt",
-        json!({"preview_token": preview_token}),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )?;
-    if response.ok {
-        let mut guard = state.0.lock().map_err(|_| unavailable())?;
-        *guard = None;
-    }
-    Ok(response)
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let response = call_engine(
+            &state,
+            "setup.existing.adopt",
+            json!({"preview_token": preview_token}),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )?;
+        if response.ok {
+            let mut guard = state.0.lock().map_err(|_| unavailable())?;
+            *guard = None;
+        }
+        Ok(response)
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
@@ -703,28 +808,33 @@ fn setup_project_preview(
 }
 
 #[tauri::command]
-fn setup_initialize(
-    state: tauri::State<'_, EngineState>,
+async fn setup_initialize(
+    app: tauri::AppHandle,
     preview_token: String,
     consent_confirmed: bool,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    let response = call_engine(
-        &state,
-        "setup.initialize",
-        json!({
-            "preview_token": preview_token,
-            "consent_confirmed": consent_confirmed,
-        }),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )?;
-    if response.ok {
-        let mut guard = state.0.lock().map_err(|_| unavailable())?;
-        *guard = None;
-    }
-    Ok(response)
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let response = call_engine(
+            &state,
+            "setup.initialize",
+            json!({
+                "preview_token": preview_token,
+                "consent_confirmed": consent_confirmed,
+            }),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )?;
+        if response.ok {
+            let mut guard = state.0.lock().map_err(|_| unavailable())?;
+            *guard = None;
+        }
+        Ok(response)
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
@@ -752,6 +862,163 @@ fn project_register(
         &state,
         "project.register",
         json!({"preview_token": preview_token}),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+fn instruction_environment_get(
+    state: tauri::State<'_, EngineState>,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(&state, "instruction_environment.get", json!({}), None, None)
+}
+
+#[tauri::command]
+fn instruction_environment_refresh(
+    state: tauri::State<'_, EngineState>,
+    project_id: String,
+    target: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "instruction_environment.refresh",
+        json!({"project_id": project_id, "target": target}),
+        None,
+        None,
+    )
+}
+
+#[tauri::command]
+fn instruction_environment_analyze(
+    state: tauri::State<'_, EngineState>,
+    project_id: String,
+    target: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "instruction_environment.analyze",
+        json!({"project_id": project_id, "target": target}),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+fn instruction_environment_global_preview(
+    state: tauri::State<'_, EngineState>,
+    target: String,
+) -> Result<EngineResponse, PublicError> {
+    let root = rfd::FileDialog::new().pick_folder().ok_or_else(cancelled)?;
+    call_engine(
+        &state,
+        "instruction_environment.global.preview",
+        json!({"path": root, "target": target}),
+        None,
+        None,
+    )
+}
+
+#[tauri::command]
+fn instruction_environment_global_enable(
+    state: tauri::State<'_, EngineState>,
+    preview_token: String,
+    target: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "instruction_environment.global.enable",
+        json!({"preview_token": preview_token, "target": target}),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+fn instruction_environment_global_disable(
+    state: tauri::State<'_, EngineState>,
+    target: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "instruction_environment.global.disable",
+        json!({"target": target}),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+fn instruction_environment_change_preview(
+    state: tauri::State<'_, EngineState>,
+    project_id: String,
+    target: String,
+    source_id: String,
+    expected_environment_digest: String,
+    instruction_text: Option<String>,
+    expected_snapshot_digest: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "instruction_environment.change.preview",
+        json!({
+            "project_id": project_id,
+            "target": target,
+            "source_id": source_id,
+            "expected_environment_digest": expected_environment_digest,
+            "instruction_text": instruction_text,
+        }),
+        Some(&expected_snapshot_digest),
+        None,
+    )
+}
+
+#[tauri::command]
+fn instruction_environment_change_apply(
+    state: tauri::State<'_, EngineState>,
+    preview_token: String,
+    target: String,
+    expected_environment_digest: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "instruction_environment.change.apply",
+        json!({
+            "preview_token": preview_token,
+            "target": target,
+            "expected_environment_digest": expected_environment_digest,
+        }),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+fn instruction_environment_change_rollback(
+    state: tauri::State<'_, EngineState>,
+    receipt_id: String,
+    target: String,
+    expected_environment_digest: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "instruction_environment.change.rollback",
+        json!({
+            "receipt_id": receipt_id,
+            "target": target,
+            "expected_environment_digest": expected_environment_digest,
+        }),
         Some(&expected_snapshot_digest),
         Some(&idempotency_key),
     )
@@ -911,6 +1178,29 @@ fn diagnostics_get(state: tauri::State<'_, EngineState>) -> Result<EngineRespons
     call_engine(&state, "diagnostics.get", json!({}), None, None)
 }
 
+fn notification_permission_label(state: PermissionState) -> &'static str {
+    match state {
+        PermissionState::Granted => "granted",
+        PermissionState::Denied => "denied",
+        PermissionState::Prompt => "prompt",
+        PermissionState::PromptWithRationale => "prompt-with-rationale",
+    }
+}
+
+#[tauri::command]
+fn notification_permission(
+    app: tauri::AppHandle,
+    request: bool,
+) -> Result<&'static str, PublicError> {
+    let state = if request {
+        app.notification().request_permission()
+    } else {
+        app.notification().permission_state()
+    }
+    .map_err(|_| unavailable())?;
+    Ok(notification_permission_label(state))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -945,6 +1235,15 @@ pub fn run() {
             setup_initialize,
             project_registration_preview,
             project_register,
+            instruction_environment_get,
+            instruction_environment_refresh,
+            instruction_environment_analyze,
+            instruction_environment_global_preview,
+            instruction_environment_global_enable,
+            instruction_environment_global_disable,
+            instruction_environment_change_preview,
+            instruction_environment_change_apply,
+            instruction_environment_change_rollback,
             profile_export_preview,
             profile_export,
             profile_import_preview,
@@ -954,7 +1253,8 @@ pub fn run() {
             task_run,
             task_apply,
             task_discard,
-            diagnostics_get
+            diagnostics_get,
+            notification_permission
         ])
         .run(tauri::generate_context!())
         .expect("error while running Temper");
@@ -1016,6 +1316,15 @@ mod tests {
             "setup_initialize",
             "project_registration_preview",
             "project_register",
+            "instruction_environment_get",
+            "instruction_environment_refresh",
+            "instruction_environment_analyze",
+            "instruction_environment_global_preview",
+            "instruction_environment_global_enable",
+            "instruction_environment_global_disable",
+            "instruction_environment_change_preview",
+            "instruction_environment_change_apply",
+            "instruction_environment_change_rollback",
             "profile_export_preview",
             "profile_export",
             "profile_import_preview",
@@ -1026,6 +1335,7 @@ mod tests {
             "task_apply",
             "task_discard",
             "diagnostics_get",
+            "notification_permission",
         ] {
             assert!(
                 manifest.contains(&format!("\"{command}\"")),
@@ -1078,6 +1388,48 @@ mod tests {
     }
 
     #[test]
+    fn engine_drop_closes_stdin_before_waiting_for_the_sidecar() {
+        #[cfg(target_os = "windows")]
+        let mut command = {
+            let mut value = Command::new("cmd.exe");
+            value.args(["/C", "more > NUL"]);
+            value
+        };
+        #[cfg(not(target_os = "windows"))]
+        let mut command = {
+            let mut value = Command::new("sh");
+            value.args(["-c", "cat >/dev/null"]);
+            value
+        };
+        command
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null());
+        let mut child = command.spawn().expect("spawn stdin-bound fixture");
+        let stdin = child.stdin.take().expect("fixture stdin");
+        let stdout = child.stdout.take().expect("fixture stdout");
+        let (sender, responses) = mpsc::sync_channel(1);
+        let reader = thread::spawn(move || read_engine_frames(stdout, sender));
+        let process = EngineProcess {
+            child,
+            stdin: Some(stdin),
+            responses,
+            reader: Some(reader),
+        };
+
+        let started = Instant::now();
+        drop(process);
+
+        assert!(started.elapsed() < Duration::from_secs(2));
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_engine_processes_use_the_no_console_creation_flag() {
+        assert_eq!(CREATE_NO_WINDOW, 0x0800_0000);
+    }
+
+    #[test]
     fn background_polling_is_disabled_by_learning_or_expired_consent() {
         fn response(
             background_enabled: bool,
@@ -1113,6 +1465,47 @@ mod tests {
     }
 
     #[test]
+    fn background_analysis_selects_only_one_complete_stale_environment() {
+        let response = EngineResponse {
+            protocol_version: PROTOCOL_VERSION.to_owned(),
+            request_id: "instructions".to_owned(),
+            ok: true,
+            result: Some(json!({
+                "environments": [
+                    {
+                        "project_id": "empty",
+                        "target": "codex",
+                        "source_count": 0,
+                        "status": "understood",
+                        "semantic_analysis_status": "not_requested"
+                    },
+                    {
+                        "project_id": "alpha",
+                        "target": "codex",
+                        "source_count": 1,
+                        "status": "changed",
+                        "semantic_analysis_status": "stale"
+                    },
+                    {
+                        "project_id": "beta",
+                        "target": "codex",
+                        "source_count": 2,
+                        "status": "understood",
+                        "semantic_analysis_status": "not_requested"
+                    }
+                ]
+            })),
+            error: None,
+            snapshot_digest: None,
+        };
+
+        assert_eq!(
+            pending_instruction_analysis(&response),
+            Some(("alpha".to_owned(), "codex".to_owned()))
+        );
+    }
+
+    #[test]
     fn notification_copy_does_not_expose_behavior_or_evidence() {
         assert_eq!(
             REVIEW_NOTIFICATION_BODY,
@@ -1121,5 +1514,25 @@ mod tests {
         for forbidden in ["evidence", "behavior", "prompt", "transcript", "project"] {
             assert!(!REVIEW_NOTIFICATION_BODY.to_lowercase().contains(forbidden));
         }
+    }
+
+    #[test]
+    fn notification_permission_labels_are_stable() {
+        assert_eq!(
+            notification_permission_label(PermissionState::Granted),
+            "granted"
+        );
+        assert_eq!(
+            notification_permission_label(PermissionState::Denied),
+            "denied"
+        );
+        assert_eq!(
+            notification_permission_label(PermissionState::Prompt),
+            "prompt"
+        );
+        assert_eq!(
+            notification_permission_label(PermissionState::PromptWithRationale),
+            "prompt-with-rationale"
+        );
     }
 }

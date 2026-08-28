@@ -1,0 +1,99 @@
+{
+  "$defs": {
+    "NativeTarget": {
+      "enum": [
+        "codex",
+        "claude",
+        "copilot"
+      ],
+      "title": "NativeTarget",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "conflict_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Conflict Id",
+      "type": "string"
+    },
+    "native_behavior": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Native Behavior",
+      "type": "string"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "rationale": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Rationale",
+      "type": "string"
+    },
+    "raw_payloads_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Payloads Exposed",
+      "type": "boolean"
+    },
+    "resolution_state": {
+      "enum": [
+        "unresolved",
+        "kept_native",
+        "narrowed_temper",
+        "ignored"
+      ],
+      "title": "Resolution State",
+      "type": "string"
+    },
+    "severity": {
+      "enum": [
+        "notice",
+        "blocking"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "source_display_path": {
+      "minLength": 1,
+      "title": "Source Display Path",
+      "type": "string"
+    },
+    "summary_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Summary Version",
+      "type": "string"
+    },
+    "target": {
+      "$ref": "#/$defs/NativeTarget"
+    },
+    "temper_behavior": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Temper Behavior",
+      "type": "string"
+    }
+  },
+  "required": [
+    "conflict_id",
+    "project_id",
+    "target",
+    "source_display_path",
+    "temper_behavior",
+    "native_behavior",
+    "severity",
+    "resolution_state",
+    "rationale"
+  ],
+  "title": "InstructionConflictSummaryV1",
+  "type": "object"
+}

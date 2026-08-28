@@ -10,8 +10,11 @@ private alpha.
 3. Run `uv run python packaging/build_native.py`. This compiles the governed Python engine as the
    target-suffixed Nuitka sidecar required by Tauri and writes a build manifest binding its binary
    digest, engine version, target triple, and public schema digest. Before the manifest is written,
-   the builder launches the compiled binary and requires an exact unconfigured closed-world
-   handshake within 15 seconds. A binary that merely compiled is not admitted.
+   the builder launches the compiled binary in an isolated, empty user profile and requires two
+   exact protocol responses from the same process within 15 seconds: the unconfigured closed-world
+   handshake and the first `setup.status` read. Provider credentials and product-runtime overrides
+   are removed from the admission environment. A binary that merely compiles or starts but cannot
+   serve its first real product request is not admitted.
 4. In `desktop_ui`, run `pnpm install --frozen-lockfile` followed by
    `pnpm tauri build --bundles nsis`.
 5. Exercise an internal unsigned development candidate with:
@@ -25,7 +28,18 @@ private alpha.
 The development policy exists only for local and ephemeral CI validation. An unsigned candidate is
 not an alpha release and must not be published or offered to a tester. The smoke requires the
 packaged uninstaller to remove the application and sidecar before its bounded temporary residue
-cleanup runs.
+cleanup runs. A current-user install uses `%LOCALAPPDATA%\Programs\Temper`; the separate
+`%LOCALAPPDATA%\Temper` governed-data root is never an executable install destination and is not
+removed by uninstall.
+
+The development smoke refuses to run when the current Windows account already has a Temper
+installation. It installs silently into one bounded temporary root, performs the same two-frame
+engine admission under a separate empty process profile, checks application-process liveness,
+invokes the packaged uninstaller, and verifies removal of binaries, uninstall metadata, the saved
+install location, and shortcuts. This is a packaging smoke, not UI automation or a separate-user
+test. It does not prove that onboarding renders, controls work, credentials enroll, or Codex
+connects. The current bundle also skips WebView2 installation, so arbitrary clean-machine
+compatibility is not claimed until the supported Windows baseline or a bootstrap policy is frozen.
 
 ## Trusted Windows alpha
 

@@ -10,6 +10,58 @@ export interface EngineError {
   retryable: boolean;
 }
 
+export interface EngineClientFailure {
+  code: string;
+  message: string;
+}
+
+const knownClientFailures: Record<string, string> = {
+  cancelled: "Nothing changed.",
+  engine_incompatible:
+    "The desktop app and its local engine do not match. Reinstall this Temper build.",
+  engine_unavailable:
+    "The local engine stopped unexpectedly. Try again; reinstall Temper if this continues.",
+};
+
+export function normalizeEngineFailure(
+  error: unknown,
+  fallback = "The local Temper engine is unavailable.",
+): EngineClientFailure {
+  if (error && typeof error === "object") {
+    const candidate = error as { code?: unknown; message?: unknown };
+    const code =
+      typeof candidate.code === "string" && candidate.code.length <= 64
+        ? candidate.code
+        : "engine_error";
+    const known = knownClientFailures[code];
+    if (known) return { code, message: known };
+    if (
+      typeof candidate.message === "string" &&
+      candidate.message.trim() &&
+      candidate.message.length <= 240 &&
+      !candidate.message.includes("\n")
+    ) {
+      return { code, message: candidate.message.trim() };
+    }
+  }
+  if (
+    error instanceof Error &&
+    error.message.trim() &&
+    error.message.length <= 240 &&
+    !error.message.includes("\n")
+  ) {
+    return { code: "engine_error", message: error.message.trim() };
+  }
+  return { code: "engine_error", message: fallback };
+}
+
+export function engineFailureMessage(
+  error: unknown,
+  fallback?: string,
+): string {
+  return normalizeEngineFailure(error, fallback).message;
+}
+
 export interface EngineResponse<T> {
   protocol_version: typeof ENGINE_PROTOCOL_VERSION;
   request_id: string;
@@ -102,6 +154,127 @@ export interface EngineProject {
   display_name: string;
   registered_prospectively: boolean;
   task_runner_enabled: boolean;
+}
+
+export type EngineNativeTarget = "codex" | "claude" | "copilot";
+
+export interface EngineInstructionSourceSummary {
+  summary_version: "1.0.0";
+  source_id: string;
+  target: EngineNativeTarget;
+  kind:
+    | "project_instructions"
+    | "project_rule"
+    | "project_skill"
+    | "personal_instructions"
+    | "personal_memory"
+    | "personal_skill"
+    | "managed_instructions";
+  display_path: string;
+  scope_summary: string;
+  status:
+    | "ready"
+    | "unreadable"
+    | "invalid_encoding"
+    | "too_large"
+    | "outside_boundary"
+    | "unsupported";
+  instruction_count: number;
+  skill: boolean;
+  activation_status:
+    "active" | "available" | "disabled" | "unknown" | "not_applicable";
+  observed_context_only: true;
+  raw_payloads_exposed: false;
+}
+
+export interface EngineInstructionEnvironmentSummary {
+  summary_version: "1.0.0";
+  project_id: string;
+  target: EngineNativeTarget;
+  status: "understood" | "changed" | "incomplete" | "conflicting";
+  source_count: number;
+  skill_count: number;
+  instruction_count: number;
+  blocking_conflict_count: number;
+  semantic_analysis_status:
+    "not_requested" | "current" | "stale" | "unavailable";
+  last_analyzed_at: string;
+  environment_digest: string;
+  source_chain_digest: string;
+  surface?: string;
+  surface_contract_version?: string;
+  global_sources_enabled: boolean;
+  sources: EngineInstructionSourceSummary[];
+  conflicts?: Array<{
+    summary_version: "1.0.0";
+    conflict_id: string;
+    project_id: string;
+    target: EngineNativeTarget;
+    source_display_path: string;
+    temper_behavior: string;
+    native_behavior: string;
+    severity: "notice" | "blocking";
+    resolution_state:
+      "unresolved" | "kept_native" | "narrowed_temper" | "ignored";
+    rationale: string;
+    raw_payloads_exposed: false;
+  }>;
+  raw_payloads_exposed: false;
+}
+
+export interface EngineInstructionEnvironmentList {
+  environments: EngineInstructionEnvironmentSummary[];
+  raw_payloads_exposed: false;
+}
+
+export interface EngineInstructionGlobalPreview {
+  preview_version: "1.0.0";
+  preview_token: string;
+  target: EngineNativeTarget;
+  categories: string[];
+  source_count: number;
+  skill_count: number;
+  modifies_files: false;
+  authorizes_learning: false;
+  expires_at: string;
+  raw_payloads_exposed: false;
+}
+
+export interface EngineInstructionChangePreview {
+  preview_version: "1.0.0";
+  preview_token: string;
+  project_id: string;
+  target: EngineNativeTarget;
+  source_id: string;
+  source_digest: string;
+  expected_environment_digest: string;
+  operation:
+    "create_temper_section" | "update_temper_section" | "remove_temper_section";
+  display_path: string;
+  unified_diff: string;
+  resulting_digest: string;
+  expires_at: string;
+  raw_payloads_exposed: false;
+}
+
+export interface EngineInstructionChangeReceipt {
+  receipt_version: "1.0.0";
+  receipt_id: string;
+  preview_token: string;
+  project_id: string;
+  target: EngineNativeTarget;
+  source_id: string;
+  before_digest: string;
+  after_digest: string;
+  environment_digest_before: string;
+  environment_digest_after: string;
+  backup_digest: string;
+  applied_at: string;
+  signer_fingerprint: string;
+  signature_base64: string;
+  rollback_available_until: string;
+  status: "applied" | "rolled_back";
+  raw_payloads_exposed: false;
 }
 
 export interface EngineScope {
@@ -385,12 +558,23 @@ export async function updateEnginePreferences(
   idempotencyKey: string,
 ): Promise<EngineMutationReceipt> {
   return invokeMutation("preferences_update", {
-    aggregateReportingEnabled,
-    backgroundEnabled,
-    decisionNotificationsEnabled,
-    launchAtLoginEnabled,
+    preferences: {
+      aggregateReportingEnabled,
+      backgroundEnabled,
+      decisionNotificationsEnabled,
+      launchAtLoginEnabled,
+    },
     expectedSnapshotDigest: snapshotDigest,
     idempotencyKey,
+  });
+}
+
+export type NotificationPermissionState =
+  "granted" | "denied" | "prompt" | "prompt-with-rationale";
+
+export async function requestNotificationPermission(): Promise<NotificationPermissionState> {
+  return invoke<NotificationPermissionState>("notification_permission", {
+    request: true,
   });
 }
 
@@ -477,18 +661,32 @@ export async function inspectConnections(): Promise<{
   return { snapshot, snapshotDigest: response.snapshot_digest };
 }
 
-export async function previewSetupProject(): Promise<EngineProjectPreview> {
-  return assertSuccessful(
-    await invoke<EngineResponse<EngineProjectPreview>>("setup_project_preview"),
+export async function previewSetupProject(): Promise<EngineProjectPreview | null> {
+  const response = await invoke<EngineResponse<EngineProjectPreview>>(
+    "setup_project_preview",
   );
+  if (
+    response.protocol_version === ENGINE_PROTOCOL_VERSION &&
+    !response.ok &&
+    response.error?.code === "cancelled"
+  ) {
+    return null;
+  }
+  return assertSuccessful(response);
 }
 
-export async function previewExistingInstallation(): Promise<EngineExistingInstallationPreview> {
-  const preview = assertSuccessful(
-    await invoke<EngineResponse<EngineExistingInstallationPreview>>(
-      "setup_existing_preview",
-    ),
-  );
+export async function previewExistingInstallation(): Promise<EngineExistingInstallationPreview | null> {
+  const response = await invoke<
+    EngineResponse<EngineExistingInstallationPreview>
+  >("setup_existing_preview");
+  if (
+    response.protocol_version === ENGINE_PROTOCOL_VERSION &&
+    !response.ok &&
+    response.error?.code === "cancelled"
+  ) {
+    return null;
+  }
+  const preview = assertSuccessful(response);
   if (preview.raw_payloads_exposed) {
     throw new Error("Temper refused an unsafe installation preview.");
   }
@@ -549,6 +747,213 @@ export async function registerProject(
       previewToken,
     }),
   );
+}
+
+function assertRawFreeInstructionEnvironment(
+  value: EngineInstructionEnvironmentSummary,
+): EngineInstructionEnvironmentSummary {
+  if (
+    value.raw_payloads_exposed ||
+    value.sources.some(
+      (source) => source.raw_payloads_exposed || !source.observed_context_only,
+    ) ||
+    value.conflicts?.some((conflict) => conflict.raw_payloads_exposed)
+  ) {
+    throw new Error(
+      "Temper refused an unsafe instruction-environment summary.",
+    );
+  }
+  return value;
+}
+
+export async function loadInstructionEnvironments(): Promise<
+  EngineInstructionEnvironmentSummary[]
+> {
+  const response = assertSuccessful(
+    await invoke<EngineResponse<EngineInstructionEnvironmentList>>(
+      "instruction_environment_get",
+    ),
+  );
+  if (response.raw_payloads_exposed) {
+    throw new Error("Temper refused an unsafe instruction-environment list.");
+  }
+  return response.environments.map(assertRawFreeInstructionEnvironment);
+}
+
+export async function refreshInstructionEnvironment(
+  projectId: string,
+  target: EngineNativeTarget,
+): Promise<EngineInstructionEnvironmentSummary> {
+  return assertRawFreeInstructionEnvironment(
+    assertSuccessful(
+      await invoke<EngineResponse<EngineInstructionEnvironmentSummary>>(
+        "instruction_environment_refresh",
+        { projectId, target },
+      ),
+    ),
+  );
+}
+
+export async function analyzeInstructionEnvironment(
+  projectId: string,
+  target: EngineNativeTarget,
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<EngineInstructionEnvironmentSummary> {
+  return assertRawFreeInstructionEnvironment(
+    assertSuccessful(
+      await invoke<EngineResponse<EngineInstructionEnvironmentSummary>>(
+        "instruction_environment_analyze",
+        {
+          expectedSnapshotDigest: snapshotDigest,
+          idempotencyKey,
+          projectId,
+          target,
+        },
+      ),
+    ),
+  );
+}
+
+export async function previewPersonalInstructionSetup(
+  target: EngineNativeTarget,
+): Promise<EngineInstructionGlobalPreview | null> {
+  const response = await invoke<EngineResponse<EngineInstructionGlobalPreview>>(
+    "instruction_environment_global_preview",
+    { target },
+  );
+  if (
+    response.protocol_version === ENGINE_PROTOCOL_VERSION &&
+    !response.ok &&
+    response.error?.code === "cancelled"
+  ) {
+    return null;
+  }
+  const preview = assertSuccessful(response);
+  if (
+    preview.raw_payloads_exposed ||
+    preview.modifies_files ||
+    preview.authorizes_learning
+  ) {
+    throw new Error("Temper refused an unsafe personal-setup preview.");
+  }
+  return preview;
+}
+
+export async function enablePersonalInstructionSetup(
+  previewToken: string,
+  target: EngineNativeTarget,
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<EngineInstructionEnvironmentSummary[]> {
+  const response = assertSuccessful(
+    await invoke<EngineResponse<EngineInstructionEnvironmentList>>(
+      "instruction_environment_global_enable",
+      {
+        expectedSnapshotDigest: snapshotDigest,
+        idempotencyKey,
+        previewToken,
+        target,
+      },
+    ),
+  );
+  if (response.raw_payloads_exposed) {
+    throw new Error("Temper refused an unsafe personal-setup result.");
+  }
+  return response.environments.map(assertRawFreeInstructionEnvironment);
+}
+
+export async function disablePersonalInstructionSetup(
+  target: EngineNativeTarget,
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<EngineInstructionEnvironmentSummary[]> {
+  const response = assertSuccessful(
+    await invoke<EngineResponse<EngineInstructionEnvironmentList>>(
+      "instruction_environment_global_disable",
+      {
+        expectedSnapshotDigest: snapshotDigest,
+        idempotencyKey,
+        target,
+      },
+    ),
+  );
+  if (response.raw_payloads_exposed) {
+    throw new Error("Temper refused an unsafe personal-setup result.");
+  }
+  return response.environments.map(assertRawFreeInstructionEnvironment);
+}
+
+export async function previewNativeInstructionChange(
+  environment: EngineInstructionEnvironmentSummary,
+  sourceId: string,
+  instructionText: string | null,
+  snapshotDigest: string,
+): Promise<EngineInstructionChangePreview> {
+  const preview = assertSuccessful(
+    await invoke<EngineResponse<EngineInstructionChangePreview>>(
+      "instruction_environment_change_preview",
+      {
+        expectedEnvironmentDigest: environment.environment_digest,
+        expectedSnapshotDigest: snapshotDigest,
+        instructionText,
+        projectId: environment.project_id,
+        sourceId,
+        target: environment.target,
+      },
+    ),
+  );
+  if (preview.raw_payloads_exposed) {
+    throw new Error("Temper refused an unsafe native-instruction preview.");
+  }
+  return preview;
+}
+
+export async function applyNativeInstructionChange(
+  preview: EngineInstructionChangePreview,
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<EngineInstructionChangeReceipt> {
+  const receipt = assertSuccessful(
+    await invoke<EngineResponse<EngineInstructionChangeReceipt>>(
+      "instruction_environment_change_apply",
+      {
+        expectedEnvironmentDigest: preview.expected_environment_digest,
+        expectedSnapshotDigest: snapshotDigest,
+        idempotencyKey,
+        previewToken: preview.preview_token,
+        target: preview.target,
+      },
+    ),
+  );
+  if (receipt.raw_payloads_exposed) {
+    throw new Error("Temper refused an unsafe native-instruction receipt.");
+  }
+  return receipt;
+}
+
+export async function rollbackNativeInstructionChange(
+  receipt: EngineInstructionChangeReceipt,
+  currentEnvironmentDigest: string,
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<EngineInstructionChangeReceipt> {
+  const rolledBack = assertSuccessful(
+    await invoke<EngineResponse<EngineInstructionChangeReceipt>>(
+      "instruction_environment_change_rollback",
+      {
+        expectedEnvironmentDigest: currentEnvironmentDigest,
+        expectedSnapshotDigest: snapshotDigest,
+        idempotencyKey,
+        receiptId: receipt.receipt_id,
+        target: receipt.target,
+      },
+    ),
+  );
+  if (rolledBack.raw_payloads_exposed) {
+    throw new Error("Temper refused an unsafe native-instruction rollback.");
+  }
+  return rolledBack;
 }
 
 export async function initializeSetup(
@@ -679,25 +1084,9 @@ export async function runModeTask(
   task: string,
   snapshotDigest: string,
   idempotencyKey: string,
-): Promise<{
-  activation_id: string;
-  status: string;
-  projection_utf8_bytes: number;
-  review_available: boolean;
-  final_message: string | null;
-  change_review: EngineTaskChangeReview | null;
-}> {
+): Promise<EngineTaskResult> {
   return assertSuccessful(
-    await invoke<
-      EngineResponse<{
-        activation_id: string;
-        status: string;
-        projection_utf8_bytes: number;
-        review_available: boolean;
-        final_message: string | null;
-        change_review: EngineTaskChangeReview | null;
-      }>
-    >("mode_run_task", {
+    await invoke<EngineResponse<EngineTaskResult>>("mode_run_task", {
       expectedSnapshotDigest: snapshotDigest,
       idempotencyKey,
       modeId,

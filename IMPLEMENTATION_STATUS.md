@@ -1,8 +1,126 @@
 # Implementation Status
 
-Last updated: 2026-08-27
+Last updated: 2026-08-28
+
+## Native instruction environment interoperability
+
+Temper now discovers the supported Codex, Claude Code, and GitHub Copilot instruction environment
+around every registered project before compiling a target projection. Native project policy,
+skills, managed policy, opted-in personal setup, and agent-generated memory remain observed
+context with their original authority; they never silently become Core learning or portable
+profile material. Discovery is deterministic, bounded, symlink-safe, and non-executing.
+
+An explicit Analyze action—or the bounded background scheduler while learning is enabled and
+consent remains current—can classify native clauses through isolated, tool-free, network-denied
+Luna contexts. Exact duplicates are omitted deterministically. Semantic equivalence or
+contradiction requires two independent passes to agree; unresolved overlap stays visible rather
+than being guessed away. Runtime manifests bind the source-chain digest and every included,
+covered, or blocked clause, and managed Codex delivery refuses a changed or mismatched native
+environment.
+
+React now exposes per-project instruction status in Connections, separates observed context in
+Core's **Also considered** view, surfaces only blocking conflicts on Today, and previews native
+coverage for Modes. Personal roots remain target-specific opt-ins. Optional native writeback can
+touch only a marked Temper section after an exact digest-bound diff and confirmation, with an
+encrypted exact-byte backup, durable signed receipt, atomic verification, and restart-safe 30-day
+rollback.
+
+Read-only dogfood against Green Meadow and Kairn found six complete project/target environments
+without a model call or native write, and both repositories' Git states remained unchanged. Final
+local verification passed Ruff, strict mypy over 395 source files, 1,091 Python tests (two expected
+platform skips), Python builds, 64 React tests, 39 product/visual tests, nine WebView2 compatibility
+and accessibility checks, Rust formatting/Clippy, and 13 Rust tests. Claude and Copilot remain
+discovery-only where delivery is unavailable; the sealed Milestone 6 study remains untouched.
+GitHub Actions run `33212995804` executed no job steps because the account's Actions budget was
+exhausted, so it supplies no independent hosted-runner evidence.
 
 ## Native product completion
+
+### Native truthfulness and first-request admission
+
+The 2026-08-27 installed-app audit found that the React prototype still drew its historical mock
+window chrome inside the real decorated Tauri window and constrained the product to a centered
+fixed-size canvas. It also found a more serious state boundary: a packaged sidecar could satisfy
+the startup handshake and then fail on its first `setup.status` request, while React could display
+sample-derived product copy after native state failed to load.
+
+The shell now occupies the real Windows viewport, contains no inner title bar or fake window
+controls, and scales at 720×540, 880×640, 1280×800, 1440×900, 1920×1080, and 2540×1379. Native
+startup has exactly four explicit states: loading, live onboarding, verified configured state, and
+recovery. A startup or refresh failure never reaches Today, Core, Modes, Connections, or Settings
+and never imports browser sample projects or suggestions into native state. Today derives its
+headline and action only from the exact health, consent, projects, review queue, active artifacts,
+and activation-feedback records; it no longer claims that Temper is active when the engine is
+unavailable or that attention is needed when there is no pending action.
+
+The browser gallery remains synthetic solely for deterministic design and interaction tests. Both
+the masthead and onboarding identify it as sample data whose controls do not change local Temper
+state. Vite production builds resolve that gallery-data module to typed empty collections, and a
+post-build scan rejects the known development personas, project names, suggestions, and profile
+records. Native tests prove an engine failure shows only recovery, an unconfigured engine shows only
+live onboarding, and configured rendering uses only returned projects, scopes, connection states,
+and suggestions.
+
+The recursive connector JSON annotation that failed only under Nuitka now uses Pydantic's public
+`JsonValue` contract. The native build gate launches the compiled binary with isolated home and
+application-data roots, removes provider and runtime overrides, and requires an exact handshake
+plus exact unconfigured `setup.status` response from the same process before writing the manifest.
+The repaired Windows sidecar passed that gate as engine `0.3.0a2`, schema digest
+`sha256:7319765ed344bbccd4d0302c6e518f5e735bb7f0f88e0b1034180169ba618c24`, and binary digest
+`9b25a4ec9e69d8f7fe01cf14f5189c13997da3558cd54f366f40cb6b74db7a8b`.
+
+React currently passes 57 component/engine tests, seven product viewport, motion, and truthfulness
+checks,
+nine WebView2 compatibility/accessibility checks, and 32 light/dark visual scenes. Focused Python
+connector and packaging/platform checks also pass. On 2026-08-28, the rebuilt unsigned Windows
+installer completed a real same-host normal-user install and clean five-step onboarding. The final
+mutation created a disposable governed identity, displayed a full-page two-stage progress surface,
+restarted the compiled sidecar, opened verified Today state, and remained responsive through Core
+navigation. The disposable identity was preserved separately and the owner's original local and
+roaming Temper state was restored and reopened successfully. This closes the reported setup-hang
+path, but it is not independent clean-machine evidence and the rebuilt shortcut/uninstall lifecycle
+still needs an exact recorded pass before installer readiness is claimed.
+
+The hang was a process-supervision defect rather than a failed governance mutation. Nuitka's
+onefile launcher can leave its inner process holding stdout after the bootstrap process is killed;
+the Rust bridge then blocked forever while joining its reader thread during the unconfigured-to-
+configured restart. Teardown now closes sidecar stdin first, waits a bounded three seconds for a
+graceful exit, and never performs an unbounded reader join after forced termination. Setup and
+adoption commands also run off the Tauri UI thread. A Rust regression covers stdin-bound sidecar
+shutdown, and a React regression covers both progress stages without the former corner-only
+“Finishing…” state.
+
+The first console repair hid only the engine child with `CREATE_NO_WINDOW`. Owner screenshot
+evidence then showed a Windows Terminal tab still hosting the outer Temper application because its
+Rust entry point was itself compiled as a console-subsystem executable. The release entry point now
+uses Rust's `windows_subsystem = "windows"` attribute, while the engine deliberately remains a
+console-subsystem executable for redirected protocol admission and is launched without a window.
+`dumpbin` verifies subsystem 2 (`Windows GUI`) for `Temper.exe` and subsystem 3 (`Windows CUI`) for
+the engine. After reinstalling those exact bytes, Windows exposed exactly one Temper product window,
+no Windows Terminal or console window, and verified configured state remained responsive.
+
+The native visual-consistency pass now gives primary navigation a direction-aware 260 ms
+horizontal opacity/position transition and honors the operating system's reduced-motion
+preference. Forward tabs enter from the right and backward tabs enter from the left; no page motion
+uses vertical displacement, preventing the animation from briefly creating vertical overflow. The
+active copper nav rule eases rather than snapping. Five remaining native browser selects—Core
+scope, Mode project, Core edit scope, review project, and Advanced project—
+now share one accessible Temper/Radix select primitive with consistent light/dark styling,
+keyboard navigation, focus treatment, collision handling, and modal-safe rendering. The existing
+workspace picker remains a Temper/Radix menu. A source audit finds no renderer `<select>`, unit
+tests assert the custom combobox contract and page-state transition, and the Windows WebView2
+compatibility/accessibility suite exercises the modal selection path.
+
+The same audit found that `needs_attention` was overloaded: the engine uses it for an ordinary
+pending review or rating as well as an unavailable secure store, while React had treated it as a
+blanket authorization failure. Real pending learning therefore hid its own Review action and
+disabled unrelated managed tasks. React now derives actionability from the exact independent state
+already available—secure-store readiness, current consent, connection conformance, project runner
+eligibility, and the operation-specific queue record. A pending review or rating remains actionable
+and does not disable delivery. Missing keys and expired consent still fail closed. Project-filtered
+views count only applicable suggestions; a proposed two-project scope can be narrowed to one;
+inherited aggregate reporting remains visible and can be disabled; notification enablement first
+requires OS permission; Mode format compatibility is distinct from current Codex delivery.
 
 The native onboarding and everyday governed-loop phases now replace synthetic first-run and
 mutation assumptions with typed engine state.
@@ -74,7 +192,8 @@ Temper now has a target-native Windows packaging path rather than the historical
 prototype path. The release-group builder compiles the Python engine as the exact target-suffixed
 Nuitka sidecar expected by Tauri, writes a manifest binding the engine version, public snapshot
 schema digest, binary digest, filename, size, and target triple, and requires the compiled binary
-itself to pass an unconfigured closed-world protocol handshake before the manifest is admitted.
+itself to pass both an unconfigured closed-world protocol handshake and the first exact
+`setup.status` read before the manifest is admitted.
 The Tauri release build binds those values at compile time and verifies the bundled sidecar digest
 again before launch.
 
@@ -916,3 +1035,15 @@ The original v3 and v3.1 results were not rewritten, the full v3 grid was not la
 deferred external-validation study was not accessed. The next AI evaluation must use fresh
 post-remediation personas and scenarios; static tests remain responsible for transport, binding,
 scope, lifecycle, and scoring mechanics.
+
+Native Instruction Environment Interoperability is now implemented in source. The Python engine
+discovers version-bound Codex, Claude, and Copilot project instruction/skill locations without
+execution, keeps personal roots behind target-specific opt-in, exposes raw-free environment and
+conflict summaries, performs independently reviewed Luna semantic comparison outside delivery, and
+compiles a lineage-preserving least delta. Managed Codex tasks rehash native sources and reject an
+`instructionSources` mismatch. React/Tauri surfaces per-project status, observed context, skill
+activation state, blocking conflicts, and Mode preflight facts. Optional native changes use exact
+diff previews, atomic byte-preserving writes, signed restart-safe receipts, encrypted backups, and
+30-day rollback. Read-only Kairn/Green Meadow dogfood and final cross-stack verification remain the
+completion evidence; no inspected repository has been modified and no paid/provider API call was
+made.

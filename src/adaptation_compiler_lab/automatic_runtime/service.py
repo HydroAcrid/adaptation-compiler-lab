@@ -94,6 +94,15 @@ from adaptation_compiler_lab.governance.signing import (
     sign_governance_event,
     verify_signed_governance,
 )
+from adaptation_compiler_lab.instruction_environment.models import (
+    InstructionEnvironmentSnapshotV1,
+    InstructionRelationV1,
+)
+from adaptation_compiler_lab.instruction_environment.resolver import (
+    apply_instruction_environment,
+    bind_instruction_delta_manifest,
+    build_instruction_delta_plan,
+)
 from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore
 from adaptation_compiler_lab.runtime import (
     CanonicalRuntimeProjection,
@@ -593,6 +602,8 @@ class AutomaticAdaptationRuntime:
         context: RuntimeProjectionContext,
         target_task: str,
         activated_at: datetime,
+        instruction_environment: InstructionEnvironmentSnapshotV1 | None = None,
+        instruction_relations: tuple[InstructionRelationV1, ...] = (),
     ) -> PreparedRuntimeActivation:
         """Prepare a later task from current state and sign its separate activation."""
 
@@ -606,7 +617,21 @@ class AutomaticAdaptationRuntime:
         if state.release is None:
             raise AutomaticRuntimeError("runtime activation requires a governed release")
         projection = build_runtime_projection(state.release.governed_release, context)
+        delta_plan = None
+        if instruction_environment is not None:
+            delta_plan = build_instruction_delta_plan(
+                projection,
+                instruction_environment,
+                semantic_relations=instruction_relations,
+            )
+            projection = apply_instruction_environment(projection, delta_plan)
+        elif instruction_relations:
+            raise AutomaticRuntimeError(
+                "native semantic relations require an instruction environment"
+            )
         rendered, manifest = self._render(state.release, projection)
+        if delta_plan is not None:
+            manifest = bind_instruction_delta_manifest(manifest, delta_plan)
         prepared = self._deliver(
             task_ref=task_ref,
             receipt_id=f"runtime-delivery-{activation_id}",

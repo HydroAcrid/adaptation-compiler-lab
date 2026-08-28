@@ -118,31 +118,64 @@ def _verify_engine(
         or manifest.get("minimum_system_version") != EXPECTED_MINIMUM_SYSTEM_VERSION
     ):
         raise ValueError("bundled sidecar does not match its exact Apple manifest")
-    request = {
-        "protocol_version": EXPECTED_PROTOCOL,
-        "request_id": "apple-package-smoke",
-        "method": "system.handshake",
-        "params": {},
-        "expected_snapshot_digest": None,
-        "idempotency_key": None,
-    }
-    environment = os.environ.copy()
-    for name in (
-        "TEMPER_RUNTIME_CONFIG",
-        "TEMPER_PREDECESSOR_CONFIG",
-        "OPENAI_API_KEY",
-        "CODEX_API_KEY",
-        "CLAUDE_API_KEY",
-    ):
-        environment.pop(name, None)
-    result = _run(
-        [str(sidecar)],
-        input_text=json.dumps(request, separators=(",", ":")) + "\n",
-        environment=environment,
-        timeout=15,
+    requests = (
+        {
+            "protocol_version": EXPECTED_PROTOCOL,
+            "request_id": "apple-package-smoke",
+            "method": "system.handshake",
+            "params": {},
+            "expected_snapshot_digest": None,
+            "idempotency_key": None,
+        },
+        {
+            "protocol_version": EXPECTED_PROTOCOL,
+            "request_id": "apple-package-smoke-setup",
+            "method": "setup.status",
+            "params": {},
+            "expected_snapshot_digest": None,
+            "idempotency_key": None,
+        },
     )
+    with tempfile.TemporaryDirectory(prefix="temper-apple-engine-") as profile:
+        profile_root = Path(profile).resolve()
+        environment = os.environ.copy()
+        for name in (
+            "TEMPER_RUNTIME_CONFIG",
+            "TEMPER_PREDECESSOR_CONFIG",
+            "CODEX_HOME",
+            "CLAUDE_CONFIG_DIR",
+            "OPENAI_API_KEY",
+            "CODEX_API_KEY",
+            "CLAUDE_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "ANTHROPIC_AUTH_TOKEN",
+            "ANTHROPIC_BASE_URL",
+            "ANTHROPIC_BEDROCK_BASE_URL",
+            "ANTHROPIC_VERTEX_BASE_URL",
+            "OPENAI_BASE_URL",
+        ):
+            environment.pop(name, None)
+        environment.update(
+            {
+                "HOME": str(profile_root),
+                "USERPROFILE": str(profile_root),
+                "APPDATA": str(profile_root / "AppData" / "Roaming"),
+                "LOCALAPPDATA": str(profile_root / "AppData" / "Local"),
+                "XDG_CONFIG_HOME": str(profile_root / ".config"),
+                "XDG_DATA_HOME": str(profile_root / ".local" / "share"),
+            }
+        )
+        result = _run(
+            [str(sidecar)],
+            input_text="".join(
+                json.dumps(request, separators=(",", ":")) + "\n" for request in requests
+            ),
+            environment=environment,
+            timeout=15,
+        )
     lines = result.stdout.splitlines()
-    response = json.loads(lines[0]) if len(lines) == 1 else None
+    response = json.loads(lines[0]) if len(lines) == 2 else None
+    setup_response = json.loads(lines[1]) if len(lines) == 2 else None
     handshake = response.get("result") if isinstance(response, dict) else None
     if (
         not isinstance(response, dict)
@@ -156,6 +189,18 @@ def _verify_engine(
         or handshake.get("snapshot_schema_digest") != manifest.get("snapshot_schema_digest")
     ):
         raise ValueError("bundled sidecar failed the exact unconfigured handshake")
+    setup = setup_response.get("result") if isinstance(setup_response, dict) else None
+    if (
+        not isinstance(setup_response, dict)
+        or setup_response.get("ok") is not True
+        or setup_response.get("protocol_version") != EXPECTED_PROTOCOL
+        or setup_response.get("request_id") != "apple-package-smoke-setup"
+        or not isinstance(setup, dict)
+        or setup.get("configuration_state") != "unconfigured"
+        or setup.get("raw_payloads_exposed") is not False
+        or not str(setup_response.get("snapshot_digest", "")).startswith("sha256:")
+    ):
+        raise ValueError("bundled sidecar failed first-run setup admission")
     return manifest
 
 
@@ -190,9 +235,17 @@ def _launch_first_run(app: Path, scratch: Path, window_probe: Path) -> None:
     for name in (
         "TEMPER_RUNTIME_CONFIG",
         "TEMPER_PREDECESSOR_CONFIG",
+        "CODEX_HOME",
+        "CLAUDE_CONFIG_DIR",
         "OPENAI_API_KEY",
         "CODEX_API_KEY",
         "CLAUDE_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN",
+        "ANTHROPIC_BASE_URL",
+        "ANTHROPIC_BEDROCK_BASE_URL",
+        "ANTHROPIC_VERTEX_BASE_URL",
+        "OPENAI_BASE_URL",
     ):
         environment.pop(name, None)
     Path(environment["HOME"]).mkdir(parents=True)

@@ -1,0 +1,117 @@
+{
+  "$defs": {
+    "InstructionRelationKind": {
+      "enum": [
+        "exact_duplicate",
+        "semantic_equivalent",
+        "contradiction",
+        "narrower_exception",
+        "broader_overlap",
+        "complementary",
+        "unknown"
+      ],
+      "title": "InstructionRelationKind",
+      "type": "string"
+    },
+    "NativeTarget": {
+      "enum": [
+        "codex",
+        "claude",
+        "copilot"
+      ],
+      "title": "NativeTarget",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "conflict_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Conflict Id",
+      "type": "string"
+    },
+    "conflict_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Conflict Version",
+      "type": "string"
+    },
+    "native_clause_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Native Clause Id",
+      "type": "string"
+    },
+    "native_precedence": {
+      "minimum": 0,
+      "title": "Native Precedence",
+      "type": "integer"
+    },
+    "native_source_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Native Source Id",
+      "type": "string"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "rationale": {
+      "minLength": 1,
+      "title": "Rationale",
+      "type": "string"
+    },
+    "relation": {
+      "$ref": "#/$defs/InstructionRelationKind"
+    },
+    "resolution_state": {
+      "enum": [
+        "unresolved",
+        "kept_native",
+        "narrowed_temper",
+        "ignored"
+      ],
+      "title": "Resolution State",
+      "type": "string"
+    },
+    "severity": {
+      "enum": [
+        "notice",
+        "blocking"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "target": {
+      "$ref": "#/$defs/NativeTarget"
+    },
+    "temper_clause_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Temper Clause Digest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "conflict_id",
+    "project_id",
+    "target",
+    "temper_clause_digest",
+    "native_clause_id",
+    "native_source_id",
+    "relation",
+    "native_precedence",
+    "severity",
+    "resolution_state",
+    "rationale"
+  ],
+  "title": "InstructionConflictV1",
+  "type": "object"
+}

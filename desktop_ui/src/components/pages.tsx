@@ -1,8 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import {
   ArrowRight,
-  Bell,
-  Bot,
   Check,
   CheckCircle2,
   CircleHelp,
@@ -14,7 +12,6 @@ import {
   Info,
   Laptop,
   Moon,
-  MoreHorizontal,
   Pause,
   Pencil,
   Play,
@@ -26,12 +23,20 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
-import { connections, coreItems, projects } from "../data/demo";
+import { AgentBrandMark } from "./AgentBrandMark";
 import {
+  analyzeInstructionEnvironment,
+  applyNativeInstructionChange,
+  disablePersonalInstructionSetup,
+  enablePersonalInstructionSetup,
+  previewNativeInstructionChange,
+  previewPersonalInstructionSetup,
   previewProjectRegistration,
+  requestNotificationPermission,
   registerProject,
+  rollbackNativeInstructionChange,
   runModeTask,
   type EngineAgentConnection,
   type EngineProjectPreview,
@@ -40,6 +45,12 @@ import {
   type EngineTaskResult,
   type EngineDiagnostics,
   type EngineDesktopSnapshot,
+  type EngineInstructionChangePreview,
+  type EngineInstructionChangeReceipt,
+  type EngineInstructionEnvironmentSummary,
+  type EngineInstructionGlobalPreview,
+  type EngineInstructionSourceSummary,
+  type EngineNativeTarget,
 } from "../engine";
 import type {
   CapabilityModeSummary,
@@ -49,12 +60,20 @@ import type {
   FeedbackValue,
   AgentConnection,
   ProjectName,
+  RegisteredProject,
   Suggestion,
   Theme,
   WorkspaceScope,
 } from "../types";
 import { ProfilePortabilityDialog } from "./ProfilePortabilityDialog";
-import { Button, Divider, SectionHeading, StatusPill, Toggle } from "./ui";
+import {
+  Button,
+  Divider,
+  SectionHeading,
+  StatusPill,
+  TemperSelect,
+  Toggle,
+} from "./ui";
 
 export function TodayPage({
   onReview,
@@ -66,6 +85,8 @@ export function TodayPage({
   selectedSuggestionId,
   automaticLearning,
   liveSummary,
+  instructionEnvironments = [],
+  liveProjects = [],
 }: {
   onReview: (suggestionId: string) => void;
   onOpenCore: () => void;
@@ -78,24 +99,49 @@ export function TodayPage({
   liveSummary?: {
     activeAdaptationCount: number;
     health: "ready" | "needs_attention" | "paused" | "consent_expired";
+    feedbackAvailable: boolean;
     pendingFeedbackCount: number;
     pendingReviewCount: number;
     projectCount: number;
+    secureStoreReady: boolean;
     message?: string;
   };
+  instructionEnvironments?: EngineInstructionEnvironmentSummary[];
+  liveProjects?: EngineProject[];
 }) {
+  const applicableEnvironments = instructionEnvironments.filter(
+    (environment) =>
+      workspace === "all" ||
+      liveProjects.some(
+        (project) =>
+          project.project_id === environment.project_id &&
+          project.display_name === workspace,
+      ),
+  );
+  const nativeConflict = applicableEnvironments
+    .flatMap((environment) => environment.conflicts ?? [])
+    .find(
+      (conflict) =>
+        conflict.severity === "blocking" &&
+        conflict.resolution_state === "unresolved",
+    );
   const applicableSuggestions =
     workspace === "all"
       ? suggestions
-      : suggestions.filter(
-          (item) =>
-            item.suggestedScope === "All projects" ||
-            item.suggestedScope.split(", ").includes(workspace),
+      : suggestions.filter((item) =>
+          item.projectNames
+            ? item.isGlobal === true || item.projectNames.includes(workspace)
+            : item.suggestedScope === "All projects" ||
+              item.suggestedScope.split(", ").includes(workspace),
         );
   const selectedSuggestion =
     applicableSuggestions.find((item) => item.id === selectedSuggestionId) ??
     applicableSuggestions[0];
-  const hasSuggestion = Boolean(selectedSuggestion);
+  const governedReviewBlocked =
+    liveSummary?.health === "consent_expired" ||
+    liveSummary?.secureStoreReady === false;
+  const hasSuggestion =
+    Boolean(selectedSuggestion) && !governedReviewBlocked && !nativeConflict;
   const isAllProjects = workspace === "all";
   const selectedIndex = selectedSuggestion
     ? applicableSuggestions.findIndex(
@@ -112,6 +158,53 @@ export function TodayPage({
         ? "Your review is required"
         : "Waiting for more evidence"
     : "";
+  const headline = nativeConflict
+    ? "An instruction conflict needs review."
+    : liveSummary?.health === "consent_expired"
+      ? "Consent needs renewal."
+      : liveSummary?.secureStoreReady === false
+        ? "Secure storage needs attention."
+        : hasSuggestion
+          ? `${suggestionCount} suggestion${suggestionCount === 1 ? "" : "s"} to review.`
+          : liveSummary?.pendingFeedbackCount
+            ? `${liveSummary.pendingFeedbackCount} rating${liveSummary.pendingFeedbackCount === 1 ? "" : "s"} waiting.`
+            : liveSummary?.health === "paused"
+              ? "Learning is paused."
+              : liveSummary?.projectCount === 0
+                ? "No projects registered."
+                : liveSummary?.health === "needs_attention"
+                  ? "Temper needs attention."
+                  : liveSummary
+                    ? isAllProjects
+                      ? "Nothing needs your attention."
+                      : `Nothing needs review in ${workspace}.`
+                    : `${suggestionCount} suggestion${suggestionCount === 1 ? "" : "s"} to review.`;
+  const summary = nativeConflict
+    ? "Temper withheld the affected adaptation instead of sending contradictory guidance."
+    : liveSummary?.health === "consent_expired"
+      ? `${liveSummary.pendingReviewCount} suggestion${liveSummary.pendingReviewCount === 1 ? " remains" : "s remain"} waiting. Learning, review, and delivery stay stopped until you renew consent.`
+      : liveSummary?.secureStoreReady === false
+        ? "Temper cannot approve, deliver, or change adaptations until its local keys are available."
+        : hasSuggestion
+          ? "Review the first suggestion below. Nothing changes until you decide."
+          : (liveSummary?.message ??
+            (liveSummary?.health === "paused"
+              ? "Temper will not inspect new completed work until you turn background learning on."
+              : liveSummary?.projectCount === 0
+                ? "Register a project in Connections to make new work eligible."
+                : liveSummary?.health === "needs_attention"
+                  ? "Open Advanced for the exact local requirement."
+                  : liveSummary
+                    ? `${liveSummary.activeAdaptationCount} approved adaptation${liveSummary.activeAdaptationCount === 1 ? "" : "s"} available for this view.`
+                    : "This browser preview uses example product data."));
+  const healthLabel = liveSummary
+    ? {
+        ready: "Ready",
+        needs_attention: "Needs attention",
+        paused: "Learning paused",
+        consent_expired: "Consent expired",
+      }[liveSummary.health]
+    : "Preview";
   return (
     <div className="page folio-page folio-page--today">
       <header className="folio-page-meta">
@@ -120,45 +213,38 @@ export function TodayPage({
             dateStyle: "full",
           }).format(new Date())}
         </span>
-        <button
-          aria-label="Notifications"
-          className="folio-icon-button"
-          type="button"
-        >
-          <Bell aria-hidden="true" size={17} strokeWidth={1.6} />
-        </button>
       </header>
       <section className="folio-statement" aria-labelledby="today-heading">
         <div className="folio-statement__line">
-          <h1 id="today-heading">
-            {isAllProjects
-              ? "Temper is active across your work."
-              : `Temper is active in ${workspace}.`}
-          </h1>
+          <h1 id="today-heading">{headline}</h1>
         </div>
-        <p>
-          {liveSummary
-            ? (liveSummary.message ??
-              `${liveSummary.activeAdaptationCount} approved adaptation${liveSummary.activeAdaptationCount === 1 ? " is" : "s are"} available across ${liveSummary.projectCount} project${liveSummary.projectCount === 1 ? "" : "s"}.`)
-            : isAllProjects
-              ? `${suggestionCount} suggestions are ready in Kairn. Green Meadow has nothing waiting.`
-              : hasSuggestion
-                ? suggestionCount === 1
-                  ? "Approved guidance is ready when it is relevant. One suggestion needs your attention."
-                  : `${suggestionCount} suggestions are ready. Temper has put the clearest one first.`
-                : "Approved guidance is ready when it is relevant. Nothing needs your review."}
-        </p>
+        <p>{summary}</p>
       </section>
       <div className="folio-divider" aria-hidden="true">
         <span />
       </div>
       <section className="folio-workbench" aria-label="Current thought">
         <article className="folio-proposal">
-          {hasSuggestion ? (
+          {nativeConflict ? (
+            <>
+              <span className="folio-kicker">Existing agent setup</span>
+              <h2>{nativeConflict.source_display_path}</h2>
+              <p>{nativeConflict.rationale}</p>
+              <button
+                className="folio-primary-action"
+                onClick={onOpenCore}
+                type="button"
+              >
+                Review conflict <ArrowRight aria-hidden="true" size={16} />
+              </button>
+            </>
+          ) : hasSuggestion ? (
             <>
               <span className="folio-kicker">
-                {isAllProjects ? "Kairn · " : ""}Suggestion {selectedIndex + 1}{" "}
-                of {suggestionCount}
+                {isAllProjects && selectedSuggestion?.sourceProject
+                  ? `${selectedSuggestion.sourceProject} · `
+                  : ""}
+                Suggestion {selectedIndex + 1} of {suggestionCount}
               </span>
               <h2>Temper noticed a pattern worth considering.</h2>
               <blockquote>“{selectedSuggestion?.behavior}”</blockquote>
@@ -175,27 +261,31 @@ export function TodayPage({
             </>
           ) : (
             <>
-              <span className="folio-kicker">Current project</span>
+              <span className="folio-kicker">Current view</span>
               <h2>
                 {liveSummary
-                  ? liveSummary.health === "ready"
-                    ? `${isAllProjects ? "Your work" : workspace} is ready.`
-                    : "Temper needs your attention."
-                  : "Green Meadow is ready."}
+                  ? liveSummary.pendingFeedbackCount
+                    ? "A recent adaptation is ready to rate."
+                    : liveSummary.health === "ready"
+                      ? "No suggestions to review."
+                      : liveSummary.health === "paused"
+                        ? "No new learning is running."
+                        : liveSummary.health === "consent_expired"
+                          ? "Learning and delivery are stopped."
+                          : "A local requirement is unresolved."
+                  : "No suggestion is selected."}
               </h2>
               {liveSummary ? (
                 <p>
-                  {liveSummary.pendingReviewCount
-                    ? `${liveSummary.pendingReviewCount} suggestion${liveSummary.pendingReviewCount === 1 ? " is" : "s are"} waiting for review.`
-                    : "Nothing needs your review right now."}
+                  {liveSummary.pendingFeedbackCount
+                    ? "Use Helped, Hurt, or Irrelevant to record the outcome."
+                    : liveSummary.pendingReviewCount
+                      ? `${liveSummary.pendingReviewCount} suggestion${liveSummary.pendingReviewCount === 1 ? " is" : "s are"} waiting for review.`
+                      : "No suggestion is waiting in this view."}
                 </p>
               ) : (
                 <>
-                  <blockquote>“Use PowerShell 7 for release work.”</blockquote>
-                  <p>
-                    One project memory and the relevant shared guidance are
-                    available here. Kairn-only knowledge stays out.
-                  </p>
+                  <p>This browser preview uses example product data.</p>
                 </>
               )}
               <button
@@ -203,7 +293,7 @@ export function TodayPage({
                 onClick={onOpenCore}
                 type="button"
               >
-                View in Core <ArrowRight aria-hidden="true" size={16} />
+                View Core <ArrowRight aria-hidden="true" size={16} />
               </button>
             </>
           )}
@@ -215,11 +305,11 @@ export function TodayPage({
                 <div>
                   <dt>Evidence</dt>
                   <dd>
-                    {
-                      evidenceStrengthLabels[
-                        selectedSuggestion?.evidenceStrength ?? "developing"
-                      ]
-                    }
+                    {selectedSuggestion?.evidenceStrength
+                      ? evidenceStrengthLabels[
+                          selectedSuggestion.evidenceStrength
+                        ]
+                      : "Review required"}
                   </dd>
                 </div>
                 <div>
@@ -242,18 +332,12 @@ export function TodayPage({
                   <dd>
                     {liveSummary
                       ? `${liveSummary.activeAdaptationCount} approved item${liveSummary.activeAdaptationCount === 1 ? "" : "s"}`
-                      : "Seven approved items"}
+                      : "Example items"}
                   </dd>
                 </div>
                 <div>
                   <dt>Status</dt>
-                  <dd>
-                    {liveSummary
-                      ? liveSummary.health === "ready"
-                        ? "Ready"
-                        : "Needs attention"
-                      : "Ready"}
-                  </dd>
+                  <dd>{healthLabel}</dd>
                 </div>
               </>
             )}
@@ -280,7 +364,9 @@ export function TodayPage({
                       <span className="queue-copy">
                         <strong>{item.behavior}</strong>
                         <small>
-                          {evidenceStrengthLabels[item.evidenceStrength]}
+                          {item.evidenceStrength
+                            ? evidenceStrengthLabels[item.evidenceStrength]
+                            : "Review required"}
                         </small>
                       </span>
                     </button>
@@ -288,7 +374,7 @@ export function TodayPage({
                 ))}
               </ol>
             </div>
-          ) : (
+          ) : liveSummary?.pendingFeedbackCount || !liveSummary ? (
             <div className="margin-feedback">
               <span className="folio-kicker">Last task</span>
               <h2>
@@ -310,13 +396,22 @@ export function TodayPage({
                   className="feedback-row feedback-row--folio"
                   aria-label="Rate the recent adaptation"
                 >
-                  <button onClick={() => onFeedback("helped")} type="button">
+                  <button
+                    disabled={liveSummary?.feedbackAvailable === false}
+                    onClick={() => onFeedback("helped")}
+                    type="button"
+                  >
                     Helped
                   </button>
-                  <button onClick={() => onFeedback("hurt")} type="button">
+                  <button
+                    disabled={liveSummary?.feedbackAvailable === false}
+                    onClick={() => onFeedback("hurt")}
+                    type="button"
+                  >
                     Hurt
                   </button>
                   <button
+                    disabled={liveSummary?.feedbackAvailable === false}
                     onClick={() => onFeedback("irrelevant")}
                     type="button"
                   >
@@ -325,7 +420,7 @@ export function TodayPage({
                 </div>
               ) : null}
             </div>
-          )}
+          ) : null}
         </aside>
       </section>
     </div>
@@ -359,32 +454,55 @@ const coreKinds: Array<{
     description: "Sequences and safeguards you approved.",
   },
   {
+    id: "prompt_rule",
+    label: "Rules",
+    description: "Direct instructions that govern agent behavior.",
+  },
+  {
+    id: "example",
+    label: "Examples",
+    description: "Approved examples of what good work looks like.",
+  },
+  {
     id: "skill",
     label: "Skills",
     description: "Reusable guidance for a kind of work.",
+  },
+  {
+    id: "tool_recommendation",
+    label: "Tools",
+    description: "Approved recommendations for when a tool is useful.",
   },
 ];
 
 export function CorePage({
   activeWorkspace,
   availableWorkspaces,
-  initialItems = coreItems,
+  initialItems = [],
   nativeRuntime = false,
+  governedMutationsAvailable = true,
+  governedMutationUnavailableReason = null,
   snapshotDigest = null,
   onNotice,
   onRevoke,
   recentUndo,
   onUndo,
+  instructionEnvironments = [],
+  liveProjects = [],
 }: {
   activeWorkspace: WorkspaceScope;
   availableWorkspaces?: ProjectName[];
   initialItems?: CoreItem[];
   nativeRuntime?: boolean;
+  governedMutationsAvailable?: boolean;
+  governedMutationUnavailableReason?: string | null;
   snapshotDigest?: string | null;
   onNotice?: (message: string) => void;
   onRevoke?: (artifactId: string) => Promise<void>;
   recentUndo?: EngineRecentUndo;
   onUndo?: () => Promise<void>;
+  instructionEnvironments?: EngineInstructionEnvironmentSummary[];
+  liveProjects?: EngineProject[];
 }) {
   const [items, setItems] = useState(initialItems);
   const [kind, setKind] = useState<CoreKind | "all">("all");
@@ -398,12 +516,25 @@ export function CorePage({
   const [portabilityMode, setPortabilityMode] = useState<
     "export" | "import" | null
   >(null);
-  const workspaceChoices = availableWorkspaces ?? ["Kairn", "Green Meadow"];
+  const workspaceChoices = availableWorkspaces ?? [];
+  const appliesToProject = (item: CoreItem, project: ProjectName) =>
+    item.isGlobal === true ||
+    (item.projectNames
+      ? item.projectNames.includes(project)
+      : item.scope === "Everywhere" || item.scope === project);
   const visibleItems = items.filter(
     (item) =>
       (kind === "all" || item.kind === kind) &&
-      (scope === "all" || item.scope === "Everywhere" || item.scope === scope),
+      (scope === "all" || appliesToProject(item, scope)),
   );
+  const visibleEnvironments = instructionEnvironments.filter((environment) => {
+    if (activeWorkspace === "all") return true;
+    return liveProjects.some(
+      (project) =>
+        project.project_id === environment.project_id &&
+        project.display_name === activeWorkspace,
+    );
+  });
 
   function removeItem(item: CoreItem) {
     setRemoved({
@@ -444,10 +575,20 @@ export function CorePage({
         </div>
         <div className="core-heading__aside">
           <div className="core-portability-actions">
-            <button onClick={() => setPortabilityMode("export")} type="button">
+            <button
+              disabled={nativeRuntime && !governedMutationsAvailable}
+              onClick={() => setPortabilityMode("export")}
+              title={governedMutationUnavailableReason ?? undefined}
+              type="button"
+            >
               <Download aria-hidden="true" size={14} /> Export
             </button>
-            <button onClick={() => setPortabilityMode("import")} type="button">
+            <button
+              disabled={nativeRuntime && !governedMutationsAvailable}
+              onClick={() => setPortabilityMode("import")}
+              title={governedMutationUnavailableReason ?? undefined}
+              type="button"
+            >
               <Upload aria-hidden="true" size={14} /> Import
             </button>
           </div>
@@ -471,10 +612,8 @@ export function CorePage({
             <>
               <strong>
                 {
-                  items.filter(
-                    (item) =>
-                      item.scope === "Everywhere" ||
-                      item.scope === activeWorkspace,
+                  items.filter((item) =>
+                    appliesToProject(item, activeWorkspace),
                   ).length
                 }{" "}
                 approved items
@@ -485,6 +624,18 @@ export function CorePage({
           )}
         </p>
       </section>
+      {nativeRuntime ? (
+        <InstructionEnvironmentPanel
+          environments={visibleEnvironments}
+          governedMutationsAvailable={governedMutationsAvailable}
+          onComplete={(message) => onNotice?.(message)}
+          projectLabel={(projectId) =>
+            liveProjects.find((project) => project.project_id === projectId)
+              ?.display_name ?? projectId
+          }
+          snapshotDigest={snapshotDigest}
+        />
+      ) : null}
       <div className="core-toolbar">
         <div aria-label="Filter by knowledge type" className="core-kind-filter">
           <button
@@ -505,27 +656,32 @@ export function CorePage({
             </button>
           ))}
         </div>
-        <label className="core-scope-filter">
+        <div className="core-scope-filter">
           <span>Show for</span>
-          <select
-            onChange={(event) =>
-              setScope(event.target.value as ProjectName | "all")
-            }
+          <TemperSelect
+            ariaLabel="Show for"
+            className="core-scope-select"
+            onValueChange={setScope}
+            options={[
+              { label: "All projects", value: "all" as const },
+              ...workspaceChoices.map((workspace) => ({
+                label: workspace,
+                value: workspace,
+              })),
+            ]}
             value={scope}
-          >
-            <option value="all">All projects</option>
-            {workspaceChoices.map((workspace) => (
-              <option key={workspace} value={workspace}>
-                {workspace}
-              </option>
-            ))}
-          </select>
-        </label>
+          />
+        </div>
       </div>
       {nativeRuntime && recentUndo ? (
         <div className="undo-banner">
           <span>{recentUndo.summary}</span>
-          <button onClick={() => void onUndo?.()} type="button">
+          <button
+            disabled={!governedMutationsAvailable}
+            onClick={() => void onUndo?.()}
+            title={governedMutationUnavailableReason ?? undefined}
+            type="button"
+          >
             <RotateCcw size={14} /> Undo
           </button>
         </div>
@@ -553,6 +709,8 @@ export function CorePage({
               onRemove={removeItem}
               onRevoke={setRevokeSelected}
               readOnly={nativeRuntime}
+              revokeAvailable={governedMutationsAvailable}
+              revokeUnavailableReason={governedMutationUnavailableReason}
             />
           );
         })}
@@ -564,6 +722,7 @@ export function CorePage({
       </div>
       {selected ? (
         <CoreItemDialog
+          availableScopes={workspaceChoices}
           item={selected}
           key={selected.id}
           onClose={() => setSelected(null)}
@@ -596,6 +755,394 @@ export function CorePage({
   );
 }
 
+type NativeSourceFilter = "all" | "instructions" | "memory" | "skills";
+
+function InstructionEnvironmentPanel({
+  environments,
+  projectLabel,
+  snapshotDigest,
+  governedMutationsAvailable,
+  onComplete,
+}: {
+  environments: EngineInstructionEnvironmentSummary[];
+  projectLabel: (projectId: string) => string;
+  snapshotDigest: string | null;
+  governedMutationsAvailable: boolean;
+  onComplete: (message: string) => void;
+}) {
+  const [filter, setFilter] = useState<NativeSourceFilter>("all");
+  const [selected, setSelected] = useState<{
+    environment: EngineInstructionEnvironmentSummary;
+    source: EngineInstructionSourceSummary;
+  } | null>(null);
+  const sources = environments.flatMap((environment) =>
+    environment.sources.map((source) => ({ environment, source })),
+  );
+  const shown = sources.filter(({ source }) => {
+    if (filter === "all") return true;
+    if (filter === "skills") return source.skill;
+    if (filter === "memory") return source.kind === "personal_memory";
+    return !source.skill && source.kind !== "personal_memory";
+  });
+  const conflictCount = environments.reduce(
+    (total, item) => total + item.blocking_conflict_count,
+    0,
+  );
+
+  return (
+    <section className="native-context" aria-labelledby="native-context-title">
+      <header className="native-context__heading">
+        <div>
+          <span className="folio-kicker">Also considered</span>
+          <h2 id="native-context-title">Existing agent setup</h2>
+          <p>
+            Temper accounts for these project instructions and skills without
+            adding them to your Core.
+          </p>
+        </div>
+        <StatusPill tone={conflictCount ? "neutral" : "positive"}>
+          {conflictCount
+            ? `${conflictCount} conflict${conflictCount === 1 ? "" : "s"}`
+            : `${sources.length} source${sources.length === 1 ? "" : "s"}`}
+        </StatusPill>
+      </header>
+      <div
+        aria-label="Filter existing agent setup"
+        className="native-context__filters"
+      >
+        {(
+          [
+            ["all", "All"],
+            ["instructions", "Instructions"],
+            ["memory", "Agent memory"],
+            ["skills", "Skills"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            aria-pressed={filter === value}
+            key={value}
+            onClick={() => setFilter(value)}
+            type="button"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {environments.flatMap((environment) => environment.conflicts ?? [])
+        .length ? (
+        <div
+          className="native-context__conflicts"
+          aria-label="Instruction conflicts"
+        >
+          {environments
+            .flatMap((environment) => environment.conflicts ?? [])
+            .map((conflict) => (
+              <article key={conflict.conflict_id}>
+                <div>
+                  <span className="folio-kicker">Withheld safely</span>
+                  <strong>{conflict.source_display_path}</strong>
+                </div>
+                <dl>
+                  <div>
+                    <dt>Temper Core</dt>
+                    <dd>{conflict.temper_behavior}</dd>
+                  </div>
+                  <div>
+                    <dt>Existing instruction</dt>
+                    <dd>{conflict.native_behavior}</dd>
+                  </div>
+                </dl>
+                <p>{conflict.rationale}</p>
+              </article>
+            ))}
+        </div>
+      ) : null}
+      {shown.length ? (
+        <ul className="native-context__list">
+          {shown.map(({ environment, source }) => (
+            <li
+              key={`${environment.project_id}-${environment.target}-${source.source_id}`}
+            >
+              <div>
+                <strong>{source.display_path}</strong>
+                <span>
+                  {projectLabel(environment.project_id)} ·{" "}
+                  {targetLabel(source.target)} · {source.instruction_count}{" "}
+                  instruction
+                  {source.instruction_count === 1 ? "" : "s"}
+                </span>
+              </div>
+              <div className="native-context__actions">
+                <StatusPill
+                  tone={source.status === "ready" ? "positive" : "neutral"}
+                >
+                  {source.skill
+                    ? nativeSkillStatusLabel(source.activation_status)
+                    : nativeSourceStatusLabel(source.status)}
+                </StatusPill>
+                <Button
+                  disabled={
+                    source.status !== "ready" ||
+                    source.kind.startsWith("personal_") ||
+                    !snapshotDigest ||
+                    !governedMutationsAvailable
+                  }
+                  onClick={() => setSelected({ environment, source })}
+                  tone="quiet"
+                >
+                  Preview edit
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="native-context__empty">
+          No supported existing sources match this view.
+        </p>
+      )}
+      {selected && snapshotDigest ? (
+        <NativeInstructionDialog
+          environment={selected.environment}
+          onClose={() => setSelected(null)}
+          onComplete={(message) => {
+            setSelected(null);
+            onComplete(message);
+          }}
+          snapshotDigest={snapshotDigest}
+          source={selected.source}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+function NativeInstructionDialog({
+  environment,
+  source,
+  snapshotDigest,
+  onClose,
+  onComplete,
+}: {
+  environment: EngineInstructionEnvironmentSummary;
+  source: EngineInstructionSourceSummary;
+  snapshotDigest: string;
+  onClose: () => void;
+  onComplete: (message: string) => void;
+}) {
+  const [text, setText] = useState("");
+  const [preview, setPreview] = useState<EngineInstructionChangePreview | null>(
+    null,
+  );
+  const [receipt, setReceipt] = useState<EngineInstructionChangeReceipt | null>(
+    null,
+  );
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const instructionField = useRef<HTMLTextAreaElement>(null);
+
+  async function makePreview() {
+    setBusy(true);
+    setError(null);
+    try {
+      setPreview(
+        await previewNativeInstructionChange(
+          environment,
+          source.source_id,
+          text,
+          snapshotDigest,
+        ),
+      );
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Temper could not preview that instruction change.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function applyPreview() {
+    if (!preview) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setReceipt(
+        await applyNativeInstructionChange(
+          preview,
+          snapshotDigest,
+          crypto.randomUUID(),
+        ),
+      );
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Temper refused that native instruction edit.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function rollback() {
+    if (!receipt) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await rollbackNativeInstructionChange(
+        receipt,
+        receipt.environment_digest_after,
+        snapshotDigest,
+        crypto.randomUUID(),
+      );
+      onComplete("The native instruction file was restored exactly.");
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Temper could not safely restore that source.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog.Root onOpenChange={(open) => (open ? undefined : onClose())} open>
+      <Dialog.Portal>
+        <Dialog.Overlay className="dialog-overlay" />
+        <Dialog.Content
+          className="core-dialog native-instruction-dialog"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            instructionField.current?.focus();
+          }}
+        >
+          <Dialog.Close aria-label="Close" className="dialog-close">
+            <X size={18} />
+          </Dialog.Close>
+          <span className="folio-kicker">Existing project instructions</span>
+          <Dialog.Title>{source.display_path}</Dialog.Title>
+          <Dialog.Description>
+            Temper will only create or update its clearly marked section. You
+            will see the exact diff before anything changes.
+          </Dialog.Description>
+          {!preview && !receipt ? (
+            <label className="native-instruction-dialog__field">
+              <span>Temper-managed instruction</span>
+              <textarea
+                onChange={(event) => setText(event.target.value)}
+                placeholder="Describe the project instruction to add…"
+                ref={instructionField}
+                value={text}
+              />
+            </label>
+          ) : null}
+          {preview && !receipt ? (
+            <pre aria-label="Exact native instruction diff">
+              <code>{preview.unified_diff}</code>
+            </pre>
+          ) : null}
+          {receipt ? (
+            <div className="native-instruction-dialog__success">
+              <CheckCircle2 size={18} />
+              <div>
+                <strong>Applied and signed</strong>
+                <span>An encrypted original is available for 30 days.</span>
+              </div>
+            </div>
+          ) : null}
+          {error ? <p role="alert">{error}</p> : null}
+          <div className="core-dialog__actions">
+            {receipt ? (
+              <>
+                <Button
+                  disabled={busy}
+                  onClick={() => void rollback()}
+                  tone="quiet"
+                >
+                  Undo this edit
+                </Button>
+                <Button
+                  disabled={busy}
+                  onClick={() =>
+                    onComplete("Existing agent instructions were refreshed.")
+                  }
+                  tone="primary"
+                >
+                  Done
+                </Button>
+              </>
+            ) : preview ? (
+              <>
+                <Button
+                  disabled={busy}
+                  onClick={() => setPreview(null)}
+                  tone="quiet"
+                >
+                  Back
+                </Button>
+                <Button
+                  disabled={busy}
+                  onClick={() => void applyPreview()}
+                  tone="primary"
+                >
+                  {busy ? "Applying…" : "Apply exact diff"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button disabled={busy} onClick={onClose} tone="quiet">
+                  Cancel
+                </Button>
+                <Button
+                  disabled={busy || !text.trim()}
+                  onClick={() => void makePreview()}
+                  tone="primary"
+                >
+                  {busy ? "Preparing…" : "Preview exact diff"}
+                </Button>
+              </>
+            )}
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+function targetLabel(target: EngineNativeTarget): string {
+  return { codex: "Codex", claude: "Claude", copilot: "Copilot" }[target];
+}
+
+function nativeSourceStatusLabel(
+  status: EngineInstructionSourceSummary["status"],
+): string {
+  return {
+    invalid_encoding: "Invalid encoding",
+    outside_boundary: "Outside project",
+    ready: "Considered",
+    too_large: "Too large",
+    unreadable: "Unreadable",
+    unsupported: "Unsupported",
+  }[status];
+}
+
+function nativeSkillStatusLabel(
+  status: EngineInstructionSourceSummary["activation_status"],
+): string {
+  return {
+    active: "Active",
+    available: "Available",
+    disabled: "Disabled",
+    not_applicable: "Considered",
+    unknown: "Availability unknown",
+  }[status];
+}
+
 function CoreGroup({
   label,
   description,
@@ -604,6 +1151,8 @@ function CoreGroup({
   onRemove,
   onRevoke,
   readOnly,
+  revokeAvailable,
+  revokeUnavailableReason,
 }: {
   label: string;
   description: string;
@@ -612,6 +1161,8 @@ function CoreGroup({
   onRemove: (item: CoreItem) => void;
   onRevoke: (item: CoreItem) => void;
   readOnly: boolean;
+  revokeAvailable: boolean;
+  revokeUnavailableReason: string | null;
 }) {
   return (
     <section className="core-group">
@@ -633,7 +1184,12 @@ function CoreGroup({
               {readOnly ? (
                 <div className="core-entry__actions">
                   <span className="core-entry__governed">Approved</span>
-                  <button onClick={() => onRevoke(item)} type="button">
+                  <button
+                    disabled={!revokeAvailable}
+                    onClick={() => onRevoke(item)}
+                    title={revokeUnavailableReason ?? undefined}
+                    type="button"
+                  >
                     Revoke
                   </button>
                 </div>
@@ -665,6 +1221,7 @@ function CoreRevocationDialog({
   onConfirm: () => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   return (
     <Dialog.Root onOpenChange={(open) => (open ? null : onClose())} open>
       <Dialog.Portal>
@@ -684,13 +1241,23 @@ function CoreRevocationDialog({
               disabled={busy}
               onClick={() => {
                 setBusy(true);
-                void onConfirm().finally(() => setBusy(false));
+                setError(null);
+                void onConfirm()
+                  .catch((reason: unknown) =>
+                    setError(
+                      reason instanceof Error
+                        ? reason.message
+                        : "Temper could not revoke that adaptation.",
+                    ),
+                  )
+                  .finally(() => setBusy(false));
               }}
               tone="primary"
             >
               Revoke adaptation
             </Button>
           </div>
+          {error ? <p role="alert">{error}</p> : null}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -705,16 +1272,25 @@ export function ModesPage({
   onOpenCore,
   onTaskComplete,
   projects: modeProjects,
+  runnerReady,
+  runnerUnavailableReason = null,
   snapshotDigest,
+  instructionEnvironments = [],
 }: {
   modes: CapabilityModeSummary[];
   nativeRuntime: boolean;
   loading: boolean;
   error: string | null;
   onOpenCore: () => void;
-  onTaskComplete: (message: string) => void;
+  onTaskComplete: (
+    message: string,
+    result: EngineTaskResult | null,
+  ) => void | Promise<void>;
   projects: Array<{ id: string; label: string }>;
+  runnerReady: boolean;
+  runnerUnavailableReason?: string | null;
   snapshotDigest: string | null;
+  instructionEnvironments?: EngineInstructionEnvironmentSummary[];
 }) {
   const [selected, setSelected] = useState<CapabilityModeSummary | null>(null);
   return (
@@ -777,6 +1353,9 @@ export function ModesPage({
           </article>
         ))}
       </div>
+      {!loading && !error && modes.length === 0 ? (
+        <div className="modes-empty">No Modes are available in this build.</div>
+      ) : null}
       <footer className="mode-footer">
         <p>
           Modes are temporary capabilities. Preferences, memories, procedures,
@@ -793,7 +1372,10 @@ export function ModesPage({
           onClose={() => setSelected(null)}
           onComplete={onTaskComplete}
           projects={modeProjects}
+          runnerReady={runnerReady}
+          runnerUnavailableReason={runnerUnavailableReason}
           snapshotDigest={snapshotDigest}
+          instructionEnvironments={instructionEnvironments}
         />
       ) : null}
     </div>
@@ -806,21 +1388,39 @@ function ModeDetailsDialog({
   onClose,
   onComplete,
   projects: modeProjects,
+  runnerReady,
+  runnerUnavailableReason,
   snapshotDigest,
+  instructionEnvironments,
 }: {
   mode: CapabilityModeSummary;
   nativeRuntime: boolean;
   onClose: () => void;
-  onComplete: (message: string) => void;
+  onComplete: (
+    message: string,
+    result: EngineTaskResult | null,
+  ) => void | Promise<void>;
   projects: Array<{ id: string; label: string }>;
+  runnerReady: boolean;
+  runnerUnavailableReason: string | null;
   snapshotDigest: string | null;
+  instructionEnvironments: EngineInstructionEnvironmentSummary[];
 }) {
   const [projectId, setProjectId] = useState(modeProjects[0]?.id ?? "");
   const [task, setTask] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const canRun = Boolean(
-    nativeRuntime && snapshotDigest && projectId && task.trim() && !busy,
+    nativeRuntime &&
+    runnerReady &&
+    snapshotDigest &&
+    projectId &&
+    task.trim() &&
+    !busy,
+  );
+  const selectedEnvironment = instructionEnvironments.find(
+    (environment) =>
+      environment.project_id === projectId && environment.target === "codex",
   );
 
   async function startTask() {
@@ -835,10 +1435,11 @@ function ModeDetailsDialog({
         snapshotDigest,
         crypto.randomUUID(),
       );
-      onComplete(
+      await onComplete(
         result.review_available
           ? `${mode.name} finished and was removed. Changes are ready for review.`
           : `${mode.name} finished and was removed.`,
+        result,
       );
       onClose();
     } catch (reason: unknown) {
@@ -871,8 +1472,12 @@ function ModeDetailsDialog({
               <dd>One exact managed task, then clean removal</dd>
             </div>
             <div>
-              <dt>Works with</dt>
+              <dt>Compatible projection formats</dt>
               <dd>{mode.compatible_target_families.join(" and ")}</dd>
+            </div>
+            <div>
+              <dt>Available now</dt>
+              <dd>Fresh Temper-managed Codex tasks</dd>
             </div>
             <div>
               <dt>Added tools</dt>
@@ -895,21 +1500,52 @@ function ModeDetailsDialog({
             Your request, project rules, security constraints, and Core always
             outrank Mode defaults.
           </div>
+          {projectId ? (
+            <dl
+              className="mode-detail-list"
+              aria-label="Native instruction coverage"
+            >
+              <div>
+                <dt>Existing setup considered</dt>
+                <dd>
+                  {selectedEnvironment
+                    ? `${selectedEnvironment.source_count} source${selectedEnvironment.source_count === 1 ? "" : "s"}`
+                    : "Not analyzed yet"}
+                </dd>
+              </div>
+              <div>
+                <dt>Candidate Mode material</dt>
+                <dd>
+                  {mode.projection_utf8_bytes} bytes before native deduplication
+                </dd>
+              </div>
+              <div>
+                <dt>Blocking conflicts</dt>
+                <dd>
+                  {selectedEnvironment?.blocking_conflict_count ?? "Unknown"}
+                </dd>
+              </div>
+              <div>
+                <dt>Final delta</dt>
+                <dd>Rehashed and minimized immediately before launch</dd>
+              </div>
+            </dl>
+          ) : null}
           <div className="mode-task-form">
-            <label className="core-field">
+            <div className="core-field">
               <span>Project</span>
-              <select
+              <TemperSelect
+                ariaLabel="Project"
                 disabled={!nativeRuntime}
-                onChange={(event) => setProjectId(event.target.value)}
+                onValueChange={setProjectId}
+                options={modeProjects.map((project) => ({
+                  label: project.label,
+                  value: project.id,
+                }))}
+                portalled={false}
                 value={projectId}
-              >
-                {modeProjects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+              />
+            </div>
             <label className="core-field">
               <span>Task</span>
               <textarea
@@ -921,9 +1557,12 @@ function ModeDetailsDialog({
               />
             </label>
             <p>
-              Uses a fresh isolated Codex session and your saved ChatGPT
-              authentication. Changes return for review; the Mode is removed
-              whether the task succeeds or fails.
+              {runnerReady
+                ? "Uses a fresh isolated Codex session with your saved ChatGPT authentication."
+                : (runnerUnavailableReason ??
+                  "Managed Mode delivery is unavailable in the current state.")}{" "}
+              Changes return for review; the Mode is removed whether the task
+              succeeds or fails.
             </p>
             {error ? (
               <div className="portability-error" role="alert">
@@ -939,7 +1578,9 @@ function ModeDetailsDialog({
               {busy
                 ? "Running isolated task…"
                 : nativeRuntime
-                  ? "Run with this Mode"
+                  ? runnerReady
+                    ? "Run with this Mode"
+                    : "Unavailable"
                   : "Available in desktop app"}
             </Button>
           </div>
@@ -950,10 +1591,12 @@ function ModeDetailsDialog({
 }
 
 function CoreItemDialog({
+  availableScopes,
   item,
   onClose,
   onSave,
 }: {
+  availableScopes: ProjectName[];
   item: CoreItem;
   onClose: () => void;
   onSave: (item: CoreItem) => void;
@@ -963,7 +1606,7 @@ function CoreItemDialog({
   const [scope, setScope] = useState<CoreItem["scope"]>(item.scope);
   const allowedScopes: CoreItem["scope"][] =
     item.scope === "Everywhere"
-      ? ["Everywhere", "Kairn", "Green Meadow"]
+      ? ["Everywhere", ...availableScopes]
       : [item.scope];
   const canSave = Boolean(title.trim() && description.trim());
   return (
@@ -979,6 +1622,9 @@ function CoreItemDialog({
           <Dialog.Description>
             Change the wording or narrow where this can be used.
           </Dialog.Description>
+          <p className="dialog-preview-note">
+            Sample preview · these edits do not change local Temper state.
+          </p>
           <label className="core-field">
             <span>Name</span>
             <input
@@ -996,21 +1642,19 @@ function CoreItemDialog({
               value={description}
             />
           </label>
-          <label className="core-field">
+          <div className="core-field">
             <span>Use in</span>
-            <select
-              onChange={(event) =>
-                setScope(event.target.value as CoreItem["scope"])
-              }
+            <TemperSelect
+              ariaLabel="Use in"
+              onValueChange={setScope}
+              options={allowedScopes.map((allowedScope) => ({
+                label: allowedScope,
+                value: allowedScope,
+              }))}
+              portalled={false}
               value={scope}
-            >
-              {allowedScopes.map((allowedScope) => (
-                <option key={allowedScope} value={allowedScope}>
-                  {allowedScope}
-                </option>
-              ))}
-            </select>
-          </label>
+            />
+          </div>
           <div className="core-source-note">
             <span>Based on</span>
             <strong>{item.sourceSummary}</strong>
@@ -1044,14 +1688,28 @@ export function ConnectionsPage({
   nativeRuntime = false,
   liveConnections,
   liveProjects,
+  instructionEnvironments = [],
+  previewConnections = [],
+  previewProjects = [],
+  registrationAvailable = true,
+  registrationUnavailableReason = null,
   snapshotDigest = null,
   onProjectRegistered,
+  onInstructionChanged,
+  onRefresh,
 }: {
   nativeRuntime?: boolean;
   liveConnections?: EngineAgentConnection[];
   liveProjects?: EngineProject[];
+  instructionEnvironments?: EngineInstructionEnvironmentSummary[];
+  previewConnections?: AgentConnection[];
+  previewProjects?: RegisteredProject[];
+  registrationAvailable?: boolean;
+  registrationUnavailableReason?: string | null;
   snapshotDigest?: string | null;
   onProjectRegistered?: (message: string) => void | Promise<void>;
+  onInstructionChanged?: (message: string) => void | Promise<void>;
+  onRefresh?: () => Promise<void>;
 }) {
   const [selectedConnection, setSelectedConnection] =
     useState<AgentConnection | null>(null);
@@ -1059,6 +1717,7 @@ export function ConnectionsPage({
     useState<EngineProjectPreview | null>(null);
   const [projectBusy, setProjectBusy] = useState(false);
   const [projectMessage, setProjectMessage] = useState<string | null>(null);
+  const [refreshBusy, setRefreshBusy] = useState(false);
   const shownConnections: AgentConnection[] = liveConnections
     ? liveConnections.map((connection) => ({
         authDescription: connection.status_summary,
@@ -1067,24 +1726,47 @@ export function ConnectionsPage({
         name: connection.display_name,
         sourceCapability: connection.learning_capability,
         status:
-          connection.agent_id === "codex" &&
-          connection.authentication_state === "signed_in" &&
-          connection.conformance_state === "compatible"
-            ? "connected"
-            : connection.installation_state === "installed"
-              ? "attention"
-              : "available",
+          connection.installation_state === "not_installed"
+            ? "not_installed"
+            : connection.agent_id === "claude"
+              ? "available"
+              : connection.conformance_state === "update_required"
+                ? "update_required"
+                : connection.authentication_state === "signed_out"
+                  ? "signed_out"
+                  : connection.agent_id === "codex" &&
+                      connection.authentication_state === "signed_in" &&
+                      connection.conformance_state === "compatible"
+                    ? "connected"
+                    : "attention",
         targetCapability: connection.delivery_capability,
       }))
-    : connections;
+    : previewConnections;
   const shownProjects = liveProjects
     ? liveProjects.map((project) => ({
-        connectedAgents: ["Codex"],
+        connectedAgents: project.task_runner_enabled ? ["Managed tasks"] : [],
         id: project.project_id,
         name: project.display_name,
         pathLabel: "Prospectively registered",
       }))
-    : projects;
+    : previewProjects;
+
+  function environmentStatus(projectId: string) {
+    const environments = instructionEnvironments.filter(
+      (environment) => environment.project_id === projectId,
+    );
+    const sourceCount = environments.reduce(
+      (total, environment) => total + environment.source_count,
+      0,
+    );
+    const skillCount = environments.reduce(
+      (total, environment) => total + environment.skill_count,
+      0,
+    );
+    const status = worstInstructionEnvironmentStatus(environments);
+    const semanticStatus = worstSemanticAnalysisStatus(environments);
+    return { semanticStatus, skillCount, sourceCount, status };
+  }
 
   async function chooseProject() {
     setProjectBusy(true);
@@ -1133,6 +1815,30 @@ export function ConnectionsPage({
         title="Connections"
         description="Review where Temper can learn and where it can deliver adaptations."
       />
+      {nativeRuntime ? (
+        <div className="connections-toolbar">
+          <Button
+            disabled={refreshBusy}
+            onClick={() => {
+              if (!onRefresh) return;
+              setRefreshBusy(true);
+              setProjectMessage(null);
+              void onRefresh()
+                .catch((error: unknown) =>
+                  setProjectMessage(
+                    error instanceof Error
+                      ? error.message
+                      : "Temper could not refresh connection status.",
+                  ),
+                )
+                .finally(() => setRefreshBusy(false));
+            }}
+            tone="quiet"
+          >
+            {refreshBusy ? "Checking…" : "Refresh status"}
+          </Button>
+        </div>
+      ) : null}
       {!nativeRuntime ? (
         <div className="native-action-note" role="note">
           <Laptop aria-hidden="true" size={16} />
@@ -1147,7 +1853,7 @@ export function ConnectionsPage({
         {shownConnections.map((connection) => (
           <article className="connection-card" key={connection.id}>
             <div className={`agent-logo agent-logo--${connection.id}`}>
-              <Bot size={22} />
+              <AgentBrandMark agent={connection.id} />
             </div>
             <div className="connection-main">
               <div className="connection-title">
@@ -1157,9 +1863,7 @@ export function ConnectionsPage({
                     connection.status === "connected" ? "positive" : "neutral"
                   }
                 >
-                  {connection.status === "connected"
-                    ? "Connected"
-                    : "Available"}
+                  {connectionStatusLabel(connection.status)}
                 </StatusPill>
               </div>
               <p>
@@ -1167,11 +1871,19 @@ export function ConnectionsPage({
               </p>
               <div className="capability-list">
                 <div>
-                  <CheckCircle2 size={15} />
+                  {connection.status === "connected" ? (
+                    <CheckCircle2 size={15} />
+                  ) : (
+                    <Info size={15} />
+                  )}
                   <span>{connection.sourceCapability}</span>
                 </div>
                 <div>
-                  <CheckCircle2 size={15} />
+                  {connection.status === "connected" ? (
+                    <CheckCircle2 size={15} />
+                  ) : (
+                    <Info size={15} />
+                  )}
                   <span>{connection.targetCapability}</span>
                 </div>
               </div>
@@ -1188,45 +1900,83 @@ export function ConnectionsPage({
       <section className="projects-section">
         <div className="subsection-heading">
           <div>
-            <h2>Active projects</h2>
+            <h2>Registered projects</h2>
             <p>Only new work after registration is eligible.</p>
           </div>
           <Button
-            disabled={!nativeRuntime || !snapshotDigest || projectBusy}
+            disabled={
+              !nativeRuntime ||
+              !snapshotDigest ||
+              projectBusy ||
+              !registrationAvailable
+            }
             icon={<Plus size={16} />}
             onClick={chooseProject}
+            title={registrationUnavailableReason ?? undefined}
           >
             Add project
           </Button>
         </div>
+        {nativeRuntime &&
+        !registrationAvailable &&
+        registrationUnavailableReason ? (
+          <p className="setup-state-message">{registrationUnavailableReason}</p>
+        ) : null}
         <div className="project-list">
-          {shownProjects.map((project) => (
-            <div className="project-row" key={project.id}>
-              <div className="project-monogram">{project.name[0]}</div>
-              <div className="project-row__copy">
-                <strong>{project.name}</strong>
-                <span>{project.pathLabel}</span>
+          {shownProjects.map((project) => {
+            const environment = environmentStatus(project.id);
+            return (
+              <div className="project-row" key={project.id}>
+                <div className="project-monogram">{project.name[0]}</div>
+                <div className="project-row__copy">
+                  <strong>{project.name}</strong>
+                  <span>{project.pathLabel}</span>
+                  {nativeRuntime ? (
+                    <span className="project-row__environment">
+                      {environment.sourceCount
+                        ? `${environment.sourceCount} instruction source${environment.sourceCount === 1 ? "" : "s"} · ${environment.skillCount} skill${environment.skillCount === 1 ? "" : "s"}`
+                        : "No supported agent instructions detected"}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="project-row__status">
+                  {nativeRuntime ? (
+                    <StatusPill
+                      tone={
+                        environment.status === "understood"
+                          ? "positive"
+                          : "neutral"
+                      }
+                    >
+                      {environment.status === "understood" &&
+                      environment.semanticStatus !== "current"
+                        ? semanticAnalysisStatusLabel(
+                            environment.semanticStatus,
+                          )
+                        : instructionEnvironmentStatusLabel(environment.status)}
+                    </StatusPill>
+                  ) : null}
+                  <span className="agent-chip">
+                    {project.connectedAgents.length
+                      ? project.connectedAgents.join(", ")
+                      : "Registered · managed tasks unavailable"}
+                  </span>
+                </div>
               </div>
-              <span className="agent-chip">
-                {project.connectedAgents.join(", ")}
-              </span>
-              <button
-                aria-label={`Manage ${project.name}`}
-                className="icon-button"
-                disabled
-                title="Project management requires the installed desktop app"
-                type="button"
-              >
-                <MoreHorizontal size={18} />
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
       {selectedConnection ? (
         <ConnectionDetailsDialog
           connection={selectedConnection}
+          instructionEnvironments={instructionEnvironments.filter(
+            (environment) => environment.target === selectedConnection.id,
+          )}
+          nativeRuntime={nativeRuntime}
           onClose={() => setSelectedConnection(null)}
+          onInstructionChanged={onInstructionChanged}
+          snapshotDigest={snapshotDigest}
         />
       ) : null}
       {projectPreview ? (
@@ -1279,11 +2029,135 @@ export function ConnectionsPage({
 
 function ConnectionDetailsDialog({
   connection,
+  instructionEnvironments,
+  nativeRuntime,
   onClose,
+  onInstructionChanged,
+  snapshotDigest,
 }: {
   connection: AgentConnection;
+  instructionEnvironments: EngineInstructionEnvironmentSummary[];
+  nativeRuntime: boolean;
   onClose: () => void;
+  onInstructionChanged?: (message: string) => void | Promise<void>;
+  snapshotDigest: string | null;
 }) {
+  const [preview, setPreview] = useState<EngineInstructionGlobalPreview | null>(
+    null,
+  );
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const target: EngineNativeTarget = connection.id;
+  const personalSetupEnabled = instructionEnvironments.some(
+    (environment) => environment.global_sources_enabled,
+  );
+  const sourceCount = instructionEnvironments.reduce(
+    (total, environment) => total + environment.source_count,
+    0,
+  );
+  const skillCount = instructionEnvironments.reduce(
+    (total, environment) => total + environment.skill_count,
+    0,
+  );
+  const lastAnalyzed = instructionEnvironments
+    .map((environment) => environment.last_analyzed_at)
+    .sort()
+    .at(-1);
+  const semanticStatus = worstSemanticAnalysisStatus(instructionEnvironments);
+
+  async function analyzeExistingSetup() {
+    if (!snapshotDigest || instructionEnvironments.length === 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      for (const environment of instructionEnvironments) {
+        await analyzeInstructionEnvironment(
+          environment.project_id,
+          environment.target,
+          snapshotDigest,
+          crypto.randomUUID(),
+        );
+      }
+      await onInstructionChanged?.(
+        `${connection.name} existing instructions were analyzed without promoting them into Core.`,
+      );
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Temper could not analyze that existing setup.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function inspectPersonalSetup() {
+    setBusy(true);
+    setError(null);
+    try {
+      setPreview(await previewPersonalInstructionSetup(target));
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Temper could not inspect that personal setup.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function enablePersonalSetup() {
+    if (!preview || !snapshotDigest) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await enablePersonalInstructionSetup(
+        preview.preview_token,
+        preview.target,
+        snapshotDigest,
+        crypto.randomUUID(),
+      );
+      setPreview(null);
+      await onInstructionChanged?.(
+        `${connection.name} personal instructions are now considered as observed context.`,
+      );
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Temper could not enable personal-setup inspection.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function disablePersonalSetup() {
+    if (!snapshotDigest) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await disablePersonalInstructionSetup(
+        target,
+        snapshotDigest,
+        crypto.randomUUID(),
+      );
+      await onInstructionChanged?.(
+        `${connection.name} personal instructions are no longer inspected.`,
+      );
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Temper could not disable personal-setup inspection.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <Dialog.Root onOpenChange={(open) => (open ? undefined : onClose())} open>
       <Dialog.Portal>
@@ -1292,7 +2166,9 @@ function ConnectionDetailsDialog({
           <Dialog.Close aria-label="Close" className="dialog-close">
             <X size={18} />
           </Dialog.Close>
-          <span className="folio-kicker">Connected agent</span>
+          <span className="folio-kicker">
+            {connectionStatusLabel(connection.status)} agent
+          </span>
           <Dialog.Title>{connection.name}</Dialog.Title>
           <Dialog.Description>
             {connection.authDescription}. {connection.costDescription}.
@@ -1306,12 +2182,110 @@ function ConnectionDetailsDialog({
               <dt>Delivery</dt>
               <dd>{connection.targetCapability}</dd>
             </div>
+            {nativeRuntime ? (
+              <>
+                <div>
+                  <dt>Existing setup</dt>
+                  <dd>
+                    {sourceCount} supported source{sourceCount === 1 ? "" : "s"}
+                    ; {skillCount} skill{skillCount === 1 ? "" : "s"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Last checked</dt>
+                  <dd>
+                    {lastAnalyzed
+                      ? formatInstructionCheckTime(lastAnalyzed)
+                      : "Not checked"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Semantic comparison</dt>
+                  <dd>{semanticAnalysisStatusLabel(semanticStatus)}</dd>
+                </div>
+              </>
+            ) : null}
           </dl>
           <p className="connection-dialog-note">
             {connection.id === "claude"
               ? "Detection does not connect Claude to Temper or authorize provider-billed use."
               : "Temper can learn only from prospectively registered completed work and deliver only to fresh Temper-managed tasks."}
           </p>
+          {nativeRuntime && instructionEnvironments.length ? (
+            <div className="personal-setup__actions">
+              <Button
+                disabled={busy || !snapshotDigest}
+                onClick={() => void analyzeExistingSetup()}
+                tone="quiet"
+              >
+                {busy ? "Analyzing…" : "Analyze existing setup"}
+              </Button>
+            </div>
+          ) : null}
+          {nativeRuntime ? (
+            <section
+              className="personal-setup"
+              aria-labelledby="personal-setup-title"
+            >
+              <div>
+                <h3 id="personal-setup-title">Personal agent setup</h3>
+                <p>
+                  Optional. Temper reads only the folder you choose and keeps
+                  its contents as observed context. This does not approve new
+                  learning or modify any files.
+                </p>
+              </div>
+              {preview ? (
+                <div className="personal-setup__preview">
+                  <strong>Ready to inspect</strong>
+                  <span>{preview.categories.join(" · ")}</span>
+                  <span>
+                    {preview.source_count} supported source
+                    {preview.source_count === 1 ? "" : "s"} ·{" "}
+                    {preview.skill_count} skill
+                    {preview.skill_count === 1 ? "" : "s"}
+                  </span>
+                </div>
+              ) : null}
+              {error ? <p role="alert">{error}</p> : null}
+              <div className="personal-setup__actions">
+                {personalSetupEnabled ? (
+                  <Button
+                    disabled={busy || !snapshotDigest}
+                    onClick={() => void disablePersonalSetup()}
+                    tone="quiet"
+                  >
+                    {busy ? "Updating…" : "Stop inspecting"}
+                  </Button>
+                ) : preview ? (
+                  <>
+                    <Button
+                      disabled={busy}
+                      onClick={() => setPreview(null)}
+                      tone="quiet"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      disabled={busy || !snapshotDigest}
+                      onClick={() => void enablePersonalSetup()}
+                      tone="primary"
+                    >
+                      {busy ? "Enabling…" : "Enable read-only inspection"}
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    disabled={busy || !snapshotDigest}
+                    onClick={() => void inspectPersonalSetup()}
+                    tone="quiet"
+                  >
+                    {busy ? "Opening…" : "Inspect personal setup"}
+                  </Button>
+                )}
+              </div>
+            </section>
+          ) : null}
           <div className="core-dialog__actions">
             <Button onClick={onClose} tone="primary">
               Done
@@ -1321,6 +2295,89 @@ function ConnectionDetailsDialog({
       </Dialog.Portal>
     </Dialog.Root>
   );
+}
+
+function worstInstructionEnvironmentStatus(
+  environments: EngineInstructionEnvironmentSummary[],
+): EngineInstructionEnvironmentSummary["status"] {
+  const ranking: Record<EngineInstructionEnvironmentSummary["status"], number> =
+    {
+      conflicting: 3,
+      incomplete: 2,
+      changed: 1,
+      understood: 0,
+    };
+  return environments.reduce<EngineInstructionEnvironmentSummary["status"]>(
+    (worst, environment) =>
+      ranking[environment.status] > ranking[worst] ? environment.status : worst,
+    "understood",
+  );
+}
+
+function instructionEnvironmentStatusLabel(
+  status: EngineInstructionEnvironmentSummary["status"],
+): string {
+  return {
+    changed: "Changed · review needed",
+    conflicting: "Conflict detected",
+    incomplete: "Incomplete",
+    understood: "Understood",
+  }[status];
+}
+
+function worstSemanticAnalysisStatus(
+  environments: EngineInstructionEnvironmentSummary[],
+): EngineInstructionEnvironmentSummary["semantic_analysis_status"] {
+  const ranking: Record<
+    EngineInstructionEnvironmentSummary["semantic_analysis_status"],
+    number
+  > = {
+    stale: 3,
+    not_requested: 2,
+    unavailable: 1,
+    current: 0,
+  };
+  return environments.reduce<
+    EngineInstructionEnvironmentSummary["semantic_analysis_status"]
+  >(
+    (worst, environment) =>
+      ranking[environment.semantic_analysis_status] > ranking[worst]
+        ? environment.semantic_analysis_status
+        : worst,
+    "current",
+  );
+}
+
+function semanticAnalysisStatusLabel(
+  status: EngineInstructionEnvironmentSummary["semantic_analysis_status"],
+): string {
+  return {
+    current: "Current",
+    not_requested: "Not analyzed yet",
+    stale: "Needs reanalysis",
+    unavailable: "Unavailable",
+  }[status];
+}
+
+function formatInstructionCheckTime(value: string): string {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.valueOf())
+    ? "Unavailable"
+    : parsed.toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+}
+
+function connectionStatusLabel(status: AgentConnection["status"]): string {
+  return {
+    connected: "Ready",
+    available: "Detected · Not integrated",
+    attention: "Needs attention",
+    not_installed: "Not installed",
+    signed_out: "Sign-in required",
+    update_required: "Temper update required",
+  }[status];
 }
 
 export function SettingsPage({
@@ -1336,7 +2393,9 @@ export function SettingsPage({
   decisionNotificationsEnabled = false,
   launchAtLoginEnabled = false,
   consent = null,
+  secureStoreReady = false,
   onGovernedPreferencesChange,
+  onRenewConsent,
 }: {
   theme: Theme;
   onThemeChange: (theme: Theme) => void;
@@ -1350,12 +2409,14 @@ export function SettingsPage({
   decisionNotificationsEnabled?: boolean;
   launchAtLoginEnabled?: boolean;
   consent?: EngineDesktopSnapshot["consent"] | null;
+  secureStoreReady?: boolean;
   onGovernedPreferencesChange?: (
     learningEnabled: boolean,
     reportingEnabled: boolean,
     notificationsEnabled: boolean,
     launchAtLoginEnabled: boolean,
   ) => Promise<void>;
+  onRenewConsent?: () => Promise<void>;
 }) {
   const [learning, setLearning] = useState(
     nativeRuntime ? backgroundLearning : true,
@@ -1367,6 +2428,68 @@ export function SettingsPage({
   );
   const [previewOpen, setPreviewOpen] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
+  const [preferenceBusy, setPreferenceBusy] = useState(false);
+  const [preferenceError, setPreferenceError] = useState<string | null>(null);
+
+  async function savePreferences(
+    nextLearning: boolean,
+    nextTelemetry: boolean,
+    nextNotifications: boolean,
+    nextLaunch: boolean,
+  ) {
+    if (!nativeRuntime || !onGovernedPreferencesChange) return;
+    setPreferenceBusy(true);
+    setPreferenceError(null);
+    try {
+      await onGovernedPreferencesChange(
+        nextLearning,
+        nextTelemetry,
+        nextNotifications,
+        nextLaunch,
+      );
+    } catch (error: unknown) {
+      setPreferenceError(
+        error instanceof Error
+          ? error.message
+          : "Temper could not save that setting.",
+      );
+    } finally {
+      setPreferenceBusy(false);
+    }
+  }
+
+  async function saveNotificationPreference(enabled: boolean) {
+    if (!nativeRuntime) {
+      setNotifications(enabled);
+      return;
+    }
+    if (enabled) {
+      setPreferenceBusy(true);
+      setPreferenceError(null);
+      try {
+        const permission = await requestNotificationPermission();
+        if (permission !== "granted") {
+          setPreferenceError(
+            "Notifications remain off because this device did not grant permission.",
+          );
+          return;
+        }
+      } catch {
+        setPreferenceError(
+          "Temper could not confirm notification permission, so notifications remain off.",
+        );
+        return;
+      } finally {
+        setPreferenceBusy(false);
+      }
+    }
+    await savePreferences(
+      backgroundLearning,
+      telemetryEnabled,
+      enabled,
+      launchAtLoginEnabled,
+    );
+  }
   return (
     <div className="page settings-page">
       <header className="page-topline">
@@ -1381,10 +2504,11 @@ export function SettingsPage({
           checked={nativeRuntime ? backgroundLearning : learning}
           description="Notice possible preferences in completed work from registered projects."
           label="Background learning"
+          disabled={preferenceBusy}
           onCheckedChange={(enabled) => {
             setLearning(enabled);
             if (nativeRuntime) {
-              void onGovernedPreferencesChange?.(
+              void savePreferences(
                 enabled,
                 telemetryEnabled,
                 decisionNotificationsEnabled,
@@ -1397,29 +2521,19 @@ export function SettingsPage({
           checked={nativeRuntime ? decisionNotificationsEnabled : notifications}
           description="Show a quiet notification when a decision is ready."
           label="Decision notifications"
+          disabled={preferenceBusy}
           onCheckedChange={(enabled) => {
-            setNotifications(enabled);
-            if (nativeRuntime) {
-              void onGovernedPreferencesChange?.(
-                backgroundLearning,
-                telemetryEnabled,
-                enabled,
-                launchAtLoginEnabled,
-              );
-            }
+            void saveNotificationPreference(enabled);
           }}
         />
-        <Toggle
-          checked={automaticLearning}
-          description={
-            nativeRuntime
-              ? "Not enabled in this build. Every proposed adaptation still receives a governed review."
-              : "Keep only strong, low-impact project preferences. Temper notifies you and gives you 24 hours to undo."
-          }
-          disabled={nativeRuntime}
-          label="Automatic low-risk learning"
-          onCheckedChange={onAutomaticLearningChange}
-        />
+        {!nativeRuntime ? (
+          <Toggle
+            checked={automaticLearning}
+            description="Keep only strong, low-impact project preferences. Temper notifies you and gives you 24 hours to undo."
+            label="Automatic low-risk learning"
+            onCheckedChange={onAutomaticLearningChange}
+          />
+        ) : null}
       </SettingsGroup>
       <SettingsGroup title="Appearance">
         <div className="setting-inline">
@@ -1452,10 +2566,11 @@ export function SettingsPage({
           checked={nativeRuntime ? launchAtLoginEnabled : launch}
           description="Keep Temper available in the tray after you sign in."
           label="Launch at sign-in"
+          disabled={preferenceBusy}
           onCheckedChange={(enabled) => {
             setLaunch(enabled);
             if (nativeRuntime) {
-              void onGovernedPreferencesChange?.(
+              void savePreferences(
                 backgroundLearning,
                 telemetryEnabled,
                 decisionNotificationsEnabled,
@@ -1465,56 +2580,65 @@ export function SettingsPage({
           }}
         />
       </SettingsGroup>
-      <SettingsGroup title="Privacy and telemetry">
+      {preferenceError ? (
+        <p className="settings-availability-note" role="alert">
+          {preferenceError}
+        </p>
+      ) : null}
+      <SettingsGroup
+        title={nativeRuntime ? "Privacy" : "Privacy and telemetry"}
+      >
         <div className="privacy-summary">
           <ShieldCheck size={20} />
           <div>
-            <strong>Local evidence, encrypted</strong>
+            <strong>Evidence storage</strong>
             <span>
-              Raw evidence is retained for at most 30 days and is never included
-              in telemetry.
+              {nativeRuntime && !secureStoreReady
+                ? "Secure storage needs attention before Temper can learn or deliver."
+                : "Evidence stays encrypted on this device for at most 30 days."}
             </span>
           </div>
           <Button onClick={() => setConsentOpen(true)} tone="quiet">
             View consent
           </Button>
         </div>
-        <Toggle
-          checked={nativeRuntime ? telemetryEnabled : telemetry}
-          description={
-            nativeRuntime
-              ? telemetryEnabled
-                ? "Permission was enabled previously, but cloud reporting is unavailable in this build. You can turn the permission off; nothing is uploaded."
-                : "Cloud reporting is not available in this internal build. Nothing is uploaded."
-              : "Send signed, raw-free product health counts. Off by default."
-          }
-          disabled={nativeRuntime && !telemetryEnabled}
-          label="Help improve Temper"
-          onCheckedChange={(enabled) => {
-            setTelemetry(enabled);
-            if (nativeRuntime) {
-              void onGovernedPreferencesChange?.(
+        {nativeRuntime ? (
+          <Toggle
+            checked={telemetryEnabled}
+            description={
+              telemetryEnabled
+                ? "Reporting was previously allowed. You can turn it off; this build cannot upload new reports."
+                : "Aggregate reporting is unavailable in this build. Nothing is uploaded."
+            }
+            disabled={preferenceBusy || !telemetryEnabled}
+            label="Help improve Temper"
+            onCheckedChange={(enabled) => {
+              if (enabled) return;
+              setTelemetry(false);
+              void savePreferences(
                 backgroundLearning,
-                enabled,
+                false,
                 decisionNotificationsEnabled,
                 launchAtLoginEnabled,
               );
-            }
-          }}
-        />
-        {nativeRuntime ? (
-          <p className="settings-availability-note">
-            Report preview, history, and deletion will appear only when the
-            signed reporting service is enabled in a future build.
-          </p>
+            }}
+          />
         ) : (
+          <Toggle
+            checked={telemetry}
+            description="Send signed, raw-free product health counts. Off by default."
+            label="Help improve Temper"
+            onCheckedChange={setTelemetry}
+          />
+        )}
+        {!nativeRuntime ? (
           <div className="settings-links">
             <button onClick={() => setPreviewOpen(true)} type="button">
               Preview sample report
             </button>
             <span>Browser preview only</span>
           </div>
-        )}
+        ) : null}
       </SettingsGroup>
       <SettingsGroup title="Advanced">
         <Toggle
@@ -1528,8 +2652,10 @@ export function SettingsPage({
       <ConsentDialog
         consent={consent}
         nativeRuntime={nativeRuntime}
+        onRenewConsent={onRenewConsent}
         onOpenChange={setConsentOpen}
         open={consentOpen}
+        renewalAvailable={secureStoreReady}
       />
     </div>
   );
@@ -1540,12 +2666,18 @@ function ConsentDialog({
   nativeRuntime,
   open,
   onOpenChange,
+  onRenewConsent,
+  renewalAvailable,
 }: {
   consent: EngineDesktopSnapshot["consent"] | null;
   nativeRuntime: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onRenewConsent?: () => Promise<void>;
+  renewalAvailable: boolean;
 }) {
+  const [renewing, setRenewing] = useState(false);
+  const [renewalError, setRenewalError] = useState<string | null>(null);
   const expiresAt = consent
     ? new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(
         new Date(consent.expires_at),
@@ -1586,7 +2718,13 @@ function ConsentDialog({
             />
             <ReportRow
               label="Raw retention"
-              value={`${consent?.retention_days ?? 30} days`}
+              value={
+                consent
+                  ? `${consent.retention_days} days`
+                  : nativeRuntime
+                    ? "Unavailable"
+                    : "30 days"
+              }
             />
             <ReportRow label="Expires" value={expiresAt ?? "Not configured"} />
             <ReportRow
@@ -1602,10 +2740,38 @@ function ConsentDialog({
             </span>
           </div>
           <div className="dialog-footer">
+            {nativeRuntime && consent?.renewal_required ? (
+              <Button
+                disabled={renewing || !renewalAvailable}
+                onClick={() => {
+                  if (!onRenewConsent) return;
+                  setRenewing(true);
+                  setRenewalError(null);
+                  void onRenewConsent()
+                    .then(() => onOpenChange(false))
+                    .catch((error: unknown) =>
+                      setRenewalError(
+                        error instanceof Error
+                          ? error.message
+                          : "Temper could not renew consent.",
+                      ),
+                    )
+                    .finally(() => setRenewing(false));
+                }}
+                tone="primary"
+              >
+                {renewing
+                  ? "Renewing…"
+                  : renewalAvailable
+                    ? "Renew for 30 days"
+                    : "Secure storage required"}
+              </Button>
+            ) : null}
             <Button onClick={() => onOpenChange(false)} tone="primary">
               Done
             </Button>
           </div>
+          {renewalError ? <p role="alert">{renewalError}</p> : null}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -1714,6 +2880,9 @@ function ReportRow({ label, value }: { label: string; value: string }) {
 export function AdvancedPage({
   nativeRuntime = false,
   projects: liveProjects = [],
+  previewProjects = [],
+  runnerReady = false,
+  runnerUnavailableReason = null,
   taskResult = null,
   diagnostics = null,
   onRun,
@@ -1723,6 +2892,9 @@ export function AdvancedPage({
 }: {
   nativeRuntime?: boolean;
   projects?: Array<{ id: string; label: string }>;
+  previewProjects?: Array<{ id: string; label: string }>;
+  runnerReady?: boolean;
+  runnerUnavailableReason?: string | null;
   taskResult?: EngineTaskResult | null;
   diagnostics?: EngineDiagnostics | null;
   onRun?: (projectId: string, task: string) => Promise<void>;
@@ -1733,21 +2905,21 @@ export function AdvancedPage({
   const [running, setRunning] = useState(false);
   const [resolving, setResolving] = useState(false);
   const [showDiff, setShowDiff] = useState(true);
-  const [task, setTask] = useState(
-    "Review the release handoff and fix only the verified blocker.",
-  );
+  const [task, setTask] = useState("");
   const [projectId, setProjectId] = useState(liveProjects[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [diagnosticsError, setDiagnosticsError] = useState<string | null>(null);
   const browserReview = !nativeRuntime && showDiff;
   const review = taskResult?.change_review;
-  const selectedProjectId = projectId || liveProjects[0]?.id || "";
+  const visibleProjects = nativeRuntime ? liveProjects : previewProjects;
+  const selectedProjectId = projectId || visibleProjects[0]?.id || "";
 
   async function run() {
     if (!nativeRuntime) {
       setShowDiff(true);
       return;
     }
-    if (!selectedProjectId || !task.trim() || !onRun) return;
+    if (!runnerReady || !selectedProjectId || !task.trim() || !onRun) return;
     setRunning(true);
     setError(null);
     try {
@@ -1773,25 +2945,24 @@ export function AdvancedPage({
         description="Run one fresh isolated task with the smallest relevant projection. Your project is unchanged until you approve the diff."
       />
       <section className="lab-card">
+        {nativeRuntime && !runnerReady ? (
+          <p className="setup-state-message">
+            {runnerUnavailableReason ??
+              "Managed Codex tasks are unavailable in the current state."}
+          </p>
+        ) : null}
         <div className="lab-field-row">
           <label htmlFor="lab-project">Project</label>
-          <select
+          <TemperSelect
+            ariaLabel="Project"
             id="lab-project"
-            onChange={(event) => setProjectId(event.target.value)}
-            value={nativeRuntime ? selectedProjectId : "kairn"}
-          >
-            {(nativeRuntime
-              ? liveProjects
-              : [
-                  { id: "kairn", label: "Kairn" },
-                  { id: "green-meadow", label: "Green Meadow" },
-                ]
-            ).map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.label}
-              </option>
-            ))}
-          </select>
+            onValueChange={setProjectId}
+            options={visibleProjects.map((project) => ({
+              label: project.label,
+              value: project.id,
+            }))}
+            value={selectedProjectId}
+          />
         </div>
         <label className="lab-label" htmlFor="lab-task">
           Task
@@ -1811,12 +2982,20 @@ export function AdvancedPage({
         <Button
           icon={running ? <Pause size={16} /> : <Play size={16} />}
           disabled={
-            running || (nativeRuntime && (!selectedProjectId || !task.trim()))
+            !nativeRuntime ||
+            running ||
+            !runnerReady ||
+            !selectedProjectId ||
+            !task.trim()
           }
           onClick={() => void run()}
           tone="primary"
         >
-          {running ? "Running…" : "Run task"}
+          {running
+            ? "Running…"
+            : nativeRuntime
+              ? "Run task"
+              : "Available in desktop app"}
         </Button>
         {error ? <p role="alert">{error}</p> : null}
       </section>
@@ -1841,11 +3020,11 @@ export function AdvancedPage({
               <p>
                 {review
                   ? `${review.changed_files.length} files changed. Nothing has touched the project yet.`
-                  : "2 files changed. Nothing has touched Kairn yet."}
+                  : "Sample diff for 2 files. No local project is connected."}
               </p>
             </div>
             <StatusPill tone={nativeRuntime ? "neutral" : "positive"}>
-              {nativeRuntime ? "Review ready" : "Checks passed"}
+              {nativeRuntime ? "Review ready" : "Sample diff"}
             </StatusPill>
           </div>
           <pre aria-label="Proposed code changes">
@@ -1885,7 +3064,7 @@ export function AdvancedPage({
           <div className="diff-actions">
             <Button
               icon={<Check size={16} />}
-              disabled={resolving}
+              disabled={!nativeRuntime || !onApply || resolving}
               onClick={() => {
                 if (!onApply) return;
                 setResolving(true);
@@ -1943,7 +3122,22 @@ export function AdvancedPage({
         ) : (
           <p>Load a raw-free local instrument summary when you need it.</p>
         )}
-        <Button onClick={() => void onDiagnostics?.()} tone="quiet">
+        {diagnosticsError ? <p role="alert">{diagnosticsError}</p> : null}
+        <Button
+          disabled={!nativeRuntime || !onDiagnostics}
+          onClick={() => {
+            if (!onDiagnostics) return;
+            setDiagnosticsError(null);
+            void onDiagnostics().catch((caught: unknown) =>
+              setDiagnosticsError(
+                caught instanceof Error
+                  ? caught.message
+                  : "Temper could not load diagnostics.",
+              ),
+            );
+          }}
+          tone="quiet"
+        >
           Refresh diagnostics
         </Button>
       </section>
@@ -1962,7 +3156,11 @@ export function TrayPreview({ onOpen }: { onOpen: () => void }) {
           <strong>Temper noticed something</strong>
           <span>A possible preference is ready to review.</span>
         </div>
-        <button aria-label="Dismiss notification" type="button">
+        <button
+          aria-label="Dismiss notification (preview only)"
+          disabled
+          type="button"
+        >
           <X size={15} />
         </button>
       </aside>
@@ -1972,7 +3170,7 @@ export function TrayPreview({ onOpen }: { onOpen: () => void }) {
           <div>
             <strong>Temper</strong>
             <span>
-              <i /> Active in Kairn
+              <i /> Sample state
             </span>
           </div>
         </div>
@@ -1982,21 +3180,21 @@ export function TrayPreview({ onOpen }: { onOpen: () => void }) {
           <span>Review suggestion</span>
           <b>1</b>
         </button>
-        <button type="button">
+        <button disabled type="button">
           <Pause size={16} />
           <span>Pause Temper</span>
         </button>
         <Divider />
-        <button type="button">
+        <button disabled type="button">
           <ExternalLink size={16} />
           <span>Open Temper</span>
         </button>
-        <button type="button">
+        <button disabled type="button">
           <CircleHelp size={16} />
           <span>Help</span>
         </button>
         <Divider />
-        <button type="button">
+        <button disabled type="button">
           <X size={16} />
           <span>Quit</span>
         </button>

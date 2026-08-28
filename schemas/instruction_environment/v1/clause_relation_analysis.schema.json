@@ -1,0 +1,75 @@
+{
+  "$defs": {
+    "InstructionRelationKind": {
+      "enum": [
+        "exact_duplicate",
+        "semantic_equivalent",
+        "contradiction",
+        "narrower_exception",
+        "broader_overlap",
+        "complementary",
+        "unknown"
+      ],
+      "title": "InstructionRelationKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "analysis_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Analysis Version",
+      "type": "string"
+    },
+    "confidence": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "interpreter_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Interpreter Digest",
+      "type": "string"
+    },
+    "native_clause_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Native Clause Digest",
+      "type": "string"
+    },
+    "native_clause_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Native Clause Id",
+      "type": "string"
+    },
+    "pair_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Pair Id",
+      "type": "string"
+    },
+    "relation": {
+      "$ref": "#/$defs/InstructionRelationKind"
+    },
+    "temper_clause_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Temper Clause Digest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "pair_id",
+    "temper_clause_digest",
+    "native_clause_id",
+    "native_clause_digest",
+    "relation",
+    "confidence",
+    "interpreter_digest"
+  ],
+  "title": "ClauseRelationAnalysisV1",
+  "type": "object"
+}
