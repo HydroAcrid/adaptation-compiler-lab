@@ -1,0 +1,281 @@
+{
+  "$defs": {
+    "NativeMemoryAction": {
+      "description": "A capability an agent exposes for its own memory surface.",
+      "enum": [
+        "read",
+        "isolate_managed_session",
+        "disable",
+        "edit",
+        "rollback"
+      ],
+      "title": "NativeMemoryAction",
+      "type": "string"
+    },
+    "NativeMemoryCapabilityV1": {
+      "additionalProperties": false,
+      "description": "Version-pinned native-memory operations for one exact target surface.\n\nCapability discovery is descriptive. It never authorizes Temper to mutate native memory.",
+      "properties": {
+        "automatic_mutation_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Automatic Mutation Allowed",
+          "type": "boolean"
+        },
+        "capability_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Capability Digest",
+          "type": "string"
+        },
+        "capability_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Capability Version",
+          "type": "string"
+        },
+        "managed_sessions_only": {
+          "default": true,
+          "title": "Managed Sessions Only",
+          "type": "boolean"
+        },
+        "requires_preview": {
+          "const": true,
+          "default": true,
+          "title": "Requires Preview",
+          "type": "boolean"
+        },
+        "source_kind": {
+          "$ref": "#/$defs/NativeSourceKind"
+        },
+        "supported_actions": {
+          "items": {
+            "$ref": "#/$defs/NativeMemoryAction"
+          },
+          "title": "Supported Actions",
+          "type": "array"
+        },
+        "surface": {
+          "minLength": 1,
+          "title": "Surface",
+          "type": "string"
+        },
+        "surface_contract_version": {
+          "minLength": 1,
+          "title": "Surface Contract Version",
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/NativeTarget"
+        }
+      },
+      "required": [
+        "target",
+        "surface",
+        "surface_contract_version",
+        "source_kind",
+        "supported_actions",
+        "capability_digest"
+      ],
+      "title": "NativeMemoryCapabilityV1",
+      "type": "object"
+    },
+    "NativeSourceKind": {
+      "enum": [
+        "project_instructions",
+        "project_rule",
+        "project_skill",
+        "personal_instructions",
+        "personal_memory",
+        "personal_skill",
+        "managed_instructions"
+      ],
+      "title": "NativeSourceKind",
+      "type": "string"
+    },
+    "NativeTarget": {
+      "enum": [
+        "codex",
+        "claude",
+        "copilot"
+      ],
+      "title": "NativeTarget",
+      "type": "string"
+    },
+    "ReconciliationDispositionKind": {
+      "description": "The least-invasive deterministic treatment of one Temper clause.",
+      "enum": [
+        "included",
+        "omitted_as_covered",
+        "blocked_by_policy",
+        "included_with_native_memory_conflict",
+        "preserved_as_scoped_exception",
+        "needs_review"
+      ],
+      "title": "ReconciliationDispositionKind",
+      "type": "string"
+    },
+    "ReconciliationDispositionV1": {
+      "additionalProperties": false,
+      "description": "Authority-aware disposition for one approved Temper clause.",
+      "properties": {
+        "delivery_blocked": {
+          "title": "Delivery Blocked",
+          "type": "boolean"
+        },
+        "disposition": {
+          "$ref": "#/$defs/ReconciliationDispositionKind"
+        },
+        "disposition_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Disposition Version",
+          "type": "string"
+        },
+        "native_change_required": {
+          "const": false,
+          "default": false,
+          "title": "Native Change Required",
+          "type": "boolean"
+        },
+        "native_clause_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Native Clause Ids",
+          "type": "array"
+        },
+        "native_source_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Native Source Ids",
+          "type": "array"
+        },
+        "rationale": {
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "review_required": {
+          "default": false,
+          "title": "Review Required",
+          "type": "boolean"
+        },
+        "temper_clause_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Temper Clause Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "temper_clause_digest",
+        "disposition",
+        "rationale",
+        "delivery_blocked"
+      ],
+      "title": "ReconciliationDispositionV1",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Complete authority-aware plan for one exact native environment.",
+  "properties": {
+    "delta_plan_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Delta Plan Digest",
+      "type": "string"
+    },
+    "dispositions": {
+      "items": {
+        "$ref": "#/$defs/ReconciliationDispositionV1"
+      },
+      "title": "Dispositions",
+      "type": "array"
+    },
+    "environment_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Environment Digest",
+      "type": "string"
+    },
+    "fully_reconciled": {
+      "title": "Fully Reconciled",
+      "type": "boolean"
+    },
+    "managed_session_isolation_required": {
+      "default": false,
+      "title": "Managed Session Isolation Required",
+      "type": "boolean"
+    },
+    "native_memory_capabilities": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/NativeMemoryCapabilityV1"
+      },
+      "title": "Native Memory Capabilities",
+      "type": "array"
+    },
+    "plan_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Plan Version",
+      "type": "string"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "source_chain_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Chain Digest",
+      "type": "string"
+    },
+    "surface": {
+      "minLength": 1,
+      "title": "Surface",
+      "type": "string"
+    },
+    "surface_contract_version": {
+      "minLength": 1,
+      "title": "Surface Contract Version",
+      "type": "string"
+    },
+    "target": {
+      "$ref": "#/$defs/NativeTarget"
+    },
+    "unresolved_conflict_ids": {
+      "default": [],
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Unresolved Conflict Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "project_id",
+    "target",
+    "surface",
+    "surface_contract_version",
+    "environment_digest",
+    "source_chain_digest",
+    "delta_plan_digest",
+    "dispositions",
+    "fully_reconciled"
+  ],
+  "title": "InstructionReconciliationPlanV1",
+  "type": "object"
+}

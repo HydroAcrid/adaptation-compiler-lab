@@ -97,6 +97,11 @@
       "title": "Native Included Clause Digests",
       "type": "array"
     },
+    "native_managed_session_isolation_required": {
+      "default": false,
+      "title": "Native Managed Session Isolation Required",
+      "type": "boolean"
+    },
     "native_omitted_clause_digests": {
       "default": [],
       "items": {
@@ -105,6 +110,19 @@
       },
       "title": "Native Omitted Clause Digests",
       "type": "array"
+    },
+    "native_reconciliation_plan_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Native Reconciliation Plan Digest"
     },
     "native_relation_digests": {
       "default": [],
@@ -168,6 +186,17 @@
       ],
       "default": null,
       "title": "Native Target Surface Version"
+    },
+    "native_unresolved_conflict_ids": {
+      "default": [],
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Native Unresolved Conflict Ids",
+      "type": "array"
     },
     "rendered_content_digest": {
       "pattern": "^sha256:[0-9a-f]{64}$",

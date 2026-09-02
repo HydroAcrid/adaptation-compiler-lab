@@ -250,6 +250,10 @@ class EngineProtocolRouter:
             return self._instruction_environment_refresh(request)
         if request.method == "instruction_environment.analyze":
             return self._instruction_environment_analyze(request)
+        if request.method == "instruction_environment.reconcile":
+            return self._instruction_environment_reconcile(request)
+        if request.method == "instruction_environment.adoption.preview":
+            return self._instruction_adoption_preview(request)
         if request.method == "instruction_environment.global.preview":
             return self._instruction_global_preview(request)
         if request.method == "instruction_environment.global.enable":
@@ -434,6 +438,66 @@ class EngineProtocolRouter:
             snapshot_digest=snapshot_digest,
         )
         return self._remember_mutation(request, fingerprint, response)
+
+    def _instruction_environment_reconcile(self, request: EngineRequest) -> EngineResponse:
+        if self._service is None:
+            return self._not_configured(request)
+        try:
+            if set(request.params) != {"project_id", "target"}:
+                raise ValueError
+            plan = self._instruction_service().reconciliation(
+                project_id=_required_string(request.params, "project_id"),
+                target=NativeTarget(_required_string(request.params, "target")),
+            )
+        except (OSError, TypeError, ValueError):
+            return self._error(
+                request,
+                "instruction_reconciliation_unavailable",
+                "Temper could not safely reconcile this agent's current memory and instructions.",
+                retryable=True,
+            )
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result=plan.model_dump(mode="json"),
+        )
+
+    def _instruction_adoption_preview(self, request: EngineRequest) -> EngineResponse:
+        if self._service is None:
+            return self._not_configured(request)
+        if request.expected_snapshot_digest is None:
+            return self._error(
+                request,
+                "snapshot_binding_required",
+                "Review the current Temper state before adopting observed native context.",
+            )
+        try:
+            if set(request.params) != {"project_id", "target", "native_clause_id"}:
+                raise ValueError
+            current = self._service.load()
+            if current.content_digest != request.expected_snapshot_digest:
+                return self._error(
+                    request,
+                    "stale_snapshot",
+                    "Temper changed; review the current state before adopting native context.",
+                )
+            preview = self._instruction_service().preview_adoption(
+                project_id=_required_string(request.params, "project_id"),
+                target=NativeTarget(_required_string(request.params, "target")),
+                native_clause_id=_required_string(request.params, "native_clause_id"),
+            )
+        except (OSError, TypeError, ValueError):
+            return self._error(
+                request,
+                "native_adoption_preview_refused",
+                "Temper could not safely preview that observed native behavior.",
+            )
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result=preview.model_dump(mode="json"),
+            snapshot_digest=request.expected_snapshot_digest,
+        )
 
     def _instruction_global_preview(self, request: EngineRequest) -> EngineResponse:
         if self._service is None:

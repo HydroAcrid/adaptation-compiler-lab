@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -20,6 +20,7 @@ from adaptation_compiler_lab.instruction_environment.models import (
     NativeInstructionKind,
     NativeNormStrength,
     NativeTarget,
+    ReconciliationDispositionKind,
 )
 from adaptation_compiler_lab.instruction_environment.resolver import (
     build_instruction_delta_plan,
@@ -124,6 +125,9 @@ def _service(
     *,
     raw_store: LocalRawPayloadStore | None = None,
     signer: GovernanceSigner | None = None,
+    projection_provider: (
+        Callable[[str, NativeTarget], CanonicalRuntimeProjection | None] | None
+    ) = None,
 ) -> InstructionEnvironmentService:
     return InstructionEnvironmentService(
         projects={"temper": project},
@@ -134,6 +138,7 @@ def _service(
         or GovernanceSigner(
             Ed25519PrivateKey.generate(), identity_id="temper-local", subject_id="kevin"
         ),
+        projection_provider=projection_provider,
         clock=lambda: NOW,
     )
 
@@ -162,6 +167,38 @@ def test_global_sources_are_absent_until_explicit_preview_and_enable(tmp_path: P
     assert enabled.global_sources_enabled
     assert enabled.skill_count == 1
     assert enabled.sources[0].observed_context_only
+
+
+def test_reconciliation_and_adoption_preview_preserve_authority_boundary(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / "AGENTS.md").write_text(
+        "Run the affected test before reporting completion.\n",
+        encoding="utf-8",
+    )
+    projection = _projection()
+    service = _service(
+        tmp_path,
+        project,
+        projection_provider=lambda project_id, target: (
+            projection if project_id == "temper" and target is NativeTarget.CODEX else None
+        ),
+    )
+
+    environment = service.get(project_id="temper", target=NativeTarget.CODEX)
+    plan = service.reconciliation(project_id="temper", target=NativeTarget.CODEX)
+    preview = service.preview_adoption(
+        project_id="temper",
+        target=NativeTarget.CODEX,
+        native_clause_id=environment.clauses[0].clause_id,
+    )
+
+    assert plan.environment_digest == environment.content_digest
+    assert plan.dispositions[0].disposition is ReconciliationDispositionKind.OMITTED_AS_COVERED
+    assert preview.expected_environment_digest == environment.content_digest
+    assert preview.enters_governed_review
+    assert not preview.grants_user_authority
+    assert not preview.modifies_native_memory
 
 
 def test_preview_apply_and_rollback_are_digest_bound_and_encrypted(tmp_path: Path) -> None:

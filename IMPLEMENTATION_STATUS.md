@@ -1047,3 +1047,11 @@ diff previews, atomic byte-preserving writes, signed restart-safe receipts, encr
 30-day rollback. Read-only Kairn/Green Meadow dogfood and final cross-stack verification remain the
 completion evidence; no inspected repository has been modified and no paid/provider API call was
 made.
+
+Native-memory reconciliation now applies authority-aware behavior on top of that environment.
+Managed, project, and explicitly user-configured native policies can block one conflicting Temper
+clause. Agent-generated memory cannot: approved Temper learning remains in the projection while a
+notice-level conflict requires review or managed-session isolation on a version-pinned surface.
+New strict records bind native-memory capabilities, clause dispositions, adoption previews, the
+complete reconciliation plan, unresolved conflicts, and isolation requirements into runtime
+manifests. Detection still grants no user authority and performs no native mutation.

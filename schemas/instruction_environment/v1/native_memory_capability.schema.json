@@ -1,0 +1,103 @@
+{
+  "$defs": {
+    "NativeMemoryAction": {
+      "description": "A capability an agent exposes for its own memory surface.",
+      "enum": [
+        "read",
+        "isolate_managed_session",
+        "disable",
+        "edit",
+        "rollback"
+      ],
+      "title": "NativeMemoryAction",
+      "type": "string"
+    },
+    "NativeSourceKind": {
+      "enum": [
+        "project_instructions",
+        "project_rule",
+        "project_skill",
+        "personal_instructions",
+        "personal_memory",
+        "personal_skill",
+        "managed_instructions"
+      ],
+      "title": "NativeSourceKind",
+      "type": "string"
+    },
+    "NativeTarget": {
+      "enum": [
+        "codex",
+        "claude",
+        "copilot"
+      ],
+      "title": "NativeTarget",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Version-pinned native-memory operations for one exact target surface.\n\nCapability discovery is descriptive. It never authorizes Temper to mutate native memory.",
+  "properties": {
+    "automatic_mutation_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Automatic Mutation Allowed",
+      "type": "boolean"
+    },
+    "capability_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Capability Digest",
+      "type": "string"
+    },
+    "capability_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Capability Version",
+      "type": "string"
+    },
+    "managed_sessions_only": {
+      "default": true,
+      "title": "Managed Sessions Only",
+      "type": "boolean"
+    },
+    "requires_preview": {
+      "const": true,
+      "default": true,
+      "title": "Requires Preview",
+      "type": "boolean"
+    },
+    "source_kind": {
+      "$ref": "#/$defs/NativeSourceKind"
+    },
+    "supported_actions": {
+      "items": {
+        "$ref": "#/$defs/NativeMemoryAction"
+      },
+      "title": "Supported Actions",
+      "type": "array"
+    },
+    "surface": {
+      "minLength": 1,
+      "title": "Surface",
+      "type": "string"
+    },
+    "surface_contract_version": {
+      "minLength": 1,
+      "title": "Surface Contract Version",
+      "type": "string"
+    },
+    "target": {
+      "$ref": "#/$defs/NativeTarget"
+    }
+  },
+  "required": [
+    "target",
+    "surface",
+    "surface_contract_version",
+    "source_kind",
+    "supported_actions",
+    "capability_digest"
+  ],
+  "title": "NativeMemoryCapabilityV1",
+  "type": "object"
+}

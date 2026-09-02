@@ -96,6 +96,61 @@ class InstructionResolution(StrEnum):
     NEEDS_REVIEW = "needs_review"
 
 
+class NativeMemoryAction(StrEnum):
+    """A capability an agent exposes for its own memory surface."""
+
+    READ = "read"
+    ISOLATE_MANAGED_SESSION = "isolate_managed_session"
+    DISABLE = "disable"
+    EDIT = "edit"
+    ROLLBACK = "rollback"
+
+
+class ReconciliationDispositionKind(StrEnum):
+    """The least-invasive deterministic treatment of one Temper clause."""
+
+    INCLUDED = "included"
+    OMITTED_AS_COVERED = "omitted_as_covered"
+    BLOCKED_BY_POLICY = "blocked_by_policy"
+    INCLUDED_WITH_NATIVE_MEMORY_CONFLICT = "included_with_native_memory_conflict"
+    PRESERVED_AS_SCOPED_EXCEPTION = "preserved_as_scoped_exception"
+    NEEDS_REVIEW = "needs_review"
+
+
+class NativeMemoryCapabilityV1(FrozenModel):
+    """Version-pinned native-memory operations for one exact target surface.
+
+    Capability discovery is descriptive. It never authorizes Temper to mutate native memory.
+    """
+
+    capability_version: Literal["1.0.0"] = "1.0.0"
+    target: NativeTarget
+    surface: NonEmptyStr
+    surface_contract_version: NonEmptyStr
+    source_kind: NativeSourceKind
+    supported_actions: tuple[NativeMemoryAction, ...]
+    managed_sessions_only: bool = True
+    requires_preview: Literal[True] = True
+    automatic_mutation_allowed: Literal[False] = False
+    capability_digest: Sha256Digest
+
+    @field_validator("supported_actions")
+    @classmethod
+    def actions_are_sorted_unique(
+        cls, value: tuple[NativeMemoryAction, ...]
+    ) -> tuple[NativeMemoryAction, ...]:
+        if value != tuple(sorted(set(value), key=lambda item: item.value)):
+            raise ValueError("native-memory actions must be sorted and unique")
+        return value
+
+    @model_validator(mode="after")
+    def digest_matches_capability(self) -> Self:
+        payload = self.model_dump(mode="json", exclude={"capability_digest"})
+        if canonical_digest(payload) != self.capability_digest:
+            raise ValueError("native-memory capability digest changed")
+        return self
+
+
 class InstructionSourceManifestV1(FrozenModel):
     """Raw-free metadata for one exact native source."""
 
@@ -343,6 +398,106 @@ class InstructionDeltaPlanV1(FrozenModel):
         if self.output_utf8_bytes > self.input_utf8_bytes:
             raise ValueError("native-aware delta cannot exceed the unaware projection")
         return self
+
+
+class ReconciliationDispositionV1(FrozenModel):
+    """Authority-aware disposition for one approved Temper clause."""
+
+    disposition_version: Literal["1.0.0"] = "1.0.0"
+    temper_clause_digest: Sha256Digest
+    disposition: ReconciliationDispositionKind
+    native_clause_ids: tuple[Identifier, ...] = ()
+    native_source_ids: tuple[Identifier, ...] = ()
+    rationale: NonEmptyStr
+    delivery_blocked: bool
+    native_change_required: Literal[False] = False
+    review_required: bool = False
+
+    @field_validator("native_clause_ids", "native_source_ids")
+    @classmethod
+    def identifiers_are_sorted_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if value != tuple(sorted(set(value))):
+            raise ValueError("reconciliation lineage must be sorted and unique")
+        return value
+
+    @model_validator(mode="after")
+    def blocking_and_review_are_consistent(self) -> Self:
+        if self.disposition is ReconciliationDispositionKind.BLOCKED_BY_POLICY:
+            if not self.delivery_blocked:
+                raise ValueError("policy-blocked disposition must block delivery")
+        elif self.delivery_blocked:
+            raise ValueError("only a policy-blocked disposition may block delivery")
+        if (
+            self.disposition is ReconciliationDispositionKind.INCLUDED_WITH_NATIVE_MEMORY_CONFLICT
+            and not self.review_required
+        ):
+            raise ValueError("native-memory conflict requires review")
+        return self
+
+
+class InstructionReconciliationPlanV1(FrozenModel):
+    """Complete authority-aware plan for one exact native environment."""
+
+    plan_version: Literal["1.0.0"] = "1.0.0"
+    project_id: Identifier
+    target: NativeTarget
+    surface: NonEmptyStr
+    surface_contract_version: NonEmptyStr
+    environment_digest: Sha256Digest
+    source_chain_digest: Sha256Digest
+    delta_plan_digest: Sha256Digest
+    dispositions: tuple[ReconciliationDispositionV1, ...]
+    native_memory_capabilities: tuple[NativeMemoryCapabilityV1, ...] = ()
+    unresolved_conflict_ids: tuple[Identifier, ...] = ()
+    managed_session_isolation_required: bool = False
+    fully_reconciled: bool
+
+    @field_validator("dispositions")
+    @classmethod
+    def dispositions_cover_unique_clauses(
+        cls, value: tuple[ReconciliationDispositionV1, ...]
+    ) -> tuple[ReconciliationDispositionV1, ...]:
+        digests = tuple(item.temper_clause_digest for item in value)
+        if digests != tuple(sorted(set(digests))):
+            raise ValueError("reconciliation dispositions must be clause-sorted and unique")
+        return value
+
+    @field_validator("native_memory_capabilities")
+    @classmethod
+    def capabilities_are_unique(
+        cls, value: tuple[NativeMemoryCapabilityV1, ...]
+    ) -> tuple[NativeMemoryCapabilityV1, ...]:
+        keys = tuple((item.target.value, item.surface, item.source_kind.value) for item in value)
+        if keys != tuple(sorted(set(keys))):
+            raise ValueError("native-memory capabilities must be sorted and unique")
+        return value
+
+    @field_validator("unresolved_conflict_ids")
+    @classmethod
+    def conflicts_are_sorted_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if value != tuple(sorted(set(value))):
+            raise ValueError("reconciliation conflicts must be sorted and unique")
+        return value
+
+
+class NativeMemoryAdoptionPreviewV1(FrozenModel):
+    """Raw-free preview for explicitly adopting observed native memory into review."""
+
+    preview_version: Literal["1.0.0"] = "1.0.0"
+    preview_token: Identifier
+    project_id: Identifier
+    target: NativeTarget
+    native_clause_id: Identifier
+    native_source_id: Identifier
+    native_source_digest: Sha256Digest
+    proposed_behavior: str = Field(min_length=1, max_length=500)
+    proposed_scope_summary: str = Field(min_length=1, max_length=300)
+    enters_governed_review: Literal[True] = True
+    grants_user_authority: Literal[False] = False
+    modifies_native_memory: Literal[False] = False
+    expected_environment_digest: Sha256Digest
+    expires_at: UtcDateTime
+    raw_payloads_exposed: Literal[False] = False
 
 
 class InstructionSourceSummaryV1(FrozenModel):

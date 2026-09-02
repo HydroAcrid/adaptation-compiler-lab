@@ -15,7 +15,19 @@ from adaptation_compiler_lab.instruction_environment import (
 from adaptation_compiler_lab.instruction_environment.models import (
     InstructionEnvironmentSnapshotV1,
     InstructionResolution,
+    InstructionSourceManifestV1,
+    NativeActivationStatus,
+    NativeAuthorityClass,
+    NativeInstructionClauseV1,
+    NativeMemoryAction,
+    NativeMemoryCapabilityV1,
+    NativeReadStatus,
+    NativeSourceKind,
     NativeTarget,
+    ReconciliationDispositionKind,
+)
+from adaptation_compiler_lab.instruction_environment.resolver import (
+    build_instruction_reconciliation_plan,
 )
 from adaptation_compiler_lab.instruction_environment.semantic import (
     ClauseRelationAnalysisV1,
@@ -229,3 +241,135 @@ def test_manifest_rejects_overlapping_native_dispositions() -> None:
         assert "dispositions overlap" in str(error)
     else:
         raise AssertionError("overlapping native dispositions were accepted")
+
+
+def test_agent_generated_memory_conflict_does_not_override_approved_temper() -> None:
+    projection = _projection("Run the focused tests before claiming completion.")
+    memory_text = "Do not run tests before reporting completion."
+    source_digest = canonical_digest({"raw": memory_text})
+    manifest = InstructionSourceManifestV1(
+        source_id="claude-auto-memory",
+        target=NativeTarget.CLAUDE,
+        surface="claude-code",
+        surface_contract_version="claude-memory-test-v1",
+        source_kind=NativeSourceKind.PERSONAL_MEMORY,
+        display_path="Claude auto-memory",
+        native_precedence=900,
+        authority_class=NativeAuthorityClass.AGENT_GENERATED,
+        opt_in_basis="explicit_global_opt_in",
+        content_digest=source_digest,
+        byte_length=len(memory_text.encode("utf-8")),
+        encoding="utf-8",
+        newline_style="none",
+        read_status=NativeReadStatus.READY,
+        symlink=False,
+        resolved_within_boundary=True,
+        activation_status=NativeActivationStatus.ACTIVE,
+    )
+    native = NativeInstructionClauseV1(
+        clause_id="claude-auto-memory-clause",
+        text=memory_text,
+        text_digest=canonical_digest({"text": memory_text}),
+        source_id=manifest.source_id,
+        source_digest=source_digest,
+        target=NativeTarget.CLAUDE,
+    )
+    environment = InstructionEnvironmentSnapshotV1(
+        project_id="temper",
+        target=NativeTarget.CLAUDE,
+        surface="claude-code",
+        surface_contract_version="claude-memory-test-v1",
+        source_manifests=(manifest,),
+        clauses=(native,),
+        complete=True,
+        generated_at=NOW,
+        global_sources_enabled=True,
+    )
+    projection = projection.model_copy(
+        update={"context": projection.context.model_copy(update={"target_family": "claude"})}
+    )
+    relation = InstructionRelationV1(
+        temper_clause_digest=projection.clauses[0].content_digest,
+        native_clause_id=native.clause_id,
+        native_clause_digest=native.text_digest,
+        relation=InstructionRelationKind.CONTRADICTION,
+        confidence=0.99,
+        deterministic=False,
+        resolution=InstructionResolution.BLOCK_TEMPER,
+        rationale="The instructions require opposite verification behavior.",
+        interpreter_digests=(DIGEST_A, DIGEST_B),
+    )
+    capability_digest_payload = {
+        "capability_version": "1.0.0",
+        "target": NativeTarget.CLAUDE.value,
+        "surface": "claude-code",
+        "surface_contract_version": "claude-memory-test-v1",
+        "source_kind": NativeSourceKind.PERSONAL_MEMORY.value,
+        "supported_actions": [
+            NativeMemoryAction.ISOLATE_MANAGED_SESSION.value,
+            NativeMemoryAction.READ.value,
+        ],
+        "managed_sessions_only": True,
+        "requires_preview": True,
+        "automatic_mutation_allowed": False,
+    }
+    capability = NativeMemoryCapabilityV1(
+        target=NativeTarget.CLAUDE,
+        surface="claude-code",
+        surface_contract_version="claude-memory-test-v1",
+        source_kind=NativeSourceKind.PERSONAL_MEMORY,
+        supported_actions=(
+            NativeMemoryAction.ISOLATE_MANAGED_SESSION,
+            NativeMemoryAction.READ,
+        ),
+        capability_digest=canonical_digest(capability_digest_payload),
+    )
+
+    plan = build_instruction_reconciliation_plan(
+        projection,
+        environment,
+        semantic_relations=(relation,),
+        native_memory_capabilities=(capability,),
+    )
+    delta = build_instruction_delta_plan(
+        projection,
+        environment,
+        semantic_relations=(relation,),
+    )
+
+    assert delta.included_temper_clause_digests == (projection.clauses[0].content_digest,)
+    assert not delta.blocked_temper_clause_digests
+    assert delta.conflicts[0].severity == "notice"
+    assert (
+        plan.dispositions[0].disposition
+        is ReconciliationDispositionKind.INCLUDED_WITH_NATIVE_MEMORY_CONFLICT
+    )
+    assert plan.managed_session_isolation_required
+    assert not plan.fully_reconciled
+
+
+def test_reconciliation_manifest_binds_plan_and_conflicts(tmp_path: Path) -> None:
+    projection = _projection("Keep changes small.")
+    environment = _environment(tmp_path / "project", "Keep changes small.")
+    delta = build_instruction_delta_plan(projection, environment)
+    reconciliation = build_instruction_reconciliation_plan(projection, environment)
+    empty_projection = apply_instruction_environment(projection, delta)
+    manifest = RuntimeProjectionManifest(
+        external_release_digest=projection.external_release_digest,
+        runtime_projection_digest=empty_projection.content_digest,
+        target_renderer_id="codex-runtime",
+        target_renderer_version="1.0.0",
+        rendered_content_digest=canonical_digest({"text": ""}),
+        rendered_utf8_bytes=0,
+        clause_bindings=(),
+    )
+
+    bound = bind_instruction_delta_manifest(
+        manifest,
+        delta,
+        reconciliation=reconciliation,
+    )
+
+    assert bound.native_reconciliation_plan_digest == canonical_digest(reconciliation)
+    assert not bound.native_unresolved_conflict_ids
+    assert not bound.native_managed_session_isolation_required

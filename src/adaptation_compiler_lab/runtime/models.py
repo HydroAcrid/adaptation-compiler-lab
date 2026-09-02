@@ -643,6 +643,9 @@ class RuntimeProjectionManifest(FrozenModel):
     native_omitted_clause_digests: tuple[Sha256Digest, ...] = ()
     native_blocked_clause_digests: tuple[Sha256Digest, ...] = ()
     native_relation_digests: tuple[Sha256Digest, ...] = ()
+    native_reconciliation_plan_digest: Sha256Digest | None = None
+    native_unresolved_conflict_ids: tuple[Identifier, ...] = ()
+    native_managed_session_isolation_required: bool = False
     native_delta_fully_optimized: bool | None = None
 
     @model_validator(mode="after")
@@ -655,7 +658,11 @@ class RuntimeProjectionManifest(FrozenModel):
             self.native_omitted_clause_digests,
             self.native_blocked_clause_digests,
         )
-        for values in (*native_sets, self.native_relation_digests):
+        for values in (
+            *native_sets,
+            self.native_relation_digests,
+            self.native_unresolved_conflict_ids,
+        ):
             if values != tuple(sorted(set(values))):
                 raise ValueError("native runtime manifest digests must be sorted and unique")
         overlaps = any(
@@ -670,6 +677,12 @@ class RuntimeProjectionManifest(FrozenModel):
             raise ValueError("native runtime manifest requires both environment digests")
         if not native_bound and any((*native_sets, self.native_relation_digests)):
             raise ValueError("native runtime manifest dispositions require an environment")
+        if not native_bound and (
+            self.native_reconciliation_plan_digest is not None
+            or self.native_unresolved_conflict_ids
+            or self.native_managed_session_isolation_required
+        ):
+            raise ValueError("native reconciliation state requires an environment")
         if native_bound != (self.native_delta_fully_optimized is not None):
             raise ValueError("native runtime manifest optimization state is incomplete")
         target_binding = (

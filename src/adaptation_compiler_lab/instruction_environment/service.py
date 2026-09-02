@@ -32,15 +32,20 @@ from adaptation_compiler_lab.instruction_environment.models import (
     InstructionEnvironmentSnapshotV1,
     InstructionEnvironmentSummaryV1,
     InstructionGlobalPreviewV1,
+    InstructionReconciliationPlanV1,
     InstructionRelationKind,
     InstructionRelationV1,
     InstructionSourceSummaryV1,
+    NativeMemoryAction,
+    NativeMemoryAdoptionPreviewV1,
+    NativeMemoryCapabilityV1,
     NativeReadStatus,
     NativeSourceKind,
     NativeTarget,
 )
 from adaptation_compiler_lab.instruction_environment.resolver import (
     build_instruction_delta_plan,
+    build_instruction_reconciliation_plan,
     compare_instruction_clauses,
 )
 from adaptation_compiler_lab.instruction_environment.semantic import (
@@ -145,6 +150,7 @@ class InstructionEnvironmentService:
         self._receipts: dict[str, _ReceiptState] = {}
         self._rolled_back_receipt_ids: set[str] = set()
         self._global_previews: dict[str, _GlobalPreviewState] = {}
+        self._adoption_previews: dict[str, NativeMemoryAdoptionPreviewV1] = {}
         self._global_roots = self._load_global_roots() if include_persisted_global_roots else {}
         self._idempotency: dict[str, tuple[str, object]] = {}
         self._cache = (
@@ -350,6 +356,70 @@ class InstructionEnvironmentService:
         if cached is None:
             return ()
         return cached.relations
+
+    def reconciliation(
+        self,
+        *,
+        project_id: str,
+        target: NativeTarget,
+    ) -> InstructionReconciliationPlanV1:
+        """Return the raw-free authority-aware plan for the current environment."""
+
+        if self._projection_provider is None:
+            raise InstructionEnvironmentError(
+                "A governed runtime projection is unavailable for reconciliation."
+            )
+        environment = self.get(project_id=project_id, target=target)
+        projection = self._projection_provider(project_id, target)
+        if projection is None:
+            raise InstructionEnvironmentError(
+                "No approved Temper projection is applicable to this project and target."
+            )
+        relations = self.cached_relations(projection, environment)
+        return build_instruction_reconciliation_plan(
+            projection,
+            environment,
+            semantic_relations=relations,
+            native_memory_capabilities=_native_memory_capabilities(environment),
+        )
+
+    def preview_adoption(
+        self,
+        *,
+        project_id: str,
+        target: NativeTarget,
+        native_clause_id: str,
+    ) -> NativeMemoryAdoptionPreviewV1:
+        """Preview native context entering governed review without granting authority."""
+
+        environment = self.get(project_id=project_id, target=target)
+        matches = tuple(item for item in environment.clauses if item.clause_id == native_clause_id)
+        if len(matches) != 1:
+            raise InstructionEnvironmentError("native adoption requires one exact clause")
+        clause = matches[0]
+        source = next(
+            item for item in environment.source_manifests if item.source_id == clause.source_id
+        )
+        if source.read_status is not NativeReadStatus.READY or source.content_digest is None:
+            raise InstructionEnvironmentError("native adoption source is not readable")
+        now = self._now()
+        token = f"native-adoption-{secrets.token_hex(12)}"
+        preview = NativeMemoryAdoptionPreviewV1(
+            preview_token=token,
+            project_id=project_id,
+            target=target,
+            native_clause_id=clause.clause_id,
+            native_source_id=clause.source_id,
+            native_source_digest=source.content_digest,
+            proposed_behavior=clause.text[:500],
+            proposed_scope_summary=(
+                f"Project {project_id}" if source.project_id is not None else "Personal setup"
+            ),
+            expected_environment_digest=environment.content_digest,
+            expires_at=now + _PREVIEW_TTL,
+        )
+        self._adoption_previews[token] = preview
+        return preview
 
     def _analyze_relations(
         self,
@@ -1074,3 +1144,41 @@ def _atomic_replace(path: Path, payload: bytes, *, mode: int) -> None:
         os.replace(temporary, path)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def _native_memory_capabilities(
+    environment: InstructionEnvironmentSnapshotV1,
+) -> tuple[NativeMemoryCapabilityV1, ...]:
+    """Describe only target operations Temper has explicitly version-pinned."""
+
+    has_agent_memory = any(
+        item.source_kind is NativeSourceKind.PERSONAL_MEMORY
+        for item in environment.source_manifests
+    )
+    if environment.target is not NativeTarget.CLAUDE or not has_agent_memory:
+        return ()
+    actions = (
+        NativeMemoryAction.ISOLATE_MANAGED_SESSION,
+        NativeMemoryAction.READ,
+    )
+    payload = {
+        "capability_version": "1.0.0",
+        "target": environment.target.value,
+        "surface": environment.surface,
+        "surface_contract_version": environment.surface_contract_version,
+        "source_kind": NativeSourceKind.PERSONAL_MEMORY.value,
+        "supported_actions": [item.value for item in actions],
+        "managed_sessions_only": True,
+        "requires_preview": True,
+        "automatic_mutation_allowed": False,
+    }
+    return (
+        NativeMemoryCapabilityV1(
+            target=environment.target,
+            surface=environment.surface,
+            surface_contract_version=environment.surface_contract_version,
+            source_kind=NativeSourceKind.PERSONAL_MEMORY,
+            supported_actions=actions,
+            capability_digest=canonical_digest(payload),
+        ),
+    )

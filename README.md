@@ -46,6 +46,12 @@ transient scrollbar caused by the earlier vertical settle animation.
 Every choice control in the renderer uses an accessible Temper/Radix select or menu—there are no
 native Windows `<select>` controls left in Core, Modes, review, or Advanced surfaces.
 
+Native memory is reconciled rather than blindly merged. Higher-authority managed and project
+policy may withhold an affected Temper clause; lower-authority agent-generated memory cannot
+override approved Temper learning. Temper retains the approved clause and surfaces a review or
+managed-session-isolation requirement, with exact source and reconciliation digests retained in
+the external runtime manifest. Observing native memory never promotes it into Temper Core.
+
 Temper's replacement customer desktop now connects React to the real local Python engine through
 a restrictive Tauri 2 shell and framed stdio protocol. A configured native runtime loads raw-free
 projects and approved Core items, offers native-path-hidden encrypted profile export/import with

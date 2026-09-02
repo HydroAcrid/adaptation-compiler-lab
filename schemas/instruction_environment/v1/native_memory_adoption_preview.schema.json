@@ -1,0 +1,119 @@
+{
+  "$defs": {
+    "NativeTarget": {
+      "enum": [
+        "codex",
+        "claude",
+        "copilot"
+      ],
+      "title": "NativeTarget",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Raw-free preview for explicitly adopting observed native memory into review.",
+  "properties": {
+    "enters_governed_review": {
+      "const": true,
+      "default": true,
+      "title": "Enters Governed Review",
+      "type": "boolean"
+    },
+    "expected_environment_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Expected Environment Digest",
+      "type": "string"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "grants_user_authority": {
+      "const": false,
+      "default": false,
+      "title": "Grants User Authority",
+      "type": "boolean"
+    },
+    "modifies_native_memory": {
+      "const": false,
+      "default": false,
+      "title": "Modifies Native Memory",
+      "type": "boolean"
+    },
+    "native_clause_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Native Clause Id",
+      "type": "string"
+    },
+    "native_source_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Native Source Digest",
+      "type": "string"
+    },
+    "native_source_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Native Source Id",
+      "type": "string"
+    },
+    "preview_token": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Preview Token",
+      "type": "string"
+    },
+    "preview_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Preview Version",
+      "type": "string"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "proposed_behavior": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Proposed Behavior",
+      "type": "string"
+    },
+    "proposed_scope_summary": {
+      "maxLength": 300,
+      "minLength": 1,
+      "title": "Proposed Scope Summary",
+      "type": "string"
+    },
+    "raw_payloads_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Payloads Exposed",
+      "type": "boolean"
+    },
+    "target": {
+      "$ref": "#/$defs/NativeTarget"
+    }
+  },
+  "required": [
+    "preview_token",
+    "project_id",
+    "target",
+    "native_clause_id",
+    "native_source_id",
+    "native_source_digest",
+    "proposed_behavior",
+    "proposed_scope_summary",
+    "expected_environment_digest",
+    "expires_at"
+  ],
+  "title": "NativeMemoryAdoptionPreviewV1",
+  "type": "object"
+}
