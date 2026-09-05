@@ -1319,6 +1319,13 @@ The v3 mechanical repair is frozen. It changes no Mode, task, target model, reas
 or gate. The Mode-only runner now verifies and read-only mounts the exact matching Codex
 `code-mode-host` companion, and the v3 coordinators retain the scorer venv invocation path. Its
 source bundles, host digest, scorer lock, predecessor smoke digest, contract, and blind plan are
-bound before inference. The full v3 comparison remains inadmissible until one new broken-fixture
-smoke produces a real edit, passes visible and hidden tests, deactivates exactly, and destroys its
+bound before inference. The full v3 comparison remained inadmissible until one new broken-fixture
+smoke produced a real edit, passed visible and hidden tests, deactivated exactly, and destroyed its
 workspace.
+
+That v3 live smoke now passes every frozen admission criterion. The Luna target made one bounded
+edit, all five visible tests and all three hidden checks passed, behavior and activation were
+conformant, deactivation was exact, and the disposable workspace was destroyed. The run used saved
+ChatGPT authentication, made zero provider-billed calls, and did not access the deferred external
+study. The frozen 30-cell comparison is now mechanically admissible; the smoke is not itself Mode-
+effectiveness evidence.

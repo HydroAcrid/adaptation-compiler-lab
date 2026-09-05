@@ -89,9 +89,10 @@ preserved in `development_benchmark_mode_evaluation/smoke-v2/`; no comparison ce
 Instrument v3 is frozen without changing any Mode, task, model, reasoning level, or passing rule.
 It binds the exact matching `codex-code-mode-host` digest and mounts that companion read-only beside
 the pinned CLI. It also preserves the scorer virtual-environment invocation path while independently
-resolving it only for the external-workspace safety check. The v3 no-inference preflight passes.
-The grid remains blocked until the separately versioned v3 smoke passes every original admission
-criterion.
+resolving it only for the external-workspace safety check. The v3 no-inference preflight and
+separately versioned live smoke pass. The smoke produced a real bounded edit, passed five visible
+and three hidden checks, deactivated exactly, and destroyed its workspace. This admits the frozen
+v3 comparison without providing Mode-effectiveness evidence by itself.
 
 ## Passing rule
 
@@ -111,7 +112,6 @@ gate and does not establish cross-agent transfer.
 
 ## Remaining product work
 
-- Pass a separately versioned live edit-and-test plus hidden-scorer smoke.
 - Execute the repaired comparison and three blind reviews without tuning after its first
   target cell.
 - Record immutable trial and blinded-review receipts.
