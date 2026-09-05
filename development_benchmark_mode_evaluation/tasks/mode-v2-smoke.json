@@ -1,0 +1,50 @@
+{
+  "allowed_change_paths": [
+    "src/solution.py"
+  ],
+  "fixture_digest": "sha256:f90ce8eb53acf809a15830452a157da1a50ed8e3c4b9b370fb0559f00d129402",
+  "fixture_directory": "smoke-fixture-v2",
+  "fixture_version": "1.0.0",
+  "function_name": "clamp_attempts",
+  "kind": "neutral_control",
+  "mode_id": "frontend-studio",
+  "prompt": "Repair only `clamp_attempts` in `src/solution.py`. Return the requested retry count when it is at or below the ceiling, otherwise return the ceiling. Keep rejecting a negative requested value or a nonpositive ceiling. Change only `src/solution.py` and run `python3 -m unittest discover -v`.",
+  "scenarios": [
+    {
+      "arguments": [
+        1,
+        4
+      ],
+      "expected": 1,
+      "metric": "neutral",
+      "scenario_id": "smoke-01-below"
+    },
+    {
+      "arguments": [
+        4,
+        4
+      ],
+      "expected": 4,
+      "metric": "neutral",
+      "scenario_id": "smoke-02-equal"
+    },
+    {
+      "arguments": [
+        9,
+        4
+      ],
+      "expected": 4,
+      "metric": "neutral",
+      "scenario_id": "smoke-03-clamped"
+    }
+  ],
+  "task_id": "mode-v2-smoke",
+  "title": "Execution and scorer repair smoke",
+  "visible_test_command": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-v"
+  ]
+}
