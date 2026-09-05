@@ -38,7 +38,7 @@ from adaptation_compiler_lab.instruction_environment.models import (
     InstructionSourceSummaryV1,
     NativeTarget,
 )
-from adaptation_compiler_lab.modes import FRONTEND_STUDIO_MODE, evaluate_frontend_studio_mode
+from adaptation_compiler_lab.modes import MODE_CATALOG, evaluate_mode_conformance, mode_by_id
 from adaptation_compiler_lab.portability import (
     EncryptedProfileEnvelope,
     PortableProfilePackage,
@@ -325,30 +325,37 @@ class EngineProtocolRouter:
         if request.method == "mode.list":
             if request.params:
                 return self._error(request, "invalid_params", "mode.list takes no parameters.")
-            report = evaluate_frontend_studio_mode()
+            catalog = tuple((mode, evaluate_mode_conformance(mode)) for mode in MODE_CATALOG)
             return EngineResponse(
                 request_id=request.request_id,
                 ok=True,
                 result={
-                    "modes": (
+                    "modes": tuple(
                         {
-                            "mode_id": FRONTEND_STUDIO_MODE.mode_id,
-                            "mode_version": FRONTEND_STUDIO_MODE.mode_version,
-                            "name": FRONTEND_STUDIO_MODE.name,
-                            "summary": FRONTEND_STUDIO_MODE.summary,
-                            "activation_default": FRONTEND_STUDIO_MODE.activation_default,
-                            "applicable_task_classes": list(
-                                FRONTEND_STUDIO_MODE.applicable_task_classes
+                            "mode_id": mode.mode_id,
+                            "mode_version": mode.mode_version,
+                            "name": mode.name,
+                            "summary": mode.summary,
+                            "publisher": mode.publisher,
+                            "source_license": mode.source_license,
+                            "activation_default": mode.activation_default,
+                            "task_lease_hours": mode.task_lease_hours,
+                            "supports_personal_overlay": mode.supports_personal_overlay,
+                            "applicable_task_classes": list(mode.applicable_task_classes),
+                            "compatible_target_families": list(mode.compatible_target_families),
+                            "requested_tools": list(mode.requested_tools),
+                            "required_capabilities": list(mode.required_capabilities),
+                            "evaluation_status": mode.evaluation_status.value,
+                            "effectiveness_evaluated": (
+                                mode.evaluation_status.value == "product_evaluated"
                             ),
-                            "compatible_target_families": list(
-                                FRONTEND_STUDIO_MODE.compatible_target_families
-                            ),
-                            "requested_tools": list(FRONTEND_STUDIO_MODE.requested_tools),
                             "projection_utf8_bytes": report.projection_utf8_bytes,
                             "evaluation_valid": report.valid,
                             "evaluation_case_count": len(report.cases),
                             "mutates_permanent_core": False,
-                        },
+                            "auto_activates": False,
+                        }
+                        for mode, report in catalog
                     ),
                     "raw_payloads_exposed": False,
                 },
@@ -1239,7 +1246,7 @@ class EngineProtocolRouter:
                 raise ValueError
         except ValueError:
             return self._error(request, "invalid_params", "The managed task request was invalid.")
-        if mode_id != FRONTEND_STUDIO_MODE.mode_id:
+        if mode_by_id(mode_id) is None:
             return self._error(request, "mode_unavailable", "That Mode is unavailable.")
         action, task_result = self._service.run_task(
             task=task,

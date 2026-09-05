@@ -11,7 +11,6 @@ from adaptation_compiler_lab.governance.signing import (
     GovernanceSigner,
     verify_detached_envelope,
 )
-from adaptation_compiler_lab.modes.frontend_studio import FRONTEND_STUDIO_MODE
 from adaptation_compiler_lab.modes.models import (
     CapabilityMode,
     ModeActivationReceipt,
@@ -77,7 +76,7 @@ def prepare_mode_task(
         prior_core_release_digest=prior_core_release_digest,
         suppressed_claim_keys=suppressed,
         activated_at=activated_at,
-        expires_at=activated_at + timedelta(hours=4),
+        expires_at=activated_at + timedelta(hours=mode.task_lease_hours),
         signature=placeholder,
     )
     activation = activation_draft.model_copy(
@@ -174,10 +173,9 @@ def complete_mode_delivery(
     return receipt
 
 
-def evaluate_frontend_studio_mode() -> ModeEvaluationReport:
-    """Run a zero-provider-cost conformance matrix over the bundled first Mode."""
+def evaluate_mode_conformance(mode: CapabilityMode) -> ModeEvaluationReport:
+    """Run structural conformance without claiming agent-performance improvement."""
 
-    mode = FRONTEND_STUDIO_MODE
     material = _render_mode_material(mode, mode.clauses)
     checks = (
         ModeEvaluationCaseResult(
@@ -186,34 +184,45 @@ def evaluate_frontend_studio_mode() -> ModeEvaluationReport:
             check="The compact target projection stays within its declared byte ceiling.",
         ),
         ModeEvaluationCaseResult(
-            case_id="02-complete-workflow",
-            passed=all(
-                phrase in material
-                for phrase in ("visual concept", "narrow and wide", "keyboard", "loading")
+            case_id="02-unique-claims",
+            passed=len({item.claim_key for item in mode.clauses}) == len(mode.clauses),
+            check="Every Mode default has one unique claim key for deterministic suppression.",
+        ),
+        ModeEvaluationCaseResult(
+            case_id="03-no-implicit-capability",
+            passed=not mode.requested_tools and not mode.required_capabilities,
+            check="The built-in Mode requests no tools or ambient capabilities.",
+        ),
+        ModeEvaluationCaseResult(
+            case_id="04-security-posture",
+            passed=(
+                mode.security_posture.network_access == "not_requested"
+                and mode.security_posture.executable_content == "forbidden"
+                and mode.security_posture.tool_installation == "forbidden"
+                and mode.security_posture.plugin_installation == "forbidden"
+                and mode.security_posture.mcp_configuration == "forbidden"
+                and mode.security_posture.dependency_installation == "forbidden"
             ),
-            check=(
-                "Relevant frontend workflow, responsive, accessibility, and state guidance exists."
+            check="Network, executable content, tools, plugins, MCP, and dependencies stay denied.",
+        ),
+        ModeEvaluationCaseResult(
+            case_id="05-temporary-lease",
+            passed=(
+                mode.activation_default == "one_task"
+                and not mode.mutates_permanent_core
+                and not mode.auto_activates
+                and 1 <= mode.task_lease_hours <= 24
             ),
+            check="Activation is leased to one task and cannot auto-activate or mutate Core.",
         ),
         ModeEvaluationCaseResult(
-            case_id="03-no-tool-escalation",
-            passed=not mode.requested_tools,
-            check="The first Mode requests no tools or integrations.",
-        ),
-        ModeEvaluationCaseResult(
-            case_id="04-not-permanent",
-            passed=mode.activation_default == "one_task" and not mode.mutates_permanent_core,
-            check="Activation is one-task-only and cannot mutate permanent Core.",
-        ),
-        ModeEvaluationCaseResult(
-            case_id="05-supported-targets",
-            passed=mode.compatible_target_families == ("claude-code", "codex"),
-            check="Target compatibility is explicit rather than inferred.",
-        ),
-        ModeEvaluationCaseResult(
-            case_id="06-neutral-control-contract",
-            passed={"backend", "research"}.isdisjoint(mode.applicable_task_classes),
-            check="Unrelated task classes are outside the Mode's declared applicability.",
+            case_id="06-versioned-target",
+            passed=bool(mode.target_compatibility)
+            and all(
+                item.target_family in mode.compatible_target_families
+                for item in mode.target_compatibility
+            ),
+            check="Managed target compatibility is versioned and surface-specific.",
         ),
     )
     return ModeEvaluationReport(
@@ -224,6 +233,14 @@ def evaluate_frontend_studio_mode() -> ModeEvaluationReport:
         projection_utf8_bytes=len(material.encode("utf-8")),
         valid=all(item.passed for item in checks),
     )
+
+
+def evaluate_frontend_studio_mode() -> ModeEvaluationReport:
+    """Backward-compatible frontend conformance entry point."""
+
+    from adaptation_compiler_lab.modes.frontend_studio import FRONTEND_STUDIO_MODE
+
+    return evaluate_mode_conformance(FRONTEND_STUDIO_MODE)
 
 
 def mode_applies_to(

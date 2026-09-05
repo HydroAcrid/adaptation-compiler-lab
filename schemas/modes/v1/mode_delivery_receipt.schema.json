@@ -1,0 +1,121 @@
+{
+  "$defs": {
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Signed binding from the temporary lease to the exact delivered task text.",
+  "properties": {
+    "activation_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Activation Digest",
+      "type": "string"
+    },
+    "base_delivery_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Base Delivery Digest",
+      "type": "string"
+    },
+    "combined_delivery_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Combined Delivery Digest",
+      "type": "string"
+    },
+    "delivered_at": {
+      "format": "date-time",
+      "title": "Delivered At",
+      "type": "string"
+    },
+    "mode_material_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Mode Material Digest",
+      "type": "string"
+    },
+    "mode_material_utf8_bytes": {
+      "exclusiveMinimum": 0,
+      "maximum": 3000,
+      "title": "Mode Material Utf8 Bytes",
+      "type": "integer"
+    },
+    "receipt_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "receipt_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Receipt Version",
+      "type": "string"
+    },
+    "signature": {
+      "$ref": "#/$defs/SignatureEnvelope"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "activation_digest",
+    "base_delivery_digest",
+    "mode_material_digest",
+    "combined_delivery_digest",
+    "mode_material_utf8_bytes",
+    "delivered_at",
+    "signature"
+  ],
+  "title": "ModeDeliveryReceipt",
+  "type": "object"
+}

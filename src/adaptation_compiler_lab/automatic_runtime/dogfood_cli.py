@@ -147,10 +147,10 @@ from adaptation_compiler_lab.instruction_environment.codex_semantic import (
     instruction_relation_analyzer_digest,
 )
 from adaptation_compiler_lab.modes import (
-    FRONTEND_STUDIO_MODE,
     ModePreparedTask,
     ModeReceiptStore,
     complete_mode_delivery,
+    mode_by_id,
     prepare_mode_task,
 )
 from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore
@@ -3185,11 +3185,12 @@ def _execute_gateway_session(
     mode_prepared: ModePreparedTask | None = None
     mode_store: ModeReceiptStore | None = None
     if mode_id is not None:
-        if mode_id != FRONTEND_STUDIO_MODE.mode_id:
+        selected_mode = mode_by_id(mode_id)
+        if selected_mode is None:
             provider.teardown(canonical_root=project.root, workspace=workspace.root)
             raise AutomaticRuntimeError("the requested temporary Mode is unavailable")
         mode_prepared = prepare_mode_task(
-            FRONTEND_STUDIO_MODE,
+            selected_mode,
             activation_id=f"mode-{session_id}",
             subject_id=config.subject_id,
             project_id=project.project_id,

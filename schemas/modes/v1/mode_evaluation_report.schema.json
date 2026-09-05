@@ -1,0 +1,84 @@
+{
+  "$defs": {
+    "ModeEvaluationCaseResult": {
+      "additionalProperties": false,
+      "properties": {
+        "case_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "check": {
+          "minLength": 1,
+          "title": "Check",
+          "type": "string"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "case_id",
+        "passed",
+        "check"
+      ],
+      "title": "ModeEvaluationCaseResult",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Deterministic conformance report, not a claim of agent-performance uplift.",
+  "properties": {
+    "cases": {
+      "items": {
+        "$ref": "#/$defs/ModeEvaluationCaseResult"
+      },
+      "minItems": 1,
+      "title": "Cases",
+      "type": "array"
+    },
+    "mode_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Mode Digest",
+      "type": "string"
+    },
+    "neutral_controls_passed": {
+      "minimum": 0,
+      "title": "Neutral Controls Passed",
+      "type": "integer"
+    },
+    "projection_utf8_bytes": {
+      "exclusiveMinimum": 0,
+      "title": "Projection Utf8 Bytes",
+      "type": "integer"
+    },
+    "relevant_cases_passed": {
+      "minimum": 0,
+      "title": "Relevant Cases Passed",
+      "type": "integer"
+    },
+    "report_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Report Version",
+      "type": "string"
+    },
+    "valid": {
+      "title": "Valid",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "mode_digest",
+    "cases",
+    "relevant_cases_passed",
+    "neutral_controls_passed",
+    "projection_utf8_bytes",
+    "valid"
+  ],
+  "title": "ModeEvaluationReport",
+  "type": "object"
+}

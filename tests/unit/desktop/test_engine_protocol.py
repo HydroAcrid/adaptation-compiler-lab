@@ -250,7 +250,7 @@ def test_unknown_method_does_not_expose_an_arbitrary_dispatch_surface() -> None:
     assert response.error.code == "unknown_method"
 
 
-def test_mode_catalog_is_raw_free_and_reports_valid_frontend_studio() -> None:
+def test_mode_catalog_is_raw_free_and_labels_conformance_separately_from_effectiveness() -> None:
     response = EngineProtocolRouter(None).handle(_request("mode.list"))
 
     assert response.ok is True
@@ -258,9 +258,16 @@ def test_mode_catalog_is_raw_free_and_reports_valid_frontend_studio() -> None:
     assert response.result["raw_payloads_exposed"] is False
     modes = response.result["modes"]
     assert isinstance(modes, tuple)
-    assert modes[0]["mode_id"] == "frontend-studio"
-    assert modes[0]["evaluation_valid"] is True
-    assert modes[0]["requested_tools"] == []
+    assert tuple(item["mode_id"] for item in modes) == (
+        "frontend-studio",
+        "research-analyst",
+        "secure-backend",
+    )
+    assert all(item["evaluation_valid"] is True for item in modes)
+    assert all(item["evaluation_status"] == "experimental" for item in modes)
+    assert all(item["effectiveness_evaluated"] is False for item in modes)
+    assert all(item["requested_tools"] == [] for item in modes)
+    assert all(item["required_capabilities"] == [] for item in modes)
 
 
 def test_portability_never_operates_without_governed_local_configuration() -> None:
@@ -313,6 +320,44 @@ def test_mode_run_is_bound_to_snapshot_and_forwards_exact_mode_scope() -> None:
         project_id="kairn",
         mode_id="frontend-studio",
     )
+
+
+def test_each_catalog_mode_is_available_to_the_same_governed_task_channel() -> None:
+    digest = f"sha256:{'a' * 64}"
+    for mode_id in ("research-analyst", "secure-backend"):
+        service = MagicMock()
+        snapshot = MagicMock()
+        snapshot.content_digest = digest
+        service.load.return_value = snapshot
+        service.run_task.return_value = (
+            ActionResult(action="run_task", ok=True, code="ok", message="Ready."),
+            DesktopTaskResult(
+                activation_id=f"{mode_id}-run",
+                status="completed",
+                projection_utf8_bytes=900,
+            ),
+        )
+        response = EngineProtocolRouter(cast(Any, service)).handle(
+            EngineRequest(
+                protocol_version=PROTOCOL_VERSION,
+                request_id=f"{mode_id}-request",
+                method="mode.task.run",
+                params={
+                    "mode_id": mode_id,
+                    "project_id": "kairn",
+                    "task": "Complete the bounded task",
+                },
+                expected_snapshot_digest=digest,
+                idempotency_key=f"{mode_id}-click",
+            )
+        )
+
+        assert response.ok is True
+        service.run_task.assert_called_once_with(
+            task="Complete the bounded task",
+            project_id="kairn",
+            mode_id=mode_id,
+        )
 
 
 def test_review_decision_is_digest_bound_idempotent_and_strictly_allowlisted() -> None:

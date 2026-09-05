@@ -1330,7 +1330,8 @@ export function ModesPage({
             </div>
             <div className="mode-card__copy">
               <span className="folio-kicker">
-                Built-in · v{mode.mode_version}
+                Built-in · v{mode.mode_version} ·{" "}
+                {mode.evaluation_status.replace("_", " ")}
               </span>
               <h2>{mode.name}</h2>
               <p>{mode.summary}</p>
@@ -1470,7 +1471,10 @@ function ModeDetailsDialog({
           <dl className="mode-detail-list">
             <div>
               <dt>Life span</dt>
-              <dd>One exact managed task, then clean removal</dd>
+              <dd>
+                One exact managed task, up to {mode.task_lease_hours} hours,
+                then clean removal
+              </dd>
             </div>
             <div>
               <dt>Compatible projection formats</dt>
@@ -1489,11 +1493,27 @@ function ModeDetailsDialog({
               </dd>
             </div>
             <div>
-              <dt>Validation</dt>
+              <dt>Static conformance</dt>
               <dd>
                 {mode.evaluation_valid
                   ? `${mode.evaluation_case_count} conformance checks passed`
                   : "Needs attention"}
+              </dd>
+            </div>
+            <div>
+              <dt>Effectiveness</dt>
+              <dd>
+                {mode.effectiveness_evaluated
+                  ? "Passed the frozen product comparison"
+                  : "Experimental — comparison not run yet"}
+              </dd>
+            </div>
+            <div>
+              <dt>Personal overlay</dt>
+              <dd>
+                {mode.supports_personal_overlay
+                  ? "Supported by the format; editor not enabled yet"
+                  : "Unavailable"}
               </dd>
             </div>
           </dl>
@@ -1552,7 +1572,7 @@ function ModeDetailsDialog({
               <textarea
                 disabled={!nativeRuntime}
                 onChange={(event) => setTask(event.target.value)}
-                placeholder="Describe the frontend work for this one managed task"
+                placeholder={`Describe the ${mode.name.toLowerCase()} work for this one managed task`}
                 rows={3}
                 value={task}
               />

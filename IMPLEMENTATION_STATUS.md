@@ -1064,3 +1064,13 @@ activity is explicitly excluded. The existing governed managed-task action is no
 issued only for a genuinely complete passing report and refuses oversized projections or any
 other failed threshold. This is product and custody instrumentation, not evidence that the still
 open genuine gate has passed and not ambient delivery into arbitrary existing Codex sessions.
+
+The Mode product layer now exposes three first-party entries through one catalog and the same
+governed task channel: Frontend Studio, Research Analyst, and Secure Backend. Their versioned
+records declare publisher, license, target surface, security posture, four-hour one-task lease,
+personal-overlay support, required capabilities, and explicit capability prohibitions. All three
+request no tools or ambient capabilities, cannot auto-activate, and cannot mutate Core. Each has a
+public digest-bound evaluation design containing three diagnostic and two neutral-control tasks.
+Only structural conformance has run; all three remain visibly `experimental` and no effectiveness
+or superiority claim is made. Executing the complete same-agent catalog comparison would require
+30 fresh saved-ChatGPT Codex target runs and remains an evidence step, not a static test.

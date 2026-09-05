@@ -25,11 +25,44 @@ class ModeClauseCategory(StrEnum):
     """Bounded kinds of expertise a Mode may add to one task."""
 
     ACCESSIBILITY = "accessibility"
+    ACCURACY = "accuracy"
+    DATA_PROTECTION = "data_protection"
     DESIGN_SYSTEM = "design_system"
+    EVIDENCE = "evidence"
+    FAILURE_HANDLING = "failure_handling"
     RESPONSIVE = "responsive"
+    SECURITY = "security"
+    THREAT_MODEL = "threat_model"
     VALIDATION = "validation"
     VISUAL_DIRECTION = "visual_direction"
     WORKFLOW = "workflow"
+
+
+class ModeEvaluationStatus(StrEnum):
+    """Honest product status; conformance is not effectiveness evidence."""
+
+    EXPERIMENTAL = "experimental"
+    FAILED = "failed"
+    PRODUCT_EVALUATED = "product_evaluated"
+
+
+class ModeTargetCompatibility(FrozenModel):
+    """One version-pinned target surface for managed Mode delivery."""
+
+    target_family: Identifier
+    version_constraint: NonEmptyStr
+    delivery_surface: NonEmptyStr
+
+
+class ModeSecurityPosture(FrozenModel):
+    """Explicit capability posture; omission never grants ambient capability."""
+
+    network_access: Literal["not_requested"] = "not_requested"
+    executable_content: Literal["forbidden"] = "forbidden"
+    tool_installation: Literal["forbidden"] = "forbidden"
+    plugin_installation: Literal["forbidden"] = "forbidden"
+    mcp_configuration: Literal["forbidden"] = "forbidden"
+    dependency_installation: Literal["forbidden"] = "forbidden"
 
 
 class ModeClause(FrozenModel):
@@ -44,7 +77,7 @@ class ModeClause(FrozenModel):
 class CapabilityMode(FrozenModel):
     """Versioned first-party expertise kept separate from a user's permanent Core."""
 
-    mode_schema_version: Literal["1.0.0"] = "1.0.0"
+    mode_schema_version: Literal["1.0.0", "1.1.0"] = "1.1.0"
     mode_id: Identifier
     mode_version: SemVer
     name: NonEmptyStr
@@ -52,19 +85,53 @@ class CapabilityMode(FrozenModel):
     publisher: NonEmptyStr
     source_revision: NonEmptyStr
     source_license: NonEmptyStr
+    source_kind: Literal["first_party", "imported"] = "first_party"
     applicable_task_classes: Annotated[tuple[Identifier, ...], Field(min_length=1)]
     compatible_target_families: Annotated[tuple[Identifier, ...], Field(min_length=1)]
+    target_compatibility: tuple[ModeTargetCompatibility, ...] = ()
     requested_tools: tuple[Identifier, ...] = ()
+    required_capabilities: tuple[Identifier, ...] = ()
+    prohibited_implicit_capabilities: tuple[Identifier, ...] = (
+        "dependencies",
+        "hooks",
+        "mcp",
+        "network",
+        "plugins",
+        "scripts",
+        "tools",
+    )
+    security_posture: ModeSecurityPosture = ModeSecurityPosture()
     clauses: Annotated[tuple[ModeClause, ...], Field(min_length=1)]
     maximum_projection_utf8_bytes: int = Field(gt=0, le=3000)
     activation_default: Literal["one_task"] = "one_task"
+    task_lease_hours: int = Field(default=4, ge=1, le=24)
+    supports_personal_overlay: Literal[True] = True
+    evaluation_status: ModeEvaluationStatus = ModeEvaluationStatus.EXPERIMENTAL
+    evaluation_digest: Sha256Digest | None = None
     mutates_permanent_core: Literal[False] = False
+    auto_activates: Literal[False] = False
 
-    @field_validator("applicable_task_classes", "compatible_target_families", "requested_tools")
+    @field_validator(
+        "applicable_task_classes",
+        "compatible_target_families",
+        "requested_tools",
+        "required_capabilities",
+        "prohibited_implicit_capabilities",
+    )
     @classmethod
     def tuple_values_are_sorted_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
         if not strings_are_sorted_unique(value):
             raise ValueError("mode tuple values must be sorted and unique")
+        return value
+
+    @field_validator("target_compatibility")
+    @classmethod
+    def target_contracts_are_sorted_unique(
+        cls, value: tuple[ModeTargetCompatibility, ...]
+    ) -> tuple[ModeTargetCompatibility, ...]:
+        keys = tuple((item.target_family, item.delivery_surface) for item in value)
+        if keys != tuple(sorted(set(keys))):
+            raise ValueError("mode target compatibility must be sorted and unique")
         return value
 
     @field_validator("clauses")
@@ -76,6 +143,22 @@ class CapabilityMode(FrozenModel):
         if len({item.claim_key for item in value}) != len(value):
             raise ValueError("mode claim keys must be unique")
         return value
+
+    @model_validator(mode="after")
+    def capability_and_evaluation_contract_is_explicit(self) -> Self:
+        if set(self.required_capabilities).intersection(self.prohibited_implicit_capabilities):
+            raise ValueError("a required Mode capability cannot also be prohibited")
+        if any(
+            item.target_family not in self.compatible_target_families
+            for item in self.target_compatibility
+        ):
+            raise ValueError("mode target contract names an incompatible target family")
+        if self.evaluation_status is ModeEvaluationStatus.PRODUCT_EVALUATED:
+            if self.evaluation_digest is None:
+                raise ValueError("a product-evaluated Mode requires its evaluation digest")
+        elif self.evaluation_digest is not None:
+            raise ValueError("an unevaluated or failed Mode cannot claim an evaluation digest")
+        return self
 
     @property
     def content_digest(self) -> Sha256Digest:
@@ -236,6 +319,51 @@ class ModeEvaluationReport(FrozenModel):
             raise ValueError("mode evaluation cases must be sorted and unique")
         if self.valid != all(item.passed for item in self.cases):
             raise ValueError("mode evaluation validity must equal all case outcomes")
+        return self
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class ModeEvaluationTask(FrozenModel):
+    """One public natural task in a same-agent Mode comparison."""
+
+    task_id: Identifier
+    kind: Literal["diagnostic", "neutral_control"]
+    title: NonEmptyStr
+    task_class: Identifier
+    brief: NonEmptyStr
+    success_checks: Annotated[tuple[NonEmptyStr, ...], Field(min_length=1)]
+
+
+class ModeEvaluationDesignV1(FrozenModel):
+    """Frozen zero-provider-billed design; it contains no result claim."""
+
+    design_version: Literal["1.0.0"] = "1.0.0"
+    mode_id: Identifier
+    mode_version: SemVer
+    mode_digest: Sha256Digest
+    target_family: Literal["codex"] = "codex"
+    comparison_conditions: tuple[Literal["core-only", "core-plus-mode"], ...] = (
+        "core-only",
+        "core-plus-mode",
+    )
+    fresh_session_per_trial: Literal[True] = True
+    provider_billed_calls: Literal[False] = False
+    blinded_secondary_quality_review: Literal[True] = True
+    tasks: Annotated[tuple[ModeEvaluationTask, ...], Field(min_length=5, max_length=5)]
+    maximum_target_runs: Literal[10] = 10
+
+    @model_validator(mode="after")
+    def design_has_three_diagnostics_and_two_controls(self) -> Self:
+        task_ids = tuple(item.task_id for item in self.tasks)
+        if task_ids != tuple(sorted(set(task_ids))):
+            raise ValueError("mode evaluation tasks must be sorted and unique")
+        diagnostic_count = sum(item.kind == "diagnostic" for item in self.tasks)
+        neutral_count = sum(item.kind == "neutral_control" for item in self.tasks)
+        if diagnostic_count != 3 or neutral_count != 2:
+            raise ValueError("mode evaluation requires three diagnostics and two neutral controls")
         return self
 
     @property

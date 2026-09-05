@@ -1,0 +1,150 @@
+{
+  "$defs": {
+    "ModeEvaluationTask": {
+      "additionalProperties": false,
+      "description": "One public natural task in a same-agent Mode comparison.",
+      "properties": {
+        "brief": {
+          "minLength": 1,
+          "title": "Brief",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "diagnostic",
+            "neutral_control"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "success_checks": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Success Checks",
+          "type": "array"
+        },
+        "task_class": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Task Class",
+          "type": "string"
+        },
+        "task_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id",
+        "kind",
+        "title",
+        "task_class",
+        "brief",
+        "success_checks"
+      ],
+      "title": "ModeEvaluationTask",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Frozen zero-provider-billed design; it contains no result claim.",
+  "properties": {
+    "blinded_secondary_quality_review": {
+      "const": true,
+      "default": true,
+      "title": "Blinded Secondary Quality Review",
+      "type": "boolean"
+    },
+    "comparison_conditions": {
+      "default": [
+        "core-only",
+        "core-plus-mode"
+      ],
+      "items": {
+        "enum": [
+          "core-only",
+          "core-plus-mode"
+        ],
+        "type": "string"
+      },
+      "title": "Comparison Conditions",
+      "type": "array"
+    },
+    "design_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Design Version",
+      "type": "string"
+    },
+    "fresh_session_per_trial": {
+      "const": true,
+      "default": true,
+      "title": "Fresh Session Per Trial",
+      "type": "boolean"
+    },
+    "maximum_target_runs": {
+      "const": 10,
+      "default": 10,
+      "title": "Maximum Target Runs",
+      "type": "integer"
+    },
+    "mode_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Mode Digest",
+      "type": "string"
+    },
+    "mode_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Mode Id",
+      "type": "string"
+    },
+    "mode_version": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+      "title": "Mode Version",
+      "type": "string"
+    },
+    "provider_billed_calls": {
+      "const": false,
+      "default": false,
+      "title": "Provider Billed Calls",
+      "type": "boolean"
+    },
+    "target_family": {
+      "const": "codex",
+      "default": "codex",
+      "title": "Target Family",
+      "type": "string"
+    },
+    "tasks": {
+      "items": {
+        "$ref": "#/$defs/ModeEvaluationTask"
+      },
+      "maxItems": 5,
+      "minItems": 5,
+      "title": "Tasks",
+      "type": "array"
+    }
+  },
+  "required": [
+    "mode_id",
+    "mode_version",
+    "mode_digest",
+    "tasks"
+  ],
+  "title": "ModeEvaluationDesignV1",
+  "type": "object"
+}
