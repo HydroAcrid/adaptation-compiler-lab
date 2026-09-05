@@ -59,7 +59,8 @@ stale-state protected.
 
 ## Continuous sequence
 
-1. Complete the remaining shortcut, packaged-uninstall, cleanup, and governed-data-preservation
+1. Complete the remaining shortcut, packaged-uninstall, cleanup, same-owner recovery, and
+   governed-data-preservation
    receipt for the rebuilt Windows installer; clean install, onboarding, configured restart, and
    responsive navigation now pass on the development host.
 2. Reuse the repository smoke on an independent Windows machine or self-hosted runner, and execute
@@ -116,6 +117,30 @@ Implemented:
 Learning, telemetry, decision notifications, and launch at login remain off when absent from old
 preferences. A locked or unavailable native credential store disables mutations rather than
 falling back to environment variables, renderer IPC, repository files, or plaintext storage.
+
+## Phase 3A: same-owner offline recovery
+
+Implemented:
+
+- a custody-signed same-owner bundle containing the governed identity, managed keys, a consistent
+  SQLite backup, encrypted raw envelopes, and allowlisted product receipts;
+- an AES-256-GCM `.temper-recovery` envelope with a versioned memory-hard passphrase KDF and
+  independent plaintext digest;
+- Settings export with an exact raw-free preview and Rust-owned native save dialog;
+- first-run import with full authentication before presentation, explicit per-project native
+  folder rebinding, and no original-path exposure to React;
+- signed project-rebinding records that preserve the historical registration while redetecting
+  machine-specific Codex locations and clearing stale interop overrides;
+- fresh-install-only atomic restore, native DPAPI/Keychain enrollment, ledger validation, and exact
+  rollback when final preference binding fails;
+- learning, decision notifications, and launch at sign-in disabled after recovery; and
+- a ten-minute in-memory decrypted-preview lease whose expired bundle and opaque path selections
+  are purged together.
+
+Recovery does not include provider credentials, API keys, repository contents, arbitrary logs, or
+native agent files. It cannot merge an existing installation or remotely invalidate a copied
+offline archive. Clean-machine restore evidence remains part of the later packaging gate. See
+[`TEMPER_OFFLINE_RECOVERY.md`](TEMPER_OFFLINE_RECOVERY.md).
 
 ## Phase 4: React parity and Qt retirement
 

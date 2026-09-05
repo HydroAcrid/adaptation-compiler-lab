@@ -9,6 +9,7 @@ import {
   ENGINE_PROTOCOL_VERSION,
   exportPackage,
   exportProfile,
+  exportRecovery,
   decideEngineSuggestion,
   isTauriRuntime,
   loadEngineSnapshot,
@@ -18,10 +19,13 @@ import {
   loadPackageReviews,
   loadPackageImportPreview,
   loadProfileImportPreview,
+  loadRecoveryImportPreview,
   previewExistingInstallation,
   previewNativeInstructionChange,
   previewPersonalInstructionSetup,
   previewSetupProject,
+  restoreRecovery,
+  selectRecoveryProject,
   requestNotificationPermission,
   runModeTask,
   runManagedTask,
@@ -223,6 +227,162 @@ describe("Tauri engine boundary", () => {
 
     expect(invoke).toHaveBeenCalledWith("profile_import_preview", {
       passphrase: "correct horse battery staple",
+    });
+  });
+
+  it("keeps recovery paths native and binds restore to opaque project selections", async () => {
+    const preview = {
+      preview_version: "1.0.0" as const,
+      preview_token: "recovery-preview",
+      bundle_id: "temper-recovery-1",
+      bundle_digest: "sha256:" + "a".repeat(64),
+      signer_fingerprint: "sha256:" + "b".repeat(64),
+      created_at: "2026-09-05T12:00:00Z",
+      source_platform: "windows" as const,
+      projects: [
+        {
+          project_id: "kairn",
+          display_name: "Kairn",
+          source_project_digest: "sha256:" + "c".repeat(64),
+          capture_after_epoch_seconds: 1,
+        },
+      ],
+      governed_file_count: 2,
+      encrypted_raw_file_count: 1,
+      total_encrypted_bytes: 2048,
+      expires_at: "2026-09-05T12:10:00Z",
+      requires_project_rebinding: true as const,
+      overwrites_existing_installation: false as const,
+      raw_paths_exposed: false as const,
+      raw_payloads_exposed: false as const,
+    };
+    const selection = {
+      selection_token: "project-selection",
+      preview_token: preview.preview_token,
+      project_id: "kairn",
+      display_name: "Kairn",
+      expires_at: preview.expires_at,
+      path_exposed: false as const,
+    };
+    invoke
+      .mockResolvedValueOnce({
+        protocol_version: ENGINE_PROTOCOL_VERSION,
+        request_id: "preview",
+        ok: true,
+        result: preview,
+        error: null,
+        snapshot_digest: null,
+      })
+      .mockResolvedValueOnce({
+        protocol_version: ENGINE_PROTOCOL_VERSION,
+        request_id: "selection",
+        ok: true,
+        result: selection,
+        error: null,
+        snapshot_digest: null,
+      })
+      .mockResolvedValueOnce({
+        protocol_version: ENGINE_PROTOCOL_VERSION,
+        request_id: "restore",
+        ok: true,
+        result: {
+          result_version: "1.0.0",
+          receipt_id: "restore-1",
+          restoration_digest: "sha256:" + "d".repeat(64),
+          project_count: 1,
+          configured: true,
+          restart_required: true,
+          raw_paths_exposed: false,
+          raw_payloads_exposed: false,
+        },
+        error: null,
+        snapshot_digest: null,
+      });
+
+    await expect(
+      loadRecoveryImportPreview("correct horse battery staple"),
+    ).resolves.toEqual(preview);
+    await expect(
+      selectRecoveryProject(preview.preview_token, "kairn"),
+    ).resolves.toEqual(selection);
+    await restoreRecovery(
+      preview,
+      { kairn: selection },
+      "sha256:" + "e".repeat(64),
+      "restore-click",
+    );
+
+    expect(invoke.mock.calls).toEqual([
+      [
+        "recovery_import_preview",
+        { passphrase: "correct horse battery staple" },
+      ],
+      [
+        "recovery_project_select",
+        { previewToken: "recovery-preview", projectId: "kairn" },
+      ],
+      [
+        "recovery_restore",
+        {
+          bundleDigest: preview.bundle_digest,
+          expectedSnapshotDigest: "sha256:" + "e".repeat(64),
+          idempotencyKey: "restore-click",
+          previewToken: "recovery-preview",
+          projectSelectionTokens: { kairn: "project-selection" },
+        },
+      ],
+    ]);
+    expect(JSON.stringify(invoke.mock.calls)).not.toMatch(/Users|\/home\//);
+  });
+
+  it("exports recovery through a native destination without exposing it to React", async () => {
+    const preview = {
+      preview_version: "1.0.0" as const,
+      preview_token: "recovery-export",
+      bundle_id: "temper-recovery-1",
+      bundle_digest: "sha256:" + "a".repeat(64),
+      signer_fingerprint: "sha256:" + "b".repeat(64),
+      created_at: "2026-09-05T12:00:00Z",
+      source_platform: "windows" as const,
+      projects: [],
+      governed_file_count: 2,
+      encrypted_raw_file_count: 0,
+      total_encrypted_bytes: 1024,
+      expires_at: "2026-09-05T12:10:00Z",
+      requires_project_rebinding: true as const,
+      overwrites_existing_installation: false as const,
+      raw_paths_exposed: false as const,
+      raw_payloads_exposed: false as const,
+    };
+    invoke.mockResolvedValueOnce({
+      protocol_version: ENGINE_PROTOCOL_VERSION,
+      request_id: "export",
+      ok: true,
+      result: {
+        status: "exported",
+        bundle_id: preview.bundle_id,
+        bundle_digest: preview.bundle_digest,
+        project_count: 0,
+        raw_paths_exposed: false,
+        raw_payloads_exposed: false,
+      },
+      error: null,
+      snapshot_digest: "sha256:" + "d".repeat(64),
+    });
+
+    await exportRecovery(
+      preview,
+      "correct horse battery staple",
+      "sha256:" + "d".repeat(64),
+      "export-click",
+    );
+
+    expect(invoke).toHaveBeenCalledWith("recovery_export", {
+      bundleDigest: preview.bundle_digest,
+      expectedSnapshotDigest: "sha256:" + "d".repeat(64),
+      idempotencyKey: "export-click",
+      passphrase: "correct horse battery staple",
+      previewToken: preview.preview_token,
     });
   });
 

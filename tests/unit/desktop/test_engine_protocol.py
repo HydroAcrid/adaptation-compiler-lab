@@ -42,6 +42,12 @@ from adaptation_compiler_lab.portability import (
     ShareablePackageType,
 )
 from adaptation_compiler_lab.portability.profile import PortableProfileScope
+from adaptation_compiler_lab.recovery.models import (
+    RecoveryPreviewV1,
+    RecoveryProjectSelectionV1,
+    RecoveryProjectV1,
+    RecoveryRestoreResultV1,
+)
 
 
 def test_unconfigured_engine_import_does_not_load_managed_runtime_service() -> None:
@@ -534,6 +540,149 @@ def test_portability_never_operates_without_governed_local_configuration() -> No
     assert mutation.ok is False
     assert mutation.error is not None
     assert mutation.error.code == "not_configured"
+
+
+def _recovery_preview() -> RecoveryPreviewV1:
+    now = datetime(2026, 9, 5, 12, tzinfo=UTC)
+    return RecoveryPreviewV1(
+        preview_token="recovery-preview-1",
+        bundle_id="temper-recovery-1",
+        bundle_digest=f"sha256:{'1' * 64}",
+        signer_fingerprint=f"sha256:{'2' * 64}",
+        created_at=now,
+        source_platform="windows",
+        projects=(
+            RecoveryProjectV1(
+                project_id="kairn",
+                display_name="Kairn",
+                source_project_digest=f"sha256:{'3' * 64}",
+                capture_after_epoch_seconds=1,
+            ),
+        ),
+        governed_file_count=3,
+        encrypted_raw_file_count=1,
+        total_encrypted_bytes=2048,
+        expires_at=now + timedelta(minutes=10),
+    )
+
+
+def test_recovery_export_is_previewed_snapshot_bound_and_raw_free(tmp_path: Path) -> None:
+    snapshot_digest = f"sha256:{'a' * 64}"
+    service = MagicMock()
+    service.load.return_value = MagicMock(content_digest=snapshot_digest)
+    recovery = MagicMock()
+    preview_value = _recovery_preview()
+    recovery.preview_export.return_value = preview_value
+    recovery.write_export.return_value = preview_value
+    config_path = tmp_path / "config.json"
+    destination = tmp_path / "owner.temper-recovery"
+    router = EngineProtocolRouter(
+        cast(Any, service),
+        recovery_factory=lambda: cast(Any, recovery),
+        runtime_config_path=config_path,
+    )
+
+    preview = router.handle(_request("recovery.export.preview"))
+    exported = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="recovery-export",
+            method="recovery.export.create",
+            params={
+                "preview_token": preview_value.preview_token,
+                "bundle_digest": preview_value.bundle_digest,
+                "passphrase": "correct horse battery staple",
+                "destination": str(destination),
+            },
+            expected_snapshot_digest=snapshot_digest,
+            idempotency_key="recovery-export-click",
+        )
+    )
+
+    assert preview.ok is True
+    assert preview.result is not None
+    assert "passphrase" not in json.dumps(preview.result)
+    assert exported.ok is True
+    assert exported.result is not None
+    assert exported.result["raw_payloads_exposed"] is False
+    recovery.preview_export.assert_called_once_with(config_path=config_path)
+    recovery.write_export.assert_called_once()
+
+
+def test_recovery_restore_requires_new_installation_and_setup_digest(tmp_path: Path) -> None:
+    setup = FakeSetupService()
+    recovery = MagicMock()
+    preview_value = _recovery_preview()
+    recovery.preview_import.return_value = preview_value
+    selection = RecoveryProjectSelectionV1(
+        selection_token="project-selection-1",
+        preview_token=preview_value.preview_token,
+        project_id="kairn",
+        display_name="Kairn",
+        expires_at=preview_value.expires_at,
+    )
+    recovery.select_project_root.return_value = selection
+    recovery.restore.return_value = RecoveryRestoreResultV1(
+        receipt_id="restore-1",
+        restoration_digest=f"sha256:{'4' * 64}",
+        project_count=1,
+    )
+    router = EngineProtocolRouter(
+        None,
+        setup_factory=lambda: cast(Any, setup),
+        recovery_factory=lambda: cast(Any, recovery),
+    )
+    source = tmp_path / "owner.temper-recovery"
+    project = tmp_path / "Kairn"
+    project.mkdir()
+
+    preview = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="recovery-import",
+            method="recovery.import.preview",
+            params={"source": str(source), "passphrase": "correct horse battery staple"},
+        )
+    )
+    selected = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="recovery-project",
+            method="recovery.project.select",
+            params={
+                "preview_token": preview_value.preview_token,
+                "project_id": "kairn",
+                "root": str(project),
+            },
+        )
+    )
+    restored = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="recovery-restore",
+            method="recovery.restore",
+            params={
+                "preview_token": preview_value.preview_token,
+                "project_selection_tokens": {"kairn": selection.selection_token},
+                "bundle_digest": preview_value.bundle_digest,
+                "confirmed": True,
+            },
+            expected_snapshot_digest=setup.snapshot_value.content_digest,
+            idempotency_key="recovery-restore-click",
+        )
+    )
+
+    assert preview.ok is True
+    assert selected.ok is True
+    assert restored.ok is True
+    assert restored.result is not None
+    assert restored.result["restart_required"] is True
+    recovery.restore.assert_called_once_with(
+        preview_token=preview_value.preview_token,
+        project_selection_tokens={"kairn": selection.selection_token},
+        expected_bundle_digest=str(preview_value.bundle_digest),
+        confirmed=True,
+    )
 
 
 def _package_preview() -> PackageImportPreviewV1:

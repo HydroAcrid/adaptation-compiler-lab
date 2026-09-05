@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
 use std::env;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Read, Write};
@@ -26,6 +27,7 @@ const PROTOCOL_VERSION: &str = "temper-engine-protocol/v1";
 const MAX_FRAME_BYTES: usize = 1_048_576;
 const ENGINE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(15);
 const ENGINE_ANALYSIS_TIMEOUT: Duration = Duration::from_secs(240);
+const ENGINE_RECOVERY_TIMEOUT: Duration = Duration::from_secs(60);
 const ENGINE_HOOK_TIMEOUT: Duration = Duration::from_millis(100);
 const ENGINE_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
 #[cfg(target_os = "windows")]
@@ -130,6 +132,9 @@ impl EngineProcess {
 
         let timeout = match method {
             "instruction_environment.analyze" => ENGINE_ANALYSIS_TIMEOUT,
+            "recovery.export.preview" | "recovery.export.create" | "recovery.restore" => {
+                ENGINE_RECOVERY_TIMEOUT
+            }
             "claude.hook.handle" => ENGINE_HOOK_TIMEOUT,
             _ => ENGINE_RESPONSE_TIMEOUT,
         };
@@ -1237,6 +1242,115 @@ fn profile_export_preview(
 }
 
 #[tauri::command]
+fn recovery_export_preview(
+    state: tauri::State<'_, EngineState>,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(&state, "recovery.export.preview", json!({}), None, None)
+}
+
+#[tauri::command]
+fn recovery_export(
+    state: tauri::State<'_, EngineState>,
+    preview_token: String,
+    bundle_digest: String,
+    passphrase: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    let mut destination = rfd::FileDialog::new()
+        .set_file_name("temper-recovery.temper-recovery")
+        .add_filter("Temper recovery", &["temper-recovery"])
+        .save_file()
+        .ok_or_else(cancelled)?;
+    if destination.extension().and_then(|value| value.to_str()) != Some("temper-recovery") {
+        destination.set_extension("temper-recovery");
+    }
+    call_engine(
+        &state,
+        "recovery.export.create",
+        json!({
+            "preview_token": preview_token,
+            "bundle_digest": bundle_digest,
+            "passphrase": passphrase,
+            "destination": destination,
+        }),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+fn recovery_import_preview(
+    state: tauri::State<'_, EngineState>,
+    passphrase: String,
+) -> Result<EngineResponse, PublicError> {
+    let source = rfd::FileDialog::new()
+        .add_filter("Temper recovery", &["temper-recovery"])
+        .pick_file()
+        .ok_or_else(cancelled)?;
+    call_engine(
+        &state,
+        "recovery.import.preview",
+        json!({"source": source, "passphrase": passphrase}),
+        None,
+        None,
+    )
+}
+
+#[tauri::command]
+fn recovery_project_select(
+    state: tauri::State<'_, EngineState>,
+    preview_token: String,
+    project_id: String,
+) -> Result<EngineResponse, PublicError> {
+    let root = rfd::FileDialog::new().pick_folder().ok_or_else(cancelled)?;
+    call_engine(
+        &state,
+        "recovery.project.select",
+        json!({
+            "preview_token": preview_token,
+            "project_id": project_id,
+            "root": root,
+        }),
+        None,
+        None,
+    )
+}
+
+#[tauri::command]
+async fn recovery_restore(
+    app: tauri::AppHandle,
+    preview_token: String,
+    bundle_digest: String,
+    project_selection_tokens: BTreeMap<String, String>,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let response = call_engine(
+            &state,
+            "recovery.restore",
+            json!({
+                "preview_token": preview_token,
+                "bundle_digest": bundle_digest,
+                "project_selection_tokens": project_selection_tokens,
+                "confirmed": true,
+            }),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )?;
+        if response.ok {
+            let mut guard = state.0.lock().map_err(|_| unavailable())?;
+            *guard = None;
+        }
+        Ok(response)
+    })
+    .await
+    .map_err(|_| unavailable())?
+}
+
+#[tauri::command]
 fn profile_export(
     state: tauri::State<'_, EngineState>,
     export_token: String,
@@ -1567,6 +1681,11 @@ pub fn run() {
             instruction_environment_change_preview,
             instruction_environment_change_apply,
             instruction_environment_change_rollback,
+            recovery_export_preview,
+            recovery_export,
+            recovery_import_preview,
+            recovery_project_select,
+            recovery_restore,
             profile_export_preview,
             profile_export,
             profile_import_preview,
@@ -1664,6 +1783,11 @@ mod tests {
             "instruction_environment_change_preview",
             "instruction_environment_change_apply",
             "instruction_environment_change_rollback",
+            "recovery_export_preview",
+            "recovery_export",
+            "recovery_import_preview",
+            "recovery_project_select",
+            "recovery_restore",
             "profile_export_preview",
             "profile_export",
             "profile_import_preview",

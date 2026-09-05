@@ -1,0 +1,332 @@
+{
+  "$defs": {
+    "RecoveryFileV1": {
+      "additionalProperties": false,
+      "description": "One bounded product-owned state file embedded inside the encrypted bundle.",
+      "properties": {
+        "byte_length": {
+          "maximum": 67108864,
+          "minimum": 0,
+          "title": "Byte Length",
+          "type": "integer"
+        },
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "logical_path": {
+          "minLength": 1,
+          "title": "Logical Path",
+          "type": "string"
+        },
+        "payload_base64": {
+          "title": "Payload Base64",
+          "type": "string"
+        }
+      },
+      "required": [
+        "logical_path",
+        "content_digest",
+        "byte_length",
+        "payload_base64"
+      ],
+      "title": "RecoveryFileV1",
+      "type": "object"
+    },
+    "RecoveryProjectV1": {
+      "additionalProperties": false,
+      "description": "Path-free identity for one project contained in the encrypted bundle.",
+      "properties": {
+        "capture_after_epoch_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Capture After Epoch Seconds"
+        },
+        "display_name": {
+          "minLength": 1,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "project_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "source_project_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Source Project Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "display_name",
+        "source_project_digest"
+      ],
+      "title": "RecoveryProjectV1",
+      "type": "object"
+    },
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    },
+    "SignerIdentity": {
+      "additionalProperties": false,
+      "description": "Self-signed public identity for one dedicated local Ed25519 key.",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires At"
+        },
+        "governance_type": {
+          "const": "signer_identity",
+          "default": "signer_identity",
+          "title": "Governance Type",
+          "type": "string"
+        },
+        "identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Identity Id",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "public_key_base64": {
+          "minLength": 1,
+          "title": "Public Key Base64",
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "$ref": "#/$defs/SignerRole"
+          },
+          "minItems": 1,
+          "title": "Roles",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "signature": {
+          "$ref": "#/$defs/SignatureEnvelope"
+        },
+        "subject_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Subject Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "identity_id",
+        "subject_id",
+        "public_key_base64",
+        "key_fingerprint",
+        "roles",
+        "created_at",
+        "signature"
+      ],
+      "title": "SignerIdentity",
+      "type": "object"
+    },
+    "SignerRole": {
+      "enum": [
+        "consent",
+        "review",
+        "release",
+        "activation",
+        "custody"
+      ],
+      "title": "SignerRole",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Signed plaintext package encrypted as one offline same-owner backup.",
+  "properties": {
+    "bundle_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Bundle Id",
+      "type": "string"
+    },
+    "config_payload_base64": {
+      "title": "Config Payload Base64",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "files": {
+      "items": {
+        "$ref": "#/$defs/RecoveryFileV1"
+      },
+      "minItems": 1,
+      "title": "Files",
+      "type": "array"
+    },
+    "includes_encrypted_raw_payloads": {
+      "title": "Includes Encrypted Raw Payloads",
+      "type": "boolean"
+    },
+    "includes_native_agent_credentials": {
+      "const": false,
+      "default": false,
+      "title": "Includes Native Agent Credentials",
+      "type": "boolean"
+    },
+    "includes_provider_api_keys": {
+      "const": false,
+      "default": false,
+      "title": "Includes Provider Api Keys",
+      "type": "boolean"
+    },
+    "projects": {
+      "items": {
+        "$ref": "#/$defs/RecoveryProjectV1"
+      },
+      "minItems": 1,
+      "title": "Projects",
+      "type": "array"
+    },
+    "recovery_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Recovery Version",
+      "type": "string"
+    },
+    "runtime_secrets_base64": {
+      "title": "Runtime Secrets Base64",
+      "type": "string"
+    },
+    "signature": {
+      "$ref": "#/$defs/SignatureEnvelope"
+    },
+    "signer_identity": {
+      "$ref": "#/$defs/SignerIdentity"
+    },
+    "source_config_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Config Digest",
+      "type": "string"
+    },
+    "source_platform": {
+      "enum": [
+        "windows",
+        "macos"
+      ],
+      "title": "Source Platform",
+      "type": "string"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "bundle_id",
+    "subject_id",
+    "source_platform",
+    "source_config_digest",
+    "signer_identity",
+    "projects",
+    "config_payload_base64",
+    "runtime_secrets_base64",
+    "files",
+    "created_at",
+    "includes_encrypted_raw_payloads",
+    "signature"
+  ],
+  "title": "TemperRecoveryBundleV1",
+  "type": "object"
+}

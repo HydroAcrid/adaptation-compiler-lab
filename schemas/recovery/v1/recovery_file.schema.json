@@ -1,0 +1,34 @@
+{
+  "additionalProperties": false,
+  "description": "One bounded product-owned state file embedded inside the encrypted bundle.",
+  "properties": {
+    "byte_length": {
+      "maximum": 67108864,
+      "minimum": 0,
+      "title": "Byte Length",
+      "type": "integer"
+    },
+    "content_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Content Digest",
+      "type": "string"
+    },
+    "logical_path": {
+      "minLength": 1,
+      "title": "Logical Path",
+      "type": "string"
+    },
+    "payload_base64": {
+      "title": "Payload Base64",
+      "type": "string"
+    }
+  },
+  "required": [
+    "logical_path",
+    "content_digest",
+    "byte_length",
+    "payload_base64"
+  ],
+  "title": "RecoveryFileV1",
+  "type": "object"
+}

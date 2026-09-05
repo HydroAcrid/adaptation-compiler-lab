@@ -2,6 +2,29 @@
 
 Last updated: 2026-09-05
 
+## Same-owner offline recovery
+
+The native product can now export one exact custody-signed recovery bundle from Settings and
+restore it during first-run onboarding. The encrypted `.temper-recovery` envelope contains the
+same Ed25519 identity, AES raw-store key, a consistent governed-ledger snapshot, encrypted raw
+payload envelopes, product-owned receipts, and project registration identities. It excludes
+provider credentials, API keys, repositories, build outputs, arbitrary logs, and native agent
+files. The renderer sees only raw-free counts, fingerprints, project display names, and opaque
+native path-selection tokens.
+
+Import authenticates the full bundle before presentation, refuses to overwrite an existing
+runtime, requires an explicit current directory for every project, signs custody-authorized
+rebindings, rediscovers machine-specific Codex paths, resets Windows interop assumptions, enrolls
+the same identity in DPAPI or Keychain, and validates that the restored ledger has a current state.
+Staging and final preference binding roll back only the new installation on failure. Learning,
+notifications, and launch at sign-in remain off after restore. Decrypted previews expire after ten
+minutes and their opaque selections are purged with them.
+
+This is same-owner disaster recovery, not profile import, device synchronization, or shareable
+expertise. An offline copy cannot be remotely revoked. Native Windows and macOS code paths exist;
+an external clean-machine restore remains part of the later trusted packaging gate. See
+[`TEMPER_OFFLINE_RECOVERY.md`](TEMPER_OFFLINE_RECOVERY.md).
+
 ## Portable Core target authorization
 
 Temper now has a governed bridge for using an approved Core behavior with a second agent when its

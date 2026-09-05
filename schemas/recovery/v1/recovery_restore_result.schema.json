@@ -1,0 +1,60 @@
+{
+  "additionalProperties": false,
+  "description": "Renderer-safe result of an exact restore mutation.",
+  "properties": {
+    "configured": {
+      "const": true,
+      "default": true,
+      "title": "Configured",
+      "type": "boolean"
+    },
+    "project_count": {
+      "minimum": 1,
+      "title": "Project Count",
+      "type": "integer"
+    },
+    "raw_paths_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Paths Exposed",
+      "type": "boolean"
+    },
+    "raw_payloads_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Payloads Exposed",
+      "type": "boolean"
+    },
+    "receipt_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "restart_required": {
+      "const": true,
+      "default": true,
+      "title": "Restart Required",
+      "type": "boolean"
+    },
+    "restoration_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Restoration Digest",
+      "type": "string"
+    },
+    "result_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Result Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "restoration_digest",
+    "project_count"
+  ],
+  "title": "RecoveryRestoreResultV1",
+  "type": "object"
+}

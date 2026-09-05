@@ -236,6 +236,52 @@ export interface EngineProjectPreview {
   expires_at: string;
 }
 
+export interface EngineRecoveryProject {
+  project_id: string;
+  display_name: string;
+  source_project_digest: string;
+  capture_after_epoch_seconds: number | null;
+}
+
+export interface EngineRecoveryPreview {
+  preview_version: "1.0.0";
+  preview_token: string;
+  bundle_id: string;
+  bundle_digest: string;
+  signer_fingerprint: string;
+  created_at: string;
+  source_platform: "windows" | "macos";
+  projects: EngineRecoveryProject[];
+  governed_file_count: number;
+  encrypted_raw_file_count: number;
+  total_encrypted_bytes: number;
+  expires_at: string;
+  requires_project_rebinding: true;
+  overwrites_existing_installation: false;
+  raw_paths_exposed: false;
+  raw_payloads_exposed: false;
+}
+
+export interface EngineRecoveryProjectSelection {
+  selection_token: string;
+  preview_token: string;
+  project_id: string;
+  display_name: string;
+  expires_at: string;
+  path_exposed: false;
+}
+
+export interface EngineRecoveryRestoreResult {
+  result_version: "1.0.0";
+  receipt_id: string;
+  restoration_digest: string;
+  project_count: number;
+  configured: true;
+  restart_required: true;
+  raw_paths_exposed: false;
+  raw_payloads_exposed: false;
+}
+
 export interface EngineProject {
   project_id: string;
   display_name: string;
@@ -870,6 +916,141 @@ export async function previewSetupProject(): Promise<EngineProjectPreview | null
     return null;
   }
   return assertSuccessful(response);
+}
+
+function assertRecoveryPreview(
+  preview: EngineRecoveryPreview,
+): EngineRecoveryPreview {
+  if (
+    preview.raw_paths_exposed ||
+    preview.raw_payloads_exposed ||
+    preview.overwrites_existing_installation
+  ) {
+    throw new Error("Temper refused an unsafe recovery preview.");
+  }
+  return preview;
+}
+
+export async function loadRecoveryExportPreview(): Promise<EngineRecoveryPreview> {
+  return assertRecoveryPreview(
+    assertSuccessful(
+      await invoke<EngineResponse<EngineRecoveryPreview>>(
+        "recovery_export_preview",
+      ),
+    ),
+  );
+}
+
+export async function exportRecovery(
+  preview: EngineRecoveryPreview,
+  passphrase: string,
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<{
+  status: "exported";
+  bundle_id: string;
+  bundle_digest: string;
+  project_count: number;
+  raw_paths_exposed: false;
+  raw_payloads_exposed: false;
+} | null> {
+  const response = await invoke<
+    EngineResponse<{
+      status: "exported";
+      bundle_id: string;
+      bundle_digest: string;
+      project_count: number;
+      raw_paths_exposed: false;
+      raw_payloads_exposed: false;
+    }>
+  >("recovery_export", {
+    bundleDigest: preview.bundle_digest,
+    expectedSnapshotDigest: snapshotDigest,
+    idempotencyKey,
+    passphrase,
+    previewToken: preview.preview_token,
+  });
+  if (
+    response.protocol_version === ENGINE_PROTOCOL_VERSION &&
+    !response.ok &&
+    response.error?.code === "cancelled"
+  ) {
+    return null;
+  }
+  const result = assertSuccessful(response);
+  if (result.raw_paths_exposed || result.raw_payloads_exposed) {
+    throw new Error("Temper refused an unsafe recovery result.");
+  }
+  return result;
+}
+
+export async function loadRecoveryImportPreview(
+  passphrase: string,
+): Promise<EngineRecoveryPreview | null> {
+  const response = await invoke<EngineResponse<EngineRecoveryPreview>>(
+    "recovery_import_preview",
+    { passphrase },
+  );
+  if (
+    response.protocol_version === ENGINE_PROTOCOL_VERSION &&
+    !response.ok &&
+    response.error?.code === "cancelled"
+  ) {
+    return null;
+  }
+  return assertRecoveryPreview(assertSuccessful(response));
+}
+
+export async function selectRecoveryProject(
+  previewToken: string,
+  projectId: string,
+): Promise<EngineRecoveryProjectSelection | null> {
+  const response = await invoke<EngineResponse<EngineRecoveryProjectSelection>>(
+    "recovery_project_select",
+    { previewToken, projectId },
+  );
+  if (
+    response.protocol_version === ENGINE_PROTOCOL_VERSION &&
+    !response.ok &&
+    response.error?.code === "cancelled"
+  ) {
+    return null;
+  }
+  const result = assertSuccessful(response);
+  if (result.path_exposed || result.preview_token !== previewToken) {
+    throw new Error("Temper refused an unsafe project selection.");
+  }
+  return result;
+}
+
+export async function restoreRecovery(
+  preview: EngineRecoveryPreview,
+  selections: Record<string, EngineRecoveryProjectSelection>,
+  setupDigest: string,
+  idempotencyKey: string,
+): Promise<EngineRecoveryRestoreResult> {
+  const projectSelectionTokens = Object.fromEntries(
+    Object.entries(selections).map(([projectId, selection]) => [
+      projectId,
+      selection.selection_token,
+    ]),
+  );
+  const result = assertSuccessful(
+    await invoke<EngineResponse<EngineRecoveryRestoreResult>>(
+      "recovery_restore",
+      {
+        bundleDigest: preview.bundle_digest,
+        expectedSnapshotDigest: setupDigest,
+        idempotencyKey,
+        previewToken: preview.preview_token,
+        projectSelectionTokens,
+      },
+    ),
+  );
+  if (result.raw_paths_exposed || result.raw_payloads_exposed) {
+    throw new Error("Temper refused an unsafe recovery result.");
+  }
+  return result;
 }
 
 export async function previewExistingInstallation(): Promise<EngineExistingInstallationPreview | null> {

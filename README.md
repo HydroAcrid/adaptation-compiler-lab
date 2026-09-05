@@ -17,6 +17,14 @@ clean-runner smoke. Those jobs have not yet started because the repository's Git
 is currently unavailable, so the app/DMG are not claimed as validated. Publisher certificates and
 the unchanged default trusted clean-machine gates remain a later external-distribution boundary.
 
+Temper now also has native same-owner offline recovery. Settings creates a custody-signed,
+AES-256-GCM `.temper-recovery` file protected by an owner passphrase; first-run onboarding can
+verify it, rebind every project through native folder dialogs, restore the exact identity and
+governed ledger, and restart into configured state. Provider credentials and repository contents
+are excluded, existing installations are never overwritten, and restored learning begins off.
+This is disaster recovery rather than profile sharing or cloud synchronization. See
+[`TEMPER_OFFLINE_RECOVERY.md`](TEMPER_OFFLINE_RECOVERY.md).
+
 Temper now also models the native instruction environment around each registered project before it
 compiles a target projection. Codex `AGENTS.md` chains and skills, Claude project rules/skills, and
 Copilot instruction files/skills remain contextual native policy rather than silently becoming
