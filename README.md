@@ -589,7 +589,8 @@ after valid trials.
   outer namespace lacked Codex's matching execution-host companion and scorer invocation resolved
   away from its venv; no v2 comparison cell ran. Instrument v3 pins and mounts that companion and
   preserves the scorer venv invocation path, with all Mode/task/evaluation content unchanged. Its
-  no-inference preflight passes; a new one-cell smoke still gates the comparison.
+  no-inference preflight and one-cell live smoke pass, admitting the unchanged comparison without
+  constituting Mode-effectiveness evidence themselves.
 - [`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md): docs-only portable
   specialty preset composition and the proposed Frontend Studio demonstration.
 - [`development_benchmark_compact_projection`](development_benchmark_compact_projection): frozen
