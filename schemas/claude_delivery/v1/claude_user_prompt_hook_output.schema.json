@@ -1,0 +1,38 @@
+{
+  "$defs": {
+    "ClaudeHookSpecificOutputV1": {
+      "additionalProperties": false,
+      "description": "Official structured UserPromptSubmit response shape.",
+      "properties": {
+        "additional_context": {
+          "minLength": 1,
+          "title": "Additional Context",
+          "type": "string"
+        },
+        "hook_event_name": {
+          "const": "UserPromptSubmit",
+          "default": "UserPromptSubmit",
+          "title": "Hook Event Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "additional_context"
+      ],
+      "title": "ClaudeHookSpecificOutputV1",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Only output Temper ever returns to Claude Code.",
+  "properties": {
+    "hook_specific_output": {
+      "$ref": "#/$defs/ClaudeHookSpecificOutputV1"
+    }
+  },
+  "required": [
+    "hook_specific_output"
+  ],
+  "title": "ClaudeUserPromptHookOutputV1",
+  "type": "object"
+}

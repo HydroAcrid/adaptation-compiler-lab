@@ -1,0 +1,47 @@
+{
+  "additionalProperties": false,
+  "description": "Exact registered project selected locally from an invocation working directory.",
+  "properties": {
+    "consent_current": {
+      "title": "Consent Current",
+      "type": "boolean"
+    },
+    "delivery_enabled": {
+      "title": "Delivery Enabled",
+      "type": "boolean"
+    },
+    "instruction_environment_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Instruction Environment Digest",
+      "type": "string"
+    },
+    "learning_enabled": {
+      "title": "Learning Enabled",
+      "type": "boolean"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "subject_id",
+    "project_id",
+    "instruction_environment_digest",
+    "consent_current",
+    "learning_enabled",
+    "delivery_enabled"
+  ],
+  "title": "ClaudeHookProjectV1",
+  "type": "object"
+}

@@ -1,0 +1,131 @@
+{
+  "$defs": {
+    "ClaudeHookEvent": {
+      "description": "Lifecycle events used by Temper's official Claude Code hook integration.",
+      "enum": [
+        "UserPromptSubmit",
+        "Stop",
+        "StopFailure",
+        "SessionEnd"
+      ],
+      "title": "ClaudeHookEvent",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Transient allowlisted event data; transcript paths are deliberately absent.",
+  "properties": {
+    "event": {
+      "$ref": "#/$defs/ClaudeHookEvent"
+    },
+    "failure_class": {
+      "anyOf": [
+        {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Failure Class"
+    },
+    "failure_details": {
+      "anyOf": [
+        {
+          "maxLength": 16384,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Failure Details"
+    },
+    "invocation_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Invocation Version",
+      "type": "string"
+    },
+    "last_assistant_message": {
+      "anyOf": [
+        {
+          "maxLength": 1048576,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last Assistant Message"
+    },
+    "permission_mode": {
+      "anyOf": [
+        {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Permission Mode"
+    },
+    "prompt": {
+      "anyOf": [
+        {
+          "maxLength": 1048576,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Prompt"
+    },
+    "session_end_reason": {
+      "anyOf": [
+        {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Session End Reason"
+    },
+    "session_id": {
+      "maxLength": 512,
+      "minLength": 1,
+      "title": "Session Id",
+      "type": "string"
+    },
+    "working_directory": {
+      "maxLength": 4096,
+      "minLength": 1,
+      "title": "Working Directory",
+      "type": "string"
+    }
+  },
+  "required": [
+    "event",
+    "session_id",
+    "working_directory"
+  ],
+  "title": "ClaudeHookInvocationV1",
+  "type": "object"
+}
