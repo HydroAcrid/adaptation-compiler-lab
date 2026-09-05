@@ -1,6 +1,6 @@
 # Temper Modes Product Gate
 
-Status: implementation-ready catalog; effectiveness evaluation not yet executed.
+Status: frozen effectiveness instrument and live preflight; target comparison not yet executed.
 
 ## Purpose
 
@@ -53,11 +53,17 @@ project fixture, timeout, and task channel:
 
 That is ten target runs per Mode and thirty target runs for the complete initial catalog. Every
 trial uses a fresh isolated saved-ChatGPT Codex session. Provider API keys and provider-billed calls
-remain prohibited. Automated correctness is primary. One isolated blinded Codex pass may provide
-secondary general-quality analysis after the outputs are frozen.
+remain prohibited. Automated correctness is primary. Three isolated blinded Codex passes—one per
+Mode—provide secondary general-quality analysis after the outputs are frozen.
 
 The public task designs are stored as typed `ModeEvaluationDesignV1` records and bind the exact Mode
-digest. Changing a Mode invalidates its design binding and requires a fresh versioned evaluation.
+digest. The executable v1 instrument adds 15 digest-bound fixture manifests, 30 condition-blind
+target cells, a capability-free hidden scorer, and three isolated blind-review sessions. Its exact
+Codex `0.153.1` Linux binary, Luna/medium configuration, saved-ChatGPT authentication, source files,
+the target runner, hidden scorer, blind judge, unblinder, and nested bubblewrap boundary are frozen in
+`development_benchmark_mode_evaluation/EXECUTION_CONTRACT-v1.json`. A live preflight verified those
+runtime conditions without performing inference. Changing a Mode, task, scorer, or runner
+invalidates the binding and requires a new versioned evaluation.
 
 ## Passing rule
 
@@ -77,7 +83,8 @@ gate and does not establish cross-agent transfer.
 
 ## Remaining product work
 
-- Execute the frozen comparisons when Codex subscription capacity is available.
+- Execute the frozen 30-cell comparison and three blind reviews without tuning after the first
+  target cell.
 - Record immutable trial and blinded-review receipts.
 - Add a governed personal-overlay editor.
 - Add evidence-gated Mode suggestions after five eligible occurrences across three real dates and

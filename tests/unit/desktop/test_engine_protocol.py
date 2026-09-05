@@ -1416,7 +1416,7 @@ def _instruction_summary() -> InstructionEnvironmentSummaryV1:
         environment_digest=digest,
         source_chain_digest=digest,
         surface="codex-cli",
-        surface_contract_version="codex-cli-0.150.0-alpha.8",
+        surface_contract_version="codex-cli-0.153.1",
         global_sources_enabled=False,
         sources=(),
     )

@@ -1,0 +1,18 @@
+{
+  "allowed_change_paths": ["src/solution.py"],
+  "fixture_digest": "sha256:5e896e04da8166f4b18a8827af2de6e794eeb106537cc644135c7c137053e1aa",
+  "fixture_directory": "fixtures/frontend",
+  "function_name": "settings_layout",
+  "kind": "diagnostic",
+  "mode_id": "frontend-studio",
+  "prompt": "Repair `settings_layout` in `src/solution.py` without changing another function. It returns `(layout, visible_state, initial_focus, motion)`. Use `single-column` below 760 px and `two-column` otherwise. Preserve the requested state. Initial focus is `settings-heading` while loading, `empty-action` when empty, `retry` on error, `status` after save, and `save` when ready. Motion is `none` when reduced motion is requested and `standard` otherwise. Preserve validation, change only `src/solution.py`, and run `python3 -m unittest discover -v`.",
+  "scenarios": [
+    {"arguments": [640, "loading", false], "expected": ["single-column", "loading", "settings-heading", "standard"], "metric": "diagnostic", "scenario_id": "settings-01-loading-narrow"},
+    {"arguments": [900, "empty", true], "expected": ["two-column", "empty", "empty-action", "none"], "metric": "diagnostic", "scenario_id": "settings-02-empty-reduced"},
+    {"arguments": [720, "error", false], "expected": ["single-column", "error", "retry", "standard"], "metric": "diagnostic", "scenario_id": "settings-03-error-narrow"},
+    {"arguments": [1000, "saved", true], "expected": ["two-column", "saved", "status", "none"], "metric": "diagnostic", "scenario_id": "settings-04-saved"}
+  ],
+  "task_id": "frontend-01-settings",
+  "title": "Responsive settings flow",
+  "visible_test_command": ["python3", "-m", "unittest", "discover", "-v"]
+}

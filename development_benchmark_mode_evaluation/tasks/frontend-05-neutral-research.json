@@ -1,0 +1,17 @@
+{
+  "allowed_change_paths": ["src/solution.py"],
+  "fixture_digest": "sha256:5e896e04da8166f4b18a8827af2de6e794eeb106537cc644135c7c137053e1aa",
+  "fixture_directory": "fixtures/frontend",
+  "function_name": "summarize_api_note",
+  "kind": "neutral_control",
+  "mode_id": "frontend-studio",
+  "prompt": "Verify and, only if necessary, repair `summarize_api_note` in `src/solution.py`. It must return exactly the supplied version, capability, and limitation in that order without adding assumptions or interface work. Change no other function, change the file only if required, and run the visible suite.",
+  "scenarios": [
+    {"arguments": ["1.4", "batching", "ten-item ceiling"], "expected": ["1.4", "batching", "ten-item ceiling"], "metric": "neutral", "scenario_id": "api-note-01"},
+    {"arguments": ["2026-08", "offline mode", "desktop only"], "expected": ["2026-08", "offline mode", "desktop only"], "metric": "neutral", "scenario_id": "api-note-02"},
+    {"arguments": ["0.9-beta", "import", "no merge support"], "expected": ["0.9-beta", "import", "no merge support"], "metric": "neutral", "scenario_id": "api-note-03"}
+  ],
+  "task_id": "frontend-05-neutral-research",
+  "title": "Research summary",
+  "visible_test_command": ["python3", "-m", "unittest", "discover", "-v"]
+}

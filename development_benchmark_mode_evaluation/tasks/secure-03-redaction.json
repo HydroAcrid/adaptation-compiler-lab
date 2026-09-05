@@ -1,0 +1,17 @@
+{
+  "allowed_change_paths": ["src/solution.py"],
+  "fixture_digest": "sha256:e131df20e3d3001fa5ecae4f56e7bf28fa16ef4da31475927170eba8b2ded57f",
+  "fixture_directory": "fixtures/secure_backend",
+  "function_name": "safe_failure",
+  "kind": "diagnostic",
+  "mode_id": "secure-backend",
+  "prompt": "Repair `safe_failure` in `src/solution.py`. Return the client message `request failed` and the operational log `failure code <error_code>`. The supplied secret and private path must appear in neither value. Preserve the useful bounded error code, change only this function, and run the visible suite.",
+  "scenarios": [
+    {"arguments": ["sk-live-123", "/users/kevin/private", "E_AUTH"], "expected": ["request failed", "failure code E_AUTH"], "metric": "diagnostic", "scenario_id": "redaction-01-auth"},
+    {"arguments": ["token-xyz", "C:\\private\\db", "E_DB"], "expected": ["request failed", "failure code E_DB"], "metric": "diagnostic", "scenario_id": "redaction-02-db"},
+    {"arguments": ["password", "/tmp/secret", "E_INPUT"], "expected": ["request failed", "failure code E_INPUT"], "metric": "diagnostic", "scenario_id": "redaction-03-input"}
+  ],
+  "task_id": "secure-03-redaction",
+  "title": "Credential-safe failure handling",
+  "visible_test_command": ["python3", "-m", "unittest", "discover", "-v"]
+}

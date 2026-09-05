@@ -1,0 +1,17 @@
+{
+  "allowed_change_paths": ["src/solution.py"],
+  "fixture_digest": "sha256:e131df20e3d3001fa5ecae4f56e7bf28fa16ef4da31475927170eba8b2ded57f",
+  "fixture_directory": "fixtures/secure_backend",
+  "function_name": "clarify_onboarding",
+  "kind": "neutral_control",
+  "mode_id": "secure-backend",
+  "prompt": "Repair only `clarify_onboarding` in `src/solution.py`. Existing installations return `Continue with this Temper` and `Existing configuration and identity will be preserved`. New installations return `Start setup` and `A new configuration will be created`. Keep the wording concise and do not alter backend behavior. Run the visible suite.",
+  "scenarios": [
+    {"arguments": [true], "expected": ["Continue with this Temper", "Existing configuration and identity will be preserved"], "metric": "neutral", "scenario_id": "copy-01-existing"},
+    {"arguments": [false], "expected": ["Start setup", "A new configuration will be created"], "metric": "neutral", "scenario_id": "copy-02-new"},
+    {"arguments": [true], "expected": ["Continue with this Temper", "Existing configuration and identity will be preserved"], "metric": "neutral", "scenario_id": "copy-03-existing-repeat"}
+  ],
+  "task_id": "secure-05-neutral-copy",
+  "title": "Documentation wording",
+  "visible_test_command": ["python3", "-m", "unittest", "discover", "-v"]
+}

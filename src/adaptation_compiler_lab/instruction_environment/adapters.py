@@ -298,7 +298,7 @@ class InstructionSourceAdapter(ABC):
 class CodexInstructionSourceAdapter(InstructionSourceAdapter):
     target = NativeTarget.CODEX
     surface = "codex-cli"
-    surface_contract_version = "codex-cli-0.150.0-alpha.8"
+    surface_contract_version = "codex-cli-0.153.1"
 
     def _native_instruction_limit(self, global_roots: tuple[Path, ...]) -> int | None:
         configured = _codex_config_value(global_roots, "project_doc_max_bytes")

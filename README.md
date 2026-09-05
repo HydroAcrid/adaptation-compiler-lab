@@ -4,7 +4,7 @@ Temper's native product-completion sequence is active. The Tauri application now
 first-run setup, existing-runtime adoption, truthful Codex/Claude inspection, prospective project
 registration, review/scope decisions, revoke/undo, activation feedback, consent renewal, four
 product preferences, and the governed task/diff/apply/discard flow through one typed Python
-application service. Codex is pinned to exact `codex-cli 0.150.0-alpha.8` conformance and saved
+application service. Codex is pinned to exact `codex-cli 0.153.1` conformance and saved
 ChatGPT login. Claude now has an explicit local Connect/Disconnect lifecycle, but it remains
 unavailable on this machine because Claude Code is not installed. Connection requires an exact
 supported Claude binary, authenticated local Claude status, a redacted settings preview, explicit
@@ -427,7 +427,7 @@ worked; its current target-visible projection did not beat an excellent profile.
 - A cohesive review-mode daily snapshot with compact raw-free proposal cards, exact lineage,
   append-only approve/reject/strict-scope-refine decisions, pending activation feedback, health,
   friction, and longitudinal gate measures. `Temper` is an internal working display name only.
-- A pinned Codex 0.150.0-alpha.8 pickup and fresh-session target integration that requires saved ChatGPT
+- A pinned Codex 0.153.1 pickup and fresh-session target integration that requires saved ChatGPT
   authentication, admits only post-cutoff user-authored text from allowlisted completed interactive
   tasks, checkpoints hashed prefixes, separates learning from later activation, validates the
   returned network/workspace/instruction boundary, and exposes local poll, review, notice, undo,
@@ -580,6 +580,9 @@ after valid trials.
 - [`development_benchmark_persona_v32`](development_benchmark_persona_v32): frozen fresh-persona
   behavioral canary comparing compiled and strong-static delivery on one applicable task and one
   unrelated control; no result is claimed until all immutable target evidence is scored.
+- [`development_benchmark_mode_evaluation`](development_benchmark_mode_evaluation): frozen
+  three-Mode, 15-task, 30-cell same-agent comparison with hidden capability-free scoring and a
+  verified saved-ChatGPT Luna runtime; target execution has not yet begun.
 - [`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md): docs-only portable
   specialty preset composition and the proposed Frontend Studio demonstration.
 - [`development_benchmark_compact_projection`](development_benchmark_compact_projection): frozen

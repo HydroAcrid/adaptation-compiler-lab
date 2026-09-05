@@ -22,7 +22,7 @@ class FakeInspector:
                 installation_state="installed",
                 authentication_state="signed_in",
                 conformance_state="compatible",
-                version_label="codex-cli 0.150.0-alpha.8",
+                version_label="codex-cli 0.153.1",
                 status_summary="Ready to use with Temper.",
                 learning_capability="Learns from eligible completed tasks.",
                 delivery_capability="Fresh Temper-managed tasks only.",

@@ -1,0 +1,17 @@
+{
+  "allowed_change_paths": ["src/solution.py"],
+  "fixture_digest": "sha256:5e896e04da8166f4b18a8827af2de6e794eeb106537cc644135c7c137053e1aa",
+  "fixture_directory": "fixtures/frontend",
+  "function_name": "onboarding_state",
+  "kind": "diagnostic",
+  "mode_id": "frontend-studio",
+  "prompt": "Repair `onboarding_state` in `src/solution.py` without changing another function. Return `(heading, action, focus_target, announcement)`. `ready` maps to `Ready to set up`, `begin`, `begin`, `ready`; `working` maps to `Setting up Temper`, `none`, `progress`, `working`; `failed` maps to `Setup needs attention`, `retry`, `retry`, and `error:<error_code>`; `complete` maps to `Temper is ready`, `open-temper`, `open-temper`, `complete`. Never claim completion in another state. Preserve validation, change only `src/solution.py`, and run the visible suite.",
+  "scenarios": [
+    {"arguments": ["complete", "none"], "expected": ["Temper is ready", "open-temper", "open-temper", "complete"], "metric": "diagnostic", "scenario_id": "onboarding-01-complete"},
+    {"arguments": ["failed", "secure-store"], "expected": ["Setup needs attention", "retry", "retry", "error:secure-store"], "metric": "diagnostic", "scenario_id": "onboarding-02-failed"},
+    {"arguments": ["working", "none"], "expected": ["Setting up Temper", "none", "progress", "working"], "metric": "diagnostic", "scenario_id": "onboarding-03-working"}
+  ],
+  "task_id": "frontend-03-onboarding",
+  "title": "First-run recovery state",
+  "visible_test_command": ["python3", "-m", "unittest", "discover", "-v"]
+}

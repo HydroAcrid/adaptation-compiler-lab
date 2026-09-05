@@ -1,0 +1,113 @@
+{
+  "$defs": {
+    "ModeEvaluationRunCellV1": {
+      "additionalProperties": false,
+      "properties": {
+        "blind_condition_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Blind Condition Id",
+          "type": "string"
+        },
+        "blind_output_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Blind Output Id",
+          "type": "string"
+        },
+        "run_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "sequence": {
+          "maximum": 30,
+          "minimum": 1,
+          "title": "Sequence",
+          "type": "integer"
+        },
+        "task_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Task Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sequence",
+        "run_id",
+        "task_id",
+        "blind_condition_id",
+        "blind_output_id"
+      ],
+      "title": "ModeEvaluationRunCellV1",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Condition-blind target order safe to commit before execution.",
+  "properties": {
+    "blind_condition_ids": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "title": "Blind Condition Ids",
+      "type": "array"
+    },
+    "condition_mapping_withheld": {
+      "const": true,
+      "default": true,
+      "title": "Condition Mapping Withheld",
+      "type": "boolean"
+    },
+    "contract_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Contract Digest",
+      "type": "string"
+    },
+    "external_validation_accessed": {
+      "const": false,
+      "default": false,
+      "title": "External Validation Accessed",
+      "type": "boolean"
+    },
+    "plan_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Plan Version",
+      "type": "string"
+    },
+    "run_order": {
+      "items": {
+        "$ref": "#/$defs/ModeEvaluationRunCellV1"
+      },
+      "maxItems": 30,
+      "minItems": 30,
+      "title": "Run Order",
+      "type": "array"
+    },
+    "seed_commitment": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Seed Commitment",
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract_digest",
+    "seed_commitment",
+    "blind_condition_ids",
+    "run_order"
+  ],
+  "title": "ModeEvaluationPublicPlanV1",
+  "type": "object"
+}

@@ -346,7 +346,7 @@ registration, live connection inspection, and configured restart are implemented
 Rust, and React. All setup mutations are bound to the reviewed state digest and an idempotency key;
 native paths remain outside renderer state.
 
-The Windows Codex product pin is refreshed to exact `codex-cli 0.150.0-alpha.8` executable and
+The Windows Codex product pin is refreshed to exact `codex-cli 0.153.1` executable and
 generated schema digests. Connection readiness requires saved ChatGPT authentication. The UI
 separately describes source learning, fresh managed delivery, and unavailable ambient delivery.
 Claude is detection-only and has no Connect action, hook, provider login, or API-key path.
@@ -1289,5 +1289,13 @@ personal-overlay support, required capabilities, and explicit capability prohibi
 request no tools or ambient capabilities, cannot auto-activate, and cannot mutate Core. Each has a
 public digest-bound evaluation design containing three diagnostic and two neutral-control tasks.
 Only structural conformance has run; all three remain visibly `experimental` and no effectiveness
-or superiority claim is made. Executing the complete same-agent catalog comparison would require
-30 fresh saved-ChatGPT Codex target runs and remains an evidence step, not a static test.
+or superiority claim is made. The complete same-agent catalog instrument is now frozen: 15 public
+task manifests, 30 condition-blind target cells, three isolated blind-review sessions, independent
+answer-blind hidden scoring, exact activation/deactivation checks, and a 33-session subscription
+ceiling. The current Linux Codex `0.153.1` binary, saved ChatGPT login, Luna/medium model selection,
+and nested bubblewrap boundary passed a live no-inference preflight. Target execution remains the
+next evidence step; it has not started. The final preregistration also binds the three-session
+condition-blind judge and seed-backed unblinder. Anonymous outputs suppress any copied condition
+material, raw target and judge traces must remain encrypted outside every Git repository, and the
+result can only apply the frozen per-Mode correctness, neutral-control, blind-quality, size,
+activation, and deactivation gates.

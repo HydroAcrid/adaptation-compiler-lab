@@ -51,11 +51,7 @@ DEFAULT_CODEX_DOGFOOD_SCHEMA_ROOT: Final = (
     Path(__file__).resolve().parents[1] / "connectors" / "schema_snapshots" / "codex" / "0.146.0"
 )
 WINDOWS_PRODUCT_CODEX_SCHEMA_ROOT: Final = (
-    Path(__file__).resolve().parents[1]
-    / "connectors"
-    / "schema_snapshots"
-    / "codex"
-    / "0.150.0-alpha.8"
+    Path(__file__).resolve().parents[1] / "connectors" / "schema_snapshots" / "codex" / "0.153.1"
 )
 _INTERACTIVE_SOURCE_KINDS: Final = ("appServer", "cli", "vscode")
 _TERMINAL_THREAD_STATUSES: Final = frozenset({"idle", "notLoaded"})

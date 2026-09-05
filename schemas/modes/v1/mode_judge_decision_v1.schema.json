@@ -1,0 +1,105 @@
+{
+  "$defs": {
+    "ModeJudgePairDecisionV1": {
+      "additionalProperties": false,
+      "description": "One condition-blind quality preference over an exact anonymous pair.",
+      "properties": {
+        "ordered_output_ids": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Ordered Output Ids",
+          "type": "array"
+        },
+        "preferred_output_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preferred Output Id"
+        },
+        "rationale": {
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "task_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Task Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id",
+        "ordered_output_ids",
+        "rationale"
+      ],
+      "title": "ModeJudgePairDecisionV1",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One fresh judge's five condition-blind decisions for a single Mode.",
+  "properties": {
+    "decision_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Decision Version",
+      "type": "string"
+    },
+    "limitations": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 5,
+      "minItems": 1,
+      "title": "Limitations",
+      "type": "array"
+    },
+    "mode_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Mode Id",
+      "type": "string"
+    },
+    "overall_assessment": {
+      "minLength": 1,
+      "title": "Overall Assessment",
+      "type": "string"
+    },
+    "pair_ratings": {
+      "items": {
+        "$ref": "#/$defs/ModeJudgePairDecisionV1"
+      },
+      "maxItems": 5,
+      "minItems": 5,
+      "title": "Pair Ratings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "mode_id",
+    "pair_ratings",
+    "overall_assessment",
+    "limitations"
+  ],
+  "title": "ModeJudgeDecisionV1",
+  "type": "object"
+}

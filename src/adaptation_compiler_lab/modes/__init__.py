@@ -9,6 +9,21 @@ from adaptation_compiler_lab.modes.catalog import (
     evaluation_design_by_mode_id,
     mode_by_id,
 )
+from adaptation_compiler_lab.modes.evaluation import (
+    ModeEvaluationExecutionContractV1,
+    ModeEvaluationFixtureV1,
+    ModeEvaluationModeOutcomeV1,
+    ModeEvaluationPublicPlanV1,
+    ModeEvaluationResultV1,
+    ModeEvaluationRunCellV1,
+    ModeEvaluationScenarioV1,
+    ModeEvaluationTaskOutcomeV1,
+    ModeJudgeDecisionV1,
+    ModeJudgePairDecisionV1,
+    build_mode_evaluation_plan,
+    load_mode_evaluation_contract,
+    load_mode_evaluation_fixture,
+)
 from adaptation_compiler_lab.modes.frontend_studio import FRONTEND_STUDIO_MODE
 from adaptation_compiler_lab.modes.models import (
     CapabilityMode,
@@ -35,6 +50,7 @@ from adaptation_compiler_lab.modes.service import (
     evaluate_mode_conformance,
     mode_applies_to,
     prepare_mode_task,
+    render_mode_material,
 )
 from adaptation_compiler_lab.modes.store import ModeReceiptStore
 
@@ -56,18 +72,32 @@ __all__ = [
     "ModeDeliveryReceipt",
     "ModeEvaluationCaseResult",
     "ModeEvaluationDesignV1",
+    "ModeEvaluationExecutionContractV1",
+    "ModeEvaluationFixtureV1",
+    "ModeEvaluationModeOutcomeV1",
+    "ModeEvaluationPublicPlanV1",
     "ModeEvaluationReport",
+    "ModeEvaluationResultV1",
+    "ModeEvaluationRunCellV1",
+    "ModeEvaluationScenarioV1",
     "ModeEvaluationStatus",
     "ModeEvaluationTask",
+    "ModeEvaluationTaskOutcomeV1",
+    "ModeJudgeDecisionV1",
+    "ModeJudgePairDecisionV1",
     "ModePreparedTask",
     "ModeReceiptStore",
     "ModeSecurityPosture",
     "ModeTargetCompatibility",
+    "build_mode_evaluation_plan",
     "complete_mode_delivery",
     "evaluate_frontend_studio_mode",
     "evaluate_mode_conformance",
     "evaluation_design_by_mode_id",
+    "load_mode_evaluation_contract",
+    "load_mode_evaluation_fixture",
     "mode_applies_to",
     "mode_by_id",
     "prepare_mode_task",
+    "render_mode_material",
 ]

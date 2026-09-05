@@ -277,6 +277,15 @@ def evaluate_mode_conformance(mode: CapabilityMode) -> ModeEvaluationReport:
     )
 
 
+def render_mode_material(mode: CapabilityMode) -> str:
+    """Return the exact compact default material used for a Mode activation."""
+
+    material = _render_mode_material(mode, mode.clauses)
+    if len(material.encode("utf-8")) > mode.maximum_projection_utf8_bytes:
+        raise ModeCompositionError("mode projection exceeds its declared byte limit")
+    return material
+
+
 def evaluate_frontend_studio_mode() -> ModeEvaluationReport:
     """Backward-compatible frontend conformance entry point."""
 

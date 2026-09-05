@@ -1,0 +1,48 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "blind_condition_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Blind Condition Id",
+      "type": "string"
+    },
+    "blind_output_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Blind Output Id",
+      "type": "string"
+    },
+    "run_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "sequence": {
+      "maximum": 30,
+      "minimum": 1,
+      "title": "Sequence",
+      "type": "integer"
+    },
+    "task_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Task Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "sequence",
+    "run_id",
+    "task_id",
+    "blind_condition_id",
+    "blind_output_id"
+  ],
+  "title": "ModeEvaluationRunCellV1",
+  "type": "object"
+}

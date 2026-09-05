@@ -1,0 +1,17 @@
+{
+  "allowed_change_paths": ["src/solution.py"],
+  "fixture_digest": "sha256:5e896e04da8166f4b18a8827af2de6e794eeb106537cc644135c7c137053e1aa",
+  "fixture_directory": "fixtures/frontend",
+  "function_name": "review_queue_view",
+  "kind": "diagnostic",
+  "mode_id": "frontend-studio",
+  "prompt": "Repair `review_queue_view` in `src/solution.py` without changing another function. It returns `(layout, visible_item_count, focus_target)`. Use `stack` below 720 px and `split` otherwise, and keep every queued item visible. An empty queue focuses `empty-heading`; a valid current selection focuses `selected-item`; otherwise focus `first-card`. Keep the negative-count validation, change only `src/solution.py`, and run `python3 -m unittest discover -v`.",
+  "scenarios": [
+    {"arguments": [0, 500, false], "expected": ["stack", 0, "empty-heading"], "metric": "diagnostic", "scenario_id": "queue-01-empty"},
+    {"arguments": [7, 680, true], "expected": ["stack", 7, "selected-item"], "metric": "diagnostic", "scenario_id": "queue-02-narrow-selected"},
+    {"arguments": [5, 1000, false], "expected": ["split", 5, "first-card"], "metric": "diagnostic", "scenario_id": "queue-03-wide-fallback"}
+  ],
+  "task_id": "frontend-02-review-queue",
+  "title": "Dense review queue",
+  "visible_test_command": ["python3", "-m", "unittest", "discover", "-v"]
+}

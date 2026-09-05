@@ -1,0 +1,17 @@
+{
+  "allowed_change_paths": ["src/solution.py"],
+  "fixture_digest": "sha256:24d3f6ccd69d1a26db13bb0dea9572b1093a2fc635b604ff5c1fb903c159f2f3",
+  "fixture_directory": "fixtures/research",
+  "function_name": "audit_trials",
+  "kind": "diagnostic",
+  "mode_id": "research-analyst",
+  "prompt": "Repair `audit_trials` in `src/solution.py`. Return `(completed, failed, incomplete, valid, headline)`, preserving every supplied count. The result is valid only when failed and incomplete are both zero. Use headline `all trials valid` when valid and `mixed outcomes require review` otherwise. Reject negative counts with `ValueError`. Change only this function in `src/solution.py` and run the visible suite.",
+  "scenarios": [
+    {"arguments": [8, 1, 1], "expected": [8, 1, 1, false, "mixed outcomes require review"], "metric": "diagnostic", "scenario_id": "negative-01-mixed"},
+    {"arguments": [0, 3, 0], "expected": [0, 3, 0, false, "mixed outcomes require review"], "metric": "diagnostic", "scenario_id": "negative-02-failed"},
+    {"arguments": [12, 0, 0], "expected": [12, 0, 0, true, "all trials valid"], "metric": "diagnostic", "scenario_id": "negative-03-valid"}
+  ],
+  "task_id": "research-03-negative",
+  "title": "Negative-result audit",
+  "visible_test_command": ["python3", "-m", "unittest", "discover", "-v"]
+}
