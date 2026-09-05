@@ -397,8 +397,8 @@ worked; its current target-visible projection did not beat an excellent profile.
   Modes. Their structural conformance is verified separately from the still-unexecuted same-agent
   effectiveness designs. Signed third-party behavior and Mode packages can be previewed, staged,
   locally reviewed, and either adopted through existing Core governance or added inactive to the
-  Mode catalog. Personal-overlay composition, marketplace discovery, and automatic Mode creation
-  remain unimplemented.
+  Mode catalog. Owner-bound personal overlays can be approved and composed for one exact task;
+  the overlay editor, marketplace discovery, and automatic Mode creation remain unimplemented.
 - Immutable failed v1.11 instrument, v1.13 role, v1.14 resolver, v1.15 inner-sandbox, v1.16
   pre-session smoke, and v1.17–v1.18 live-smoke results plus a v1.19 compact-projection protocol with
   three entirely fresh task fixtures, an independent scorer, six

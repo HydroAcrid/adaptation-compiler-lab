@@ -31,6 +31,7 @@ from adaptation_compiler_lab.portability import (
     PackageImportReceiptV1,
     PackageReviewDecisionReceiptV1,
     PackageReviewItemV1,
+    PersonalModeOverlayV1,
     PortableProfilePackage,
     PortableProfilePreview,
     ProfileImportReceipt,
@@ -219,6 +220,7 @@ class LocalProfilePortabilityService:
     def preview_shareable_import(self, package: ShareablePackage) -> PackageImportPreviewV1:
         config = _load_config(self.config_path)
         state = _ledger(config).current()
+        package_store = ShareablePackageImportStore(config.state_root / "shareable-imports")
         known_behaviors: set[str] = set()
         if state is not None and state.release is not None:
             known_behaviors = {
@@ -241,10 +243,15 @@ class LocalProfilePortabilityService:
                 for behavior in clause.behavioral_contract.required_behaviors
             )
         }
+        known_mode_digests = {mode.mode_id: mode.content_digest for mode in MODE_CATALOG}
+        for mode in package_store.accepted_modes():
+            if mode.mode_id in known_mode_digests:
+                raise ValueError("an imported Mode conflicts with the built-in catalog")
+            known_mode_digests[mode.mode_id] = mode.content_digest
         return preview_shareable_package(
             package,
             known_claims=known_claims,
-            known_mode_digests={mode.mode_id: mode.content_digest for mode in MODE_CATALOG},
+            known_mode_digests=known_mode_digests,
             local_subject_id=config.subject_id,
         )
 
@@ -273,6 +280,12 @@ class LocalProfilePortabilityService:
     def accepted_imported_modes(self) -> tuple[CapabilityMode, ...]:
         config = _load_config(self.config_path)
         return ShareablePackageImportStore(config.state_root / "shareable-imports").accepted_modes()
+
+    def accepted_personal_overlays(self) -> tuple[PersonalModeOverlayV1, ...]:
+        config = _load_config(self.config_path)
+        return ShareablePackageImportStore(
+            config.state_root / "shareable-imports"
+        ).accepted_overlays()
 
     def decide_package_review(
         self,

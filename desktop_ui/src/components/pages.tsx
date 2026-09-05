@@ -1404,6 +1404,7 @@ export function ModesPage({
               <p>{mode.summary}</p>
               <div className="mode-card__facts">
                 <span>One task</span>
+                {mode.personalized ? <span>Personalized</span> : null}
                 <span>{mode.projection_utf8_bytes} bytes</span>
                 <span>
                   {mode.requested_tools.length
@@ -1597,9 +1598,9 @@ function ModeDetailsDialog({
             <div>
               <dt>Personal overlay</dt>
               <dd>
-                {mode.supports_personal_overlay
-                  ? "Supported by the format; editor not enabled yet"
-                  : "Unavailable"}
+                {mode.personalized
+                  ? "Your approved overlay is applied for this task only"
+                  : "None — this Mode uses its generic defaults"}
               </dd>
             </div>
           </dl>

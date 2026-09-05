@@ -31,9 +31,12 @@ requests no tools or capabilities, and explicitly forbids implicit network acces
 content, dependency installation, plugins, MCP changes, and tool installation. This does not prove
 that any Mode improves agent performance.
 
-The package format supports a future personal overlay. The current product does not yet expose an
-overlay editor, create suggestions, or automatic activation. No Mode can mutate Core or activate
-itself.
+An owner-bound personal overlay can now be signed, explicitly approved, and composed above the
+matching generic Mode defaults for one managed task. The activation receipt binds the exact
+overlay digest, and a different owner, Mode version, or Mode digest fails closed. Higher-authority
+Core and project claims can still suppress the affected overlay clause. The product does not yet
+expose an overlay editor, create Mode suggestions, or automatically activate a Mode. No Mode or
+overlay can mutate Core or activate itself.
 
 ## Frozen evaluation design
 
@@ -79,6 +82,4 @@ gate and does not establish cross-agent transfer.
 - Add a governed personal-overlay editor.
 - Add evidence-gated Mode suggestions after five eligible occurrences across three real dates and
   agreement between two isolated grouping passes.
-- Connect already implemented signed, inactive, raw-free Mode package imports to the ordinary
-  governed clause-review queue; do not introduce a second promotion path.
 - Re-evaluate target compatibility when Claude delivery becomes available.

@@ -98,6 +98,19 @@
       "title": "Mode Version",
       "type": "string"
     },
+    "personal_overlay_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Personal Overlay Digest"
+    },
     "prior_core_release_digest": {
       "pattern": "^sha256:[0-9a-f]{64}$",
       "title": "Prior Core Release Digest",
@@ -111,8 +124,11 @@
       "type": "string"
     },
     "receipt_version": {
-      "const": "1.0.0",
-      "default": "1.0.0",
+      "default": "1.1.0",
+      "enum": [
+        "1.0.0",
+        "1.1.0"
+      ],
       "title": "Receipt Version",
       "type": "string"
     },

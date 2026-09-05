@@ -328,10 +328,7 @@ class PackageReviewItemV1(FrozenModel):
         if behavior != (self.claim_key is not None):
             raise ValueError("only behavior-pack reviews may carry a claim key")
         expected_actions: tuple[Literal["approve", "reject"], ...] = (
-            ("approve", "reject")
-            if self.disposition == "new"
-            and self.package_type is not ShareablePackageType.PERSONAL_MODE_OVERLAY
-            else ("reject",)
+            ("approve", "reject") if self.disposition == "new" else ("reject",)
         )
         if self.available_actions != expected_actions:
             raise ValueError("package review actions do not match its safe disposition")
@@ -405,6 +402,8 @@ class PackageReviewDecisionReceiptV1(FrozenModel):
             self.runtime_adoption_digest is not None
         ):
             raise ValueError("approved behavior review must bind one runtime adoption")
+        if self.package_type is not ShareablePackageType.BEHAVIOR_PACK and self.mapped_project_ids:
+            raise ValueError("Mode and overlay decisions cannot claim project scope mappings")
         if (
             self.signature.purpose != PACKAGE_REVIEW_PURPOSE
             or self.signature.signed_at != self.decided_at
@@ -629,6 +628,9 @@ def preview_shareable_package(
     else:
         if local_subject_id != package.owner_subject_id:
             disposition = "owner_only"
+            conflicts.append(package.base_mode_id)
+        elif mode_map.get(package.base_mode_id) != package.base_mode_digest:
+            disposition = "conflict"
             conflicts.append(package.base_mode_id)
         else:
             disposition = "new"
@@ -1002,6 +1004,31 @@ class ShareablePackageImportStore:
             raise ShareablePackageError("approved imported Mode catalog contains duplicates")
         return tuple(sorted(modes, key=lambda mode: (mode.name.casefold(), mode.mode_id)))
 
+    def accepted_overlays(self) -> tuple[PersonalModeOverlayV1, ...]:
+        """Load owner-bound personal overlays only after explicit local approval."""
+
+        overlays: list[PersonalModeOverlayV1] = []
+        for decision in self.decisions():
+            if decision.resulting_status != "approved_inactive_overlay":
+                continue
+            package_path = (
+                self._root
+                / "packages"
+                / f"{str(decision.package_digest).removeprefix('sha256:')}.temper-pack"
+            )
+            package = read_shareable_package(package_path)
+            if not isinstance(package, PersonalModeOverlayV1):
+                raise ShareablePackageError("approved overlay points to another package type")
+            if package.owner_subject_id != decision.local_subject_id:
+                raise ShareablePackageError("approved overlay crossed its owner boundary")
+            if _personal_overlay_item_digest(package) != decision.item_digest:
+                raise ShareablePackageError("approved personal overlay digest changed")
+            overlays.append(package)
+        keys = tuple((item.base_mode_id, item.base_mode_digest) for item in overlays)
+        if len(keys) != len(set(keys)):
+            raise ShareablePackageError("more than one personal overlay targets the same Mode")
+        return tuple(sorted(overlays, key=lambda item: (item.base_mode_id, item.package_id)))
+
 
 def _review_items_for_package(
     package: ShareablePackage,
@@ -1067,13 +1094,7 @@ def _review_items_for_package(
         disposition = dispositions.get(package.base_mode_id, "new")
         if package.owner_subject_id != receipt.local_subject_id:
             disposition = "owner_only"
-        overlay_digest = canonical_digest(
-            {
-                "base_mode_id": package.base_mode_id,
-                "base_mode_digest": package.base_mode_digest,
-                "clauses": tuple(clause.model_dump(mode="json") for clause in package.clauses),
-            }
-        )
+        overlay_digest = _personal_overlay_item_digest(package)
         rows.append(
             PackageReviewItemV1(
                 review_id=_package_review_id(package.content_digest, package.base_mode_id),
@@ -1090,7 +1111,7 @@ def _review_items_for_package(
                 kind="personal_mode_overlay",
                 summary=f"Personal overlay for {package.base_mode_id}",
                 disposition=disposition,
-                available_actions=("reject",),
+                available_actions=(("approve", "reject") if disposition == "new" else ("reject",)),
                 created_at=receipt.imported_at,
             )
         )
@@ -1100,6 +1121,16 @@ def _review_items_for_package(
 def _package_review_id(package_digest: Sha256Digest, item_id: str) -> str:
     digest = canonical_digest({"package_digest": package_digest, "item_id": item_id})
     return f"package-review-{str(digest).removeprefix('sha256:')[:24]}"
+
+
+def _personal_overlay_item_digest(package: PersonalModeOverlayV1) -> Sha256Digest:
+    return canonical_digest(
+        {
+            "base_mode_id": package.base_mode_id,
+            "base_mode_digest": package.base_mode_digest,
+            "clauses": tuple(clause.model_dump(mode="json") for clause in package.clauses),
+        }
+    )
 
 
 def _verify_package_review_decision(receipt: PackageReviewDecisionReceiptV1) -> None:

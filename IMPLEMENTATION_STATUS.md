@@ -2,6 +2,22 @@
 
 Last updated: 2026-09-05
 
+## Personal Mode overlay runtime
+
+Owner-bound personal overlays now pass through explicit signed local approval and compose only with
+the exact base Mode ID, version, digest, and owner. Overlay clauses replace generic defaults by
+stable claim key or add complementary defaults, after which higher-authority Core and project
+suppression is applied. The one-task activation binds the overlay digest and its included clauses;
+completion removes both Mode and overlay without mutating Core. Foreign-owner or changed-base
+overlays fail closed. Imported Modes now launch through the same governed service that lists them,
+repairing a catalog-versus-launch mismatch.
+
+The full Python suite passes in one clean owner run with 1,135 tests and two expected platform
+skips. React has 69 passing tests, 39 passing Playwright product/visual checks, and nine passing
+Windows WebView compatibility/accessibility checks. Rust formatting and Clippy are clean and all
+13 Rust tests pass. This is composition evidence, not Mode-effectiveness evidence; the editor,
+suggestion gate, and frozen agent comparisons remain open.
+
 ## Shareable Modes and behavior packs
 
 Temper now has a separate signed `.temper-pack` boundary for raw-free behavior packs, capability
@@ -22,8 +38,9 @@ clause through the existing deterministic evaluation, transition, signed release
 path. The resulting local decision receipt binds the imported origin and adoption digest without
 letting publisher authority cross the boundary. Approved imported Modes enter only the inactive
 catalog and require an explicit one-task selection. External adoptions cannot count as genuine
-ordinary-work cycles. Built-in Modes and approved Core behaviors can be exported. Personal-overlay
-packages remain reject-only until safe runtime composition exists. See
+ordinary-work cycles. Built-in Modes and approved Core behaviors can be exported. An owner-bound
+personal overlay can now be explicitly approved and composed above generic Mode defaults for one
+task; foreign-owner overlays remain blocked, and no overlay editor is claimed yet. See
 [`TEMPER_SHAREABLE_PACKAGES.md`](TEMPER_SHAREABLE_PACKAGES.md).
 
 ## Native instruction environment interoperability

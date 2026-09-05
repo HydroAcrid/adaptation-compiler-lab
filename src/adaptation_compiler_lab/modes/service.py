@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import base64
 from datetime import datetime, timedelta
-from typing import Literal
+from typing import Literal, Protocol
 
+from adaptation_compiler_lab.domain import SemVer, Sha256Digest
 from adaptation_compiler_lab.governance import SignatureEnvelope
 from adaptation_compiler_lab.governance.signing import (
     GovernanceSigner,
@@ -14,6 +15,7 @@ from adaptation_compiler_lab.governance.signing import (
 from adaptation_compiler_lab.modes.models import (
     CapabilityMode,
     ModeActivationReceipt,
+    ModeClause,
     ModeDeactivationReceipt,
     ModeDeliveryReceipt,
     ModeEvaluationCaseResult,
@@ -25,6 +27,19 @@ from adaptation_compiler_lab.targets.base import sha256_text
 
 class ModeCompositionError(ValueError):
     """Raised when a temporary Mode cannot be safely applied to an exact task."""
+
+
+class PersonalModeOverlayLike(Protocol):
+    """Structural seam that keeps Mode composition independent of package persistence."""
+
+    owner_subject_id: str
+    base_mode_id: str
+    base_mode_version: SemVer
+    base_mode_digest: Sha256Digest
+    clauses: tuple[ModeClause, ...]
+
+    @property
+    def content_digest(self) -> Sha256Digest: ...
 
 
 def prepare_mode_task(
@@ -41,6 +56,7 @@ def prepare_mode_task(
     signer: GovernanceSigner,
     activated_at: datetime,
     suppressed_claim_keys: tuple[str, ...] = (),
+    personal_overlay: PersonalModeOverlayLike | None = None,
 ) -> ModePreparedTask:
     """Create a signed one-task activation and prepend its compact effective clauses."""
 
@@ -50,13 +66,35 @@ def prepare_mode_task(
         raise ModeCompositionError("mode delivery requires a non-empty task")
     if target_family not in mode.compatible_target_families:
         raise ModeCompositionError("mode is incompatible with the target family")
+    effective_by_claim = {item.claim_key: item for item in mode.clauses}
+    overlay_claim_keys: set[str] = set()
+    overlay_digest = None
+    if personal_overlay is not None:
+        if (
+            personal_overlay.owner_subject_id != subject_id
+            or personal_overlay.base_mode_id != mode.mode_id
+            or personal_overlay.base_mode_version != mode.mode_version
+            or personal_overlay.base_mode_digest != mode.content_digest
+        ):
+            raise ModeCompositionError("personal overlay does not bind this owner and exact Mode")
+        overlay_digest = personal_overlay.content_digest
+        base_clause_claims_by_id = {item.clause_id: item.claim_key for item in mode.clauses}
+        for clause in personal_overlay.clauses:
+            existing_claim = base_clause_claims_by_id.get(clause.clause_id)
+            if existing_claim is not None and existing_claim != clause.claim_key:
+                raise ModeCompositionError("personal overlay reuses a clause ID for another claim")
+            effective_by_claim[clause.claim_key] = clause
+            overlay_claim_keys.add(clause.claim_key)
+    effective_clauses = tuple(
+        sorted(effective_by_claim.values(), key=lambda item: (item.claim_key, item.clause_id))
+    )
     unknown_suppression = set(suppressed_claim_keys).difference(
-        item.claim_key for item in mode.clauses
+        item.claim_key for item in effective_clauses
     )
     if unknown_suppression:
         raise ModeCompositionError("mode suppression references an unknown claim")
     suppressed = tuple(sorted(set(suppressed_claim_keys)))
-    active_clauses = tuple(item for item in mode.clauses if item.claim_key not in suppressed)
+    active_clauses = tuple(item for item in effective_clauses if item.claim_key not in suppressed)
     if not active_clauses:
         raise ModeCompositionError("higher-authority policy suppressed every mode clause")
     mode_material = _render_mode_material(mode, active_clauses)
@@ -74,6 +112,7 @@ def prepare_mode_task(
         task_digest=sha256_text(normalized_task),
         target_family=target_family,
         prior_core_release_digest=prior_core_release_digest,
+        personal_overlay_digest=overlay_digest,
         suppressed_claim_keys=suppressed,
         activated_at=activated_at,
         expires_at=activated_at + timedelta(hours=mode.task_lease_hours),
@@ -128,6 +167,9 @@ def prepare_mode_task(
         delivered_task=combined,
         mode_material=mode_material,
         included_clause_ids=tuple(item.clause_id for item in active_clauses),
+        included_overlay_clause_ids=tuple(
+            item.clause_id for item in active_clauses if item.claim_key in overlay_claim_keys
+        ),
         activation=activation,
         delivery=delivery,
     )
