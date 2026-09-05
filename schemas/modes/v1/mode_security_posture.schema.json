@@ -1,0 +1,44 @@
+{
+  "additionalProperties": false,
+  "description": "Explicit capability posture; omission never grants ambient capability.",
+  "properties": {
+    "dependency_installation": {
+      "const": "forbidden",
+      "default": "forbidden",
+      "title": "Dependency Installation",
+      "type": "string"
+    },
+    "executable_content": {
+      "const": "forbidden",
+      "default": "forbidden",
+      "title": "Executable Content",
+      "type": "string"
+    },
+    "mcp_configuration": {
+      "const": "forbidden",
+      "default": "forbidden",
+      "title": "Mcp Configuration",
+      "type": "string"
+    },
+    "network_access": {
+      "const": "not_requested",
+      "default": "not_requested",
+      "title": "Network Access",
+      "type": "string"
+    },
+    "plugin_installation": {
+      "const": "forbidden",
+      "default": "forbidden",
+      "title": "Plugin Installation",
+      "type": "string"
+    },
+    "tool_installation": {
+      "const": "forbidden",
+      "default": "forbidden",
+      "title": "Tool Installation",
+      "type": "string"
+    }
+  },
+  "title": "ModeSecurityPosture",
+  "type": "object"
+}

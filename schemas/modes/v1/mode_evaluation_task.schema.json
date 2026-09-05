@@ -1,0 +1,57 @@
+{
+  "additionalProperties": false,
+  "description": "One public natural task in a same-agent Mode comparison.",
+  "properties": {
+    "brief": {
+      "minLength": 1,
+      "title": "Brief",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "diagnostic",
+        "neutral_control"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "success_checks": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Success Checks",
+      "type": "array"
+    },
+    "task_class": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Task Class",
+      "type": "string"
+    },
+    "task_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Task Id",
+      "type": "string"
+    },
+    "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "task_id",
+    "kind",
+    "title",
+    "task_class",
+    "brief",
+    "success_checks"
+  ],
+  "title": "ModeEvaluationTask",
+  "type": "object"
+}

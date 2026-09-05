@@ -55,8 +55,9 @@ the external runtime manifest. Observing native memory never promotes it into Te
 Temper's replacement customer desktop now connects React to the real local Python engine through
 a restrictive Tauri 2 shell and framed stdio protocol. A configured native runtime loads raw-free
 projects and approved Core items, offers native-path-hidden encrypted profile export/import with
-exact inactive previews, and exposes the first evaluated temporary **Frontend Studio Mode** for
-one fresh governed Codex task. Browser URLs remain synthetic visual-review scenes; they do not
+exact inactive previews, and exposes three experimental temporary Modes for one fresh governed
+Codex task: Frontend Studio, Research Analyst, and Secure Backend. Browser URLs remain synthetic
+visual-review scenes; they do not
 pretend to perform native writes. Fifty-seven component/engine tests, seven product viewport,
 motion, and
 truthfulness checks, nine WebView2 compatibility/accessibility checks, and 32 light/dark visual
@@ -384,9 +385,10 @@ worked; its current target-visible projection did not beat an excellent profile.
 - A generic replay-safe host coordinator with narrow interaction, delivery, review, and notice
   ports; atomic raw-free review/signed-event persistence; duplicate-observation rejection; and
   deterministic recovery after append-before-delivery interruption.
-- Typed capability-preset and personal-overlay composition seams plus the first governed,
-  evaluated temporary Frontend Studio Mode. Shareable third-party preset import, marketplace
-  discovery, and automatic preset creation remain unimplemented.
+- Typed capability-Mode and personal-overlay composition seams plus three governed experimental
+  Modes. Their structural conformance is verified separately from the still-unexecuted same-agent
+  effectiveness designs. Shareable third-party Mode import, marketplace discovery, and automatic
+  Mode creation remain unimplemented.
 - Immutable failed v1.11 instrument, v1.13 role, v1.14 resolver, v1.15 inner-sandbox, v1.16
   pre-session smoke, and v1.17–v1.18 live-smoke results plus a v1.19 compact-projection protocol with
   three entirely fresh task fixtures, an independent scorer, six

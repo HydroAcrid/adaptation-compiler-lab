@@ -87,14 +87,22 @@ export interface CapabilityModeSummary {
   mode_version: string;
   name: string;
   summary: string;
+  publisher: string;
+  source_license: string;
   activation_default: "one_task";
+  task_lease_hours: number;
+  supports_personal_overlay: true;
   applicable_task_classes: string[];
   compatible_target_families: string[];
   requested_tools: string[];
+  required_capabilities: string[];
+  evaluation_status: "experimental" | "product_evaluated" | "failed";
+  effectiveness_evaluated: boolean;
   projection_utf8_bytes: number;
   evaluation_valid: boolean;
   evaluation_case_count: number;
   mutates_permanent_core: false;
+  auto_activates: false;
 }
 
 export interface AgentConnection {

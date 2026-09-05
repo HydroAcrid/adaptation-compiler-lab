@@ -1,0 +1,124 @@
+{
+  "$defs": {
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Signed proof that task completion restored the exact prior Core release.",
+  "properties": {
+    "activation_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Activation Digest",
+      "type": "string"
+    },
+    "deactivated_at": {
+      "format": "date-time",
+      "title": "Deactivated At",
+      "type": "string"
+    },
+    "delivery_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Delivery Digest",
+      "type": "string"
+    },
+    "mode_clauses_remaining": {
+      "const": 0,
+      "default": 0,
+      "title": "Mode Clauses Remaining",
+      "type": "integer"
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "failed",
+        "cancelled"
+      ],
+      "title": "Outcome",
+      "type": "string"
+    },
+    "receipt_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "receipt_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Receipt Version",
+      "type": "string"
+    },
+    "restored_core_release_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Restored Core Release Digest",
+      "type": "string"
+    },
+    "signature": {
+      "$ref": "#/$defs/SignatureEnvelope"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "activation_digest",
+    "delivery_digest",
+    "outcome",
+    "restored_core_release_digest",
+    "deactivated_at",
+    "signature"
+  ],
+  "title": "ModeDeactivationReceipt",
+  "type": "object"
+}

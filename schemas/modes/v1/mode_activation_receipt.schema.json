@@ -1,0 +1,169 @@
+{
+  "$defs": {
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Signed exact-task lease; it is not a permanent preference mutation.",
+  "properties": {
+    "activated_at": {
+      "format": "date-time",
+      "title": "Activated At",
+      "type": "string"
+    },
+    "activation_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Activation Id",
+      "type": "string"
+    },
+    "ends_after_task": {
+      "const": true,
+      "default": true,
+      "title": "Ends After Task",
+      "type": "boolean"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "mode_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Mode Digest",
+      "type": "string"
+    },
+    "mode_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Mode Id",
+      "type": "string"
+    },
+    "mode_version": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+      "title": "Mode Version",
+      "type": "string"
+    },
+    "prior_core_release_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Prior Core Release Digest",
+      "type": "string"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "receipt_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Receipt Version",
+      "type": "string"
+    },
+    "signature": {
+      "$ref": "#/$defs/SignatureEnvelope"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    },
+    "suppressed_claim_keys": {
+      "default": [],
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Suppressed Claim Keys",
+      "type": "array"
+    },
+    "target_family": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Target Family",
+      "type": "string"
+    },
+    "task_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Task Digest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "activation_id",
+    "subject_id",
+    "mode_id",
+    "mode_version",
+    "mode_digest",
+    "project_id",
+    "task_digest",
+    "target_family",
+    "prior_core_release_digest",
+    "activated_at",
+    "expires_at",
+    "signature"
+  ],
+  "title": "ModeActivationReceipt",
+  "type": "object"
+}

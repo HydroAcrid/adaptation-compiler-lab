@@ -4,6 +4,7 @@ from adaptation_compiler_lab.modes.models import (
     CapabilityMode,
     ModeClause,
     ModeClauseCategory,
+    ModeTargetCompatibility,
 )
 
 FRONTEND_STUDIO_MODE = CapabilityMode(
@@ -18,6 +19,13 @@ FRONTEND_STUDIO_MODE = CapabilityMode(
     source_license="First-party private alpha",
     applicable_task_classes=("design_system", "frontend_design", "frontend_implementation"),
     compatible_target_families=("claude-code", "codex"),
+    target_compatibility=(
+        ModeTargetCompatibility(
+            target_family="codex",
+            version_constraint="0.150.0-alpha.8",
+            delivery_surface="temper-managed-task",
+        ),
+    ),
     requested_tools=(),
     clauses=(
         ModeClause(

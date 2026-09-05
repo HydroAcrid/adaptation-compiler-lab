@@ -1,0 +1,57 @@
+{
+  "$defs": {
+    "ModeClauseCategory": {
+      "description": "Bounded kinds of expertise a Mode may add to one task.",
+      "enum": [
+        "accessibility",
+        "accuracy",
+        "data_protection",
+        "design_system",
+        "evidence",
+        "failure_handling",
+        "responsive",
+        "security",
+        "threat_model",
+        "validation",
+        "visual_direction",
+        "workflow"
+      ],
+      "title": "ModeClauseCategory",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One compact default that may be suppressed by a higher-authority claim.",
+  "properties": {
+    "category": {
+      "$ref": "#/$defs/ModeClauseCategory"
+    },
+    "claim_key": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Claim Key",
+      "type": "string"
+    },
+    "clause_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Clause Id",
+      "type": "string"
+    },
+    "text": {
+      "minLength": 1,
+      "title": "Text",
+      "type": "string"
+    }
+  },
+  "required": [
+    "clause_id",
+    "claim_key",
+    "category",
+    "text"
+  ],
+  "title": "ModeClause",
+  "type": "object"
+}

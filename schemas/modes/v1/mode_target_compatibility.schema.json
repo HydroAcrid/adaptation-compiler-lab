@@ -1,0 +1,30 @@
+{
+  "additionalProperties": false,
+  "description": "One version-pinned target surface for managed Mode delivery.",
+  "properties": {
+    "delivery_surface": {
+      "minLength": 1,
+      "title": "Delivery Surface",
+      "type": "string"
+    },
+    "target_family": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Target Family",
+      "type": "string"
+    },
+    "version_constraint": {
+      "minLength": 1,
+      "title": "Version Constraint",
+      "type": "string"
+    }
+  },
+  "required": [
+    "target_family",
+    "version_constraint",
+    "delivery_surface"
+  ],
+  "title": "ModeTargetCompatibility",
+  "type": "object"
+}
