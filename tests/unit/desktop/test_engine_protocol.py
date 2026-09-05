@@ -245,6 +245,75 @@ def test_claude_connection_is_previewed_and_snapshot_bound() -> None:
     )
 
 
+def test_portable_core_target_review_is_exact_and_snapshot_bound() -> None:
+    digest = f"sha256:{'a' * 64}"
+    artifact_digest = f"sha256:{'b' * 64}"
+    service = MagicMock()
+    service.load.return_value = MagicMock(content_digest=digest)
+    release = MagicMock(content_digest=f"sha256:{'c' * 64}")
+    authorization = MagicMock()
+    preview_value = {
+        "preview_version": "1.0.0",
+        "preview_token": "target-preview",
+        "items": [],
+        "raw_paths_exposed": False,
+    }
+    authorization.preview.return_value = MagicMock(model_dump=MagicMock(return_value=preview_value))
+    authorization.apply.return_value = MagicMock(
+        receipt_id="target-receipt",
+        decision="authorize",
+        content_digest=f"sha256:{'d' * 64}",
+        authorized_artifact_refs=(MagicMock(),),
+        expires_at=datetime(2026, 10, 5, tzinfo=UTC),
+    )
+    router = EngineProtocolRouter(
+        cast(Any, service),
+        target_authorization=cast(Any, authorization),
+        target_release_provider=lambda: cast(Any, release),
+    )
+    artifact_ref = {
+        "record_id": "behavior-one",
+        "record_version": "1.0.0",
+        "content_digest": artifact_digest,
+    }
+
+    preview = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="target-preview",
+            method="target.authorization.preview",
+            params={"project_id": "project-one", "target_family": "claude-code"},
+        )
+    )
+    applied = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="target-apply",
+            method="target.authorization.apply",
+            params={
+                "preview_token": "target-preview",
+                "selected_artifact_refs": [artifact_ref],
+                "confirmed": True,
+            },
+            expected_snapshot_digest=digest,
+            idempotency_key="target-click",
+        )
+    )
+
+    assert preview.ok is True
+    assert preview.result == preview_value
+    authorization.preview.assert_called_once_with(
+        release=release,
+        project_id="project-one",
+        target_family="claude-code",
+    )
+    assert applied.ok is True
+    assert applied.result is not None
+    assert applied.result["authorized_artifact_count"] == 1
+    selected = authorization.apply.call_args.kwargs["selected_artifact_refs"]
+    assert selected[0].content_digest == artifact_digest
+
+
 class FakeSetupService:
     def __init__(self) -> None:
         now = datetime(2026, 8, 27, 12, tzinfo=UTC)

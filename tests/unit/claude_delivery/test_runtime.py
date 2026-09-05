@@ -14,6 +14,7 @@ from adaptation_compiler_lab.claude_delivery import (
     ClaudeHookLedger,
     ClaudeHookRuntimeError,
     ClaudeHookRuntimeHandler,
+    ClaudeProjectionCandidate,
     LocalClaudeHookRuntimePort,
 )
 from adaptation_compiler_lab.domain import ArtifactRef, ReleaseRef
@@ -219,6 +220,20 @@ def test_runtime_prepares_native_aware_lease_and_captures_exact_prompt_encrypted
     assert ledger.entries[1].audit_receipt.disposition is ClaudeHookDisposition.DELIVERED
 
 
+def test_runtime_manifest_binds_explicit_cross_target_authorization(tmp_path: Path) -> None:
+    _project, _raw_store, _ledger, port, _handler, _signer_value, _identity = _runtime(tmp_path)
+    port._projection_provider = lambda project_id, effective_at: ClaudeProjectionCandidate(
+        projection=_projection(),
+        target_authorization_digest=DIGEST_B,
+    )
+
+    assert port.prepare_projection("green-meadow", issued_at=NOW) is not None
+    manifest = port.projection_manifest("green-meadow")
+
+    assert manifest is not None
+    assert manifest.target_authorization_digest == DIGEST_B
+
+
 def test_native_instruction_change_invalidates_prepared_lease_without_recompiling(
     tmp_path: Path,
 ) -> None:
@@ -244,7 +259,9 @@ def test_hook_path_uses_cached_projection_and_never_calls_projection_provider(
     calls = 0
     original = port._projection_provider
 
-    def counted(project_id: str, effective_at: datetime) -> CanonicalRuntimeProjection | None:
+    def counted(
+        project_id: str, effective_at: datetime
+    ) -> CanonicalRuntimeProjection | ClaudeProjectionCandidate | None:
         nonlocal calls
         calls += 1
         return original(project_id, effective_at)

@@ -1,0 +1,169 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "artifact",
+          "default": "artifact",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "RuntimeTargetAuthorizationItemV1": {
+      "additionalProperties": false,
+      "description": "One approved artifact considered for an exact target extension.",
+      "properties": {
+        "already_compatible": {
+          "title": "Already Compatible",
+          "type": "boolean"
+        },
+        "artifact_ref": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "behavior_summary": {
+          "minLength": 1,
+          "title": "Behavior Summary",
+          "type": "string"
+        },
+        "scope_summary": {
+          "minLength": 1,
+          "title": "Scope Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_ref",
+        "behavior_summary",
+        "scope_summary",
+        "already_compatible"
+      ],
+      "title": "RuntimeTargetAuthorizationItemV1",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Raw-free exact review of what a new target may receive.",
+  "properties": {
+    "current_authorization_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Current Authorization Digest"
+    },
+    "currently_authorized_artifact_refs": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "title": "Currently Authorized Artifact Refs",
+      "type": "array"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/RuntimeTargetAuthorizationItemV1"
+      },
+      "title": "Items",
+      "type": "array"
+    },
+    "preview_token": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Preview Token",
+      "type": "string"
+    },
+    "preview_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Preview Version",
+      "type": "string"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "provider_call_required": {
+      "const": false,
+      "default": false,
+      "title": "Provider Call Required",
+      "type": "boolean"
+    },
+    "raw_paths_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Paths Exposed",
+      "type": "boolean"
+    },
+    "source_release_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Release Digest",
+      "type": "string"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    },
+    "target_family": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Target Family",
+      "type": "string"
+    }
+  },
+  "required": [
+    "preview_token",
+    "subject_id",
+    "project_id",
+    "target_family",
+    "source_release_digest",
+    "items",
+    "expires_at"
+  ],
+  "title": "RuntimeTargetAuthorizationPreviewV1",
+  "type": "object"
+}

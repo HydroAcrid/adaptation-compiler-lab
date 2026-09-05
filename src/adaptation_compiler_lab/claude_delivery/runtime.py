@@ -11,6 +11,7 @@ import os
 import secrets
 from collections.abc import Callable, Mapping
 from contextlib import suppress
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Lock
@@ -36,6 +37,7 @@ from adaptation_compiler_lab.claude_delivery.service import (
     issue_claude_projection_lease,
     parse_claude_hook_input,
 )
+from adaptation_compiler_lab.domain import Sha256Digest
 from adaptation_compiler_lab.governance import SignerIdentity
 from adaptation_compiler_lab.governance.signing import (
     GovernanceSigner,
@@ -57,7 +59,19 @@ _LEASE_TTL: Final = timedelta(minutes=5)
 _MAX_CAPTURE_BYTES: Final = 1_048_576
 
 ClaudeAuthorizationProvider = Callable[[str, datetime], ClaudeHookAuthorizationV1 | None]
-ClaudeProjectionProvider = Callable[[str, datetime], CanonicalRuntimeProjection | None]
+
+
+@dataclass(frozen=True, slots=True)
+class ClaudeProjectionCandidate:
+    """Prepared projection plus the explicit target authority that enabled it."""
+
+    projection: CanonicalRuntimeProjection
+    target_authorization_digest: Sha256Digest | None = None
+
+
+ClaudeProjectionProvider = Callable[
+    [str, datetime], CanonicalRuntimeProjection | ClaudeProjectionCandidate | None
+]
 
 
 class ClaudeHookRuntimeError(ValueError):
@@ -367,8 +381,16 @@ class LocalClaudeHookRuntimePort:
         )
         if not environment.complete:
             return self._clear_projection(project_id)
-        projection = self._projection_provider(project_id, now)
-        if projection is None or not projection.clauses:
+        provided = self._projection_provider(project_id, now)
+        if provided is None:
+            return self._clear_projection(project_id)
+        if isinstance(provided, ClaudeProjectionCandidate):
+            projection = provided.projection
+            target_authorization_digest = provided.target_authorization_digest
+        else:
+            projection = provided
+            target_authorization_digest = None
+        if not projection.clauses:
             return self._clear_projection(project_id)
         self._validate_projection(projection, project_id=project_id)
         relations = self._instruction_environment.cached_relations(projection, environment)
@@ -387,6 +409,7 @@ class LocalClaudeHookRuntimePort:
             delta_plan=delta_plan,
             rendered=rendered,
             created_at=now,
+            target_authorization_digest=target_authorization_digest,
         )
         expires_at = min(authorization.expires_at, now + _LEASE_TTL)
         if expires_at <= now:

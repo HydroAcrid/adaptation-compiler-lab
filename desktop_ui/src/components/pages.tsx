@@ -30,11 +30,13 @@ import { AgentBrandMark } from "./AgentBrandMark";
 import {
   analyzeInstructionEnvironment,
   applyClaudeConnection,
+  applyTargetAuthorization,
   applyNativeInstructionChange,
   disablePersonalInstructionSetup,
   enablePersonalInstructionSetup,
   previewNativeInstructionChange,
   previewClaudeConnection,
+  previewTargetAuthorization,
   previewPersonalInstructionSetup,
   previewProjectRegistration,
   requestNotificationPermission,
@@ -42,9 +44,11 @@ import {
   rollbackNativeInstructionChange,
   runModeTask,
   type EngineAgentConnection,
+  type EngineArtifactRef,
   type EngineClaudeConnectionPreview,
   type EngineProjectPreview,
   type EngineProject,
+  type EngineTargetAuthorizationPreview,
   type EngineRecentUndo,
   type EngineTaskResult,
   type EngineDiagnostics,
@@ -2093,6 +2097,7 @@ export function ConnectionsPage({
             (environment) => environment.target === selectedConnection.id,
           )}
           nativeRuntime={nativeRuntime}
+          projects={liveProjects ?? []}
           onClose={() => setSelectedConnection(null)}
           onInstructionChanged={onInstructionChanged}
           snapshotDigest={snapshotDigest}
@@ -2150,6 +2155,7 @@ function ConnectionDetailsDialog({
   connection,
   instructionEnvironments,
   nativeRuntime,
+  projects,
   onClose,
   onInstructionChanged,
   snapshotDigest,
@@ -2157,6 +2163,7 @@ function ConnectionDetailsDialog({
   connection: AgentConnection;
   instructionEnvironments: EngineInstructionEnvironmentSummary[];
   nativeRuntime: boolean;
+  projects: EngineProject[];
   onClose: () => void;
   onInstructionChanged?: (message: string) => void | Promise<void>;
   snapshotDigest: string | null;
@@ -2169,6 +2176,12 @@ function ConnectionDetailsDialog({
   const [connectionPreview, setConnectionPreview] =
     useState<EngineClaudeConnectionPreview | null>(null);
   const [connectionConfirmed, setConnectionConfirmed] = useState(false);
+  const [targetPreview, setTargetPreview] =
+    useState<EngineTargetAuthorizationPreview | null>(null);
+  const [selectedTargetRefs, setSelectedTargetRefs] = useState<Set<string>>(
+    new Set(),
+  );
+  const [targetConfirmed, setTargetConfirmed] = useState(false);
   const target: EngineNativeTarget = connection.id;
   const personalSetupEnabled = instructionEnvironments.some(
     (environment) => environment.global_sources_enabled,
@@ -2325,6 +2338,63 @@ function ConnectionDetailsDialog({
     }
   }
 
+  async function reviewPortableCore(projectId: string) {
+    setBusy(true);
+    setError(null);
+    setTargetConfirmed(false);
+    try {
+      const result = await previewTargetAuthorization(projectId);
+      setTargetPreview(result);
+      setSelectedTargetRefs(
+        new Set(result.currently_authorized_artifact_refs.map(artifactRefKey)),
+      );
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Temper could not preview portable Core for Claude.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmPortableCore() {
+    if (!targetPreview || !snapshotDigest || !targetConfirmed) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const selected = targetPreview.items
+        .filter(
+          (item) =>
+            !item.already_compatible &&
+            selectedTargetRefs.has(artifactRefKey(item.artifact_ref)),
+        )
+        .map((item) => item.artifact_ref);
+      const receipt = await applyTargetAuthorization(
+        targetPreview,
+        selected,
+        snapshotDigest,
+        crypto.randomUUID(),
+      );
+      setTargetPreview(null);
+      await onInstructionChanged?.(
+        receipt.decision === "authorize"
+          ? `${receipt.authorized_artifact_count} Core behavior${receipt.authorized_artifact_count === 1 ? " is" : "s are"} now approved for Claude in this project.`
+          : "Claude-specific Core authority was removed for this project.",
+      );
+      onClose();
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Temper could not change portable Core authority.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <Dialog.Root onOpenChange={(open) => (open ? undefined : onClose())} open>
       <Dialog.Portal>
@@ -2468,6 +2538,122 @@ function ConnectionDetailsDialog({
                 <p className="connection-dialog-note">
                   No connection action is available in the current state.
                 </p>
+              )}
+            </section>
+          ) : null}
+          {nativeRuntime &&
+          connection.id === "claude" &&
+          connection.status === "connected" &&
+          projects.length ? (
+            <section
+              aria-labelledby="portable-core-title"
+              className="claude-connection portable-core"
+            >
+              <div>
+                <h3 id="portable-core-title">Portable Core</h3>
+                <p>
+                  Choose which already approved behaviors may also guide Claude.
+                  New learning stays unavailable here until you review it.
+                </p>
+              </div>
+              {targetPreview ? (
+                <div className="claude-connection__preview portable-core__preview">
+                  <strong>
+                    {projects.find(
+                      (project) =>
+                        project.project_id === targetPreview.project_id,
+                    )?.display_name ?? "Selected project"}
+                  </strong>
+                  {targetPreview.items.length ? (
+                    <div className="portable-core__items">
+                      {targetPreview.items.map((item, index) => {
+                        const key = artifactRefKey(item.artifact_ref);
+                        const inputId = `portable-core-item-${index}`;
+                        return (
+                          <div className="portable-core__item" key={key}>
+                            <input
+                              checked={
+                                item.already_compatible ||
+                                selectedTargetRefs.has(key)
+                              }
+                              id={inputId}
+                              disabled={item.already_compatible}
+                              onChange={(event) => {
+                                setTargetConfirmed(false);
+                                setSelectedTargetRefs((current) => {
+                                  const next = new Set(current);
+                                  if (event.target.checked) next.add(key);
+                                  else next.delete(key);
+                                  return next;
+                                });
+                              }}
+                              type="checkbox"
+                            />
+                            <label htmlFor={inputId}>
+                              <b>{item.behavior_summary}</b>
+                              <small>
+                                {item.scope_summary}
+                                {item.already_compatible
+                                  ? " · already compatible"
+                                  : " · needs your approval"}
+                              </small>
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <span>
+                      No approved Core behaviors apply to this project.
+                    </span>
+                  )}
+                  <label className="connection-confirmation">
+                    <input
+                      checked={targetConfirmed}
+                      onChange={(event) =>
+                        setTargetConfirmed(event.target.checked)
+                      }
+                      type="checkbox"
+                    />
+                    <span>
+                      Apply this exact Claude-specific selection for 30 days.
+                      This does not alter Core or affect Codex.
+                    </span>
+                  </label>
+                  <div className="personal-setup__actions">
+                    <Button
+                      disabled={busy}
+                      onClick={() => setTargetPreview(null)}
+                      tone="quiet"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      disabled={busy || !targetConfirmed}
+                      onClick={() => void confirmPortableCore()}
+                      tone="primary"
+                    >
+                      {busy ? "Applying…" : "Apply selection"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="portable-core__projects">
+                  {projects.map((project) => (
+                    <div key={project.project_id}>
+                      <span>{project.display_name}</span>
+                      <Button
+                        disabled={busy || !snapshotDigest}
+                        onClick={() =>
+                          void reviewPortableCore(project.project_id)
+                        }
+                        tone="quiet"
+                      >
+                        Review behaviors
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               )}
             </section>
           ) : null}
@@ -2617,6 +2803,10 @@ function semanticAnalysisStatusLabel(
     stale: "Needs reanalysis",
     unavailable: "Unavailable",
   }[status];
+}
+
+function artifactRefKey(value: EngineArtifactRef): string {
+  return `${value.record_id}:${value.record_version}:${value.content_digest}`;
 }
 
 function formatInstructionCheckTime(value: string): string {

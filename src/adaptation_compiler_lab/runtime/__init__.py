@@ -29,6 +29,15 @@ from adaptation_compiler_lab.runtime.models import (
     SemanticDecisionCase,
     SemanticDecisionTable,
 )
+from adaptation_compiler_lab.runtime.target_authorization import (
+    RuntimeTargetAuthorizationError,
+    RuntimeTargetAuthorizationItemV1,
+    RuntimeTargetAuthorizationMutationV1,
+    RuntimeTargetAuthorizationPreviewV1,
+    RuntimeTargetAuthorizationReceiptV1,
+    RuntimeTargetAuthorizationService,
+    RuntimeTargetAuthorizationStatusV1,
+)
 
 __all__ = [
     "ArtifactDecisionTable",
@@ -48,6 +57,13 @@ __all__ = [
     "RuntimeProjectionContext",
     "RuntimeProjectionError",
     "RuntimeProjectionManifest",
+    "RuntimeTargetAuthorizationError",
+    "RuntimeTargetAuthorizationItemV1",
+    "RuntimeTargetAuthorizationMutationV1",
+    "RuntimeTargetAuthorizationPreviewV1",
+    "RuntimeTargetAuthorizationReceiptV1",
+    "RuntimeTargetAuthorizationService",
+    "RuntimeTargetAuthorizationStatusV1",
     "SemanticDecisionCase",
     "SemanticDecisionTable",
     "bind_decision_release",

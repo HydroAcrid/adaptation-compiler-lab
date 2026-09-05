@@ -183,6 +183,8 @@ def _dimension(
 def _scope_applicability(
     artifact: ArtifactRenderProjection,
     context: RuntimeProjectionContext,
+    *,
+    target_authorized: bool = False,
 ) -> tuple[_Applicability, tuple[str, ...]]:
     scope = artifact.scope
     known = frozenset(context.known_dimensions)
@@ -223,7 +225,7 @@ def _scope_applicability(
             singular="task class",
         ),
         _dimension(
-            allowed=scope.target_families,
+            allowed=() if target_authorized else scope.target_families,
             dimension=ScopeDimension.TARGET_FAMILIES,
             actual=context.target_family,
             known=known,
@@ -298,18 +300,28 @@ def _sorted_refs(values: set[ArtifactRef]) -> tuple[ArtifactRef, ...]:
 def build_runtime_projection(
     release: ExternalGovernedRelease,
     context: RuntimeProjectionContext,
+    *,
+    target_authorized_artifact_refs: tuple[ArtifactRef, ...] = (),
 ) -> CanonicalRuntimeProjection:
-    """Resolve known scope, omit inactive rules, and retain only effective clauses."""
+    """Resolve effective clauses, allowing only exact reviewed target extensions."""
 
     revoked_ids = set(release.revoked_artifact_ids)
     all_artifacts = {item.artifact_ref.record_id: item for item in release.active_artifacts}
+    authorized_refs = set(target_authorized_artifact_refs)
+    available_refs = {item.artifact_ref for item in release.active_artifacts}
+    if not authorized_refs <= available_refs:
+        raise RuntimeProjectionError("target authorization names an inactive artifact version")
     artifacts = {
         artifact_id: artifact
         for artifact_id, artifact in all_artifacts.items()
         if not artifact.revoked and artifact_id not in revoked_ids
     }
     applicability: dict[str, tuple[_Applicability, tuple[str, ...]]] = {
-        artifact_id: _scope_applicability(artifact, context)
+        artifact_id: _scope_applicability(
+            artifact,
+            context,
+            target_authorized=artifact.artifact_ref in authorized_refs,
+        )
         for artifact_id, artifact in artifacts.items()
     }
     compatible_profile_ids = {
@@ -321,6 +333,7 @@ def build_runtime_projection(
             for artifact_id, artifact in artifacts.items()
             if applicability[artifact_id][0] is not _Applicability.NO_MATCH
             and artifact.target_compatibility
+            and artifact.artifact_ref not in authorized_refs
             and not compatible_profile_ids & set(artifact.target_compatibility)
         )
     )

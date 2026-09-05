@@ -2,6 +2,27 @@
 
 Last updated: 2026-09-05
 
+## Portable Core target authorization
+
+Temper now has a governed bridge for using an approved Core behavior with a second agent when its
+historical artifact version was explicitly limited to Codex. A connected Claude card can preview
+the exact active artifact versions applicable to one registered project, show their behavioral
+intent and scope without raw evidence, and replace that project's Claude authorization set for 30
+days. Confirmation is bound to the release digest, prior authorization digest, application
+snapshot, preview token, exact versioned artifact references, and idempotency key.
+
+The authorization changes only the target-family check. Subject, project, task, environment,
+activation conditions, revocation, release membership, native-instruction conflicts, and all
+ordinary compiler filters still apply. A new or superseding artifact version remains unauthorized
+until reviewed. Competing stale previews fail safely, empty selection signs a revocation, restart
+verifies the complete signed chain, and the Claude delivery manifest binds the exact authorization
+receipt that admitted its portable clauses. React receives no evidence, path, credential, or
+private source identifier.
+
+This closes the silent historical-target gap without mutating Core or weakening Codex. It does not
+claim that every behavior is semantically portable, install Claude on this host, authorize a live
+provider smoke, or access the deferred Milestone 6 study.
+
 ## Claude explicit connection lifecycle
 
 The desktop product now owns a real Claude Connect/Disconnect transition. A compatible installed
@@ -21,10 +42,9 @@ fixtures. Claude Code is not installed on this machine, so the real interface tr
 Connect action and no live smoke has run. No authentication was initiated, API key read, provider
 call made, or deferred Milestone 6 material accessed.
 
-Existing approved artifacts retain their target compatibility. In particular, historical
-Codex-only approvals are not silently reauthorized for Claude; the hook projection contains only
-already Claude-compatible clauses. A governed portability/reapproval flow is still needed before
-historical Core can be projected across targets.
+Existing approved artifacts retain their target compatibility by default. Historical Codex-only
+approvals become eligible for Claude only through the exact project-specific portable-Core review
+described above; no connection, old consent, or broad Core state authorizes them implicitly.
 
 ## Claude governed hook runtime
 
@@ -50,8 +70,8 @@ Claude tests cover encrypted prompt recovery, exact native deduplication, stale-
 expired authorization, no-model cached delivery, untrusted outcome/failure capture, project
 overlap, and signed-ledger tampering.
 
-The complete Python gate passes with 1,181 tests and two expected platform skips, strict mypy over
-420 source files, Ruff formatting/linting, locked dependency sync, schema snapshots, and both the
+The complete Python gate passes with 1,190 tests and two expected platform skips, strict mypy over
+422 source files, Ruff formatting/linting, locked dependency sync, schema snapshots, and both the
 source and wheel builds. The focused Claude suite now contains 36 passing cases.
 
 This runtime activates only after the explicit signed connection lifecycle above. No current

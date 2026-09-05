@@ -688,6 +688,58 @@ describe("installed Temper state boundaries", () => {
           raw_payloads_exposed: false,
         });
       }
+      if (command === "target_authorization_preview") {
+        expect(args).toMatchObject({
+          projectId: "project-alpha",
+          targetFamily: "claude-code",
+        });
+        return response({
+          preview_version: "1.0.0",
+          preview_token: "portable-preview",
+          subject_id: "subject-one",
+          project_id: "project-alpha",
+          target_family: "claude-code",
+          source_release_digest: digest,
+          current_authorization_digest: null,
+          items: [
+            {
+              artifact_ref: {
+                record_id: "behavior-one",
+                record_version: "1.0.0",
+                content_digest: `sha256:${"e".repeat(64)}`,
+              },
+              behavior_summary: "Explain the outcome before procedural detail.",
+              scope_summary:
+                "Core-wide behavior · this authorization applies only here",
+              already_compatible: false,
+            },
+          ],
+          currently_authorized_artifact_refs: [],
+          expires_at: "2026-09-05T12:10:00Z",
+          provider_call_required: false,
+          raw_paths_exposed: false,
+        });
+      }
+      if (command === "target_authorization_apply") {
+        expect(args).toMatchObject({
+          previewToken: "portable-preview",
+          selectedArtifactRefs: [
+            expect.objectContaining({ record_id: "behavior-one" }),
+          ],
+          confirmed: true,
+          expectedSnapshotDigest: digest,
+        });
+        return response({
+          mutation_version: "1.0.0",
+          receipt_id: "portable-receipt",
+          decision: "authorize",
+          authorization_digest: `sha256:${"f".repeat(64)}`,
+          authorized_artifact_count: 1,
+          expires_at: "2026-10-05T12:00:00Z",
+          provider_call_required: false,
+          raw_paths_exposed: false,
+        });
+      }
       throw new Error(`Unexpected command: ${command}`);
     });
 
@@ -713,6 +765,32 @@ describe("installed Temper state boundaries", () => {
 
     expect(
       await screen.findByText(/Connected for registered projects\./),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getAllByRole("button", { name: "View details" })[1],
+    );
+    await user.click(
+      screen.getAllByRole("button", { name: "Review behaviors" })[0],
+    );
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /Explain the outcome before procedural detail/i,
+      }),
+    );
+    const applySelection = screen.getByRole("button", {
+      name: "Apply selection",
+    });
+    expect(applySelection).toBeDisabled();
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /Apply this exact Claude-specific selection/i,
+      }),
+    );
+    await user.click(applySelection);
+
+    expect(
+      await screen.findByText(/1 Core behavior is now approved for Claude/),
     ).toBeInTheDocument();
   });
 

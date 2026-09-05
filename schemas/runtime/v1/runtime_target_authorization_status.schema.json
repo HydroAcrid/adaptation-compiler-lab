@@ -1,0 +1,81 @@
+{
+  "additionalProperties": false,
+  "description": "Raw-free current target-extension status for product presentation.",
+  "properties": {
+    "authorization_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Authorization Digest"
+    },
+    "authorized_artifact_count": {
+      "minimum": 0,
+      "title": "Authorized Artifact Count",
+      "type": "integer"
+    },
+    "available_artifact_count": {
+      "minimum": 0,
+      "title": "Available Artifact Count",
+      "type": "integer"
+    },
+    "expires_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expires At"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "state": {
+      "enum": [
+        "not_authorized",
+        "authorized",
+        "expired",
+        "stale"
+      ],
+      "title": "State",
+      "type": "string"
+    },
+    "status_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Status Version",
+      "type": "string"
+    },
+    "target_family": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Target Family",
+      "type": "string"
+    }
+  },
+  "required": [
+    "project_id",
+    "target_family",
+    "state",
+    "authorized_artifact_count",
+    "available_artifact_count"
+  ],
+  "title": "RuntimeTargetAuthorizationStatusV1",
+  "type": "object"
+}

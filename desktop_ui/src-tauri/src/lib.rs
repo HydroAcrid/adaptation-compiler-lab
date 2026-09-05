@@ -909,6 +909,53 @@ async fn claude_connection_apply(
 }
 
 #[tauri::command]
+fn target_authorization_preview(
+    state: tauri::State<'_, EngineState>,
+    project_id: String,
+    target_family: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "target.authorization.preview",
+        json!({"project_id": project_id, "target_family": target_family}),
+        None,
+        None,
+    )
+}
+
+#[tauri::command]
+async fn target_authorization_apply(
+    app: tauri::AppHandle,
+    preview_token: String,
+    selected_artifact_refs: Vec<Value>,
+    confirmed: bool,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let response = call_engine(
+            &state,
+            "target.authorization.apply",
+            json!({
+                "preview_token": preview_token,
+                "selected_artifact_refs": selected_artifact_refs,
+                "confirmed": confirmed,
+            }),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )?;
+        if response.ok {
+            let mut guard = state.0.lock().map_err(|_| unavailable())?;
+            *guard = None;
+        }
+        Ok(response)
+    })
+    .await
+    .map_err(|_| unavailable())?
+}
+
+#[tauri::command]
 fn setup_existing_preview(
     state: tauri::State<'_, EngineState>,
 ) -> Result<EngineResponse, PublicError> {
@@ -1503,6 +1550,8 @@ pub fn run() {
             connection_inspect,
             claude_connection_preview,
             claude_connection_apply,
+            target_authorization_preview,
+            target_authorization_apply,
             setup_existing_preview,
             setup_existing_adopt,
             setup_project_preview,
@@ -1598,6 +1647,8 @@ mod tests {
             "connection_inspect",
             "claude_connection_preview",
             "claude_connection_apply",
+            "target_authorization_preview",
+            "target_authorization_apply",
             "setup_existing_preview",
             "setup_existing_adopt",
             "setup_project_preview",
