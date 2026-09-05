@@ -1,0 +1,80 @@
+{
+  "additionalProperties": false,
+  "description": "Raw-free verified product status for the Claude connection.",
+  "properties": {
+    "current_connection_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Current Connection Digest"
+    },
+    "delivery_enabled": {
+      "title": "Delivery Enabled",
+      "type": "boolean"
+    },
+    "expires_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expires At"
+    },
+    "learning_enabled": {
+      "title": "Learning Enabled",
+      "type": "boolean"
+    },
+    "project_count": {
+      "minimum": 0,
+      "title": "Project Count",
+      "type": "integer"
+    },
+    "raw_paths_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Paths Exposed",
+      "type": "boolean"
+    },
+    "state": {
+      "enum": [
+        "available",
+        "connected",
+        "attention"
+      ],
+      "title": "State",
+      "type": "string"
+    },
+    "status_summary": {
+      "minLength": 1,
+      "title": "Status Summary",
+      "type": "string"
+    },
+    "status_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Status Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "state",
+    "project_count",
+    "learning_enabled",
+    "delivery_enabled",
+    "status_summary"
+  ],
+  "title": "ClaudeConnectionStatusV1",
+  "type": "object"
+}

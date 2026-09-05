@@ -13,8 +13,11 @@ from typing import Protocol
 from adaptation_compiler_lab.connectors.pins import (
     DEFAULT_DOGFOOD_RUNTIME_LOCK,
     DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK,
+    DEFAULT_RUNTIME_LOCK,
     RuntimeConformanceError,
     load_dogfood_runtime_pins,
+    load_runtime_pins,
+    sha256_file,
     verify_codex_runtime,
 )
 from adaptation_compiler_lab.desktop.models import (
@@ -60,6 +63,7 @@ class AgentConnectionInspector:
         environ: Mapping[str, str] | None = None,
         platform_name: str | None = None,
         codex_pin_path: Path | None = None,
+        claude_pin_path: Path | None = None,
     ) -> None:
         self._runner = runner or LocalProbeRunner()
         self._environ = os.environ if environ is None else environ
@@ -69,6 +73,7 @@ class AgentConnectionInspector:
             if self._platform == "win32"
             else DEFAULT_DOGFOOD_RUNTIME_LOCK
         )
+        self._claude_pin_path = claude_pin_path or DEFAULT_RUNTIME_LOCK
 
     def inspect(self) -> tuple[AgentConnectionV1, AgentConnectionV1]:
         return self.inspect_codex(), self.inspect_claude()
@@ -82,6 +87,7 @@ class AgentConnectionInspector:
                 installation_state="not_installed",
                 authentication_state="unknown",
                 conformance_state="unverified",
+                integration_state="unavailable",
                 status_summary="Codex was not found in a supported location.",
                 learning_capability="Unavailable until a compatible Codex installation is found.",
                 delivery_capability="Unavailable until a compatible Codex installation is found.",
@@ -102,6 +108,9 @@ class AgentConnectionInspector:
             installation_state="installed",
             authentication_state=authentication,
             conformance_state="compatible" if conformant else "update_required",
+            integration_state=(
+                "connected" if conformant and authentication == "signed_in" else "unavailable"
+            ),
             version_label=version,
             status_summary=(
                 "Ready to use with Temper."
@@ -137,6 +146,7 @@ class AgentConnectionInspector:
                 installation_state="not_installed",
                 authentication_state="unknown",
                 conformance_state="not_applicable",
+                integration_state="unavailable",
                 status_summary="Claude Code is not installed. Temper does not install it.",
                 learning_capability="Not integrated in this Temper build.",
                 delivery_capability="Not integrated in this Temper build.",
@@ -144,18 +154,56 @@ class AgentConnectionInspector:
             )
         version = self._version(executable)
         authentication = self._claude_authentication(executable)
+        conformant = self._claude_conformant(executable)
+        ready = conformant and authentication == "signed_in"
         return AgentConnectionV1(
             agent_id="claude",
             display_name="Claude Code",
             installation_state="installed",
             authentication_state=authentication,
-            conformance_state="not_applicable",
+            conformance_state="compatible" if conformant else "update_required",
+            integration_state="available" if ready else "unavailable",
             version_label=version,
-            status_summary="Detected locally; Temper integration is not enabled in this build.",
-            learning_capability="Not integrated in this Temper build.",
-            delivery_capability="Not integrated in this Temper build.",
-            cost_posture="Future Claude use would be billed by Anthropic.",
+            status_summary=(
+                "Ready for you to review the local Temper connection."
+                if ready
+                else "Sign in to the pinned Claude Code installation before connecting."
+                if conformant
+                else "Temper needs an updated connector for this Claude Code version."
+            ),
+            learning_capability=(
+                "Can capture authorized user prompts from registered projects after connection."
+                if ready
+                else "Learning is unavailable until the connection is ready."
+            ),
+            delivery_capability=(
+                "Can deliver only a signed cached projection in registered projects."
+                if ready
+                else "Delivery is unavailable until the connection is ready."
+            ),
+            cost_posture=(
+                "Connecting is local and free; ordinary Claude Code use is billed by Anthropic."
+            ),
+            available_actions=("refresh", "connect") if ready else ("refresh",),
         )
+
+    def _claude_conformant(self, executable: Path) -> bool:
+        try:
+            pin = load_runtime_pins(self._claude_pin_path).claude_code.executable
+            if sha256_file(executable) != pin.executable_sha256:
+                return False
+            version = self._runner.run(
+                (str(executable), *pin.version_args),
+                timeout=5.0,
+            )
+            if version.returncode != 0 or version.stdout.strip() != pin.version_stdout:
+                return False
+            help_result = self._runner.run((str(executable), "--help"), timeout=8.0)
+            return help_result.returncode == 0 and all(
+                flag in help_result.stdout for flag in pin.required_help_flags
+            )
+        except (OSError, RuntimeConformanceError, subprocess.TimeoutExpired):
+            return False
 
     def codex_executable(self) -> Path | None:
         """Return the internally inspected candidate; never serialize this value."""

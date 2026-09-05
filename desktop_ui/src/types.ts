@@ -192,6 +192,9 @@ export interface AgentConnection {
   targetCapability: string;
   authDescription: string;
   costDescription: string;
+  availableActions?: Array<
+    "refresh" | "use_for_setup" | "connect" | "disconnect"
+  >;
 }
 
 export interface RegisteredProject {

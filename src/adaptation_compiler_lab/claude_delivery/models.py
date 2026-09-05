@@ -14,7 +14,7 @@ from adaptation_compiler_lab.domain import (
     Sha256Digest,
     UtcDateTime,
 )
-from adaptation_compiler_lab.governance import SignatureEnvelope
+from adaptation_compiler_lab.governance import ConsentReceipt, SignatureEnvelope
 from adaptation_compiler_lab.serialization import canonical_digest
 from adaptation_compiler_lab.targets.base import sha256_text
 
@@ -513,3 +513,121 @@ class ClaudeHookSettingsChangeReceiptV1(FrozenModel):
     @property
     def content_digest(self) -> Sha256Digest:
         return canonical_digest(self)
+
+
+class ClaudeConnectionProjectV1(FrozenModel):
+    """One exact registered project authorized for the local Claude hook."""
+
+    project_id: Identifier
+    project_registration_digest: Sha256Digest
+
+
+class ClaudeConnectionPreviewV1(FrozenModel):
+    """Raw-free user decision surface for connecting or disconnecting Claude."""
+
+    preview_version: Literal["1.0.0"] = "1.0.0"
+    operation: Literal["connect", "disconnect"]
+    settings: ClaudeHookSettingsPreviewV1
+    project_ids: tuple[Identifier, ...]
+    current_connection_digest: Sha256Digest | None = None
+    consent_expires_at: UtcDateTime
+    retention_until: UtcDateTime
+    learning_enabled: bool
+    delivery_enabled: bool
+    provider_call_required: Literal[False] = False
+    provider_authentication_changed: Literal[False] = False
+    raw_paths_exposed: Literal[False] = False
+
+    @field_validator("project_ids")
+    @classmethod
+    def projects_are_sorted_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if not value or value != tuple(sorted(set(value))):
+            raise ValueError("Claude connection projects must be sorted and unique")
+        return value
+
+
+class ClaudeConnectionReceiptV1(FrozenModel):
+    """Signed active-state transition binding consent to exact hook settings."""
+
+    receipt_version: Literal["1.0.0"] = "1.0.0"
+    receipt_id: Identifier
+    operation: Literal["connect", "disconnect"]
+    subject_id: Identifier
+    projects: tuple[ClaudeConnectionProjectV1, ...]
+    consent: ConsentReceipt
+    settings_receipt: ClaudeHookSettingsChangeReceiptV1
+    previous_connection_digest: Sha256Digest | None = None
+    learning_enabled: bool
+    delivery_enabled: bool
+    occurred_at: UtcDateTime
+    expires_at: UtcDateTime
+    retention_until: UtcDateTime
+    signature: SignatureEnvelope
+    raw_paths_exposed: Literal[False] = False
+
+    @field_validator("projects")
+    @classmethod
+    def project_bindings_are_sorted_unique(
+        cls, value: tuple[ClaudeConnectionProjectV1, ...]
+    ) -> tuple[ClaudeConnectionProjectV1, ...]:
+        ids = tuple(item.project_id for item in value)
+        if not ids or ids != tuple(sorted(set(ids))):
+            raise ValueError("Claude connection project bindings must be sorted and unique")
+        return value
+
+    @model_validator(mode="after")
+    def consent_settings_and_signature_are_exact(self) -> Self:
+        project_ids = tuple(item.project_id for item in self.projects)
+        if (
+            self.consent.subject_id != self.subject_id
+            or self.consent.source_selector.source_system != "claude_code_hook"
+            or self.consent.source_selector.source_ids != project_ids
+            or self.consent.scope.project_ids != project_ids
+            or self.consent.scope.target_families != ("claude-code",)
+            or self.expires_at != self.consent.expires_at
+            or self.retention_until != self.consent.retention_until
+        ):
+            raise ValueError("Claude connection consent binding changed")
+        if self.operation == "connect":
+            if (
+                self.settings_receipt.operation != "install"
+                or not self.learning_enabled
+                or not self.delivery_enabled
+            ):
+                raise ValueError("connected Claude state requires installed learning and delivery")
+        elif (
+            self.settings_receipt.operation != "uninstall"
+            or self.learning_enabled
+            or self.delivery_enabled
+        ):
+            raise ValueError("disconnected Claude state must disable learning and delivery")
+        if self.retention_until < self.expires_at or self.expires_at <= self.consent.issued_at:
+            raise ValueError("Claude connection time bounds are invalid")
+        if (
+            self.signature.purpose != "claude_connection_change"
+            or self.signature.signed_at != self.occurred_at
+        ):
+            raise ValueError("Claude connection signature metadata is inconsistent")
+        return self
+
+    @property
+    def unsigned_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", exclude={"signature"})
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class ClaudeConnectionStatusV1(FrozenModel):
+    """Raw-free verified product status for the Claude connection."""
+
+    status_version: Literal["1.0.0"] = "1.0.0"
+    state: Literal["available", "connected", "attention"]
+    project_count: int = Field(ge=0)
+    learning_enabled: bool
+    delivery_enabled: bool
+    expires_at: UtcDateTime | None = None
+    current_connection_digest: Sha256Digest | None = None
+    status_summary: NonEmptyStr
+    raw_paths_exposed: Literal[False] = False

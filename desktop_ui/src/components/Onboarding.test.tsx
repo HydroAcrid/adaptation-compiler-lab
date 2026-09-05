@@ -26,7 +26,8 @@ const setupSnapshot: EngineSetupSnapshot = {
   },
   connections: [
     {
-      connection_version: "1.0.0",
+      connection_version: "1.1.0",
+      integration_state: "connected",
       agent_id: "codex",
       display_name: "Codex",
       installation_state: "installed",
@@ -41,7 +42,8 @@ const setupSnapshot: EngineSetupSnapshot = {
       raw_payloads_exposed: false,
     },
     {
-      connection_version: "1.0.0",
+      connection_version: "1.1.0",
+      integration_state: "unavailable",
       agent_id: "claude",
       display_name: "Claude Code",
       installation_state: "not_installed",

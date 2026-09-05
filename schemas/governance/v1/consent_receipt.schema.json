@@ -205,7 +205,8 @@
         "selection_method": {
           "enum": [
             "synthetic_fixture",
-            "explicit_task_ids"
+            "explicit_task_ids",
+            "registered_projects_prospective"
           ],
           "title": "Selection Method",
           "type": "string"
@@ -225,7 +226,8 @@
           "enum": [
             "synthetic_fixture",
             "codex_app_server",
-            "local_interaction_runtime"
+            "local_interaction_runtime",
+            "claude_code_hook"
           ],
           "title": "Source System",
           "type": "string"

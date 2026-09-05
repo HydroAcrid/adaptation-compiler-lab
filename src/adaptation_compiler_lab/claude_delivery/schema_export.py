@@ -8,6 +8,10 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from adaptation_compiler_lab.claude_delivery.models import (
+    ClaudeConnectionPreviewV1,
+    ClaudeConnectionProjectV1,
+    ClaudeConnectionReceiptV1,
+    ClaudeConnectionStatusV1,
     ClaudeHookAuditReceiptV1,
     ClaudeHookAuthorizationV1,
     ClaudeHookCaptureReceiptV1,
@@ -24,6 +28,10 @@ from adaptation_compiler_lab.claude_delivery.models import (
 from adaptation_compiler_lab.claude_delivery.projection import ClaudeHookRenderedProjectionV1
 
 _MODELS: dict[str, type[BaseModel]] = {
+    "claude_connection_preview": ClaudeConnectionPreviewV1,
+    "claude_connection_project": ClaudeConnectionProjectV1,
+    "claude_connection_receipt": ClaudeConnectionReceiptV1,
+    "claude_connection_status": ClaudeConnectionStatusV1,
     "claude_hook_audit_receipt": ClaudeHookAuditReceiptV1,
     "claude_hook_authorization": ClaudeHookAuthorizationV1,
     "claude_hook_capture_receipt": ClaudeHookCaptureReceiptV1,

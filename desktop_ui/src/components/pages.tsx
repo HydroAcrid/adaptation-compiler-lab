@@ -29,10 +29,12 @@ import { useRef, useState, type ReactNode } from "react";
 import { AgentBrandMark } from "./AgentBrandMark";
 import {
   analyzeInstructionEnvironment,
+  applyClaudeConnection,
   applyNativeInstructionChange,
   disablePersonalInstructionSetup,
   enablePersonalInstructionSetup,
   previewNativeInstructionChange,
+  previewClaudeConnection,
   previewPersonalInstructionSetup,
   previewProjectRegistration,
   requestNotificationPermission,
@@ -40,6 +42,7 @@ import {
   rollbackNativeInstructionChange,
   runModeTask,
   type EngineAgentConnection,
+  type EngineClaudeConnectionPreview,
   type EngineProjectPreview,
   type EngineProject,
   type EngineRecentUndo,
@@ -1835,21 +1838,26 @@ export function ConnectionsPage({
         costDescription: connection.cost_posture,
         id: connection.agent_id,
         name: connection.display_name,
+        availableActions: connection.available_actions,
         sourceCapability: connection.learning_capability,
         status:
           connection.installation_state === "not_installed"
             ? "not_installed"
-            : connection.agent_id === "claude"
-              ? "available"
-              : connection.conformance_state === "update_required"
-                ? "update_required"
-                : connection.authentication_state === "signed_out"
-                  ? "signed_out"
-                  : connection.agent_id === "codex" &&
-                      connection.authentication_state === "signed_in" &&
-                      connection.conformance_state === "compatible"
-                    ? "connected"
-                    : "attention",
+            : connection.integration_state === "connected"
+              ? "connected"
+              : connection.integration_state === "attention"
+                ? "attention"
+                : connection.conformance_state === "update_required"
+                  ? "update_required"
+                  : connection.authentication_state === "signed_out"
+                    ? "signed_out"
+                    : connection.integration_state === "available"
+                      ? "available"
+                      : connection.agent_id === "codex" &&
+                          connection.authentication_state === "signed_in" &&
+                          connection.conformance_state === "compatible"
+                        ? "connected"
+                        : "attention",
         targetCapability: connection.delivery_capability,
       }))
     : previewConnections;
@@ -2158,6 +2166,9 @@ function ConnectionDetailsDialog({
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [connectionPreview, setConnectionPreview] =
+    useState<EngineClaudeConnectionPreview | null>(null);
+  const [connectionConfirmed, setConnectionConfirmed] = useState(false);
   const target: EngineNativeTarget = connection.id;
   const personalSetupEnabled = instructionEnvironments.some(
     (environment) => environment.global_sources_enabled,
@@ -2269,6 +2280,51 @@ function ConnectionDetailsDialog({
     }
   }
 
+  async function previewConnectionChange(operation: "connect" | "disconnect") {
+    setBusy(true);
+    setError(null);
+    setConnectionConfirmed(false);
+    try {
+      setConnectionPreview(await previewClaudeConnection(operation));
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Temper could not preview that Claude connection change.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmConnectionChange() {
+    if (!connectionPreview || !snapshotDigest || !connectionConfirmed) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const receipt = await applyClaudeConnection(
+        connectionPreview,
+        snapshotDigest,
+        crypto.randomUUID(),
+      );
+      setConnectionPreview(null);
+      await onInstructionChanged?.(
+        receipt.operation === "connect"
+          ? `Claude Code is connected for ${receipt.project_count} registered project${receipt.project_count === 1 ? "" : "s"}.`
+          : "Claude Code is disconnected. Temper-owned hook entries were removed.",
+      );
+      onClose();
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Temper could not apply that Claude connection change.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <Dialog.Root onOpenChange={(open) => (open ? undefined : onClose())} open>
       <Dialog.Portal>
@@ -2319,9 +2375,102 @@ function ConnectionDetailsDialog({
           </dl>
           <p className="connection-dialog-note">
             {connection.id === "claude"
-              ? "Detection does not connect Claude to Temper or authorize provider-billed use."
+              ? connection.status === "connected"
+                ? "The local hook is active only in registered projects. Connecting Temper does not call Claude; ordinary Claude Code usage remains provider-billed."
+                : "Detection alone does not authorize capture or delivery. Connecting changes only Temper-owned entries in your Claude user settings and makes no provider call."
               : "Temper can learn only from prospectively registered completed work and deliver only to fresh Temper-managed tasks."}
           </p>
+          {nativeRuntime && connection.id === "claude" ? (
+            <section
+              aria-labelledby="claude-connection-title"
+              className="claude-connection"
+            >
+              <div>
+                <h3 id="claude-connection-title">Temper connection</h3>
+                <p>
+                  Review the exact local change before anything is installed or
+                  removed.
+                </p>
+              </div>
+              {connectionPreview ? (
+                <div className="claude-connection__preview">
+                  <strong>
+                    {connectionPreview.operation === "connect"
+                      ? "Connect registered projects"
+                      : "Disconnect Claude Code"}
+                  </strong>
+                  <span>
+                    {connectionPreview.project_ids.length} registered project
+                    {connectionPreview.project_ids.length === 1 ? "" : "s"} · no
+                    provider call
+                  </span>
+                  <span>
+                    {connectionPreview.operation === "connect"
+                      ? `Local consent ends ${new Date(connectionPreview.consent_expires_at).toLocaleDateString()}.`
+                      : "Only Temper-owned hook entries will be removed."}
+                  </span>
+                  <details>
+                    <summary>Show exact settings change</summary>
+                    <pre>{connectionPreview.settings.redacted_diff}</pre>
+                  </details>
+                  <label className="connection-confirmation">
+                    <input
+                      checked={connectionConfirmed}
+                      onChange={(event) =>
+                        setConnectionConfirmed(event.target.checked)
+                      }
+                      type="checkbox"
+                    />
+                    <span>
+                      {connectionPreview.operation === "connect"
+                        ? "Allow Temper to capture authorized prompts and deliver approved adaptations in these projects for 30 days."
+                        : "Remove Temper’s Claude connection now."}
+                    </span>
+                  </label>
+                  <div className="personal-setup__actions">
+                    <Button
+                      disabled={busy}
+                      onClick={() => setConnectionPreview(null)}
+                      tone="quiet"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      disabled={busy || !connectionConfirmed}
+                      onClick={() => void confirmConnectionChange()}
+                      tone="primary"
+                    >
+                      {busy
+                        ? "Applying…"
+                        : connectionPreview.operation === "connect"
+                          ? "Connect Claude Code"
+                          : "Disconnect"}
+                    </Button>
+                  </div>
+                </div>
+              ) : connection.availableActions?.includes("connect") ? (
+                <Button
+                  disabled={busy || !snapshotDigest}
+                  onClick={() => void previewConnectionChange("connect")}
+                  tone="primary"
+                >
+                  {busy ? "Preparing…" : "Review connection"}
+                </Button>
+              ) : connection.availableActions?.includes("disconnect") ? (
+                <Button
+                  disabled={busy || !snapshotDigest}
+                  onClick={() => void previewConnectionChange("disconnect")}
+                  tone="quiet"
+                >
+                  {busy ? "Preparing…" : "Disconnect Claude Code"}
+                </Button>
+              ) : (
+                <p className="connection-dialog-note">
+                  No connection action is available in the current state.
+                </p>
+              )}
+            </section>
+          ) : null}
           {nativeRuntime && instructionEnvironments.length ? (
             <div className="personal-setup__actions">
               <Button
@@ -2483,7 +2632,7 @@ function formatInstructionCheckTime(value: string): string {
 function connectionStatusLabel(status: AgentConnection["status"]): string {
   return {
     connected: "Ready",
-    available: "Detected · Not integrated",
+    available: "Ready to connect",
     attention: "Needs attention",
     not_installed: "Not installed",
     signed_out: "Sign-in required",

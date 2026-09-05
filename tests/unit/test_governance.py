@@ -45,6 +45,7 @@ from adaptation_compiler_lab.governance import (
     RecallTargetKind,
     SignerIdentity,
     SignerRole,
+    SourceSelector,
 )
 from adaptation_compiler_lab.governance.signing import (
     GovernanceSigner,
@@ -84,6 +85,28 @@ def _identity() -> tuple[GovernanceSigner, SignerIdentity]:
         expires_at=NOW + timedelta(days=365),
     )
     return signer, identity
+
+
+def test_claude_hook_selector_requires_registered_project_scope() -> None:
+    selector = SourceSelector(
+        source_system="claude_code_hook",
+        selection_method="registered_projects_prospective",
+        source_ids=("project-1",),
+    )
+
+    assert selector.source_ids == ("project-1",)
+    with pytest.raises(ValidationError, match="registered_projects_prospective"):
+        SourceSelector(
+            source_system="claude_code_hook",
+            selection_method="explicit_task_ids",
+            source_ids=("task-1",),
+        )
+    with pytest.raises(ValidationError, match="registered_projects_prospective"):
+        SourceSelector(
+            source_system="codex_app_server",
+            selection_method="registered_projects_prospective",
+            source_ids=("project-1",),
+        )
 
 
 def _consent(signer: GovernanceSigner) -> ConsentReceipt:

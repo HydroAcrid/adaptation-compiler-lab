@@ -46,7 +46,8 @@ const setup = {
   },
   connections: [
     {
-      connection_version: "1.0.0",
+      connection_version: "1.1.0",
+      integration_state: "unavailable",
       agent_id: "codex",
       display_name: "Codex",
       installation_state: "not_installed",
@@ -61,7 +62,8 @@ const setup = {
       raw_payloads_exposed: false,
     },
     {
-      connection_version: "1.0.0",
+      connection_version: "1.1.0",
+      integration_state: "unavailable",
       agent_id: "claude",
       display_name: "Claude Code",
       installation_state: "not_installed",
@@ -542,7 +544,7 @@ describe("installed Temper state boundaries", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("reports Claude as detection-only without false urgency", async () => {
+  it("reports an installed signed-out Claude connection truthfully", async () => {
     const user = userEvent.setup();
     window.__TAURI_INTERNALS__ = {};
     const detectedSetup = {
@@ -553,6 +555,7 @@ describe("installed Temper state boundaries", () => {
               ...connection,
               installation_state: "installed",
               authentication_state: "signed_out",
+              conformance_state: "compatible",
               status_summary: "Claude Code is installed.",
             }
           : connection,
@@ -581,8 +584,136 @@ describe("installed Temper state boundaries", () => {
     });
     await user.click(screen.getByRole("button", { name: "Connections" }));
 
-    expect(screen.getByText("Detected · Not integrated")).toBeInTheDocument();
-    expect(screen.queryByText("Sign-in required")).not.toBeInTheDocument();
+    expect(screen.getByText("Sign-in required")).toBeInTheDocument();
+    expect(screen.queryByText("Ready to connect")).not.toBeInTheDocument();
+  });
+
+  it("connects Claude only after an exact preview and explicit consent", async () => {
+    const user = userEvent.setup();
+    window.__TAURI_INTERNALS__ = {};
+    let connected = false;
+    const readySetup = {
+      ...configuredSetup,
+      connections: configuredSetup.connections.map((connection) =>
+        connection.agent_id === "claude"
+          ? {
+              ...connection,
+              installation_state: "installed",
+              authentication_state: "signed_in",
+              conformance_state: "compatible",
+              integration_state: "available",
+              status_summary: "Ready for local connection review.",
+              learning_capability: "Available after connection.",
+              delivery_capability: "Available after connection.",
+              available_actions: ["refresh", "connect"],
+            }
+          : connection,
+      ),
+    };
+    const connectedSetup = {
+      ...readySetup,
+      connections: readySetup.connections.map((connection) =>
+        connection.agent_id === "claude"
+          ? {
+              ...connection,
+              integration_state: "connected",
+              status_summary: "Connected for registered projects.",
+              available_actions: ["refresh", "disconnect"],
+            }
+          : connection,
+      ),
+    };
+    invoke.mockImplementation(async (command: string, args?: unknown) => {
+      if (command === "engine_handshake") return handshake(true);
+      if (command === "snapshot_get") return response(snapshot, digest);
+      if (command === "setup_status")
+        return response(connected ? connectedSetup : readySetup, digest);
+      if (command === "modes_list")
+        return response({ modes: [], raw_payloads_exposed: false });
+      if (command === "instruction_environment_get")
+        return response({ environments: [], raw_payloads_exposed: false });
+      if (command === "package_review_list")
+        return response({
+          items: [],
+          pending_count: 0,
+          raw_payloads_exposed: false,
+        });
+      if (command === "claude_connection_preview")
+        return response({
+          preview_version: "1.0.0",
+          operation: "connect",
+          settings: {
+            preview_version: "1.0.0",
+            preview_token: "claude-preview",
+            operation: "install",
+            before_digest: digest,
+            after_digest: `sha256:${"b".repeat(64)}`,
+            before_existed: false,
+            after_existed: true,
+            helper_digest: `sha256:${"c".repeat(64)}`,
+            events: ["SessionEnd", "Stop", "StopFailure", "UserPromptSubmit"],
+            redacted_diff: "+ Temper hook helper",
+            expires_at: "2026-09-05T12:15:00Z",
+            modifies_only_user_settings: true,
+            provider_authentication_changed: false,
+            provider_call_required: false,
+            raw_paths_exposed: false,
+          },
+          project_ids: ["project-alpha", "project-beta"],
+          current_connection_digest: null,
+          consent_expires_at: "2026-10-05T12:00:00Z",
+          retention_until: "2026-10-05T12:00:00Z",
+          learning_enabled: true,
+          delivery_enabled: true,
+          provider_call_required: false,
+          provider_authentication_changed: false,
+          raw_paths_exposed: false,
+        });
+      if (command === "claude_connection_apply") {
+        expect(args).toMatchObject({
+          previewToken: "claude-preview",
+          expectedBeforeDigest: digest,
+          consentConfirmed: true,
+          expectedSnapshotDigest: digest,
+        });
+        connected = true;
+        return response({
+          receipt_id: "claude-connection-one",
+          operation: "connect",
+          connection_digest: `sha256:${"d".repeat(64)}`,
+          expires_at: "2026-10-05T12:00:00Z",
+          project_count: 2,
+          restart_required: true,
+          provider_call_required: false,
+          raw_payloads_exposed: false,
+        });
+      }
+      throw new Error(`Unexpected command: ${command}`);
+    });
+
+    render(<App />);
+    await screen.findByRole("heading", {
+      name: "Nothing needs your attention.",
+    });
+    await user.click(screen.getByRole("button", { name: "Connections" }));
+    await user.click(
+      screen.getAllByRole("button", { name: "View details" })[1],
+    );
+    await user.click(screen.getByRole("button", { name: "Review connection" }));
+
+    expect(
+      screen.getByText("2 registered projects · no provider call"),
+    ).toBeInTheDocument();
+    const connectButton = screen.getByRole("button", {
+      name: "Connect Claude Code",
+    });
+    expect(connectButton).toBeDisabled();
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(connectButton);
+
+    expect(
+      await screen.findByText(/Connected for registered projects\./),
+    ).toBeInTheDocument();
   });
 
   it("counts only typed global and project-applicable Core items", async () => {
