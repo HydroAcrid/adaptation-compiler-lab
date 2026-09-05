@@ -21,6 +21,14 @@ clauses, personal roots require a separate opt-in, and native edits require an e
 signed receipt, encrypted backup, and rollback. See
 [`TEMPER_NATIVE_INSTRUCTION_INTEROPERABILITY.md`](TEMPER_NATIVE_INSTRUCTION_INTEROPERABILITY.md).
 
+Claude product delivery is now being built on Claude Code's official hook surface. The first
+increment adds strict event parsing, a no-model local broker, signed expiring projection leases,
+raw-free audit receipts, and an exact preview/apply/rollback service for Temper-owned Claude user
+hooks. It is fixture-tested but intentionally not exposed as Connected: the signed native helper,
+permission-restricted Tauri transport, real governed-runtime adapter, and authorized live smoke
+are still required. No hook was installed and no provider call was made. See
+[`TEMPER_CLAUDE_DELIVERY.md`](TEMPER_CLAUDE_DELIVERY.md).
+
 The 2026-08-27 native truthfulness audit removed a browser-style title bar and fixed-size shell
 that had rendered a second fake window inside the real Tauri window. The product now fills its
 actual viewport from the minimum 720×540 size through large desktop windows. Installed startup is

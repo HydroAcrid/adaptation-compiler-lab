@@ -1,0 +1,175 @@
+{
+  "$defs": {
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Signed receipt for install, uninstall, or exact encrypted rollback.",
+  "properties": {
+    "after_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "After Digest",
+      "type": "string"
+    },
+    "after_existed": {
+      "title": "After Existed",
+      "type": "boolean"
+    },
+    "applied_at": {
+      "format": "date-time",
+      "title": "Applied At",
+      "type": "string"
+    },
+    "backup_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Backup Digest",
+      "type": "string"
+    },
+    "before_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Before Digest",
+      "type": "string"
+    },
+    "before_existed": {
+      "title": "Before Existed",
+      "type": "boolean"
+    },
+    "helper_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Helper Digest",
+      "type": "string"
+    },
+    "operation": {
+      "enum": [
+        "install",
+        "uninstall",
+        "rollback"
+      ],
+      "title": "Operation",
+      "type": "string"
+    },
+    "preview_token": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Preview Token",
+      "type": "string"
+    },
+    "raw_paths_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Paths Exposed",
+      "type": "boolean"
+    },
+    "receipt_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "receipt_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Receipt Version",
+      "type": "string"
+    },
+    "rollback_available_until": {
+      "format": "date-time",
+      "title": "Rollback Available Until",
+      "type": "string"
+    },
+    "rollback_of_receipt_id": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rollback Of Receipt Id"
+    },
+    "settings_locator_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Settings Locator Digest",
+      "type": "string"
+    },
+    "signature": {
+      "$ref": "#/$defs/SignatureEnvelope"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "preview_token",
+    "operation",
+    "before_digest",
+    "after_digest",
+    "before_existed",
+    "after_existed",
+    "helper_digest",
+    "settings_locator_digest",
+    "backup_digest",
+    "applied_at",
+    "rollback_available_until",
+    "signature"
+  ],
+  "title": "ClaudeHookSettingsChangeReceiptV1",
+  "type": "object"
+}

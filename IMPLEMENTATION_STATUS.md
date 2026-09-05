@@ -2,6 +2,31 @@
 
 Last updated: 2026-09-05
 
+## Claude product-delivery foundation
+
+The first Claude product-delivery increment implements strict models for Claude Code's official
+`UserPromptSubmit`, `Stop`, `StopFailure`, and `SessionEnd` hooks. A no-model broker discards
+transcript paths and unknown fields, admits only registered projects with current consent, captures
+exact user prompts separately from untrusted assistant outcomes, and injects only an unexpired
+signed cached projection whose owner, project, native-instruction environment, release, manifest,
+material, and signature all match.
+
+Temper-owned Claude user hook entries now have an exact redacted preview, atomic apply, encrypted
+original-byte backup, durable signed idempotency receipt, and restart-safe 30-day rollback. A
+previously absent settings file is restored to absence rather than to a synthetic empty file.
+Unrelated Claude settings and hooks are preserved.
+
+This is not yet a connected Claude integration. The native `temper-hook` helper, restricted local
+Tauri transport, concrete governed-runtime adapter, desktop connect/disconnect surface, and an
+explicitly authorized live smoke remain required. No Claude setting was changed, no credential was
+read, no paid provider call occurred, and the deferred Milestone 6 custody boundary was untouched.
+See [`TEMPER_CLAUDE_DELIVERY.md`](TEMPER_CLAUDE_DELIVERY.md).
+
+The full Python gate passes with 1,160 tests and two expected platform skips, strict mypy over 416
+source files, Ruff formatting/linting, locked dependency sync, and both source/wheel builds. The
+Claude-specific suite contributes 25 signature, parser, lease, no-op, scope, output-shape, schema,
+settings-preservation, stale-state, tamper, restart-replay, and exact-rollback tests.
+
 ## Personal Mode overlay runtime
 
 Owner-bound personal overlays now pass through explicit signed local approval and compose only with

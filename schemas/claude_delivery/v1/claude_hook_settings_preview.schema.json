@@ -1,0 +1,118 @@
+{
+  "$defs": {
+    "ClaudeHookEvent": {
+      "description": "Lifecycle events used by Temper's official Claude Code hook integration.",
+      "enum": [
+        "UserPromptSubmit",
+        "Stop",
+        "StopFailure",
+        "SessionEnd"
+      ],
+      "title": "ClaudeHookEvent",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Raw-free, expiring preview of one exact user-settings mutation.",
+  "properties": {
+    "after_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "After Digest",
+      "type": "string"
+    },
+    "after_existed": {
+      "title": "After Existed",
+      "type": "boolean"
+    },
+    "before_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Before Digest",
+      "type": "string"
+    },
+    "before_existed": {
+      "title": "Before Existed",
+      "type": "boolean"
+    },
+    "events": {
+      "items": {
+        "$ref": "#/$defs/ClaudeHookEvent"
+      },
+      "title": "Events",
+      "type": "array"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "helper_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Helper Digest",
+      "type": "string"
+    },
+    "modifies_only_user_settings": {
+      "const": true,
+      "default": true,
+      "title": "Modifies Only User Settings",
+      "type": "boolean"
+    },
+    "operation": {
+      "enum": [
+        "install",
+        "uninstall"
+      ],
+      "title": "Operation",
+      "type": "string"
+    },
+    "preview_token": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Preview Token",
+      "type": "string"
+    },
+    "preview_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Preview Version",
+      "type": "string"
+    },
+    "provider_authentication_changed": {
+      "const": false,
+      "default": false,
+      "title": "Provider Authentication Changed",
+      "type": "boolean"
+    },
+    "provider_call_required": {
+      "const": false,
+      "default": false,
+      "title": "Provider Call Required",
+      "type": "boolean"
+    },
+    "raw_paths_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Paths Exposed",
+      "type": "boolean"
+    },
+    "redacted_diff": {
+      "minLength": 1,
+      "title": "Redacted Diff",
+      "type": "string"
+    }
+  },
+  "required": [
+    "preview_token",
+    "operation",
+    "before_digest",
+    "after_digest",
+    "before_existed",
+    "after_existed",
+    "helper_digest",
+    "events",
+    "redacted_diff",
+    "expires_at"
+  ],
+  "title": "ClaudeHookSettingsPreviewV1",
+  "type": "object"
+}
