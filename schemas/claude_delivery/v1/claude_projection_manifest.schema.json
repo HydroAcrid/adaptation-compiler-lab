@@ -99,6 +99,19 @@
       "title": "Subject Id",
       "type": "string"
     },
+    "target_authorization_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Target Authorization Digest"
+    },
     "unresolved_conflict_ids": {
       "items": {
         "maxLength": 200,

@@ -34,6 +34,7 @@ from adaptation_compiler_lab.claude_delivery.runtime import (
     ClaudeHookLedger,
     ClaudeHookRuntimeError,
     ClaudeHookRuntimeHandler,
+    ClaudeProjectionCandidate,
     LocalClaudeHookRuntimePort,
 )
 from adaptation_compiler_lab.claude_delivery.service import (
@@ -71,6 +72,7 @@ __all__ = [
     "ClaudeHookSettingsChangeReceiptV1",
     "ClaudeHookSettingsPreviewV1",
     "ClaudeHookSettingsService",
+    "ClaudeProjectionCandidate",
     "ClaudeProjectionLeaseV1",
     "ClaudeProjectionManifestV1",
     "ClaudeUserPromptHookOutputV1",

@@ -150,6 +150,43 @@ export interface EngineClaudeConnectionReceipt {
   raw_payloads_exposed: false;
 }
 
+export interface EngineArtifactRef {
+  record_id: string;
+  record_version: string;
+  content_digest: string;
+}
+
+export interface EngineTargetAuthorizationPreview {
+  preview_version: "1.0.0";
+  preview_token: string;
+  subject_id: string;
+  project_id: string;
+  target_family: "claude-code";
+  source_release_digest: string;
+  current_authorization_digest: string | null;
+  items: Array<{
+    artifact_ref: EngineArtifactRef;
+    behavior_summary: string;
+    scope_summary: string;
+    already_compatible: boolean;
+  }>;
+  currently_authorized_artifact_refs: EngineArtifactRef[];
+  expires_at: string;
+  provider_call_required: false;
+  raw_paths_exposed: false;
+}
+
+export interface EngineTargetAuthorizationReceipt {
+  mutation_version: "1.0.0";
+  receipt_id: string;
+  decision: "authorize" | "revoke";
+  authorization_digest: string;
+  authorized_artifact_count: number;
+  expires_at: string;
+  provider_call_required: false;
+  raw_paths_exposed: false;
+}
+
 export interface EngineSetupSnapshot {
   setup_version: "1.0.0";
   product_name: "Temper";
@@ -778,6 +815,45 @@ export async function applyClaudeConnection(
   );
   if (receipt.raw_payloads_exposed || receipt.provider_call_required) {
     throw new Error("Temper refused an unsafe Claude connection result.");
+  }
+  return receipt;
+}
+
+export async function previewTargetAuthorization(
+  projectId: string,
+): Promise<EngineTargetAuthorizationPreview> {
+  const preview = assertSuccessful(
+    await invoke<EngineResponse<EngineTargetAuthorizationPreview>>(
+      "target_authorization_preview",
+      { projectId, targetFamily: "claude-code" },
+    ),
+  );
+  if (preview.raw_paths_exposed || preview.provider_call_required) {
+    throw new Error("Temper refused an unsafe portable Core preview.");
+  }
+  return preview;
+}
+
+export async function applyTargetAuthorization(
+  preview: EngineTargetAuthorizationPreview,
+  selectedArtifactRefs: EngineArtifactRef[],
+  expectedSnapshotDigest: string,
+  idempotencyKey: string,
+): Promise<EngineTargetAuthorizationReceipt> {
+  const receipt = assertSuccessful(
+    await invoke<EngineResponse<EngineTargetAuthorizationReceipt>>(
+      "target_authorization_apply",
+      {
+        previewToken: preview.preview_token,
+        selectedArtifactRefs,
+        confirmed: true,
+        expectedSnapshotDigest,
+        idempotencyKey,
+      },
+    ),
+  );
+  if (receipt.raw_paths_exposed || receipt.provider_call_required) {
+    throw new Error("Temper refused an unsafe portable Core result.");
   }
   return receipt;
 }

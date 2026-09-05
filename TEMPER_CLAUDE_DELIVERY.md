@@ -119,8 +119,11 @@ authorized smoke on a host with the pinned Claude Code release. Genuine publishe
 the separate external-distribution gate.
 
 Historical Codex-only approvals retain their target restriction and are not silently widened.
-Claude receives only already compatible approved clauses; portable Core reauthorization requires a
-separate governed transition.
+After connection, a separate portable-Core review may authorize exact active artifact versions for
+one project and Claude for 30 days. The signed transition is bound to the current release and prior
+authorization state, changes only target compatibility, and is included in the delivery manifest.
+New or superseding artifact versions remain excluded until another review. An empty confirmed
+selection revokes the target authorization.
 
 No hook has been installed on this machine, no Claude authentication has been initiated, no API
 key has been read, and no paid call was made by this increment. The deferred Milestone 6 study

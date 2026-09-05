@@ -12,6 +12,13 @@ from adaptation_compiler_lab.runtime.models import (
     ExternalGovernedRelease,
     RuntimeProjectionManifest,
 )
+from adaptation_compiler_lab.runtime.target_authorization import (
+    RuntimeTargetAuthorizationItemV1,
+    RuntimeTargetAuthorizationMutationV1,
+    RuntimeTargetAuthorizationPreviewV1,
+    RuntimeTargetAuthorizationReceiptV1,
+    RuntimeTargetAuthorizationStatusV1,
+)
 from adaptation_compiler_lab.targets.codex_runtime import (
     RenderedRuntimeProjection,
     SharedExecutionEnvelope,
@@ -22,6 +29,11 @@ _MODELS: dict[str, type[BaseModel]] = {
     "external_governed_release": ExternalGovernedRelease,
     "rendered_runtime_projection": RenderedRuntimeProjection,
     "runtime_projection_manifest": RuntimeProjectionManifest,
+    "runtime_target_authorization_item": RuntimeTargetAuthorizationItemV1,
+    "runtime_target_authorization_mutation": RuntimeTargetAuthorizationMutationV1,
+    "runtime_target_authorization_preview": RuntimeTargetAuthorizationPreviewV1,
+    "runtime_target_authorization_receipt": RuntimeTargetAuthorizationReceiptV1,
+    "runtime_target_authorization_status": RuntimeTargetAuthorizationStatusV1,
     "shared_execution_envelope": SharedExecutionEnvelope,
 }
 

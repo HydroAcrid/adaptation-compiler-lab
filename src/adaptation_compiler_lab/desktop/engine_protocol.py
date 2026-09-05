@@ -33,6 +33,7 @@ from adaptation_compiler_lab.desktop.models import (
 )
 from adaptation_compiler_lab.domain import (
     ApprovalDecision,
+    ArtifactRef,
     FrozenModel,
     NonEmptyStr,
     Scope,
@@ -56,6 +57,13 @@ from adaptation_compiler_lab.portability import (
     PortableProfilePackage,
     ShareablePackage,
 )
+from adaptation_compiler_lab.runtime.target_authorization import (
+    RuntimeTargetAuthorizationItemV1,
+    RuntimeTargetAuthorizationMutationV1,
+    RuntimeTargetAuthorizationPreviewV1,
+    RuntimeTargetAuthorizationReceiptV1,
+    RuntimeTargetAuthorizationStatusV1,
+)
 from adaptation_compiler_lab.serialization import canonical_digest
 
 if TYPE_CHECKING:
@@ -65,6 +73,10 @@ if TYPE_CHECKING:
     from adaptation_compiler_lab.desktop.setup_service import DesktopSetupApplicationService
     from adaptation_compiler_lab.instruction_environment.service import (
         InstructionEnvironmentService,
+    )
+    from adaptation_compiler_lab.runtime.models import ExternalGovernedRelease
+    from adaptation_compiler_lab.runtime.target_authorization import (
+        RuntimeTargetAuthorizationService,
     )
 
 PROTOCOL_VERSION: Final[Literal["temper-engine-protocol/v1"]] = "temper-engine-protocol/v1"
@@ -134,6 +146,8 @@ class EngineProtocolRouter:
         claude_hook_handler: Callable[[Mapping[str, Any]], Mapping[str, Any] | None] | None = None,
         claude_connection: ClaudeConnectionService | None = None,
         claude_projection_refresher: Callable[[], object] | None = None,
+        target_authorization: RuntimeTargetAuthorizationService | None = None,
+        target_release_provider: Callable[[], ExternalGovernedRelease | None] | None = None,
     ) -> None:
         self._service = service
         self._portability = portability
@@ -142,6 +156,8 @@ class EngineProtocolRouter:
         self._claude_hook_handler = claude_hook_handler
         self._claude_connection = claude_connection
         self._claude_projection_refresher = claude_projection_refresher
+        self._target_authorization = target_authorization
+        self._target_release_provider = target_release_provider
         self._setup: DesktopSetupApplicationService | None = None
         self._instruction_environment: InstructionEnvironmentService | None = None
         self._export_previews: dict[str, tuple[float, PortableProfilePackage]] = {}
@@ -198,6 +214,10 @@ class EngineProtocolRouter:
             return self._preview_claude_connection(request)
         if request.method == "connection.claude.apply":
             return self._apply_claude_connection(request)
+        if request.method == "target.authorization.preview":
+            return self._preview_target_authorization(request)
+        if request.method == "target.authorization.apply":
+            return self._apply_target_authorization(request)
         if request.method == "setup.existing.preview":
             try:
                 if set(request.params) != {"path"}:
@@ -653,6 +673,101 @@ class EngineProtocolRouter:
                 "provider_call_required": False,
                 "raw_payloads_exposed": False,
             },
+            snapshot_digest=snapshot_digest,
+        )
+        return self._remember_mutation(request, fingerprint, response)
+
+    def _preview_target_authorization(self, request: EngineRequest) -> EngineResponse:
+        if self._target_authorization is None or self._target_release_provider is None:
+            return self._error(
+                request,
+                "target_authorization_unavailable",
+                "Portable Core review is unavailable in this Temper installation.",
+            )
+        try:
+            if set(request.params) != {"project_id", "target_family"}:
+                raise ValueError
+            target_family = _required_string(request.params, "target_family")
+            if target_family != "claude-code":
+                raise ValueError
+            release = self._target_release_provider()
+            if release is None:
+                return self._error(
+                    request,
+                    "target_authorization_empty",
+                    "There are no approved Core behaviors to review for this target.",
+                )
+            preview = self._target_authorization.preview(
+                release=release,
+                project_id=_required_string(request.params, "project_id"),
+                target_family=target_family,
+            )
+        except (OSError, TypeError, ValueError):
+            return self._error(
+                request,
+                "target_authorization_preview_refused",
+                "Temper could not safely preview portable Core for this target.",
+            )
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result=preview.model_dump(mode="json"),
+        )
+
+    def _apply_target_authorization(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        snapshot_digest, fingerprint = checked
+        if (
+            self._target_authorization is None
+            or self._target_release_provider is None
+            or request.idempotency_key is None
+        ):
+            return self._error(
+                request,
+                "target_authorization_unavailable",
+                "Portable Core review is unavailable in this Temper installation.",
+            )
+        try:
+            if set(request.params) != {
+                "preview_token",
+                "selected_artifact_refs",
+                "confirmed",
+            }:
+                raise ValueError
+            confirmed = request.params.get("confirmed")
+            raw_refs = request.params.get("selected_artifact_refs")
+            if not isinstance(confirmed, bool) or not isinstance(raw_refs, list):
+                raise ValueError
+            refs = tuple(ArtifactRef.model_validate(item, strict=True) for item in raw_refs)
+            release = self._target_release_provider()
+            if release is None:
+                raise ValueError
+            receipt = self._target_authorization.apply(
+                preview_token=_required_string(request.params, "preview_token"),
+                release=release,
+                selected_artifact_refs=refs,
+                confirmed=confirmed,
+                idempotency_key=request.idempotency_key,
+            )
+        except (OSError, TypeError, ValueError):
+            return self._error(
+                request,
+                "target_authorization_change_refused",
+                "Temper could not safely change portable Core authority.",
+            )
+        mutation = RuntimeTargetAuthorizationMutationV1(
+            receipt_id=receipt.receipt_id,
+            decision=receipt.decision,
+            authorization_digest=receipt.content_digest,
+            authorized_artifact_count=len(receipt.authorized_artifact_refs),
+            expires_at=receipt.expires_at,
+        )
+        response = EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result=mutation.model_dump(mode="json"),
             snapshot_digest=snapshot_digest,
         )
         return self._remember_mutation(request, fingerprint, response)
@@ -2033,6 +2148,7 @@ def build_router(
         ClaudeHookLedger,
         ClaudeHookRuntimeHandler,
         ClaudeHookSettingsService,
+        ClaudeProjectionCandidate,
         LocalClaudeHookRuntimePort,
     )
     from adaptation_compiler_lab.desktop.platform import platform_paths, product_preferences_store
@@ -2056,6 +2172,7 @@ def build_router(
     from adaptation_compiler_lab.runtime import (
         CanonicalRuntimeProjection,
         RuntimeProjectionContext,
+        RuntimeTargetAuthorizationService,
         build_runtime_projection,
     )
     from adaptation_compiler_lab.targets.models import ScopeDimension
@@ -2099,6 +2216,32 @@ def build_router(
         preference_writer=save_preferences,
     )
 
+    target_authorization = None
+    target_release_provider = None
+    try:
+        target_config = _load_config(config_path)
+        target_signer = _registration_signer(target_config)
+        target_authorization = RuntimeTargetAuthorizationService(
+            subject_id=target_config.subject_id,
+            signer=target_signer,
+            signer_identity=target_config.signer_identity,
+            state_root=target_config.state_root,
+            now=_now,
+        )
+
+        def current_target_release() -> ExternalGovernedRelease | None:
+            target_state = _ledger(target_config).current()
+            return (
+                None
+                if target_state is None or target_state.release is None
+                else target_state.release.governed_release
+            )
+
+        target_release_provider = current_target_release
+    except (OSError, ValueError):
+        target_authorization = None
+        target_release_provider = None
+
     def instruction_factory() -> InstructionEnvironmentService:
         config = _load_config(config_path)
         try:
@@ -2137,7 +2280,21 @@ def build_router(
                 )
             else:
                 return None
-            return build_runtime_projection(state.release.governed_release, context)
+            authorized_refs = (
+                ()
+                if target_authorization is None or target is not NativeTarget.CLAUDE
+                else target_authorization.authorized_refs(
+                    release=state.release.governed_release,
+                    project_id=project_id,
+                    target_family="claude-code",
+                    effective_at=_now(),
+                )
+            )
+            return build_runtime_projection(
+                state.release.governed_release,
+                context,
+                target_authorized_artifact_refs=authorized_refs,
+            )
 
         return InstructionEnvironmentService(
             projects={item.project_id: item.root for item in config.projects},
@@ -2214,7 +2371,7 @@ def build_router(
 
                 def claude_projection_provider(
                     project_id: str, evaluated_at: datetime
-                ) -> CanonicalRuntimeProjection | None:
+                ) -> CanonicalRuntimeProjection | ClaudeProjectionCandidate | None:
                     state = _ledger(config).current()
                     if state is None or state.release is None:
                         return None
@@ -2224,7 +2381,17 @@ def build_router(
                     )
                     if project is None:
                         return None
-                    return build_runtime_projection(
+                    authorized_refs = (
+                        ()
+                        if target_authorization is None
+                        else target_authorization.authorized_refs(
+                            release=state.release.governed_release,
+                            project_id=project_id,
+                            target_family="claude-code",
+                            effective_at=evaluated_at,
+                        )
+                    )
+                    projection = build_runtime_projection(
                         state.release.governed_release,
                         RuntimeProjectionContext(
                             known_dimensions=(
@@ -2238,6 +2405,20 @@ def build_router(
                             target_family="claude-code",
                             evaluated_at=evaluated_at,
                         ),
+                        target_authorized_artifact_refs=authorized_refs,
+                    )
+                    if not authorized_refs or target_authorization is None:
+                        return projection
+                    authorization_digest = target_authorization.authorization_digest(
+                        project_id=project_id,
+                        target_family="claude-code",
+                        effective_at=evaluated_at,
+                    )
+                    if authorization_digest is None:
+                        return None
+                    return ClaudeProjectionCandidate(
+                        projection=projection,
+                        target_authorization_digest=authorization_digest,
                     )
 
                 runtime = LocalClaudeHookRuntimePort(
@@ -2278,6 +2459,8 @@ def build_router(
         claude_hook_handler=claude_hook_handler,
         claude_connection=claude_connection,
         claude_projection_refresher=claude_projection_refresher,
+        target_authorization=target_authorization,
+        target_release_provider=target_release_provider,
     )
 
 
@@ -2341,6 +2524,11 @@ def protocol_schema_models() -> Sequence[type[FrozenModel]]:
         InstructionGlobalPreviewV1,
         InstructionChangePreviewV1,
         InstructionChangeReceiptV1,
+        RuntimeTargetAuthorizationItemV1,
+        RuntimeTargetAuthorizationMutationV1,
+        RuntimeTargetAuthorizationPreviewV1,
+        RuntimeTargetAuthorizationReceiptV1,
+        RuntimeTargetAuthorizationStatusV1,
     )
 
 

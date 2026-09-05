@@ -35,10 +35,14 @@ rehashes the native Claude instruction environment, omits already-covered clause
 an already prepared five-minute lease. React and Tauri now expose the real redacted preview,
 explicit consent, signed install, verified restart, and exact disconnect path. Only a currently
 verified receipt can activate the runtime, and a bounded two-minute maintenance pass refreshes
-leases outside hook requests. Existing Codex-only artifacts are not silently widened: Claude
-receives only clauses already approved for its target family. Disposable lifecycle tests pass;
-an authorized live smoke remains outstanding because Claude Code is not installed locally. No
-hook was installed on this machine and no provider call was made. See
+leases outside hook requests. Existing Codex-only artifacts are never silently widened. A
+connected user may review the exact active artifact versions for one project and authorize a
+Claude-specific projection for 30 days. That signed decision relaxes only the target dimension;
+subject, project, scope, expiry, revocation, native-policy, and release checks remain intact. New
+or superseding artifacts require a new review, and the Claude projection manifest binds the exact
+authorization receipt. Disposable lifecycle tests pass; an authorized live smoke remains
+outstanding because Claude Code is not installed locally. No hook was installed on this machine
+and no provider call was made. See
 [`TEMPER_CLAUDE_DELIVERY.md`](TEMPER_CLAUDE_DELIVERY.md).
 
 The 2026-08-27 native truthfulness audit removed a browser-style title bar and fixed-size shell

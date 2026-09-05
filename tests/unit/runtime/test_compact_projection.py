@@ -214,6 +214,43 @@ def test_incompatible_target_profile_fails_closed() -> None:
         build_runtime_projection(release, incompatible)
 
 
+def test_exact_target_authorization_extends_only_the_target_dimension() -> None:
+    release = _releases()[1]
+    authorized = tuple(item.artifact_ref for item in release.active_artifacts)
+    claude = _context(project_known=True, project_id="another-project").model_copy(
+        update={
+            "target_family": TargetKind.CLAUDE_CODE.value,
+            "target_profile_id": "claude-code",
+        }
+    )
+
+    projection = build_runtime_projection(
+        release,
+        claude,
+        target_authorized_artifact_refs=authorized,
+    )
+
+    assert projection.clauses
+    scoped_ref = next(
+        item.artifact_ref for item in release.active_artifacts if item.scope.project_ids
+    )
+    assert scoped_ref in projection.omitted_artifact_refs
+
+
+def test_target_authorization_rejects_a_stale_artifact_version() -> None:
+    release = _releases()[0]
+    stale = release.active_artifacts[0].artifact_ref.model_copy(
+        update={"content_digest": f"sha256:{'f' * 64}"}
+    )
+
+    with pytest.raises(RuntimeProjectionError, match="inactive artifact version"):
+        build_runtime_projection(
+            release,
+            _context(),
+            target_authorized_artifact_refs=(stale,),
+        )
+
+
 def test_codex_renderer_rejects_projection_for_another_target_family() -> None:
     projection = build_runtime_projection(_releases()[0], _context())
     wrong_target = projection.model_copy(

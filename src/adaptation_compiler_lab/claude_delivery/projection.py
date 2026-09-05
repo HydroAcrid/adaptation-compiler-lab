@@ -70,6 +70,7 @@ def build_claude_projection_manifest(
     delta_plan: InstructionDeltaPlanV1,
     rendered: ClaudeHookRenderedProjectionV1,
     created_at: datetime,
+    target_authorization_digest: Sha256Digest | None = None,
 ) -> ClaudeProjectionManifestV1:
     """Bind one rendered Claude delta to its release, scope, and native environment."""
 
@@ -89,6 +90,7 @@ def build_claude_projection_manifest(
         subject_id=subject_id,
         project_id=delta_plan.project_id,
         external_release_digest=projection.external_release_digest,
+        target_authorization_digest=target_authorization_digest,
         canonical_projection_digest=projection.content_digest,
         delta_projection_digest=delta.content_digest,
         instruction_environment_digest=delta_plan.environment_digest,

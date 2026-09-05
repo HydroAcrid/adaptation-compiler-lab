@@ -153,6 +153,7 @@ class ClaudeProjectionManifestV1(FrozenModel):
     subject_id: Identifier
     project_id: Identifier
     external_release_digest: Sha256Digest
+    target_authorization_digest: Sha256Digest | None = None
     canonical_projection_digest: Sha256Digest
     delta_projection_digest: Sha256Digest
     instruction_environment_digest: Sha256Digest
