@@ -1,0 +1,17 @@
+{
+  "allowed_change_paths": ["src/solution.py"],
+  "fixture_digest": "sha256:e131df20e3d3001fa5ecae4f56e7bf28fa16ef4da31475927170eba8b2ded57f",
+  "fixture_directory": "fixtures/secure_backend",
+  "function_name": "authorize_record",
+  "kind": "diagnostic",
+  "mode_id": "secure-backend",
+  "prompt": "Repair `authorize_record` in `src/solution.py`. Authorization must derive solely from trusted server tenant state: return `(allow, authenticated-tenant)` only when authenticated and resource tenants match; otherwise return `(deny, tenant-boundary)`. The client-owner flag is untrusted and cannot grant access. Reject empty tenant IDs. Change only this function and run the visible suite.",
+  "scenarios": [
+    {"arguments": ["alpha", "alpha", false], "expected": ["allow", "authenticated-tenant"], "metric": "diagnostic", "scenario_id": "tenant-01-authorized"},
+    {"arguments": ["alpha", "beta", true], "expected": ["deny", "tenant-boundary"], "metric": "diagnostic", "scenario_id": "tenant-02-client-spoof"},
+    {"arguments": ["alpha", "beta", false], "expected": ["deny", "tenant-boundary"], "metric": "diagnostic", "scenario_id": "tenant-03-denied"}
+  ],
+  "task_id": "secure-01-tenant",
+  "title": "Tenant-scoped record access",
+  "visible_test_command": ["python3", "-m", "unittest", "discover", "-v"]
+}

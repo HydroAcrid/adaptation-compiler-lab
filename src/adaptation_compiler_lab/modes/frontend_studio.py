@@ -22,7 +22,7 @@ FRONTEND_STUDIO_MODE = CapabilityMode(
     target_compatibility=(
         ModeTargetCompatibility(
             target_family="codex",
-            version_constraint="0.150.0-alpha.8",
+            version_constraint="0.153.1",
             delivery_surface="temper-managed-task",
         ),
     ),

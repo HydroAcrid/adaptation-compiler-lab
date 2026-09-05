@@ -1,0 +1,1 @@
+"""Research Mode evaluation fixture."""

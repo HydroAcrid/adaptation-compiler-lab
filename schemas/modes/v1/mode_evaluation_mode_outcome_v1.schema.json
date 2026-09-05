@@ -1,0 +1,213 @@
+{
+  "$defs": {
+    "ModeEvaluationTaskOutcomeV1": {
+      "additionalProperties": false,
+      "description": "Unblinded objective and secondary result for one Mode task.",
+      "properties": {
+        "automated_winner": {
+          "enum": [
+            "core-only",
+            "core-plus-mode",
+            "tie"
+          ],
+          "title": "Automated Winner",
+          "type": "string"
+        },
+        "core_behavior_conformant": {
+          "title": "Core Behavior Conformant",
+          "type": "boolean"
+        },
+        "core_checks_passed": {
+          "minimum": 0,
+          "title": "Core Checks Passed",
+          "type": "integer"
+        },
+        "core_checks_total": {
+          "minimum": 1,
+          "title": "Core Checks Total",
+          "type": "integer"
+        },
+        "core_output_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Core Output Id",
+          "type": "string"
+        },
+        "judge_winner": {
+          "enum": [
+            "core-only",
+            "core-plus-mode",
+            "tie"
+          ],
+          "title": "Judge Winner",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "diagnostic",
+            "neutral_control"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "mode_behavior_conformant": {
+          "title": "Mode Behavior Conformant",
+          "type": "boolean"
+        },
+        "mode_checks_passed": {
+          "minimum": 0,
+          "title": "Mode Checks Passed",
+          "type": "integer"
+        },
+        "mode_checks_total": {
+          "minimum": 1,
+          "title": "Mode Checks Total",
+          "type": "integer"
+        },
+        "mode_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Mode Id",
+          "type": "string"
+        },
+        "mode_output_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Mode Output Id",
+          "type": "string"
+        },
+        "task_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Task Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id",
+        "mode_id",
+        "kind",
+        "core_output_id",
+        "mode_output_id",
+        "core_checks_passed",
+        "core_checks_total",
+        "mode_checks_passed",
+        "mode_checks_total",
+        "automated_winner",
+        "judge_winner",
+        "core_behavior_conformant",
+        "mode_behavior_conformant"
+      ],
+      "title": "ModeEvaluationTaskOutcomeV1",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Preregistered pass/fail result for one capability Mode.",
+  "properties": {
+    "diagnostic_core_passed": {
+      "minimum": 0,
+      "title": "Diagnostic Core Passed",
+      "type": "integer"
+    },
+    "diagnostic_mode_passed": {
+      "minimum": 0,
+      "title": "Diagnostic Mode Passed",
+      "type": "integer"
+    },
+    "failure_reasons": {
+      "default": [],
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Failure Reasons",
+      "type": "array"
+    },
+    "gate_passed": {
+      "title": "Gate Passed",
+      "type": "boolean"
+    },
+    "instrument_valid": {
+      "title": "Instrument Valid",
+      "type": "boolean"
+    },
+    "judge_core_wins": {
+      "minimum": 0,
+      "title": "Judge Core Wins",
+      "type": "integer"
+    },
+    "judge_mode_wins": {
+      "minimum": 0,
+      "title": "Judge Mode Wins",
+      "type": "integer"
+    },
+    "judge_ties": {
+      "minimum": 0,
+      "title": "Judge Ties",
+      "type": "integer"
+    },
+    "mode_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Mode Id",
+      "type": "string"
+    },
+    "neutral_core_passed": {
+      "minimum": 0,
+      "title": "Neutral Core Passed",
+      "type": "integer"
+    },
+    "neutral_mode_passed": {
+      "minimum": 0,
+      "title": "Neutral Mode Passed",
+      "type": "integer"
+    },
+    "permitted_claim": {
+      "enum": [
+        "bounded_same_agent_mode_evidence",
+        "mode_gate_failed",
+        "instrumentation_failure"
+      ],
+      "title": "Permitted Claim",
+      "type": "string"
+    },
+    "projection_utf8_bytes": {
+      "maximum": 12000,
+      "minimum": 0,
+      "title": "Projection Utf8 Bytes",
+      "type": "integer"
+    },
+    "tasks": {
+      "items": {
+        "$ref": "#/$defs/ModeEvaluationTaskOutcomeV1"
+      },
+      "maxItems": 5,
+      "minItems": 5,
+      "title": "Tasks",
+      "type": "array"
+    }
+  },
+  "required": [
+    "mode_id",
+    "tasks",
+    "instrument_valid",
+    "gate_passed",
+    "diagnostic_core_passed",
+    "diagnostic_mode_passed",
+    "neutral_core_passed",
+    "neutral_mode_passed",
+    "judge_core_wins",
+    "judge_mode_wins",
+    "judge_ties",
+    "projection_utf8_bytes",
+    "permitted_claim"
+  ],
+  "title": "ModeEvaluationModeOutcomeV1",
+  "type": "object"
+}

@@ -1,0 +1,57 @@
+{
+  "additionalProperties": false,
+  "description": "Answer-blind return from one capability-free generated policy.",
+  "properties": {
+    "detail": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Detail"
+    },
+    "observation_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Observation Version",
+      "type": "string"
+    },
+    "scenario_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Scenario Id",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "returned",
+        "raised",
+        "invalid_return"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "value": {
+      "anyOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Value"
+    }
+  },
+  "required": [
+    "scenario_id",
+    "status"
+  ],
+  "title": "ModePolicyObservationV1",
+  "type": "object"
+}

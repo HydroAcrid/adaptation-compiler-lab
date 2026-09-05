@@ -13,7 +13,7 @@ class FakeRunner:
     def run(self, argv: Sequence[str], *, timeout: float) -> subprocess.CompletedProcess[str]:
         del timeout
         if tuple(argv[1:]) == ("--version",):
-            return subprocess.CompletedProcess(argv, 0, "codex-cli 0.150.0-alpha.8\n", "")
+            return subprocess.CompletedProcess(argv, 0, "codex-cli 0.153.1\n", "")
         if tuple(argv[1:]) == ("login", "status"):
             return subprocess.CompletedProcess(argv, 0, "Logged in using ChatGPT\n", "")
         raise AssertionError(f"unexpected probe: {argv!r}")

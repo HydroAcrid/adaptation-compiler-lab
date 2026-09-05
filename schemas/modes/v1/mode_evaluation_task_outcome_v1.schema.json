@@ -1,0 +1,105 @@
+{
+  "additionalProperties": false,
+  "description": "Unblinded objective and secondary result for one Mode task.",
+  "properties": {
+    "automated_winner": {
+      "enum": [
+        "core-only",
+        "core-plus-mode",
+        "tie"
+      ],
+      "title": "Automated Winner",
+      "type": "string"
+    },
+    "core_behavior_conformant": {
+      "title": "Core Behavior Conformant",
+      "type": "boolean"
+    },
+    "core_checks_passed": {
+      "minimum": 0,
+      "title": "Core Checks Passed",
+      "type": "integer"
+    },
+    "core_checks_total": {
+      "minimum": 1,
+      "title": "Core Checks Total",
+      "type": "integer"
+    },
+    "core_output_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Core Output Id",
+      "type": "string"
+    },
+    "judge_winner": {
+      "enum": [
+        "core-only",
+        "core-plus-mode",
+        "tie"
+      ],
+      "title": "Judge Winner",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "diagnostic",
+        "neutral_control"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "mode_behavior_conformant": {
+      "title": "Mode Behavior Conformant",
+      "type": "boolean"
+    },
+    "mode_checks_passed": {
+      "minimum": 0,
+      "title": "Mode Checks Passed",
+      "type": "integer"
+    },
+    "mode_checks_total": {
+      "minimum": 1,
+      "title": "Mode Checks Total",
+      "type": "integer"
+    },
+    "mode_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Mode Id",
+      "type": "string"
+    },
+    "mode_output_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Mode Output Id",
+      "type": "string"
+    },
+    "task_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Task Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "task_id",
+    "mode_id",
+    "kind",
+    "core_output_id",
+    "mode_output_id",
+    "core_checks_passed",
+    "core_checks_total",
+    "mode_checks_passed",
+    "mode_checks_total",
+    "automated_winner",
+    "judge_winner",
+    "core_behavior_conformant",
+    "mode_behavior_conformant"
+  ],
+  "title": "ModeEvaluationTaskOutcomeV1",
+  "type": "object"
+}

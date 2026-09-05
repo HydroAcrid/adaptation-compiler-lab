@@ -121,7 +121,7 @@ def test_checked_in_codex_dogfood_runtime_lock_is_separate_and_complete() -> Non
     assert sha256_file(DEFAULT_DOGFOOD_RUNTIME_LOCK).startswith("sha256:")
     windows = load_dogfood_runtime_pins(DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK)
     assert windows.codex.executable.package == "@openai/codex Windows x64"
-    assert windows.codex.executable.version_stdout == "codex-cli 0.150.0-alpha.8"
+    assert windows.codex.executable.version_stdout == "codex-cli 0.153.1"
     assert windows.codex.schema_bundle_sha256 != pins.codex.schema_bundle_sha256
 
 

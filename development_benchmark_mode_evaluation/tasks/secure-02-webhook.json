@@ -1,0 +1,17 @@
+{
+  "allowed_change_paths": ["src/solution.py"],
+  "fixture_digest": "sha256:e131df20e3d3001fa5ecae4f56e7bf28fa16ef4da31475927170eba8b2ded57f",
+  "fixture_directory": "fixtures/secure_backend",
+  "function_name": "webhook_plan",
+  "kind": "diagnostic",
+  "mode_id": "secure-backend",
+  "prompt": "Repair `webhook_plan` in `src/solution.py`. Invalid signatures return `(reject,)`. Previously seen events return `(acknowledge-duplicate,)`. A prospective write failure returns `(begin, apply, rollback, retry)` and must not mark the event seen. A new successful event returns `(begin, apply, mark-seen, commit)`. Change only this function and run the visible suite.",
+  "scenarios": [
+    {"arguments": [true, true, false], "expected": ["acknowledge-duplicate"], "metric": "diagnostic", "scenario_id": "webhook-01-duplicate"},
+    {"arguments": [true, false, true], "expected": ["begin", "apply", "rollback", "retry"], "metric": "diagnostic", "scenario_id": "webhook-02-failure"},
+    {"arguments": [true, false, false], "expected": ["begin", "apply", "mark-seen", "commit"], "metric": "diagnostic", "scenario_id": "webhook-03-success"}
+  ],
+  "task_id": "secure-02-webhook",
+  "title": "Replay-safe webhook",
+  "visible_test_command": ["python3", "-m", "unittest", "discover", "-v"]
+}

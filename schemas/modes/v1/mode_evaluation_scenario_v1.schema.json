@@ -1,0 +1,37 @@
+{
+  "additionalProperties": false,
+  "description": "One answer-bearing scorer case that never enters a target workspace.",
+  "properties": {
+    "arguments": {
+      "items": {},
+      "title": "Arguments",
+      "type": "array"
+    },
+    "expected": {
+      "title": "Expected"
+    },
+    "metric": {
+      "enum": [
+        "diagnostic",
+        "neutral"
+      ],
+      "title": "Metric",
+      "type": "string"
+    },
+    "scenario_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Scenario Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "scenario_id",
+    "arguments",
+    "expected",
+    "metric"
+  ],
+  "title": "ModeEvaluationScenarioV1",
+  "type": "object"
+}

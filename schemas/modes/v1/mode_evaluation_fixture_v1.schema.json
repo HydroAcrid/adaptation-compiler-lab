@@ -1,0 +1,141 @@
+{
+  "$defs": {
+    "ModeEvaluationScenarioV1": {
+      "additionalProperties": false,
+      "description": "One answer-bearing scorer case that never enters a target workspace.",
+      "properties": {
+        "arguments": {
+          "items": {},
+          "title": "Arguments",
+          "type": "array"
+        },
+        "expected": {
+          "title": "Expected"
+        },
+        "metric": {
+          "enum": [
+            "diagnostic",
+            "neutral"
+          ],
+          "title": "Metric",
+          "type": "string"
+        },
+        "scenario_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Scenario Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scenario_id",
+        "arguments",
+        "expected",
+        "metric"
+      ],
+      "title": "ModeEvaluationScenarioV1",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One public task binding plus hidden independent scorer cases.",
+  "properties": {
+    "allowed_change_paths": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Allowed Change Paths",
+      "type": "array"
+    },
+    "fixture_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Fixture Digest",
+      "type": "string"
+    },
+    "fixture_directory": {
+      "minLength": 1,
+      "title": "Fixture Directory",
+      "type": "string"
+    },
+    "fixture_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Fixture Version",
+      "type": "string"
+    },
+    "function_name": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Function Name",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "diagnostic",
+        "neutral_control"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "mode_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Mode Id",
+      "type": "string"
+    },
+    "prompt": {
+      "minLength": 1,
+      "title": "Prompt",
+      "type": "string"
+    },
+    "scenarios": {
+      "items": {
+        "$ref": "#/$defs/ModeEvaluationScenarioV1"
+      },
+      "minItems": 3,
+      "title": "Scenarios",
+      "type": "array"
+    },
+    "task_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Task Id",
+      "type": "string"
+    },
+    "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "visible_test_command": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Visible Test Command",
+      "type": "array"
+    }
+  },
+  "required": [
+    "task_id",
+    "mode_id",
+    "kind",
+    "title",
+    "prompt",
+    "function_name",
+    "fixture_directory",
+    "fixture_digest",
+    "allowed_change_paths",
+    "visible_test_command",
+    "scenarios"
+  ],
+  "title": "ModeEvaluationFixtureV1",
+  "type": "object"
+}

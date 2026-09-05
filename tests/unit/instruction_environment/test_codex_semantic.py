@@ -58,7 +58,7 @@ class _SemanticRpc:
                     "updatedAt": 1,
                     "status": {"type": "idle"},
                     "cwd": root,
-                    "cliVersion": "0.150.0-alpha.8",
+                    "cliVersion": "0.153.1",
                     "name": "Instruction semantics",
                     "preview": "",
                     "ephemeral": True,
@@ -129,7 +129,7 @@ def _analyzer(tmp_path: Path, rpc: _SemanticRpc) -> CodexInstructionSemanticAnal
         schemas=CodexDogfoodSchemaSet(),
         runtime=VerifiedCodexRuntime(
             executable=executable,
-            version="codex-cli 0.150.0-alpha.8",
+            version="codex-cli 0.153.1",
             schema_bundle_digest=DIGEST,
         ),
         workspace_root=workspace,
@@ -230,7 +230,7 @@ def test_luna_relation_sensor_compares_exact_pairs_without_tools(tmp_path: Path)
         schemas=CodexDogfoodSchemaSet(),
         runtime=VerifiedCodexRuntime(
             executable=executable,
-            version="codex-cli 0.150.0-alpha.8",
+            version="codex-cli 0.153.1",
             schema_bundle_digest=DIGEST,
         ),
         workspace_root=workspace,
