@@ -81,6 +81,11 @@ scorer, validation models, and dependency lock. A deliberately broken, non-grid 
 produce a real source edit, five passing visible tests, three passing hidden checks, and a complete
 workspace teardown. The 30-cell v2 runner refuses to start without that exact receipt.
 
+The v2 live smoke then failed before grid admission. Its outer namespace did not include Codex's
+matching `codex-code-mode-host` companion, and the coordinator resolved the scorer venv symlink to
+its dependency-free base interpreter after the successful preflight. The immutable failed smoke is
+preserved in `development_benchmark_mode_evaluation/smoke-v2/`; no comparison cell or judge ran.
+
 ## Passing rule
 
 A Mode may move from `experimental` to `product_evaluated` only when:
@@ -99,8 +104,10 @@ gate and does not establish cross-agent transfer.
 
 ## Remaining product work
 
-- Execute and preserve the frozen v2 live edit-and-test plus hidden-scorer smoke.
-- Execute the repaired 30-cell comparison and three blind reviews without tuning after its first
+- Freeze a v3 mechanical repair that binds the matching execution-host companion and preserves the
+  scorer virtual-environment invocation path.
+- Pass a separately versioned live edit-and-test plus hidden-scorer smoke.
+- Execute the repaired comparison and three blind reviews without tuning after its first
   target cell.
 - Record immutable trial and blinded-review receipts.
 - Add a governed personal-overlay editor.
