@@ -1,7 +1,7 @@
 # Temper Claude Code Delivery
 
-Status: **local product contract, native private transport, and bundle integrity implemented;
-governed runtime connection and live Claude use remain unavailable**
+Status: **local product contract, governed runtime, native private transport, and bundle integrity
+implemented; explicit connection and live Claude use remain unavailable**
 
 ## Purpose
 
@@ -32,8 +32,9 @@ lifecycle without supplying guidance back to Claude.
 
 - Strict transient models accept only the fields needed for the four supported events. The
   supplied transcript path and every unknown field are discarded before dispatch.
-- Exact user prompts are eligible user-authority evidence only when the project is registered,
-  consent is current, and learning is enabled.
+- Exact user prompts are captured as `user_authored_input` only when the project is registered,
+  consent is current, and learning is enabled. Capture alone never calls a model, creates Evidence,
+  or upgrades ordinary input into approved feedback.
 - Assistant output and failure details remain untrusted outcome context.
 - Delivery uses a precompiled signed lease. The hook verifies owner, project, native instruction
   environment, issue/expiry window, material digest, release digest, projection manifest, and
@@ -43,8 +44,26 @@ lifecycle without supplying guidance back to Claude.
   no target-visible text.
 - Successful delivery emits only Claude's official structured `additionalContext` object, bounded
   below both 10,000 characters and 12,000 UTF-8 bytes.
-- Raw-free signed audit receipts retain only digests, project identity, event, disposition, and
-  time.
+- Raw payloads use the existing AES-256-GCM content-addressed store. Signed capture receipts bind
+  the consent and prospective project registration while explicitly keeping assistant/failure
+  content untrusted.
+- Raw-free signed capture and audit receipts enter a hash-chained append-only local index that
+  fails closed on signature, ordering, predecessor, owner, or mid-run file drift.
+
+## Governed runtime
+
+The concrete runtime maps a resolved working directory to exactly one non-overlapping registered
+project and rehashes Claude's documented instruction sources before every event. Projection
+preparation is a separate non-hook operation: it compiles the applicable approved release for
+Claude, applies deterministic native coverage and conflict resolution using only semantic
+relations already cached by an explicit/background analysis, and signs a five-minute in-memory
+lease. The manifest retains included, native-covered, and blocked clause digests plus the exact
+native source chain.
+
+The hook request can only retrieve that cache; it has no projection-provider or model-call path.
+If instructions change, consent expires, the project is unknown, or the lease is absent or stale,
+Claude receives no Temper text. A prompt is user-authored input, not automatically a correction or
+preference, and promotion remains in the ordinary governed review path.
 
 ## Connection lifecycle
 
@@ -83,10 +102,11 @@ The helper has no console window in a Windows release build.
 
 ## Still required before the UI may say Connected
 
-1. Connect the broker to the real governed runtime, encrypted capture store, audit ledger, and
-   cached reconciled projection builder.
-2. Add explicit preview/apply/disconnect protocol methods and truthful React states.
-3. Pass disposable fake-Claude end-to-end tests and an explicitly authorized live smoke.
+1. Add explicit project consent plus preview/apply/disconnect protocol methods and truthful React
+   states. Existing Codex-only consent cannot silently authorize Claude.
+2. Activate the runtime only from a verified signed settings-install receipt and refresh leases
+   outside hook requests.
+3. Pass disposable fake-Claude end-to-end lifecycle tests and an explicitly authorized live smoke.
 4. Apply genuine platform publisher signatures only at the external-distribution gate.
 
 No hook has been installed on this machine, no Claude authentication has been initiated, no API

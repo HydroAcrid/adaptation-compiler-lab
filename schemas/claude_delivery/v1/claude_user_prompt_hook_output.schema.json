@@ -5,6 +5,7 @@
       "description": "Official structured UserPromptSubmit response shape.",
       "properties": {
         "additional_context": {
+          "maxLength": 10000,
           "minLength": 1,
           "title": "Additional Context",
           "type": "string"

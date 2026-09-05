@@ -1,0 +1,179 @@
+{
+  "$defs": {
+    "ClaudeCapturedAuthority": {
+      "description": "Authority retained for captured hook content before any semantic review.",
+      "enum": [
+        "user_authored_input",
+        "untrusted_assistant_context",
+        "untrusted_failure_context"
+      ],
+      "title": "ClaudeCapturedAuthority",
+      "type": "string"
+    },
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Signed raw-free receipt for one encrypted hook payload.",
+  "properties": {
+    "authority": {
+      "$ref": "#/$defs/ClaudeCapturedAuthority"
+    },
+    "captured_at": {
+      "format": "date-time",
+      "title": "Captured At",
+      "type": "string"
+    },
+    "consent_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Consent Digest",
+      "type": "string"
+    },
+    "content_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Content Digest",
+      "type": "string"
+    },
+    "event": {
+      "enum": [
+        "UserPromptSubmit",
+        "Stop",
+        "StopFailure"
+      ],
+      "title": "Event",
+      "type": "string"
+    },
+    "media_type": {
+      "minLength": 1,
+      "title": "Media Type",
+      "type": "string"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "project_registration_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Project Registration Digest",
+      "type": "string"
+    },
+    "raw_payload_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Raw Payload Sha256",
+      "type": "string"
+    },
+    "raw_payload_size_bytes": {
+      "exclusiveMinimum": 0,
+      "maximum": 1048576,
+      "title": "Raw Payload Size Bytes",
+      "type": "integer"
+    },
+    "receipt_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "receipt_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Receipt Version",
+      "type": "string"
+    },
+    "retention_until": {
+      "format": "date-time",
+      "title": "Retention Until",
+      "type": "string"
+    },
+    "session_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Session Digest",
+      "type": "string"
+    },
+    "signature": {
+      "$ref": "#/$defs/SignatureEnvelope"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "subject_id",
+    "project_id",
+    "event",
+    "authority",
+    "session_digest",
+    "content_digest",
+    "raw_payload_sha256",
+    "raw_payload_size_bytes",
+    "media_type",
+    "consent_digest",
+    "project_registration_digest",
+    "captured_at",
+    "retention_until",
+    "signature"
+  ],
+  "title": "ClaudeHookCaptureReceiptV1",
+  "type": "object"
+}

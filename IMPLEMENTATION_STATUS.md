@@ -2,6 +2,40 @@
 
 Last updated: 2026-09-05
 
+## Claude governed hook runtime
+
+The native hook transport now has a concrete no-model local runtime behind its port. It resolves an
+invocation only inside one non-overlapping registered project, rehashes Claude's documented native
+instruction environment, and checks current project-specific consent posture before capture or
+delivery. Exact prompts, final assistant messages, and bounded failure context are encrypted in the
+existing AES-256-GCM raw store. Their signed capture receipts deliberately distinguish
+`user_authored_input` from untrusted assistant/failure context; capture alone does not call a
+semantic interpreter, create Evidence, or approve durable learning.
+
+Projection preparation happens outside the hook request. It uses only cached semantic relations,
+applies deterministic native coverage/conflict policy, binds the release, owner, project,
+environment and source-chain digests in a raw-free manifest, and issues a five-minute Ed25519
+lease held only in memory. A native instruction change invalidates the old lease at the next hook
+event without recompilation or target-visible output. The hook path never calls the projection
+provider or any model.
+
+Capture and audit receipts are stored in a signed hash-chained append-only local index; decrypted
+payload bytes never enter the index. Startup rejects malformed, reordered, cross-owner, or
+signature-tampered retained entries, and a mid-run external file change blocks the next append. Focused
+Claude tests cover encrypted prompt recovery, exact native deduplication, stale-environment denial,
+expired authorization, no-model cached delivery, untrusted outcome/failure capture, project
+overlap, and signed-ledger tampering.
+
+The complete Python gate passes with 1,174 tests and two expected platform skips, strict mypy over
+418 source files, Ruff formatting/linting, locked dependency sync, schema snapshots, and both the
+source and wheel builds. The focused Claude suite now contains 33 passing cases.
+
+This runtime is not yet an active Claude connection. No current desktop preference or historical
+Codex-only consent silently enables it. Explicit consent/policy extension, Connect/Disconnect UI,
+settings installation, fake-Claude end-to-end lifecycle, and an authorized live smoke remain the
+next gate. No Claude setting, authentication, credential, paid call, or sealed Milestone 6 material
+was touched.
+
 ## Claude native hook transport
 
 The Rust `temper-hook` helper and Tauri private transport now complete the native bridge beneath
@@ -17,10 +51,11 @@ release-time digest revalidation, 18 Rust transport/supervision tests, 23 focuse
 and 52 focused Python protocol/Claude tests. Atomic stale-descriptor replacement and multi-instance
 ownership are covered explicitly.
 
-This is still not a connected Claude integration. The real runtime adapter, cached reconciled lease
-preparation, explicit Connect/Disconnect UI and protocol, fake-Claude end-to-end lifecycle, and an
-authorized live smoke remain required. No Claude settings, authentication, credential, provider
-call, or sealed Milestone 6 material was touched.
+This is still not a connected Claude integration. The now-implemented runtime remains inactive
+until an explicit Connect/Disconnect UI and protocol creates the required project consent and
+installs the previewed settings change. Fake-Claude end-to-end lifecycle and an authorized live
+smoke also remain required. No Claude settings, authentication, credential, provider call, or
+sealed Milestone 6 material was touched.
 
 ## Claude product-delivery foundation
 
@@ -36,10 +71,10 @@ original-byte backup, durable signed idempotency receipt, and restart-safe 30-da
 previously absent settings file is restored to absence rather than to a synthetic empty file.
 Unrelated Claude settings and hooks are preserved.
 
-This is not yet a connected Claude integration. The concrete governed-runtime adapter, desktop
-connect/disconnect surface, and an explicitly authorized live smoke remain required. No Claude
-setting was changed, no credential was read, no paid provider call occurred, and the deferred
-Milestone 6 custody boundary was untouched.
+This is not yet a connected Claude integration. The desktop connect/disconnect surface, explicit
+Claude consent extension, and an authorized live smoke remain required. No Claude setting was
+changed, no credential was read, no paid provider call occurred, and the deferred Milestone 6
+custody boundary was untouched.
 See [`TEMPER_CLAUDE_DELIVERY.md`](TEMPER_CLAUDE_DELIVERY.md).
 
 The full Python gate passes with 1,166 tests and two expected platform skips, strict mypy over 416

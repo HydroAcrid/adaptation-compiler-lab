@@ -1,0 +1,72 @@
+{
+  "additionalProperties": false,
+  "description": "Validated local consent and connection posture for one registered project.",
+  "properties": {
+    "authorization_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Authorization Version",
+      "type": "string"
+    },
+    "consent_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Consent Digest",
+      "type": "string"
+    },
+    "delivery_enabled": {
+      "title": "Delivery Enabled",
+      "type": "boolean"
+    },
+    "effective_at": {
+      "format": "date-time",
+      "title": "Effective At",
+      "type": "string"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "learning_enabled": {
+      "title": "Learning Enabled",
+      "type": "boolean"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "project_registration_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Project Registration Digest",
+      "type": "string"
+    },
+    "retention_until": {
+      "format": "date-time",
+      "title": "Retention Until",
+      "type": "string"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "subject_id",
+    "project_id",
+    "consent_digest",
+    "project_registration_digest",
+    "learning_enabled",
+    "delivery_enabled",
+    "effective_at",
+    "expires_at",
+    "retention_until"
+  ],
+  "title": "ClaudeHookAuthorizationV1",
+  "type": "object"
+}

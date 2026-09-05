@@ -92,6 +92,7 @@
       "type": "string"
     },
     "material": {
+      "maxLength": 10000,
       "minLength": 1,
       "title": "Material",
       "type": "string"

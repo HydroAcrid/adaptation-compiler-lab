@@ -1,20 +1,32 @@
 """Governed, no-model Claude Code hook delivery contracts."""
 
 from adaptation_compiler_lab.claude_delivery.models import (
+    ClaudeCapturedAuthority,
     ClaudeHookAuditReceiptV1,
+    ClaudeHookAuthorizationV1,
+    ClaudeHookCaptureReceiptV1,
     ClaudeHookDisposition,
     ClaudeHookEvent,
     ClaudeHookInvocationV1,
+    ClaudeHookLedgerEntryV1,
     ClaudeHookProjectV1,
     ClaudeHookResultV1,
     ClaudeHookSettingsChangeReceiptV1,
     ClaudeHookSettingsPreviewV1,
     ClaudeProjectionLeaseV1,
+    ClaudeProjectionManifestV1,
     ClaudeUserPromptHookOutputV1,
 )
 from adaptation_compiler_lab.claude_delivery.projection import (
     ClaudeHookRenderedProjectionV1,
+    build_claude_projection_manifest,
     render_claude_hook_projection,
+)
+from adaptation_compiler_lab.claude_delivery.runtime import (
+    ClaudeHookLedger,
+    ClaudeHookRuntimeError,
+    ClaudeHookRuntimeHandler,
+    LocalClaudeHookRuntimePort,
 )
 from adaptation_compiler_lab.claude_delivery.service import (
     ClaudeHookBroker,
@@ -26,20 +38,30 @@ from adaptation_compiler_lab.claude_delivery.service import (
 from adaptation_compiler_lab.claude_delivery.settings import ClaudeHookSettingsService
 
 __all__ = [
+    "ClaudeCapturedAuthority",
     "ClaudeHookAuditReceiptV1",
+    "ClaudeHookAuthorizationV1",
     "ClaudeHookBroker",
+    "ClaudeHookCaptureReceiptV1",
     "ClaudeHookDisposition",
     "ClaudeHookEvent",
     "ClaudeHookInvocationV1",
+    "ClaudeHookLedger",
+    "ClaudeHookLedgerEntryV1",
     "ClaudeHookProjectV1",
     "ClaudeHookRenderedProjectionV1",
     "ClaudeHookResultV1",
+    "ClaudeHookRuntimeError",
+    "ClaudeHookRuntimeHandler",
     "ClaudeHookRuntimePort",
     "ClaudeHookSettingsChangeReceiptV1",
     "ClaudeHookSettingsPreviewV1",
     "ClaudeHookSettingsService",
     "ClaudeProjectionLeaseV1",
+    "ClaudeProjectionManifestV1",
     "ClaudeUserPromptHookOutputV1",
+    "LocalClaudeHookRuntimePort",
+    "build_claude_projection_manifest",
     "issue_claude_projection_lease",
     "parse_claude_hook_input",
     "render_claude_hook_projection",
