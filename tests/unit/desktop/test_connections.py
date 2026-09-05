@@ -31,6 +31,14 @@ class ClaudeRunner:
         raise AssertionError(f"unexpected probe: {argv!r}")
 
 
+class CopilotRunner:
+    def run(self, argv: Sequence[str], *, timeout: float) -> subprocess.CompletedProcess[str]:
+        del timeout
+        if tuple(argv[1:]) == ("--version",):
+            return subprocess.CompletedProcess(argv, 0, "GitHub Copilot CLI 1.0.54\n", "")
+        raise AssertionError(f"unexpected probe: {argv!r}")
+
+
 def test_codex_connection_reports_separate_truthful_capabilities(
     tmp_path: Path, monkeypatch: Any
 ) -> None:
@@ -44,7 +52,7 @@ def test_codex_connection_reports_separate_truthful_capabilities(
         platform_name="win32",
     )
 
-    codex, claude = inspector.inspect()
+    codex, claude, copilot = inspector.inspect()
 
     assert codex.conformance_state == "compatible"
     assert codex.authentication_state == "signed_in"
@@ -54,6 +62,8 @@ def test_codex_connection_reports_separate_truthful_capabilities(
     assert codex.integration_state == "connected"
     assert claude.installation_state == "not_installed"
     assert "Not integrated" in claude.learning_capability
+    assert copilot.installation_state == "not_installed"
+    assert "repository instructions" in copilot.learning_capability
 
 
 def test_ready_claude_is_available_for_explicit_local_connection(
@@ -97,3 +107,42 @@ def test_version_drift_never_appears_connected(tmp_path: Path) -> None:
     assert codex.conformance_state == "update_required"
     assert codex.available_actions == ("refresh",)
     assert "updated connector" in codex.status_summary
+
+
+def test_copilot_detection_does_not_imply_authentication_or_delivery(tmp_path: Path) -> None:
+    executable = tmp_path / "copilot.exe"
+    executable.write_bytes(b"synthetic")
+    executable.chmod(0o700)
+    inspector = AgentConnectionInspector(
+        runner=FakeRunner(),
+        environ={"PATH": str(tmp_path)},
+        platform_name="win32",
+    )
+
+    copilot = inspector.inspect_copilot()
+
+    assert copilot.installation_state == "installed"
+    assert copilot.authentication_state == "unknown"
+    assert copilot.conformance_state == "update_required"
+    assert copilot.integration_state == "unavailable"
+    assert copilot.available_actions == ("refresh",)
+
+
+def test_current_copilot_cli_reports_hook_as_available_but_not_connected(tmp_path: Path) -> None:
+    executable = tmp_path / "copilot.exe"
+    executable.write_bytes(b"synthetic")
+    executable.chmod(0o700)
+    inspector = AgentConnectionInspector(
+        runner=CopilotRunner(),
+        environ={"PATH": str(tmp_path)},
+        platform_name="win32",
+    )
+
+    copilot = inspector.inspect_copilot()
+
+    assert copilot.conformance_state == "compatible"
+    assert copilot.authentication_state == "unknown"
+    assert copilot.integration_state == "available"
+    assert "not connected" in copilot.status_summary
+    assert "local hook" in copilot.delivery_capability
+    assert copilot.available_actions == ("refresh",)

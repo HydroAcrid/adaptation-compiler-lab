@@ -105,8 +105,8 @@ class AgentConnectionV1(FrozenModel):
     """Truthful source and target capabilities without executable or credential paths."""
 
     connection_version: Literal["1.1.0"] = "1.1.0"
-    agent_id: Literal["codex", "claude"]
-    display_name: Literal["Codex", "Claude Code"]
+    agent_id: Literal["codex", "claude", "copilot"]
+    display_name: Literal["Codex", "Claude Code", "GitHub Copilot"]
     installation_state: ConnectionInstallationState
     authentication_state: ConnectionAuthenticationState
     conformance_state: ConnectionConformanceState
@@ -152,7 +152,7 @@ class SetupSnapshotV1(FrozenModel):
     product_name: Literal["Temper"] = "Temper"
     configuration_state: ConfigurationState
     secure_store: SecureStoreStatus
-    connections: tuple[AgentConnectionV1, AgentConnectionV1]
+    connections: tuple[AgentConnectionV1, ...] = Field(min_length=2, max_length=3)
     existing_installation: ExistingInstallationSummary | None = None
     learning_enabled: Literal[False] = False
     automatic_promotion_enabled: Literal[False] = False

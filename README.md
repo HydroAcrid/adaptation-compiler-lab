@@ -33,6 +33,13 @@ clauses, personal roots require a separate opt-in, and native edits require an e
 signed receipt, encrypted backup, and rollback. See
 [`TEMPER_NATIVE_INSTRUCTION_INTEROPERABILITY.md`](TEMPER_NATIVE_INSTRUCTION_INTEROPERABILITY.md).
 
+Copilot is now represented as a versioned set of distinct surfaces rather than one ambiguous
+connection. Temper reports Copilot CLI installation/version separately from authentication and
+delivery, and maps IDE/cloud surfaces to only the instruction types GitHub documents. The official
+CLI hook is recognized as the sole local direct-delivery candidate, but remains disconnected until
+its governed connector passes the same lease, transport, rollback, and scope gates as Claude. See
+[`TEMPER_COPILOT_CAPABILITIES.md`](TEMPER_COPILOT_CAPABILITIES.md).
+
 Claude product delivery uses Claude Code's official hook surface. The local
 contract includes strict event parsing, a no-model broker, signed expiring projection leases,
 encrypted exact-payload capture, a chained raw-free audit index, exact preview/apply/rollback for

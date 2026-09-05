@@ -2449,7 +2449,9 @@ function ConnectionDetailsDialog({
               ? connection.status === "connected"
                 ? "The local hook is active only in registered projects. Connecting Temper does not call Claude; ordinary Claude Code usage remains provider-billed."
                 : "Detection alone does not authorize capture or delivery. Connecting changes only Temper-owned entries in your Claude user settings and makes no provider call."
-              : "Temper can learn only from prospectively registered completed work and deliver only to fresh Temper-managed tasks."}
+              : connection.id === "copilot"
+                ? "Temper understands supported Copilot instruction files. Direct delivery is available only through Copilot CLI's local hook and is not connected in this build; other Copilot surfaces require a reviewed file change."
+                : "Temper can learn only from prospectively registered completed work and deliver only to fresh Temper-managed tasks."}
           </p>
           {nativeRuntime && connection.id === "claude" ? (
             <section

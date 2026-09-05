@@ -179,7 +179,7 @@ export interface CapabilityModeSummary {
 }
 
 export interface AgentConnection {
-  id: "codex" | "claude";
+  id: "codex" | "claude" | "copilot";
   name: string;
   status:
     | "connected"

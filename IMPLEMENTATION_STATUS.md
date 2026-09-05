@@ -2,6 +2,23 @@
 
 Last updated: 2026-09-05
 
+## GitHub Copilot capability matrix
+
+Temper now distinguishes nine GitHub Copilot surfaces using a typed, versioned 2026-09-05 support
+matrix. Repository, path-specific, agent, and personal instruction support is recorded per surface
+instead of treating one installed client as universal delivery. Only Copilot CLI currently names
+an official local command-hook path; IDE and GitHub surfaces remain governed repository-file
+preview or observation paths.
+
+Native inspection detects `copilot` only through supported executable lookup and a read-only
+version probe. It recognizes the reviewed `1.0.54` CLI contract, does not initiate OAuth or inspect
+tokens, reports authentication as unknown, and does not expose a Connect action yet. The React
+onboarding and Connections surfaces now include this honest third-agent state and a locally bundled
+provider mark. Existing Copilot instruction discovery continues to grant no personal authority.
+
+This increment closes capability ambiguity; it does not yet implement direct Copilot CLI hook
+delivery. See [`TEMPER_COPILOT_CAPABILITIES.md`](TEMPER_COPILOT_CAPABILITIES.md).
+
 ## Same-owner offline recovery
 
 The native product can now export one exact custody-signed recovery bundle from Settings and
