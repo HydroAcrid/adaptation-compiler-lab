@@ -1,0 +1,183 @@
+{
+  "$defs": {
+    "ArtifactKind": {
+      "enum": [
+        "memory",
+        "preference",
+        "example",
+        "procedure",
+        "prompt_rule",
+        "skill",
+        "tool_recommendation"
+      ],
+      "title": "ArtifactKind",
+      "type": "string"
+    },
+    "BehavioralContract": {
+      "additionalProperties": false,
+      "properties": {
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "non_goals": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Non Goals",
+          "type": "array"
+        },
+        "required_behaviors": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Required Behaviors",
+          "type": "array"
+        },
+        "verification_requirements": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Verification Requirements",
+          "type": "array"
+        }
+      },
+      "required": [
+        "intent",
+        "required_behaviors",
+        "verification_requirements"
+      ],
+      "title": "BehavioralContract",
+      "type": "object"
+    },
+    "PortableProfileScope": {
+      "additionalProperties": false,
+      "description": "Path-free applicability; recipient-local identifiers require explicit mapping.",
+      "properties": {
+        "activation_conditions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Activation Conditions",
+          "type": "array"
+        },
+        "environment_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Environment Ids",
+          "type": "array"
+        },
+        "exclusions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Exclusions",
+          "type": "array"
+        },
+        "project_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Project Ids",
+          "type": "array"
+        },
+        "scope_mapping_required": {
+          "default": false,
+          "title": "Scope Mapping Required",
+          "type": "boolean"
+        },
+        "target_families": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Target Families",
+          "type": "array"
+        },
+        "task_classes": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Task Classes",
+          "type": "array"
+        }
+      },
+      "title": "PortableProfileScope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "artifact_kind": {
+      "$ref": "#/$defs/ArtifactKind"
+    },
+    "behavioral_contract": {
+      "$ref": "#/$defs/BehavioralContract"
+    },
+    "claim_key": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Claim Key",
+      "type": "string"
+    },
+    "clause_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Clause Id",
+      "type": "string"
+    },
+    "grants_user_authority": {
+      "const": false,
+      "default": false,
+      "title": "Grants User Authority",
+      "type": "boolean"
+    },
+    "requested_scope": {
+      "$ref": "#/$defs/PortableProfileScope"
+    },
+    "review_required_on_import": {
+      "const": true,
+      "default": true,
+      "title": "Review Required On Import",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "clause_id",
+    "claim_key",
+    "artifact_kind",
+    "behavioral_contract",
+    "requested_scope"
+  ],
+  "title": "ShareableBehaviorClauseV1",
+  "type": "object"
+}

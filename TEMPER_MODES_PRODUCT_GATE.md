@@ -79,6 +79,6 @@ gate and does not establish cross-agent transfer.
 - Add a governed personal-overlay editor.
 - Add evidence-gated Mode suggestions after five eligible occurrences across three real dates and
   agreement between two isolated grouping passes.
-- Add shareable signed Mode packages that begin inactive and contain no executable content or
-  private evidence.
+- Connect already implemented signed, inactive, raw-free Mode package imports to the ordinary
+  governed clause-review queue; do not introduce a second promotion path.
 - Re-evaluate target compatibility when Claude delivery becomes available.

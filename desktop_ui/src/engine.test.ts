@@ -7,6 +7,7 @@ import {
   adoptExistingInstallation,
   applyNativeInstructionChange,
   ENGINE_PROTOCOL_VERSION,
+  exportPackage,
   exportProfile,
   decideEngineSuggestion,
   isTauriRuntime,
@@ -14,6 +15,7 @@ import {
   loadInstructionEnvironments,
   loadDiagnostics,
   loadModes,
+  loadPackageImportPreview,
   loadProfileImportPreview,
   previewExistingInstallation,
   previewNativeInstructionChange,
@@ -22,6 +24,7 @@ import {
   requestNotificationPermission,
   runModeTask,
   runManagedTask,
+  stagePackageImport,
   applyManagedTask,
   discardManagedTask,
   updateEnginePreferences,
@@ -218,6 +221,128 @@ describe("Tauri engine boundary", () => {
 
     expect(invoke).toHaveBeenCalledWith("profile_import_preview", {
       passphrase: "correct horse battery staple",
+    });
+  });
+
+  it("keeps shareable package paths in native dialogs and stages nothing active", async () => {
+    const preview = {
+      import_token: "opaque-package-token",
+      package_type: "capability_mode" as const,
+      package_id: "frontend-studio-package",
+      release_version: "1.0.0",
+      package_digest: "sha256:" + "a".repeat(64),
+      display_name: "Frontend Studio",
+      publisher_name: "Temper",
+      publisher_key_fingerprint: "sha256:" + "c".repeat(64),
+      source_license: "Apache-2.0",
+      origin_signature_verified: true as const,
+      item_count: 1,
+      items: [],
+      duplicate_item_ids: [],
+      conflicting_item_ids: [],
+      requested_scope_mapping_count: 0,
+      required_capabilities: [],
+      evaluation_status: "experimental",
+      warnings: [],
+      starts_inactive: true as const,
+      grants_user_authority: false as const,
+      raw_payloads_exposed: false as const,
+    };
+    invoke
+      .mockResolvedValueOnce({
+        protocol_version: ENGINE_PROTOCOL_VERSION,
+        request_id: "preview",
+        ok: true,
+        result: preview,
+        error: null,
+        snapshot_digest: null,
+      })
+      .mockResolvedValueOnce({
+        protocol_version: ENGINE_PROTOCOL_VERSION,
+        request_id: "stage",
+        ok: true,
+        result: {
+          status: "staged_inactive_for_review",
+          receipt_id: "receipt-1",
+          item_count: 1,
+          activates_artifacts: false,
+          raw_payloads_exposed: false,
+        },
+        error: null,
+        snapshot_digest: "sha256:" + "b".repeat(64),
+      });
+
+    await expect(loadPackageImportPreview()).resolves.toEqual(preview);
+    await stagePackageImport(
+      preview,
+      "sha256:" + "b".repeat(64),
+      "package-import-click",
+    );
+
+    expect(invoke.mock.calls).toEqual([
+      ["package_import_preview"],
+      [
+        "package_import_stage",
+        {
+          expectedSnapshotDigest: "sha256:" + "b".repeat(64),
+          idempotencyKey: "package-import-click",
+          importToken: "opaque-package-token",
+          packageDigest: "sha256:" + "a".repeat(64),
+        },
+      ],
+    ]);
+    expect(JSON.stringify(invoke.mock.calls)).not.toContain("Users");
+  });
+
+  it("exports a shareable package through a native-owned destination", async () => {
+    invoke.mockResolvedValueOnce({
+      protocol_version: ENGINE_PROTOCOL_VERSION,
+      request_id: "export",
+      ok: true,
+      result: {
+        status: "exported",
+        package_digest: "sha256:" + "a".repeat(64),
+        file_name: "frontend-studio-package.temper-pack",
+        raw_payloads_exposed: false,
+      },
+      error: null,
+      snapshot_digest: "sha256:" + "b".repeat(64),
+    });
+
+    await exportPackage(
+      {
+        export_token: "opaque-export",
+        package_type: "capability_mode",
+        package_id: "frontend-studio-package",
+        release_version: "1.0.0",
+        package_digest: "sha256:" + "a".repeat(64),
+        display_name: "Frontend Studio",
+        publisher_name: "Temper",
+        publisher_key_fingerprint: "sha256:" + "c".repeat(64),
+        source_license: "Apache-2.0",
+        origin_signature_verified: true,
+        item_count: 1,
+        items: [],
+        duplicate_item_ids: [],
+        conflicting_item_ids: [],
+        requested_scope_mapping_count: 0,
+        required_capabilities: [],
+        evaluation_status: "experimental",
+        warnings: [],
+        starts_inactive: true,
+        grants_user_authority: false,
+        raw_payloads_exposed: false,
+      },
+      "frontend-studio-package.temper-pack",
+      "sha256:" + "b".repeat(64),
+      "package-export-click",
+    );
+
+    expect(invoke).toHaveBeenCalledWith("package_export", {
+      expectedSnapshotDigest: "sha256:" + "b".repeat(64),
+      exportToken: "opaque-export",
+      idempotencyKey: "package-export-click",
+      suggestedName: "frontend-studio-package.temper-pack",
     });
   });
 

@@ -1101,6 +1101,88 @@ fn profile_import_stage(
 }
 
 #[tauri::command]
+fn package_export_preview(
+    state: tauri::State<'_, EngineState>,
+    package_type: String,
+    mode_id: Option<String>,
+) -> Result<EngineResponse, PublicError> {
+    let params = match mode_id {
+        Some(value) => json!({"package_type": package_type, "mode_id": value}),
+        None => json!({"package_type": package_type}),
+    };
+    call_engine(&state, "package.export.preview", params, None, None)
+}
+
+#[tauri::command]
+fn package_export(
+    state: tauri::State<'_, EngineState>,
+    export_token: String,
+    suggested_name: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    let safe_name = if suggested_name
+        .chars()
+        .all(|character| character.is_ascii_alphanumeric() || "-_.".contains(character))
+        && !suggested_name.starts_with('.')
+        && suggested_name.len() <= 96
+    {
+        suggested_name
+    } else {
+        "temper-package.temper-pack".to_owned()
+    };
+    let mut destination = rfd::FileDialog::new()
+        .set_file_name(safe_name)
+        .add_filter("Temper package", &["temper-pack"])
+        .save_file()
+        .ok_or_else(cancelled)?;
+    if destination.extension().and_then(|value| value.to_str()) != Some("temper-pack") {
+        destination.set_extension("temper-pack");
+    }
+    call_engine(
+        &state,
+        "package.export.create",
+        json!({"destination": destination, "export_token": export_token}),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+fn package_import_preview(
+    state: tauri::State<'_, EngineState>,
+) -> Result<EngineResponse, PublicError> {
+    let source = rfd::FileDialog::new()
+        .add_filter("Temper package", &["temper-pack"])
+        .pick_file()
+        .ok_or_else(cancelled)?;
+    call_engine(
+        &state,
+        "package.import.preview",
+        json!({"source": source}),
+        None,
+        None,
+    )
+}
+
+#[tauri::command]
+fn package_import_stage(
+    state: tauri::State<'_, EngineState>,
+    import_token: String,
+    package_digest: String,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "package.import.stage",
+        json!({"import_token": import_token, "package_digest": package_digest}),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
 fn modes_list(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
     call_engine(&state, "mode.list", json!({}), None, None)
 }
@@ -1248,6 +1330,10 @@ pub fn run() {
             profile_export,
             profile_import_preview,
             profile_import_stage,
+            package_export_preview,
+            package_export,
+            package_import_preview,
+            package_import_stage,
             modes_list,
             mode_run_task,
             task_run,
@@ -1293,6 +1379,12 @@ mod tests {
         assert!(!source.contains(
             "fn profile_import_preview(\n    state: tauri::State<'_, EngineState>,\n    source"
         ));
+        assert!(!source.contains(
+            "fn package_export(\n    state: tauri::State<'_, EngineState>,\n    destination"
+        ));
+        assert!(!source.contains(
+            "fn package_import_preview(\n    state: tauri::State<'_, EngineState>,\n    source"
+        ));
     }
 
     #[test]
@@ -1329,6 +1421,10 @@ mod tests {
             "profile_export",
             "profile_import_preview",
             "profile_import_stage",
+            "package_export_preview",
+            "package_export",
+            "package_import_preview",
+            "package_import_stage",
             "modes_list",
             "mode_run_task",
             "task_run",

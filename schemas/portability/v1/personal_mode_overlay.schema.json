@@ -1,0 +1,279 @@
+{
+  "$defs": {
+    "ModeClause": {
+      "additionalProperties": false,
+      "description": "One compact default that may be suppressed by a higher-authority claim.",
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/ModeClauseCategory"
+        },
+        "claim_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Claim Key",
+          "type": "string"
+        },
+        "clause_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Clause Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "clause_id",
+        "claim_key",
+        "category",
+        "text"
+      ],
+      "title": "ModeClause",
+      "type": "object"
+    },
+    "ModeClauseCategory": {
+      "description": "Bounded kinds of expertise a Mode may add to one task.",
+      "enum": [
+        "accessibility",
+        "accuracy",
+        "data_protection",
+        "design_system",
+        "evidence",
+        "failure_handling",
+        "responsive",
+        "security",
+        "threat_model",
+        "validation",
+        "visual_direction",
+        "workflow"
+      ],
+      "title": "ModeClauseCategory",
+      "type": "string"
+    },
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "auto_activates_on_import": {
+      "const": false,
+      "default": false,
+      "title": "Auto Activates On Import",
+      "type": "boolean"
+    },
+    "base_mode_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Base Mode Digest",
+      "type": "string"
+    },
+    "base_mode_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Base Mode Id",
+      "type": "string"
+    },
+    "base_mode_version": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+      "title": "Base Mode Version",
+      "type": "string"
+    },
+    "clauses": {
+      "items": {
+        "$ref": "#/$defs/ModeClause"
+      },
+      "minItems": 1,
+      "title": "Clauses",
+      "type": "array"
+    },
+    "contains_credentials": {
+      "const": false,
+      "default": false,
+      "title": "Contains Credentials",
+      "type": "boolean"
+    },
+    "contains_executable_content": {
+      "const": false,
+      "default": false,
+      "title": "Contains Executable Content",
+      "type": "boolean"
+    },
+    "contains_hooks_or_dependencies": {
+      "const": false,
+      "default": false,
+      "title": "Contains Hooks Or Dependencies",
+      "type": "boolean"
+    },
+    "contains_private_paths": {
+      "const": false,
+      "default": false,
+      "title": "Contains Private Paths",
+      "type": "boolean"
+    },
+    "contains_raw_conversations": {
+      "const": false,
+      "default": false,
+      "title": "Contains Raw Conversations",
+      "type": "boolean"
+    },
+    "contains_source_task_ids": {
+      "const": false,
+      "default": false,
+      "title": "Contains Source Task Ids",
+      "type": "boolean"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "display_name": {
+      "minLength": 1,
+      "title": "Display Name",
+      "type": "string"
+    },
+    "grants_user_authority": {
+      "const": false,
+      "default": false,
+      "title": "Grants User Authority",
+      "type": "boolean"
+    },
+    "owner_subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Owner Subject Id",
+      "type": "string"
+    },
+    "package_format": {
+      "const": "temper-personal-mode-overlay/v1",
+      "default": "temper-personal-mode-overlay/v1",
+      "title": "Package Format",
+      "type": "string"
+    },
+    "package_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Package Id",
+      "type": "string"
+    },
+    "package_type": {
+      "const": "personal_mode_overlay",
+      "default": "personal_mode_overlay",
+      "title": "Package Type",
+      "type": "string"
+    },
+    "publisher_identity_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Publisher Identity Id",
+      "type": "string"
+    },
+    "publisher_key_fingerprint": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Publisher Key Fingerprint",
+      "type": "string"
+    },
+    "publisher_name": {
+      "minLength": 1,
+      "title": "Publisher Name",
+      "type": "string"
+    },
+    "publisher_public_key_base64": {
+      "minLength": 1,
+      "title": "Publisher Public Key Base64",
+      "type": "string"
+    },
+    "release_version": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+      "title": "Release Version",
+      "type": "string"
+    },
+    "signature": {
+      "$ref": "#/$defs/SignatureEnvelope"
+    },
+    "source_license": {
+      "minLength": 1,
+      "title": "Source License",
+      "type": "string"
+    }
+  },
+  "required": [
+    "package_id",
+    "release_version",
+    "display_name",
+    "publisher_name",
+    "publisher_identity_id",
+    "publisher_public_key_base64",
+    "publisher_key_fingerprint",
+    "source_license",
+    "created_at",
+    "signature",
+    "owner_subject_id",
+    "base_mode_id",
+    "base_mode_version",
+    "base_mode_digest",
+    "clauses"
+  ],
+  "title": "PersonalModeOverlayV1",
+  "type": "object"
+}

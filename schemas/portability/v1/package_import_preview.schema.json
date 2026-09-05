@@ -1,0 +1,214 @@
+{
+  "$defs": {
+    "PackageImportItemPreviewV1": {
+      "additionalProperties": false,
+      "properties": {
+        "disposition": {
+          "enum": [
+            "new",
+            "exact_duplicate",
+            "conflict",
+            "owner_only"
+          ],
+          "title": "Disposition",
+          "type": "string"
+        },
+        "item_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Item Id",
+          "type": "string"
+        },
+        "kind": {
+          "minLength": 1,
+          "title": "Kind",
+          "type": "string"
+        },
+        "summary": {
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "item_id",
+        "kind",
+        "summary",
+        "disposition"
+      ],
+      "title": "PackageImportItemPreviewV1",
+      "type": "object"
+    },
+    "ShareablePackageType": {
+      "enum": [
+        "behavior_pack",
+        "capability_mode",
+        "personal_mode_overlay"
+      ],
+      "title": "ShareablePackageType",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "conflicting_item_ids": {
+      "default": [],
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Conflicting Item Ids",
+      "type": "array"
+    },
+    "display_name": {
+      "minLength": 1,
+      "title": "Display Name",
+      "type": "string"
+    },
+    "duplicate_item_ids": {
+      "default": [],
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Duplicate Item Ids",
+      "type": "array"
+    },
+    "evaluation_status": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Evaluation Status"
+    },
+    "grants_user_authority": {
+      "const": false,
+      "default": false,
+      "title": "Grants User Authority",
+      "type": "boolean"
+    },
+    "item_count": {
+      "minimum": 1,
+      "title": "Item Count",
+      "type": "integer"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/PackageImportItemPreviewV1"
+      },
+      "minItems": 1,
+      "title": "Items",
+      "type": "array"
+    },
+    "origin_signature_verified": {
+      "const": true,
+      "default": true,
+      "title": "Origin Signature Verified",
+      "type": "boolean"
+    },
+    "package_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Package Digest",
+      "type": "string"
+    },
+    "package_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Package Id",
+      "type": "string"
+    },
+    "package_type": {
+      "$ref": "#/$defs/ShareablePackageType"
+    },
+    "preview_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Preview Version",
+      "type": "string"
+    },
+    "publisher_key_fingerprint": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Publisher Key Fingerprint",
+      "type": "string"
+    },
+    "publisher_name": {
+      "minLength": 1,
+      "title": "Publisher Name",
+      "type": "string"
+    },
+    "raw_payloads_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Payloads Exposed",
+      "type": "boolean"
+    },
+    "release_version": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+      "title": "Release Version",
+      "type": "string"
+    },
+    "requested_scope_mapping_count": {
+      "minimum": 0,
+      "title": "Requested Scope Mapping Count",
+      "type": "integer"
+    },
+    "required_capabilities": {
+      "default": [],
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Required Capabilities",
+      "type": "array"
+    },
+    "source_license": {
+      "minLength": 1,
+      "title": "Source License",
+      "type": "string"
+    },
+    "starts_inactive": {
+      "const": true,
+      "default": true,
+      "title": "Starts Inactive",
+      "type": "boolean"
+    },
+    "warnings": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "package_type",
+    "package_id",
+    "release_version",
+    "package_digest",
+    "display_name",
+    "publisher_name",
+    "publisher_key_fingerprint",
+    "source_license",
+    "item_count",
+    "items",
+    "requested_scope_mapping_count",
+    "warnings"
+  ],
+  "title": "PackageImportPreviewV1",
+  "type": "object"
+}

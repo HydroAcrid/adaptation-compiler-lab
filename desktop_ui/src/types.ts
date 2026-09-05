@@ -82,6 +82,36 @@ export interface PortableProfilePreview {
   raw_payloads_exposed: false;
 }
 
+export interface ShareablePackageItemPreview {
+  item_id: string;
+  kind: string;
+  summary: string;
+  disposition: "new" | "exact_duplicate" | "conflict" | "owner_only";
+}
+
+export interface ShareablePackagePreview {
+  package_type: "behavior_pack" | "capability_mode" | "personal_mode_overlay";
+  package_id: string;
+  release_version: string;
+  package_digest: string;
+  display_name: string;
+  publisher_name: string;
+  publisher_key_fingerprint: string;
+  source_license: string;
+  origin_signature_verified: true;
+  item_count: number;
+  items: ShareablePackageItemPreview[];
+  duplicate_item_ids: string[];
+  conflicting_item_ids: string[];
+  requested_scope_mapping_count: number;
+  required_capabilities: string[];
+  evaluation_status: string | null;
+  warnings: string[];
+  starts_inactive: true;
+  grants_user_authority: false;
+  raw_payloads_exposed: false;
+}
+
 export interface CapabilityModeSummary {
   mode_id: string;
   mode_version: string;

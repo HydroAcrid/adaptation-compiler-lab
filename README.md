@@ -56,9 +56,14 @@ Temper's replacement customer desktop now connects React to the real local Pytho
 a restrictive Tauri 2 shell and framed stdio protocol. A configured native runtime loads raw-free
 projects and approved Core items, offers native-path-hidden encrypted profile export/import with
 exact inactive previews, and exposes three experimental temporary Modes for one fresh governed
-Codex task: Frontend Studio, Research Analyst, and Secure Backend. Browser URLs remain synthetic
-visual-review scenes; they do not
-pretend to perform native writes. Fifty-seven component/engine tests, seven product viewport,
+Codex task: Frontend Studio, Research Analyst, and Secure Backend. It also exports signed raw-free
+`.temper-pack` behavior/Mode files and
+verifies publisher, license, conflicts, duplicates, capabilities, and evaluation status before an
+import can be staged inactive. Package signatures transfer origin, never instruction authority;
+native file paths stay outside React and package imports cannot install or activate anything. See
+[`TEMPER_SHAREABLE_PACKAGES.md`](TEMPER_SHAREABLE_PACKAGES.md).
+Browser URLs remain synthetic visual-review scenes; they do not pretend to perform native writes.
+Sixty-six component/engine tests, seven product viewport,
 motion, and
 truthfulness checks, nine WebView2 compatibility/accessibility checks, and 32 light/dark visual
 scenes pass. See

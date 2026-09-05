@@ -32,6 +32,11 @@ from adaptation_compiler_lab.instruction_environment.models import (
     InstructionEnvironmentSummaryV1,
     NativeTarget,
 )
+from adaptation_compiler_lab.portability import (
+    PackageImportItemPreviewV1,
+    PackageImportPreviewV1,
+    ShareablePackageType,
+)
 
 
 def test_unconfigured_engine_import_does_not_load_managed_runtime_service() -> None:
@@ -280,6 +285,133 @@ def test_portability_never_operates_without_governed_local_configuration() -> No
     assert mutation.ok is False
     assert mutation.error is not None
     assert mutation.error.code == "not_configured"
+
+
+def _package_preview() -> PackageImportPreviewV1:
+    return PackageImportPreviewV1(
+        package_type=ShareablePackageType.CAPABILITY_MODE,
+        package_id="frontend-studio-package",
+        release_version="1.0.0",
+        package_digest=f"sha256:{'d' * 64}",
+        display_name="Frontend Studio",
+        publisher_name="Temper",
+        publisher_key_fingerprint=f"sha256:{'e' * 64}",
+        source_license="Apache-2.0",
+        item_count=1,
+        items=(
+            PackageImportItemPreviewV1(
+                item_id="frontend-studio",
+                kind="capability_mode",
+                summary="Frontend expertise for one task.",
+                disposition="new",
+            ),
+        ),
+        requested_scope_mapping_count=0,
+        evaluation_status="experimental",
+        warnings=("The signature proves origin and integrity, not truth or user authority.",),
+    )
+
+
+def test_shareable_package_export_is_previewed_then_written_without_path_disclosure(
+    tmp_path: Path,
+) -> None:
+    digest = f"sha256:{'a' * 64}"
+    service = MagicMock()
+    service.load.return_value = MagicMock(content_digest=digest)
+    portability = MagicMock()
+    package = MagicMock(content_digest=f"sha256:{'d' * 64}")
+    portability.build_shareable_mode_export.return_value = package
+    portability.preview_shareable_export.return_value = _package_preview()
+    destination = tmp_path / "frontend.temper-pack"
+    portability.write_shareable_export.return_value = destination
+    router = EngineProtocolRouter(cast(Any, service), cast(Any, portability))
+
+    preview = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="package-export-preview",
+            method="package.export.preview",
+            params={"package_type": "capability_mode", "mode_id": "frontend-studio"},
+        )
+    )
+    assert preview.ok is True
+    assert preview.result is not None
+    assert "destination" not in preview.result
+
+    exported = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="package-export-create",
+            method="package.export.create",
+            params={
+                "export_token": preview.result["export_token"],
+                "destination": str(destination),
+            },
+            expected_snapshot_digest=digest,
+            idempotency_key="package-export-click",
+        )
+    )
+
+    assert exported.ok is True
+    assert exported.result is not None
+    assert exported.result["raw_payloads_exposed"] is False
+    assert exported.result["file_name"] == "frontend.temper-pack"
+    portability.write_shareable_export.assert_called_once_with(package, destination)
+
+
+def test_shareable_package_import_only_stages_inactive_review_material(tmp_path: Path) -> None:
+    digest = f"sha256:{'a' * 64}"
+    service = MagicMock()
+    service.load.return_value = MagicMock(content_digest=digest)
+    portability = MagicMock()
+    package = MagicMock(content_digest=f"sha256:{'d' * 64}")
+    preview_value = _package_preview()
+    source = tmp_path / "frontend.temper-pack"
+    portability.read_shareable_import.return_value = package
+    portability.preview_shareable_import.return_value = preview_value
+    receipt = MagicMock(
+        status="staged_inactive_for_review",
+        receipt_id="package-import-receipt",
+        package_digest=preview_value.package_digest,
+    )
+    portability.stage_shareable_import.return_value = receipt
+    router = EngineProtocolRouter(cast(Any, service), cast(Any, portability))
+
+    preview = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="package-import-preview",
+            method="package.import.preview",
+            params={"source": str(source)},
+        )
+    )
+    assert preview.ok is True
+    assert preview.result is not None
+
+    staged = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="package-import-stage",
+            method="package.import.stage",
+            params={
+                "import_token": preview.result["import_token"],
+                "package_digest": preview_value.package_digest,
+            },
+            expected_snapshot_digest=digest,
+            idempotency_key="package-import-click",
+        )
+    )
+
+    assert staged.ok is True
+    assert staged.result is not None
+    assert staged.result["status"] == "staged_inactive_for_review"
+    assert staged.result["activates_artifacts"] is False
+    assert staged.result["raw_payloads_exposed"] is False
+    portability.stage_shareable_import.assert_called_once_with(
+        package,
+        preview_value,
+        idempotency_key="package-import-click",
+    )
 
 
 def test_mode_run_is_bound_to_snapshot_and_forwards_exact_mode_scope() -> None:

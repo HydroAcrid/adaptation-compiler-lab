@@ -41,7 +41,9 @@ from adaptation_compiler_lab.instruction_environment.models import (
 from adaptation_compiler_lab.modes import MODE_CATALOG, evaluate_mode_conformance, mode_by_id
 from adaptation_compiler_lab.portability import (
     EncryptedProfileEnvelope,
+    PackageImportPreviewV1,
     PortableProfilePackage,
+    ShareablePackage,
 )
 from adaptation_compiler_lab.serialization import canonical_digest
 
@@ -126,6 +128,10 @@ class EngineProtocolRouter:
         self._instruction_environment: InstructionEnvironmentService | None = None
         self._export_previews: dict[str, tuple[float, PortableProfilePackage]] = {}
         self._import_previews: dict[str, tuple[float, EncryptedProfileEnvelope]] = {}
+        self._package_export_previews: dict[str, tuple[float, ShareablePackage]] = {}
+        self._package_import_previews: dict[
+            str, tuple[float, ShareablePackage, PackageImportPreviewV1]
+        ] = {}
         self._mutation_results: dict[str, tuple[Sha256Digest, EngineResponse]] = {}
 
     def handle(self, request: EngineRequest) -> EngineResponse:
@@ -312,6 +318,14 @@ class EngineProtocolRouter:
             return self._preview_import(request)
         if request.method == "portability.import.stage":
             return self._stage_import(request)
+        if request.method == "package.export.preview":
+            return self._preview_package_export(request)
+        if request.method == "package.export.create":
+            return self._create_package_export(request)
+        if request.method == "package.import.preview":
+            return self._preview_package_import(request)
+        if request.method == "package.import.stage":
+            return self._stage_package_import(request)
         if request.method == "mode.task.run":
             return self._run_mode_task(request)
         if request.method == "task.run":
@@ -1229,6 +1243,166 @@ class EngineProtocolRouter:
         )
         return self._remember_mutation(request, request_fingerprint, response)
 
+    def _preview_package_export(self, request: EngineRequest) -> EngineResponse:
+        if self._portability is None:
+            return self._not_configured(request)
+        try:
+            package_type = _required_string(request.params, "package_type")
+            if package_type == "behavior_pack":
+                if set(request.params) != {"package_type"}:
+                    raise ValueError
+                package: ShareablePackage = self._portability.build_shareable_behavior_export()
+            elif package_type == "capability_mode":
+                if set(request.params) != {"package_type", "mode_id"}:
+                    raise ValueError
+                package = self._portability.build_shareable_mode_export(
+                    _required_string(request.params, "mode_id")
+                )
+            else:
+                raise ValueError
+            preview = self._portability.preview_shareable_export(package)
+        except (OSError, ValueError):
+            return self._error(
+                request,
+                "package_export_unavailable",
+                "Temper could not safely prepare that shareable package.",
+            )
+        self._purge_previews()
+        token = uuid.uuid4().hex
+        self._package_export_previews[token] = (monotonic(), package)
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result={"export_token": token, **preview.model_dump(mode="json")},
+        )
+
+    def _create_package_export(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        snapshot_digest, request_fingerprint = checked
+        if self._portability is None:
+            return self._not_configured(request)
+        try:
+            if set(request.params) != {"export_token", "destination"}:
+                raise ValueError
+            token = _required_string(request.params, "export_token")
+            destination = Path(_required_string(request.params, "destination"))
+        except ValueError:
+            return self._error(request, "invalid_params", "The package export was invalid.")
+        self._purge_previews()
+        held = self._package_export_previews.get(token)
+        if held is None:
+            return self._error(
+                request, "preview_expired", "The package preview expired; review it again."
+            )
+        try:
+            written = self._portability.write_shareable_export(held[1], destination)
+        except FileExistsError:
+            return self._error(
+                request,
+                "destination_exists",
+                "Temper will not overwrite an existing package file.",
+            )
+        except (OSError, ValueError):
+            return self._error(
+                request,
+                "package_export_failed",
+                "Temper could not safely write the package.",
+            )
+        del self._package_export_previews[token]
+        response = EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result={
+                "status": "exported",
+                "package_digest": held[1].content_digest,
+                "file_name": written.name,
+                "raw_payloads_exposed": False,
+            },
+            snapshot_digest=snapshot_digest,
+        )
+        return self._remember_mutation(request, request_fingerprint, response)
+
+    def _preview_package_import(self, request: EngineRequest) -> EngineResponse:
+        if self._portability is None:
+            return self._not_configured(request)
+        try:
+            if set(request.params) != {"source"}:
+                raise ValueError
+            package = self._portability.read_shareable_import(
+                Path(_required_string(request.params, "source"))
+            )
+            preview = self._portability.preview_shareable_import(package)
+        except (OSError, ValueError):
+            return self._error(
+                request,
+                "package_import_invalid",
+                "Temper could not verify that shareable package.",
+            )
+        self._purge_previews()
+        token = uuid.uuid4().hex
+        self._package_import_previews[token] = (monotonic(), package, preview)
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result={"import_token": token, **preview.model_dump(mode="json")},
+        )
+
+    def _stage_package_import(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        snapshot_digest, request_fingerprint = checked
+        if self._portability is None or request.idempotency_key is None:
+            return self._not_configured(request)
+        try:
+            if set(request.params) != {"import_token", "package_digest"}:
+                raise ValueError
+            token = _required_string(request.params, "import_token")
+            package_digest = _required_string(request.params, "package_digest")
+        except ValueError:
+            return self._error(request, "invalid_params", "The package import was invalid.")
+        self._purge_previews()
+        held = self._package_import_previews.get(token)
+        if held is None:
+            return self._error(
+                request, "preview_expired", "The package preview expired; review it again."
+            )
+        if held[1].content_digest != package_digest:
+            return self._error(
+                request,
+                "stale_package",
+                "The package changed after preview; choose it again.",
+            )
+        try:
+            receipt = self._portability.stage_shareable_import(
+                held[1],
+                held[2],
+                idempotency_key=request.idempotency_key,
+            )
+        except (OSError, ValueError):
+            return self._error(
+                request,
+                "package_import_failed",
+                "Temper could not safely stage that package.",
+            )
+        del self._package_import_previews[token]
+        response = EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result={
+                "status": receipt.status,
+                "receipt_id": receipt.receipt_id,
+                "package_digest": receipt.package_digest,
+                "item_count": held[2].item_count,
+                "activates_artifacts": False,
+                "raw_payloads_exposed": False,
+            },
+            snapshot_digest=snapshot_digest,
+        )
+        return self._remember_mutation(request, request_fingerprint, response)
+
     def _run_mode_task(self, request: EngineRequest) -> EngineResponse:
         checked = self._mutation_request(request)
         if isinstance(checked, EngineResponse):
@@ -1442,6 +1616,12 @@ class EngineProtocolRouter:
         }
         self._import_previews = {
             key: value for key, value in self._import_previews.items() if value[0] >= cutoff
+        }
+        self._package_export_previews = {
+            key: value for key, value in self._package_export_previews.items() if value[0] >= cutoff
+        }
+        self._package_import_previews = {
+            key: value for key, value in self._package_import_previews.items() if value[0] >= cutoff
         }
 
     def _not_configured(self, request: EngineRequest) -> EngineResponse:

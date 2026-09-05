@@ -1,0 +1,40 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "disposition": {
+      "enum": [
+        "new",
+        "exact_duplicate",
+        "conflict",
+        "owner_only"
+      ],
+      "title": "Disposition",
+      "type": "string"
+    },
+    "item_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Item Id",
+      "type": "string"
+    },
+    "kind": {
+      "minLength": 1,
+      "title": "Kind",
+      "type": "string"
+    },
+    "summary": {
+      "minLength": 1,
+      "title": "Summary",
+      "type": "string"
+    }
+  },
+  "required": [
+    "item_id",
+    "kind",
+    "summary",
+    "disposition"
+  ],
+  "title": "PackageImportItemPreviewV1",
+  "type": "object"
+}
