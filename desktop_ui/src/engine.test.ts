@@ -5,6 +5,7 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 
 import {
   adoptExistingInstallation,
+  applyCopilotConnection,
   applyNativeInstructionChange,
   ENGINE_PROTOCOL_VERSION,
   exportPackage,
@@ -21,6 +22,7 @@ import {
   loadProfileImportPreview,
   loadRecoveryImportPreview,
   previewExistingInstallation,
+  previewCopilotConnection,
   previewNativeInstructionChange,
   previewPersonalInstructionSetup,
   previewSetupProject,
@@ -56,6 +58,73 @@ describe("Tauri engine boundary", () => {
     expect(invoke).toHaveBeenCalledWith("notification_permission", {
       request: true,
     });
+  });
+
+  it("previews and applies a delivery-only Copilot CLI connection", async () => {
+    const preview = {
+      preview_version: "1.0.0" as const,
+      operation: "connect" as const,
+      hook_file: {
+        preview_version: "1.0.0" as const,
+        preview_token: "copilot-preview",
+        operation: "install" as const,
+        before_digest: "sha256:" + "a".repeat(64),
+        after_digest: "sha256:" + "b".repeat(64),
+        before_existed: false,
+        after_existed: true,
+        helper_digest: "sha256:" + "c".repeat(64),
+        events: ["userPromptTransformed"] as ["userPromptTransformed"],
+        redacted_diff: "+ Temper hook",
+        expires_at: "2026-09-05T12:15:00Z",
+        dedicated_temper_file: true as const,
+        provider_authentication_changed: false as const,
+        provider_call_required: false as const,
+        raw_paths_exposed: false as const,
+      },
+      project_ids: ["kairn"],
+      current_connection_digest: null,
+      consent_expires_at: "2026-10-05T12:00:00Z",
+      learning_enabled: false as const,
+      delivery_enabled: true,
+      provider_call_required: false as const,
+      provider_authentication_changed: false as const,
+      raw_paths_exposed: false as const,
+    };
+    invoke
+      .mockResolvedValueOnce(responseForTest(preview))
+      .mockResolvedValueOnce(
+        responseForTest({
+          receipt_id: "copilot-connection-one",
+          operation: "connect",
+          connection_digest: "sha256:" + "d".repeat(64),
+          expires_at: preview.consent_expires_at,
+          project_count: 1,
+          restart_required: true,
+          provider_call_required: false,
+          raw_payloads_exposed: false,
+        }),
+      );
+
+    const loaded = await previewCopilotConnection("connect");
+    await applyCopilotConnection(
+      loaded,
+      "sha256:" + "e".repeat(64),
+      "copilot-connect-click",
+    );
+
+    expect(invoke.mock.calls).toEqual([
+      ["copilot_connection_preview", { operation: "connect" }],
+      [
+        "copilot_connection_apply",
+        {
+          previewToken: "copilot-preview",
+          expectedBeforeDigest: preview.hook_file.before_digest,
+          consentConfirmed: true,
+          expectedSnapshotDigest: "sha256:" + "e".repeat(64),
+          idempotencyKey: "copilot-connect-click",
+        },
+      ],
+    ]);
   });
 
   it("handshakes before loading a raw-free snapshot", async () => {

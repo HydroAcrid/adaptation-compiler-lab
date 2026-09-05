@@ -87,7 +87,7 @@ def _identity() -> tuple[GovernanceSigner, SignerIdentity]:
     return signer, identity
 
 
-def test_claude_hook_selector_requires_registered_project_scope() -> None:
+def test_agent_hook_selectors_require_registered_project_scope() -> None:
     selector = SourceSelector(
         source_system="claude_code_hook",
         selection_method="registered_projects_prospective",
@@ -95,6 +95,12 @@ def test_claude_hook_selector_requires_registered_project_scope() -> None:
     )
 
     assert selector.source_ids == ("project-1",)
+    copilot = SourceSelector(
+        source_system="copilot_cli_hook",
+        selection_method="registered_projects_prospective",
+        source_ids=("project-1",),
+    )
+    assert copilot.source_ids == ("project-1",)
     with pytest.raises(ValidationError, match="registered_projects_prospective"):
         SourceSelector(
             source_system="claude_code_hook",

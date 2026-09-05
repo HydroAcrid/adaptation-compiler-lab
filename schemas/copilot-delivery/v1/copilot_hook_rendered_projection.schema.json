@@ -1,0 +1,51 @@
+{
+  "additionalProperties": false,
+  "description": "Small approved delta appended only to Copilot's model-facing prompt.",
+  "properties": {
+    "clause_digests": {
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Clause Digests",
+      "type": "array"
+    },
+    "content": {
+      "maxLength": 12000,
+      "minLength": 1,
+      "title": "Content",
+      "type": "string"
+    },
+    "content_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Content Digest",
+      "type": "string"
+    },
+    "renderer_id": {
+      "const": "copilot-cli-hook-runtime",
+      "default": "copilot-cli-hook-runtime",
+      "title": "Renderer Id",
+      "type": "string"
+    },
+    "renderer_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Renderer Version",
+      "type": "string"
+    },
+    "utf8_bytes": {
+      "exclusiveMinimum": 0,
+      "maximum": 12000,
+      "title": "Utf8 Bytes",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "content",
+    "content_digest",
+    "utf8_bytes",
+    "clause_digests"
+  ],
+  "title": "CopilotHookRenderedProjectionV1",
+  "type": "object"
+}

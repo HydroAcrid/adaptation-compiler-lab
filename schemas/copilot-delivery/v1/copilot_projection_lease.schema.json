@@ -1,0 +1,162 @@
+{
+  "$defs": {
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Signed cached projection; hook execution performs no compilation or model call.",
+  "properties": {
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "external_release_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "External Release Digest",
+      "type": "string"
+    },
+    "instruction_environment_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Instruction Environment Digest",
+      "type": "string"
+    },
+    "issued_at": {
+      "format": "date-time",
+      "title": "Issued At",
+      "type": "string"
+    },
+    "lease_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Lease Id",
+      "type": "string"
+    },
+    "lease_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Lease Version",
+      "type": "string"
+    },
+    "material": {
+      "maxLength": 12000,
+      "minLength": 1,
+      "title": "Material",
+      "type": "string"
+    },
+    "material_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Material Digest",
+      "type": "string"
+    },
+    "material_utf8_bytes": {
+      "exclusiveMinimum": 0,
+      "maximum": 12000,
+      "title": "Material Utf8 Bytes",
+      "type": "integer"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "projection_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Projection Digest",
+      "type": "string"
+    },
+    "projection_manifest_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Projection Manifest Digest",
+      "type": "string"
+    },
+    "signature": {
+      "$ref": "#/$defs/SignatureEnvelope"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    },
+    "target_family": {
+      "const": "copilot-cli",
+      "default": "copilot-cli",
+      "title": "Target Family",
+      "type": "string"
+    }
+  },
+  "required": [
+    "lease_id",
+    "subject_id",
+    "project_id",
+    "instruction_environment_digest",
+    "external_release_digest",
+    "projection_digest",
+    "projection_manifest_digest",
+    "material",
+    "material_digest",
+    "material_utf8_bytes",
+    "issued_at",
+    "expires_at",
+    "signature"
+  ],
+  "title": "CopilotProjectionLeaseV1",
+  "type": "object"
+}

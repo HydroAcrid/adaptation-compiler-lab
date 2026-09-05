@@ -145,4 +145,4 @@ def test_current_copilot_cli_reports_hook_as_available_but_not_connected(tmp_pat
     assert copilot.integration_state == "available"
     assert "not connected" in copilot.status_summary
     assert "local hook" in copilot.delivery_capability
-    assert copilot.available_actions == ("refresh",)
+    assert copilot.available_actions == ("refresh", "connect")

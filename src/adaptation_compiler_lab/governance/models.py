@@ -183,6 +183,7 @@ class SourceSelector(FrozenModel):
         "codex_app_server",
         "local_interaction_runtime",
         "claude_code_hook",
+        "copilot_cli_hook",
     ]
     selection_method: Literal[
         "synthetic_fixture",
@@ -203,10 +204,11 @@ class SourceSelector(FrozenModel):
         synthetic = self.source_system == "synthetic_fixture"
         if synthetic != (self.selection_method == "synthetic_fixture"):
             raise ValueError("synthetic selectors must use the synthetic_fixture method")
-        if (self.source_system == "claude_code_hook") != (
+        prospective_sources = {"claude_code_hook", "copilot_cli_hook"}
+        if (self.source_system in prospective_sources) != (
             self.selection_method == "registered_projects_prospective"
         ):
-            raise ValueError("Claude hook selectors must use registered_projects_prospective")
+            raise ValueError("agent hook selectors must use registered_projects_prospective")
         return self
 
 

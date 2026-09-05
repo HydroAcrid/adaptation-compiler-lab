@@ -150,6 +150,41 @@ export interface EngineClaudeConnectionReceipt {
   raw_payloads_exposed: false;
 }
 
+export interface EngineCopilotConnectionPreview {
+  preview_version: "1.0.0";
+  operation: "connect" | "disconnect";
+  hook_file: {
+    preview_version: "1.0.0";
+    preview_token: string;
+    operation: "install" | "uninstall";
+    before_digest: string;
+    after_digest: string;
+    before_existed: boolean;
+    after_existed: boolean;
+    helper_digest: string;
+    events: ["userPromptTransformed"];
+    redacted_diff: string;
+    expires_at: string;
+    dedicated_temper_file: true;
+    provider_authentication_changed: false;
+    provider_call_required: false;
+    raw_paths_exposed: false;
+  };
+  project_ids: string[];
+  current_connection_digest: string | null;
+  consent_expires_at: string;
+  learning_enabled: false;
+  delivery_enabled: boolean;
+  provider_call_required: false;
+  provider_authentication_changed: false;
+  raw_paths_exposed: false;
+}
+
+export type EngineConnectionPreview =
+  EngineClaudeConnectionPreview | EngineCopilotConnectionPreview;
+
+export type EngineConnectionReceipt = EngineClaudeConnectionReceipt;
+
 export interface EngineArtifactRef {
   record_id: string;
   record_version: string;
@@ -161,7 +196,7 @@ export interface EngineTargetAuthorizationPreview {
   preview_token: string;
   subject_id: string;
   project_id: string;
-  target_family: "claude-code";
+  target_family: "claude-code" | "copilot-cli";
   source_release_digest: string;
   current_authorization_digest: string | null;
   items: Array<{
@@ -865,13 +900,59 @@ export async function applyClaudeConnection(
   return receipt;
 }
 
+export async function previewCopilotConnection(
+  operation: "connect" | "disconnect",
+): Promise<EngineCopilotConnectionPreview> {
+  const preview = assertSuccessful(
+    await invoke<EngineResponse<EngineCopilotConnectionPreview>>(
+      "copilot_connection_preview",
+      { operation },
+    ),
+  );
+  if (
+    preview.raw_paths_exposed ||
+    preview.provider_call_required ||
+    preview.provider_authentication_changed ||
+    preview.hook_file.raw_paths_exposed ||
+    preview.hook_file.provider_call_required ||
+    preview.hook_file.provider_authentication_changed
+  ) {
+    throw new Error("Temper refused an unsafe Copilot connection preview.");
+  }
+  return preview;
+}
+
+export async function applyCopilotConnection(
+  preview: EngineCopilotConnectionPreview,
+  expectedSnapshotDigest: string,
+  idempotencyKey: string,
+): Promise<EngineConnectionReceipt> {
+  const receipt = assertSuccessful(
+    await invoke<EngineResponse<EngineConnectionReceipt>>(
+      "copilot_connection_apply",
+      {
+        previewToken: preview.hook_file.preview_token,
+        expectedBeforeDigest: preview.hook_file.before_digest,
+        consentConfirmed: true,
+        expectedSnapshotDigest,
+        idempotencyKey,
+      },
+    ),
+  );
+  if (receipt.raw_payloads_exposed || receipt.provider_call_required) {
+    throw new Error("Temper refused an unsafe Copilot connection result.");
+  }
+  return receipt;
+}
+
 export async function previewTargetAuthorization(
   projectId: string,
+  targetFamily: "claude-code" | "copilot-cli" = "claude-code",
 ): Promise<EngineTargetAuthorizationPreview> {
   const preview = assertSuccessful(
     await invoke<EngineResponse<EngineTargetAuthorizationPreview>>(
       "target_authorization_preview",
-      { projectId, targetFamily: "claude-code" },
+      { projectId, targetFamily },
     ),
   );
   if (preview.raw_paths_exposed || preview.provider_call_required) {

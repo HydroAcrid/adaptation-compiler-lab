@@ -135,7 +135,7 @@ impl EngineProcess {
             "recovery.export.preview" | "recovery.export.create" | "recovery.restore" => {
                 ENGINE_RECOVERY_TIMEOUT
             }
-            "claude.hook.handle" => ENGINE_HOOK_TIMEOUT,
+            "claude.hook.handle" | "copilot.hook.handle" => ENGINE_HOOK_TIMEOUT,
             _ => ENGINE_RESPONSE_TIMEOUT,
         };
         let line = receive_engine_frame(&self.responses, timeout)?;
@@ -274,6 +274,9 @@ fn engine_command() -> Result<Command, PublicError> {
     if let Some(settings) = claude_settings_path() {
         command.env("TEMPER_CLAUDE_SETTINGS_PATH", settings);
     }
+    if let Some(hook) = copilot_hook_path() {
+        command.env("TEMPER_COPILOT_HOOK_PATH", hook);
+    }
     Ok(command)
 }
 
@@ -301,6 +304,20 @@ fn claude_settings_path() -> Option<PathBuf> {
         env::var_os("HOME")
     }?;
     Some(PathBuf::from(home).join(".claude").join("settings.json"))
+}
+
+fn copilot_hook_path() -> Option<PathBuf> {
+    let root = if let Some(configured) = env::var_os("COPILOT_HOME") {
+        PathBuf::from(configured)
+    } else {
+        let home = if cfg!(target_os = "windows") {
+            env::var_os("USERPROFILE")
+        } else {
+            env::var_os("HOME")
+        }?;
+        PathBuf::from(home).join(".copilot")
+    };
+    Some(root.join("hooks").join("temper.json"))
 }
 
 fn validate_handshake(
@@ -429,6 +446,14 @@ fn hook_output_from_response(response: EngineResponse) -> Option<Value> {
         .result
         .and_then(|value| value.get("output").cloned())
         .filter(|value| !value.is_null())
+}
+
+fn hook_engine_method(payload: &Value) -> &'static str {
+    if payload.get("transformedPrompt").is_some() {
+        "copilot.hook.handle"
+    } else {
+        "claude.hook.handle"
+    }
 }
 
 fn poll_eligibility(response: &EngineResponse) -> Option<PollEligibility> {
@@ -613,13 +638,10 @@ fn start_hook_server(app: &tauri::App) {
     let handle = app.handle().clone();
     let Ok(server) = hook_ipc::HookIpcServer::start(descriptor, move |payload| {
         let state = handle.state::<EngineState>();
-        call_running_engine(
-            state.inner(),
-            "claude.hook.handle",
-            json!({"payload": payload}),
-        )
-        .ok()
-        .and_then(hook_output_from_response)
+        let method = hook_engine_method(&payload);
+        call_running_engine(state.inner(), method, json!({"payload": payload}))
+            .ok()
+            .and_then(hook_output_from_response)
     }) else {
         return;
     };
@@ -895,6 +917,52 @@ async fn claude_connection_apply(
         let response = call_engine(
             &state,
             "connection.claude.apply",
+            json!({
+                "preview_token": preview_token,
+                "expected_before_digest": expected_before_digest,
+                "consent_confirmed": consent_confirmed,
+            }),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )?;
+        if response.ok {
+            let mut guard = state.0.lock().map_err(|_| unavailable())?;
+            *guard = None;
+        }
+        Ok(response)
+    })
+    .await
+    .map_err(|_| unavailable())?
+}
+
+#[tauri::command]
+fn copilot_connection_preview(
+    state: tauri::State<'_, EngineState>,
+    operation: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "connection.copilot.preview",
+        json!({"operation": operation}),
+        None,
+        None,
+    )
+}
+
+#[tauri::command]
+async fn copilot_connection_apply(
+    app: tauri::AppHandle,
+    preview_token: String,
+    expected_before_digest: String,
+    consent_confirmed: bool,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let response = call_engine(
+            &state,
+            "connection.copilot.apply",
             json!({
                 "preview_token": preview_token,
                 "expected_before_digest": expected_before_digest,
@@ -1664,6 +1732,8 @@ pub fn run() {
             connection_inspect,
             claude_connection_preview,
             claude_connection_apply,
+            copilot_connection_preview,
+            copilot_connection_apply,
             target_authorization_preview,
             target_authorization_apply,
             setup_existing_preview,
@@ -1766,6 +1836,8 @@ mod tests {
             "connection_inspect",
             "claude_connection_preview",
             "claude_connection_apply",
+            "copilot_connection_preview",
+            "copilot_connection_apply",
             "target_authorization_preview",
             "target_authorization_apply",
             "setup_existing_preview",
@@ -1964,6 +2036,24 @@ mod tests {
             snapshot_digest: None,
         };
         assert!(hook_output_from_response(unavailable).is_none());
+    }
+
+    #[test]
+    fn hook_payload_routes_only_the_documented_copilot_shape() {
+        assert_eq!(
+            hook_engine_method(&json!({
+                "sessionId": "session",
+                "timestamp": 1,
+                "cwd": "project",
+                "prompt": "hello",
+                "transformedPrompt": "hello"
+            })),
+            "copilot.hook.handle"
+        );
+        assert_eq!(
+            hook_engine_method(&json!({"hook_event_name": "UserPromptSubmit"})),
+            "claude.hook.handle"
+        );
     }
 
     #[test]

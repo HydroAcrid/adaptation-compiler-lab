@@ -16,7 +16,7 @@ def test_capability_matrix_is_complete_and_only_cli_names_a_hook() -> None:
     cli = next(item for item in matrix if item.surface is CopilotSurface.COPILOT_CLI)
     assert cli.local_command_hooks is True
     assert cli.delivery_mechanism is CopilotDeliveryMechanism.USER_HOOK
-    assert cli.direct_temper_delivery is False
+    assert cli.direct_temper_delivery is True
     assert all(
         not item.local_command_hooks
         for item in matrix
@@ -27,7 +27,11 @@ def test_capability_matrix_is_complete_and_only_cli_names_a_hook() -> None:
 def test_file_based_surfaces_never_claim_direct_delivery() -> None:
     matrix = default_copilot_capability_matrix()
 
-    assert all(item.direct_temper_delivery is False for item in matrix)
+    assert all(
+        item.direct_temper_delivery is False
+        for item in matrix
+        if item.surface is not CopilotSurface.COPILOT_CLI
+    )
     assert all(item.provider_call_required_for_connection is False for item in matrix)
     assert all(item.raw_payloads_exposed is False for item in matrix)
 

@@ -1,0 +1,50 @@
+{
+  "additionalProperties": false,
+  "description": "Exact transient fields accepted from ``userPromptTransformed``.",
+  "properties": {
+    "invocation_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Invocation Version",
+      "type": "string"
+    },
+    "prompt": {
+      "maxLength": 1048576,
+      "minLength": 1,
+      "title": "Prompt",
+      "type": "string"
+    },
+    "session_id": {
+      "maxLength": 512,
+      "minLength": 1,
+      "title": "Session Id",
+      "type": "string"
+    },
+    "timestamp_epoch_ms": {
+      "minimum": 0,
+      "title": "Timestamp Epoch Ms",
+      "type": "integer"
+    },
+    "transformed_prompt": {
+      "maxLength": 1048576,
+      "minLength": 1,
+      "title": "Transformed Prompt",
+      "type": "string"
+    },
+    "working_directory": {
+      "maxLength": 4096,
+      "minLength": 1,
+      "title": "Working Directory",
+      "type": "string"
+    }
+  },
+  "required": [
+    "session_id",
+    "timestamp_epoch_ms",
+    "working_directory",
+    "prompt",
+    "transformed_prompt"
+  ],
+  "title": "CopilotHookInvocationV1",
+  "type": "object"
+}

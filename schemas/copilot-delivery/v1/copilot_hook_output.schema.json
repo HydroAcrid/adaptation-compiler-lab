@@ -1,0 +1,17 @@
+{
+  "additionalProperties": false,
+  "description": "Only official command-hook field returned to Copilot CLI.",
+  "properties": {
+    "modified_transformed_prompt": {
+      "maxLength": 1060832,
+      "minLength": 1,
+      "title": "Modified Transformed Prompt",
+      "type": "string"
+    }
+  },
+  "required": [
+    "modified_transformed_prompt"
+  ],
+  "title": "CopilotHookOutputV1",
+  "type": "object"
+}
