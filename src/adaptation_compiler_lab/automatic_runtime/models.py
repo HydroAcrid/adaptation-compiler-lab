@@ -42,6 +42,7 @@ from adaptation_compiler_lab.governance import (
     ConsentReceipt,
     GovernanceEvent,
     GovernanceEventType,
+    SignatureEnvelope,
     SignerIdentity,
 )
 from adaptation_compiler_lab.runtime import ExternalGovernedRelease
@@ -372,6 +373,38 @@ class CodexProjectRegistration(FrozenModel):
         if not strings_are_sorted_unique(value):
             raise ValueError("project-registration source roots must be sorted and unique")
         return value
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class CodexProjectRecoveryBindingV1(FrozenModel):
+    """Signed authorization to bind one restored project identity to a new local path."""
+
+    binding_version: Literal["1.0.0"] = "1.0.0"
+    binding_id: Identifier
+    subject_id: Identifier
+    project_id: Identifier
+    source_project_digest: Sha256Digest
+    recovery_bundle_digest: Sha256Digest
+    restored_project_root_digest: Sha256Digest
+    restored_source_roots_digest: Sha256Digest
+    rebound_at: UtcDateTime
+    signature: SignatureEnvelope
+
+    @model_validator(mode="after")
+    def signature_metadata_is_exact(self) -> Self:
+        if (
+            self.signature.purpose != "codex_project_recovery_binding"
+            or self.signature.signed_at != self.rebound_at
+        ):
+            raise ValueError("project recovery binding signature metadata changed")
+        return self
+
+    @property
+    def unsigned_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", exclude={"signature"})
 
     @property
     def content_digest(self) -> Sha256Digest:

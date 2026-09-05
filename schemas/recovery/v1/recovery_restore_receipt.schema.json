@@ -1,0 +1,162 @@
+{
+  "$defs": {
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Signed proof that one encrypted bundle became one new local installation.",
+  "properties": {
+    "bundle_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Bundle Digest",
+      "type": "string"
+    },
+    "bundle_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Bundle Id",
+      "type": "string"
+    },
+    "project_binding_digests": {
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Project Binding Digests",
+      "type": "array"
+    },
+    "receipt_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "receipt_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Receipt Version",
+      "type": "string"
+    },
+    "restored_at": {
+      "format": "date-time",
+      "title": "Restored At",
+      "type": "string"
+    },
+    "restored_config_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Restored Config Digest",
+      "type": "string"
+    },
+    "restored_file_manifest_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Restored File Manifest Digest",
+      "type": "string"
+    },
+    "signature": {
+      "$ref": "#/$defs/SignatureEnvelope"
+    },
+    "signer_fingerprint": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Signer Fingerprint",
+      "type": "string"
+    },
+    "signer_identity_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Signer Identity Id",
+      "type": "string"
+    },
+    "source_config_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Config Digest",
+      "type": "string"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    },
+    "target_platform": {
+      "enum": [
+        "windows",
+        "macos"
+      ],
+      "title": "Target Platform",
+      "type": "string"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "subject_id",
+    "bundle_id",
+    "bundle_digest",
+    "source_config_digest",
+    "restored_config_digest",
+    "restored_file_manifest_digest",
+    "project_binding_digests",
+    "target_platform",
+    "restored_at",
+    "signer_identity_id",
+    "signer_fingerprint",
+    "signature"
+  ],
+  "title": "RecoveryRestoreReceiptV1",
+  "type": "object"
+}

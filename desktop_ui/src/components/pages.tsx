@@ -76,6 +76,7 @@ import type {
   WorkspaceScope,
 } from "../types";
 import { ProfilePortabilityDialog } from "./ProfilePortabilityDialog";
+import { RecoveryExportDialog } from "./RecoveryDialog";
 import { ShareablePackageDialog } from "./ShareablePackageDialog";
 import { PackageReviewQueue } from "./PackageReviewQueue";
 import {
@@ -2846,6 +2847,8 @@ export function SettingsPage({
   secureStoreReady = false,
   onGovernedPreferencesChange,
   onRenewConsent,
+  snapshotDigest = null,
+  onRecoveryCreated,
 }: {
   theme: Theme;
   onThemeChange: (theme: Theme) => void;
@@ -2867,6 +2870,8 @@ export function SettingsPage({
     launchAtLoginEnabled: boolean,
   ) => Promise<void>;
   onRenewConsent?: () => Promise<void>;
+  snapshotDigest?: string | null;
+  onRecoveryCreated?: (message: string) => void;
 }) {
   const [learning, setLearning] = useState(
     nativeRuntime ? backgroundLearning : true,
@@ -2880,6 +2885,7 @@ export function SettingsPage({
   const [consentOpen, setConsentOpen] = useState(false);
   const [preferenceBusy, setPreferenceBusy] = useState(false);
   const [preferenceError, setPreferenceError] = useState<string | null>(null);
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
 
   async function savePreferences(
     nextLearning: boolean,
@@ -3098,6 +3104,26 @@ export function SettingsPage({
           onCheckedChange={onAdvancedModeChange}
         />
       </SettingsGroup>
+      {nativeRuntime ? (
+        <SettingsGroup title="Recovery">
+          <div className="setting-inline recovery-setting">
+            <div>
+              <strong>Offline recovery file</strong>
+              <span>
+                Protect your Temper identity, approved learning, and governed
+                history with a separate passphrase.
+              </span>
+            </div>
+            <Button
+              disabled={!snapshotDigest || !secureStoreReady}
+              onClick={() => setRecoveryOpen(true)}
+              tone="quiet"
+            >
+              Create recovery file
+            </Button>
+          </div>
+        </SettingsGroup>
+      ) : null}
       <TelemetryDialog onOpenChange={setPreviewOpen} open={previewOpen} />
       <ConsentDialog
         consent={consent}
@@ -3107,6 +3133,14 @@ export function SettingsPage({
         open={consentOpen}
         renewalAvailable={secureStoreReady}
       />
+      {nativeRuntime && snapshotDigest ? (
+        <RecoveryExportDialog
+          onComplete={(message) => onRecoveryCreated?.(message)}
+          onOpenChange={setRecoveryOpen}
+          open={recoveryOpen}
+          snapshotDigest={snapshotDigest}
+        />
+      ) : null}
     </div>
   );
 }

@@ -22,6 +22,7 @@ import {
 } from "../engine";
 import { BotanicalFlourish } from "./BotanicalFlourish";
 import { BrandMark } from "./BrandMark";
+import { RecoveryImportDialog } from "./RecoveryDialog";
 import { Button, Toggle } from "./ui";
 
 const steps = ["Welcome", "Privacy", "Agents", "Projects", "Ready"];
@@ -46,6 +47,7 @@ export function Onboarding({
   const [busy, setBusy] = useState(false);
   const [setupPhase, setSetupPhase] = useState<SetupPhase>("idle");
   const [message, setMessage] = useState<string | null>(null);
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
   const codex = setupSnapshot?.connections.find(
     (connection) => connection.agent_id === "codex",
   );
@@ -221,14 +223,24 @@ export function Onboarding({
                     </Button>
                   </>
                 ) : (
-                  <button
-                    className="text-action"
-                    disabled={busy}
-                    onClick={chooseExisting}
-                    type="button"
-                  >
-                    Already use Temper? Choose your existing configuration
-                  </button>
+                  <div className="existing-installation-actions">
+                    <button
+                      className="text-action"
+                      disabled={busy}
+                      onClick={chooseExisting}
+                      type="button"
+                    >
+                      Use an existing Temper on this device
+                    </button>
+                    <button
+                      className="text-action"
+                      disabled={busy || !setupDigest}
+                      onClick={() => setRecoveryOpen(true)}
+                      type="button"
+                    >
+                      Restore from an encrypted recovery file
+                    </button>
+                  </div>
                 )}
               </div>
             ) : null}
@@ -394,6 +406,14 @@ export function Onboarding({
               : "Continue"}
         </Button>
       </footer>
+      {nativeRuntime && setupDigest ? (
+        <RecoveryImportDialog
+          onOpenChange={setRecoveryOpen}
+          onRestored={onComplete}
+          open={recoveryOpen}
+          setupDigest={setupDigest}
+        />
+      ) : null}
     </div>
   );
 }

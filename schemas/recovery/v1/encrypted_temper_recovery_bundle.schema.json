@@ -1,0 +1,52 @@
+{
+  "additionalProperties": false,
+  "description": "Memory-hard passphrase envelope with no plaintext owner or project metadata.",
+  "properties": {
+    "cipher": {
+      "const": "AES-256-GCM",
+      "default": "AES-256-GCM",
+      "title": "Cipher",
+      "type": "string"
+    },
+    "ciphertext_base64": {
+      "minLength": 1,
+      "title": "Ciphertext Base64",
+      "type": "string"
+    },
+    "envelope_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Envelope Version",
+      "type": "string"
+    },
+    "kdf": {
+      "const": "scrypt-n32768-r8-p1",
+      "default": "scrypt-n32768-r8-p1",
+      "title": "Kdf",
+      "type": "string"
+    },
+    "nonce_base64": {
+      "minLength": 1,
+      "title": "Nonce Base64",
+      "type": "string"
+    },
+    "plaintext_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Plaintext Digest",
+      "type": "string"
+    },
+    "salt_base64": {
+      "minLength": 1,
+      "title": "Salt Base64",
+      "type": "string"
+    }
+  },
+  "required": [
+    "salt_base64",
+    "nonce_base64",
+    "ciphertext_base64",
+    "plaintext_digest"
+  ],
+  "title": "EncryptedTemperRecoveryBundleV1",
+  "type": "object"
+}

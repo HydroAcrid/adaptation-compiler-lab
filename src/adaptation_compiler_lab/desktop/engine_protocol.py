@@ -57,6 +57,11 @@ from adaptation_compiler_lab.portability import (
     PortableProfilePackage,
     ShareablePackage,
 )
+from adaptation_compiler_lab.recovery.models import (
+    RecoveryPreviewV1,
+    RecoveryProjectSelectionV1,
+    RecoveryRestoreResultV1,
+)
 from adaptation_compiler_lab.runtime.target_authorization import (
     RuntimeTargetAuthorizationItemV1,
     RuntimeTargetAuthorizationMutationV1,
@@ -69,6 +74,7 @@ from adaptation_compiler_lab.serialization import canonical_digest
 if TYPE_CHECKING:
     from adaptation_compiler_lab.claude_delivery.connection import ClaudeConnectionService
     from adaptation_compiler_lab.desktop.portability_service import LocalProfilePortabilityService
+    from adaptation_compiler_lab.desktop.recovery_service import LocalRecoveryService
     from adaptation_compiler_lab.desktop.service import DesktopApplicationService
     from adaptation_compiler_lab.desktop.setup_service import DesktopSetupApplicationService
     from adaptation_compiler_lab.instruction_environment.service import (
@@ -148,6 +154,8 @@ class EngineProtocolRouter:
         claude_projection_refresher: Callable[[], object] | None = None,
         target_authorization: RuntimeTargetAuthorizationService | None = None,
         target_release_provider: Callable[[], ExternalGovernedRelease | None] | None = None,
+        recovery_factory: Callable[[], LocalRecoveryService] | None = None,
+        runtime_config_path: Path | None = None,
     ) -> None:
         self._service = service
         self._portability = portability
@@ -158,8 +166,11 @@ class EngineProtocolRouter:
         self._claude_projection_refresher = claude_projection_refresher
         self._target_authorization = target_authorization
         self._target_release_provider = target_release_provider
+        self._recovery_factory = recovery_factory
+        self._runtime_config_path = runtime_config_path
         self._setup: DesktopSetupApplicationService | None = None
         self._instruction_environment: InstructionEnvironmentService | None = None
+        self._recovery: LocalRecoveryService | None = None
         self._export_previews: dict[str, tuple[float, PortableProfilePackage]] = {}
         self._import_previews: dict[str, tuple[float, EncryptedProfileEnvelope]] = {}
         self._package_export_previews: dict[str, tuple[float, ShareablePackage]] = {}
@@ -218,6 +229,16 @@ class EngineProtocolRouter:
             return self._preview_target_authorization(request)
         if request.method == "target.authorization.apply":
             return self._apply_target_authorization(request)
+        if request.method == "recovery.export.preview":
+            return self._preview_recovery_export(request)
+        if request.method == "recovery.export.create":
+            return self._create_recovery_export(request)
+        if request.method == "recovery.import.preview":
+            return self._preview_recovery_import(request)
+        if request.method == "recovery.project.select":
+            return self._select_recovery_project(request)
+        if request.method == "recovery.restore":
+            return self._restore_recovery(request)
         if request.method == "setup.existing.preview":
             try:
                 if set(request.params) != {"path"}:
@@ -1494,6 +1515,188 @@ class EngineProtocolRouter:
             self._setup = self._setup_factory()
         return self._setup
 
+    def _recovery_service(self) -> LocalRecoveryService:
+        if self._recovery is not None:
+            return self._recovery
+        if self._recovery_factory is None:
+            raise ValueError("offline recovery is unavailable")
+        self._recovery = self._recovery_factory()
+        return self._recovery
+
+    def _preview_recovery_export(self, request: EngineRequest) -> EngineResponse:
+        if request.params:
+            return self._error(
+                request,
+                "invalid_params",
+                "recovery.export.preview takes no parameters.",
+            )
+        if self._service is None or self._runtime_config_path is None:
+            return self._not_configured(request)
+        try:
+            preview = self._recovery_service().preview_export(config_path=self._runtime_config_path)
+        except (OSError, ValueError):
+            return self._error(
+                request,
+                "recovery_export_unavailable",
+                "Temper could not safely prepare an offline recovery backup.",
+            )
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result=preview.model_dump(mode="json"),
+        )
+
+    def _create_recovery_export(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        snapshot_digest, fingerprint = checked
+        if self._runtime_config_path is None:
+            return self._not_configured(request)
+        try:
+            if set(request.params) != {
+                "preview_token",
+                "bundle_digest",
+                "passphrase",
+                "destination",
+            }:
+                raise ValueError
+            preview = self._recovery_service().write_export(
+                preview_token=_required_string(request.params, "preview_token"),
+                expected_bundle_digest=_required_string(request.params, "bundle_digest"),
+                passphrase=_required_string(request.params, "passphrase"),
+                destination=Path(_required_string(request.params, "destination")),
+            )
+        except FileExistsError:
+            return self._error(
+                request,
+                "destination_exists",
+                "Temper will not overwrite an existing recovery file.",
+            )
+        except (OSError, ValueError):
+            return self._error(
+                request,
+                "recovery_export_failed",
+                "Temper could not safely create the recovery backup.",
+            )
+        response = EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result={
+                "status": "exported",
+                "bundle_id": preview.bundle_id,
+                "bundle_digest": preview.bundle_digest,
+                "project_count": len(preview.projects),
+                "raw_paths_exposed": False,
+                "raw_payloads_exposed": False,
+            },
+            snapshot_digest=snapshot_digest,
+        )
+        return self._remember_mutation(request, fingerprint, response)
+
+    def _preview_recovery_import(self, request: EngineRequest) -> EngineResponse:
+        if self._service is not None:
+            return self._error(
+                request,
+                "already_configured",
+                "Temper will not restore over an existing installation.",
+            )
+        try:
+            if set(request.params) != {"source", "passphrase"}:
+                raise ValueError
+            preview = self._recovery_service().preview_import(
+                source=Path(_required_string(request.params, "source")),
+                passphrase=_required_string(request.params, "passphrase"),
+            )
+        except (OSError, ValueError):
+            return self._error(
+                request,
+                "recovery_import_invalid",
+                "Temper could not verify that recovery file or passphrase.",
+            )
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result=preview.model_dump(mode="json"),
+        )
+
+    def _select_recovery_project(self, request: EngineRequest) -> EngineResponse:
+        if self._service is not None:
+            return self._error(
+                request,
+                "already_configured",
+                "Temper will not restore over an existing installation.",
+            )
+        try:
+            if set(request.params) != {"preview_token", "project_id", "root"}:
+                raise ValueError
+            selection = self._recovery_service().select_project_root(
+                preview_token=_required_string(request.params, "preview_token"),
+                project_id=_required_string(request.params, "project_id"),
+                root=Path(_required_string(request.params, "root")),
+            )
+        except (OSError, ValueError):
+            return self._error(
+                request,
+                "recovery_project_invalid",
+                "Temper could not safely use that project folder.",
+            )
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result=selection.model_dump(mode="json"),
+        )
+
+    def _restore_recovery(self, request: EngineRequest) -> EngineResponse:
+        if self._service is not None:
+            return self._error(
+                request,
+                "already_configured",
+                "Temper will not restore over an existing installation.",
+            )
+        checked = self._setup_mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        _snapshot_digest, fingerprint = checked
+        try:
+            if set(request.params) != {
+                "preview_token",
+                "project_selection_tokens",
+                "bundle_digest",
+                "confirmed",
+            }:
+                raise ValueError
+            raw_tokens = request.params.get("project_selection_tokens")
+            if not isinstance(raw_tokens, dict) or any(
+                not isinstance(key, str)
+                or not key.strip()
+                or not isinstance(value, str)
+                or not value.strip()
+                for key, value in raw_tokens.items()
+            ):
+                raise ValueError
+            confirmed = request.params.get("confirmed")
+            if not isinstance(confirmed, bool):
+                raise ValueError
+            result = self._recovery_service().restore(
+                preview_token=_required_string(request.params, "preview_token"),
+                project_selection_tokens=raw_tokens,
+                expected_bundle_digest=_required_string(request.params, "bundle_digest"),
+                confirmed=confirmed,
+            )
+        except (OSError, ValueError):
+            return self._error(
+                request,
+                "recovery_restore_refused",
+                "Temper could not safely restore this installation.",
+            )
+        response = EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result=result.model_dump(mode="json"),
+        )
+        return self._remember_mutation(request, fingerprint, response)
+
     def _preview_export(self, request: EngineRequest) -> EngineResponse:
         if request.params:
             return self._error(
@@ -2134,7 +2337,7 @@ def build_router(
     """Construct the protocol over the existing typed desktop application service."""
 
     if config_path is None:
-        return EngineProtocolRouter(None, None)
+        return EngineProtocolRouter(None, None, recovery_factory=_native_recovery_service)
     from adaptation_compiler_lab.automatic_runtime.dogfood_cli import (
         _context,
         _ledger,
@@ -2461,6 +2664,44 @@ def build_router(
         claude_projection_refresher=claude_projection_refresher,
         target_authorization=target_authorization,
         target_release_provider=target_release_provider,
+        recovery_factory=_native_recovery_service,
+        runtime_config_path=config_path.expanduser().resolve(),
+    )
+
+
+def _native_recovery_service() -> LocalRecoveryService:
+    """Construct recovery lazily so an idle first-run engine stays lightweight."""
+
+    from adaptation_compiler_lab.connectors.pins import (
+        DEFAULT_DOGFOOD_RUNTIME_LOCK,
+        DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK,
+    )
+    from adaptation_compiler_lab.desktop.connections import AgentConnectionInspector
+    from adaptation_compiler_lab.desktop.platform import platform_paths, product_preferences_store
+    from adaptation_compiler_lab.desktop.recovery_service import LocalRecoveryService
+
+    paths = platform_paths()
+    inspector = AgentConnectionInspector(
+        platform_name="win32" if paths.platform == "windows" else sys.platform
+    )
+
+    def compatible_codex() -> Path | None:
+        status = inspector.inspect_codex()
+        if status.authentication_state != "signed_in" or status.conformance_state != "compatible":
+            return None
+        return inspector.codex_executable()
+
+    pin_path = (
+        DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK
+        if paths.platform == "windows"
+        else DEFAULT_DOGFOOD_RUNTIME_LOCK
+    )
+    return LocalRecoveryService(
+        paths=paths,
+        preferences_store=product_preferences_store(paths),
+        codex_executable=compatible_codex,
+        source_codex_home=lambda: Path.home() / ".codex",
+        runtime_pin_path=lambda: pin_path,
     )
 
 
@@ -2529,6 +2770,9 @@ def protocol_schema_models() -> Sequence[type[FrozenModel]]:
         RuntimeTargetAuthorizationPreviewV1,
         RuntimeTargetAuthorizationReceiptV1,
         RuntimeTargetAuthorizationStatusV1,
+        RecoveryPreviewV1,
+        RecoveryProjectSelectionV1,
+        RecoveryRestoreResultV1,
     )
 
 

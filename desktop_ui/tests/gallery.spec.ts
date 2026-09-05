@@ -1,6 +1,11 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+// Cold Vite transforms on Windows-mounted workspaces can exceed Playwright's 30-second
+// default before React mounts. Keep the product assertions strict while giving the gallery
+// instrument enough time to reach its first rendered frame.
+test.setTimeout(60_000);
+
 const screens = [
   "onboarding",
   "today",

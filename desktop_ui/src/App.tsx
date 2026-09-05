@@ -918,6 +918,8 @@ export default function App() {
               }
               consent={engineSnapshot?.consent ?? null}
               secureStoreReady={setupSnapshot?.secure_store.status === "ready"}
+              snapshotDigest={snapshotDigest}
+              onRecoveryCreated={setToast}
             />
           ) : null}
           {screen === "advanced" ? (

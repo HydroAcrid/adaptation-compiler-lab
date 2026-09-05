@@ -60,6 +60,7 @@ from adaptation_compiler_lab.automatic_runtime.host import (
 )
 from adaptation_compiler_lab.automatic_runtime.ledger import AutomaticRuntimeLedger
 from adaptation_compiler_lab.automatic_runtime.models import (
+    CodexProjectRecoveryBindingV1,
     CodexProjectRegistration,
     FeedbackDetectorMode,
     InteractionObservation,
@@ -135,6 +136,7 @@ from adaptation_compiler_lab.governance.signing import (
     GovernanceSigner,
     create_signer_identity,
     sign_governance_event,
+    verify_detached_envelope,
     verify_signed_governance,
 )
 from adaptation_compiler_lab.instruction_environment import (
@@ -168,7 +170,7 @@ dogfood_app = typer.Typer(
     pretty_exceptions_enable=False,
 )
 
-_SUPPORTED_DOGFOOD_CONFIG_VERSIONS = frozenset({"1.1.0", "1.2.0", "1.3.0", "1.4.0"})
+_SUPPORTED_DOGFOOD_CONFIG_VERSIONS = frozenset({"1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0"})
 credentials_app = typer.Typer(
     help="Manage automatic same-user runtime unlock and lost-credential succession."
 )
@@ -221,6 +223,7 @@ class CodexDogfoodProjectConfig(FrozenModel):
     capture_after_epoch_seconds: int | None = None
     registration: CodexProjectRegistration | None = None
     registration_authorization: GovernanceEvent | None = None
+    recovery_binding: CodexProjectRecoveryBindingV1 | None = None
 
     @field_validator("source_roots")
     @classmethod
@@ -256,13 +259,27 @@ class CodexDogfoodProjectConfig(FrozenModel):
                 raise ValueError("legacy project cutoff must come from the root config")
         else:
             expected_roots = tuple(str(item) for item in self.effective_source_roots)
+            registration_changed = (
+                self.registration.project_root != str(self.root)
+                or self.registration.source_roots != expected_roots
+            )
             if (
                 self.registration.project_id != self.project_id
-                or self.registration.project_root != str(self.root)
-                or self.registration.source_roots != expected_roots
                 or self.registration.capture_after_epoch_seconds != self.capture_after_epoch_seconds
+                or (registration_changed and self.recovery_binding is None)
             ):
                 raise ValueError("project registration does not bind the exact project config")
+        if self.recovery_binding is not None:
+            expected_root = canonical_digest({"project_root": str(self.root)})
+            expected_sources = canonical_digest(
+                {"source_roots": [str(item) for item in self.effective_source_roots]}
+            )
+            if (
+                self.recovery_binding.project_id != self.project_id
+                or self.recovery_binding.restored_project_root_digest != expected_root
+                or self.recovery_binding.restored_source_roots_digest != expected_sources
+            ):
+                raise ValueError("project recovery binding does not match restored paths")
         return self
 
     @property
@@ -397,6 +414,26 @@ class CodexDogfoodLocalConfig(FrozenModel):
                 or authorization.occurred_at != registration.registered_at
             ):
                 raise ValueError("project-registration authorization binding changed")
+        for project in self.projects:
+            binding = project.recovery_binding
+            if binding is None:
+                continue
+            if (
+                binding.subject_id != self.subject_id
+                or binding.signature.signer_identity_id != self.signer_identity.identity_id
+                or binding.signature.key_fingerprint != self.signer_identity.key_fingerprint
+                or SignerRole.CUSTODY not in self.signer_identity.roles
+            ):
+                raise ValueError("project recovery binding crossed its owner authority")
+            try:
+                verify_detached_envelope(
+                    binding.unsigned_payload,
+                    binding.signature,
+                    public_key_base64=self.signer_identity.public_key_base64,
+                    expected_purpose="codex_project_recovery_binding",
+                )
+            except ValueError as error:
+                raise ValueError("project recovery binding signature is invalid") from error
         mapped_roots = tuple(
             (project.project_id, root.expanduser().resolve())
             for project in self.projects

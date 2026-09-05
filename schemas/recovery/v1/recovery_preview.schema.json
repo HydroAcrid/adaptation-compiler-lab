@@ -1,0 +1,160 @@
+{
+  "$defs": {
+    "RecoveryProjectV1": {
+      "additionalProperties": false,
+      "description": "Path-free identity for one project contained in the encrypted bundle.",
+      "properties": {
+        "capture_after_epoch_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Capture After Epoch Seconds"
+        },
+        "display_name": {
+          "minLength": 1,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "project_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "source_project_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Source Project Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "display_name",
+        "source_project_digest"
+      ],
+      "title": "RecoveryProjectV1",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Raw-free owner review after local passphrase decryption.",
+  "properties": {
+    "bundle_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Bundle Digest",
+      "type": "string"
+    },
+    "bundle_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Bundle Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "encrypted_raw_file_count": {
+      "minimum": 0,
+      "title": "Encrypted Raw File Count",
+      "type": "integer"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "governed_file_count": {
+      "minimum": 1,
+      "title": "Governed File Count",
+      "type": "integer"
+    },
+    "overwrites_existing_installation": {
+      "const": false,
+      "default": false,
+      "title": "Overwrites Existing Installation",
+      "type": "boolean"
+    },
+    "preview_token": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Preview Token",
+      "type": "string"
+    },
+    "preview_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Preview Version",
+      "type": "string"
+    },
+    "projects": {
+      "items": {
+        "$ref": "#/$defs/RecoveryProjectV1"
+      },
+      "title": "Projects",
+      "type": "array"
+    },
+    "raw_paths_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Paths Exposed",
+      "type": "boolean"
+    },
+    "raw_payloads_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Payloads Exposed",
+      "type": "boolean"
+    },
+    "requires_project_rebinding": {
+      "const": true,
+      "default": true,
+      "title": "Requires Project Rebinding",
+      "type": "boolean"
+    },
+    "signer_fingerprint": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Signer Fingerprint",
+      "type": "string"
+    },
+    "source_platform": {
+      "enum": [
+        "windows",
+        "macos"
+      ],
+      "title": "Source Platform",
+      "type": "string"
+    },
+    "total_encrypted_bytes": {
+      "minimum": 0,
+      "title": "Total Encrypted Bytes",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "preview_token",
+    "bundle_id",
+    "bundle_digest",
+    "signer_fingerprint",
+    "created_at",
+    "source_platform",
+    "projects",
+    "governed_file_count",
+    "encrypted_raw_file_count",
+    "total_encrypted_bytes",
+    "expires_at"
+  ],
+  "title": "RecoveryPreviewV1",
+  "type": "object"
+}
