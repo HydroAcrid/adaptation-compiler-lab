@@ -50,6 +50,7 @@ import {
   type EngineInstructionEnvironmentSummary,
   type EngineInstructionGlobalPreview,
   type EngineInstructionSourceSummary,
+  type EngineLongitudinalGate,
   type EngineNativeTarget,
 } from "../engine";
 import type {
@@ -2885,6 +2886,7 @@ export function AdvancedPage({
   runnerUnavailableReason = null,
   taskResult = null,
   diagnostics = null,
+  longitudinalGate = null,
   onRun,
   onApply,
   onDiscard,
@@ -2897,6 +2899,7 @@ export function AdvancedPage({
   runnerUnavailableReason?: string | null;
   taskResult?: EngineTaskResult | null;
   diagnostics?: EngineDiagnostics | null;
+  longitudinalGate?: EngineLongitudinalGate | null;
   onRun?: (projectId: string, task: string) => Promise<void>;
   onApply?: () => Promise<void>;
   onDiscard?: () => Promise<void>;
@@ -2941,8 +2944,8 @@ export function AdvancedPage({
       </header>
       <SectionHeading
         eyebrow="Advanced"
-        title="Governed task lab"
-        description="Run one fresh isolated task with the smallest relevant projection. Your project is unchanged until you approve the diff."
+        title="Run with Temper"
+        description="Start one fresh isolated Codex task with the smallest relevant projection. Your project is unchanged until you approve the diff."
       />
       <section className="lab-card">
         {nativeRuntime && !runnerReady ? (
@@ -2994,7 +2997,7 @@ export function AdvancedPage({
           {running
             ? "Running…"
             : nativeRuntime
-              ? "Run task"
+              ? "Run with Temper"
               : "Available in desktop app"}
         </Button>
         {error ? <p role="alert">{error}</p> : null}
@@ -3110,6 +3113,9 @@ export function AdvancedPage({
           </div>
         </section>
       ) : null}
+      {nativeRuntime && longitudinalGate ? (
+        <LongitudinalGateCard gate={longitudinalGate} />
+      ) : null}
       <section className="settings-group">
         <h2>Instrument status</h2>
         {diagnostics ? (
@@ -3141,6 +3147,107 @@ export function AdvancedPage({
           Refresh diagnostics
         </Button>
       </section>
+    </div>
+  );
+}
+
+function LongitudinalGateCard({ gate }: { gate: EngineLongitudinalGate }) {
+  const latestPack = gate.pack_bytes_by_activation.at(-1) ?? 0;
+  const progress = (current: number, goal: number) =>
+    Math.min(100, Math.round((current / goal) * 100));
+  return (
+    <section aria-labelledby="longitudinal-gate-title" className="gate-card">
+      <div className="gate-card__heading">
+        <div>
+          <span>Genuine learning gate</span>
+          <h2 id="longitudinal-gate-title">
+            {gate.evidence_ready
+              ? "Evidence set complete"
+              : "Ordinary use in progress"}
+          </h2>
+        </div>
+        <StatusPill tone={gate.evidence_ready ? "positive" : "neutral"}>
+          {gate.evidence_ready
+            ? "Assessment complete"
+            : `${gate.remaining_interactions} remaining`}
+        </StatusPill>
+      </div>
+      <p>
+        Only real post-registration work counts. Synthetic runs never advance
+        this record.
+      </p>
+      <div className="gate-card__measures">
+        <GateMeasure
+          label="Interactions"
+          progress={progress(
+            gate.eligible_interaction_count,
+            gate.goal_interaction_count,
+          )}
+          value={`${gate.eligible_interaction_count} / ${gate.goal_interaction_count}`}
+        />
+        <GateMeasure
+          label="Active dates"
+          progress={progress(gate.active_date_count, gate.minimum_active_dates)}
+          value={`${gate.active_date_count} / ${gate.minimum_active_dates}`}
+        />
+        <GateMeasure
+          label="Activations"
+          progress={progress(
+            gate.activation_count,
+            gate.minimum_activation_count,
+          )}
+          value={`${gate.activation_count} / ${gate.minimum_activation_count}`}
+        />
+      </div>
+      <dl className="gate-card__facts">
+        <div>
+          <dt>Rated</dt>
+          <dd>{gate.rated_activation_count}</dd>
+        </div>
+        <div>
+          <dt>Helped / hurt</dt>
+          <dd>
+            {gate.helped_count} / {gate.hurt_count}
+          </dd>
+        </div>
+        <div>
+          <dt>False learning</dt>
+          <dd>{gate.false_learning_count}</dd>
+        </div>
+        <div>
+          <dt>False activation</dt>
+          <dd>{gate.false_activation_count}</dd>
+        </div>
+        <div>
+          <dt>Repeated corrections</dt>
+          <dd>{gate.repeated_correction_count}</dd>
+        </div>
+        <div>
+          <dt>Latest projection</dt>
+          <dd>{latestPack.toLocaleString()} bytes</dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
+function GateMeasure({
+  label,
+  value,
+  progress,
+}: {
+  label: string;
+  value: string;
+  progress: number;
+}) {
+  return (
+    <div>
+      <span>
+        {label} <strong>{value}</strong>
+      </span>
+      <div aria-hidden="true" className="gate-card__track">
+        <i style={{ width: `${progress}%` }} />
+      </div>
     </div>
   );
 }

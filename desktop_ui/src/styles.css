@@ -1259,6 +1259,89 @@ strong {
 .lab-contract svg {
   color: var(--positive);
 }
+.gate-card {
+  margin-top: 16px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.gate-card__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.gate-card__heading span:first-child {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.gate-card__heading h2 {
+  margin-top: 5px;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+}
+.gate-card > p {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.gate-card__measures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+.gate-card__measures span {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 10px;
+}
+.gate-card__measures strong {
+  color: var(--text);
+  font-weight: 650;
+}
+.gate-card__track {
+  height: 3px;
+  margin-top: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-subtle);
+}
+.gate-card__track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+.gate-card__facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 16px;
+  margin: 18px 0 0;
+  padding-top: 15px;
+  border-top: 1px solid var(--border);
+}
+.gate-card__facts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.gate-card__facts dt {
+  color: var(--muted);
+  font-size: 10px;
+}
+.gate-card__facts dd {
+  margin: 0;
+  color: var(--text);
+  font-size: 10.5px;
+  font-weight: 650;
+}
 .diff-card {
   margin-top: 16px;
 }

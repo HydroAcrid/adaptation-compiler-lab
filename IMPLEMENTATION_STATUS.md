@@ -1055,3 +1055,12 @@ notice-level conflict requires review or managed-session isolation on a version-
 New strict records bind native-memory capabilities, clause dispositions, adoption previews, the
 complete reconciliation plan, unresolved conflicts, and isolation requirements into runtime
 manifests. Detection still grants no user authority and performs no native mutation.
+
+The next product-readiness slice makes the genuine gate and fresh-session Codex path visible in the
+installed product without changing their authority. Advanced now shows the live immutable gate
+counts, ratings, error allowances, repeat corrections, and latest projection bytes; simulated
+activity is explicitly excluded. The existing governed managed-task action is now presented as
+**Run with Temper** rather than as a research-only task runner. A new signed freeze receipt can be
+issued only for a genuinely complete passing report and refuses oversized projections or any
+other failed threshold. This is product and custody instrumentation, not evidence that the still
+open genuine gate has passed and not ambient delivery into arbitrary existing Codex sessions.

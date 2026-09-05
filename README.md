@@ -186,6 +186,14 @@ from silently improving the experiment. The post-gate product runway is frozen i
 [`TEMPER_PRIVATE_ALPHA_PLAN.md`](TEMPER_PRIVATE_ALPHA_PLAN.md): a practical Base-versus-Temper
 comparison followed by a three-to-five-person local review-mode alpha.
 
+The native application now presents these same immutable longitudinal measures in Advanced mode
+and labels synthetic activity as ineligible. A gate can be frozen as passed only through a signed,
+schema-versioned receipt after the unchanged thresholds are satisfied: 20 genuine interactions,
+three dates, six fresh activations, the fixed error allowances, at least five exact activations,
+helped not below hurt, no repeated correction, no severe incident, and a projection no larger than
+1,500 UTF-8 bytes. The same Advanced surface exposes the existing governed fresh-session path as
+**Run with Temper**. It does not imply ambient injection into an already-running Codex task.
+
 Milestone 6A.2H isolates semantic artifact routing in a 120-case blind-label benchmark across six
 matched meanings and four immutable synthetic revisions. In the final fresh split, the unchanged
 semantic sensor achieved 100% durable detection, 100% scope accuracy, and 100% exact-target

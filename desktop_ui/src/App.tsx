@@ -870,6 +870,9 @@ export default function App() {
           {screen === "advanced" ? (
             <AdvancedPage
               diagnostics={diagnostics}
+              longitudinalGate={
+                engineSnapshot?.terminal.review_mode.gate ?? null
+              }
               nativeRuntime={nativeRuntime}
               onApply={applyAdvancedTask}
               onDiagnostics={refreshDiagnostics}

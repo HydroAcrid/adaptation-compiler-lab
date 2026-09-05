@@ -401,6 +401,7 @@ export interface EngineDesktopSnapshot {
         pending_review_count: number;
         pending_feedback_count: number;
       };
+      gate: EngineLongitudinalGate;
     };
     active_adaptations: Array<{
       artifact_id: string;
@@ -421,6 +422,31 @@ export interface EngineDesktopSnapshot {
     latest_delivered_projection_utf8_bytes: number;
     raw_payloads_exposed: false;
   };
+}
+
+export interface EngineLongitudinalGate {
+  report_version: "1.1.0";
+  goal_interaction_count: number;
+  minimum_active_dates: number;
+  minimum_activation_count: number;
+  eligible_interaction_count: number;
+  active_date_count: number;
+  assessed_interaction_count: number;
+  false_learning_count: number;
+  missed_learning_count: number;
+  activation_count: number;
+  completed_activation_count: number;
+  unresolved_activation_count: number;
+  rated_activation_count: number;
+  helped_count: number;
+  hurt_count: number;
+  irrelevant_count: number;
+  correct_activation_count: number;
+  false_activation_count: number;
+  repeated_correction_count: number;
+  pack_bytes_by_activation: number[];
+  remaining_interactions: number;
+  evidence_ready: boolean;
 }
 
 export interface EngineTerminalProposal {

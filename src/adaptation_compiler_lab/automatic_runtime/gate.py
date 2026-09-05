@@ -21,6 +21,8 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     RuntimeTaskActivationReceipt,
 )
 from adaptation_compiler_lab.domain import FrozenModel, Identifier, UtcDateTime
+from adaptation_compiler_lab.governance.models import SignatureEnvelope
+from adaptation_compiler_lab.governance.signing import GovernanceSigner
 from adaptation_compiler_lab.serialization import canonical_digest
 
 
@@ -115,6 +117,76 @@ class CodexDogfoodGateReport(FrozenModel):
     @property
     def content_digest(self) -> str:
         return str(canonical_digest(self))
+
+
+class CodexDogfoodGateFreezeReceipt(FrozenModel):
+    """Signed immutable result for the unchanged genuine longitudinal gate."""
+
+    receipt_version: Literal["1.0.0"] = "1.0.0"
+    receipt_id: Identifier
+    subject_id: Identifier
+    report_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+    decision: Literal["passed"] = "passed"
+    maximum_projection_utf8_bytes: int = Field(ge=0, le=1500)
+    severe_incident_count: Literal[0] = 0
+    frozen_at: UtcDateTime
+    signature: SignatureEnvelope
+
+    @property
+    def content_digest(self) -> str:
+        return str(canonical_digest(self))
+
+
+def freeze_codex_dogfood_gate(
+    report: CodexDogfoodGateReport,
+    *,
+    signer: GovernanceSigner,
+    frozen_at: datetime,
+    severe_incident_count: int = 0,
+) -> CodexDogfoodGateFreezeReceipt:
+    """Freeze only a genuinely complete passing gate; never repair evidence in place."""
+
+    if frozen_at.tzinfo is None or frozen_at.utcoffset() is None:
+        raise ValueError("dogfood gate freeze time must be timezone-aware")
+    maximum_pack = max(report.pack_bytes_by_activation, default=0)
+    passing = (
+        report.evidence_ready
+        and report.eligible_interaction_count >= 20
+        and report.active_date_count >= 3
+        and report.activation_count >= 6
+        and report.missed_learning_count <= 1
+        and report.false_learning_count <= 1
+        and report.false_activation_count <= 1
+        and report.correct_activation_count >= 5
+        and report.helped_count >= report.hurt_count
+        and report.repeated_correction_count == 0
+        and maximum_pack <= 1500
+        and severe_incident_count == 0
+    )
+    if not passing:
+        raise ValueError("genuine longitudinal gate is not eligible for a passing freeze")
+    payload = {
+        "receipt_version": "1.0.0",
+        "receipt_id": f"dogfood-gate-freeze-{report.content_digest.removeprefix('sha256:')[:24]}",
+        "subject_id": report.subject_id,
+        "report_digest": report.content_digest,
+        "decision": "passed",
+        "maximum_projection_utf8_bytes": maximum_pack,
+        "severe_incident_count": 0,
+        "frozen_at": frozen_at.isoformat(),
+    }
+    return CodexDogfoodGateFreezeReceipt(
+        receipt_id=str(payload["receipt_id"]),
+        subject_id=report.subject_id,
+        report_digest=report.content_digest,
+        maximum_projection_utf8_bytes=maximum_pack,
+        frozen_at=frozen_at,
+        signature=signer.envelope(
+            payload,
+            purpose="codex_dogfood_gate_freeze",
+            signed_at=frozen_at,
+        ),
+    )
 
 
 def build_codex_dogfood_gate_report(

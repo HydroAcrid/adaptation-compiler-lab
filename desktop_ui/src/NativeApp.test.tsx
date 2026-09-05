@@ -125,6 +125,30 @@ const snapshot = {
       proposals: [],
       activation_feedback: [],
       metrics: { pending_review_count: 0, pending_feedback_count: 0 },
+      gate: {
+        goal_interaction_count: 20,
+        minimum_active_dates: 3,
+        minimum_activation_count: 6,
+        eligible_interaction_count: 13,
+        active_date_count: 4,
+        assessed_interaction_count: 13,
+        correct_learning_count: 11,
+        false_learning_count: 1,
+        missed_learning_count: 1,
+        activation_count: 2,
+        completed_activation_count: 2,
+        rated_activation_count: 2,
+        helped_count: 1,
+        hurt_count: 0,
+        irrelevant_count: 1,
+        correct_activation_count: 1,
+        false_activation_count: 1,
+        missed_activation_count: 0,
+        repeated_correction_count: 0,
+        pack_bytes_by_activation: [512, 634],
+        remaining_interactions: 7,
+        evidence_ready: false,
+      },
     },
     active_adaptations: [],
     latest_delivered_projection_utf8_bytes: 0,
@@ -450,7 +474,12 @@ describe("installed Temper state boundaries", () => {
     ).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Advanced" }));
     await user.type(screen.getByLabelText("Task"), "Inspect this fixture.");
-    expect(screen.getByRole("button", { name: "Run task" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Run with Temper" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("heading", { name: "Ordinary use in progress" }),
+    ).toBeInTheDocument();
   });
 
   it("distinguishes an unavailable secure store from an actionable queue", async () => {

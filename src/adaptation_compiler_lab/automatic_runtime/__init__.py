@@ -21,8 +21,10 @@ if TYPE_CHECKING:
     )
     from adaptation_compiler_lab.automatic_runtime.feedback import summarize_runtime
     from adaptation_compiler_lab.automatic_runtime.gate import (
+        CodexDogfoodGateFreezeReceipt,
         CodexDogfoodGateReport,
         build_codex_dogfood_gate_report,
+        freeze_codex_dogfood_gate,
     )
     from adaptation_compiler_lab.automatic_runtime.gateway_models import (
         ChangeApplicationReceipt,
@@ -151,7 +153,12 @@ _register(
 _register("adaptation_compiler_lab.automatic_runtime.feedback", ("summarize_runtime",))
 _register(
     "adaptation_compiler_lab.automatic_runtime.gate",
-    ("CodexDogfoodGateReport", "build_codex_dogfood_gate_report"),
+    (
+        "CodexDogfoodGateFreezeReceipt",
+        "CodexDogfoodGateReport",
+        "build_codex_dogfood_gate_report",
+        "freeze_codex_dogfood_gate",
+    ),
 )
 _register(
     "adaptation_compiler_lab.automatic_runtime.gateway_models",
@@ -299,6 +306,7 @@ __all__ = [
     "CapturedInteraction",
     "ChangeApplicationReceipt",
     "ChangeApplicationStatus",
+    "CodexDogfoodGateFreezeReceipt",
     "CodexDogfoodGateReport",
     "CodexProjectRegistration",
     "ComposedRuntimeRelease",
@@ -379,6 +387,7 @@ __all__ = [
     "compile_runtime_releases",
     "detect_explicit_feedback",
     "detect_feedback",
+    "freeze_codex_dogfood_gate",
     "infer_layer",
     "initial_runtime_state",
     "run_longitudinal_simulation",

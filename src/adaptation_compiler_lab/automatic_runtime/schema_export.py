@@ -7,7 +7,10 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from adaptation_compiler_lab.automatic_runtime.gate import CodexDogfoodGateReport
+from adaptation_compiler_lab.automatic_runtime.gate import (
+    CodexDogfoodGateFreezeReceipt,
+    CodexDogfoodGateReport,
+)
 from adaptation_compiler_lab.automatic_runtime.gateway_models import (
     ChangeApplicationReceipt,
     CredentialEnvelopeMetadata,
@@ -101,6 +104,7 @@ _MODELS: dict[str, type[BaseModel]] = {
     "capability_preset_ref": CapabilityPresetRef,
     "codex_project_registration": CodexProjectRegistration,
     "codex_dogfood_gate_report": CodexDogfoodGateReport,
+    "codex_dogfood_gate_freeze_receipt": CodexDogfoodGateFreezeReceipt,
     "composed_runtime_release": ComposedRuntimeRelease,
     "credential_envelope_metadata": CredentialEnvelopeMetadata,
     "credential_envelope_metadata_v1_1": CredentialEnvelopeMetadataV1_1,
