@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
+from adaptation_compiler_lab.claude_delivery.models import ClaudeProjectionManifestV1
 from adaptation_compiler_lab.domain import FrozenModel, Sha256Digest
+from adaptation_compiler_lab.instruction_environment.models import InstructionDeltaPlanV1
+from adaptation_compiler_lab.instruction_environment.resolver import apply_instruction_environment
 from adaptation_compiler_lab.runtime.models import CanonicalRuntimeProjection
+from adaptation_compiler_lab.serialization import canonical_digest
 from adaptation_compiler_lab.targets.base import sha256_text
 from adaptation_compiler_lab.targets.models import ScopeDimension, TargetKind
 
@@ -55,4 +60,46 @@ def render_claude_hook_projection(
         content_digest=sha256_text(content),
         utf8_bytes=len(content.encode("utf-8")),
         clause_digests=tuple(item.content_digest for item in clauses),
+    )
+
+
+def build_claude_projection_manifest(
+    *,
+    subject_id: str,
+    projection: CanonicalRuntimeProjection,
+    delta_plan: InstructionDeltaPlanV1,
+    rendered: ClaudeHookRenderedProjectionV1,
+    created_at: datetime,
+) -> ClaudeProjectionManifestV1:
+    """Bind one rendered Claude delta to its release, scope, and native environment."""
+
+    if (
+        projection.context.subject_id != subject_id
+        or projection.context.project_id != delta_plan.project_id
+    ):
+        raise ValueError("Claude projection manifest crossed its owner or project")
+    delta = apply_instruction_environment(projection, delta_plan)
+    if not delta.clauses:
+        raise ValueError("Claude projection manifest cannot bind an empty delta")
+    if render_claude_hook_projection(delta) != rendered:
+        raise ValueError("Claude rendered projection does not match its native-aware delta")
+    if rendered.clause_digests != tuple(sorted(delta_plan.included_temper_clause_digests)):
+        raise ValueError("Claude rendered clauses do not match the instruction delta")
+    return ClaudeProjectionManifestV1(
+        subject_id=subject_id,
+        project_id=delta_plan.project_id,
+        external_release_digest=projection.external_release_digest,
+        canonical_projection_digest=projection.content_digest,
+        delta_projection_digest=delta.content_digest,
+        instruction_environment_digest=delta_plan.environment_digest,
+        native_source_chain_digest=delta_plan.source_chain_digest,
+        included_clause_digests=delta_plan.included_temper_clause_digests,
+        omitted_clause_digests=delta_plan.omitted_temper_clause_digests,
+        blocked_clause_digests=delta_plan.blocked_temper_clause_digests,
+        relation_digests=tuple(sorted(canonical_digest(item) for item in delta_plan.relations)),
+        unresolved_conflict_ids=tuple(sorted(item.conflict_id for item in delta_plan.conflicts)),
+        rendered_content_digest=rendered.content_digest,
+        rendered_utf8_bytes=rendered.utf8_bytes,
+        fully_optimized=delta_plan.fully_optimized,
+        created_at=created_at,
     )

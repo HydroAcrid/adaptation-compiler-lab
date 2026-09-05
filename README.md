@@ -23,12 +23,14 @@ signed receipt, encrypted backup, and rollback. See
 
 Claude product delivery is now being built on Claude Code's official hook surface. The local
 contract includes strict event parsing, a no-model broker, signed expiring projection leases,
-raw-free audit receipts, exact preview/apply/rollback for Temper-owned Claude user hooks, and a
-manifest-bound native `temper-hook` helper. Tauri now exposes a randomized owner-restricted local
-named pipe or Unix socket with bounded frames and silent no-op behavior when Temper is unavailable.
-It is still intentionally not exposed as Connected: the concrete governed-runtime adapter,
-explicit desktop connection flow, and authorized live smoke remain required. No hook was installed
-and no provider call was made. See
+encrypted exact-payload capture, a chained raw-free audit index, exact preview/apply/rollback for
+Temper-owned Claude user hooks, and a manifest-bound native `temper-hook` helper. Tauri exposes a
+randomized owner-restricted local named pipe or Unix socket with bounded frames and silent no-op
+behavior when Temper is unavailable. The governed runtime now resolves only registered projects,
+rehashes the native Claude instruction environment, omits already-covered clauses, and serves only
+an already prepared five-minute lease. It is still intentionally not exposed as Connected: the
+explicit desktop consent/connection flow, disposable lifecycle validation, and authorized live
+smoke remain required. No hook was installed and no provider call was made. See
 [`TEMPER_CLAUDE_DELIVERY.md`](TEMPER_CLAUDE_DELIVERY.md).
 
 The 2026-08-27 native truthfulness audit removed a browser-style title bar and fixed-size shell

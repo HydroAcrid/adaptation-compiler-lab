@@ -9,24 +9,32 @@ from pydantic import BaseModel
 
 from adaptation_compiler_lab.claude_delivery.models import (
     ClaudeHookAuditReceiptV1,
+    ClaudeHookAuthorizationV1,
+    ClaudeHookCaptureReceiptV1,
     ClaudeHookInvocationV1,
+    ClaudeHookLedgerEntryV1,
     ClaudeHookProjectV1,
     ClaudeHookResultV1,
     ClaudeHookSettingsChangeReceiptV1,
     ClaudeHookSettingsPreviewV1,
     ClaudeProjectionLeaseV1,
+    ClaudeProjectionManifestV1,
     ClaudeUserPromptHookOutputV1,
 )
 from adaptation_compiler_lab.claude_delivery.projection import ClaudeHookRenderedProjectionV1
 
 _MODELS: dict[str, type[BaseModel]] = {
     "claude_hook_audit_receipt": ClaudeHookAuditReceiptV1,
+    "claude_hook_authorization": ClaudeHookAuthorizationV1,
+    "claude_hook_capture_receipt": ClaudeHookCaptureReceiptV1,
     "claude_hook_invocation": ClaudeHookInvocationV1,
+    "claude_hook_ledger_entry": ClaudeHookLedgerEntryV1,
     "claude_hook_project": ClaudeHookProjectV1,
     "claude_hook_result": ClaudeHookResultV1,
     "claude_hook_settings_change_receipt": ClaudeHookSettingsChangeReceiptV1,
     "claude_hook_settings_preview": ClaudeHookSettingsPreviewV1,
     "claude_projection_lease": ClaudeProjectionLeaseV1,
+    "claude_projection_manifest": ClaudeProjectionManifestV1,
     "claude_hook_rendered_projection": ClaudeHookRenderedProjectionV1,
     "claude_user_prompt_hook_output": ClaudeUserPromptHookOutputV1,
 }

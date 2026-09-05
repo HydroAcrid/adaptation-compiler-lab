@@ -1,0 +1,133 @@
+{
+  "additionalProperties": false,
+  "description": "Raw-free binding for the exact native-aware projection cached for Claude.",
+  "properties": {
+    "blocked_clause_digests": {
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Blocked Clause Digests",
+      "type": "array"
+    },
+    "canonical_projection_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Canonical Projection Digest",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "delta_projection_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Delta Projection Digest",
+      "type": "string"
+    },
+    "external_release_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "External Release Digest",
+      "type": "string"
+    },
+    "fully_optimized": {
+      "title": "Fully Optimized",
+      "type": "boolean"
+    },
+    "included_clause_digests": {
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Included Clause Digests",
+      "type": "array"
+    },
+    "instruction_environment_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Instruction Environment Digest",
+      "type": "string"
+    },
+    "manifest_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Manifest Version",
+      "type": "string"
+    },
+    "native_source_chain_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Native Source Chain Digest",
+      "type": "string"
+    },
+    "omitted_clause_digests": {
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Omitted Clause Digests",
+      "type": "array"
+    },
+    "project_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "relation_digests": {
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Relation Digests",
+      "type": "array"
+    },
+    "rendered_content_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Rendered Content Digest",
+      "type": "string"
+    },
+    "rendered_utf8_bytes": {
+      "exclusiveMinimum": 0,
+      "maximum": 12000,
+      "title": "Rendered Utf8 Bytes",
+      "type": "integer"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    },
+    "unresolved_conflict_ids": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Unresolved Conflict Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "subject_id",
+    "project_id",
+    "external_release_digest",
+    "canonical_projection_digest",
+    "delta_projection_digest",
+    "instruction_environment_digest",
+    "native_source_chain_digest",
+    "included_clause_digests",
+    "omitted_clause_digests",
+    "blocked_clause_digests",
+    "relation_digests",
+    "unresolved_conflict_ids",
+    "rendered_content_digest",
+    "rendered_utf8_bytes",
+    "fully_optimized",
+    "created_at"
+  ],
+  "title": "ClaudeProjectionManifestV1",
+  "type": "object"
+}
