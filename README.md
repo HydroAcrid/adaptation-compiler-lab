@@ -590,7 +590,9 @@ after valid trials.
   away from its venv; no v2 comparison cell ran. Instrument v3 pins and mounts that companion and
   preserves the scorer venv invocation path, with all Mode/task/evaluation content unchanged. Its
   no-inference preflight and one-cell live smoke pass, admitting the unchanged comparison without
-  constituting Mode-effectiveness evidence themselves.
+  constituting Mode-effectiveness evidence themselves. All 30 v3 target cells are now preserved
+  integrity-valid and still blinded; judging paused when the trace parser mistook an exact benign
+  startup diagnostic for tool use. No Mode result is claimed yet.
 - [`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md): docs-only portable
   specialty preset composition and the proposed Frontend Studio demonstration.
 - [`development_benchmark_compact_projection`](development_benchmark_compact_projection): frozen
