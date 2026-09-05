@@ -1,0 +1,1 @@
+{"blind_output_id":"mode-v2-smoke-output","condition_leakage_withheld":false,"diff":"","final_response":"Blocked by the unavailable execution host (`codex-code-mode-host` missing). I couldn’t safely edit `src/solution.py` or run the tests.","task_id":"mode-v2-smoke","visible_tests_passed":false}

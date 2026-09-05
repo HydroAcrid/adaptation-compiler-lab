@@ -1307,3 +1307,10 @@ the external scorer has the exact Python/Pydantic lock, and binds its complete r
 source bundles. A separate deliberately broken smoke fixture must be edited, visibly tested,
 hidden-scored, and destroyed successfully before the v2 grid is admitted. The no-inference target
 and scorer preflight passes; the live smoke has not yet run.
+
+The v2 live smoke is now preserved as a failed admission check. It made no edit because the outer
+namespace lacked the pinned CLI's matching `codex-code-mode-host` companion, and its hidden scorer
+still missed Pydantic because the coordinator resolved the venv Python symlink to the base
+interpreter after preflight. No grid or judge ran. The next repair must bind/mount that exact
+companion and retain the dependency-bearing Python invocation path, then pass a new smoke before
+any comparison begins.

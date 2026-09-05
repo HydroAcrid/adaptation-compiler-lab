@@ -585,7 +585,9 @@ after valid trials.
   verified saved-ChatGPT Luna runtime. Its v1 target grid is preserved as an unjudged instrument
   failure because the target execution host was disabled and the hidden scorer lacked its
   dependencies. Instrument v2 repairs only those mechanics and cannot start its grid until one
-  separate live edit/test/hidden-score smoke passes.
+  separate live edit/test/hidden-score smoke passes. Its first smoke failed safely because the
+  outer namespace lacked Codex's matching execution-host companion and scorer invocation resolved
+  away from its venv; no v2 comparison cell ran.
 - [`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md): docs-only portable
   specialty preset composition and the proposed Frontend Studio demonstration.
 - [`development_benchmark_compact_projection`](development_benchmark_compact_projection): frozen
