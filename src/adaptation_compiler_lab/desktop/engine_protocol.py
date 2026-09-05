@@ -44,12 +44,13 @@ from adaptation_compiler_lab.instruction_environment.models import (
     InstructionSourceSummaryV1,
     NativeTarget,
 )
-from adaptation_compiler_lab.modes import MODE_CATALOG, evaluate_mode_conformance, mode_by_id
+from adaptation_compiler_lab.modes import MODE_CATALOG, evaluate_mode_conformance
 from adaptation_compiler_lab.portability import (
     EncryptedProfileEnvelope,
     PackageImportPreviewV1,
     PackageReviewDecisionReceiptV1,
     PackageReviewItemV1,
+    PersonalModeOverlayV1,
     PortableProfilePackage,
     ShareablePackage,
 )
@@ -352,9 +353,11 @@ class EngineProtocolRouter:
             if request.params:
                 return self._error(request, "invalid_params", "mode.list takes no parameters.")
             modes = list(MODE_CATALOG)
+            overlays: tuple[PersonalModeOverlayV1, ...] = ()
             if self._portability is not None:
                 try:
                     modes.extend(self._portability.accepted_imported_modes())
+                    overlays = self._portability.accepted_personal_overlays()
                 except (OSError, ValueError):
                     return self._error(
                         request,
@@ -397,6 +400,12 @@ class EngineProtocolRouter:
                             "mutates_permanent_core": False,
                             "auto_activates": False,
                             "source_kind": mode.source_kind,
+                            "personalized": any(
+                                overlay.base_mode_id == mode.mode_id
+                                and overlay.base_mode_version == mode.mode_version
+                                and overlay.base_mode_digest == mode.content_digest
+                                for overlay in overlays
+                            ),
                         }
                         for mode, report in catalog
                     ),
@@ -1535,8 +1544,6 @@ class EngineProtocolRouter:
                 raise ValueError
         except ValueError:
             return self._error(request, "invalid_params", "The managed task request was invalid.")
-        if mode_by_id(mode_id) is None:
-            return self._error(request, "mode_unavailable", "That Mode is unavailable.")
         action, task_result = self._service.run_task(
             task=task,
             project_id=project_id,

@@ -55,7 +55,9 @@ stages imported packages durably, and completes local review/adoption without a 
 path. External adoptions are deliberately excluded from genuine longitudinal interaction counts,
 so importing a pack cannot manufacture learning evidence.
 
-Personal Mode overlays have a signed owner-bound format, but the product does not yet expose an
-overlay editor or safe overlay-composition runtime. They remain reject-only on import. The three
-built-in Modes and any imported Mode remain experimental until their frozen same-agent
+Personal Mode overlays have a signed owner-bound format and a safe composition runtime. A matching
+owner may explicitly approve an overlay; it remains inactive until that exact Mode is selected for
+one managed task. The runtime binds the overlay digest and replaces only matching generic claims.
+Foreign-owner overlays remain non-approvable. The product does not yet expose an overlay editor.
+The three built-in Modes and any imported Mode remain experimental until their frozen same-agent
 effectiveness comparisons pass.

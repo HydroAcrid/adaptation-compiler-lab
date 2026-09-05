@@ -188,12 +188,19 @@ def test_personal_overlay_is_owner_bound_and_never_implicitly_shared() -> None:
         created_at=NOW,
     )
 
-    owner_preview = preview_shareable_package(package, local_subject_id="package-owner")
+    owner_preview = preview_shareable_package(
+        package,
+        known_mode_digests={FRONTEND_STUDIO_MODE.mode_id: FRONTEND_STUDIO_MODE.content_digest},
+        local_subject_id="package-owner",
+    )
     foreign_preview = preview_shareable_package(package, local_subject_id="another-owner")
+    missing_base_preview = preview_shareable_package(package, local_subject_id="package-owner")
 
     assert owner_preview.items[0].disposition == "new"
+    assert owner_preview.items[0].item_id == FRONTEND_STUDIO_MODE.mode_id
     assert foreign_preview.items[0].disposition == "owner_only"
     assert foreign_preview.conflicting_item_ids == (FRONTEND_STUDIO_MODE.mode_id,)
+    assert missing_base_preview.items[0].disposition == "conflict"
 
 
 def test_package_file_round_trip_never_overwrites(tmp_path: Path) -> None:
@@ -467,7 +474,7 @@ def test_imported_mode_is_available_only_after_local_approval(tmp_path: Path) ->
     assert accepted.auto_activates is False
 
 
-def test_personal_overlay_cannot_claim_activation_before_overlay_runtime_exists(
+def test_personal_overlay_requires_owner_approval_and_stays_inactive(
     tmp_path: Path,
 ) -> None:
     package = build_personal_mode_overlay(
@@ -494,7 +501,11 @@ def test_personal_overlay_cannot_claim_activation_before_overlay_runtime_exists(
     owner = _signer()
     store.stage(
         package,
-        preview_shareable_package(package, local_subject_id=owner.subject_id),
+        preview_shareable_package(
+            package,
+            known_mode_digests={FRONTEND_STUDIO_MODE.mode_id: FRONTEND_STUDIO_MODE.content_digest},
+            local_subject_id=owner.subject_id,
+        ),
         signer=owner,
         local_subject_id=owner.subject_id,
         imported_at=NOW,
@@ -502,14 +513,64 @@ def test_personal_overlay_cannot_claim_activation_before_overlay_runtime_exists(
     )
 
     (review,) = store.review_items()
-    assert review.available_actions == ("reject",)
+    assert review.available_actions == ("approve", "reject")
+    decision = store.decide(
+        review,
+        signer=owner,
+        decision="approved",
+        mapped_project_ids=(),
+        runtime_adoption_digest=None,
+        decided_at=NOW,
+        idempotency_key="approve-overlay",
+    )
+
+    assert decision.resulting_status == "approved_inactive_overlay"
+    (accepted,) = store.accepted_overlays()
+    assert accepted == package
+    assert store.accepted_modes() == ()
+
+
+def test_foreign_personal_overlay_cannot_be_approved(tmp_path: Path) -> None:
+    package = build_personal_mode_overlay(
+        (
+            ModeClause(
+                clause_id="overlay-motion",
+                claim_key="frontend.motion",
+                category=ModeClauseCategory.VISUAL_DIRECTION,
+                text="Prefer restrained transitions.",
+            ),
+        ),
+        signer=_signer(),
+        package_id="foreign-overlay",
+        release_version="1.0.0",
+        display_name="Foreign overlay",
+        publisher_name="Another owner",
+        source_license="Private use only",
+        base_mode_id=FRONTEND_STUDIO_MODE.mode_id,
+        base_mode_version=FRONTEND_STUDIO_MODE.mode_version,
+        base_mode_digest=FRONTEND_STUDIO_MODE.content_digest,
+        created_at=NOW,
+    )
+    recipient = _signer("receiving-owner")
+    store = ShareablePackageImportStore(tmp_path / "imports")
+    store.stage(
+        package,
+        preview_shareable_package(package, local_subject_id=recipient.subject_id),
+        signer=recipient,
+        local_subject_id=recipient.subject_id,
+        imported_at=NOW,
+        idempotency_key="stage-foreign-overlay",
+    )
+
+    (review,) = store.review_items()
+    assert review.disposition == "owner_only"
     with pytest.raises(ShareablePackageError, match="cannot be approved"):
         store.decide(
             review,
-            signer=owner,
+            signer=recipient,
             decision="approved",
             mapped_project_ids=(),
             runtime_adoption_digest=None,
             decided_at=NOW,
-            idempotency_key="approve-overlay",
+            idempotency_key="approve-foreign-overlay",
         )

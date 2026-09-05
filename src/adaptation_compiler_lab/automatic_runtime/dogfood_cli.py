@@ -156,6 +156,7 @@ from adaptation_compiler_lab.modes import (
 )
 from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore
 from adaptation_compiler_lab.persistence.sqlite import SqliteUnitOfWorkFactory
+from adaptation_compiler_lab.portability import PersonalModeOverlayV1
 from adaptation_compiler_lab.runtime import RuntimeProjectionContext, build_runtime_projection
 from adaptation_compiler_lab.serialization import canonical_digest, canonical_json
 from adaptation_compiler_lab.targets.base import sha256_text
@@ -3092,9 +3093,12 @@ def _execute_gateway_session(
     followups: Iterable[str],
     mode_id: str | None = None,
     mode: CapabilityMode | None = None,
+    personal_overlay: PersonalModeOverlayV1 | None = None,
 ) -> str:
     if config.config_version not in {"1.3.0", "1.4.0"} or config.gateway_workspace_root is None:
         raise AutomaticRuntimeError("writable gateway requires configured dogfood v1.3+")
+    if personal_overlay is not None and mode_id is None and mode is None:
+        raise AutomaticRuntimeError("a personal overlay requires one exact temporary Mode")
     if config.effective_target_windows_interop:
         parts = config.gateway_workspace_root.expanduser().resolve().parts
         if len(parts) < 4 or parts[:2] != ("/", "mnt"):
@@ -3206,6 +3210,7 @@ def _execute_gateway_session(
             prior_core_release_digest=state.release.content_digest,
             signer=_registration_signer(config),
             activated_at=started,
+            personal_overlay=personal_overlay,
         )
         mode_store = ModeReceiptStore(config.state_root / "modes" / "receipts")
         mode_store.append_activation(mode_prepared.activation, mode_prepared.delivery)
@@ -3538,6 +3543,7 @@ def execute_governed_gateway_task(
     project_id: str,
     mode_id: str | None = None,
     mode: CapabilityMode | None = None,
+    personal_overlay: PersonalModeOverlayV1 | None = None,
 ) -> str:
     """Run one isolated task and retain changes for explicit review rather than direct apply."""
 
@@ -3549,6 +3555,7 @@ def execute_governed_gateway_task(
         followups=(),
         mode_id=mode_id,
         mode=mode,
+        personal_overlay=personal_overlay,
     )
 
 

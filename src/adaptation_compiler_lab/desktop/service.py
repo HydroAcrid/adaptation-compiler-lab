@@ -206,25 +206,34 @@ class CodexDogfoodDesktopBackend:
         if config.gateway_workspace_root is None:
             raise ValueError("desktop task runner requires the isolated writable gateway")
         imported_mode = None
+        package_store = ShareablePackageImportStore(config.state_root / "shareable-imports")
         if mode_id is not None and mode_by_id(mode_id) is None:
             imported_mode = next(
-                (
-                    mode
-                    for mode in ShareablePackageImportStore(
-                        config.state_root / "shareable-imports"
-                    ).accepted_modes()
-                    if mode.mode_id == mode_id
-                ),
+                (mode for mode in package_store.accepted_modes() if mode.mode_id == mode_id),
                 None,
             )
             if imported_mode is None:
                 raise ValueError("desktop task requested an unavailable Mode")
+        selected_mode = imported_mode or (None if mode_id is None else mode_by_id(mode_id))
+        personal_overlay = None
+        if selected_mode is not None:
+            personal_overlay = next(
+                (
+                    overlay
+                    for overlay in package_store.accepted_overlays()
+                    if overlay.base_mode_id == selected_mode.mode_id
+                    and overlay.base_mode_version == selected_mode.mode_version
+                    and overlay.base_mode_digest == selected_mode.content_digest
+                ),
+                None,
+            )
         session_id = execute_governed_gateway_task(
             self.config_path,
             task=task,
             project_id=project_id,
             mode_id=mode_id,
             mode=imported_mode,
+            personal_overlay=personal_overlay,
         )
         session = _gateway_ledger(config).session(session_id)
         return FreshCodexTaskResult(

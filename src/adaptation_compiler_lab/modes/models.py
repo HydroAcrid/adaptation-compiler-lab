@@ -168,7 +168,7 @@ class CapabilityMode(FrozenModel):
 class ModeActivationReceipt(FrozenModel):
     """Signed exact-task lease; it is not a permanent preference mutation."""
 
-    receipt_version: Literal["1.0.0"] = "1.0.0"
+    receipt_version: Literal["1.0.0", "1.1.0"] = "1.1.0"
     activation_id: Identifier
     subject_id: Identifier
     mode_id: Identifier
@@ -178,6 +178,7 @@ class ModeActivationReceipt(FrozenModel):
     task_digest: Sha256Digest
     target_family: Identifier
     prior_core_release_digest: Sha256Digest
+    personal_overlay_digest: Sha256Digest | None = None
     suppressed_claim_keys: tuple[Identifier, ...] = ()
     activated_at: UtcDateTime
     expires_at: UtcDateTime
@@ -248,6 +249,7 @@ class ModePreparedTask(FrozenModel):
     delivered_task: NonEmptyStr
     mode_material: NonEmptyStr
     included_clause_ids: tuple[Identifier, ...]
+    included_overlay_clause_ids: tuple[Identifier, ...] = ()
     activation: ModeActivationReceipt
     delivery: ModeDeliveryReceipt
 
@@ -261,6 +263,10 @@ class ModePreparedTask(FrozenModel):
             raise ValueError("mode material digest changed")
         if self.delivery.activation_digest != self.activation.content_digest:
             raise ValueError("mode delivery does not bind its activation")
+        if not set(self.included_overlay_clause_ids) <= set(self.included_clause_ids):
+            raise ValueError("included overlay clauses must be part of the effective Mode")
+        if self.included_overlay_clause_ids and self.activation.personal_overlay_digest is None:
+            raise ValueError("personal overlay clauses require one exact activation binding")
         return self
 
 

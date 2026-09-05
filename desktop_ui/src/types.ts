@@ -175,6 +175,7 @@ export interface CapabilityModeSummary {
   mutates_permanent_core: false;
   auto_activates: false;
   source_kind: "first_party" | "imported";
+  personalized: boolean;
 }
 
 export interface AgentConnection {

@@ -89,6 +89,7 @@ describe("Temper prototype", () => {
     expect(screen.getByText("Frontend Studio")).toBeInTheDocument();
     expect(screen.getByText("Research Analyst")).toBeInTheDocument();
     expect(screen.getByText("Secure Backend")).toBeInTheDocument();
+    expect(screen.getByText("Personalized")).toBeInTheDocument();
     expect(screen.getAllByText(/experimental/i)).toHaveLength(3);
     expect(
       screen.getByText(/Core stays yours and stays unchanged/i),
@@ -102,6 +103,9 @@ describe("Temper prototype", () => {
       screen.getByText(/6 conformance checks passed/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/comparison not run yet/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/approved overlay is applied for this task only/i),
+    ).toBeInTheDocument();
   });
 
   it("previews profile portability without pretending browser writes are native", async () => {

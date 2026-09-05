@@ -33,6 +33,7 @@ from adaptation_compiler_lab.instruction_environment.models import (
     InstructionEnvironmentSummaryV1,
     NativeTarget,
 )
+from adaptation_compiler_lab.modes import FRONTEND_STUDIO_MODE
 from adaptation_compiler_lab.portability import (
     PackageImportItemPreviewV1,
     PackageImportPreviewV1,
@@ -276,6 +277,26 @@ def test_mode_catalog_is_raw_free_and_labels_conformance_separately_from_effecti
     assert all(item["effectiveness_evaluated"] is False for item in modes)
     assert all(item["requested_tools"] == [] for item in modes)
     assert all(item["required_capabilities"] == [] for item in modes)
+    assert all(item["personalized"] is False for item in modes)
+
+
+def test_mode_catalog_marks_only_the_exact_personalized_mode() -> None:
+    portability = MagicMock()
+    portability.accepted_imported_modes.return_value = ()
+    portability.accepted_personal_overlays.return_value = (
+        MagicMock(
+            base_mode_id=FRONTEND_STUDIO_MODE.mode_id,
+            base_mode_version=FRONTEND_STUDIO_MODE.mode_version,
+            base_mode_digest=FRONTEND_STUDIO_MODE.content_digest,
+        ),
+    )
+
+    response = EngineProtocolRouter(None, cast(Any, portability)).handle(_request("mode.list"))
+
+    assert response.ok is True
+    assert response.result is not None
+    modes = response.result["modes"]
+    assert tuple(item["personalized"] for item in modes) == (True, False, False)
 
 
 def test_portability_never_operates_without_governed_local_configuration() -> None:
@@ -571,6 +592,43 @@ def test_each_catalog_mode_is_available_to_the_same_governed_task_channel() -> N
             project_id="kairn",
             mode_id=mode_id,
         )
+
+
+def test_imported_mode_run_delegates_availability_to_the_governed_service() -> None:
+    digest = f"sha256:{'a' * 64}"
+    service = MagicMock()
+    service.load.return_value = MagicMock(content_digest=digest)
+    service.run_task.return_value = (
+        ActionResult(action="run_task", ok=True, code="ok", message="Ready."),
+        DesktopTaskResult(
+            activation_id="imported-mode-run-1",
+            status="review_available",
+            projection_utf8_bytes=900,
+        ),
+    )
+    router = EngineProtocolRouter(cast(Any, service))
+
+    response = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="imported-mode-request-1",
+            method="mode.task.run",
+            params={
+                "mode_id": "imported-debugger",
+                "project_id": "kairn",
+                "task": "Trace the failing request",
+            },
+            expected_snapshot_digest=digest,
+            idempotency_key="imported-mode-click",
+        )
+    )
+
+    assert response.ok is True
+    service.run_task.assert_called_once_with(
+        task="Trace the failing request",
+        project_id="kairn",
+        mode_id="imported-debugger",
+    )
 
 
 def test_review_decision_is_digest_bound_idempotent_and_strictly_allowlisted() -> None:
