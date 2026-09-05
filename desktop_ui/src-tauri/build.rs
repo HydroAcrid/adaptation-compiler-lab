@@ -138,6 +138,8 @@ fn main() {
             "connection_inspect",
             "claude_connection_preview",
             "claude_connection_apply",
+            "copilot_connection_preview",
+            "copilot_connection_apply",
             "target_authorization_preview",
             "target_authorization_apply",
             "setup_existing_preview",

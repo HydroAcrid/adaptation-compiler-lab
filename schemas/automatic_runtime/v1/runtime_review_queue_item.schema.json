@@ -2134,7 +2134,8 @@
             "synthetic_fixture",
             "codex_app_server",
             "local_interaction_runtime",
-            "claude_code_hook"
+            "claude_code_hook",
+            "copilot_cli_hook"
           ],
           "title": "Source System",
           "type": "string"

@@ -232,7 +232,7 @@ class AgentConnectionInspector:
                 else "Only existing repository instructions can be inspected."
             ),
             cost_posture="Connection work is local; Copilot usage follows the user's GitHub plan.",
-            available_actions=("refresh",),
+            available_actions=("refresh", "connect") if conformant else ("refresh",),
         )
 
     def _claude_conformant(self, executable: Path) -> bool:

@@ -147,6 +147,54 @@ def test_claude_hook_protocol_is_silent_when_no_runtime_handler_is_configured() 
     }
 
 
+def test_copilot_hook_protocol_returns_only_official_transformed_prompt() -> None:
+    seen: list[Mapping[str, Any]] = []
+
+    def handler(payload: Mapping[str, Any]) -> Mapping[str, Any]:
+        seen.append(payload)
+        return {"modifiedTransformedPrompt": "Original\n\nApproved context"}
+
+    payload = {
+        "sessionId": "session-one",
+        "timestamp": 1788610000000,
+        "cwd": "project",
+        "prompt": "Original",
+        "transformedPrompt": "Original",
+    }
+    request = EngineRequest(
+        protocol_version=PROTOCOL_VERSION,
+        request_id="copilot-hook-request",
+        method="copilot.hook.handle",
+        params={"payload": payload},
+    )
+    response = EngineProtocolRouter(None, copilot_hook_handler=handler).handle(request)
+
+    assert response.ok is True
+    assert seen == [payload]
+    assert response.result == {
+        "available": True,
+        "output": {"modifiedTransformedPrompt": "Original\n\nApproved context"},
+        "raw_payloads_exposed": False,
+    }
+
+
+def test_copilot_hook_rejects_nonofficial_output_shape() -> None:
+    request = EngineRequest(
+        protocol_version=PROTOCOL_VERSION,
+        request_id="copilot-hook-request",
+        method="copilot.hook.handle",
+        params={"payload": {}},
+    )
+    response = EngineProtocolRouter(
+        None,
+        copilot_hook_handler=lambda payload: {"additionalContext": "not supported"},
+    ).handle(request)
+
+    assert response.ok is False
+    assert response.error is not None
+    assert response.error.code == "copilot_hook_unavailable"
+
+
 def test_claude_runtime_refresh_uses_only_the_preconfigured_lease_refresher() -> None:
     refresher = MagicMock(return_value=("lease-one", "lease-two"))
     request = EngineRequest(
@@ -248,6 +296,95 @@ def test_claude_connection_is_previewed_and_snapshot_bound() -> None:
         expected_before_digest=digest,
         consent_confirmed=True,
         idempotency_key="connection-click",
+    )
+
+
+def test_copilot_connection_is_delivery_only_and_snapshot_bound() -> None:
+    setup = FakeSetupService()
+    copilot = AgentConnectionV1(
+        agent_id="copilot",
+        display_name="GitHub Copilot",
+        installation_state="installed",
+        authentication_state="unknown",
+        conformance_state="compatible",
+        integration_state="available",
+        status_summary="Ready for local delivery setup.",
+        learning_capability="No prompt capture.",
+        delivery_capability="Registered Copilot CLI projects only.",
+        cost_posture="No provider call during setup.",
+        available_actions=("refresh", "connect"),
+    )
+    setup.snapshot_value = setup.snapshot_value.model_copy(
+        update={
+            "configuration_state": "configured",
+            "connections": (*setup.snapshot_value.connections, copilot),
+        }
+    )
+    digest = f"sha256:{'a' * 64}"
+    service = MagicMock()
+    service.load.return_value = MagicMock(content_digest=digest)
+    connection = MagicMock()
+    connection.status.return_value = MagicMock(state="available")
+    preview_value = {
+        "preview_version": "1.0.0",
+        "operation": "connect",
+        "hook_file": {
+            "preview_token": "copilot-preview-one",
+            "before_digest": digest,
+        },
+        "learning_enabled": False,
+        "delivery_enabled": True,
+        "raw_paths_exposed": False,
+    }
+    connection.preview.return_value = MagicMock(model_dump=MagicMock(return_value=preview_value))
+    receipt = MagicMock(
+        receipt_id="copilot-connection-one",
+        operation="connect",
+        content_digest=f"sha256:{'b' * 64}",
+        expires_at=datetime(2026, 9, 30, tzinfo=UTC),
+        projects=(MagicMock(),),
+    )
+    connection.apply.return_value = receipt
+    router = EngineProtocolRouter(
+        cast(Any, service),
+        setup_factory=lambda: cast(Any, setup),
+        copilot_connection=cast(Any, connection),
+    )
+
+    preview = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="copilot-connection-preview",
+            method="connection.copilot.preview",
+            params={"operation": "connect"},
+        )
+    )
+    applied = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="copilot-connection-apply",
+            method="connection.copilot.apply",
+            params={
+                "preview_token": "copilot-preview-one",
+                "expected_before_digest": digest,
+                "consent_confirmed": True,
+            },
+            expected_snapshot_digest=digest,
+            idempotency_key="copilot-connection-click",
+        )
+    )
+
+    assert preview.ok is True
+    assert preview.result == preview_value
+    assert applied.ok is True
+    assert applied.result is not None
+    assert applied.result["restart_required"] is True
+    assert applied.result["provider_call_required"] is False
+    connection.apply.assert_called_once_with(
+        preview_token="copilot-preview-one",
+        expected_before_digest=digest,
+        consent_confirmed=True,
+        idempotency_key="copilot-connection-click",
     )
 
 

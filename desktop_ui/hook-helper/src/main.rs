@@ -7,7 +7,7 @@ use temper_hook_transport::{default_descriptor_path, invoke_from_descriptor};
 const MAX_STDIN_BYTES: u64 = 1_048_576;
 
 fn main() {
-    // Claude hooks must never block the user's agent when Temper is unavailable.
+    // Agent hooks must never block the user's agent when Temper is unavailable.
     let Some(output) = run() else {
         return;
     };

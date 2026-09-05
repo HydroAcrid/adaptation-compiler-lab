@@ -86,7 +86,11 @@ def build_instruction_delta_plan(
     target = projection.context.target_family
     if project_id is None or project_id != environment.project_id:
         raise ValueError("native environment does not match the projection project")
-    expected_targets = {environment.target.value, f"{environment.target.value}-code"}
+    expected_targets = {
+        environment.target.value,
+        f"{environment.target.value}-code",
+        f"{environment.target.value}-cli",
+    }
     if target is None or target not in expected_targets:
         raise ValueError("native environment does not match the projection target")
     supplied = {

@@ -36,8 +36,11 @@ signed receipt, encrypted backup, and rollback. See
 Copilot is now represented as a versioned set of distinct surfaces rather than one ambiguous
 connection. Temper reports Copilot CLI installation/version separately from authentication and
 delivery, and maps IDE/cloud surfaces to only the instruction types GitHub documents. The official
-CLI hook is recognized as the sole local direct-delivery candidate, but remains disconnected until
-its governed connector passes the same lease, transport, rollback, and scope gates as Claude. See
+CLI hook now supports an explicit delivery-only connection: it installs one previewed Temper-owned
+hook file, serves a signed cached least-delta projection in registered projects, stores no raw
+prompt, makes no hook-path model call, and fails to a silent no-op after scope, consent, lease, or
+native-environment drift. Other Copilot surfaces remain previewed file-based customization only.
+No live Copilot smoke is claimed because Copilot CLI is absent from this host. See
 [`TEMPER_COPILOT_CAPABILITIES.md`](TEMPER_COPILOT_CAPABILITIES.md).
 
 Claude product delivery uses Claude Code's official hook surface. The local

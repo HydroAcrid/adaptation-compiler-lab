@@ -1,4 +1,4 @@
-//! Private local transport used by Claude Code's Temper hook helper and desktop shell.
+//! Private local transport used by Temper's supported agent hooks and desktop shell.
 
 use interprocess::local_socket::{
     GenericFilePath, GenericNamespaced, Listener, ListenerNonblockingMode, ListenerOptions, Stream,

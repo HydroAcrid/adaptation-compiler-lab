@@ -30,12 +30,14 @@ import { AgentBrandMark } from "./AgentBrandMark";
 import {
   analyzeInstructionEnvironment,
   applyClaudeConnection,
+  applyCopilotConnection,
   applyTargetAuthorization,
   applyNativeInstructionChange,
   disablePersonalInstructionSetup,
   enablePersonalInstructionSetup,
   previewNativeInstructionChange,
   previewClaudeConnection,
+  previewCopilotConnection,
   previewTargetAuthorization,
   previewPersonalInstructionSetup,
   previewProjectRegistration,
@@ -45,7 +47,7 @@ import {
   runModeTask,
   type EngineAgentConnection,
   type EngineArtifactRef,
-  type EngineClaudeConnectionPreview,
+  type EngineConnectionPreview,
   type EngineProjectPreview,
   type EngineProject,
   type EngineTargetAuthorizationPreview,
@@ -2175,8 +2177,13 @@ function ConnectionDetailsDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connectionPreview, setConnectionPreview] =
-    useState<EngineClaudeConnectionPreview | null>(null);
+    useState<EngineConnectionPreview | null>(null);
   const [connectionConfirmed, setConnectionConfirmed] = useState(false);
+  const connectionHookPreview = connectionPreview
+    ? "settings" in connectionPreview
+      ? connectionPreview.settings
+      : connectionPreview.hook_file
+    : null;
   const [targetPreview, setTargetPreview] =
     useState<EngineTargetAuthorizationPreview | null>(null);
   const [selectedTargetRefs, setSelectedTargetRefs] = useState<Set<string>>(
@@ -2299,12 +2306,16 @@ function ConnectionDetailsDialog({
     setError(null);
     setConnectionConfirmed(false);
     try {
-      setConnectionPreview(await previewClaudeConnection(operation));
+      setConnectionPreview(
+        connection.id === "copilot"
+          ? await previewCopilotConnection(operation)
+          : await previewClaudeConnection(operation),
+      );
     } catch (reason: unknown) {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Temper could not preview that Claude connection change.",
+          : `Temper could not preview that ${connection.name} connection change.`,
       );
     } finally {
       setBusy(false);
@@ -2316,23 +2327,34 @@ function ConnectionDetailsDialog({
     setBusy(true);
     setError(null);
     try {
-      const receipt = await applyClaudeConnection(
-        connectionPreview,
-        snapshotDigest,
-        crypto.randomUUID(),
-      );
+      const receipt =
+        connection.id === "copilot" && "hook_file" in connectionPreview
+          ? await applyCopilotConnection(
+              connectionPreview,
+              snapshotDigest,
+              crypto.randomUUID(),
+            )
+          : "settings" in connectionPreview
+            ? await applyClaudeConnection(
+                connectionPreview,
+                snapshotDigest,
+                crypto.randomUUID(),
+              )
+            : null;
+      if (!receipt)
+        throw new Error("The connection preview no longer matches this agent.");
       setConnectionPreview(null);
       await onInstructionChanged?.(
         receipt.operation === "connect"
-          ? `Claude Code is connected for ${receipt.project_count} registered project${receipt.project_count === 1 ? "" : "s"}.`
-          : "Claude Code is disconnected. Temper-owned hook entries were removed.",
+          ? `${connection.name} is connected for ${receipt.project_count} registered project${receipt.project_count === 1 ? "" : "s"}.`
+          : `${connection.name} is disconnected. Temper-owned hook entries were removed.`,
       );
       onClose();
     } catch (reason: unknown) {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Temper could not apply that Claude connection change.",
+          : `Temper could not apply that ${connection.name} connection change.`,
       );
     } finally {
       setBusy(false);
@@ -2344,7 +2366,10 @@ function ConnectionDetailsDialog({
     setError(null);
     setTargetConfirmed(false);
     try {
-      const result = await previewTargetAuthorization(projectId);
+      const result = await previewTargetAuthorization(
+        projectId,
+        connection.id === "copilot" ? "copilot-cli" : "claude-code",
+      );
       setTargetPreview(result);
       setSelectedTargetRefs(
         new Set(result.currently_authorized_artifact_refs.map(artifactRefKey)),
@@ -2353,7 +2378,7 @@ function ConnectionDetailsDialog({
       setError(
         reason instanceof Error
           ? reason.message
-          : "Temper could not preview portable Core for Claude.",
+          : `Temper could not preview portable Core for ${connection.name}.`,
       );
     } finally {
       setBusy(false);
@@ -2381,8 +2406,8 @@ function ConnectionDetailsDialog({
       setTargetPreview(null);
       await onInstructionChanged?.(
         receipt.decision === "authorize"
-          ? `${receipt.authorized_artifact_count} Core behavior${receipt.authorized_artifact_count === 1 ? " is" : "s are"} now approved for Claude in this project.`
-          : "Claude-specific Core authority was removed for this project.",
+          ? `${receipt.authorized_artifact_count} Core behavior${receipt.authorized_artifact_count === 1 ? " is" : "s are"} now approved for ${connection.name} in this project.`
+          : `${connection.name}-specific Core authority was removed for this project.`,
       );
       onClose();
     } catch (reason: unknown) {
@@ -2450,16 +2475,19 @@ function ConnectionDetailsDialog({
                 ? "The local hook is active only in registered projects. Connecting Temper does not call Claude; ordinary Claude Code usage remains provider-billed."
                 : "Detection alone does not authorize capture or delivery. Connecting changes only Temper-owned entries in your Claude user settings and makes no provider call."
               : connection.id === "copilot"
-                ? "Temper understands supported Copilot instruction files. Direct delivery is available only through Copilot CLI's local hook and is not connected in this build; other Copilot surfaces require a reviewed file change."
+                ? connection.status === "connected"
+                  ? "The local hook delivers only signed cached context in registered Copilot CLI projects. Temper does not capture Copilot prompts in this release."
+                  : "Temper understands supported Copilot instruction files. Direct delivery is available only through an explicit Copilot CLI hook; other Copilot surfaces require a reviewed file change."
                 : "Temper can learn only from prospectively registered completed work and deliver only to fresh Temper-managed tasks."}
           </p>
-          {nativeRuntime && connection.id === "claude" ? (
+          {nativeRuntime &&
+          (connection.id === "claude" || connection.id === "copilot") ? (
             <section
-              aria-labelledby="claude-connection-title"
+              aria-labelledby="agent-connection-title"
               className="claude-connection"
             >
               <div>
-                <h3 id="claude-connection-title">Temper connection</h3>
+                <h3 id="agent-connection-title">Temper connection</h3>
                 <p>
                   Review the exact local change before anything is installed or
                   removed.
@@ -2483,8 +2511,8 @@ function ConnectionDetailsDialog({
                       : "Only Temper-owned hook entries will be removed."}
                   </span>
                   <details>
-                    <summary>Show exact settings change</summary>
-                    <pre>{connectionPreview.settings.redacted_diff}</pre>
+                    <summary>Show exact hook change</summary>
+                    <pre>{connectionHookPreview?.redacted_diff}</pre>
                   </details>
                   <label className="connection-confirmation">
                     <input
@@ -2496,8 +2524,10 @@ function ConnectionDetailsDialog({
                     />
                     <span>
                       {connectionPreview.operation === "connect"
-                        ? "Allow Temper to capture authorized prompts and deliver approved adaptations in these projects for 30 days."
-                        : "Remove Temper’s Claude connection now."}
+                        ? connection.id === "copilot"
+                          ? "Allow Temper to deliver approved adaptations in Copilot CLI for these projects for 30 days. Copilot prompts are not stored."
+                          : "Allow Temper to capture authorized prompts and deliver approved adaptations in these projects for 30 days."
+                        : `Remove Temper’s ${connection.name} connection now.`}
                     </span>
                   </label>
                   <div className="personal-setup__actions">
@@ -2516,7 +2546,7 @@ function ConnectionDetailsDialog({
                       {busy
                         ? "Applying…"
                         : connectionPreview.operation === "connect"
-                          ? "Connect Claude Code"
+                          ? `Connect ${connection.name}`
                           : "Disconnect"}
                     </Button>
                   </div>
@@ -2535,7 +2565,7 @@ function ConnectionDetailsDialog({
                   onClick={() => void previewConnectionChange("disconnect")}
                   tone="quiet"
                 >
-                  {busy ? "Preparing…" : "Disconnect Claude Code"}
+                  {busy ? "Preparing…" : `Disconnect ${connection.name}`}
                 </Button>
               ) : (
                 <p className="connection-dialog-note">
@@ -2545,7 +2575,7 @@ function ConnectionDetailsDialog({
             </section>
           ) : null}
           {nativeRuntime &&
-          connection.id === "claude" &&
+          (connection.id === "claude" || connection.id === "copilot") &&
           connection.status === "connected" &&
           projects.length ? (
             <section
@@ -2555,8 +2585,9 @@ function ConnectionDetailsDialog({
               <div>
                 <h3 id="portable-core-title">Portable Core</h3>
                 <p>
-                  Choose which already approved behaviors may also guide Claude.
-                  New learning stays unavailable here until you review it.
+                  Choose which already approved behaviors may also guide{" "}
+                  {connection.name}. New learning stays unavailable there until
+                  you review it.
                 </p>
               </div>
               {targetPreview ? (
@@ -2619,8 +2650,10 @@ function ConnectionDetailsDialog({
                       type="checkbox"
                     />
                     <span>
-                      Apply this exact Claude-specific selection for 30 days.
-                      This does not alter Core or affect Codex.
+                      Apply this exact{" "}
+                      {connection.id === "claude" ? "Claude" : connection.name}
+                      -specific selection for 30 days. This does not alter Core
+                      or affect other agents.
                     </span>
                   </label>
                   <div className="personal-setup__actions">

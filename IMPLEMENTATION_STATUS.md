@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-05
 
-## GitHub Copilot capability matrix
+## GitHub Copilot CLI governed delivery
 
 Temper now distinguishes nine GitHub Copilot surfaces using a typed, versioned 2026-09-05 support
 matrix. Repository, path-specific, agent, and personal instruction support is recorded per surface
@@ -12,12 +12,25 @@ preview or observation paths.
 
 Native inspection detects `copilot` only through supported executable lookup and a read-only
 version probe. It recognizes the reviewed `1.0.54` CLI contract, does not initiate OAuth or inspect
-tokens, reports authentication as unknown, and does not expose a Connect action yet. The React
-onboarding and Connections surfaces now include this honest third-agent state and a locally bundled
-provider mark. Existing Copilot instruction discovery continues to grant no personal authority.
+tokens, and reports authentication as unknown. A compatible installation now exposes a real
+delivery-only Connect action. The exact preview installs one dedicated Temper user-hook file that
+invokes the bundled no-console helper directly for `userPromptTransformed`; disconnect removes only
+that file. Both operations are digest-bound, idempotent, backed up under encrypted product storage,
+signed, restart-safe, and reversible.
 
-This increment closes capability ambiguity; it does not yet implement direct Copilot CLI hook
-delivery. See [`TEMPER_COPILOT_CAPABILITIES.md`](TEMPER_COPILOT_CAPABILITIES.md).
+The runtime compiles an instruction-aware delta before hook execution, signs a 15-minute project
+lease, rehashes native files on every event, and returns only Copilot's official
+`modifiedTransformedPrompt` field. It stores no raw prompt and makes no model call in the hook path.
+Unregistered paths, expired consent, missing leases, native drift, invalid payloads, and unavailable
+Temper state all fail to a silent no-op. This is not a source-learning connector: transient prompt
+and session digests exist only in a local signed delivery receipt. Other Copilot surfaces remain
+governed file-preview or observation paths.
+
+Python model, settings, connection, runtime, protocol, strict schema, replay, rollback, scope,
+deduplication, and drift fixtures pass. Rust routing and command-allowlist tests and React preview/
+apply boundary tests also pass. Copilot CLI is not installed on this machine, so no live hook or
+provider use is claimed. Existing Copilot instruction discovery continues to grant no personal
+authority. See [`TEMPER_COPILOT_CAPABILITIES.md`](TEMPER_COPILOT_CAPABILITIES.md).
 
 ## Same-owner offline recovery
 

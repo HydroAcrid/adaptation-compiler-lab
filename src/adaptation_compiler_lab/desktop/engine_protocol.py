@@ -73,6 +73,7 @@ from adaptation_compiler_lab.serialization import canonical_digest
 
 if TYPE_CHECKING:
     from adaptation_compiler_lab.claude_delivery.connection import ClaudeConnectionService
+    from adaptation_compiler_lab.copilot_delivery.connection import CopilotConnectionService
     from adaptation_compiler_lab.desktop.portability_service import LocalProfilePortabilityService
     from adaptation_compiler_lab.desktop.recovery_service import LocalRecoveryService
     from adaptation_compiler_lab.desktop.service import DesktopApplicationService
@@ -152,6 +153,9 @@ class EngineProtocolRouter:
         claude_hook_handler: Callable[[Mapping[str, Any]], Mapping[str, Any] | None] | None = None,
         claude_connection: ClaudeConnectionService | None = None,
         claude_projection_refresher: Callable[[], object] | None = None,
+        copilot_hook_handler: Callable[[Mapping[str, Any]], Mapping[str, Any] | None] | None = None,
+        copilot_connection: CopilotConnectionService | None = None,
+        copilot_projection_refresher: Callable[[], object] | None = None,
         target_authorization: RuntimeTargetAuthorizationService | None = None,
         target_release_provider: Callable[[], ExternalGovernedRelease | None] | None = None,
         recovery_factory: Callable[[], LocalRecoveryService] | None = None,
@@ -164,6 +168,9 @@ class EngineProtocolRouter:
         self._claude_hook_handler = claude_hook_handler
         self._claude_connection = claude_connection
         self._claude_projection_refresher = claude_projection_refresher
+        self._copilot_hook_handler = copilot_hook_handler
+        self._copilot_connection = copilot_connection
+        self._copilot_projection_refresher = copilot_projection_refresher
         self._target_authorization = target_authorization
         self._target_release_provider = target_release_provider
         self._recovery_factory = recovery_factory
@@ -199,6 +206,10 @@ class EngineProtocolRouter:
             return self._handle_claude_hook(request)
         if request.method == "claude.runtime.refresh":
             return self._refresh_claude_runtime(request)
+        if request.method == "copilot.hook.handle":
+            return self._handle_copilot_hook(request)
+        if request.method == "copilot.runtime.refresh":
+            return self._refresh_copilot_runtime(request)
         if request.method in {"setup.status", "connection.inspect"}:
             if request.params:
                 return self._error(
@@ -225,6 +236,10 @@ class EngineProtocolRouter:
             return self._preview_claude_connection(request)
         if request.method == "connection.claude.apply":
             return self._apply_claude_connection(request)
+        if request.method == "connection.copilot.preview":
+            return self._preview_copilot_connection(request)
+        if request.method == "connection.copilot.apply":
+            return self._apply_copilot_connection(request)
         if request.method == "target.authorization.preview":
             return self._preview_target_authorization(request)
         if request.method == "target.authorization.apply":
@@ -538,76 +553,200 @@ class EngineProtocolRouter:
             },
         )
 
-    def _connection_snapshot(self, snapshot: SetupSnapshotV1) -> SetupSnapshotV1:
-        if self._claude_connection is None:
-            unavailable_connections = tuple(
-                item.model_copy(
-                    update={
-                        "integration_state": "unavailable",
-                        "available_actions": ("refresh",),
-                        "status_summary": (
-                            "Claude Code was detected, but this Temper runtime cannot connect it."
-                            if item.agent_id == "claude" and item.installation_state == "installed"
-                            else item.status_summary
-                        ),
-                    }
-                )
-                if item.agent_id == "claude"
-                else item
-                for item in snapshot.connections
+    def _handle_copilot_hook(self, request: EngineRequest) -> EngineResponse:
+        try:
+            if set(request.params) != {"payload"}:
+                raise ValueError
+            payload = request.params["payload"]
+            if not isinstance(payload, Mapping):
+                raise ValueError
+            output = (
+                None if self._copilot_hook_handler is None else self._copilot_hook_handler(payload)
             )
-            return snapshot.model_copy(update={"connections": unavailable_connections})
-        status = self._claude_connection.status()
+            if output is not None and (
+                not isinstance(output, Mapping) or set(output) != {"modifiedTransformedPrompt"}
+            ):
+                raise ValueError
+        except (OSError, TypeError, ValueError):
+            return self._error(
+                request,
+                "copilot_hook_unavailable",
+                "Temper could not safely handle this Copilot event.",
+                retryable=True,
+            )
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result={
+                "available": self._copilot_hook_handler is not None,
+                "output": output,
+                "raw_payloads_exposed": False,
+            },
+        )
+
+    def _refresh_copilot_runtime(self, request: EngineRequest) -> EngineResponse:
+        if request.params:
+            return self._error(
+                request,
+                "invalid_params",
+                "copilot.runtime.refresh takes no parameters.",
+            )
+        if self._copilot_projection_refresher is None:
+            return EngineResponse(
+                request_id=request.request_id,
+                ok=True,
+                result={
+                    "available": False,
+                    "prepared_projection_count": 0,
+                    "raw_payloads_exposed": False,
+                },
+            )
+        try:
+            leases = self._copilot_projection_refresher()
+            prepared = len(leases) if isinstance(leases, Sequence) else 0
+        except (OSError, TypeError, ValueError):
+            return self._error(
+                request,
+                "copilot_runtime_refresh_refused",
+                "Temper could not safely refresh Copilot delivery.",
+                retryable=True,
+            )
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result={
+                "available": True,
+                "prepared_projection_count": prepared,
+                "raw_payloads_exposed": False,
+            },
+        )
+
+    def _connection_snapshot(self, snapshot: SetupSnapshotV1) -> SetupSnapshotV1:
         mutable_connections = list(snapshot.connections)
         claude_index = next(
             (index for index, item in enumerate(mutable_connections) if item.agent_id == "claude"),
             None,
         )
-        if claude_index is None:
-            return snapshot
-        claude = mutable_connections[claude_index]
-        if status.state == "connected":
-            runtime_ready = (
-                claude.installation_state == "installed"
-                and claude.authentication_state == "signed_in"
-                and claude.conformance_state == "compatible"
-                and self._claude_hook_handler is not None
-            )
-            mutable_connections[claude_index] = claude.model_copy(
-                update={
-                    "integration_state": "connected" if runtime_ready else "attention",
-                    "status_summary": (
-                        status.status_summary
-                        if runtime_ready
-                        else "Claude changed after connection; delivery is paused."
-                    ),
-                    "learning_capability": (
-                        "Captures authorized user prompts from registered projects."
-                        if runtime_ready
-                        else "Learning is paused until the Claude connection is repaired."
-                    ),
-                    "delivery_capability": (
-                        "Delivers only a signed cached projection in registered projects."
-                        if runtime_ready
-                        else "Delivery is paused until the Claude connection is repaired."
-                    ),
-                    "available_actions": ("refresh", "disconnect"),
-                }
-            )
-        elif status.state == "attention":
-            mutable_connections[claude_index] = claude.model_copy(
-                update={
-                    "integration_state": "attention",
-                    "status_summary": status.status_summary,
-                    "learning_capability": (
-                        "Learning is paused until this connection is removed or repaired."
-                    ),
-                    "delivery_capability": (
-                        "Delivery is paused until this connection is removed or repaired."
-                    ),
-                    "available_actions": ("refresh", "disconnect"),
-                }
-            )
+        if claude_index is not None:
+            claude = mutable_connections[claude_index]
+            if self._claude_connection is None:
+                if claude.installation_state == "installed":
+                    claude = claude.model_copy(
+                        update={
+                            "integration_state": "unavailable",
+                            "available_actions": ("refresh",),
+                            "status_summary": (
+                                "Claude Code was detected, but this Temper runtime cannot "
+                                "connect it."
+                            ),
+                        }
+                    )
+            else:
+                status = self._claude_connection.status()
+                if status.state == "connected":
+                    runtime_ready = (
+                        claude.installation_state == "installed"
+                        and claude.authentication_state == "signed_in"
+                        and claude.conformance_state == "compatible"
+                        and self._claude_hook_handler is not None
+                    )
+                    claude = claude.model_copy(
+                        update={
+                            "integration_state": "connected" if runtime_ready else "attention",
+                            "status_summary": (
+                                status.status_summary
+                                if runtime_ready
+                                else "Claude changed after connection; delivery is paused."
+                            ),
+                            "learning_capability": (
+                                "Captures authorized user prompts from registered projects."
+                                if runtime_ready
+                                else "Learning is paused until the Claude connection is repaired."
+                            ),
+                            "delivery_capability": (
+                                "Delivers only a signed cached projection in registered projects."
+                                if runtime_ready
+                                else "Delivery is paused until the Claude connection is repaired."
+                            ),
+                            "available_actions": ("refresh", "disconnect"),
+                        }
+                    )
+                elif status.state == "attention":
+                    claude = claude.model_copy(
+                        update={
+                            "integration_state": "attention",
+                            "status_summary": status.status_summary,
+                            "learning_capability": (
+                                "Learning is paused until this connection is removed or repaired."
+                            ),
+                            "delivery_capability": (
+                                "Delivery is paused until this connection is removed or repaired."
+                            ),
+                            "available_actions": ("refresh", "disconnect"),
+                        }
+                    )
+            mutable_connections[claude_index] = claude
+
+        copilot_index = next(
+            (index for index, item in enumerate(mutable_connections) if item.agent_id == "copilot"),
+            None,
+        )
+        if copilot_index is not None:
+            copilot = mutable_connections[copilot_index]
+            if self._copilot_connection is None:
+                if copilot.installation_state == "installed":
+                    copilot = copilot.model_copy(
+                        update={
+                            "integration_state": "unavailable",
+                            "available_actions": ("refresh",),
+                            "status_summary": (
+                                "Copilot CLI was detected, but this Temper runtime cannot "
+                                "connect it."
+                            ),
+                        }
+                    )
+            else:
+                copilot_status = self._copilot_connection.status()
+                if copilot_status.state == "connected":
+                    runtime_ready = (
+                        copilot.installation_state == "installed"
+                        and copilot.conformance_state == "compatible"
+                        and self._copilot_hook_handler is not None
+                    )
+                    copilot = copilot.model_copy(
+                        update={
+                            "integration_state": "connected" if runtime_ready else "attention",
+                            "status_summary": (
+                                copilot_status.status_summary
+                                if runtime_ready
+                                else "Copilot CLI changed after connection; delivery is paused."
+                            ),
+                            "learning_capability": (
+                                "Copilot prompt capture is not enabled; repository context "
+                                "remains read-only."
+                            ),
+                            "delivery_capability": (
+                                "Delivers signed cached projections only in registered "
+                                "Copilot CLI projects."
+                                if runtime_ready
+                                else "Delivery is paused until the Copilot connection is repaired."
+                            ),
+                            "available_actions": ("refresh", "disconnect"),
+                        }
+                    )
+                elif copilot_status.state == "attention":
+                    copilot = copilot.model_copy(
+                        update={
+                            "integration_state": "attention",
+                            "status_summary": copilot_status.status_summary,
+                            "learning_capability": "Copilot prompt capture remains disabled.",
+                            "delivery_capability": (
+                                "Delivery is paused until this connection is removed or repaired."
+                            ),
+                            "available_actions": ("refresh", "disconnect"),
+                        }
+                    )
+            mutable_connections[copilot_index] = copilot
         return snapshot.model_copy(update={"connections": tuple(mutable_connections)})
 
     def _preview_claude_connection(self, request: EngineRequest) -> EngineResponse:
@@ -680,6 +819,94 @@ class EngineProtocolRouter:
                 request,
                 "claude_connection_change_refused",
                 "Temper could not safely apply that Claude connection change.",
+            )
+        response = EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result={
+                "receipt_id": receipt.receipt_id,
+                "operation": receipt.operation,
+                "connection_digest": receipt.content_digest,
+                "expires_at": receipt.expires_at.isoformat(),
+                "project_count": len(receipt.projects),
+                "restart_required": True,
+                "provider_call_required": False,
+                "raw_payloads_exposed": False,
+            },
+            snapshot_digest=snapshot_digest,
+        )
+        return self._remember_mutation(request, fingerprint, response)
+
+    def _preview_copilot_connection(self, request: EngineRequest) -> EngineResponse:
+        if self._service is None or self._copilot_connection is None:
+            return self._error(
+                request,
+                "copilot_connection_unavailable",
+                "Copilot CLI connection is unavailable in this Temper installation.",
+            )
+        try:
+            if set(request.params) != {"operation"}:
+                raise ValueError
+            operation = _required_string(request.params, "operation")
+            if operation not in {"connect", "disconnect"}:
+                raise ValueError
+            snapshot = self._connection_snapshot(self._setup_service().snapshot())
+            copilot = next(item for item in snapshot.connections if item.agent_id == "copilot")
+            expected_action = "connect" if operation == "connect" else "disconnect"
+            if expected_action not in copilot.available_actions:
+                return self._error(
+                    request,
+                    "copilot_connection_unavailable",
+                    "Copilot CLI is not in a state where Temper can make that change.",
+                )
+            selected: Literal["connect", "disconnect"] = (
+                "connect" if operation == "connect" else "disconnect"
+            )
+            preview = self._copilot_connection.preview(operation=selected)
+        except (OSError, StopIteration, TypeError, ValueError):
+            return self._error(
+                request,
+                "copilot_connection_preview_refused",
+                "Temper could not safely preview that Copilot connection change.",
+            )
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result=preview.model_dump(mode="json"),
+        )
+
+    def _apply_copilot_connection(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        snapshot_digest, fingerprint = checked
+        if self._copilot_connection is None or request.idempotency_key is None:
+            return self._error(
+                request,
+                "copilot_connection_unavailable",
+                "Copilot CLI connection is unavailable in this Temper installation.",
+            )
+        try:
+            if set(request.params) != {
+                "preview_token",
+                "expected_before_digest",
+                "consent_confirmed",
+            }:
+                raise ValueError
+            consent_confirmed = request.params.get("consent_confirmed")
+            if not isinstance(consent_confirmed, bool):
+                raise ValueError
+            receipt = self._copilot_connection.apply(
+                preview_token=_required_string(request.params, "preview_token"),
+                expected_before_digest=_required_string(request.params, "expected_before_digest"),
+                consent_confirmed=consent_confirmed,
+                idempotency_key=request.idempotency_key,
+            )
+        except (OSError, TypeError, ValueError):
+            return self._error(
+                request,
+                "copilot_connection_change_refused",
+                "Temper could not safely apply that Copilot connection change.",
             )
         response = EngineResponse(
             request_id=request.request_id,
@@ -2354,6 +2581,14 @@ def build_router(
         ClaudeProjectionCandidate,
         LocalClaudeHookRuntimePort,
     )
+    from adaptation_compiler_lab.copilot_delivery import (
+        COPILOT_CLI_TARGET_FAMILY,
+        CopilotConnectionService,
+        CopilotHookFileService,
+        CopilotHookHandler,
+        CopilotProjectionCandidate,
+        LocalCopilotHookRuntime,
+    )
     from adaptation_compiler_lab.desktop.platform import platform_paths, product_preferences_store
     from adaptation_compiler_lab.desktop.portability_service import LocalProfilePortabilityService
     from adaptation_compiler_lab.desktop.preferences import (
@@ -2655,6 +2890,124 @@ def build_router(
             claude_hook_handler = None
             claude_projection_refresher = None
 
+    copilot_connection = None
+    copilot_hook_handler = None
+    copilot_projection_refresher = None
+    copilot_hook_value = os.environ.get("TEMPER_COPILOT_HOOK_PATH")
+    if helper_value and copilot_hook_value:
+        try:
+            config = _load_config(config_path)
+            raw_store = _raw_store(config)
+            signer = _registration_signer(config)
+            project_digests = {
+                project.project_id: (
+                    project.registration.content_digest
+                    if project.registration is not None
+                    else canonical_digest(
+                        {
+                            "capture_after_epoch_seconds": (
+                                project.capture_after_epoch_seconds
+                                if project.capture_after_epoch_seconds is not None
+                                else config.capture_after_epoch_seconds
+                            ),
+                            "project_id": project.project_id,
+                            "scope": project.scope,
+                        }
+                    )
+                )
+                for project in config.projects
+            }
+            hook_files = CopilotHookFileService(
+                raw_store=raw_store,
+                signer=signer,
+                now=_now,
+                state_root=config.state_root,
+            )
+            copilot_connection = CopilotConnectionService(
+                subject_id=config.subject_id,
+                projects=project_digests,
+                hook_files=hook_files,
+                hook_path=Path(copilot_hook_value),
+                helper_path=Path(helper_value),
+                signer=signer,
+                signer_identity=config.signer_identity,
+                state_root=config.state_root,
+                now=_now,
+            )
+            if copilot_connection.status().state == "connected":
+
+                def copilot_projection_provider(
+                    project_id: str, evaluated_at: datetime
+                ) -> CanonicalRuntimeProjection | CopilotProjectionCandidate | None:
+                    state = _ledger(config).current()
+                    if state is None or state.release is None:
+                        return None
+                    project = next(
+                        (item for item in config.projects if item.project_id == project_id),
+                        None,
+                    )
+                    if project is None:
+                        return None
+                    authorized_refs = (
+                        ()
+                        if target_authorization is None
+                        else target_authorization.authorized_refs(
+                            release=state.release.governed_release,
+                            project_id=project_id,
+                            target_family=COPILOT_CLI_TARGET_FAMILY,
+                            effective_at=evaluated_at,
+                        )
+                    )
+                    projection = build_runtime_projection(
+                        state.release.governed_release,
+                        RuntimeProjectionContext(
+                            known_dimensions=(
+                                ScopeDimension.PROJECT_IDS,
+                                ScopeDimension.SUBJECT_IDS,
+                                ScopeDimension.TARGET_FAMILIES,
+                            ),
+                            target_profile_id=COPILOT_CLI_TARGET_FAMILY,
+                            subject_id=config.subject_id,
+                            project_id=project.project_id,
+                            target_family=COPILOT_CLI_TARGET_FAMILY,
+                            evaluated_at=evaluated_at,
+                        ),
+                        target_authorized_artifact_refs=authorized_refs,
+                    )
+                    if not authorized_refs or target_authorization is None:
+                        return projection
+                    authorization_digest = target_authorization.authorization_digest(
+                        project_id=project_id,
+                        target_family=COPILOT_CLI_TARGET_FAMILY,
+                        effective_at=evaluated_at,
+                    )
+                    if authorization_digest is None:
+                        return None
+                    return CopilotProjectionCandidate(projection, authorization_digest)
+
+                copilot_runtime = LocalCopilotHookRuntime(
+                    projects={project.project_id: project.root for project in config.projects},
+                    signer=signer,
+                    signer_identity=config.signer_identity,
+                    instruction_environment=shared_instruction_service(),
+                    authorization_provider=(
+                        lambda project_id, effective_at: copilot_connection.authorization(
+                            project_id, effective_at=effective_at
+                        )
+                    ),
+                    projection_provider=copilot_projection_provider,
+                    receipt_path=(
+                        config.state_root / "copilot-delivery" / "delivery-receipts.jsonl"
+                    ),
+                    clock=_now,
+                )
+                copilot_runtime.prepare_all()
+                copilot_hook_handler = CopilotHookHandler(copilot_runtime)
+                copilot_projection_refresher = copilot_runtime.prepare_all
+        except (OSError, ValueError):
+            copilot_hook_handler = None
+            copilot_projection_refresher = None
+
     return EngineProtocolRouter(
         service,
         LocalProfilePortabilityService(config_path.expanduser().resolve()),
@@ -2662,6 +3015,9 @@ def build_router(
         claude_hook_handler=claude_hook_handler,
         claude_connection=claude_connection,
         claude_projection_refresher=claude_projection_refresher,
+        copilot_hook_handler=copilot_hook_handler,
+        copilot_connection=copilot_connection,
+        copilot_projection_refresher=copilot_projection_refresher,
         target_authorization=target_authorization,
         target_release_provider=target_release_provider,
         recovery_factory=_native_recovery_service,

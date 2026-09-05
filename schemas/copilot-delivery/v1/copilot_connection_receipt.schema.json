@@ -1,0 +1,566 @@
+{
+  "$defs": {
+    "ConsentReceipt": {
+      "additionalProperties": false,
+      "description": "Signed permission for a subject, exact selector, uses, scope, and time bounds.",
+      "properties": {
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "governance_type": {
+          "const": "consent_receipt",
+          "default": "consent_receipt",
+          "title": "Governance Type",
+          "type": "string"
+        },
+        "issued_at": {
+          "format": "date-time",
+          "title": "Issued At",
+          "type": "string"
+        },
+        "permitted_uses": {
+          "items": {
+            "$ref": "#/$defs/PermittedUse"
+          },
+          "minItems": 1,
+          "title": "Permitted Uses",
+          "type": "array"
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "receipt_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Receipt Id",
+          "type": "string"
+        },
+        "retention_until": {
+          "format": "date-time",
+          "title": "Retention Until",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "signature": {
+          "$ref": "#/$defs/SignatureEnvelope"
+        },
+        "source_selector": {
+          "$ref": "#/$defs/SourceSelector"
+        },
+        "subject_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Subject Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "receipt_id",
+        "subject_id",
+        "source_selector",
+        "scope",
+        "permitted_uses",
+        "issued_at",
+        "expires_at",
+        "retention_until",
+        "policy_version",
+        "signature"
+      ],
+      "title": "ConsentReceipt",
+      "type": "object"
+    },
+    "CopilotConnectionProjectV1": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "project_registration_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Project Registration Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "project_registration_digest"
+      ],
+      "title": "CopilotConnectionProjectV1",
+      "type": "object"
+    },
+    "CopilotHookFileChangeReceiptV1": {
+      "additionalProperties": false,
+      "description": "Signed receipt for the dedicated Copilot hook-file transition.",
+      "properties": {
+        "after_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "After Digest",
+          "type": "string"
+        },
+        "after_existed": {
+          "title": "After Existed",
+          "type": "boolean"
+        },
+        "applied_at": {
+          "format": "date-time",
+          "title": "Applied At",
+          "type": "string"
+        },
+        "backup_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Backup Digest",
+          "type": "string"
+        },
+        "before_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Before Digest",
+          "type": "string"
+        },
+        "before_existed": {
+          "title": "Before Existed",
+          "type": "boolean"
+        },
+        "helper_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Helper Digest",
+          "type": "string"
+        },
+        "hook_file_locator_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Hook File Locator Digest",
+          "type": "string"
+        },
+        "operation": {
+          "enum": [
+            "install",
+            "uninstall",
+            "rollback"
+          ],
+          "title": "Operation",
+          "type": "string"
+        },
+        "preview_token": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Preview Token",
+          "type": "string"
+        },
+        "raw_paths_exposed": {
+          "const": false,
+          "default": false,
+          "title": "Raw Paths Exposed",
+          "type": "boolean"
+        },
+        "receipt_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Receipt Id",
+          "type": "string"
+        },
+        "receipt_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Receipt Version",
+          "type": "string"
+        },
+        "rollback_available_until": {
+          "format": "date-time",
+          "title": "Rollback Available Until",
+          "type": "string"
+        },
+        "rollback_of_receipt_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rollback Of Receipt Id"
+        },
+        "signature": {
+          "$ref": "#/$defs/SignatureEnvelope"
+        }
+      },
+      "required": [
+        "receipt_id",
+        "preview_token",
+        "operation",
+        "before_digest",
+        "after_digest",
+        "before_existed",
+        "after_existed",
+        "helper_digest",
+        "hook_file_locator_digest",
+        "backup_digest",
+        "applied_at",
+        "rollback_available_until",
+        "signature"
+      ],
+      "title": "CopilotHookFileChangeReceiptV1",
+      "type": "object"
+    },
+    "PermittedUse": {
+      "enum": [
+        "construction",
+        "development_evaluation",
+        "promotion",
+        "target_delivery",
+        "benchmark",
+        "audit"
+      ],
+      "title": "PermittedUse",
+      "type": "string"
+    },
+    "Scope": {
+      "additionalProperties": false,
+      "description": "Machine-comparable applicability bounds.\n\nEmpty optional dimensions mean unconstrained. Subjects are never unconstrained in this\nsingle-user prototype. A narrower scope may restrict a dimension, add exclusions or\nactivation conditions, and shrink the validity window.",
+      "properties": {
+        "activation_conditions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Activation Conditions",
+          "type": "array"
+        },
+        "environment_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Environment Ids",
+          "type": "array"
+        },
+        "exclusions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Exclusions",
+          "type": "array"
+        },
+        "project_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Project Ids",
+          "type": "array"
+        },
+        "repository_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Repository Ids",
+          "type": "array"
+        },
+        "subject_ids": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Subject Ids",
+          "type": "array"
+        },
+        "target_families": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Target Families",
+          "type": "array"
+        },
+        "task_classes": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Task Classes",
+          "type": "array"
+        },
+        "valid_from": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid From"
+        },
+        "valid_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid Until"
+        },
+        "workspace_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Workspace Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "subject_ids"
+      ],
+      "title": "Scope",
+      "type": "object"
+    },
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    },
+    "SourceSelector": {
+      "additionalProperties": false,
+      "description": "Explicit bounded source selection; content never widens this selector.",
+      "properties": {
+        "selection_method": {
+          "enum": [
+            "synthetic_fixture",
+            "explicit_task_ids",
+            "registered_projects_prospective"
+          ],
+          "title": "Selection Method",
+          "type": "string"
+        },
+        "source_ids": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "source_system": {
+          "enum": [
+            "synthetic_fixture",
+            "codex_app_server",
+            "local_interaction_runtime",
+            "claude_code_hook",
+            "copilot_cli_hook"
+          ],
+          "title": "Source System",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_system",
+        "selection_method",
+        "source_ids"
+      ],
+      "title": "SourceSelector",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Signed connection state binding projects, consent, helper, and hook file.",
+  "properties": {
+    "consent": {
+      "$ref": "#/$defs/ConsentReceipt"
+    },
+    "delivery_enabled": {
+      "title": "Delivery Enabled",
+      "type": "boolean"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "hook_file_receipt": {
+      "$ref": "#/$defs/CopilotHookFileChangeReceiptV1"
+    },
+    "learning_enabled": {
+      "const": false,
+      "default": false,
+      "title": "Learning Enabled",
+      "type": "boolean"
+    },
+    "occurred_at": {
+      "format": "date-time",
+      "title": "Occurred At",
+      "type": "string"
+    },
+    "operation": {
+      "enum": [
+        "connect",
+        "disconnect"
+      ],
+      "title": "Operation",
+      "type": "string"
+    },
+    "previous_connection_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Previous Connection Digest"
+    },
+    "projects": {
+      "items": {
+        "$ref": "#/$defs/CopilotConnectionProjectV1"
+      },
+      "title": "Projects",
+      "type": "array"
+    },
+    "receipt_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "receipt_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Receipt Version",
+      "type": "string"
+    },
+    "signature": {
+      "$ref": "#/$defs/SignatureEnvelope"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "operation",
+    "subject_id",
+    "projects",
+    "consent",
+    "hook_file_receipt",
+    "delivery_enabled",
+    "occurred_at",
+    "expires_at",
+    "signature"
+  ],
+  "title": "CopilotConnectionReceiptV1",
+  "type": "object"
+}
