@@ -17,6 +17,7 @@ import {
   Play,
   Plus,
   RotateCcw,
+  Share2,
   ShieldCheck,
   Sparkles,
   Sun,
@@ -67,6 +68,7 @@ import type {
   WorkspaceScope,
 } from "../types";
 import { ProfilePortabilityDialog } from "./ProfilePortabilityDialog";
+import { ShareablePackageDialog } from "./ShareablePackageDialog";
 import {
   Button,
   Divider,
@@ -517,6 +519,7 @@ export function CorePage({
   const [portabilityMode, setPortabilityMode] = useState<
     "export" | "import" | null
   >(null);
+  const [shareablePackageOpen, setShareablePackageOpen] = useState(false);
   const workspaceChoices = availableWorkspaces ?? [];
   const appliesToProject = (item: CoreItem, project: ProjectName) =>
     item.isGlobal === true ||
@@ -591,6 +594,14 @@ export function CorePage({
               type="button"
             >
               <Upload aria-hidden="true" size={14} /> Import
+            </button>
+            <button
+              disabled={nativeRuntime && !governedMutationsAvailable}
+              onClick={() => setShareablePackageOpen(true)}
+              title={governedMutationUnavailableReason ?? undefined}
+              type="button"
+            >
+              <Share2 aria-hidden="true" size={14} /> Share pack
             </button>
           </div>
           <div className="core-current-project">
@@ -747,6 +758,18 @@ export function CorePage({
           onClose={() => setPortabilityMode(null)}
           onComplete={(message) => {
             setPortabilityMode(null);
+            onNotice?.(message);
+          }}
+          snapshotDigest={snapshotDigest}
+        />
+      ) : null}
+      {shareablePackageOpen ? (
+        <ShareablePackageDialog
+          intent="export-behaviors"
+          nativeRuntime={nativeRuntime}
+          onClose={() => setShareablePackageOpen(false)}
+          onComplete={(message) => {
+            setShareablePackageOpen(false);
             onNotice?.(message);
           }}
           snapshotDigest={snapshotDigest}
@@ -1294,6 +1317,10 @@ export function ModesPage({
   instructionEnvironments?: EngineInstructionEnvironmentSummary[];
 }) {
   const [selected, setSelected] = useState<CapabilityModeSummary | null>(null);
+  const [packageAction, setPackageAction] = useState<{
+    intent: "export-mode" | "import";
+    mode?: CapabilityModeSummary;
+  } | null>(null);
   return (
     <div className="page folio-page modes-page">
       <header className="modes-heading">
@@ -1305,7 +1332,16 @@ export function ModesPage({
             Core stays yours and stays unchanged.
           </p>
         </div>
-        <Compass aria-hidden="true" size={30} strokeWidth={1.25} />
+        <div className="modes-heading__actions">
+          <button
+            disabled={!nativeRuntime || !snapshotDigest}
+            onClick={() => setPackageAction({ intent: "import" })}
+            type="button"
+          >
+            <Upload aria-hidden="true" size={14} /> Import package
+          </button>
+          <Compass aria-hidden="true" size={30} strokeWidth={1.25} />
+        </div>
       </header>
       <section className="modes-principle">
         <span>Core</span>
@@ -1373,11 +1409,28 @@ export function ModesPage({
           nativeRuntime={nativeRuntime}
           onClose={() => setSelected(null)}
           onComplete={onTaskComplete}
+          onExport={() => {
+            setPackageAction({ intent: "export-mode", mode: selected });
+            setSelected(null);
+          }}
           projects={modeProjects}
           runnerReady={runnerReady}
           runnerUnavailableReason={runnerUnavailableReason}
           snapshotDigest={snapshotDigest}
           instructionEnvironments={instructionEnvironments}
+        />
+      ) : null}
+      {packageAction ? (
+        <ShareablePackageDialog
+          intent={packageAction.intent}
+          mode={packageAction.mode}
+          nativeRuntime={nativeRuntime}
+          onClose={() => setPackageAction(null)}
+          onComplete={(message) => {
+            setPackageAction(null);
+            void onTaskComplete(message, null);
+          }}
+          snapshotDigest={snapshotDigest}
         />
       ) : null}
     </div>
@@ -1389,6 +1442,7 @@ function ModeDetailsDialog({
   nativeRuntime,
   onClose,
   onComplete,
+  onExport,
   projects: modeProjects,
   runnerReady,
   runnerUnavailableReason,
@@ -1402,6 +1456,7 @@ function ModeDetailsDialog({
     message: string,
     result: EngineTaskResult | null,
   ) => void | Promise<void>;
+  onExport: () => void;
   projects: Array<{ id: string; label: string }>;
   runnerReady: boolean;
   runnerUnavailableReason: string | null;
@@ -1594,6 +1649,9 @@ function ModeDetailsDialog({
           <div className="core-dialog__actions">
             <Button onClick={onClose} tone="quiet">
               Close
+            </Button>
+            <Button disabled={!nativeRuntime} onClick={onExport} tone="quiet">
+              <Share2 aria-hidden="true" size={14} /> Export package
             </Button>
             <Button disabled={!canRun} onClick={startTask} tone="primary">
               {busy

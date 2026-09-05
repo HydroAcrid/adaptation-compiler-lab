@@ -1,6 +1,23 @@
 # Implementation Status
 
-Last updated: 2026-08-28
+Last updated: 2026-09-05
+
+## Shareable Modes and behavior packs
+
+Temper now has a separate signed `.temper-pack` boundary for raw-free behavior packs, capability
+Modes, and owner-bound personal overlays. It does not reuse the encrypted same-owner
+`.temper-profile` recovery format. The engine verifies the publisher signature and fingerprint,
+license, version, size, declared safety properties, private-path/secret/transcript/executable
+content exclusions, source-task-like identifiers, duplicate coverage, conflicts, capability
+requests, evaluation status, and local scope-mapping needs.
+
+Tauri owns open/save dialogs, so private paths never enter renderer state. React shows the exact
+raw-free package preview. Import is idempotent, downgrade-protected, locally signed, and persists
+only `staged_inactive_for_review`; it grants no authority and activates nothing. Built-in Modes and
+approved Core behaviors can be exported. A personal-overlay type and signer exist, but no overlay
+editor is exposed. Imported items are not yet connected to the ordinary governed suggestion queue,
+so the recipient-side approval/promotion loop remains an explicit product gap rather than a hidden
+activation shortcut. See [`TEMPER_SHAREABLE_PACKAGES.md`](TEMPER_SHAREABLE_PACKAGES.md).
 
 ## Native instruction environment interoperability
 

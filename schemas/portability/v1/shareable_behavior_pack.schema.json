@@ -1,0 +1,377 @@
+{
+  "$defs": {
+    "ArtifactKind": {
+      "enum": [
+        "memory",
+        "preference",
+        "example",
+        "procedure",
+        "prompt_rule",
+        "skill",
+        "tool_recommendation"
+      ],
+      "title": "ArtifactKind",
+      "type": "string"
+    },
+    "BehavioralContract": {
+      "additionalProperties": false,
+      "properties": {
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "non_goals": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Non Goals",
+          "type": "array"
+        },
+        "required_behaviors": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Required Behaviors",
+          "type": "array"
+        },
+        "verification_requirements": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Verification Requirements",
+          "type": "array"
+        }
+      },
+      "required": [
+        "intent",
+        "required_behaviors",
+        "verification_requirements"
+      ],
+      "title": "BehavioralContract",
+      "type": "object"
+    },
+    "PortableProfileScope": {
+      "additionalProperties": false,
+      "description": "Path-free applicability; recipient-local identifiers require explicit mapping.",
+      "properties": {
+        "activation_conditions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Activation Conditions",
+          "type": "array"
+        },
+        "environment_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Environment Ids",
+          "type": "array"
+        },
+        "exclusions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Exclusions",
+          "type": "array"
+        },
+        "project_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Project Ids",
+          "type": "array"
+        },
+        "scope_mapping_required": {
+          "default": false,
+          "title": "Scope Mapping Required",
+          "type": "boolean"
+        },
+        "target_families": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Target Families",
+          "type": "array"
+        },
+        "task_classes": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Task Classes",
+          "type": "array"
+        }
+      },
+      "title": "PortableProfileScope",
+      "type": "object"
+    },
+    "ShareableBehaviorClauseV1": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_kind": {
+          "$ref": "#/$defs/ArtifactKind"
+        },
+        "behavioral_contract": {
+          "$ref": "#/$defs/BehavioralContract"
+        },
+        "claim_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Claim Key",
+          "type": "string"
+        },
+        "clause_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Clause Id",
+          "type": "string"
+        },
+        "grants_user_authority": {
+          "const": false,
+          "default": false,
+          "title": "Grants User Authority",
+          "type": "boolean"
+        },
+        "requested_scope": {
+          "$ref": "#/$defs/PortableProfileScope"
+        },
+        "review_required_on_import": {
+          "const": true,
+          "default": true,
+          "title": "Review Required On Import",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "clause_id",
+        "claim_key",
+        "artifact_kind",
+        "behavioral_contract",
+        "requested_scope"
+      ],
+      "title": "ShareableBehaviorClauseV1",
+      "type": "object"
+    },
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "auto_activates_on_import": {
+      "const": false,
+      "default": false,
+      "title": "Auto Activates On Import",
+      "type": "boolean"
+    },
+    "clauses": {
+      "items": {
+        "$ref": "#/$defs/ShareableBehaviorClauseV1"
+      },
+      "minItems": 1,
+      "title": "Clauses",
+      "type": "array"
+    },
+    "contains_credentials": {
+      "const": false,
+      "default": false,
+      "title": "Contains Credentials",
+      "type": "boolean"
+    },
+    "contains_executable_content": {
+      "const": false,
+      "default": false,
+      "title": "Contains Executable Content",
+      "type": "boolean"
+    },
+    "contains_hooks_or_dependencies": {
+      "const": false,
+      "default": false,
+      "title": "Contains Hooks Or Dependencies",
+      "type": "boolean"
+    },
+    "contains_private_paths": {
+      "const": false,
+      "default": false,
+      "title": "Contains Private Paths",
+      "type": "boolean"
+    },
+    "contains_raw_conversations": {
+      "const": false,
+      "default": false,
+      "title": "Contains Raw Conversations",
+      "type": "boolean"
+    },
+    "contains_source_task_ids": {
+      "const": false,
+      "default": false,
+      "title": "Contains Source Task Ids",
+      "type": "boolean"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "display_name": {
+      "minLength": 1,
+      "title": "Display Name",
+      "type": "string"
+    },
+    "grants_user_authority": {
+      "const": false,
+      "default": false,
+      "title": "Grants User Authority",
+      "type": "boolean"
+    },
+    "package_format": {
+      "const": "temper-shareable-behavior-pack/v1",
+      "default": "temper-shareable-behavior-pack/v1",
+      "title": "Package Format",
+      "type": "string"
+    },
+    "package_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Package Id",
+      "type": "string"
+    },
+    "package_type": {
+      "const": "behavior_pack",
+      "default": "behavior_pack",
+      "title": "Package Type",
+      "type": "string"
+    },
+    "publisher_identity_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Publisher Identity Id",
+      "type": "string"
+    },
+    "publisher_key_fingerprint": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Publisher Key Fingerprint",
+      "type": "string"
+    },
+    "publisher_name": {
+      "minLength": 1,
+      "title": "Publisher Name",
+      "type": "string"
+    },
+    "publisher_public_key_base64": {
+      "minLength": 1,
+      "title": "Publisher Public Key Base64",
+      "type": "string"
+    },
+    "release_version": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+      "title": "Release Version",
+      "type": "string"
+    },
+    "signature": {
+      "$ref": "#/$defs/SignatureEnvelope"
+    },
+    "source_license": {
+      "minLength": 1,
+      "title": "Source License",
+      "type": "string"
+    }
+  },
+  "required": [
+    "package_id",
+    "release_version",
+    "display_name",
+    "publisher_name",
+    "publisher_identity_id",
+    "publisher_public_key_base64",
+    "publisher_key_fingerprint",
+    "source_license",
+    "created_at",
+    "signature",
+    "clauses"
+  ],
+  "title": "ShareableBehaviorPackV1",
+  "type": "object"
+}

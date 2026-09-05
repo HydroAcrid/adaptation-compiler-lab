@@ -1,6 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
 
-import type { CapabilityModeSummary, PortableProfilePreview } from "./types";
+import type {
+  CapabilityModeSummary,
+  PortableProfilePreview,
+  ShareablePackagePreview,
+} from "./types";
 
 export const ENGINE_PROTOCOL_VERSION = "temper-engine-protocol/v1" as const;
 
@@ -1085,6 +1089,76 @@ export async function stageProfileImport(
       importToken: preview.import_token,
       packageDigest: preview.package_digest,
       passphrase,
+    }),
+  );
+}
+
+export interface PackageExportPreview extends ShareablePackagePreview {
+  export_token: string;
+}
+
+export interface PackageImportPreview extends ShareablePackagePreview {
+  import_token: string;
+}
+
+export async function loadPackageExportPreview(
+  packageType: "behavior_pack" | "capability_mode",
+  modeId?: string,
+): Promise<PackageExportPreview> {
+  return assertSuccessful(
+    await invoke<EngineResponse<PackageExportPreview>>(
+      "package_export_preview",
+      { modeId: modeId ?? null, packageType },
+    ),
+  );
+}
+
+export async function exportPackage(
+  preview: PackageExportPreview,
+  suggestedName: string,
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<{
+  status: "exported";
+  package_digest: string;
+  file_name: string;
+  raw_payloads_exposed: false;
+}> {
+  return assertSuccessful(
+    await invoke("package_export", {
+      expectedSnapshotDigest: snapshotDigest,
+      exportToken: preview.export_token,
+      idempotencyKey,
+      suggestedName,
+    }),
+  );
+}
+
+export async function loadPackageImportPreview(): Promise<PackageImportPreview> {
+  return assertSuccessful(
+    await invoke<EngineResponse<PackageImportPreview>>(
+      "package_import_preview",
+    ),
+  );
+}
+
+export async function stagePackageImport(
+  preview: PackageImportPreview,
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<{
+  status: "staged_inactive_for_review";
+  receipt_id: string;
+  item_count: number;
+  activates_artifacts: false;
+  raw_payloads_exposed: false;
+}> {
+  return assertSuccessful(
+    await invoke("package_import_stage", {
+      expectedSnapshotDigest: snapshotDigest,
+      idempotencyKey,
+      importToken: preview.import_token,
+      packageDigest: preview.package_digest,
     }),
   );
 }
