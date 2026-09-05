@@ -4,6 +4,7 @@ import io
 import json
 import subprocess
 import sys
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
@@ -87,6 +88,57 @@ def test_snapshot_fails_closed_before_local_configuration() -> None:
     assert response.ok is False
     assert response.error is not None
     assert response.error.code == "not_configured"
+
+
+def test_claude_hook_protocol_returns_only_allowlisted_handler_output() -> None:
+    seen: list[Mapping[str, Any]] = []
+
+    def handler(payload: Mapping[str, Any]) -> Mapping[str, Any]:
+        seen.append(payload)
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": "UserPromptSubmit",
+                "additionalContext": "Use the approved project projection.",
+            }
+        }
+
+    request = EngineRequest(
+        protocol_version=PROTOCOL_VERSION,
+        request_id="hook-request",
+        method="claude.hook.handle",
+        params={"payload": {"hook_event_name": "UserPromptSubmit", "prompt": "Hello"}},
+    )
+    response = EngineProtocolRouter(None, claude_hook_handler=handler).handle(request)
+
+    assert response.ok is True
+    assert seen == [{"hook_event_name": "UserPromptSubmit", "prompt": "Hello"}]
+    assert response.result == {
+        "available": True,
+        "output": {
+            "hookSpecificOutput": {
+                "hookEventName": "UserPromptSubmit",
+                "additionalContext": "Use the approved project projection.",
+            }
+        },
+        "raw_payloads_exposed": False,
+    }
+
+
+def test_claude_hook_protocol_is_silent_when_no_runtime_handler_is_configured() -> None:
+    request = EngineRequest(
+        protocol_version=PROTOCOL_VERSION,
+        request_id="hook-request",
+        method="claude.hook.handle",
+        params={"payload": {"hook_event_name": "SessionEnd", "reason": "other"}},
+    )
+    response = EngineProtocolRouter(None).handle(request)
+
+    assert response.ok is True
+    assert response.result == {
+        "available": False,
+        "output": None,
+        "raw_payloads_exposed": False,
+    }
 
 
 class FakeSetupService:

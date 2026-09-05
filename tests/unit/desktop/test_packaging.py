@@ -54,8 +54,39 @@ def test_native_builder_produces_target_suffixed_tauri_sidecar() -> None:
 
 def test_windows_release_application_uses_the_gui_subsystem() -> None:
     entrypoint = (ROOT / "desktop_ui" / "src-tauri" / "src" / "main.rs").read_text(encoding="utf-8")
+    hook_entrypoint = (ROOT / "desktop_ui" / "hook-helper" / "src" / "main.rs").read_text(
+        encoding="utf-8"
+    )
 
     assert '#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]' in entrypoint
+    assert '#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]' in hook_entrypoint
+
+
+def test_native_builder_stages_a_locked_target_suffixed_hook_helper() -> None:
+    module = _build_module()
+    command = module.hook_build_command(ROOT)
+    path = module.hook_helper_path(
+        ROOT,
+        platform_name="win32",
+        machine_name="AMD64",
+    )
+
+    assert command[:4] == ["cargo", "build", "--locked", "--release"]
+    assert command[command.index("--bin") + 1] == "temper-hook"
+    assert "--features" not in command
+    assert Path(command[-1]).as_posix().endswith("desktop_ui/hook-helper/Cargo.toml")
+    assert path.name == "temper-hook-x86_64-pc-windows-msvc.exe"
+
+
+def test_hook_helper_is_one_external_binary_not_a_second_tauri_package_binary() -> None:
+    tauri_config = json.loads(
+        (ROOT / "desktop_ui" / "src-tauri" / "tauri.conf.json").read_text(encoding="utf-8")
+    )
+    tauri_manifest = (ROOT / "desktop_ui" / "src-tauri" / "Cargo.toml").read_text(encoding="utf-8")
+
+    assert tauri_config["bundle"]["externalBin"].count("binaries/temper-hook") == 1
+    assert 'name = "temper-hook"' not in tauri_manifest
+    assert not (ROOT / "desktop_ui" / "src-tauri" / "src" / "bin" / "temper-hook.rs").exists()
 
 
 def test_native_builder_refuses_unsupported_cross_platform_output() -> None:
@@ -104,6 +135,26 @@ def test_macos_architecture_check_requires_arm64_only(
         module.verify_macos_arm64(binary)
 
 
+def test_windows_hook_admission_requires_x64_gui_subsystem(tmp_path: Path) -> None:
+    module = _build_module()
+    binary = tmp_path / "temper-hook.exe"
+    encoded = bytearray(512)
+    encoded[:2] = b"MZ"
+    encoded[0x3C:0x40] = (0x80).to_bytes(4, "little")
+    encoded[0x80:0x84] = b"PE\0\0"
+    encoded[0x84:0x86] = (0x8664).to_bytes(2, "little")
+    encoded[0x98:0x9A] = (0x20B).to_bytes(2, "little")
+    encoded[0xDC:0xDE] = (2).to_bytes(2, "little")
+    binary.write_bytes(encoded)
+
+    module.verify_windows_gui_binary(binary)
+
+    encoded[0xDC:0xDE] = (3).to_bytes(2, "little")
+    binary.write_bytes(encoded)
+    with pytest.raises(ValueError, match="GUI-subsystem"):
+        module.verify_windows_gui_binary(binary)
+
+
 def test_sidecar_manifest_binds_binary_version_schema_and_target(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -136,6 +187,27 @@ def test_sidecar_manifest_binds_binary_version_schema_and_target(
     assert manifest["binary_size_bytes"] == len(b"synthetic sidecar")
     assert len(manifest["binary_sha256"]) == 64
     assert ".env" not in manifest_path.read_text(encoding="utf-8")
+
+
+def test_hook_manifest_binds_protocol_binary_and_target(tmp_path: Path) -> None:
+    module = _build_module()
+    binary_root = tmp_path / "desktop_ui" / "src-tauri" / "binaries"
+    binary_root.mkdir(parents=True)
+    binary = binary_root / "temper-hook-x86_64-pc-windows-msvc.exe"
+    binary.write_bytes(b"synthetic hook helper")
+
+    manifest_path = module.write_hook_manifest(
+        tmp_path,
+        platform_name="win32",
+        machine_name="AMD64",
+    )
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    assert manifest["protocol_version"] == "temper-hook-ipc/v1"
+    assert manifest["target_triple"] == "x86_64-pc-windows-msvc"
+    assert manifest["binary_filename"] == binary.name
+    assert manifest["binary_size_bytes"] == len(b"synthetic hook helper")
+    assert manifest["binary_sha256"] == hashlib.sha256(binary.read_bytes()).hexdigest()
 
 
 def test_apple_manifest_binds_macos_minimum_and_arm64_target(

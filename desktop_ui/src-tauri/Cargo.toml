@@ -4,6 +4,7 @@ version = "0.3.0-alpha.2"
 description = "Temper governed learning desktop shell"
 edition = "2024"
 rust-version = "1.85"
+default-run = "temper-desktop"
 
 [lib]
 name = "temper_desktop_lib"
@@ -12,6 +13,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+sha2 = "0.10"
 tauri-build = { version = "=2.6.1", features = [] }
 
 [dependencies]
@@ -23,6 +25,7 @@ tauri-plugin-autostart = "2"
 tauri-plugin-notification = "2"
 rfd = { version = "0.15", default-features = false, features = ["xdg-portal", "async-std"] }
 uuid = { version = "1.18", features = ["v4"] }
+temper-hook-transport = { path = "../hook-helper", package = "temper-hook-helper" }
 
 [dev-dependencies]
 tempfile = "3.21"

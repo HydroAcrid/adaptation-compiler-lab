@@ -7,14 +7,16 @@ private alpha.
 
 1. Start from a clean native Windows checkout.
 2. Run `uv sync --locked --dev --group release`.
-3. Run `uv run python packaging/build_native.py`. This compiles the governed Python engine as the
-   target-suffixed Nuitka sidecar required by Tauri and writes a build manifest binding its binary
+3. Run `uv run python packaging/build_native.py`. This compiles the governed Python engine and the
+   no-console Rust hook helper as target-suffixed sidecars required by Tauri, then writes separate
+   build manifests binding their binary
    digest, engine version, target triple, and public schema digest. Before the manifest is written,
    the builder launches the compiled binary in an isolated, empty user profile and requires two
    exact protocol responses from the same process within 15 seconds: the unconfigured closed-world
    handshake and the first `setup.status` read. Provider credentials and product-runtime overrides
    are removed from the admission environment. A binary that merely compiles or starts but cannot
-   serve its first real product request is not admitted.
+   serve its first real product request is not admitted. The helper must be a native x64 Windows
+   GUI-subsystem binary and must exit successfully without output when Temper is unavailable.
 4. In `desktop_ui`, run `pnpm install --frozen-lockfile` followed by
    `pnpm tauri build --bundles nsis`.
 5. Exercise an internal unsigned development candidate with:
@@ -27,7 +29,7 @@ private alpha.
 
 The development policy exists only for local and ephemeral CI validation. An unsigned candidate is
 not an alpha release and must not be published or offered to a tester. The smoke requires the
-packaged uninstaller to remove the application and sidecar before its bounded temporary residue
+packaged uninstaller to remove the application, engine, and hook helper before its bounded temporary residue
 cleanup runs. A current-user install uses `%LOCALAPPDATA%\Programs\Temper`; the separate
 `%LOCALAPPDATA%\Temper` governed-data root is never an executable install destination and is not
 removed by uninstall.
@@ -55,10 +57,11 @@ generates a self-signed certificate to imitate this gate.
 
 ## macOS Apple Silicon
 
-The same sidecar builder produces the arm64-only `temper-engine-aarch64-apple-darwin`. Internal
+The same builder produces arm64-only `temper-engine-aarch64-apple-darwin` and
+`temper-hook-aarch64-apple-darwin` binaries. Internal
 candidate builds run only on a native `macos-15` Apple Silicon runner, set macOS 13 as the minimum,
 and produce both `Temper.app` and a DMG. The separate clean-runner job verifies both Mach-O
-architectures, the exact sidecar digest and unconfigured handshake, bundle metadata, DMG contents,
+architectures, both exact sidecar digests, the unconfigured engine handshake, bundle metadata, DMG contents,
 a visible first-run window, clean teardown, and one unique Keychain round trip that is deleted.
 
 The clean-runner package command defaults to the trusted policy:
@@ -68,6 +71,7 @@ uv run python packaging/macos/smoke_package.py \
   --app /path/to/Temper.app \
   --dmg /path/to/Temper.dmg \
   --manifest /path/to/temper-engine-aarch64-apple-darwin.manifest.json \
+  --hook-manifest /path/to/temper-hook-aarch64-apple-darwin.manifest.json \
   --expected-version 0.3.0a2
 ```
 
