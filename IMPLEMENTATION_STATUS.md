@@ -1300,3 +1300,10 @@ also ran in a dependency-free Python environment and could not import Pydantic. 
 outputs and encrypted trace references are preserved, no judge or unblinding ran, and no Mode was
 tuned. The failed instrument provides no effectiveness evidence. A separately frozen repair must
 pass live target and scorer smokes before a new grid can execute.
+
+That repair is now frozen as instrument v2 without changing Mode or task content. It enables the
+stable Codex execution host only inside the existing outer sandbox, fails before inference unless
+the external scorer has the exact Python/Pydantic lock, and binds its complete runner/scorer/helper
+source bundles. A separate deliberately broken smoke fixture must be edited, visibly tested,
+hidden-scored, and destroyed successfully before the v2 grid is admitted. The no-inference target
+and scorer preflight passes; the live smoke has not yet run.

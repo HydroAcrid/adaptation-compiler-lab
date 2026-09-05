@@ -584,7 +584,8 @@ after valid trials.
   three-Mode, 15-task, 30-cell same-agent comparison with hidden capability-free scoring and a
   verified saved-ChatGPT Luna runtime. Its v1 target grid is preserved as an unjudged instrument
   failure because the target execution host was disabled and the hidden scorer lacked its
-  dependencies; a separately smoke-gated repair is required before effectiveness can be assessed.
+  dependencies. Instrument v2 repairs only those mechanics and cannot start its grid until one
+  separate live edit/test/hidden-score smoke passes.
 - [`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md): docs-only portable
   specialty preset composition and the proposed Frontend Studio demonstration.
 - [`development_benchmark_compact_projection`](development_benchmark_compact_projection): frozen

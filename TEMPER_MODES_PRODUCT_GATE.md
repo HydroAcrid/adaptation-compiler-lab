@@ -72,6 +72,15 @@ without Pydantic, preventing every hidden observation. The immutable report is p
 `development_benchmark_mode_evaluation/results-v1/` and no blind judge or unblinding followed.
 These sessions provide no Mode-effectiveness evidence.
 
+The v2 repair is now frozen separately. It changes no Mode, task, target model, reasoning level,
+or passing rule. It enables Codex's stable execution host only inside the existing minimal outer
+bubblewrap namespace and requires an external Python 3.12.13 scorer environment with the exact
+locked Pydantic 2.13.4 dependency before inference. Its runner digest binds the shared runner,
+coordinator, repair protocol, and sandbox helpers; its scorer digest binds the observer, bounded
+scorer, validation models, and dependency lock. A deliberately broken, non-grid fixture must first
+produce a real source edit, five passing visible tests, three passing hidden checks, and a complete
+workspace teardown. The 30-cell v2 runner refuses to start without that exact receipt.
+
 ## Passing rule
 
 A Mode may move from `experimental` to `product_evaluated` only when:
@@ -90,8 +99,7 @@ gate and does not establish cross-agent transfer.
 
 ## Remaining product work
 
-- Freeze a versioned instrument repair without changing Mode content, then require one successful
-  live edit-and-test target smoke and one independent scorer smoke before another grid.
+- Execute and preserve the frozen v2 live edit-and-test plus hidden-scorer smoke.
 - Execute the repaired 30-cell comparison and three blind reviews without tuning after its first
   target cell.
 - Record immutable trial and blinded-review receipts.

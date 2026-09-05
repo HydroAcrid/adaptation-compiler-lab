@@ -1,0 +1,14 @@
+{
+  "external_validation_accessed": false,
+  "mode_content_changed": false,
+  "provider_billed_calls": 0,
+  "repair_of_report_digest": "sha256:39126997857d169ae7c8f71b8c27663c6ecbc5f4ba577b72010a48e84c5d2914",
+  "repair_version": "2.0.0",
+  "scorer_lock_digest": "sha256:25de9bb11935a92e35096766ff52db0712820f94c3e1693ea7684e0bbf245f0b",
+  "scorer_pydantic_version": "2.13.4",
+  "scorer_python_version": "3.12.13",
+  "scorer_smoke_required": true,
+  "target_code_mode_host": "enabled_inside_outer_bubblewrap",
+  "target_smoke_required": true,
+  "task_content_changed": false
+}
