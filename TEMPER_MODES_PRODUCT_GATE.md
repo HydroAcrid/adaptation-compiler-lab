@@ -94,6 +94,13 @@ separately versioned live smoke pass. The smoke produced a real bounded edit, pa
 and three hidden checks, deactivated exactly, and destroyed its workspace. This admits the frozen
 v3 comparison without providing Mode-effectiveness evidence by itself.
 
+All 30 v3 target cells then completed with valid integrity, exact activation/deactivation, and
+complete workspace teardown. Twenty-two were behavior-conformant; eight task failures remain
+unchanged. The first blind judge was rejected before receipt because the historical trace parser
+classified Codex `0.153.1`'s benign “Code Mode disabled” startup diagnostic as tool use. No condition
+was revealed and the remaining judges did not run. The blind target grid is preserved; only the
+judge adapter may be repaired.
+
 ## Passing rule
 
 A Mode may move from `experimental` to `product_evaluated` only when:

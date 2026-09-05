@@ -1329,3 +1329,11 @@ conformant, deactivation was exact, and the disposable workspace was destroyed. 
 ChatGPT authentication, made zero provider-billed calls, and did not access the deferred external
 study. The frozen 30-cell comparison is now mechanically admissible; the smoke is not itself Mode-
 effectiveness evidence.
+
+The admitted v3 target comparison has now completed all 30 frozen Luna/medium cells. All records
+are integrity-valid with exact activation, deactivation, teardown, and zero provider-billed calls;
+22 are behavior-conformant and eight preserve ordinary task failures. The blind report remains
+unblinded. The first condition-blind judge was rejected before receipt because the historical
+tool-use parser mistook Codex `0.153.1`'s deterministic “Code Mode disabled” startup diagnostic for
+a tool item. The other two judges did not run. Preserve the target grid and repair only the blind-
+judge trace adapter before scoring or unblinding.
