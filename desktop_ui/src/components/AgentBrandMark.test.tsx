@@ -7,6 +7,7 @@ describe("AgentBrandMark", () => {
   it.each([
     ["codex", "openai"],
     ["claude", "claude"],
+    ["copilot", "github"],
   ] as const)("renders the %s provider mark decoratively", (agent, brand) => {
     const { container } = render(<AgentBrandMark agent={agent} />);
     const mark = container.querySelector("svg");

@@ -30,7 +30,7 @@ Temper self-hosts both fonts at build time. No runtime font request is made.
 
 ## Agent connection marks
 
-Temper bundles provider marks only beside the corresponding Codex and Claude Code connection
+Temper bundles provider marks only beside the corresponding Codex, Claude Code, and GitHub Copilot connection
 status. They are descriptive identifiers, not Temper branding and not an endorsement or
 partnership claim. The paths are bundled in `src/components/AgentBrandMark.tsx`; Temper makes no
 runtime request for them.
@@ -48,6 +48,12 @@ runtime request for them.
   [press kit](https://www.anthropic.com/press-kit). Temper removes only the SVG wrapper and title,
   keeps the vector path unchanged, and renders the mark in Claude's Crail color beside “Claude
   Code.”
+- **GitHub mark** — sourced from Simple Icons 16.28.0
+  ([upstream SVG](https://cdn.jsdelivr.net/npm/simple-icons@16.28.0/icons/github.svg)); Simple
+  Icons is distributed under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
+  GitHub retains trademark rights under its
+  [logo guidelines](https://github.com/logos). Temper removes only the SVG wrapper and title,
+  keeps the vector path unchanged, and renders the monochrome mark beside “GitHub Copilot.”
 
 ## Temper wind mark
 

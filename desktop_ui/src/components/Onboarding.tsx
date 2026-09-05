@@ -54,6 +54,9 @@ export function Onboarding({
   const claude = setupSnapshot?.connections.find(
     (connection) => connection.agent_id === "claude",
   );
+  const copilot = setupSnapshot?.connections.find(
+    (connection) => connection.agent_id === "copilot",
+  );
   const codexReady =
     !nativeRuntime ||
     (codex?.authentication_state === "signed_in" &&
@@ -292,6 +295,20 @@ export function Onboarding({
                     : "Not installed"
                 }
               />
+              {copilot || nativeRuntime ? (
+                <SetupRow
+                  detail={
+                    copilot?.status_summary ??
+                    "Repository instructions can be inspected after setup"
+                  }
+                  label="GitHub Copilot"
+                  status={
+                    copilot?.installation_state === "installed"
+                      ? "Detected"
+                      : "CLI not installed"
+                  }
+                />
+              ) : null}
             </div>
           </OnboardingPanel>
         ) : null}

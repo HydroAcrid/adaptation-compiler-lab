@@ -75,8 +75,8 @@ class AgentConnectionInspector:
         )
         self._claude_pin_path = claude_pin_path or DEFAULT_RUNTIME_LOCK
 
-    def inspect(self) -> tuple[AgentConnectionV1, AgentConnectionV1]:
-        return self.inspect_codex(), self.inspect_claude()
+    def inspect(self) -> tuple[AgentConnectionV1, AgentConnectionV1, AgentConnectionV1]:
+        return self.inspect_codex(), self.inspect_claude(), self.inspect_copilot()
 
     def inspect_codex(self) -> AgentConnectionV1:
         executable = self._find_executable("codex")
@@ -185,6 +185,54 @@ class AgentConnectionInspector:
                 "Connecting is local and free; ordinary Claude Code use is billed by Anthropic."
             ),
             available_actions=("refresh", "connect") if ready else ("refresh",),
+        )
+
+    def inspect_copilot(self) -> AgentConnectionV1:
+        """Inspect the documented Copilot CLI only; IDE/cloud surfaces are file-based."""
+
+        executable = self._find_executable("copilot")
+        if executable is None:
+            return AgentConnectionV1(
+                agent_id="copilot",
+                display_name="GitHub Copilot",
+                installation_state="not_installed",
+                authentication_state="unknown",
+                conformance_state="not_applicable",
+                integration_state="unavailable",
+                status_summary="GitHub Copilot CLI is not installed. Temper does not install it.",
+                learning_capability=(
+                    "Supported repository instructions can still be inspected per project."
+                ),
+                delivery_capability=(
+                    "Other Copilot surfaces use confirmed repository-instruction previews only."
+                ),
+                cost_posture="Temper does not initiate or bill Copilot provider use.",
+            )
+        version = self._version(executable)
+        conformant = version is not None and "1.0.54" in version
+        return AgentConnectionV1(
+            agent_id="copilot",
+            display_name="GitHub Copilot",
+            installation_state="installed",
+            authentication_state="unknown",
+            conformance_state="compatible" if conformant else "update_required",
+            integration_state="available" if conformant else "unavailable",
+            version_label=version,
+            status_summary=(
+                "Compatible Copilot CLI found; direct Temper delivery is not connected yet."
+                if conformant
+                else "Temper needs an updated connector for this Copilot CLI version."
+            ),
+            learning_capability=(
+                "Repository instructions are understood; ordinary Copilot capture is not connected."
+            ),
+            delivery_capability=(
+                "Copilot CLI supports a local hook; other surfaces use confirmed file previews."
+                if conformant
+                else "Only existing repository instructions can be inspected."
+            ),
+            cost_posture="Connection work is local; Copilot usage follows the user's GitHub plan.",
+            available_actions=("refresh",),
         )
 
     def _claude_conformant(self, executable: Path) -> bool:

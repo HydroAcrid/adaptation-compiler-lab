@@ -938,6 +938,10 @@ strong {
   background: var(--accent-soft);
   color: #c15f3c;
 }
+.agent-logo--copilot {
+  background: #24292f;
+  color: #ffffff;
+}
 .connection-main {
   min-width: 0;
 }

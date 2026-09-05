@@ -90,8 +90,8 @@ export interface EngineHandshake {
 
 export interface EngineAgentConnection {
   connection_version: "1.1.0";
-  agent_id: "codex" | "claude";
-  display_name: "Codex" | "Claude Code";
+  agent_id: "codex" | "claude" | "copilot";
+  display_name: "Codex" | "Claude Code" | "GitHub Copilot";
   installation_state: "not_installed" | "installed";
   authentication_state: "unknown" | "signed_out" | "signed_in";
   conformance_state:
@@ -200,7 +200,7 @@ export interface EngineSetupSnapshot {
       | "unavailable";
     status: "not_created" | "ready" | "locked" | "unavailable";
   };
-  connections: [EngineAgentConnection, EngineAgentConnection];
+  connections: EngineAgentConnection[];
   existing_installation: {
     signer_fingerprint: string;
     project_count: number;

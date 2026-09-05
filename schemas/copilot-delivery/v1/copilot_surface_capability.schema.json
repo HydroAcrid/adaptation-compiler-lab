@@ -1,0 +1,104 @@
+{
+  "$defs": {
+    "CopilotDeliveryMechanism": {
+      "enum": [
+        "user_hook",
+        "repository_instruction_preview",
+        "observe_only"
+      ],
+      "title": "CopilotDeliveryMechanism",
+      "type": "string"
+    },
+    "CopilotSurface": {
+      "enum": [
+        "github-chat",
+        "github-cloud-agent",
+        "github-code-review",
+        "vscode-chat",
+        "visual-studio-chat",
+        "jetbrains-chat",
+        "eclipse-chat",
+        "xcode-chat",
+        "copilot-cli"
+      ],
+      "title": "CopilotSurface",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Current product posture for one documented Copilot surface.",
+  "properties": {
+    "agent_instructions": {
+      "title": "Agent Instructions",
+      "type": "boolean"
+    },
+    "capability_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Capability Version",
+      "type": "string"
+    },
+    "contract_revision": {
+      "const": "github-copilot-docs-2026-09-05",
+      "default": "github-copilot-docs-2026-09-05",
+      "title": "Contract Revision",
+      "type": "string"
+    },
+    "delivery_mechanism": {
+      "$ref": "#/$defs/CopilotDeliveryMechanism"
+    },
+    "direct_temper_delivery": {
+      "title": "Direct Temper Delivery",
+      "type": "boolean"
+    },
+    "local_command_hooks": {
+      "title": "Local Command Hooks",
+      "type": "boolean"
+    },
+    "path_specific_instructions": {
+      "title": "Path Specific Instructions",
+      "type": "boolean"
+    },
+    "personal_instructions": {
+      "title": "Personal Instructions",
+      "type": "boolean"
+    },
+    "provider_call_required_for_connection": {
+      "const": false,
+      "default": false,
+      "title": "Provider Call Required For Connection",
+      "type": "boolean"
+    },
+    "raw_payloads_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Payloads Exposed",
+      "type": "boolean"
+    },
+    "repository_wide_instructions": {
+      "title": "Repository Wide Instructions",
+      "type": "boolean"
+    },
+    "summary": {
+      "minLength": 1,
+      "title": "Summary",
+      "type": "string"
+    },
+    "surface": {
+      "$ref": "#/$defs/CopilotSurface"
+    }
+  },
+  "required": [
+    "surface",
+    "repository_wide_instructions",
+    "path_specific_instructions",
+    "agent_instructions",
+    "personal_instructions",
+    "local_command_hooks",
+    "direct_temper_delivery",
+    "delivery_mechanism",
+    "summary"
+  ],
+  "title": "CopilotSurfaceCapabilityV1",
+  "type": "object"
+}
