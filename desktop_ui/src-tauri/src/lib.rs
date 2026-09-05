@@ -8,8 +8,8 @@ use std::io::{self, BufRead, BufReader, Read, Write};
 use std::os::windows::process::CommandExt;
 use std::path::Path;
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
-use std::sync::Mutex;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
+use std::sync::{Mutex, TryLockError};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 use tauri::menu::{Menu, MenuItem};
@@ -20,10 +20,13 @@ use tauri_plugin_autostart::{MacosLauncher, ManagerExt as AutostartManagerExt};
 use tauri_plugin_notification::NotificationExt;
 use uuid::Uuid;
 
+use temper_hook_transport as hook_ipc;
+
 const PROTOCOL_VERSION: &str = "temper-engine-protocol/v1";
 const MAX_FRAME_BYTES: usize = 1_048_576;
 const ENGINE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(15);
 const ENGINE_ANALYSIS_TIMEOUT: Duration = Duration::from_secs(240);
+const ENGINE_HOOK_TIMEOUT: Duration = Duration::from_millis(100);
 const ENGINE_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -124,10 +127,10 @@ impl EngineProcess {
         stdin.write_all(b"\n").map_err(|_| unavailable())?;
         stdin.flush().map_err(|_| unavailable())?;
 
-        let timeout = if method == "instruction_environment.analyze" {
-            ENGINE_ANALYSIS_TIMEOUT
-        } else {
-            ENGINE_RESPONSE_TIMEOUT
+        let timeout = match method {
+            "instruction_environment.analyze" => ENGINE_ANALYSIS_TIMEOUT,
+            "claude.hook.handle" => ENGINE_HOOK_TIMEOUT,
+            _ => ENGINE_RESPONSE_TIMEOUT,
         };
         let line = receive_engine_frame(&self.responses, timeout)?;
         if line.is_empty() || line.len() > MAX_FRAME_BYTES {
@@ -326,6 +329,8 @@ struct EngineState(Mutex<Option<EngineProcess>>);
 
 struct PollScheduler(Mutex<Option<mpsc::Sender<()>>>);
 
+struct HookIpcState(Mutex<Option<hook_ipc::HookIpcServer>>);
+
 #[derive(Debug, PartialEq, Eq)]
 struct PollEligibility {
     background_enabled: bool,
@@ -357,6 +362,35 @@ fn call_engine(
         *guard = None;
     }
     response
+}
+
+fn call_running_engine(
+    state: &EngineState,
+    method: &str,
+    params: Value,
+) -> Result<EngineResponse, PublicError> {
+    let mut guard = match state.0.try_lock() {
+        Ok(value) => value,
+        Err(TryLockError::WouldBlock | TryLockError::Poisoned(_)) => return Err(unavailable()),
+    };
+    let Some(engine) = guard.as_mut() else {
+        return Err(unavailable());
+    };
+    let response = engine.request(method, params, None, None);
+    if response.is_err() {
+        *guard = None;
+    }
+    response
+}
+
+fn hook_output_from_response(response: EngineResponse) -> Option<Value> {
+    if !response.ok {
+        return None;
+    }
+    response
+        .result
+        .and_then(|value| value.get("output").cloned())
+        .filter(|value| !value.is_null())
 }
 
 fn poll_eligibility(response: &EngineResponse) -> Option<PollEligibility> {
@@ -521,6 +555,37 @@ fn stop_scheduler(app: &tauri::AppHandle) {
     }
 }
 
+fn stop_hook_server(app: &tauri::AppHandle) {
+    if let Some(state) = app.try_state::<HookIpcState>() {
+        if let Ok(mut server) = state.0.lock() {
+            server.take();
+        }
+    }
+}
+
+fn start_hook_server(app: &tauri::App) {
+    let Ok(descriptor) = hook_ipc::default_descriptor_path() else {
+        return;
+    };
+    let handle = app.handle().clone();
+    let Ok(server) = hook_ipc::HookIpcServer::start(descriptor, move |payload| {
+        let state = handle.state::<EngineState>();
+        call_running_engine(
+            state.inner(),
+            "claude.hook.handle",
+            json!({"payload": payload}),
+        )
+        .ok()
+        .and_then(hook_output_from_response)
+    }) else {
+        return;
+    };
+    let state = app.state::<HookIpcState>();
+    if let Ok(mut active) = state.0.lock() {
+        *active = Some(server);
+    }
+}
+
 fn install_tray_and_scheduler(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let open_item = MenuItem::with_id(app, "open", "Open Temper", true, None::<&str>)?;
     let learning_item = MenuItem::with_id(
@@ -548,6 +613,7 @@ fn install_tray_and_scheduler(app: &mut tauri::App) -> Result<(), Box<dyn std::e
             }
             "quit" => {
                 stop_scheduler(app);
+                stop_hook_server(app);
                 app.exit(0);
             }
             _ => {}
@@ -565,6 +631,7 @@ fn install_tray_and_scheduler(app: &mut tauri::App) -> Result<(), Box<dyn std::e
             }
         }
     });
+    start_hook_server(app);
     Ok(())
 }
 
@@ -1323,6 +1390,7 @@ pub fn run() {
         ))
         .plugin(tauri_plugin_notification::init())
         .manage(EngineState(Mutex::new(None)))
+        .manage(HookIpcState(Mutex::new(None)))
         .setup(install_tray_and_scheduler)
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
@@ -1593,6 +1661,39 @@ mod tests {
         assert!(!expired.consent_current);
         assert!(enabled.background_enabled && enabled.consent_current);
         assert!(!quiet.decision_notifications_enabled);
+    }
+
+    #[test]
+    fn hook_engine_response_exposes_only_exact_output() {
+        let output = json!({
+            "hookSpecificOutput": {
+                "hookEventName": "UserPromptSubmit",
+                "additionalContext": "Use the approved projection."
+            }
+        });
+        let response = EngineResponse {
+            protocol_version: PROTOCOL_VERSION.to_owned(),
+            request_id: "hook".to_owned(),
+            ok: true,
+            result: Some(json!({
+                "available": true,
+                "output": output,
+                "raw_payloads_exposed": false,
+            })),
+            error: None,
+            snapshot_digest: None,
+        };
+        assert_eq!(hook_output_from_response(response), Some(output));
+
+        let unavailable = EngineResponse {
+            protocol_version: PROTOCOL_VERSION.to_owned(),
+            request_id: "hook".to_owned(),
+            ok: true,
+            result: Some(json!({"available": false, "output": null})),
+            error: None,
+            snapshot_digest: None,
+        };
+        assert!(hook_output_from_response(unavailable).is_none());
     }
 
     #[test]

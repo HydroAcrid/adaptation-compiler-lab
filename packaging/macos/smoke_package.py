@@ -72,6 +72,7 @@ def _verify_signature(app: Path, dmg: Path, *, policy: SignaturePolicy) -> str:
         return "unsigned" if observed.returncode else "development-signed"
     _require_developer_id(app, deep=True)
     _require_developer_id(app / "Contents" / "MacOS" / "temper-engine")
+    _require_developer_id(app / "Contents" / "MacOS" / "temper-hook")
     _require_developer_id(dmg)
     _run(["/usr/sbin/spctl", "--assess", "--type", "execute", "--verbose=4", str(app)])
     _run(
@@ -204,6 +205,21 @@ def _verify_engine(
     return manifest
 
 
+def _verify_hook(sidecar: Path, manifest_path: Path) -> dict[str, object]:
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(manifest, dict):
+        raise ValueError("hook manifest must be an object")
+    actual_digest = hashlib.sha256(sidecar.read_bytes()).hexdigest()
+    if (
+        manifest.get("protocol_version") != "temper-hook-ipc/v1"
+        or manifest.get("target_triple") != "aarch64-apple-darwin"
+        or manifest.get("binary_sha256") != actual_digest
+        or manifest.get("minimum_system_version") != EXPECTED_MINIMUM_SYSTEM_VERSION
+    ):
+        raise ValueError("bundled hook helper does not match its exact Apple manifest")
+    return manifest
+
+
 def _verify_dmg(dmg: Path, mountpoint: Path) -> None:
     mounted = False
     mountpoint.mkdir(parents=True)
@@ -275,6 +291,7 @@ def run_smoke(
     app: Path,
     dmg: Path,
     manifest: Path,
+    hook_manifest: Path,
     expected_version: str,
     signature_policy: SignaturePolicy,
     window_probe: Path,
@@ -284,13 +301,17 @@ def run_smoke(
     app = app.expanduser().resolve(strict=True)
     dmg = dmg.expanduser().resolve(strict=True)
     manifest = manifest.expanduser().resolve(strict=True)
+    hook_manifest = hook_manifest.expanduser().resolve(strict=True)
     window_probe = window_probe.expanduser().resolve(strict=True)
     main_binary = app / "Contents" / "MacOS" / "Temper"
     sidecar = app / "Contents" / "MacOS" / "temper-engine"
+    hook_helper = app / "Contents" / "MacOS" / "temper-hook"
     _arm64_macho(main_binary)
     _arm64_macho(sidecar)
+    _arm64_macho(hook_helper)
     _verify_bundle_metadata(app)
     bound_manifest = _verify_engine(sidecar, manifest, expected_version=expected_version)
+    bound_hook_manifest = _verify_hook(hook_helper, hook_manifest)
     signature = _verify_signature(app, dmg, policy=signature_policy)
     with tempfile.TemporaryDirectory(prefix="temper-apple-smoke-") as value:
         scratch = Path(value).resolve()
@@ -301,6 +322,7 @@ def run_smoke(
         "architecture": "arm64",
         "app_version": expected_version,
         "engine_sha256": bound_manifest["binary_sha256"],
+        "hook_helper_sha256": bound_hook_manifest["binary_sha256"],
         "signature_policy": signature_policy,
         "signature_state": signature,
         "first_run_window_visible": True,
@@ -313,6 +335,7 @@ def main() -> int:
     parser.add_argument("--app", type=Path, required=True)
     parser.add_argument("--dmg", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--hook-manifest", type=Path, required=True)
     parser.add_argument("--expected-version", required=True)
     parser.add_argument(
         "--signature-policy",
@@ -330,6 +353,7 @@ def main() -> int:
             app=args.app,
             dmg=args.dmg,
             manifest=args.manifest,
+            hook_manifest=args.hook_manifest,
             expected_version=args.expected_version,
             signature_policy=args.signature_policy,
             window_probe=args.window_probe,

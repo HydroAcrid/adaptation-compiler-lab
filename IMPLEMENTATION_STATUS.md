@@ -2,6 +2,26 @@
 
 Last updated: 2026-09-05
 
+## Claude native hook transport
+
+The Rust `temper-hook` helper and Tauri private transport now complete the native bridge beneath
+the fixture-tested Claude broker. Windows uses a randomized owner-only named pipe; Unix uses an
+owner-only Unix socket plus peer-UID verification. A per-start 256-bit token, fixed product-owned
+descriptor location, 1 MiB frames, 125 ms client bound, 100 ms running-engine bound, and silent
+exit-success fallback keep ordinary Claude work independent from Temper availability. The hook
+cannot start the engine, expose a localhost service, read a renderer path, or surface a console.
+
+Release packaging binds the helper alongside the Python engine. The local Windows release helper
+passed native x64 and GUI-subsystem inspection, silent-down execution, exact manifest generation,
+release-time digest revalidation, 18 Rust transport/supervision tests, 23 focused packaging tests,
+and 52 focused Python protocol/Claude tests. Atomic stale-descriptor replacement and multi-instance
+ownership are covered explicitly.
+
+This is still not a connected Claude integration. The real runtime adapter, cached reconciled lease
+preparation, explicit Connect/Disconnect UI and protocol, fake-Claude end-to-end lifecycle, and an
+authorized live smoke remain required. No Claude settings, authentication, credential, provider
+call, or sealed Milestone 6 material was touched.
+
 ## Claude product-delivery foundation
 
 The first Claude product-delivery increment implements strict models for Claude Code's official
@@ -16,13 +36,13 @@ original-byte backup, durable signed idempotency receipt, and restart-safe 30-da
 previously absent settings file is restored to absence rather than to a synthetic empty file.
 Unrelated Claude settings and hooks are preserved.
 
-This is not yet a connected Claude integration. The native `temper-hook` helper, restricted local
-Tauri transport, concrete governed-runtime adapter, desktop connect/disconnect surface, and an
-explicitly authorized live smoke remain required. No Claude setting was changed, no credential was
-read, no paid provider call occurred, and the deferred Milestone 6 custody boundary was untouched.
+This is not yet a connected Claude integration. The concrete governed-runtime adapter, desktop
+connect/disconnect surface, and an explicitly authorized live smoke remain required. No Claude
+setting was changed, no credential was read, no paid provider call occurred, and the deferred
+Milestone 6 custody boundary was untouched.
 See [`TEMPER_CLAUDE_DELIVERY.md`](TEMPER_CLAUDE_DELIVERY.md).
 
-The full Python gate passes with 1,160 tests and two expected platform skips, strict mypy over 416
+The full Python gate passes with 1,166 tests and two expected platform skips, strict mypy over 416
 source files, Ruff formatting/linting, locked dependency sync, and both source/wheel builds. The
 Claude-specific suite contributes 25 signature, parser, lease, no-op, scope, output-shape, schema,
 settings-preservation, stale-state, tamper, restart-replay, and exact-rollback tests.

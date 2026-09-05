@@ -128,11 +128,13 @@ class EngineProtocolRouter:
         portability: LocalProfilePortabilityService | None = None,
         setup_factory: Callable[[], DesktopSetupApplicationService] | None = None,
         instruction_factory: Callable[[], InstructionEnvironmentService] | None = None,
+        claude_hook_handler: Callable[[Mapping[str, Any]], Mapping[str, Any] | None] | None = None,
     ) -> None:
         self._service = service
         self._portability = portability
         self._setup_factory = setup_factory
         self._instruction_factory = instruction_factory
+        self._claude_hook_handler = claude_hook_handler
         self._setup: DesktopSetupApplicationService | None = None
         self._instruction_environment: InstructionEnvironmentService | None = None
         self._export_previews: dict[str, tuple[float, PortableProfilePackage]] = {}
@@ -159,6 +161,8 @@ class EngineProtocolRouter:
                 ok=True,
                 result=handshake.model_dump(mode="json"),
             )
+        if request.method == "claude.hook.handle":
+            return self._handle_claude_hook(request)
         if request.method in {"setup.status", "connection.inspect"}:
             if request.params:
                 return self._error(
@@ -413,6 +417,35 @@ class EngineProtocolRouter:
                 },
             )
         return self._error(request, "unknown_method", "The requested operation is not supported.")
+
+    def _handle_claude_hook(self, request: EngineRequest) -> EngineResponse:
+        try:
+            if set(request.params) != {"payload"}:
+                raise ValueError
+            payload = request.params["payload"]
+            if not isinstance(payload, Mapping):
+                raise ValueError
+            output = (
+                None if self._claude_hook_handler is None else self._claude_hook_handler(payload)
+            )
+            if output is not None and not isinstance(output, Mapping):
+                raise ValueError
+        except (OSError, TypeError, ValueError):
+            return self._error(
+                request,
+                "claude_hook_unavailable",
+                "Temper could not safely handle this Claude event.",
+                retryable=True,
+            )
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result={
+                "available": self._claude_hook_handler is not None,
+                "output": output,
+                "raw_payloads_exposed": False,
+            },
+        )
 
     def _instruction_environment_get(self, request: EngineRequest) -> EngineResponse:
         if self._service is None:

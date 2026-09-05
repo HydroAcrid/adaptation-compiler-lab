@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import platform
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -21,6 +22,7 @@ TARGET_TRIPLES: Final = {
     ("darwin", "aarch64"): "aarch64-apple-darwin",
 }
 MACOS_MINIMUM_VERSION: Final = "13.0"
+HOOK_PROTOCOL_VERSION: Final = "temper-hook-ipc/v1"
 
 
 def resolve_target_triple(*, platform_name: str, machine_name: str) -> str:
@@ -62,6 +64,59 @@ def sidecar_path(
         / "binaries"
         / sidecar_filename(target_triple, platform_name=platform_name)
     )
+
+
+def hook_helper_filename(target_triple: str, *, platform_name: str) -> str:
+    """Return the exact target-suffixed hook helper name required by Tauri."""
+
+    suffix = ".exe" if platform_name == "win32" else ""
+    return f"temper-hook-{target_triple}{suffix}"
+
+
+def hook_helper_path(
+    repository: Path,
+    *,
+    platform_name: str,
+    machine_name: str | None = None,
+) -> Path:
+    """Resolve the exact native hook helper path admitted by the Tauri bundle."""
+
+    root = repository.expanduser().resolve()
+    target_triple = resolve_target_triple(
+        platform_name=platform_name,
+        machine_name=machine_name or platform.machine(),
+    )
+    return (
+        root
+        / "desktop_ui"
+        / "src-tauri"
+        / "binaries"
+        / hook_helper_filename(target_triple, platform_name=platform_name)
+    )
+
+
+def hook_build_command(repository: Path) -> list[str]:
+    """Return the locked native Rust build used only for the hook helper."""
+
+    root = repository.expanduser().resolve()
+    manifest = root / "desktop_ui" / "hook-helper" / "Cargo.toml"
+    if not manifest.is_file():
+        raise ValueError("native hook build must run from the Temper repository")
+    return [
+        "cargo",
+        "build",
+        "--locked",
+        "--release",
+        "--bin",
+        "temper-hook",
+        "--manifest-path",
+        str(manifest),
+    ]
+
+
+def _compiled_hook_helper(repository: Path, *, platform_name: str) -> Path:
+    suffix = ".exe" if platform_name == "win32" else ""
+    return repository / "desktop_ui" / "hook-helper" / "target" / "release" / f"temper-hook{suffix}"
 
 
 def build_command(
@@ -115,6 +170,151 @@ def verify_macos_arm64(binary: Path) -> None:
         raise ValueError("macOS sidecar architecture inspection failed") from error
     if completed.returncode != 0 or completed.stdout.strip().split() != ["arm64"]:
         raise ValueError("macOS sidecar must be an arm64-only Mach-O binary")
+
+
+def verify_windows_gui_binary(binary: Path) -> None:
+    """Require an x64 PE helper using the Windows GUI subsystem."""
+
+    encoded = binary.read_bytes()
+    if len(encoded) < 0x40 or encoded[:2] != b"MZ":
+        raise ValueError("Windows hook helper is not a valid PE binary")
+    pe_offset = int.from_bytes(encoded[0x3C:0x40], "little")
+    optional_offset = pe_offset + 24
+    if (
+        pe_offset + 6 > len(encoded)
+        or encoded[pe_offset : pe_offset + 4] != b"PE\0\0"
+        or int.from_bytes(encoded[pe_offset + 4 : pe_offset + 6], "little") != 0x8664
+        or optional_offset + 70 > len(encoded)
+        or int.from_bytes(encoded[optional_offset : optional_offset + 2], "little") != 0x20B
+        or int.from_bytes(encoded[optional_offset + 68 : optional_offset + 70], "little") != 2
+    ):
+        raise ValueError("Windows hook helper must be an x64 GUI-subsystem PE binary")
+
+
+def build_hook_helper(
+    repository: Path,
+    *,
+    platform_name: str,
+    machine_name: str | None = None,
+) -> Path:
+    """Compile and stage the native no-console hook helper for Tauri."""
+
+    root = repository.expanduser().resolve()
+    resolve_target_triple(
+        platform_name=platform_name,
+        machine_name=machine_name or platform.machine(),
+    )
+    destination = hook_helper_path(
+        root,
+        platform_name=platform_name,
+        machine_name=machine_name,
+    )
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    completed = subprocess.run(hook_build_command(root), cwd=root, check=False)
+    if completed.returncode:
+        destination.unlink(missing_ok=True)
+        raise ValueError("native hook helper build failed")
+    compiled = _compiled_hook_helper(root, platform_name=platform_name)
+    if not compiled.is_file():
+        destination.unlink(missing_ok=True)
+        raise ValueError("native hook helper was not produced")
+    shutil.copy2(compiled, destination)
+    verify_hook_helper(
+        root,
+        platform_name=platform_name,
+        machine_name=machine_name,
+    )
+    return destination
+
+
+def verify_hook_helper(
+    repository: Path,
+    *,
+    platform_name: str,
+    machine_name: str | None = None,
+    timeout_seconds: int = 3,
+) -> None:
+    """Require the helper to be native, silent without Temper, and bounded."""
+
+    root = repository.expanduser().resolve()
+    binary = hook_helper_path(
+        root,
+        platform_name=platform_name,
+        machine_name=machine_name,
+    )
+    if not binary.is_file() or binary.stat().st_size == 0:
+        raise ValueError("native hook helper was not produced")
+    if platform_name.lower() == "darwin":
+        verify_macos_arm64(binary)
+    else:
+        verify_windows_gui_binary(binary)
+    with tempfile.TemporaryDirectory(prefix="temper-hook-admission-") as profile:
+        profile_root = Path(profile).resolve()
+        environment = os.environ.copy()
+        environment.update(
+            {
+                "HOME": str(profile_root),
+                "USERPROFILE": str(profile_root),
+                "APPDATA": str(profile_root / "AppData" / "Roaming"),
+                "LOCALAPPDATA": str(profile_root / "AppData" / "Local"),
+                "XDG_RUNTIME_DIR": str(profile_root / "runtime"),
+            }
+        )
+        try:
+            completed = subprocess.run(
+                [binary],
+                cwd=root,
+                input="{}\n",
+                capture_output=True,
+                text=True,
+                timeout=timeout_seconds,
+                check=False,
+                env=environment,
+            )
+        except subprocess.TimeoutExpired as error:
+            raise ValueError("native hook helper no-op timed out") from error
+    if completed.returncode != 0 or completed.stdout or completed.stderr:
+        raise ValueError("native hook helper must fail silently when Temper is unavailable")
+
+
+def write_hook_manifest(
+    repository: Path,
+    *,
+    platform_name: str,
+    machine_name: str | None = None,
+) -> Path:
+    """Bind a release build to the exact native hook helper."""
+
+    root = repository.expanduser().resolve()
+    target_triple = resolve_target_triple(
+        platform_name=platform_name,
+        machine_name=machine_name or platform.machine(),
+    )
+    binary = hook_helper_path(
+        root,
+        platform_name=platform_name,
+        machine_name=machine_name,
+    )
+    if not binary.is_file() or binary.stat().st_size == 0:
+        raise ValueError("native hook helper was not produced")
+    manifest_path = binary.with_name(f"temper-hook-{target_triple}.manifest.json")
+    payload = {
+        "manifest_version": "1.0.0",
+        "protocol_version": HOOK_PROTOCOL_VERSION,
+        "target_triple": target_triple,
+        "binary_filename": binary.name,
+        "binary_size_bytes": binary.stat().st_size,
+        "binary_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
+        "minimum_system_version": (
+            MACOS_MINIMUM_VERSION if platform_name.lower() == "darwin" else None
+        ),
+    }
+    manifest_path.write_text(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    return manifest_path
 
 
 def _project_version(root: Path) -> str:
@@ -327,7 +527,9 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as error:
         parser.error(str(error))
     if arguments.dry_run:
-        print(json.dumps(command))
+        print(
+            json.dumps({"engine": command, "hook_helper": hook_build_command(arguments.repository)})
+        )
         return 0
     completed = subprocess.run(command, cwd=arguments.repository, check=False)
     if completed.returncode:
@@ -343,9 +545,20 @@ def main(argv: list[str] | None = None) -> int:
             platform_name=arguments.platform,
             machine_name=arguments.machine,
         )
+        build_hook_helper(
+            arguments.repository,
+            platform_name=arguments.platform,
+            machine_name=arguments.machine,
+        )
+        hook_manifest = write_hook_manifest(
+            arguments.repository,
+            platform_name=arguments.platform,
+            machine_name=arguments.machine,
+        )
     except ValueError as error:
         parser.error(str(error))
     print(manifest)
+    print(hook_manifest)
     return 0
 
 

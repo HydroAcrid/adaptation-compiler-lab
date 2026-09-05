@@ -1,6 +1,8 @@
 use serde::Deserialize;
+use sha2::{Digest, Sha256};
 use std::env;
-use std::fs;
+use std::fs::{self, File};
+use std::io::Read;
 use std::path::PathBuf;
 
 #[derive(Deserialize)]
@@ -11,6 +13,36 @@ struct EngineBuildManifest {
     target_triple: String,
     binary_filename: String,
     binary_sha256: String,
+}
+
+#[derive(Deserialize)]
+struct HookBuildManifest {
+    manifest_version: String,
+    protocol_version: String,
+    target_triple: String,
+    binary_filename: String,
+    binary_sha256: String,
+}
+
+fn require_exact_digest(path: &PathBuf, expected: &str, label: &str) {
+    assert!(expected.len() == 64, "{label} digest is invalid");
+    let mut source = File::open(path).unwrap_or_else(|_| panic!("{label} is unavailable"));
+    let mut hasher = Sha256::new();
+    let mut buffer = [0_u8; 64 * 1024];
+    loop {
+        let read = source
+            .read(&mut buffer)
+            .unwrap_or_else(|_| panic!("{label} cannot be read"));
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    assert_eq!(
+        format!("{:x}", hasher.finalize()),
+        expected,
+        "{label} digest does not match its build manifest"
+    );
 }
 
 fn bind_release_engine() {
@@ -41,13 +73,39 @@ fn bind_release_engine() {
         manifest.snapshot_schema_digest.starts_with("sha256:")
             && manifest.snapshot_schema_digest.len() == 71
     );
-    assert!(manifest.binary_sha256.len() == 64);
     let binary_path = manifest_dir
         .join("binaries")
         .join(&manifest.binary_filename);
     assert!(
         binary_path.is_file(),
         "release engine sidecar is unavailable"
+    );
+    require_exact_digest(
+        &binary_path,
+        &manifest.binary_sha256,
+        "release engine sidecar",
+    );
+
+    let hook_manifest_path = manifest_dir
+        .join("binaries")
+        .join(format!("temper-hook-{target}.manifest.json"));
+    println!("cargo:rerun-if-changed={}", hook_manifest_path.display());
+    let hook_encoded = fs::read_to_string(&hook_manifest_path)
+        .expect("release hook helper build manifest is unavailable");
+    let hook: HookBuildManifest =
+        serde_json::from_str(&hook_encoded).expect("release hook helper build manifest is invalid");
+    assert_eq!(hook.manifest_version, "1.0.0");
+    assert_eq!(hook.protocol_version, "temper-hook-ipc/v1");
+    assert_eq!(hook.target_triple, target);
+    let hook_binary_path = manifest_dir.join("binaries").join(&hook.binary_filename);
+    assert!(
+        hook_binary_path.is_file(),
+        "release hook helper is unavailable"
+    );
+    require_exact_digest(
+        &hook_binary_path,
+        &hook.binary_sha256,
+        "release hook helper",
     );
     println!(
         "cargo:rustc-env=TEMPER_EXPECTED_ENGINE_VERSION={}",

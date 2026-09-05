@@ -21,12 +21,14 @@ clauses, personal roots require a separate opt-in, and native edits require an e
 signed receipt, encrypted backup, and rollback. See
 [`TEMPER_NATIVE_INSTRUCTION_INTEROPERABILITY.md`](TEMPER_NATIVE_INSTRUCTION_INTEROPERABILITY.md).
 
-Claude product delivery is now being built on Claude Code's official hook surface. The first
-increment adds strict event parsing, a no-model local broker, signed expiring projection leases,
-raw-free audit receipts, and an exact preview/apply/rollback service for Temper-owned Claude user
-hooks. It is fixture-tested but intentionally not exposed as Connected: the signed native helper,
-permission-restricted Tauri transport, real governed-runtime adapter, and authorized live smoke
-are still required. No hook was installed and no provider call was made. See
+Claude product delivery is now being built on Claude Code's official hook surface. The local
+contract includes strict event parsing, a no-model broker, signed expiring projection leases,
+raw-free audit receipts, exact preview/apply/rollback for Temper-owned Claude user hooks, and a
+manifest-bound native `temper-hook` helper. Tauri now exposes a randomized owner-restricted local
+named pipe or Unix socket with bounded frames and silent no-op behavior when Temper is unavailable.
+It is still intentionally not exposed as Connected: the concrete governed-runtime adapter,
+explicit desktop connection flow, and authorized live smoke remain required. No hook was installed
+and no provider call was made. See
 [`TEMPER_CLAUDE_DELIVERY.md`](TEMPER_CLAUDE_DELIVERY.md).
 
 The 2026-08-27 native truthfulness audit removed a browser-style title bar and fixed-size shell
@@ -71,7 +73,7 @@ import can be staged inactive. Package signatures transfer origin, never instruc
 native file paths stay outside React and package imports cannot install or activate anything. See
 [`TEMPER_SHAREABLE_PACKAGES.md`](TEMPER_SHAREABLE_PACKAGES.md).
 Browser URLs remain synthetic visual-review scenes; they do not pretend to perform native writes.
-Sixty-six component/engine tests, seven product viewport,
+Sixty-nine component/engine tests, seven product viewport,
 motion, and
 truthfulness checks, nine WebView2 compatibility/accessibility checks, and 32 light/dark visual
 scenes pass. See

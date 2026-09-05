@@ -9,6 +9,7 @@ export default tseslint.config(
   {
     ignores: [
       "dist",
+      "hook-helper/target",
       "playwright-report",
       "src-tauri/gen",
       "src-tauri/target",

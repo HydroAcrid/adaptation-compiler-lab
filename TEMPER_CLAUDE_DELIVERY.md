@@ -1,7 +1,7 @@
 # Temper Claude Code Delivery
 
-Status: **local product contract and fixture-tested hook broker implemented; native transport and
-live connection remain unavailable**
+Status: **local product contract, native private transport, and bundle integrity implemented;
+governed runtime connection and live Claude use remain unavailable**
 
 ## Purpose
 
@@ -12,7 +12,7 @@ a provider call from a hook. The ordinary path is:
 ```text
 Claude Code hook event
         ↓
-signed local temper-hook helper
+manifest-bound local temper-hook helper
         ↓
 permission-restricted local Tauri channel
         ↓
@@ -61,15 +61,33 @@ Temper can prepare an exact diff for the four hook entries in Claude's user sett
 The renderer sees no helper path, Claude home path, credential, prompt, transcript, or backup
 content. A signature proves local change integrity; it does not grant authority to Claude content.
 
+## Native private transport
+
+The bundled Rust `temper-hook` helper reads one bounded official hook event from standard input and
+uses no command-line secret, environment secret, localhost port, shell, or renderer capability. It
+discovers only Temper's fixed product-owned endpoint descriptor. Tauri owns a randomized endpoint
+and 256-bit per-start token, then forwards the event to an already-running Python engine with a
+100 ms engine deadline. It never starts the engine from a Claude hook.
+
+On Windows the transport is a randomized named pipe with an owner-only DACL. On macOS and other
+Unix development hosts it is a randomized Unix-domain socket with owner-only directory, socket,
+descriptor, and peer-UID checks. Frames are capped at 1 MiB; client I/O is bounded to 125 ms.
+Missing, stale, malformed, oversized, cross-user, mistokened, timed-out, or panicking paths return
+exit success with no output so Temper cannot block ordinary Claude work. Descriptor replacement is
+atomic, and an older Temper instance cannot remove a newer instance's endpoint.
+
+Release packaging now bundles both `temper-engine` and `temper-hook`. The native builder verifies
+the helper architecture, Windows GUI subsystem, silent-down behavior, exact digest, and protocol
+manifest. Release compilation rehashes both binaries and refuses a missing or mismatched manifest.
+The helper has no console window in a Windows release build.
+
 ## Still required before the UI may say Connected
 
-1. Bundle a signed `temper-hook` helper.
-2. Add the per-user Windows named-pipe and Unix-domain-socket transport between the helper and
-   Tauri, with bounded frames, timeouts, peer restrictions, and a fast no-op when Temper is down.
-3. Connect the broker to the real governed runtime, encrypted capture store, audit ledger, and
+1. Connect the broker to the real governed runtime, encrypted capture store, audit ledger, and
    cached reconciled projection builder.
-4. Add explicit preview/apply/disconnect protocol methods and truthful React states.
-5. Pass disposable fake-Claude end-to-end tests and an explicitly authorized live smoke.
+2. Add explicit preview/apply/disconnect protocol methods and truthful React states.
+3. Pass disposable fake-Claude end-to-end tests and an explicitly authorized live smoke.
+4. Apply genuine platform publisher signatures only at the external-distribution gate.
 
 No hook has been installed on this machine, no Claude authentication has been initiated, no API
 key has been read, and no paid call was made by this increment. The deferred Milestone 6 study

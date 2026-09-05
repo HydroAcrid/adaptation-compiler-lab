@@ -165,6 +165,7 @@ if (-not $resolvedSmoke.StartsWith($resolvedTemp, [System.StringComparison]::Ord
 
 $appProcess = $null
 $uninstaller = $null
+$hookHelper = $null
 $uninstallCompleted = $false
 $installLocationClean = $false
 $uninstallRegistryClean = $false
@@ -182,6 +183,8 @@ try {
         Select-Object -First 1
     $engine = Get-ChildItem -LiteralPath $installRoot -Filter "temper-engine.exe" -File -Recurse |
         Select-Object -First 1
+    $hookHelper = Get-ChildItem -LiteralPath $installRoot -Filter "temper-hook.exe" -File -Recurse |
+        Select-Object -First 1
     $uninstaller = Get-ChildItem -LiteralPath $installRoot -Filter "uninstall.exe" -File -Recurse |
         Select-Object -First 1
     if ($null -eq $app) {
@@ -189,6 +192,9 @@ try {
     }
     if ($null -eq $engine) {
         throw "The installed temper-engine.exe sidecar is unavailable."
+    }
+    if ($null -eq $hookHelper) {
+        throw "The installed temper-hook.exe helper is unavailable."
     }
     if ($null -eq $uninstaller) {
         throw "The installed Temper uninstaller is unavailable."
@@ -235,6 +241,7 @@ try {
         engine_version = [string]$handshake.engine_version
         schema_digest = [string]$handshake.snapshot_schema_digest
         engine_configured = [bool]$handshake.configured
+        hook_helper_installed = $true
         app_startup_seconds = $StartupSeconds
         app_remained_running = $true
         clean_install_root = $true
@@ -255,9 +262,13 @@ finally {
                 throw "The Temper uninstaller returned a failure."
             }
             for ($attempt = 0; $attempt -lt 25; $attempt++) {
+                $hookRemoved =
+                    $null -eq $hookHelper -or
+                    -not (Test-Path -LiteralPath $hookHelper.FullName -PathType Leaf)
                 if (
                     -not (Test-Path -LiteralPath $app.FullName -PathType Leaf) -and
-                    -not (Test-Path -LiteralPath $engine.FullName -PathType Leaf)
+                    -not (Test-Path -LiteralPath $engine.FullName -PathType Leaf) -and
+                    $hookRemoved
                 ) {
                     $uninstallCompleted = $true
                     break

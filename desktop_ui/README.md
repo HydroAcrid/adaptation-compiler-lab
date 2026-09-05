@@ -18,7 +18,8 @@ pnpm test:visual
 
 Native development additionally requires a target-native engine sidecar or
 `TEMPER_ENGINE_BINARY`. Release builds must first run `uv run python packaging/build_native.py`
-from the repository root; Tauri then embeds the target-suffixed, manifest-bound sidecar.
+from the repository root; Tauri then embeds separately built, target-suffixed, manifest-bound
+`temper-engine` and `temper-hook` sidecars.
 
 Deterministic product states are selected with `?screen=<name>&theme=<light|dark>`. Supported
 screens are `onboarding`, `today`, `suggestion`, `core`, `connections`, `settings`,
@@ -36,5 +37,5 @@ cleanliness, local-only asset loading, and scope-preserving review and Core-edit
 available. Native Tauri compatibility still requires the later Windows and macOS builds plus
 clean-machine tests.
 
-The Qt interface remains an internal diagnostic/recovery application until the signed Tauri alpha
-passes clean-machine parity and recovery tests.
+The terminal CLI remains the internal diagnostic and recovery surface. The retired Qt interface is
+not part of this package.

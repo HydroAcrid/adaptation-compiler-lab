@@ -58,10 +58,12 @@ jobs:
           $extension = if ("${{ runner.os }}" -eq "Windows") { ".exe" } else { "" }
           $binaryRoot = "src-tauri/binaries"
           New-Item -ItemType Directory -Path $binaryRoot -Force | Out-Null
-          $placeholder = Join-Path $binaryRoot "temper-engine-$triple$extension"
-          [System.IO.File]::WriteAllBytes($placeholder, [byte[]](0))
-          if ("${{ runner.os }}" -ne "Windows") {
-            chmod +x $placeholder
+          foreach ($name in @("temper-engine", "temper-hook")) {
+            $placeholder = Join-Path $binaryRoot "$name-$triple$extension"
+            [System.IO.File]::WriteAllBytes($placeholder, [byte[]](0))
+            if ("${{ runner.os }}" -ne "Windows") {
+              chmod +x $placeholder
+            }
           }
       - name: Install Linux desktop libraries
         if: runner.os == 'Linux'
@@ -76,9 +78,13 @@ jobs:
       - run: pnpm build
       - name: Check Rust formatting
         if: runner.os == 'Linux'
-        run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
+        run: |
+          cargo fmt --manifest-path src-tauri/Cargo.toml --check
+          cargo fmt --manifest-path hook-helper/Cargo.toml --check
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
       - run: cargo test --manifest-path src-tauri/Cargo.toml
+      - run: cargo clippy --manifest-path hook-helper/Cargo.toml --all-targets -- -D warnings
+      - run: cargo test --manifest-path hook-helper/Cargo.toml
       - name: Exercise native Security.framework Keychain
         if: runner.os == 'macOS'
         working-directory: .
@@ -205,18 +211,22 @@ jobs:
           app="desktop_ui/src-tauri/target/release/bundle/macos/Temper.app"
           dmg="$(find desktop_ui/src-tauri/target/release/bundle/dmg -maxdepth 1 -type f -name '*.dmg' -print -quit)"
           manifest="desktop_ui/src-tauri/binaries/temper-engine-aarch64-apple-darwin.manifest.json"
+          hook_manifest="desktop_ui/src-tauri/binaries/temper-hook-aarch64-apple-darwin.manifest.json"
           test -d "$app"
           test -f "$dmg"
           test -f "$manifest"
+          test -f "$hook_manifest"
           ditto -c -k --sequesterRsrc --keepParent "$app" "$candidate_root/Temper.app.zip"
           cp "$dmg" "$candidate_root/Temper.dmg"
           cp "$manifest" "$candidate_root/temper-engine-aarch64-apple-darwin.manifest.json"
+          cp "$hook_manifest" "$candidate_root/temper-hook-aarch64-apple-darwin.manifest.json"
           (
             cd "$candidate_root"
             shasum -a 256 \
               Temper.app.zip \
               Temper.dmg \
               temper-engine-aarch64-apple-darwin.manifest.json \
+              temper-hook-aarch64-apple-darwin.manifest.json \
               > candidate-sha256.txt
           )
       - uses: actions/upload-artifact@v4
@@ -259,6 +269,7 @@ jobs:
             --app "$RUNNER_TEMP/Applications/Temper.app" \
             --dmg "$RUNNER_TEMP/temper-apple-candidate/Temper.dmg" \
             --manifest "$RUNNER_TEMP/temper-apple-candidate/temper-engine-aarch64-apple-darwin.manifest.json" \
+            --hook-manifest "$RUNNER_TEMP/temper-apple-candidate/temper-hook-aarch64-apple-darwin.manifest.json" \
             --expected-version 0.3.0a2 \
             --signature-policy development
       - name: Exercise and delete one unique Keychain item

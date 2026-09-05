@@ -90,3 +90,18 @@ target-specific build manifest. At runtime Rust hashes the sidecar before launch
 engine version plus public snapshot-schema digest returned by the handshake.
 `TEMPER_ENGINE_BINARY` is a debug-only override and cannot replace the bundled engine in a release
 application.
+
+## Claude hook channel
+
+Claude hooks do not enter through the renderer command surface. The bundled `temper-hook` helper
+reads one bounded JSON event from standard input and connects to a randomized local endpoint owned
+by the running Tauri application. Windows uses an owner-only named pipe; Unix uses an owner-only
+domain socket and peer-UID verification. Authentication is a 256-bit per-start token stored only in
+an owner-restricted product descriptor. Neither the endpoint nor token is accepted from CLI
+arguments or an environment override.
+
+Tauri forwards the payload only to an already-running engine through the internal
+`claude.hook.handle` method. The renderer cannot invoke that method. Hook calls cannot start or wait
+for a new engine and use stricter 125 ms transport and 100 ms engine bounds. Any unavailable,
+malformed, stale, oversized, unauthenticated, or timed-out path returns no output and exit success.
+Release builds bundle and independently manifest-bind both `temper-engine` and `temper-hook`.

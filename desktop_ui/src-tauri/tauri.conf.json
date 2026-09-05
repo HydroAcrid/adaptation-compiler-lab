@@ -35,7 +35,7 @@
   },
   "bundle": {
     "active": true,
-    "externalBin": ["binaries/temper-engine"],
+    "externalBin": ["binaries/temper-engine", "binaries/temper-hook"],
     "icon": ["icons/icon.png"],
     "targets": "all",
     "createUpdaterArtifacts": false,

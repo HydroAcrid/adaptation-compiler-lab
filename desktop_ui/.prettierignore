@@ -3,6 +3,7 @@ node_modules/
 playwright-report/
 test-results/
 src-tauri/target/
+hook-helper/target/
 src-tauri/binaries/
 src-tauri/gen/
 docs/screenshots/

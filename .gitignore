@@ -15,6 +15,7 @@ node_modules/
 test-results/
 playwright-report/
 desktop_ui/src-tauri/target/
+desktop_ui/hook-helper/target/
 desktop_ui/src-tauri/binaries/*
 !desktop_ui/src-tauri/binaries/.gitkeep
 desktop_ui/src-tauri/gen/
