@@ -1,0 +1,1 @@
+{"blind_output_id":"output-e2a0cb8d0e929f0e56bb86ec","condition_leakage_withheld":false,"diff":"","final_response":"I’m unable to access the workspace tools—the execution environment reports “code-mode host is disabled”—so I can’t safely inspect or modify `src/solution.py` or run the suite.","task_id":"secure-02-webhook","visible_tests_passed":true}

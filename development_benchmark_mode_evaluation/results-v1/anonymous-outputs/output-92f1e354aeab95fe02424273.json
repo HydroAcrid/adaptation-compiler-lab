@@ -1,0 +1,1 @@
+{"blind_output_id":"output-92f1e354aeab95fe02424273","condition_leakage_withheld":false,"diff":"","final_response":"I couldn’t complete the change because the workspace command runner is unavailable (`code-mode host is disabled`), preventing file inspection, editing, and test execution.","task_id":"frontend-04-neutral-parser","visible_tests_passed":true}

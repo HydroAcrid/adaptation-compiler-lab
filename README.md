@@ -582,7 +582,9 @@ after valid trials.
   unrelated control; no result is claimed until all immutable target evidence is scored.
 - [`development_benchmark_mode_evaluation`](development_benchmark_mode_evaluation): frozen
   three-Mode, 15-task, 30-cell same-agent comparison with hidden capability-free scoring and a
-  verified saved-ChatGPT Luna runtime; target execution has not yet begun.
+  verified saved-ChatGPT Luna runtime. Its v1 target grid is preserved as an unjudged instrument
+  failure because the target execution host was disabled and the hidden scorer lacked its
+  dependencies; a separately smoke-gated repair is required before effectiveness can be assessed.
 - [`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md): docs-only portable
   specialty preset composition and the proposed Frontend Studio demonstration.
 - [`development_benchmark_compact_projection`](development_benchmark_compact_projection): frozen

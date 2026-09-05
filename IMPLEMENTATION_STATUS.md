@@ -1289,13 +1289,14 @@ personal-overlay support, required capabilities, and explicit capability prohibi
 request no tools or ambient capabilities, cannot auto-activate, and cannot mutate Core. Each has a
 public digest-bound evaluation design containing three diagnostic and two neutral-control tasks.
 Only structural conformance has run; all three remain visibly `experimental` and no effectiveness
-or superiority claim is made. The complete same-agent catalog instrument is now frozen: 15 public
+or superiority claim is made. The complete same-agent catalog instrument was frozen: 15 public
 task manifests, 30 condition-blind target cells, three isolated blind-review sessions, independent
 answer-blind hidden scoring, exact activation/deactivation checks, and a 33-session subscription
 ceiling. The current Linux Codex `0.153.1` binary, saved ChatGPT login, Luna/medium model selection,
-and nested bubblewrap boundary passed a live no-inference preflight. Target execution remains the
-next evidence step; it has not started. The final preregistration also binds the three-session
-condition-blind judge and seed-backed unblinder. Anonymous outputs suppress any copied condition
-material, raw target and judge traces must remain encrypted outside every Git repository, and the
-result can only apply the frozen per-Mode correctness, neutral-control, blind-quality, size,
-activation, and deactivation gates.
+and nested bubblewrap boundary passed a live no-inference preflight. The v1 target grid then
+completed, but every record failed integrity before judging. The current Codex CLI requires its
+stable `code_mode_host` for bounded repository operations, while v1 disabled that host; its scorer
+also ran in a dependency-free Python environment and could not import Pydantic. All 30 anonymous
+outputs and encrypted trace references are preserved, no judge or unblinding ran, and no Mode was
+tuned. The failed instrument provides no effectiveness evidence. A separately frozen repair must
+pass live target and scorer smokes before a new grid can execute.

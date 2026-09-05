@@ -1,6 +1,6 @@
 # Temper Modes Product Gate
 
-Status: frozen effectiveness instrument and live preflight; target comparison not yet executed.
+Status: v1 preserved as an unjudged instrument failure; a separately frozen repair is required.
 
 ## Purpose
 
@@ -65,6 +65,13 @@ the target runner, hidden scorer, blind judge, unblinder, and nested bubblewrap 
 runtime conditions without performing inference. Changing a Mode, task, scorer, or runner
 invalidates the binding and requires a new versioned evaluation.
 
+The v1 grid subsequently completed all 30 subscription sessions, but every trial was
+integrity-invalid. The runner disabled Codex `0.153.1`'s stable execution host, preventing every
+target from inspecting or editing its workspace, and the independent scorer used a Python runtime
+without Pydantic, preventing every hidden observation. The immutable report is preserved in
+`development_benchmark_mode_evaluation/results-v1/` and no blind judge or unblinding followed.
+These sessions provide no Mode-effectiveness evidence.
+
 ## Passing rule
 
 A Mode may move from `experimental` to `product_evaluated` only when:
@@ -83,7 +90,9 @@ gate and does not establish cross-agent transfer.
 
 ## Remaining product work
 
-- Execute the frozen 30-cell comparison and three blind reviews without tuning after the first
+- Freeze a versioned instrument repair without changing Mode content, then require one successful
+  live edit-and-test target smoke and one independent scorer smoke before another grid.
+- Execute the repaired 30-cell comparison and three blind reviews without tuning after its first
   target cell.
 - Record immutable trial and blinded-review receipts.
 - Add a governed personal-overlay editor.
