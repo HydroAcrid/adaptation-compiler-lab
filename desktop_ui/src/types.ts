@@ -112,6 +112,47 @@ export interface ShareablePackagePreview {
   raw_payloads_exposed: false;
 }
 
+export interface PackageReviewItem {
+  review_version: "1.0.0";
+  review_id: string;
+  review_digest: string;
+  import_receipt_id: string;
+  import_receipt_digest: string;
+  package_type: "behavior_pack" | "capability_mode" | "personal_mode_overlay";
+  package_id: string;
+  package_digest: string;
+  item_id: string;
+  item_digest: string;
+  claim_key: string | null;
+  publisher_name: string;
+  publisher_key_fingerprint: string;
+  kind: string;
+  summary: string;
+  disposition: "new" | "exact_duplicate" | "conflict" | "owner_only";
+  requested_scope: {
+    project_ids: string[];
+    task_classes: string[];
+    target_families: string[];
+    environment_ids: string[];
+    activation_conditions: string[];
+    exclusions: string[];
+    scope_mapping_required: boolean;
+  } | null;
+  behavioral_contract: {
+    intent: string;
+    required_behaviors: string[];
+    non_goals: string[];
+    verification_requirements: string[];
+  } | null;
+  required_capabilities: string[];
+  evaluation_status: string | null;
+  available_actions: Array<"approve" | "reject">;
+  created_at: string;
+  starts_inactive: true;
+  origin_grants_authority: false;
+  raw_payloads_exposed: false;
+}
+
 export interface CapabilityModeSummary {
   mode_id: string;
   mode_version: string;
@@ -133,6 +174,7 @@ export interface CapabilityModeSummary {
   evaluation_case_count: number;
   mutates_permanent_core: false;
   auto_activates: false;
+  source_kind: "first_party" | "imported";
 }
 
 export interface AgentConnection {

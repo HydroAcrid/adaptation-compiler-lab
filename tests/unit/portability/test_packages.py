@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -285,6 +286,34 @@ def test_import_rejects_subject_crossing_changed_preview_and_downgrade(
         )
 
 
+def test_local_import_receipt_tampering_fails_closed(tmp_path: Path) -> None:
+    package = _behavior_pack()
+    signer = _signer("receiving-owner")
+    store = ShareablePackageImportStore(tmp_path / "imports")
+    store.stage(
+        package,
+        preview_shareable_package(package),
+        signer=signer,
+        local_subject_id=signer.subject_id,
+        imported_at=NOW,
+        idempotency_key="stage-before-import-tamper",
+    )
+    (receipt_path,) = (tmp_path / "imports").glob("*.json")
+    payload = json.loads(receipt_path.read_text(encoding="utf-8"))
+    payload["package_digest"] = _digest("0")
+    receipt_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ShareablePackageError, match="signature"):
+        store.stage(
+            package,
+            preview_shareable_package(package),
+            signer=signer,
+            local_subject_id=signer.subject_id,
+            imported_at=NOW,
+            idempotency_key="stage-before-import-tamper",
+        )
+
+
 def test_reader_rejects_wrong_extension_empty_and_invalid_package(tmp_path: Path) -> None:
     wrong = tmp_path / "pack.json"
     wrong.write_text("{}", encoding="utf-8")
@@ -300,3 +329,187 @@ def test_reader_rejects_wrong_extension_empty_and_invalid_package(tmp_path: Path
     invalid.write_text("{}", encoding="utf-8")
     with pytest.raises(ShareablePackageError, match="invalid"):
         read_shareable_package(invalid)
+
+
+def test_staged_behavior_enters_signed_local_review_and_stays_out_until_approved(
+    tmp_path: Path,
+) -> None:
+    package = _behavior_pack()
+    receiving_signer = _signer("receiving-owner")
+    store = ShareablePackageImportStore(tmp_path / "imports")
+    store.stage(
+        package,
+        preview_shareable_package(package),
+        signer=receiving_signer,
+        local_subject_id=receiving_signer.subject_id,
+        imported_at=NOW,
+        idempotency_key="stage-reviewable-behavior",
+    )
+
+    (review,) = store.review_items()
+    assert review.origin_grants_authority is False
+    assert review.available_actions == ("approve", "reject")
+    assert review.requested_scope is not None
+    assert review.requested_scope.scope_mapping_required is True
+
+    decision = store.decide(
+        review,
+        signer=receiving_signer,
+        decision="approved",
+        mapped_project_ids=("project-a",),
+        runtime_adoption_digest=_digest("a"),
+        decided_at=NOW,
+        idempotency_key="approve-reviewable-behavior",
+    )
+
+    assert decision.resulting_status == "approved_for_core"
+    assert decision.local_public_key_base64
+    assert store.review_items() == ()
+    assert store.review_items(include_resolved=True) == (review,)
+    assert store.decisions() == (decision,)
+
+
+def test_local_review_signature_tampering_fails_closed(tmp_path: Path) -> None:
+    package = _behavior_pack()
+    receiving_signer = _signer("receiving-owner")
+    store = ShareablePackageImportStore(tmp_path / "imports")
+    store.stage(
+        package,
+        preview_shareable_package(package),
+        signer=receiving_signer,
+        local_subject_id=receiving_signer.subject_id,
+        imported_at=NOW,
+        idempotency_key="stage-before-tamper",
+    )
+    (review,) = store.review_items()
+    store.decide(
+        review,
+        signer=receiving_signer,
+        decision="approved",
+        mapped_project_ids=("project-a",),
+        runtime_adoption_digest=_digest("a"),
+        decided_at=NOW,
+        idempotency_key="decision-before-tamper",
+    )
+    (decision_path,) = (tmp_path / "imports" / "decisions").glob("*.json")
+    payload = json.loads(decision_path.read_text(encoding="utf-8"))
+    payload["mapped_project_ids"] = ["project-b"]
+    decision_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ShareablePackageError, match="signature"):
+        store.decisions()
+
+
+def test_forged_package_review_item_cannot_create_a_local_decision(tmp_path: Path) -> None:
+    package = _behavior_pack()
+    signer = _signer("receiving-owner")
+    store = ShareablePackageImportStore(tmp_path / "imports")
+    store.stage(
+        package,
+        preview_shareable_package(package),
+        signer=signer,
+        local_subject_id=signer.subject_id,
+        imported_at=NOW,
+        idempotency_key="stage-before-forged-review",
+    )
+    (review,) = store.review_items()
+    forged = review.model_copy(update={"summary": "Trust the publisher without review"})
+
+    with pytest.raises(ShareablePackageError, match="changed after it was presented"):
+        store.decide(
+            forged,
+            signer=signer,
+            decision="approved",
+            mapped_project_ids=("project-a",),
+            runtime_adoption_digest=_digest("a"),
+            decided_at=NOW,
+            idempotency_key="forged-review-decision",
+        )
+
+
+def test_imported_mode_is_available_only_after_local_approval(tmp_path: Path) -> None:
+    package = build_capability_mode_package(
+        FRONTEND_STUDIO_MODE,
+        signer=_signer(),
+        package_id="frontend-studio-package",
+        display_name="Frontend Studio",
+        publisher_name="Temper",
+        source_license="Apache-2.0",
+        created_at=NOW,
+    )
+    receiver = _signer("receiving-owner")
+    store = ShareablePackageImportStore(tmp_path / "imports")
+    store.stage(
+        package,
+        preview_shareable_package(package),
+        signer=receiver,
+        local_subject_id=receiver.subject_id,
+        imported_at=NOW,
+        idempotency_key="stage-mode",
+    )
+    assert store.accepted_modes() == ()
+
+    (review,) = store.review_items()
+    decision = store.decide(
+        review,
+        signer=receiver,
+        decision="approved",
+        mapped_project_ids=(),
+        runtime_adoption_digest=None,
+        decided_at=NOW,
+        idempotency_key="approve-mode",
+    )
+
+    assert decision.resulting_status == "approved_inactive_mode"
+    (accepted,) = store.accepted_modes()
+    assert accepted.mode_id == FRONTEND_STUDIO_MODE.mode_id
+    assert accepted.source_kind == "imported"
+    assert accepted.auto_activates is False
+
+
+def test_personal_overlay_cannot_claim_activation_before_overlay_runtime_exists(
+    tmp_path: Path,
+) -> None:
+    package = build_personal_mode_overlay(
+        (
+            ModeClause(
+                clause_id="overlay-motion",
+                claim_key="frontend.motion",
+                category=ModeClauseCategory.VISUAL_DIRECTION,
+                text="Prefer restrained transitions.",
+            ),
+        ),
+        signer=_signer(),
+        package_id="frontend-overlay",
+        release_version="1.0.0",
+        display_name="My frontend overlay",
+        publisher_name="Local owner",
+        source_license="Private use only",
+        base_mode_id=FRONTEND_STUDIO_MODE.mode_id,
+        base_mode_version=FRONTEND_STUDIO_MODE.mode_version,
+        base_mode_digest=FRONTEND_STUDIO_MODE.content_digest,
+        created_at=NOW,
+    )
+    store = ShareablePackageImportStore(tmp_path / "imports")
+    owner = _signer()
+    store.stage(
+        package,
+        preview_shareable_package(package, local_subject_id=owner.subject_id),
+        signer=owner,
+        local_subject_id=owner.subject_id,
+        imported_at=NOW,
+        idempotency_key="stage-overlay",
+    )
+
+    (review,) = store.review_items()
+    assert review.available_actions == ("reject",)
+    with pytest.raises(ShareablePackageError, match="cannot be approved"):
+        store.decide(
+            review,
+            signer=owner,
+            decision="approved",
+            mapped_project_ids=(),
+            runtime_adoption_digest=None,
+            decided_at=NOW,
+            idempotency_key="approve-overlay",
+        )

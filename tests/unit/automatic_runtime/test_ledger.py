@@ -11,6 +11,7 @@ import pytest
 from adaptation_compiler_lab.automatic_runtime import (
     AutomaticRuntimeLedger,
     AutomaticRuntimeResult,
+    ExternalProposalOriginV1,
     RuntimeActivationFeedback,
     RuntimeFeedbackOutcome,
     RuntimeLearningAssessment,
@@ -20,7 +21,13 @@ from adaptation_compiler_lab.automatic_runtime import (
     initial_runtime_state,
     summarize_runtime,
 )
-from adaptation_compiler_lab.domain import ApprovalDecision, TaskRecordRef
+from adaptation_compiler_lab.domain import (
+    ApprovalDecision,
+    ArtifactRoute,
+    BehavioralContract,
+    Scope,
+    TaskRecordRef,
+)
 from adaptation_compiler_lab.governance import GovernanceEvent
 from adaptation_compiler_lab.persistence.errors import HistoryConflictError, RecordConflictError
 from adaptation_compiler_lab.persistence.sqlite import SqliteUnitOfWorkFactory
@@ -43,7 +50,7 @@ def _events(result: AutomaticRuntimeResult) -> tuple[GovernanceEvent, ...]:
 
 def test_runtime_ledger_is_append_only_and_idempotent(tmp_path: Path) -> None:
     path = tmp_path / "ledger.sqlite3"
-    assert SqliteUnitOfWorkFactory(path).initialize() == 11
+    assert SqliteUnitOfWorkFactory(path).initialize() == 12
     runtime, policy = _runtime(tmp_path)
     initial = initial_runtime_state(policy)
     result = runtime.process(
@@ -114,6 +121,63 @@ def test_runtime_ledger_rejects_a_stale_state_head(tmp_path: Path) -> None:
 
     with pytest.raises(HistoryConflictError, match="head changed"):
         ledger.append(stale.cycle, stale.state, governance_events=_events(stale))
+
+
+def test_external_adoption_is_append_only_and_excluded_from_dogfood_cycles(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "ledger.sqlite3"
+    SqliteUnitOfWorkFactory(path).initialize()
+    runtime, policy = _runtime(tmp_path)
+    initial = initial_runtime_state(policy)
+    result = runtime.resolve_external_behavior(
+        origin=ExternalProposalOriginV1(
+            package_id="clear-handoffs",
+            package_digest="sha256:" + "1" * 64,
+            import_receipt_id="import-clear-handoffs",
+            import_receipt_digest="sha256:" + "2" * 64,
+            item_id="purpose-first",
+            item_digest="sha256:" + "3" * 64,
+            claim_key="communication.purpose-first",
+            publisher_key_fingerprint="sha256:" + "4" * 64,
+        ),
+        behavioral_contract=BehavioralContract(
+            intent="Explain purpose first",
+            required_behaviors=("State the purpose before commands.",),
+            verification_requirements=("Confirm that purpose precedes commands.",),
+        ),
+        route=ArtifactRoute.PREFERENCE,
+        scope=Scope(
+            subject_ids=("kevin",),
+            project_ids=("ordinary-project",),
+            target_families=("codex",),
+        ),
+        state=initial,
+        decision=ApprovalDecision.APPROVED,
+        resolved_at=NOW + timedelta(minutes=1),
+    )
+    ledger = AutomaticRuntimeLedger(path, subject_id="kevin")
+    ledger.initialize(initial)
+
+    assert ledger.append_external_adoption(
+        result.resolution,
+        result.state,
+        release_event=result.release_event,
+    )
+    assert not ledger.append_external_adoption(
+        result.resolution,
+        result.state,
+        release_event=result.release_event,
+    )
+    assert ledger.external_adoptions() == (result.resolution,)
+    assert ledger.cycles() == ()
+    assert ledger.learning_cycles() == ()
+
+    with (
+        sqlite3.connect(path) as connection,
+        pytest.raises(sqlite3.IntegrityError, match="append-only"),
+    ):
+        connection.execute("DELETE FROM automatic_runtime_external_adoptions")
 
 
 def test_learning_checkpoint_activation_acknowledgement_and_feedback_are_separate(

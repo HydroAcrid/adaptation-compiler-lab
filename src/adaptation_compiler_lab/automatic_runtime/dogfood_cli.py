@@ -147,6 +147,7 @@ from adaptation_compiler_lab.instruction_environment.codex_semantic import (
     instruction_relation_analyzer_digest,
 )
 from adaptation_compiler_lab.modes import (
+    CapabilityMode,
     ModePreparedTask,
     ModeReceiptStore,
     complete_mode_delivery,
@@ -3090,6 +3091,7 @@ def _execute_gateway_session(
     initial_task: str,
     followups: Iterable[str],
     mode_id: str | None = None,
+    mode: CapabilityMode | None = None,
 ) -> str:
     if config.config_version not in {"1.3.0", "1.4.0"} or config.gateway_workspace_root is None:
         raise AutomaticRuntimeError("writable gateway requires configured dogfood v1.3+")
@@ -3184,8 +3186,11 @@ def _execute_gateway_session(
         )
     mode_prepared: ModePreparedTask | None = None
     mode_store: ModeReceiptStore | None = None
-    if mode_id is not None:
-        selected_mode = mode_by_id(mode_id)
+    if mode_id is not None or mode is not None:
+        if mode is not None and mode_id is not None and mode.mode_id != mode_id:
+            provider.teardown(canonical_root=project.root, workspace=workspace.root)
+            raise AutomaticRuntimeError("temporary Mode selection is inconsistent")
+        selected_mode = mode or mode_by_id(cast(str, mode_id))
         if selected_mode is None:
             provider.teardown(canonical_root=project.root, workspace=workspace.root)
             raise AutomaticRuntimeError("the requested temporary Mode is unavailable")
@@ -3532,6 +3537,7 @@ def execute_governed_gateway_task(
     task: str,
     project_id: str,
     mode_id: str | None = None,
+    mode: CapabilityMode | None = None,
 ) -> str:
     """Run one isolated task and retain changes for explicit review rather than direct apply."""
 
@@ -3542,6 +3548,7 @@ def execute_governed_gateway_task(
         initial_task=task,
         followups=(),
         mode_id=mode_id,
+        mode=mode,
     )
 
 

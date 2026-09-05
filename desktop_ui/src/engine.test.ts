@@ -15,6 +15,7 @@ import {
   loadInstructionEnvironments,
   loadDiagnostics,
   loadModes,
+  loadPackageReviews,
   loadPackageImportPreview,
   loadProfileImportPreview,
   previewExistingInstallation,
@@ -25,6 +26,7 @@ import {
   runModeTask,
   runManagedTask,
   stagePackageImport,
+  decidePackageReview,
   applyManagedTask,
   discardManagedTask,
   updateEnginePreferences,
@@ -292,6 +294,84 @@ describe("Tauri engine boundary", () => {
       ],
     ]);
     expect(JSON.stringify(invoke.mock.calls)).not.toContain("Users");
+  });
+
+  it("loads raw-free package reviews and submits an exact digest-bound decision", async () => {
+    const item = {
+      review_version: "1.0.0" as const,
+      review_id: "package-review-1",
+      review_digest: "sha256:" + "d".repeat(64),
+      import_receipt_id: "import-1",
+      import_receipt_digest: "sha256:" + "e".repeat(64),
+      package_type: "capability_mode" as const,
+      package_id: "frontend-studio-package",
+      package_digest: "sha256:" + "a".repeat(64),
+      item_id: "frontend-studio",
+      item_digest: "sha256:" + "b".repeat(64),
+      claim_key: null,
+      publisher_name: "Temper",
+      publisher_key_fingerprint: "sha256:" + "c".repeat(64),
+      kind: "capability_mode",
+      summary: "Focused frontend craft",
+      disposition: "new" as const,
+      requested_scope: null,
+      behavioral_contract: null,
+      required_capabilities: [],
+      evaluation_status: "experimental",
+      available_actions: ["approve" as const, "reject" as const],
+      created_at: "2026-09-05T12:00:00Z",
+      starts_inactive: true as const,
+      origin_grants_authority: false as const,
+      raw_payloads_exposed: false as const,
+    };
+    invoke
+      .mockResolvedValueOnce({
+        protocol_version: ENGINE_PROTOCOL_VERSION,
+        request_id: "review-list",
+        ok: true,
+        result: {
+          items: [item],
+          pending_count: 1,
+          raw_payloads_exposed: false,
+        },
+        error: null,
+        snapshot_digest: null,
+      })
+      .mockResolvedValueOnce({
+        protocol_version: ENGINE_PROTOCOL_VERSION,
+        request_id: "review-decision",
+        ok: true,
+        result: {
+          receipt_id: "decision-1",
+          review_id: item.review_id,
+          decision: "approved",
+          status: "approved_inactive_mode",
+          runtime_adoption_digest: null,
+          origin_granted_authority: false,
+          raw_payloads_exposed: false,
+        },
+        error: null,
+        snapshot_digest: "sha256:" + "f".repeat(64),
+      });
+
+    await expect(loadPackageReviews()).resolves.toEqual([item]);
+    await expect(
+      decidePackageReview(
+        item,
+        "approved",
+        [],
+        "sha256:" + "f".repeat(64),
+        "approve-package-item",
+      ),
+    ).resolves.toMatchObject({ status: "approved_inactive_mode" });
+    expect(invoke).toHaveBeenLastCalledWith("package_review_decide", {
+      decision: "approved",
+      expectedSnapshotDigest: "sha256:" + "f".repeat(64),
+      idempotencyKey: "approve-package-item",
+      mappedProjectIds: [],
+      reviewDigest: item.review_digest,
+      reviewId: item.review_id,
+    });
   });
 
   it("exports a shareable package through a native-owned destination", async () => {

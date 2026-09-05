@@ -1,0 +1,340 @@
+{
+  "$defs": {
+    "BehavioralContract": {
+      "additionalProperties": false,
+      "properties": {
+        "intent": {
+          "minLength": 1,
+          "title": "Intent",
+          "type": "string"
+        },
+        "non_goals": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Non Goals",
+          "type": "array"
+        },
+        "required_behaviors": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Required Behaviors",
+          "type": "array"
+        },
+        "verification_requirements": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Verification Requirements",
+          "type": "array"
+        }
+      },
+      "required": [
+        "intent",
+        "required_behaviors",
+        "verification_requirements"
+      ],
+      "title": "BehavioralContract",
+      "type": "object"
+    },
+    "PortableProfileScope": {
+      "additionalProperties": false,
+      "description": "Path-free applicability; recipient-local identifiers require explicit mapping.",
+      "properties": {
+        "activation_conditions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Activation Conditions",
+          "type": "array"
+        },
+        "environment_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Environment Ids",
+          "type": "array"
+        },
+        "exclusions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Exclusions",
+          "type": "array"
+        },
+        "project_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Project Ids",
+          "type": "array"
+        },
+        "scope_mapping_required": {
+          "default": false,
+          "title": "Scope Mapping Required",
+          "type": "boolean"
+        },
+        "target_families": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Target Families",
+          "type": "array"
+        },
+        "task_classes": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Task Classes",
+          "type": "array"
+        }
+      },
+      "title": "PortableProfileScope",
+      "type": "object"
+    },
+    "ShareablePackageType": {
+      "enum": [
+        "behavior_pack",
+        "capability_mode",
+        "personal_mode_overlay"
+      ],
+      "title": "ShareablePackageType",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One externally-authored item waiting for an explicit local decision.",
+  "properties": {
+    "available_actions": {
+      "items": {
+        "enum": [
+          "approve",
+          "reject"
+        ],
+        "type": "string"
+      },
+      "title": "Available Actions",
+      "type": "array"
+    },
+    "behavioral_contract": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/BehavioralContract"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "claim_key": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Claim Key"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "disposition": {
+      "enum": [
+        "new",
+        "exact_duplicate",
+        "conflict",
+        "owner_only"
+      ],
+      "title": "Disposition",
+      "type": "string"
+    },
+    "evaluation_status": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Evaluation Status"
+    },
+    "import_receipt_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Import Receipt Digest",
+      "type": "string"
+    },
+    "import_receipt_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Import Receipt Id",
+      "type": "string"
+    },
+    "item_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Item Digest",
+      "type": "string"
+    },
+    "item_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Item Id",
+      "type": "string"
+    },
+    "kind": {
+      "minLength": 1,
+      "title": "Kind",
+      "type": "string"
+    },
+    "local_subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Local Subject Id",
+      "type": "string"
+    },
+    "origin_grants_authority": {
+      "const": false,
+      "default": false,
+      "title": "Origin Grants Authority",
+      "type": "boolean"
+    },
+    "package_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Package Digest",
+      "type": "string"
+    },
+    "package_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Package Id",
+      "type": "string"
+    },
+    "package_type": {
+      "$ref": "#/$defs/ShareablePackageType"
+    },
+    "publisher_key_fingerprint": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Publisher Key Fingerprint",
+      "type": "string"
+    },
+    "publisher_name": {
+      "minLength": 1,
+      "title": "Publisher Name",
+      "type": "string"
+    },
+    "raw_payloads_exposed": {
+      "const": false,
+      "default": false,
+      "title": "Raw Payloads Exposed",
+      "type": "boolean"
+    },
+    "requested_scope": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PortableProfileScope"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "required_capabilities": {
+      "default": [],
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Required Capabilities",
+      "type": "array"
+    },
+    "review_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Review Id",
+      "type": "string"
+    },
+    "review_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Review Version",
+      "type": "string"
+    },
+    "starts_inactive": {
+      "const": true,
+      "default": true,
+      "title": "Starts Inactive",
+      "type": "boolean"
+    },
+    "summary": {
+      "minLength": 1,
+      "title": "Summary",
+      "type": "string"
+    }
+  },
+  "required": [
+    "review_id",
+    "local_subject_id",
+    "import_receipt_id",
+    "import_receipt_digest",
+    "package_type",
+    "package_id",
+    "package_digest",
+    "item_id",
+    "item_digest",
+    "publisher_name",
+    "publisher_key_fingerprint",
+    "kind",
+    "summary",
+    "disposition",
+    "available_actions",
+    "created_at"
+  ],
+  "title": "PackageReviewItemV1",
+  "type": "object"
+}

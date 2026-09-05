@@ -1,0 +1,600 @@
+{
+  "$defs": {
+    "ActorKind": {
+      "enum": [
+        "user",
+        "human_reviewer",
+        "agent",
+        "tool",
+        "system"
+      ],
+      "title": "ActorKind",
+      "type": "string"
+    },
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "display_name": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "kind": {
+          "$ref": "#/$defs/ActorKind"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "actor_id",
+        "kind"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "Approval": {
+      "additionalProperties": false,
+      "properties": {
+        "approver": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "decided_at": {
+          "format": "date-time",
+          "title": "Decided At",
+          "type": "string"
+        },
+        "decision": {
+          "$ref": "#/$defs/ApprovalDecision"
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "rationale": {
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision",
+        "approver",
+        "decided_at",
+        "policy_version",
+        "rationale"
+      ],
+      "title": "Approval",
+      "type": "object"
+    },
+    "ApprovalDecision": {
+      "enum": [
+        "approved",
+        "rejected"
+      ],
+      "title": "ApprovalDecision",
+      "type": "string"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "record_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "record_type": {
+          "const": "evidence",
+          "default": "evidence",
+          "title": "Record Type",
+          "type": "string"
+        },
+        "record_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Record Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "record_version",
+        "content_digest"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "ExternalProposalOriginV1": {
+      "additionalProperties": false,
+      "description": "Raw-free lineage for an externally authored clause reviewed by the local owner.",
+      "properties": {
+        "claim_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Claim Key",
+          "type": "string"
+        },
+        "grants_user_authority": {
+          "const": false,
+          "default": false,
+          "title": "Grants User Authority",
+          "type": "boolean"
+        },
+        "import_receipt_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Import Receipt Digest",
+          "type": "string"
+        },
+        "import_receipt_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Import Receipt Id",
+          "type": "string"
+        },
+        "item_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Item Digest",
+          "type": "string"
+        },
+        "item_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Item Id",
+          "type": "string"
+        },
+        "origin_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Origin Version",
+          "type": "string"
+        },
+        "package_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Package Digest",
+          "type": "string"
+        },
+        "package_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Package Id",
+          "type": "string"
+        },
+        "package_type": {
+          "const": "behavior_pack",
+          "default": "behavior_pack",
+          "title": "Package Type",
+          "type": "string"
+        },
+        "publisher_key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Publisher Key Fingerprint",
+          "type": "string"
+        },
+        "signature_verified": {
+          "const": true,
+          "default": true,
+          "title": "Signature Verified",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "package_id",
+        "package_digest",
+        "import_receipt_id",
+        "import_receipt_digest",
+        "item_id",
+        "item_digest",
+        "claim_key",
+        "publisher_key_fingerprint"
+      ],
+      "title": "ExternalProposalOriginV1",
+      "type": "object"
+    },
+    "GovernanceEvent": {
+      "additionalProperties": false,
+      "description": "Signed review, release, activation, or custody action.",
+      "properties": {
+        "decision": {
+          "minLength": 1,
+          "title": "Decision",
+          "type": "string"
+        },
+        "event_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "event_type": {
+          "$ref": "#/$defs/GovernanceEventType"
+        },
+        "governance_type": {
+          "const": "governance_event",
+          "default": "governance_event",
+          "title": "Governance Type",
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "signature": {
+          "$ref": "#/$defs/SignatureEnvelope"
+        },
+        "subject_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "target_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Target Digest",
+          "type": "string"
+        },
+        "target_ref": {
+          "minLength": 1,
+          "title": "Target Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "subject_id",
+        "event_type",
+        "target_ref",
+        "target_digest",
+        "decision",
+        "reason",
+        "policy_version",
+        "occurred_at",
+        "signature"
+      ],
+      "title": "GovernanceEvent",
+      "type": "object"
+    },
+    "GovernanceEventType": {
+      "enum": [
+        "review_decision",
+        "release_decision",
+        "activation_decision",
+        "custody_action"
+      ],
+      "title": "GovernanceEventType",
+      "type": "string"
+    },
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    },
+    "SignerIdentity": {
+      "additionalProperties": false,
+      "description": "Self-signed public identity for one dedicated local Ed25519 key.",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires At"
+        },
+        "governance_type": {
+          "const": "signer_identity",
+          "default": "signer_identity",
+          "title": "Governance Type",
+          "type": "string"
+        },
+        "identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Identity Id",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "public_key_base64": {
+          "minLength": 1,
+          "title": "Public Key Base64",
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "$ref": "#/$defs/SignerRole"
+          },
+          "minItems": 1,
+          "title": "Roles",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "signature": {
+          "$ref": "#/$defs/SignatureEnvelope"
+        },
+        "subject_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Subject Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "identity_id",
+        "subject_id",
+        "public_key_base64",
+        "key_fingerprint",
+        "roles",
+        "created_at",
+        "signature"
+      ],
+      "title": "SignerIdentity",
+      "type": "object"
+    },
+    "SignerRole": {
+      "enum": [
+        "consent",
+        "review",
+        "release",
+        "activation",
+        "custody"
+      ],
+      "title": "SignerRole",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Signed local decision and optional Core transition for one package clause.",
+  "properties": {
+    "decision": {
+      "$ref": "#/$defs/ApprovalDecision"
+    },
+    "evaluation_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Evaluation Digest"
+    },
+    "evidence_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EvidenceRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "origin": {
+      "$ref": "#/$defs/ExternalProposalOriginV1"
+    },
+    "prior_state_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Prior State Digest",
+      "type": "string"
+    },
+    "release_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Release Digest"
+    },
+    "release_event_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Release Event Digest"
+    },
+    "resolution_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Resolution Id",
+      "type": "string"
+    },
+    "resolution_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Resolution Version",
+      "type": "string"
+    },
+    "resolved_at": {
+      "format": "date-time",
+      "title": "Resolved At",
+      "type": "string"
+    },
+    "resulting_state_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Resulting State Digest",
+      "type": "string"
+    },
+    "review": {
+      "$ref": "#/$defs/Approval"
+    },
+    "review_event": {
+      "$ref": "#/$defs/GovernanceEvent"
+    },
+    "signer_identity": {
+      "$ref": "#/$defs/SignerIdentity"
+    },
+    "subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject Id",
+      "type": "string"
+    },
+    "transition_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Transition Digest"
+    }
+  },
+  "required": [
+    "resolution_id",
+    "subject_id",
+    "origin",
+    "decision",
+    "review",
+    "review_event",
+    "signer_identity",
+    "prior_state_digest",
+    "resulting_state_digest",
+    "resolved_at"
+  ],
+  "title": "RuntimeExternalAdoptionResolution",
+  "type": "object"
+}

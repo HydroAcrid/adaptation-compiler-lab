@@ -55,6 +55,8 @@ from adaptation_compiler_lab.desktop.models import (
     SuggestionSummaryV1,
 )
 from adaptation_compiler_lab.domain import ApprovalDecision, Scope
+from adaptation_compiler_lab.modes import mode_by_id
+from adaptation_compiler_lab.portability import ShareablePackageImportStore
 from adaptation_compiler_lab.serialization import canonical_digest
 
 
@@ -203,11 +205,26 @@ class CodexDogfoodDesktopBackend:
             raise ValueError("desktop task requires an exact registered project")
         if config.gateway_workspace_root is None:
             raise ValueError("desktop task runner requires the isolated writable gateway")
+        imported_mode = None
+        if mode_id is not None and mode_by_id(mode_id) is None:
+            imported_mode = next(
+                (
+                    mode
+                    for mode in ShareablePackageImportStore(
+                        config.state_root / "shareable-imports"
+                    ).accepted_modes()
+                    if mode.mode_id == mode_id
+                ),
+                None,
+            )
+            if imported_mode is None:
+                raise ValueError("desktop task requested an unavailable Mode")
         session_id = execute_governed_gateway_task(
             self.config_path,
             task=task,
             project_id=project_id,
             mode_id=mode_id,
+            mode=imported_mode,
         )
         session = _gateway_ledger(config).session(session_id)
         return FreshCodexTaskResult(

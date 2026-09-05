@@ -28,6 +28,7 @@ from adaptation_compiler_lab.desktop.models import (
     SetupCompletionReceiptV1,
     SetupSnapshotV1,
 )
+from adaptation_compiler_lab.domain import ApprovalDecision, BehavioralContract
 from adaptation_compiler_lab.instruction_environment.models import (
     InstructionEnvironmentSummaryV1,
     NativeTarget,
@@ -35,8 +36,10 @@ from adaptation_compiler_lab.instruction_environment.models import (
 from adaptation_compiler_lab.portability import (
     PackageImportItemPreviewV1,
     PackageImportPreviewV1,
+    PackageReviewItemV1,
     ShareablePackageType,
 )
+from adaptation_compiler_lab.portability.profile import PortableProfileScope
 
 
 def test_unconfigured_engine_import_does_not_load_managed_runtime_service() -> None:
@@ -411,6 +414,84 @@ def test_shareable_package_import_only_stages_inactive_review_material(tmp_path:
         package,
         preview_value,
         idempotency_key="package-import-click",
+    )
+
+
+def test_package_review_is_raw_free_and_decision_is_digest_bound() -> None:
+    snapshot_digest = f"sha256:{'a' * 64}"
+    item = PackageReviewItemV1(
+        review_id="package-review-1",
+        local_subject_id="kevin",
+        import_receipt_id="package-import-1",
+        import_receipt_digest=f"sha256:{'b' * 64}",
+        package_type=ShareablePackageType.BEHAVIOR_PACK,
+        package_id="clear-handoffs",
+        package_digest=f"sha256:{'c' * 64}",
+        item_id="purpose-first",
+        item_digest=f"sha256:{'d' * 64}",
+        claim_key="communication.purpose-first",
+        publisher_name="Example publisher",
+        publisher_key_fingerprint=f"sha256:{'e' * 64}",
+        kind="preference",
+        summary="Explain purpose before procedural detail",
+        disposition="new",
+        requested_scope=PortableProfileScope(
+            target_families=("codex",),
+            scope_mapping_required=True,
+        ),
+        behavioral_contract=BehavioralContract(
+            intent="Explain purpose before procedural detail",
+            required_behaviors=("State why a procedure matters before commands.",),
+            verification_requirements=("Confirm that purpose precedes procedure.",),
+        ),
+        available_actions=("approve", "reject"),
+        created_at=datetime(2026, 9, 5, 12, tzinfo=UTC),
+    )
+    service = MagicMock()
+    service.load.return_value = MagicMock(content_digest=snapshot_digest)
+    portability = MagicMock()
+    portability.package_review_items.return_value = (item,)
+    portability.decide_package_review.return_value = MagicMock(
+        receipt_id="package-decision-1",
+        review_id=item.review_id,
+        decision="approved",
+        resulting_status="approved_for_core",
+        runtime_adoption_digest=f"sha256:{'f' * 64}",
+    )
+    router = EngineProtocolRouter(cast(Any, service), cast(Any, portability))
+
+    listing = router.handle(_request("package.review.list"))
+    assert listing.ok is True
+    assert listing.result is not None
+    assert listing.result["pending_count"] == 1
+    assert listing.result["items"][0]["review_digest"] == item.content_digest
+    assert listing.result["items"][0]["origin_grants_authority"] is False
+
+    decision = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="package-review-decision",
+            method="package.review.decide",
+            params={
+                "review_id": item.review_id,
+                "review_digest": item.content_digest,
+                "decision": "approved",
+                "mapped_project_ids": ["project-a"],
+            },
+            expected_snapshot_digest=snapshot_digest,
+            idempotency_key="package-review-click",
+        )
+    )
+
+    assert decision.ok is True
+    assert decision.result is not None
+    assert decision.result["origin_granted_authority"] is False
+    portability.decide_package_review.assert_called_once_with(
+        review_id=item.review_id,
+        review_digest=item.content_digest,
+        decision=ApprovalDecision.APPROVED,
+        mapped_project_ids=("project-a",),
+        idempotency_key="package-review-click",
     )
 
 

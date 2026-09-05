@@ -30,6 +30,7 @@ import {
   loadEngineSnapshot,
   loadInstructionEnvironments,
   loadModes,
+  loadPackageReviews,
   loadSetupSnapshot,
   inspectConnections,
   recordEngineFeedback,
@@ -41,6 +42,7 @@ import {
   normalizeEngineFailure,
   revokeEngineAdaptation,
   undoEngineAdaptation,
+  decidePackageReview,
   updateEnginePreferences,
   type EngineSuggestion,
   type EngineDesktopSnapshot,
@@ -60,6 +62,7 @@ import type {
   SuggestionDecision,
   Theme,
   WorkspaceScope,
+  PackageReviewItem,
 } from "./types";
 
 const supportedScreens = new Set<Screen>([
@@ -150,6 +153,7 @@ export default function App() {
   const [modeCatalog, setModeCatalog] = useState<CapabilityModeSummary[]>(
     browserPreviewRuntime ? browserModes : [],
   );
+  const [packageReviews, setPackageReviews] = useState<PackageReviewItem[]>([]);
   const [bootstrapState, setBootstrapState] = useState<
     "loading" | "onboarding" | "ready" | "error"
   >(nativeRuntime ? "loading" : "ready");
@@ -218,11 +222,13 @@ export default function App() {
           modes,
           setup,
           environments,
+          importedReviews,
         ] = await Promise.all([
           loadEngineSnapshot(),
           loadModes(),
           loadSetupSnapshot(),
           loadInstructionEnvironments(),
+          loadPackageReviews(),
         ]);
         if (!active) return;
         setEngineSnapshot(snapshot);
@@ -231,6 +237,7 @@ export default function App() {
         setSetupSnapshot(setup.snapshot);
         setSetupDigest(setup.snapshotDigest);
         setInstructionEnvironments(environments);
+        setPackageReviews(importedReviews);
         setBootstrapState("ready");
       })
       .catch((error: unknown) => {
@@ -255,19 +262,26 @@ export default function App() {
       setScreen("today");
       return;
     }
-    const [{ snapshot, snapshotDigest: digest }, modes, setup, environments] =
-      await Promise.all([
-        loadEngineSnapshot(),
-        loadModes(),
-        loadSetupSnapshot(),
-        loadInstructionEnvironments(),
-      ]);
+    const [
+      { snapshot, snapshotDigest: digest },
+      modes,
+      setup,
+      environments,
+      importedReviews,
+    ] = await Promise.all([
+      loadEngineSnapshot(),
+      loadModes(),
+      loadSetupSnapshot(),
+      loadInstructionEnvironments(),
+      loadPackageReviews(),
+    ]);
     setEngineSnapshot(snapshot);
     setSnapshotDigest(digest);
     setModeCatalog(modes);
     setSetupSnapshot(setup.snapshot);
     setSetupDigest(setup.snapshotDigest);
     setInstructionEnvironments(environments);
+    setPackageReviews(importedReviews);
     setEngineFailure(null);
     setBootstrapState("ready");
     setScreen("today");
@@ -581,6 +595,30 @@ export default function App() {
     }
   }
 
+  async function reviewImportedPackage(
+    item: PackageReviewItem,
+    decision: "approved" | "rejected",
+    projectIds: string[],
+  ) {
+    if (!snapshotDigest) return;
+    const receipt = await decidePackageReview(
+      item,
+      decision,
+      projectIds,
+      snapshotDigest,
+      crypto.randomUUID(),
+    );
+    await refreshAfterNativeAction(
+      receipt.status === "approved_for_core"
+        ? "The approved behavior is now part of Core."
+        : receipt.status === "approved_inactive_mode"
+          ? "The imported Mode is available for an explicit task."
+          : receipt.status === "approved_inactive_overlay"
+            ? "The personal overlay is approved and remains inactive."
+            : "The imported item was dismissed.",
+    );
+  }
+
   async function runAdvancedTask(projectId: string, task: string) {
     if (
       !snapshotDigest ||
@@ -632,19 +670,26 @@ export default function App() {
     setToast(message);
     if (!nativeRuntime) return;
     try {
-      const [{ snapshot, snapshotDigest: digest }, modes, setup, environments] =
-        await Promise.all([
-          loadEngineSnapshot(),
-          loadModes(),
-          loadSetupSnapshot(),
-          loadInstructionEnvironments(),
-        ]);
+      const [
+        { snapshot, snapshotDigest: digest },
+        modes,
+        setup,
+        environments,
+        importedReviews,
+      ] = await Promise.all([
+        loadEngineSnapshot(),
+        loadModes(),
+        loadSetupSnapshot(),
+        loadInstructionEnvironments(),
+        loadPackageReviews(),
+      ]);
       setEngineSnapshot(snapshot);
       setSnapshotDigest(digest);
       setModeCatalog(modes);
       setSetupSnapshot(setup.snapshot);
       setSetupDigest(setup.snapshotDigest);
       setInstructionEnvironments(environments);
+      setPackageReviews(importedReviews);
       setEngineFailure(null);
       setFeedback(null);
     } catch (error: unknown) {
@@ -812,6 +857,12 @@ export default function App() {
                     ? browserProjects
                     : []
               }
+              reviewProjects={
+                engineSnapshot?.projects.map((project) => ({
+                  id: project.project_id,
+                  label: project.display_name,
+                })) ?? []
+              }
               runnerReady={
                 nativeRuntime
                   ? codexConnectionReady && governedActionsAvailable
@@ -820,6 +871,8 @@ export default function App() {
               runnerUnavailableReason={managedTaskUnavailableReason}
               snapshotDigest={snapshotDigest}
               instructionEnvironments={instructionEnvironments}
+              packageReviews={packageReviews}
+              onPackageDecision={reviewImportedPackage}
             />
           ) : null}
           {screen === "connections" ? (

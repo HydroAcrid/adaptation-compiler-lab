@@ -1,0 +1,235 @@
+{
+  "$defs": {
+    "ShareablePackageType": {
+      "enum": [
+        "behavior_pack",
+        "capability_mode",
+        "personal_mode_overlay"
+      ],
+      "title": "ShareablePackageType",
+      "type": "string"
+    },
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Signed local adoption decision; the publisher signature grants no authority.",
+  "properties": {
+    "decided_at": {
+      "format": "date-time",
+      "title": "Decided At",
+      "type": "string"
+    },
+    "decision": {
+      "enum": [
+        "approved",
+        "rejected"
+      ],
+      "title": "Decision",
+      "type": "string"
+    },
+    "idempotency_key_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Idempotency Key Digest",
+      "type": "string"
+    },
+    "item_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Item Digest",
+      "type": "string"
+    },
+    "item_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Item Id",
+      "type": "string"
+    },
+    "local_public_key_base64": {
+      "minLength": 1,
+      "title": "Local Public Key Base64",
+      "type": "string"
+    },
+    "local_signer_identity_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Local Signer Identity Id",
+      "type": "string"
+    },
+    "local_signer_key_fingerprint": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Local Signer Key Fingerprint",
+      "type": "string"
+    },
+    "local_subject_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Local Subject Id",
+      "type": "string"
+    },
+    "local_user_decision_required": {
+      "const": true,
+      "default": true,
+      "title": "Local User Decision Required",
+      "type": "boolean"
+    },
+    "mapped_project_ids": {
+      "default": [],
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Mapped Project Ids",
+      "type": "array"
+    },
+    "origin_granted_authority": {
+      "const": false,
+      "default": false,
+      "title": "Origin Granted Authority",
+      "type": "boolean"
+    },
+    "package_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Package Digest",
+      "type": "string"
+    },
+    "package_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Package Id",
+      "type": "string"
+    },
+    "package_type": {
+      "$ref": "#/$defs/ShareablePackageType"
+    },
+    "receipt_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "receipt_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Receipt Version",
+      "type": "string"
+    },
+    "resulting_status": {
+      "enum": [
+        "approved_for_core",
+        "approved_inactive_mode",
+        "approved_inactive_overlay",
+        "rejected"
+      ],
+      "title": "Resulting Status",
+      "type": "string"
+    },
+    "review_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Review Digest",
+      "type": "string"
+    },
+    "review_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Review Id",
+      "type": "string"
+    },
+    "runtime_adoption_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Runtime Adoption Digest"
+    },
+    "signature": {
+      "$ref": "#/$defs/SignatureEnvelope"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "review_id",
+    "review_digest",
+    "package_type",
+    "package_id",
+    "package_digest",
+    "item_id",
+    "item_digest",
+    "local_subject_id",
+    "local_signer_identity_id",
+    "local_public_key_base64",
+    "local_signer_key_fingerprint",
+    "decision",
+    "resulting_status",
+    "decided_at",
+    "idempotency_key_digest",
+    "signature"
+  ],
+  "title": "PackageReviewDecisionReceiptV1",
+  "type": "object"
+}

@@ -110,6 +110,11 @@
       "title": "Imported At",
       "type": "string"
     },
+    "local_public_key_base64": {
+      "minLength": 1,
+      "title": "Local Public Key Base64",
+      "type": "string"
+    },
     "local_signer_identity_id": {
       "maxLength": 200,
       "minLength": 1,
@@ -186,6 +191,7 @@
     "publisher_key_fingerprint",
     "local_subject_id",
     "local_signer_identity_id",
+    "local_public_key_base64",
     "local_signer_key_fingerprint",
     "imported_at",
     "idempotency_key_digest",

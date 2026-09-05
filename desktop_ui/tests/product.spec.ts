@@ -117,7 +117,11 @@ test("Frontend Studio is visibly temporary and browser-safe", async ({
   page,
 }) => {
   await page.goto("/?screen=modes&theme=dark");
-  await page.getByRole("button", { name: "View Mode" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Frontend Studio" })
+    .getByRole("button", { name: "View Mode" })
+    .click();
 
   const dialog = page.getByRole("dialog", { name: "Frontend Studio" });
   await expect(dialog).toBeVisible();
