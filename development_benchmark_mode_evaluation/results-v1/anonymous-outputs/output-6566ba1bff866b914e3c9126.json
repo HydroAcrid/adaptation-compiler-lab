@@ -1,0 +1,1 @@
+{"blind_output_id":"output-6566ba1bff866b914e3c9126","condition_leakage_withheld":false,"diff":"","final_response":"I couldn’t complete the repair because workspace execution is unavailable: `code-mode host is disabled`. No files were changed and tests were not run.","task_id":"frontend-02-review-queue","visible_tests_passed":true}

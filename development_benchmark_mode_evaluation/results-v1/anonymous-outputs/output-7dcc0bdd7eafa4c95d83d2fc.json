@@ -1,0 +1,1 @@
+{"blind_output_id":"output-7dcc0bdd7eafa4c95d83d2fc","condition_leakage_withheld":false,"diff":"","final_response":"I couldn’t complete the change because the workspace command runner is unavailable (`code-mode host is disabled`). No files were modified and tests were not run.","task_id":"secure-05-neutral-copy","visible_tests_passed":true}
