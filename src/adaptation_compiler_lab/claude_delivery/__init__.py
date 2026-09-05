@@ -1,7 +1,15 @@
 """Governed, no-model Claude Code hook delivery contracts."""
 
+from adaptation_compiler_lab.claude_delivery.connection import (
+    ClaudeConnectionError,
+    ClaudeConnectionService,
+)
 from adaptation_compiler_lab.claude_delivery.models import (
     ClaudeCapturedAuthority,
+    ClaudeConnectionPreviewV1,
+    ClaudeConnectionProjectV1,
+    ClaudeConnectionReceiptV1,
+    ClaudeConnectionStatusV1,
     ClaudeHookAuditReceiptV1,
     ClaudeHookAuthorizationV1,
     ClaudeHookCaptureReceiptV1,
@@ -39,6 +47,12 @@ from adaptation_compiler_lab.claude_delivery.settings import ClaudeHookSettingsS
 
 __all__ = [
     "ClaudeCapturedAuthority",
+    "ClaudeConnectionError",
+    "ClaudeConnectionPreviewV1",
+    "ClaudeConnectionProjectV1",
+    "ClaudeConnectionReceiptV1",
+    "ClaudeConnectionService",
+    "ClaudeConnectionStatusV1",
     "ClaudeHookAuditReceiptV1",
     "ClaudeHookAuthorizationV1",
     "ClaudeHookBroker",

@@ -2,6 +2,30 @@
 
 Last updated: 2026-09-05
 
+## Claude explicit connection lifecycle
+
+The desktop product now owns a real Claude Connect/Disconnect transition. A compatible installed
+and locally authenticated Claude Code binary can request an exact redacted settings preview. Apply
+requires explicit 30-day local project consent, the preview digest, current settings digest,
+current desktop snapshot digest, and an idempotency key. Temper atomically installs only its four
+owned hook entries, signs both the consent and chained connection receipt, restarts the sidecar,
+and reports Connected only after re-verifying the helper, settings receipt, project bindings, and
+expiry. Disconnect removes only Temper-owned entries and preserves unrelated Claude settings.
+
+The verified connection activates the existing no-model broker and a bounded two-minute lease
+refresh outside the hook request path. Drift, expiry, missing helper state, or an unavailable
+runtime changes the product state to Attention and makes hook delivery a silent no-op. Tauri owns
+the helper and settings locations; React receives neither paths nor credentials. The complete
+preview/consent/apply/restart/disconnect sequence is covered by disposable Python and React
+fixtures. Claude Code is not installed on this machine, so the real interface truthfully offers no
+Connect action and no live smoke has run. No authentication was initiated, API key read, provider
+call made, or deferred Milestone 6 material accessed.
+
+Existing approved artifacts retain their target compatibility. In particular, historical
+Codex-only approvals are not silently reauthorized for Claude; the hook projection contains only
+already Claude-compatible clauses. A governed portability/reapproval flow is still needed before
+historical Core can be projected across targets.
+
 ## Claude governed hook runtime
 
 The native hook transport now has a concrete no-model local runtime behind its port. It resolves an
@@ -26,15 +50,15 @@ Claude tests cover encrypted prompt recovery, exact native deduplication, stale-
 expired authorization, no-model cached delivery, untrusted outcome/failure capture, project
 overlap, and signed-ledger tampering.
 
-The complete Python gate passes with 1,174 tests and two expected platform skips, strict mypy over
-418 source files, Ruff formatting/linting, locked dependency sync, schema snapshots, and both the
-source and wheel builds. The focused Claude suite now contains 33 passing cases.
+The complete Python gate passes with 1,181 tests and two expected platform skips, strict mypy over
+420 source files, Ruff formatting/linting, locked dependency sync, schema snapshots, and both the
+source and wheel builds. The focused Claude suite now contains 36 passing cases.
 
-This runtime is not yet an active Claude connection. No current desktop preference or historical
-Codex-only consent silently enables it. Explicit consent/policy extension, Connect/Disconnect UI,
-settings installation, fake-Claude end-to-end lifecycle, and an authorized live smoke remain the
-next gate. No Claude setting, authentication, credential, paid call, or sealed Milestone 6 material
-was touched.
+This runtime activates only after the explicit signed connection lifecycle above. No current
+desktop preference, historical Codex-only consent, or mere executable detection silently enables
+it. Disposable lifecycle validation passes; an authorized live smoke remains outstanding because
+Claude Code is absent locally. No real Claude setting, authentication, credential, paid call, or
+sealed Milestone 6 material was touched.
 
 ## Claude native hook transport
 
@@ -51,11 +75,10 @@ release-time digest revalidation, 18 Rust transport/supervision tests, 23 focuse
 and 52 focused Python protocol/Claude tests. Atomic stale-descriptor replacement and multi-instance
 ownership are covered explicitly.
 
-This is still not a connected Claude integration. The now-implemented runtime remains inactive
-until an explicit Connect/Disconnect UI and protocol creates the required project consent and
-installs the previewed settings change. Fake-Claude end-to-end lifecycle and an authorized live
-smoke also remain required. No Claude settings, authentication, credential, provider call, or
-sealed Milestone 6 material was touched.
+The transport is now activated only by the verified signed connection lifecycle. Disposable
+Connect/Disconnect and restart tests pass. An authorized live smoke remains required on a machine
+with the pinned Claude Code release; none of the current machine's settings, authentication,
+credentials, or provider state was touched.
 
 ## Claude product-delivery foundation
 
@@ -71,9 +94,9 @@ original-byte backup, durable signed idempotency receipt, and restart-safe 30-da
 previously absent settings file is restored to absence rather than to a synthetic empty file.
 Unrelated Claude settings and hooks are preserved.
 
-This is not yet a connected Claude integration. The desktop connect/disconnect surface, explicit
-Claude consent extension, and an authorized live smoke remain required. No Claude setting was
-changed, no credential was read, no paid provider call occurred, and the deferred Milestone 6
+The desktop Connect/Disconnect surface and explicit Claude consent transition now use this
+foundation. An authorized live smoke remains required. No real Claude setting was changed on this
+machine, no credential was read, no paid provider call occurred, and the deferred Milestone 6
 custody boundary was untouched.
 See [`TEMPER_CLAUDE_DELIVERY.md`](TEMPER_CLAUDE_DELIVERY.md).
 

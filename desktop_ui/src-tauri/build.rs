@@ -136,6 +136,8 @@ fn main() {
             "preferences_update",
             "setup_status",
             "connection_inspect",
+            "claude_connection_preview",
+            "claude_connection_apply",
             "setup_existing_preview",
             "setup_existing_adopt",
             "setup_project_preview",

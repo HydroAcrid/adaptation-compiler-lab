@@ -38,6 +38,12 @@ ConnectionConformanceState = Literal[
     "compatible",
     "update_required",
 ]
+ConnectionIntegrationState = Literal[
+    "unavailable",
+    "available",
+    "connected",
+    "attention",
+]
 DesktopAction = Literal[
     "load",
     "poll",
@@ -98,18 +104,21 @@ class SecureStoreStatus(FrozenModel):
 class AgentConnectionV1(FrozenModel):
     """Truthful source and target capabilities without executable or credential paths."""
 
-    connection_version: Literal["1.0.0"] = "1.0.0"
+    connection_version: Literal["1.1.0"] = "1.1.0"
     agent_id: Literal["codex", "claude"]
     display_name: Literal["Codex", "Claude Code"]
     installation_state: ConnectionInstallationState
     authentication_state: ConnectionAuthenticationState
     conformance_state: ConnectionConformanceState
+    integration_state: ConnectionIntegrationState = "unavailable"
     version_label: str | None = None
     status_summary: NonEmptyStr
     learning_capability: NonEmptyStr
     delivery_capability: NonEmptyStr
     cost_posture: NonEmptyStr
-    available_actions: tuple[Literal["refresh", "use_for_setup"], ...] = ("refresh",)
+    available_actions: tuple[Literal["refresh", "use_for_setup", "connect", "disconnect"], ...] = (
+        "refresh",
+    )
     raw_payloads_exposed: Literal[False] = False
 
 

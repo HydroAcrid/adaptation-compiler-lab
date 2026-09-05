@@ -6,7 +6,7 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader, Read, Write};
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::sync::{Mutex, TryLockError};
@@ -31,6 +31,7 @@ const ENGINE_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 const BACKGROUND_POLL_INTERVAL: Duration = Duration::from_secs(5 * 60);
+const CLAUDE_PROJECTION_REFRESH_INTERVAL: Duration = Duration::from_secs(2 * 60);
 const REVIEW_NOTIFICATION_BODY: &str = "A possible adaptation is ready for review.";
 const EXPECTED_ENGINE_VERSION: &str = match option_env!("TEMPER_EXPECTED_ENGINE_VERSION") {
     Some(value) => value,
@@ -262,7 +263,39 @@ fn engine_command() -> Result<Command, PublicError> {
     if let Ok(predecessor) = env::var("TEMPER_PREDECESSOR_CONFIG") {
         command.arg("--predecessor-config").arg(predecessor);
     }
+    if let Some(helper) = claude_hook_helper_path() {
+        command.env("TEMPER_HOOK_HELPER_BINARY", helper);
+    }
+    if let Some(settings) = claude_settings_path() {
+        command.env("TEMPER_CLAUDE_SETTINGS_PATH", settings);
+    }
     Ok(command)
+}
+
+fn claude_hook_helper_path() -> Option<PathBuf> {
+    if cfg!(debug_assertions)
+        && let Some(path) = env::var_os("TEMPER_HOOK_HELPER_BINARY")
+    {
+        let candidate = PathBuf::from(path);
+        return candidate.is_file().then_some(candidate);
+    }
+    let current = env::current_exe().ok()?;
+    let name = if cfg!(target_os = "windows") {
+        "temper-hook.exe"
+    } else {
+        "temper-hook"
+    };
+    let candidate = current.with_file_name(name);
+    candidate.is_file().then_some(candidate)
+}
+
+fn claude_settings_path() -> Option<PathBuf> {
+    let home = if cfg!(target_os = "windows") {
+        env::var_os("USERPROFILE")
+    } else {
+        env::var_os("HOME")
+    }?;
+    Some(PathBuf::from(home).join(".claude").join("settings.json"))
 }
 
 fn validate_handshake(
@@ -492,6 +525,11 @@ fn run_background_poll(app: &tauri::AppHandle) {
     }
 }
 
+fn refresh_claude_projections(app: &tauri::AppHandle) {
+    let state = app.state::<EngineState>();
+    let _ = call_running_engine(state.inner(), "claude.runtime.refresh", json!({}));
+}
+
 fn pending_instruction_analysis(response: &EngineResponse) -> Option<(String, String)> {
     if !response.ok {
         return None;
@@ -624,10 +662,17 @@ fn install_tray_and_scheduler(app: &mut tauri::App) -> Result<(), Box<dyn std::e
     app.manage(PollScheduler(Mutex::new(Some(stop_sender))));
     let handle = app.handle().clone();
     thread::spawn(move || {
+        let mut next_background_poll = Instant::now() + BACKGROUND_POLL_INTERVAL;
         loop {
-            match stop_receiver.recv_timeout(BACKGROUND_POLL_INTERVAL) {
+            match stop_receiver.recv_timeout(CLAUDE_PROJECTION_REFRESH_INTERVAL) {
                 Ok(()) | Err(RecvTimeoutError::Disconnected) => break,
-                Err(RecvTimeoutError::Timeout) => run_background_poll(&handle),
+                Err(RecvTimeoutError::Timeout) => {
+                    refresh_claude_projections(&handle);
+                    if Instant::now() >= next_background_poll {
+                        run_background_poll(&handle);
+                        next_background_poll = Instant::now() + BACKGROUND_POLL_INTERVAL;
+                    }
+                }
             }
         }
     });
@@ -815,6 +860,52 @@ fn setup_status(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, 
 #[tauri::command]
 fn connection_inspect(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
     call_engine(&state, "connection.inspect", json!({}), None, None)
+}
+
+#[tauri::command]
+fn claude_connection_preview(
+    state: tauri::State<'_, EngineState>,
+    operation: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "connection.claude.preview",
+        json!({"operation": operation}),
+        None,
+        None,
+    )
+}
+
+#[tauri::command]
+async fn claude_connection_apply(
+    app: tauri::AppHandle,
+    preview_token: String,
+    expected_before_digest: String,
+    consent_confirmed: bool,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let response = call_engine(
+            &state,
+            "connection.claude.apply",
+            json!({
+                "preview_token": preview_token,
+                "expected_before_digest": expected_before_digest,
+                "consent_confirmed": consent_confirmed,
+            }),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )?;
+        if response.ok {
+            let mut guard = state.0.lock().map_err(|_| unavailable())?;
+            *guard = None;
+        }
+        Ok(response)
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
@@ -1410,6 +1501,8 @@ pub fn run() {
             preferences_update,
             setup_status,
             connection_inspect,
+            claude_connection_preview,
+            claude_connection_apply,
             setup_existing_preview,
             setup_existing_adopt,
             setup_project_preview,
@@ -1503,6 +1596,8 @@ mod tests {
             "preferences_update",
             "setup_status",
             "connection_inspect",
+            "claude_connection_preview",
+            "claude_connection_apply",
             "setup_existing_preview",
             "setup_existing_adopt",
             "setup_project_preview",

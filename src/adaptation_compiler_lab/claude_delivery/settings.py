@@ -83,6 +83,34 @@ class ClaudeHookSettingsService:
         self._rolled_back: set[str] = set()
         self._load_receipts()
 
+    def verified_receipt(self, receipt_id: str) -> ClaudeHookSettingsChangeReceiptV1 | None:
+        """Return one persisted verified receipt without exposing its filesystem state."""
+
+        state = self._receipts.get(receipt_id)
+        if state is None:
+            return None
+        self._verify_receipt(
+            state.receipt,
+            settings_path=state.settings_path,
+            backup=state.backup,
+        )
+        return state.receipt
+
+    def receipt_is_current(self, receipt_id: str, *, helper_path: Path) -> bool:
+        """Verify that one receipt still matches both settings bytes and helper bytes."""
+
+        state = self._receipts.get(receipt_id)
+        if state is None or receipt_id in self._rolled_back:
+            return False
+        try:
+            helper = helper_path.expanduser().resolve(strict=True)
+            return (
+                _state_digest(_read_settings(state.settings_path)) == state.receipt.after_digest
+                and _digest(helper.read_bytes()) == state.receipt.helper_digest
+            )
+        except OSError:
+            return False
+
     def preview(
         self,
         *,

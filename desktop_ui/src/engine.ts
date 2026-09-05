@@ -89,19 +89,64 @@ export interface EngineHandshake {
 }
 
 export interface EngineAgentConnection {
-  connection_version: "1.0.0";
+  connection_version: "1.1.0";
   agent_id: "codex" | "claude";
   display_name: "Codex" | "Claude Code";
   installation_state: "not_installed" | "installed";
   authentication_state: "unknown" | "signed_out" | "signed_in";
   conformance_state:
     "not_applicable" | "unverified" | "compatible" | "update_required";
+  integration_state: "unavailable" | "available" | "connected" | "attention";
   version_label: string | null;
   status_summary: string;
   learning_capability: string;
   delivery_capability: string;
   cost_posture: string;
-  available_actions: Array<"refresh" | "use_for_setup">;
+  available_actions: Array<
+    "refresh" | "use_for_setup" | "connect" | "disconnect"
+  >;
+  raw_payloads_exposed: false;
+}
+
+export interface EngineClaudeConnectionPreview {
+  preview_version: "1.0.0";
+  operation: "connect" | "disconnect";
+  settings: {
+    preview_version: "1.0.0";
+    preview_token: string;
+    operation: "install" | "uninstall";
+    before_digest: string;
+    after_digest: string;
+    before_existed: boolean;
+    after_existed: boolean;
+    helper_digest: string;
+    events: Array<"UserPromptSubmit" | "Stop" | "StopFailure" | "SessionEnd">;
+    redacted_diff: string;
+    expires_at: string;
+    modifies_only_user_settings: true;
+    provider_authentication_changed: false;
+    provider_call_required: false;
+    raw_paths_exposed: false;
+  };
+  project_ids: string[];
+  current_connection_digest: string | null;
+  consent_expires_at: string;
+  retention_until: string;
+  learning_enabled: boolean;
+  delivery_enabled: boolean;
+  provider_call_required: false;
+  provider_authentication_changed: false;
+  raw_paths_exposed: false;
+}
+
+export interface EngineClaudeConnectionReceipt {
+  receipt_id: string;
+  operation: "connect" | "disconnect";
+  connection_digest: string;
+  expires_at: string;
+  project_count: number;
+  restart_required: true;
+  provider_call_required: false;
   raw_payloads_exposed: false;
 }
 
@@ -690,6 +735,51 @@ export async function inspectConnections(): Promise<{
     throw new Error("Temper refused an unsafe connection state.");
   }
   return { snapshot, snapshotDigest: response.snapshot_digest };
+}
+
+export async function previewClaudeConnection(
+  operation: "connect" | "disconnect",
+): Promise<EngineClaudeConnectionPreview> {
+  const preview = assertSuccessful(
+    await invoke<EngineResponse<EngineClaudeConnectionPreview>>(
+      "claude_connection_preview",
+      { operation },
+    ),
+  );
+  if (
+    preview.raw_paths_exposed ||
+    preview.provider_call_required ||
+    preview.provider_authentication_changed ||
+    preview.settings.raw_paths_exposed ||
+    preview.settings.provider_call_required ||
+    preview.settings.provider_authentication_changed
+  ) {
+    throw new Error("Temper refused an unsafe Claude connection preview.");
+  }
+  return preview;
+}
+
+export async function applyClaudeConnection(
+  preview: EngineClaudeConnectionPreview,
+  expectedSnapshotDigest: string,
+  idempotencyKey: string,
+): Promise<EngineClaudeConnectionReceipt> {
+  const receipt = assertSuccessful(
+    await invoke<EngineResponse<EngineClaudeConnectionReceipt>>(
+      "claude_connection_apply",
+      {
+        previewToken: preview.settings.preview_token,
+        expectedBeforeDigest: preview.settings.before_digest,
+        consentConfirmed: true,
+        expectedSnapshotDigest,
+        idempotencyKey,
+      },
+    ),
+  );
+  if (receipt.raw_payloads_exposed || receipt.provider_call_required) {
+    throw new Error("Temper refused an unsafe Claude connection result.");
+  }
+  return receipt;
 }
 
 export async function previewSetupProject(): Promise<EngineProjectPreview | null> {

@@ -141,6 +141,110 @@ def test_claude_hook_protocol_is_silent_when_no_runtime_handler_is_configured() 
     }
 
 
+def test_claude_runtime_refresh_uses_only_the_preconfigured_lease_refresher() -> None:
+    refresher = MagicMock(return_value=("lease-one", "lease-two"))
+    request = EngineRequest(
+        protocol_version=PROTOCOL_VERSION,
+        request_id="refresh-request",
+        method="claude.runtime.refresh",
+        params={},
+    )
+
+    response = EngineProtocolRouter(
+        None,
+        claude_projection_refresher=refresher,
+    ).handle(request)
+
+    assert response.ok is True
+    assert response.result == {
+        "available": True,
+        "prepared_projection_count": 2,
+        "raw_payloads_exposed": False,
+    }
+    refresher.assert_called_once_with()
+
+
+def test_claude_connection_is_previewed_and_snapshot_bound() -> None:
+    setup = FakeSetupService()
+    claude = setup.snapshot_value.connections[1].model_copy(
+        update={
+            "installation_state": "installed",
+            "authentication_state": "signed_in",
+            "conformance_state": "compatible",
+            "integration_state": "available",
+            "available_actions": ("refresh", "connect"),
+        }
+    )
+    setup.snapshot_value = setup.snapshot_value.model_copy(
+        update={
+            "configuration_state": "configured",
+            "connections": (setup.snapshot_value.connections[0], claude),
+        }
+    )
+    digest = f"sha256:{'a' * 64}"
+    service = MagicMock()
+    service.load.return_value = MagicMock(content_digest=digest)
+    connection = MagicMock()
+    connection.status.return_value = MagicMock(state="available")
+    preview_value = {
+        "preview_version": "1.0.0",
+        "operation": "connect",
+        "settings": {"preview_token": "preview-one", "before_digest": digest},
+        "raw_paths_exposed": False,
+    }
+    connection.preview.return_value = MagicMock(model_dump=MagicMock(return_value=preview_value))
+    receipt = MagicMock(
+        receipt_id="connection-one",
+        operation="connect",
+        content_digest=f"sha256:{'b' * 64}",
+        expires_at=datetime(2026, 9, 30, tzinfo=UTC),
+        projects=(MagicMock(), MagicMock()),
+    )
+    connection.apply.return_value = receipt
+    router = EngineProtocolRouter(
+        cast(Any, service),
+        setup_factory=lambda: cast(Any, setup),
+        claude_connection=cast(Any, connection),
+    )
+
+    preview = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="connection-preview",
+            method="connection.claude.preview",
+            params={"operation": "connect"},
+        )
+    )
+    applied = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="connection-apply",
+            method="connection.claude.apply",
+            params={
+                "preview_token": "preview-one",
+                "expected_before_digest": digest,
+                "consent_confirmed": True,
+            },
+            expected_snapshot_digest=digest,
+            idempotency_key="connection-click",
+        )
+    )
+
+    assert preview.ok is True
+    assert preview.result == preview_value
+    connection.preview.assert_called_once_with(operation="connect")
+    assert applied.ok is True
+    assert applied.result is not None
+    assert applied.result["restart_required"] is True
+    assert applied.result["provider_call_required"] is False
+    connection.apply.assert_called_once_with(
+        preview_token="preview-one",
+        expected_before_digest=digest,
+        consent_confirmed=True,
+        idempotency_key="connection-click",
+    )
+
+
 class FakeSetupService:
     def __init__(self) -> None:
         now = datetime(2026, 8, 27, 12, tzinfo=UTC)

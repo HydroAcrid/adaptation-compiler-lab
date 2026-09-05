@@ -5,7 +5,11 @@ first-run setup, existing-runtime adoption, truthful Codex/Claude inspection, pr
 registration, review/scope decisions, revoke/undo, activation feedback, consent renewal, four
 product preferences, and the governed task/diff/apply/discard flow through one typed Python
 application service. Codex is pinned to exact `codex-cli 0.150.0-alpha.8` conformance and saved
-ChatGPT login; Claude remains explicitly detection-only. Windows DPAPI and native macOS Keychain
+ChatGPT login. Claude now has an explicit local Connect/Disconnect lifecycle, but it remains
+unavailable on this machine because Claude Code is not installed. Connection requires an exact
+supported Claude binary, authenticated local Claude status, a redacted settings preview, explicit
+30-day project consent, and a signed settings receipt; it never initiates login or reads an API
+key. Windows DPAPI and native macOS Keychain
 stores both fail closed. The retired PySide6/QML interface has been removed; `temper` remains the
 recovery CLI. See [`TEMPER_NATIVE_PRODUCT_COMPLETION.md`](TEMPER_NATIVE_PRODUCT_COMPLETION.md).
 The `0.3.0a2` source also defines the unsigned internal Apple Silicon build and independent
@@ -21,16 +25,20 @@ clauses, personal roots require a separate opt-in, and native edits require an e
 signed receipt, encrypted backup, and rollback. See
 [`TEMPER_NATIVE_INSTRUCTION_INTEROPERABILITY.md`](TEMPER_NATIVE_INSTRUCTION_INTEROPERABILITY.md).
 
-Claude product delivery is now being built on Claude Code's official hook surface. The local
+Claude product delivery uses Claude Code's official hook surface. The local
 contract includes strict event parsing, a no-model broker, signed expiring projection leases,
 encrypted exact-payload capture, a chained raw-free audit index, exact preview/apply/rollback for
 Temper-owned Claude user hooks, and a manifest-bound native `temper-hook` helper. Tauri exposes a
 randomized owner-restricted local named pipe or Unix socket with bounded frames and silent no-op
 behavior when Temper is unavailable. The governed runtime now resolves only registered projects,
 rehashes the native Claude instruction environment, omits already-covered clauses, and serves only
-an already prepared five-minute lease. It is still intentionally not exposed as Connected: the
-explicit desktop consent/connection flow, disposable lifecycle validation, and authorized live
-smoke remain required. No hook was installed and no provider call was made. See
+an already prepared five-minute lease. React and Tauri now expose the real redacted preview,
+explicit consent, signed install, verified restart, and exact disconnect path. Only a currently
+verified receipt can activate the runtime, and a bounded two-minute maintenance pass refreshes
+leases outside hook requests. Existing Codex-only artifacts are not silently widened: Claude
+receives only clauses already approved for its target family. Disposable lifecycle tests pass;
+an authorized live smoke remains outstanding because Claude Code is not installed locally. No
+hook was installed on this machine and no provider call was made. See
 [`TEMPER_CLAUDE_DELIVERY.md`](TEMPER_CLAUDE_DELIVERY.md).
 
 The 2026-08-27 native truthfulness audit removed a browser-style title bar and fixed-size shell

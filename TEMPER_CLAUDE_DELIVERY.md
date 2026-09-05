@@ -1,7 +1,7 @@
 # Temper Claude Code Delivery
 
-Status: **local product contract, governed runtime, native private transport, and bundle integrity
-implemented; explicit connection and live Claude use remain unavailable**
+Status: **local product contract, governed runtime, native private transport, bundle integrity, and
+explicit signed connection lifecycle implemented; authorized live Claude smoke remains pending**
 
 ## Purpose
 
@@ -67,15 +67,25 @@ preference, and promotion remains in the ordinary governed review path.
 
 ## Connection lifecycle
 
-Temper can prepare an exact diff for the four hook entries in Claude's user settings. Apply:
+Temper can prepare an exact diff for the four hook entries in Claude's user settings. The product
+offers Connect only after exact executable/version/digest conformance and local authenticated
+status. It does not initiate authentication or read a credential. Apply:
 
+- requires explicit 30-day consent for the exact registered projects;
 - verifies the settings and helper digests from the preview;
 - preserves unrelated settings and hooks;
 - stores the exact original bytes in the encrypted raw store;
 - writes atomically and verifies the resulting digest;
 - durably records a signed, idempotent receipt; and
 - supports restart-safe rollback for 30 days, including restoring the original absence of a
-  settings file.
+  settings file;
+- records a separately signed consent and chained connection receipt; and
+- restarts the sidecar, then reports Connected only after current-state verification.
+
+Disconnect removes only Temper-owned hook entries and leaves unrelated Claude configuration
+unchanged. A two-minute Tauri-owned maintenance pass refreshes five-minute projection leases only
+while the engine is already running. It does not call a model. Drift or expiry changes the
+connection to Attention and makes delivery a silent no-op.
 
 The renderer sees no helper path, Claude home path, credential, prompt, transcript, or backup
 content. A signature proves local change integrity; it does not grant authority to Claude content.
@@ -100,14 +110,17 @@ the helper architecture, Windows GUI subsystem, silent-down behavior, exact dige
 manifest. Release compilation rehashes both binaries and refuses a missing or mismatched manifest.
 The helper has no console window in a Windows release build.
 
-## Still required before the UI may say Connected
+## Remaining live gate
 
-1. Add explicit project consent plus preview/apply/disconnect protocol methods and truthful React
-   states. Existing Codex-only consent cannot silently authorize Claude.
-2. Activate the runtime only from a verified signed settings-install receipt and refresh leases
-   outside hook requests.
-3. Pass disposable fake-Claude end-to-end lifecycle tests and an explicitly authorized live smoke.
-4. Apply genuine platform publisher signatures only at the external-distribution gate.
+The UI may say Connected only for a currently verified receipt. Disposable end-to-end lifecycle
+tests cover preview, consent, settings installation, restart, runtime activation, drift, disconnect,
+and idempotent replay. Before claiming live interoperability, Temper still needs an explicitly
+authorized smoke on a host with the pinned Claude Code release. Genuine publisher signatures remain
+the separate external-distribution gate.
+
+Historical Codex-only approvals retain their target restriction and are not silently widened.
+Claude receives only already compatible approved clauses; portable Core reauthorization requires a
+separate governed transition.
 
 No hook has been installed on this machine, no Claude authentication has been initiated, no API
 key has been read, and no paid call was made by this increment. The deferred Milestone 6 study

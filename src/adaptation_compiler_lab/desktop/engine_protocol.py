@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
 import platform
 import sys
 import uuid
 from collections.abc import Callable, Mapping, Sequence
+from datetime import datetime
 from importlib.metadata import version
 from pathlib import Path
 from time import monotonic
@@ -57,6 +59,7 @@ from adaptation_compiler_lab.portability import (
 from adaptation_compiler_lab.serialization import canonical_digest
 
 if TYPE_CHECKING:
+    from adaptation_compiler_lab.claude_delivery.connection import ClaudeConnectionService
     from adaptation_compiler_lab.desktop.portability_service import LocalProfilePortabilityService
     from adaptation_compiler_lab.desktop.service import DesktopApplicationService
     from adaptation_compiler_lab.desktop.setup_service import DesktopSetupApplicationService
@@ -129,12 +132,16 @@ class EngineProtocolRouter:
         setup_factory: Callable[[], DesktopSetupApplicationService] | None = None,
         instruction_factory: Callable[[], InstructionEnvironmentService] | None = None,
         claude_hook_handler: Callable[[Mapping[str, Any]], Mapping[str, Any] | None] | None = None,
+        claude_connection: ClaudeConnectionService | None = None,
+        claude_projection_refresher: Callable[[], object] | None = None,
     ) -> None:
         self._service = service
         self._portability = portability
         self._setup_factory = setup_factory
         self._instruction_factory = instruction_factory
         self._claude_hook_handler = claude_hook_handler
+        self._claude_connection = claude_connection
+        self._claude_projection_refresher = claude_projection_refresher
         self._setup: DesktopSetupApplicationService | None = None
         self._instruction_environment: InstructionEnvironmentService | None = None
         self._export_previews: dict[str, tuple[float, PortableProfilePackage]] = {}
@@ -163,6 +170,8 @@ class EngineProtocolRouter:
             )
         if request.method == "claude.hook.handle":
             return self._handle_claude_hook(request)
+        if request.method == "claude.runtime.refresh":
+            return self._refresh_claude_runtime(request)
         if request.method in {"setup.status", "connection.inspect"}:
             if request.params:
                 return self._error(
@@ -171,7 +180,7 @@ class EngineProtocolRouter:
                     f"{request.method} takes no parameters.",
                 )
             try:
-                setup_snapshot = self._setup_service().snapshot()
+                setup_snapshot = self._connection_snapshot(self._setup_service().snapshot())
             except (OSError, ValueError):
                 return self._error(
                     request,
@@ -185,6 +194,10 @@ class EngineProtocolRouter:
                 result=setup_snapshot.model_dump(mode="json"),
                 snapshot_digest=setup_snapshot.content_digest,
             )
+        if request.method == "connection.claude.preview":
+            return self._preview_claude_connection(request)
+        if request.method == "connection.claude.apply":
+            return self._apply_claude_connection(request)
         if request.method == "setup.existing.preview":
             try:
                 if set(request.params) != {"path"}:
@@ -446,6 +459,203 @@ class EngineProtocolRouter:
                 "raw_payloads_exposed": False,
             },
         )
+
+    def _refresh_claude_runtime(self, request: EngineRequest) -> EngineResponse:
+        if request.params:
+            return self._error(
+                request,
+                "invalid_params",
+                "claude.runtime.refresh takes no parameters.",
+            )
+        if self._claude_projection_refresher is None:
+            return EngineResponse(
+                request_id=request.request_id,
+                ok=True,
+                result={
+                    "available": False,
+                    "prepared_projection_count": 0,
+                    "raw_payloads_exposed": False,
+                },
+            )
+        try:
+            leases = self._claude_projection_refresher()
+            prepared = len(leases) if isinstance(leases, Sequence) else 0
+        except (OSError, TypeError, ValueError):
+            return self._error(
+                request,
+                "claude_runtime_refresh_refused",
+                "Temper could not safely refresh Claude delivery.",
+                retryable=True,
+            )
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result={
+                "available": True,
+                "prepared_projection_count": prepared,
+                "raw_payloads_exposed": False,
+            },
+        )
+
+    def _connection_snapshot(self, snapshot: SetupSnapshotV1) -> SetupSnapshotV1:
+        if self._claude_connection is None:
+            unavailable_connections = tuple(
+                item.model_copy(
+                    update={
+                        "integration_state": "unavailable",
+                        "available_actions": ("refresh",),
+                        "status_summary": (
+                            "Claude Code was detected, but this Temper runtime cannot connect it."
+                            if item.agent_id == "claude" and item.installation_state == "installed"
+                            else item.status_summary
+                        ),
+                    }
+                )
+                if item.agent_id == "claude"
+                else item
+                for item in snapshot.connections
+            )
+            return snapshot.model_copy(update={"connections": unavailable_connections})
+        status = self._claude_connection.status()
+        mutable_connections = list(snapshot.connections)
+        claude_index = next(
+            (index for index, item in enumerate(mutable_connections) if item.agent_id == "claude"),
+            None,
+        )
+        if claude_index is None:
+            return snapshot
+        claude = mutable_connections[claude_index]
+        if status.state == "connected":
+            runtime_ready = (
+                claude.installation_state == "installed"
+                and claude.authentication_state == "signed_in"
+                and claude.conformance_state == "compatible"
+                and self._claude_hook_handler is not None
+            )
+            mutable_connections[claude_index] = claude.model_copy(
+                update={
+                    "integration_state": "connected" if runtime_ready else "attention",
+                    "status_summary": (
+                        status.status_summary
+                        if runtime_ready
+                        else "Claude changed after connection; delivery is paused."
+                    ),
+                    "learning_capability": (
+                        "Captures authorized user prompts from registered projects."
+                        if runtime_ready
+                        else "Learning is paused until the Claude connection is repaired."
+                    ),
+                    "delivery_capability": (
+                        "Delivers only a signed cached projection in registered projects."
+                        if runtime_ready
+                        else "Delivery is paused until the Claude connection is repaired."
+                    ),
+                    "available_actions": ("refresh", "disconnect"),
+                }
+            )
+        elif status.state == "attention":
+            mutable_connections[claude_index] = claude.model_copy(
+                update={
+                    "integration_state": "attention",
+                    "status_summary": status.status_summary,
+                    "learning_capability": (
+                        "Learning is paused until this connection is removed or repaired."
+                    ),
+                    "delivery_capability": (
+                        "Delivery is paused until this connection is removed or repaired."
+                    ),
+                    "available_actions": ("refresh", "disconnect"),
+                }
+            )
+        return snapshot.model_copy(update={"connections": tuple(mutable_connections)})
+
+    def _preview_claude_connection(self, request: EngineRequest) -> EngineResponse:
+        if self._service is None or self._claude_connection is None:
+            return self._error(
+                request,
+                "claude_connection_unavailable",
+                "Claude connection is unavailable in this Temper installation.",
+            )
+        try:
+            if set(request.params) != {"operation"}:
+                raise ValueError
+            operation = _required_string(request.params, "operation")
+            if operation not in {"connect", "disconnect"}:
+                raise ValueError
+            snapshot = self._connection_snapshot(self._setup_service().snapshot())
+            claude = next(item for item in snapshot.connections if item.agent_id == "claude")
+            expected_action = "connect" if operation == "connect" else "disconnect"
+            if expected_action not in claude.available_actions:
+                return self._error(
+                    request,
+                    "claude_connection_unavailable",
+                    "Claude is not in a state where Temper can make that change.",
+                )
+            selected_operation: Literal["connect", "disconnect"] = (
+                "connect" if operation == "connect" else "disconnect"
+            )
+            preview = self._claude_connection.preview(operation=selected_operation)
+        except (OSError, StopIteration, TypeError, ValueError):
+            return self._error(
+                request,
+                "claude_connection_preview_refused",
+                "Temper could not safely preview that Claude connection change.",
+            )
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result=preview.model_dump(mode="json"),
+        )
+
+    def _apply_claude_connection(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        snapshot_digest, fingerprint = checked
+        if self._claude_connection is None or request.idempotency_key is None:
+            return self._error(
+                request,
+                "claude_connection_unavailable",
+                "Claude connection is unavailable in this Temper installation.",
+            )
+        try:
+            if set(request.params) != {
+                "preview_token",
+                "expected_before_digest",
+                "consent_confirmed",
+            }:
+                raise ValueError
+            consent_confirmed = request.params.get("consent_confirmed")
+            if not isinstance(consent_confirmed, bool):
+                raise ValueError
+            receipt = self._claude_connection.apply(
+                preview_token=_required_string(request.params, "preview_token"),
+                expected_before_digest=_required_string(request.params, "expected_before_digest"),
+                consent_confirmed=consent_confirmed,
+                idempotency_key=request.idempotency_key,
+            )
+        except (OSError, TypeError, ValueError):
+            return self._error(
+                request,
+                "claude_connection_change_refused",
+                "Temper could not safely apply that Claude connection change.",
+            )
+        response = EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result={
+                "receipt_id": receipt.receipt_id,
+                "operation": receipt.operation,
+                "connection_digest": receipt.content_digest,
+                "expires_at": receipt.expires_at.isoformat(),
+                "project_count": len(receipt.projects),
+                "restart_required": True,
+                "provider_call_required": False,
+                "raw_payloads_exposed": False,
+            },
+            snapshot_digest=snapshot_digest,
+        )
+        return self._remember_mutation(request, fingerprint, response)
 
     def _instruction_environment_get(self, request: EngineRequest) -> EngineResponse:
         if self._service is None:
@@ -1818,6 +2028,13 @@ def build_router(
         _raw_store,
         _registration_signer,
     )
+    from adaptation_compiler_lab.claude_delivery import (
+        ClaudeConnectionService,
+        ClaudeHookLedger,
+        ClaudeHookRuntimeHandler,
+        ClaudeHookSettingsService,
+        LocalClaudeHookRuntimePort,
+    )
     from adaptation_compiler_lab.desktop.platform import platform_paths, product_preferences_store
     from adaptation_compiler_lab.desktop.portability_service import LocalProfilePortabilityService
     from adaptation_compiler_lab.desktop.preferences import (
@@ -1838,8 +2055,10 @@ def build_router(
     )
     from adaptation_compiler_lab.runtime import (
         CanonicalRuntimeProjection,
+        RuntimeProjectionContext,
         build_runtime_projection,
     )
+    from adaptation_compiler_lab.targets.models import ScopeDimension
 
     preferences_store = product_preferences_store(platform_paths())
     try:
@@ -1892,8 +2111,6 @@ def build_router(
         def projection_provider(
             project_id: str, target: NativeTarget
         ) -> CanonicalRuntimeProjection | None:
-            if target is not NativeTarget.CODEX:
-                return None
             state = _ledger(config).current()
             if state is None or state.release is None:
                 return None
@@ -1903,10 +2120,24 @@ def build_router(
             )
             if project is None:
                 return None
-            return build_runtime_projection(
-                state.release.governed_release,
-                _context(config, project, evaluated_at=_now()),
-            )
+            if target is NativeTarget.CODEX:
+                context = _context(config, project, evaluated_at=_now())
+            elif target is NativeTarget.CLAUDE:
+                context = RuntimeProjectionContext(
+                    known_dimensions=(
+                        ScopeDimension.PROJECT_IDS,
+                        ScopeDimension.SUBJECT_IDS,
+                        ScopeDimension.TARGET_FAMILIES,
+                    ),
+                    target_profile_id="claude-code",
+                    subject_id=config.subject_id,
+                    project_id=project.project_id,
+                    target_family="claude-code",
+                    evaluated_at=_now(),
+                )
+            else:
+                return None
+            return build_runtime_projection(state.release.governed_release, context)
 
         return InstructionEnvironmentService(
             projects={item.project_id: item.root for item in config.projects},
@@ -1926,10 +2157,127 @@ def build_router(
             projection_provider=projection_provider,
         )
 
+    instruction_instance: InstructionEnvironmentService | None = None
+
+    def shared_instruction_service() -> InstructionEnvironmentService:
+        nonlocal instruction_instance
+        if instruction_instance is None:
+            instruction_instance = instruction_factory()
+        return instruction_instance
+
+    claude_connection = None
+    claude_hook_handler = None
+    claude_projection_refresher = None
+    helper_value = os.environ.get("TEMPER_HOOK_HELPER_BINARY")
+    settings_value = os.environ.get("TEMPER_CLAUDE_SETTINGS_PATH")
+    if helper_value and settings_value:
+        try:
+            config = _load_config(config_path)
+            raw_store = _raw_store(config)
+            signer = _registration_signer(config)
+            project_digests = {
+                project.project_id: (
+                    project.registration.content_digest
+                    if project.registration is not None
+                    else canonical_digest(
+                        {
+                            "capture_after_epoch_seconds": (
+                                project.capture_after_epoch_seconds
+                                if project.capture_after_epoch_seconds is not None
+                                else config.capture_after_epoch_seconds
+                            ),
+                            "project_id": project.project_id,
+                            "scope": project.scope,
+                        }
+                    )
+                )
+                for project in config.projects
+            }
+            hook_settings = ClaudeHookSettingsService(
+                raw_store=raw_store,
+                signer=signer,
+                now=_now,
+                state_root=config.state_root,
+            )
+            claude_connection = ClaudeConnectionService(
+                subject_id=config.subject_id,
+                projects=project_digests,
+                settings=hook_settings,
+                settings_path=Path(settings_value),
+                helper_path=Path(helper_value),
+                signer=signer,
+                signer_identity=config.signer_identity,
+                state_root=config.state_root,
+                now=_now,
+            )
+            if claude_connection.status().state == "connected":
+
+                def claude_projection_provider(
+                    project_id: str, evaluated_at: datetime
+                ) -> CanonicalRuntimeProjection | None:
+                    state = _ledger(config).current()
+                    if state is None or state.release is None:
+                        return None
+                    project = next(
+                        (item for item in config.projects if item.project_id == project_id),
+                        None,
+                    )
+                    if project is None:
+                        return None
+                    return build_runtime_projection(
+                        state.release.governed_release,
+                        RuntimeProjectionContext(
+                            known_dimensions=(
+                                ScopeDimension.PROJECT_IDS,
+                                ScopeDimension.SUBJECT_IDS,
+                                ScopeDimension.TARGET_FAMILIES,
+                            ),
+                            target_profile_id="claude-code",
+                            subject_id=config.subject_id,
+                            project_id=project.project_id,
+                            target_family="claude-code",
+                            evaluated_at=evaluated_at,
+                        ),
+                    )
+
+                runtime = LocalClaudeHookRuntimePort(
+                    projects={project.project_id: project.root for project in config.projects},
+                    signer=signer,
+                    signer_identity=config.signer_identity,
+                    raw_store=raw_store,
+                    ledger=ClaudeHookLedger(
+                        config.state_root / "claude-delivery" / "hook-ledger.jsonl",
+                        signer=signer,
+                        signer_identity=config.signer_identity,
+                    ),
+                    instruction_environment=shared_instruction_service(),
+                    authorization_provider=(
+                        lambda project_id, effective_at: claude_connection.authorization(
+                            project_id, effective_at=effective_at
+                        )
+                    ),
+                    projection_provider=claude_projection_provider,
+                    clock=_now,
+                )
+                runtime.prepare_all()
+                claude_hook_handler = ClaudeHookRuntimeHandler(
+                    runtime,
+                    signer=signer,
+                    signer_identity=config.signer_identity,
+                    clock=_now,
+                )
+                claude_projection_refresher = runtime.prepare_all
+        except (OSError, ValueError):
+            claude_hook_handler = None
+            claude_projection_refresher = None
+
     return EngineProtocolRouter(
         service,
         LocalProfilePortabilityService(config_path.expanduser().resolve()),
-        instruction_factory=instruction_factory,
+        instruction_factory=shared_instruction_service,
+        claude_hook_handler=claude_hook_handler,
+        claude_connection=claude_connection,
+        claude_projection_refresher=claude_projection_refresher,
     )
 
 

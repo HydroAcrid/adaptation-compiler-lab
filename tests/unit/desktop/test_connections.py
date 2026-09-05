@@ -19,6 +19,18 @@ class FakeRunner:
         raise AssertionError(f"unexpected probe: {argv!r}")
 
 
+class ClaudeRunner:
+    def run(self, argv: Sequence[str], *, timeout: float) -> subprocess.CompletedProcess[str]:
+        del timeout
+        if tuple(argv[1:]) == ("--version",):
+            return subprocess.CompletedProcess(argv, 0, "2.1.218 (Claude Code)\n", "")
+        if tuple(argv[1:]) == ("auth", "status"):
+            return subprocess.CompletedProcess(argv, 0, "Logged in\n", "")
+        if tuple(argv[1:]) == ("--help",):
+            return subprocess.CompletedProcess(argv, 0, "synthetic help\n", "")
+        raise AssertionError(f"unexpected probe: {argv!r}")
+
+
 def test_codex_connection_reports_separate_truthful_capabilities(
     tmp_path: Path, monkeypatch: Any
 ) -> None:
@@ -39,8 +51,35 @@ def test_codex_connection_reports_separate_truthful_capabilities(
     assert "completed tasks" in codex.learning_capability
     assert "fresh Temper-managed" in codex.delivery_capability
     assert codex.available_actions == ("refresh", "use_for_setup")
+    assert codex.integration_state == "connected"
     assert claude.installation_state == "not_installed"
     assert "Not integrated" in claude.learning_capability
+
+
+def test_ready_claude_is_available_for_explicit_local_connection(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    executable = tmp_path / "claude.exe"
+    executable.write_bytes(b"synthetic")
+    executable.chmod(0o700)
+    monkeypatch.setattr(
+        AgentConnectionInspector,
+        "_claude_conformant",
+        lambda _self, _path: True,
+    )
+    inspector = AgentConnectionInspector(
+        runner=ClaudeRunner(),
+        environ={"PATH": str(tmp_path), "CLAUDE_API_KEY": "must-not-be-used"},
+        platform_name="win32",
+    )
+
+    claude = inspector.inspect_claude()
+
+    assert claude.authentication_state == "signed_in"
+    assert claude.conformance_state == "compatible"
+    assert claude.integration_state == "available"
+    assert claude.available_actions == ("refresh", "connect")
+    assert "local and free" in claude.cost_posture
 
 
 def test_version_drift_never_appears_connected(tmp_path: Path) -> None:
