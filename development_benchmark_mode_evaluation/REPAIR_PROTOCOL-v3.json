@@ -1,0 +1,17 @@
+{
+  "code_mode_host_digest": "sha256:c215117917037afd6b7621ba11ca18054ebdb890c314454f485b27574a73e1b7",
+  "code_mode_host_version": "0.153.1",
+  "external_validation_accessed": false,
+  "mode_content_changed": false,
+  "provider_billed_calls": 0,
+  "repair_of_smoke_digest": "sha256:4c00239f56d245d77f33541977676e74ba852c5a4670eb7ac23b36c3c1071fe5",
+  "repair_version": "3.0.0",
+  "scorer_invocation_path_preserved": true,
+  "scorer_lock_digest": "sha256:25de9bb11935a92e35096766ff52db0712820f94c3e1693ea7684e0bbf245f0b",
+  "scorer_pydantic_version": "2.13.4",
+  "scorer_python_version": "3.12.13",
+  "scorer_smoke_required": true,
+  "target_code_mode_host": "pinned_companion_mounted_inside_outer_bubblewrap",
+  "target_smoke_required": true,
+  "task_content_changed": false
+}

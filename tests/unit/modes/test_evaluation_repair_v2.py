@@ -14,7 +14,6 @@ from adaptation_compiler_lab.modes.evaluation import (
 )
 from adaptation_compiler_lab.serialization import canonical_digest
 from scripts.mode_evaluation_v2_common import (
-    instrument_source_digests,
     load_object,
     require_valid_smoke,
     verify_scorer_runtime,
@@ -53,11 +52,27 @@ def test_v2_changes_instrument_mechanics_but_not_modes_or_tasks() -> None:
     assert v2.scorer_source_digest != v1.scorer_source_digest
 
 
-def test_v2_contract_binds_complete_repair_source_bundles() -> None:
+def test_v2_contract_preserves_its_frozen_repair_source_digests() -> None:
     contract = load_mode_evaluation_contract(BENCHMARK / "EXECUTION_CONTRACT-v2.json")
 
-    for field, digest in instrument_source_digests(ROOT).items():
-        assert getattr(contract, field) == digest
+    assert contract.runner_source_digest == (
+        "sha256:486ce6298bf7e295c7dc2113cdf7a8a0c07347da4dfa6f0799e1806ca3ca32c4"
+    )
+    assert contract.scorer_source_digest == (
+        "sha256:1c363f3ccacc91e6810a1b9895935249c603f2624feb26d2bab9ca509155ccba"
+    )
+    assert contract.observer_source_digest == (
+        "sha256:60ce84008fa7ff1941f32d8768e474cce4a7c2ea9d401132ac3fc840da932737"
+    )
+    assert contract.judge_role_runner_source_digest == (
+        "sha256:6c1f9eee06b1bb5b410df5a86e013303e64ad210b65f13af57cb0c0b4bea18cc"
+    )
+    assert contract.judge_source_digest == (
+        "sha256:aeadec37672c7aca0365a03304725df117527f05a9436ff879029d7544c486e4"
+    )
+    assert contract.unblind_source_digest == (
+        "sha256:f4a20b40bc22ec0da9566d98155e67ebec8624d1fb8b0e6ddb14a98c6b6c52ab"
+    )
 
 
 def test_v2_public_plan_is_complete_and_condition_blind() -> None:
