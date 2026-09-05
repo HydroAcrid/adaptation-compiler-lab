@@ -1314,3 +1314,11 @@ still missed Pydantic because the coordinator resolved the venv Python symlink t
 interpreter after preflight. No grid or judge ran. The next repair must bind/mount that exact
 companion and retain the dependency-bearing Python invocation path, then pass a new smoke before
 any comparison begins.
+
+The v3 mechanical repair is frozen. It changes no Mode, task, target model, reasoning level, score,
+or gate. The Mode-only runner now verifies and read-only mounts the exact matching Codex
+`code-mode-host` companion, and the v3 coordinators retain the scorer venv invocation path. Its
+source bundles, host digest, scorer lock, predecessor smoke digest, contract, and blind plan are
+bound before inference. The full v3 comparison remains inadmissible until one new broken-fixture
+smoke produces a real edit, passes visible and hidden tests, deactivates exactly, and destroys its
+workspace.
