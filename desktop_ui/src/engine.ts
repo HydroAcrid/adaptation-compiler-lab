@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 import type {
   CapabilityModeSummary,
+  PackageReviewItem,
   PortableProfilePreview,
   ShareablePackagePreview,
 } from "./types";
@@ -1161,6 +1162,86 @@ export async function stagePackageImport(
       packageDigest: preview.package_digest,
     }),
   );
+}
+
+export async function loadPackageReviews(): Promise<PackageReviewItem[]> {
+  const result = assertSuccessful(
+    await invoke<
+      EngineResponse<{
+        items: PackageReviewItem[];
+        pending_count: number;
+        raw_payloads_exposed: false;
+      }>
+    >("package_review_list"),
+  );
+  if (
+    result.raw_payloads_exposed ||
+    result.items.some(
+      (item) => item.raw_payloads_exposed || item.origin_grants_authority,
+    )
+  ) {
+    throw new Error("Temper refused an unsafe package review list.");
+  }
+  if (result.pending_count !== result.items.length) {
+    throw new Error("Temper refused an inconsistent package review list.");
+  }
+  return result.items;
+}
+
+export async function decidePackageReview(
+  item: PackageReviewItem,
+  decision: "approved" | "rejected",
+  mappedProjectIds: string[],
+  snapshotDigest: string,
+  idempotencyKey: string,
+): Promise<{
+  receipt_id: string;
+  review_id: string;
+  decision: "approved" | "rejected";
+  status:
+    | "approved_for_core"
+    | "approved_inactive_mode"
+    | "approved_inactive_overlay"
+    | "rejected";
+  runtime_adoption_digest: string | null;
+  origin_granted_authority: false;
+  raw_payloads_exposed: false;
+}> {
+  const result = assertSuccessful(
+    await invoke<
+      EngineResponse<{
+        receipt_id: string;
+        review_id: string;
+        decision: "approved" | "rejected";
+        status:
+          | "approved_for_core"
+          | "approved_inactive_mode"
+          | "approved_inactive_overlay"
+          | "rejected";
+        runtime_adoption_digest: string | null;
+        origin_granted_authority: false;
+        raw_payloads_exposed: false;
+      }>
+    >("package_review_decide", {
+      decision,
+      expectedSnapshotDigest: snapshotDigest,
+      idempotencyKey,
+      mappedProjectIds,
+      reviewDigest: packageReviewDigest(item),
+      reviewId: item.review_id,
+    }),
+  );
+  if (result.raw_payloads_exposed || result.origin_granted_authority) {
+    throw new Error("Temper refused an unsafe package review receipt.");
+  }
+  return result;
+}
+
+function packageReviewDigest(item: PackageReviewItem): string {
+  if (!item.review_digest) {
+    throw new Error("Package review is missing its engine digest.");
+  }
+  return item.review_digest;
 }
 
 export async function loadModes(): Promise<CapabilityModeSummary[]> {

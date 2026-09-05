@@ -568,6 +568,27 @@ class SemanticFeedbackInterpretation(FrozenModel):
         return value
 
 
+class ExternalProposalOriginV1(FrozenModel):
+    """Raw-free lineage for an externally authored clause reviewed by the local owner."""
+
+    origin_version: Literal["1.0.0"] = "1.0.0"
+    package_type: Literal["behavior_pack"] = "behavior_pack"
+    package_id: Identifier
+    package_digest: Sha256Digest
+    import_receipt_id: Identifier
+    import_receipt_digest: Sha256Digest
+    item_id: Identifier
+    item_digest: Sha256Digest
+    claim_key: Identifier
+    publisher_key_fingerprint: Sha256Digest
+    signature_verified: Literal[True] = True
+    grants_user_authority: Literal[False] = False
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
 class DetectedFeedback(FrozenModel):
     """Raw-free governed interpretation of an explicit user signal."""
 
@@ -1387,6 +1408,74 @@ class RuntimeLearningReviewResolution(FrozenModel):
             or self.review_event.target_digest != self.queue_digest
         ):
             raise ValueError("rejected runtime review must preserve state and bind its queue item")
+        return self
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class RuntimeExternalAdoptionResolution(FrozenModel):
+    """Signed local decision and optional Core transition for one package clause."""
+
+    resolution_version: Literal["1.0.0"] = "1.0.0"
+    resolution_id: Identifier
+    subject_id: Identifier
+    origin: ExternalProposalOriginV1
+    decision: ApprovalDecision
+    review: Approval
+    review_event: GovernanceEvent
+    signer_identity: SignerIdentity
+    prior_state_digest: Sha256Digest
+    resulting_state_digest: Sha256Digest
+    evidence_ref: EvidenceRef | None = None
+    evaluation_digest: Sha256Digest | None = None
+    transition_digest: Sha256Digest | None = None
+    release_digest: Sha256Digest | None = None
+    release_event_digest: Sha256Digest | None = None
+    resolved_at: UtcDateTime
+
+    @model_validator(mode="after")
+    def local_decision_binds_exact_outputs(self) -> Self:
+        if (
+            self.review.decision is not self.decision
+            or self.review.approver.kind is not ActorKind.USER
+            or self.review.approver.actor_id != self.subject_id
+            or self.review.decided_at != self.resolved_at
+            or self.signer_identity.subject_id != self.subject_id
+        ):
+            raise ValueError("external adoption requires the exact local owner decision")
+        if (
+            self.review_event.event_type is not GovernanceEventType.REVIEW_DECISION
+            or self.review_event.subject_id != self.subject_id
+            or self.review_event.decision != self.decision.value
+            or self.review_event.occurred_at != self.resolved_at
+        ):
+            raise ValueError("external adoption review event is inconsistent")
+        outputs = (
+            self.evidence_ref,
+            self.evaluation_digest,
+            self.transition_digest,
+            self.release_digest,
+            self.release_event_digest,
+        )
+        if self.decision is ApprovalDecision.APPROVED:
+            if (
+                self.prior_state_digest == self.resulting_state_digest
+                or any(value is None for value in outputs)
+                or not self.review_event.target_ref.startswith("runtime-evaluation:")
+                or self.review_event.target_digest != self.evaluation_digest
+                or str(self.origin.content_digest) not in self.review_event.reason
+            ):
+                raise ValueError("approved external adoption must bind every governed output")
+        elif (
+            self.prior_state_digest != self.resulting_state_digest
+            or any(value is not None for value in outputs)
+            or self.review_event.target_ref
+            != f"external-proposal:{self.origin.package_id}:{self.origin.item_id}"
+            or self.review_event.target_digest != self.origin.content_digest
+        ):
+            raise ValueError("rejected external proposal must preserve state and bind its origin")
         return self
 
     @property

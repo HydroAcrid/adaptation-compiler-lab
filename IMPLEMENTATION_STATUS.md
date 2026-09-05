@@ -12,12 +12,19 @@ content exclusions, source-task-like identifiers, duplicate coverage, conflicts,
 requests, evaluation status, and local scope-mapping needs.
 
 Tauri owns open/save dialogs, so private paths never enter renderer state. React shows the exact
-raw-free package preview. Import is idempotent, downgrade-protected, locally signed, and persists
-only `staged_inactive_for_review`; it grants no authority and activates nothing. Built-in Modes and
-approved Core behaviors can be exported. A personal-overlay type and signer exist, but no overlay
-editor is exposed. Imported items are not yet connected to the ordinary governed suggestion queue,
-so the recipient-side approval/promotion loop remains an explicit product gap rather than a hidden
-activation shortcut. See [`TEMPER_SHAREABLE_PACKAGES.md`](TEMPER_SHAREABLE_PACKAGES.md).
+raw-free package preview. Import is idempotent, downgrade-protected, locally signed, and first
+persists only `staged_inactive_for_review`; it grants no authority and activates nothing. A live
+recipient review queue then verifies the signed import on every read. Exact duplicates, conflicts,
+owner-only content, stale items, and unregistered scope mappings fail closed.
+
+Approving a new behavior creates encrypted local user-attestation evidence and routes the exact
+clause through the existing deterministic evaluation, transition, signed release, and compact-Core
+path. The resulting local decision receipt binds the imported origin and adoption digest without
+letting publisher authority cross the boundary. Approved imported Modes enter only the inactive
+catalog and require an explicit one-task selection. External adoptions cannot count as genuine
+ordinary-work cycles. Built-in Modes and approved Core behaviors can be exported. Personal-overlay
+packages remain reject-only until safe runtime composition exists. See
+[`TEMPER_SHAREABLE_PACKAGES.md`](TEMPER_SHAREABLE_PACKAGES.md).
 
 ## Native instruction environment interoperability
 

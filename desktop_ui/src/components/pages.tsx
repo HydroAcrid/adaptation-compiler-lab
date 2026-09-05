@@ -63,12 +63,14 @@ import type {
   AgentConnection,
   ProjectName,
   RegisteredProject,
+  PackageReviewItem,
   Suggestion,
   Theme,
   WorkspaceScope,
 } from "../types";
 import { ProfilePortabilityDialog } from "./ProfilePortabilityDialog";
 import { ShareablePackageDialog } from "./ShareablePackageDialog";
+import { PackageReviewQueue } from "./PackageReviewQueue";
 import {
   Button,
   Divider,
@@ -1296,10 +1298,13 @@ export function ModesPage({
   onOpenCore,
   onTaskComplete,
   projects: modeProjects,
+  reviewProjects = [],
   runnerReady,
   runnerUnavailableReason = null,
   snapshotDigest,
   instructionEnvironments = [],
+  packageReviews = [],
+  onPackageDecision,
 }: {
   modes: CapabilityModeSummary[];
   nativeRuntime: boolean;
@@ -1311,16 +1316,26 @@ export function ModesPage({
     result: EngineTaskResult | null,
   ) => void | Promise<void>;
   projects: Array<{ id: string; label: string }>;
+  reviewProjects?: Array<{ id: string; label: string }>;
   runnerReady: boolean;
   runnerUnavailableReason?: string | null;
   snapshotDigest: string | null;
   instructionEnvironments?: EngineInstructionEnvironmentSummary[];
+  packageReviews?: PackageReviewItem[];
+  onPackageDecision?: (
+    item: PackageReviewItem,
+    decision: "approved" | "rejected",
+    projectIds: string[],
+  ) => Promise<void>;
 }) {
   const [selected, setSelected] = useState<CapabilityModeSummary | null>(null);
   const [packageAction, setPackageAction] = useState<{
     intent: "export-mode" | "import";
     mode?: CapabilityModeSummary;
   } | null>(null);
+  const [busyPackageReview, setBusyPackageReview] = useState<string | null>(
+    null,
+  );
   return (
     <div className="page folio-page modes-page">
       <header className="modes-heading">
@@ -1352,6 +1367,22 @@ export function ModesPage({
         <strong>→</strong>
         <span>Small task projection</span>
       </section>
+      {nativeRuntime ? (
+        <PackageReviewQueue
+          busyReviewId={busyPackageReview}
+          items={packageReviews}
+          onDecision={async (item, decision, projectIds) => {
+            if (!onPackageDecision) return;
+            setBusyPackageReview(item.review_id);
+            try {
+              await onPackageDecision(item, decision, projectIds);
+            } finally {
+              setBusyPackageReview(null);
+            }
+          }}
+          projects={reviewProjects}
+        />
+      ) : null}
       {loading ? <div className="modes-empty">Loading local Modes…</div> : null}
       {error ? (
         <div className="modes-empty" role="alert">
@@ -1366,8 +1397,8 @@ export function ModesPage({
             </div>
             <div className="mode-card__copy">
               <span className="folio-kicker">
-                Built-in · v{mode.mode_version} ·{" "}
-                {mode.evaluation_status.replace("_", " ")}
+                {mode.source_kind === "imported" ? "Imported" : "Built-in"} · v
+                {mode.mode_version} · {mode.evaluation_status.replace("_", " ")}
               </span>
               <h2>{mode.name}</h2>
               <p>{mode.summary}</p>

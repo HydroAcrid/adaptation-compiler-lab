@@ -284,6 +284,12 @@ describe("installed Temper state boundaries", () => {
         return response({ modes: [], raw_payloads_exposed: false });
       if (command === "instruction_environment_get")
         return response({ environments: [], raw_payloads_exposed: false });
+      if (command === "package_review_list")
+        return response({
+          items: [],
+          pending_count: 0,
+          raw_payloads_exposed: false,
+        });
       throw new Error(`Unexpected command: ${command}`);
     });
 
@@ -370,6 +376,12 @@ describe("installed Temper state boundaries", () => {
           environments: [environment],
           raw_payloads_exposed: false,
         });
+      if (command === "package_review_list")
+        return response({
+          items: [],
+          pending_count: 0,
+          raw_payloads_exposed: false,
+        });
       throw new Error(`Unexpected command: ${command}`);
     });
 
@@ -406,6 +418,12 @@ describe("installed Temper state boundaries", () => {
         return response({ modes: [], raw_payloads_exposed: false });
       if (command === "instruction_environment_get")
         return response({ environments: [], raw_payloads_exposed: false });
+      if (command === "package_review_list")
+        return response({
+          items: [],
+          pending_count: 0,
+          raw_payloads_exposed: false,
+        });
       throw new Error(`Unexpected command: ${command}`);
     });
 
@@ -461,6 +479,12 @@ describe("installed Temper state boundaries", () => {
         return response({ modes: [], raw_payloads_exposed: false });
       if (command === "instruction_environment_get")
         return response({ environments: [], raw_payloads_exposed: false });
+      if (command === "package_review_list")
+        return response({
+          items: [],
+          pending_count: 0,
+          raw_payloads_exposed: false,
+        });
       throw new Error(`Unexpected command: ${command}`);
     });
 
@@ -497,6 +521,12 @@ describe("installed Temper state boundaries", () => {
         return response({ modes: [], raw_payloads_exposed: false });
       if (command === "instruction_environment_get")
         return response({ environments: [], raw_payloads_exposed: false });
+      if (command === "package_review_list")
+        return response({
+          items: [],
+          pending_count: 0,
+          raw_payloads_exposed: false,
+        });
       throw new Error(`Unexpected command: ${command}`);
     });
 
@@ -536,6 +566,12 @@ describe("installed Temper state boundaries", () => {
         return response({ modes: [], raw_payloads_exposed: false });
       if (command === "instruction_environment_get")
         return response({ environments: [], raw_payloads_exposed: false });
+      if (command === "package_review_list")
+        return response({
+          items: [],
+          pending_count: 0,
+          raw_payloads_exposed: false,
+        });
       throw new Error(`Unexpected command: ${command}`);
     });
 
@@ -589,6 +625,12 @@ describe("installed Temper state boundaries", () => {
         return response({ modes: [], raw_payloads_exposed: false });
       if (command === "instruction_environment_get")
         return response({ environments: [], raw_payloads_exposed: false });
+      if (command === "package_review_list")
+        return response({
+          items: [],
+          pending_count: 0,
+          raw_payloads_exposed: false,
+        });
       throw new Error(`Unexpected command: ${command}`);
     });
 
@@ -626,6 +668,12 @@ describe("installed Temper state boundaries", () => {
         return response({ modes: [], raw_payloads_exposed: false });
       if (command === "instruction_environment_get")
         return response({ environments: [], raw_payloads_exposed: false });
+      if (command === "package_review_list")
+        return response({
+          items: [],
+          pending_count: 0,
+          raw_payloads_exposed: false,
+        });
       if (command === "review_decide") {
         currentSnapshot = { ...snapshot, suggestions: [] };
         return response(
@@ -686,6 +734,12 @@ describe("installed Temper state boundaries", () => {
         return response({ modes: [], raw_payloads_exposed: false });
       if (command === "instruction_environment_get")
         return response({ environments: [], raw_payloads_exposed: false });
+      if (command === "package_review_list")
+        return response({
+          items: [],
+          pending_count: 0,
+          raw_payloads_exposed: false,
+        });
       if (command === "review_decide") {
         currentSnapshot = { ...snapshot, suggestions: [] };
         return response(
@@ -744,6 +798,12 @@ describe("installed Temper state boundaries", () => {
         return response({ modes: [], raw_payloads_exposed: false });
       if (command === "instruction_environment_get")
         return response({ environments: [], raw_payloads_exposed: false });
+      if (command === "package_review_list")
+        return response({
+          items: [],
+          pending_count: 0,
+          raw_payloads_exposed: false,
+        });
       if (command === "preferences_update") {
         currentSnapshot = {
           ...currentSnapshot,
@@ -799,6 +859,12 @@ describe("installed Temper state boundaries", () => {
         return response({ modes: [], raw_payloads_exposed: false });
       if (command === "instruction_environment_get")
         return response({ environments: [], raw_payloads_exposed: false });
+      if (command === "package_review_list")
+        return response({
+          items: [],
+          pending_count: 0,
+          raw_payloads_exposed: false,
+        });
       if (command === "notification_permission") return "denied";
       throw new Error(`Unexpected command: ${command}`);
     });

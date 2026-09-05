@@ -142,7 +142,10 @@ profile.
 Portable sharing is split into three authority-safe packages: a private same-owner profile backup,
 a sanitized behavior pack that another user reviews as external material, and a temporary
 capability **Mode** such as Frontend Studio. A sender's signature proves origin and integrity; it
-does not make their preferences the recipient's user-authority memories. See
+does not make their preferences the recipient's user-authority memories. Imported behavior becomes
+Core only after an exact local review and registered-project mapping creates new encrypted local
+attestation evidence and passes the normal evaluation/release path. Imported Modes begin inactive
+and require explicit one-task selection. See
 [`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md).
 
 Milestones 6A.2D–6A.2F now include a governed automatic-runtime core, restart-safe host coordinator,
@@ -392,8 +395,10 @@ worked; its current target-visible projection did not beat an excellent profile.
   deterministic recovery after append-before-delivery interruption.
 - Typed capability-Mode and personal-overlay composition seams plus three governed experimental
   Modes. Their structural conformance is verified separately from the still-unexecuted same-agent
-  effectiveness designs. Shareable third-party Mode import, marketplace discovery, and automatic
-  Mode creation remain unimplemented.
+  effectiveness designs. Signed third-party behavior and Mode packages can be previewed, staged,
+  locally reviewed, and either adopted through existing Core governance or added inactive to the
+  Mode catalog. Personal-overlay composition, marketplace discovery, and automatic Mode creation
+  remain unimplemented.
 - Immutable failed v1.11 instrument, v1.13 role, v1.14 resolver, v1.15 inner-sandbox, v1.16
   pre-session smoke, and v1.17–v1.18 live-smoke results plus a v1.19 compact-projection protocol with
   three entirely fresh task fixtures, an independent scorer, six

@@ -1183,6 +1183,37 @@ fn package_import_stage(
 }
 
 #[tauri::command]
+fn package_review_list(
+    state: tauri::State<'_, EngineState>,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(&state, "package.review.list", json!({}), None, None)
+}
+
+#[tauri::command]
+fn package_review_decide(
+    state: tauri::State<'_, EngineState>,
+    review_id: String,
+    review_digest: String,
+    decision: String,
+    mapped_project_ids: Vec<String>,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "package.review.decide",
+        json!({
+            "review_id": review_id,
+            "review_digest": review_digest,
+            "decision": decision,
+            "mapped_project_ids": mapped_project_ids,
+        }),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
 fn modes_list(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
     call_engine(&state, "mode.list", json!({}), None, None)
 }
@@ -1334,6 +1365,8 @@ pub fn run() {
             package_export,
             package_import_preview,
             package_import_stage,
+            package_review_list,
+            package_review_decide,
             modes_list,
             mode_run_task,
             task_run,
@@ -1425,6 +1458,8 @@ mod tests {
             "package_export",
             "package_import_preview",
             "package_import_stage",
+            "package_review_list",
+            "package_review_decide",
             "modes_list",
             "mode_run_task",
             "task_run",

@@ -1,0 +1,90 @@
+{
+  "additionalProperties": false,
+  "description": "Raw-free lineage for an externally authored clause reviewed by the local owner.",
+  "properties": {
+    "claim_key": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Claim Key",
+      "type": "string"
+    },
+    "grants_user_authority": {
+      "const": false,
+      "default": false,
+      "title": "Grants User Authority",
+      "type": "boolean"
+    },
+    "import_receipt_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Import Receipt Digest",
+      "type": "string"
+    },
+    "import_receipt_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Import Receipt Id",
+      "type": "string"
+    },
+    "item_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Item Digest",
+      "type": "string"
+    },
+    "item_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Item Id",
+      "type": "string"
+    },
+    "origin_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Origin Version",
+      "type": "string"
+    },
+    "package_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Package Digest",
+      "type": "string"
+    },
+    "package_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Package Id",
+      "type": "string"
+    },
+    "package_type": {
+      "const": "behavior_pack",
+      "default": "behavior_pack",
+      "title": "Package Type",
+      "type": "string"
+    },
+    "publisher_key_fingerprint": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Publisher Key Fingerprint",
+      "type": "string"
+    },
+    "signature_verified": {
+      "const": true,
+      "default": true,
+      "title": "Signature Verified",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "package_id",
+    "package_digest",
+    "import_receipt_id",
+    "import_receipt_digest",
+    "item_id",
+    "item_digest",
+    "claim_key",
+    "publisher_key_fingerprint"
+  ],
+  "title": "ExternalProposalOriginV1",
+  "type": "object"
+}

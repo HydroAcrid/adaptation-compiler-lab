@@ -40,6 +40,7 @@ BEHAVIOR_PACK_PURPOSE = "shareable_behavior_pack"
 MODE_PACKAGE_PURPOSE = "capability_mode_package"
 OVERLAY_PURPOSE = "personal_mode_overlay"
 PACKAGE_IMPORT_PURPOSE = "shareable_package_import"
+PACKAGE_REVIEW_PURPOSE = "shareable_package_review"
 MAX_SHAREABLE_PACKAGE_BYTES = 2 * 1024 * 1024
 
 _PRIVATE_PATH = re.compile(
@@ -60,6 +61,9 @@ class ShareablePackageType(StrEnum):
     BEHAVIOR_PACK = "behavior_pack"
     CAPABILITY_MODE = "capability_mode"
     PERSONAL_MODE_OVERLAY = "personal_mode_overlay"
+
+
+PackageReviewDisposition = Literal["new", "exact_duplicate", "conflict", "owner_only"]
 
 
 class ShareableBehaviorClauseV1(FrozenModel):
@@ -201,7 +205,7 @@ class PackageImportItemPreviewV1(FrozenModel):
     item_id: Identifier
     kind: NonEmptyStr
     summary: NonEmptyStr
-    disposition: Literal["new", "exact_duplicate", "conflict", "owner_only"]
+    disposition: PackageReviewDisposition
 
 
 class PackageImportPreviewV1(FrozenModel):
@@ -245,6 +249,7 @@ class PackageImportReceiptV1(FrozenModel):
     publisher_key_fingerprint: Sha256Digest
     local_subject_id: Identifier
     local_signer_identity_id: Identifier
+    local_public_key_base64: NonEmptyStr
     local_signer_key_fingerprint: Sha256Digest
     status: Literal["staged_inactive_for_review"] = "staged_inactive_for_review"
     duplicate_item_ids: tuple[Identifier, ...] = ()
@@ -257,6 +262,15 @@ class PackageImportReceiptV1(FrozenModel):
 
     @model_validator(mode="after")
     def receipt_is_inactive_and_signed(self) -> Self:
+        try:
+            public_key = base64.b64decode(self.local_public_key_base64, validate=True)
+        except ValueError as error:
+            raise ValueError("package import public key is not canonical base64") from error
+        if len(public_key) != 32:
+            raise ValueError("package import public key must contain exactly 32 bytes")
+        fingerprint = f"sha256:{hashlib.sha256(public_key).hexdigest()}"
+        if fingerprint != self.local_signer_key_fingerprint:
+            raise ValueError("package import signer fingerprint changed")
         if (
             self.signature.purpose != PACKAGE_IMPORT_PURPOSE
             or self.signature.signed_at != self.imported_at
@@ -264,6 +278,140 @@ class PackageImportReceiptV1(FrozenModel):
             or self.signature.key_fingerprint != self.local_signer_key_fingerprint
         ):
             raise ValueError("shareable-package import signature metadata is inconsistent")
+        return self
+
+    @property
+    def unsigned_payload(self) -> dict[str, object]:
+        return self.model_dump(mode="json", exclude={"signature"})
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class PackageReviewItemV1(FrozenModel):
+    """One externally-authored item waiting for an explicit local decision."""
+
+    review_version: Literal["1.0.0"] = "1.0.0"
+    review_id: Identifier
+    local_subject_id: Identifier
+    import_receipt_id: Identifier
+    import_receipt_digest: Sha256Digest
+    package_type: ShareablePackageType
+    package_id: Identifier
+    package_digest: Sha256Digest
+    item_id: Identifier
+    item_digest: Sha256Digest
+    claim_key: Identifier | None = None
+    publisher_name: NonEmptyStr
+    publisher_key_fingerprint: Sha256Digest
+    kind: NonEmptyStr
+    summary: NonEmptyStr
+    disposition: PackageReviewDisposition
+    requested_scope: PortableProfileScope | None = None
+    behavioral_contract: BehavioralContract | None = None
+    required_capabilities: tuple[Identifier, ...] = ()
+    evaluation_status: NonEmptyStr | None = None
+    available_actions: tuple[Literal["approve", "reject"], ...]
+    created_at: datetime
+    starts_inactive: Literal[True] = True
+    origin_grants_authority: Literal[False] = False
+    raw_payloads_exposed: Literal[False] = False
+
+    @model_validator(mode="after")
+    def review_shape_matches_item(self) -> Self:
+        behavior = self.package_type is ShareablePackageType.BEHAVIOR_PACK
+        if behavior != (self.behavioral_contract is not None):
+            raise ValueError("only behavior-pack reviews may carry a behavioral contract")
+        if behavior != (self.requested_scope is not None):
+            raise ValueError("only behavior-pack reviews may carry a requested scope")
+        if behavior != (self.claim_key is not None):
+            raise ValueError("only behavior-pack reviews may carry a claim key")
+        expected_actions: tuple[Literal["approve", "reject"], ...] = (
+            ("approve", "reject")
+            if self.disposition == "new"
+            and self.package_type is not ShareablePackageType.PERSONAL_MODE_OVERLAY
+            else ("reject",)
+        )
+        if self.available_actions != expected_actions:
+            raise ValueError("package review actions do not match its safe disposition")
+        return self
+
+    @property
+    def content_digest(self) -> Sha256Digest:
+        return canonical_digest(self)
+
+
+class PackageReviewDecisionReceiptV1(FrozenModel):
+    """Signed local adoption decision; the publisher signature grants no authority."""
+
+    receipt_version: Literal["1.0.0"] = "1.0.0"
+    receipt_id: Identifier
+    review_id: Identifier
+    review_digest: Sha256Digest
+    package_type: ShareablePackageType
+    package_id: Identifier
+    package_digest: Sha256Digest
+    item_id: Identifier
+    item_digest: Sha256Digest
+    local_subject_id: Identifier
+    local_signer_identity_id: Identifier
+    local_public_key_base64: NonEmptyStr
+    local_signer_key_fingerprint: Sha256Digest
+    decision: Literal["approved", "rejected"]
+    resulting_status: Literal[
+        "approved_for_core",
+        "approved_inactive_mode",
+        "approved_inactive_overlay",
+        "rejected",
+    ]
+    mapped_project_ids: tuple[Identifier, ...] = ()
+    runtime_adoption_digest: Sha256Digest | None = None
+    decided_at: datetime
+    idempotency_key_digest: Sha256Digest
+    signature: SignatureEnvelope
+    origin_granted_authority: Literal[False] = False
+    local_user_decision_required: Literal[True] = True
+
+    @field_validator("mapped_project_ids")
+    @classmethod
+    def mapped_projects_are_sorted_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if not strings_are_sorted_unique(value):
+            raise ValueError("mapped package projects must be sorted and unique")
+        return value
+
+    @model_validator(mode="after")
+    def decision_is_local_and_exact(self) -> Self:
+        try:
+            public_key = base64.b64decode(self.local_public_key_base64, validate=True)
+        except ValueError as error:
+            raise ValueError("package review public key is not canonical base64") from error
+        if len(public_key) != 32:
+            raise ValueError("package review public key must contain exactly 32 bytes")
+        fingerprint = f"sha256:{hashlib.sha256(public_key).hexdigest()}"
+        if fingerprint != self.local_signer_key_fingerprint:
+            raise ValueError("package review signer fingerprint changed")
+        expected_status = {
+            ShareablePackageType.BEHAVIOR_PACK: "approved_for_core",
+            ShareablePackageType.CAPABILITY_MODE: "approved_inactive_mode",
+            ShareablePackageType.PERSONAL_MODE_OVERLAY: "approved_inactive_overlay",
+        }[self.package_type]
+        if self.decision == "rejected":
+            if self.resulting_status != "rejected" or self.runtime_adoption_digest is not None:
+                raise ValueError("rejected package review cannot claim adopted output")
+        elif self.resulting_status != expected_status:
+            raise ValueError("approved package review has an inconsistent status")
+        elif (self.package_type is ShareablePackageType.BEHAVIOR_PACK) != (
+            self.runtime_adoption_digest is not None
+        ):
+            raise ValueError("approved behavior review must bind one runtime adoption")
+        if (
+            self.signature.purpose != PACKAGE_REVIEW_PURPOSE
+            or self.signature.signed_at != self.decided_at
+            or self.signature.signer_identity_id != self.local_signer_identity_id
+            or self.signature.key_fingerprint != self.local_signer_key_fingerprint
+        ):
+            raise ValueError("package review signature metadata is inconsistent")
         return self
 
     @property
@@ -590,6 +738,7 @@ class ShareablePackageImportStore:
         receipt_path = self._root / f"{str(key_digest).removeprefix('sha256:')}.json"
         if receipt_path.exists():
             existing = PackageImportReceiptV1.model_validate_json(receipt_path.read_bytes())
+            _verify_package_import_receipt(existing)
             if existing.package_digest != package.content_digest:
                 raise ShareablePackageError("idempotency key was reused for another package")
             return existing
@@ -605,6 +754,7 @@ class ShareablePackageImportStore:
             publisher_key_fingerprint=package.publisher_key_fingerprint,
             local_subject_id=local_subject_id,
             local_signer_identity_id=signer.identity_id,
+            local_public_key_base64=_public_key_base64(signer),
             local_signer_key_fingerprint=signer.fingerprint,
             duplicate_item_ids=preview.duplicate_item_ids,
             conflicting_item_ids=preview.conflicting_item_ids,
@@ -649,6 +799,7 @@ class ShareablePackageImportStore:
         incoming = _semver_key(package.release_version)
         for path in self._root.glob("*.json"):
             receipt = PackageImportReceiptV1.model_validate_json(path.read_bytes())
+            _verify_package_import_receipt(receipt)
             if (
                 receipt.package_type == package.package_type
                 and receipt.package_id == package.package_id
@@ -656,6 +807,323 @@ class ShareablePackageImportStore:
                 and _semver_key(receipt.release_version) > incoming
             ):
                 raise ShareablePackageError("shareable package downgrade is not permitted")
+
+    def review_items(self, *, include_resolved: bool = False) -> tuple[PackageReviewItemV1, ...]:
+        """Return every staged item without treating package origin as local authority."""
+
+        decisions = {item.review_id for item in self.decisions()}
+        reviews: list[PackageReviewItemV1] = []
+        if not self._root.exists():
+            return ()
+        for path in sorted(self._root.glob("*.json")):
+            receipt = PackageImportReceiptV1.model_validate_json(path.read_bytes(), strict=True)
+            _verify_package_import_receipt(receipt)
+            package_path = (
+                self._root
+                / "packages"
+                / f"{str(receipt.package_digest).removeprefix('sha256:')}.temper-pack"
+            )
+            package = read_shareable_package(package_path)
+            if (
+                package.content_digest != receipt.package_digest
+                or package.package_id != receipt.package_id
+                or package.package_type is not receipt.package_type
+            ):
+                raise ShareablePackageError("staged package no longer matches its import receipt")
+            preview_dispositions: dict[str, PackageReviewDisposition] = {
+                item_id: "exact_duplicate" for item_id in receipt.duplicate_item_ids
+            }
+            preview_dispositions.update(
+                {item_id: "conflict" for item_id in receipt.conflicting_item_ids}
+            )
+            for item in _review_items_for_package(package, receipt, preview_dispositions):
+                if include_resolved or item.review_id not in decisions:
+                    reviews.append(item)
+        return tuple(sorted(reviews, key=lambda item: (item.created_at, item.review_id)))
+
+    def review_item(self, review_id: str) -> PackageReviewItemV1 | None:
+        return next(
+            (
+                item
+                for item in self.review_items(include_resolved=True)
+                if item.review_id == review_id
+            ),
+            None,
+        )
+
+    def decisions(self) -> tuple[PackageReviewDecisionReceiptV1, ...]:
+        decision_root = self._root / "decisions"
+        if not decision_root.exists():
+            return ()
+        decisions_list: list[PackageReviewDecisionReceiptV1] = []
+        for path in sorted(decision_root.glob("*.json")):
+            receipt = PackageReviewDecisionReceiptV1.model_validate_json(
+                path.read_bytes(), strict=True
+            )
+            _verify_package_review_decision(receipt)
+            decisions_list.append(receipt)
+        decisions = tuple(decisions_list)
+        if len({item.review_id for item in decisions}) != len(decisions):
+            raise ShareablePackageError("package review has conflicting local decisions")
+        return decisions
+
+    def decide(
+        self,
+        item: PackageReviewItemV1,
+        *,
+        signer: GovernanceSigner,
+        decision: Literal["approved", "rejected"],
+        mapped_project_ids: tuple[str, ...],
+        runtime_adoption_digest: Sha256Digest | None,
+        decided_at: datetime,
+        idempotency_key: str,
+    ) -> PackageReviewDecisionReceiptV1:
+        """Persist one exact signed recipient decision after any governed Core transition."""
+
+        current_item = self.review_item(item.review_id)
+        if current_item is None or current_item.content_digest != item.content_digest:
+            raise ShareablePackageError("package review item changed after it was presented")
+        item = current_item
+        if item.local_subject_id != signer.subject_id:
+            raise ShareablePackageError("package review crossed the local subject boundary")
+        if not idempotency_key.strip():
+            raise ShareablePackageError("package review requires an idempotency key")
+        if decision == "approved" and "approve" not in item.available_actions:
+            raise ShareablePackageError("this package item cannot be approved safely")
+        if decision == "approved" and item.package_type is ShareablePackageType.BEHAVIOR_PACK:
+            scope = item.requested_scope
+            if scope is None:
+                raise ShareablePackageError("behavior review lost its requested scope")
+            if scope.scope_mapping_required and not mapped_project_ids:
+                raise ShareablePackageError("behavior review requires an explicit project mapping")
+        key_digest = canonical_digest({"idempotency_key": idempotency_key})
+        decision_root = self._root / "decisions"
+        decision_root.mkdir(parents=True, exist_ok=True)
+        existing_for_review = next(
+            (value for value in self.decisions() if value.review_id == item.review_id),
+            None,
+        )
+        if existing_for_review is not None:
+            if (
+                existing_for_review.decision != decision
+                or existing_for_review.review_digest != item.content_digest
+                or existing_for_review.mapped_project_ids != mapped_project_ids
+                or existing_for_review.runtime_adoption_digest != runtime_adoption_digest
+            ):
+                raise ShareablePackageError("package item already has another local decision")
+            return existing_for_review
+        receipt_path = decision_root / f"{str(key_digest).removeprefix('sha256:')}.json"
+        if receipt_path.exists():
+            existing = PackageReviewDecisionReceiptV1.model_validate_json(
+                receipt_path.read_bytes(), strict=True
+            )
+            _verify_package_review_decision(existing)
+            if existing.review_id != item.review_id:
+                raise ShareablePackageError("idempotency key was reused for another package item")
+            return existing
+        status: Literal[
+            "approved_for_core",
+            "approved_inactive_mode",
+            "approved_inactive_overlay",
+            "rejected",
+        ]
+        if decision == "rejected":
+            status = "rejected"
+        elif item.package_type is ShareablePackageType.BEHAVIOR_PACK:
+            status = "approved_for_core"
+        elif item.package_type is ShareablePackageType.CAPABILITY_MODE:
+            status = "approved_inactive_mode"
+        else:
+            status = "approved_inactive_overlay"
+        placeholder = signer.envelope({}, purpose=PACKAGE_REVIEW_PURPOSE, signed_at=decided_at)
+        draft = PackageReviewDecisionReceiptV1(
+            receipt_id=f"package-review-{str(key_digest).removeprefix('sha256:')[:24]}",
+            review_id=item.review_id,
+            review_digest=item.content_digest,
+            package_type=item.package_type,
+            package_id=item.package_id,
+            package_digest=item.package_digest,
+            item_id=item.item_id,
+            item_digest=item.item_digest,
+            local_subject_id=item.local_subject_id,
+            local_signer_identity_id=signer.identity_id,
+            local_public_key_base64=_public_key_base64(signer),
+            local_signer_key_fingerprint=signer.fingerprint,
+            decision=decision,
+            resulting_status=status,
+            mapped_project_ids=mapped_project_ids,
+            runtime_adoption_digest=runtime_adoption_digest,
+            decided_at=decided_at,
+            idempotency_key_digest=key_digest,
+            signature=placeholder,
+        )
+        receipt = draft.model_copy(
+            update={
+                "signature": signer.envelope(
+                    draft.unsigned_payload,
+                    purpose=PACKAGE_REVIEW_PURPOSE,
+                    signed_at=decided_at,
+                )
+            }
+        )
+        temporary = receipt_path.with_suffix(f".{uuid.uuid4().hex}.tmp")
+        descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
+                stream.write(canonical_json(receipt) + "\n")
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, receipt_path)
+        except BaseException:
+            temporary.unlink(missing_ok=True)
+            raise
+        return receipt
+
+    def accepted_modes(self) -> tuple[CapabilityMode, ...]:
+        """Load imported Modes only after an explicit local approval receipt."""
+
+        modes: list[CapabilityMode] = []
+        for decision in self.decisions():
+            if decision.resulting_status != "approved_inactive_mode":
+                continue
+            package_path = (
+                self._root
+                / "packages"
+                / f"{str(decision.package_digest).removeprefix('sha256:')}.temper-pack"
+            )
+            package = read_shareable_package(package_path)
+            if not isinstance(package, CapabilityModePackageV1):
+                raise ShareablePackageError("approved Mode decision points to another package type")
+            if package.mode.content_digest != decision.item_digest:
+                raise ShareablePackageError("approved imported Mode digest changed")
+            modes.append(package.mode.model_copy(update={"source_kind": "imported"}))
+        keys = tuple((mode.mode_id, mode.mode_version) for mode in modes)
+        if len(keys) != len(set(keys)):
+            raise ShareablePackageError("approved imported Mode catalog contains duplicates")
+        return tuple(sorted(modes, key=lambda mode: (mode.name.casefold(), mode.mode_id)))
+
+
+def _review_items_for_package(
+    package: ShareablePackage,
+    receipt: PackageImportReceiptV1,
+    dispositions: Mapping[str, PackageReviewDisposition],
+) -> tuple[PackageReviewItemV1, ...]:
+    """Project a verified staged package into raw-free, locally reviewable items."""
+
+    rows: list[PackageReviewItemV1] = []
+    if isinstance(package, ShareableBehaviorPackV1):
+        for clause in package.clauses:
+            disposition = dispositions.get(clause.clause_id, "new")
+            rows.append(
+                PackageReviewItemV1(
+                    review_id=_package_review_id(package.content_digest, clause.clause_id),
+                    local_subject_id=receipt.local_subject_id,
+                    import_receipt_id=receipt.receipt_id,
+                    import_receipt_digest=receipt.content_digest,
+                    package_type=package.package_type,
+                    package_id=package.package_id,
+                    package_digest=package.content_digest,
+                    item_id=clause.clause_id,
+                    item_digest=clause.content_digest,
+                    claim_key=clause.claim_key,
+                    publisher_name=package.publisher_name,
+                    publisher_key_fingerprint=package.publisher_key_fingerprint,
+                    kind=clause.artifact_kind.value,
+                    summary=clause.behavioral_contract.intent,
+                    disposition=disposition,
+                    requested_scope=clause.requested_scope,
+                    behavioral_contract=clause.behavioral_contract,
+                    available_actions=(
+                        ("approve", "reject") if disposition == "new" else ("reject",)
+                    ),
+                    created_at=receipt.imported_at,
+                )
+            )
+    elif isinstance(package, CapabilityModePackageV1):
+        disposition = dispositions.get(package.mode.mode_id, "new")
+        rows.append(
+            PackageReviewItemV1(
+                review_id=_package_review_id(package.content_digest, package.mode.mode_id),
+                local_subject_id=receipt.local_subject_id,
+                import_receipt_id=receipt.receipt_id,
+                import_receipt_digest=receipt.content_digest,
+                package_type=package.package_type,
+                package_id=package.package_id,
+                package_digest=package.content_digest,
+                item_id=package.mode.mode_id,
+                item_digest=package.mode.content_digest,
+                publisher_name=package.publisher_name,
+                publisher_key_fingerprint=package.publisher_key_fingerprint,
+                kind="capability_mode",
+                summary=package.mode.summary,
+                disposition=disposition,
+                required_capabilities=package.mode.required_capabilities,
+                evaluation_status=package.mode.evaluation_status.value,
+                available_actions=(("approve", "reject") if disposition == "new" else ("reject",)),
+                created_at=receipt.imported_at,
+            )
+        )
+    else:
+        disposition = dispositions.get(package.base_mode_id, "new")
+        if package.owner_subject_id != receipt.local_subject_id:
+            disposition = "owner_only"
+        overlay_digest = canonical_digest(
+            {
+                "base_mode_id": package.base_mode_id,
+                "base_mode_digest": package.base_mode_digest,
+                "clauses": tuple(clause.model_dump(mode="json") for clause in package.clauses),
+            }
+        )
+        rows.append(
+            PackageReviewItemV1(
+                review_id=_package_review_id(package.content_digest, package.base_mode_id),
+                local_subject_id=receipt.local_subject_id,
+                import_receipt_id=receipt.receipt_id,
+                import_receipt_digest=receipt.content_digest,
+                package_type=package.package_type,
+                package_id=package.package_id,
+                package_digest=package.content_digest,
+                item_id=package.base_mode_id,
+                item_digest=overlay_digest,
+                publisher_name=package.publisher_name,
+                publisher_key_fingerprint=package.publisher_key_fingerprint,
+                kind="personal_mode_overlay",
+                summary=f"Personal overlay for {package.base_mode_id}",
+                disposition=disposition,
+                available_actions=("reject",),
+                created_at=receipt.imported_at,
+            )
+        )
+    return tuple(rows)
+
+
+def _package_review_id(package_digest: Sha256Digest, item_id: str) -> str:
+    digest = canonical_digest({"package_digest": package_digest, "item_id": item_id})
+    return f"package-review-{str(digest).removeprefix('sha256:')[:24]}"
+
+
+def _verify_package_review_decision(receipt: PackageReviewDecisionReceiptV1) -> None:
+    try:
+        verify_detached_envelope(
+            receipt.unsigned_payload,
+            receipt.signature,
+            public_key_base64=receipt.local_public_key_base64,
+            expected_purpose=PACKAGE_REVIEW_PURPOSE,
+        )
+    except ValueError as error:
+        raise ShareablePackageError("local package-review signature is invalid") from error
+
+
+def _verify_package_import_receipt(receipt: PackageImportReceiptV1) -> None:
+    try:
+        verify_detached_envelope(
+            receipt.unsigned_payload,
+            receipt.signature,
+            public_key_base64=receipt.local_public_key_base64,
+            expected_purpose=PACKAGE_IMPORT_PURPOSE,
+        )
+    except ValueError as error:
+        raise ShareablePackageError("local package-import signature is invalid") from error
 
 
 def _public_key_base64(signer: GovernanceSigner) -> str:

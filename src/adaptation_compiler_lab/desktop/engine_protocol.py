@@ -29,7 +29,13 @@ from adaptation_compiler_lab.desktop.models import (
     SuggestionDecisionRequestV1,
     SuggestionSummaryV1,
 )
-from adaptation_compiler_lab.domain import FrozenModel, NonEmptyStr, Scope, Sha256Digest
+from adaptation_compiler_lab.domain import (
+    ApprovalDecision,
+    FrozenModel,
+    NonEmptyStr,
+    Scope,
+    Sha256Digest,
+)
 from adaptation_compiler_lab.instruction_environment.models import (
     InstructionChangePreviewV1,
     InstructionChangeReceiptV1,
@@ -42,6 +48,8 @@ from adaptation_compiler_lab.modes import MODE_CATALOG, evaluate_mode_conformanc
 from adaptation_compiler_lab.portability import (
     EncryptedProfileEnvelope,
     PackageImportPreviewV1,
+    PackageReviewDecisionReceiptV1,
+    PackageReviewItemV1,
     PortableProfilePackage,
     ShareablePackage,
 )
@@ -326,6 +334,10 @@ class EngineProtocolRouter:
             return self._preview_package_import(request)
         if request.method == "package.import.stage":
             return self._stage_package_import(request)
+        if request.method == "package.review.list":
+            return self._list_package_reviews(request)
+        if request.method == "package.review.decide":
+            return self._decide_package_review(request)
         if request.method == "mode.task.run":
             return self._run_mode_task(request)
         if request.method == "task.run":
@@ -339,7 +351,23 @@ class EngineProtocolRouter:
         if request.method == "mode.list":
             if request.params:
                 return self._error(request, "invalid_params", "mode.list takes no parameters.")
-            catalog = tuple((mode, evaluate_mode_conformance(mode)) for mode in MODE_CATALOG)
+            modes = list(MODE_CATALOG)
+            if self._portability is not None:
+                try:
+                    modes.extend(self._portability.accepted_imported_modes())
+                except (OSError, ValueError):
+                    return self._error(
+                        request,
+                        "mode_catalog_unavailable",
+                        "Temper could not safely verify the local Mode catalog.",
+                    )
+            if len({mode.mode_id for mode in modes}) != len(modes):
+                return self._error(
+                    request,
+                    "mode_catalog_conflict",
+                    "An imported Mode conflicts with the local catalog.",
+                )
+            catalog = tuple((mode, evaluate_mode_conformance(mode)) for mode in modes)
             return EngineResponse(
                 request_id=request.request_id,
                 ok=True,
@@ -368,6 +396,7 @@ class EngineProtocolRouter:
                             "evaluation_case_count": len(report.cases),
                             "mutates_permanent_core": False,
                             "auto_activates": False,
+                            "source_kind": mode.source_kind,
                         }
                         for mode, report in catalog
                     ),
@@ -1403,6 +1432,92 @@ class EngineProtocolRouter:
         )
         return self._remember_mutation(request, request_fingerprint, response)
 
+    def _list_package_reviews(self, request: EngineRequest) -> EngineResponse:
+        if request.params:
+            return self._error(
+                request, "invalid_params", "package.review.list takes no parameters."
+            )
+        if self._portability is None:
+            return self._not_configured(request)
+        try:
+            items = self._portability.package_review_items()
+        except (OSError, ValueError):
+            return self._error(
+                request,
+                "package_review_unavailable",
+                "Temper could not safely read imported package reviews.",
+                retryable=True,
+            )
+        return EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result={
+                "items": tuple(
+                    {
+                        **item.model_dump(mode="json"),
+                        "review_digest": item.content_digest,
+                    }
+                    for item in items
+                ),
+                "pending_count": len(items),
+                "raw_payloads_exposed": False,
+            },
+        )
+
+    def _decide_package_review(self, request: EngineRequest) -> EngineResponse:
+        checked = self._mutation_request(request)
+        if isinstance(checked, EngineResponse):
+            return checked
+        _snapshot_digest, request_fingerprint = checked
+        if self._portability is None or self._service is None or request.idempotency_key is None:
+            return self._not_configured(request)
+        try:
+            if set(request.params) != {
+                "review_id",
+                "review_digest",
+                "decision",
+                "mapped_project_ids",
+            }:
+                raise ValueError
+            decision = ApprovalDecision(_required_string(request.params, "decision"))
+            raw_projects = request.params.get("mapped_project_ids")
+            if not isinstance(raw_projects, list) or any(
+                not isinstance(value, str) or not value.strip() for value in raw_projects
+            ):
+                raise ValueError
+            projects = tuple(sorted(set(raw_projects)))
+            if len(projects) != len(raw_projects):
+                raise ValueError
+            receipt = self._portability.decide_package_review(
+                review_id=_required_string(request.params, "review_id"),
+                review_digest=_required_string(request.params, "review_digest"),
+                decision=decision,
+                mapped_project_ids=projects,
+                idempotency_key=request.idempotency_key,
+            )
+            current = self._service.load()
+        except (OSError, ValueError):
+            return self._error(
+                request,
+                "package_review_refused",
+                "Temper could not safely apply that package decision.",
+            )
+        response = EngineResponse(
+            request_id=request.request_id,
+            ok=True,
+            result={
+                "receipt_id": receipt.receipt_id,
+                "review_id": receipt.review_id,
+                "decision": receipt.decision,
+                "status": receipt.resulting_status,
+                "runtime_adoption_digest": receipt.runtime_adoption_digest,
+                "origin_granted_authority": False,
+                "raw_payloads_exposed": False,
+            },
+            snapshot_digest=current.content_digest,
+        )
+        return self._remember_mutation(request, request_fingerprint, response)
+
     def _run_mode_task(self, request: EngineRequest) -> EngineResponse:
         checked = self._mutation_request(request)
         if isinstance(checked, EngineResponse):
@@ -1831,6 +1946,8 @@ def protocol_schema_models() -> Sequence[type[FrozenModel]]:
         ActivationFeedbackSummaryV1,
         RecentUndoSummaryV1,
         MutationReceiptV1,
+        PackageReviewItemV1,
+        PackageReviewDecisionReceiptV1,
         InstructionSourceSummaryV1,
         InstructionEnvironmentSummaryV1,
         InstructionGlobalPreviewV1,

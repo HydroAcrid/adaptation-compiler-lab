@@ -79,6 +79,25 @@ asset and outrank it at use time. Permanent learning never silently absorbs a pr
 its overlay require an exact source/version binding and explicit temporary activation; those
 operations remain reserved for Milestone 6B.
 
+### 1.3 Shareable package adoption
+
+Shareable package handling is a two-authority flow. The publisher's Ed25519 signature establishes
+only package origin and integrity. Import creates a separate recipient-signed inactive receipt and
+raw-free review item. A recipient approval is a new local user-authority event; it never inherits
+the publisher's authority.
+
+For a behavior clause, the recipient maps the requested scope to registered projects. Temper then
+encrypts an exact local adoption attestation and runs the clause through the existing evaluation,
+typed transition, signed release, and compact projection pipeline. A new external-adoption
+resolution binds the package/item/import digests to those governed outputs without changing legacy
+runtime transition schemas. For a Mode, approval adds the exact signed Mode to an inactive local
+catalog; an explicit one-task selection is still required before delivery. Personal overlays remain
+non-approvable until the runtime can compose and evaluate them safely.
+
+Import receipts, decision receipts, review digests, project mappings, and runtime adoption records
+are replay- and tamper-checked. Package-derived events are excluded from genuine ordinary-work
+interaction counts, so portability cannot manufacture evidence for the longitudinal learning gate.
+
 The Milestone 6A.2 runtime core adds this automatic local flow:
 
 ```mermaid

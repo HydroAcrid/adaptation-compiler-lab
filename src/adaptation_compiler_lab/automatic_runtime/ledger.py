@@ -11,6 +11,7 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     PreparedRuntimeActivation,
     RuntimeActivationFeedback,
     RuntimeCycleReceipt,
+    RuntimeExternalAdoptionResolution,
     RuntimeLearningAssessment,
     RuntimeLearningCycleReceipt,
     RuntimeLearningReviewResolution,
@@ -396,6 +397,121 @@ class AutomaticRuntimeLedger:
             )
             if release_event is not None:
                 self._insert_learning_event(connection, resolution.cycle_id, release_event)
+            connection.commit()
+        return True
+
+    def append_external_adoption(
+        self,
+        resolution: RuntimeExternalAdoptionResolution,
+        state: AutomaticRuntimeState,
+        *,
+        release_event: GovernanceEvent | None = None,
+    ) -> bool:
+        """Atomically store one package decision and any resulting governed Core state."""
+
+        self._validate_state_subject(state)
+        if resolution.subject_id != self._subject_id:
+            raise ValueError("external adoption crossed the ledger subject boundary")
+        if resolution.resulting_state_digest != state.content_digest:
+            raise ValueError("external adoption does not bind its resulting state")
+        actual_release_digest = None if release_event is None else canonical_digest(release_event)
+        if actual_release_digest != resolution.release_event_digest:
+            raise ValueError("external adoption release event binding changed")
+        payload = canonical_json(resolution)
+        digest = str(resolution.content_digest).removeprefix("sha256:")
+        package_digest = str(resolution.origin.package_digest).removeprefix("sha256:")
+        with sqlite3.connect(self._path) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            existing = connection.execute(
+                """
+                SELECT canonical_json, content_sha256
+                FROM automatic_runtime_external_adoptions
+                WHERE resolution_id = ?
+                   OR (subject_id = ? AND package_digest = ? AND item_id = ?)
+                """,
+                (
+                    resolution.resolution_id,
+                    self._subject_id,
+                    package_digest,
+                    resolution.origin.item_id,
+                ),
+            ).fetchone()
+            if existing is not None:
+                if tuple(existing) == (payload, digest):
+                    connection.rollback()
+                    return False
+                connection.rollback()
+                raise RecordConflictError(
+                    "external package item already has another immutable decision"
+                )
+            current_row = self._current_row(connection)
+            if current_row is None:
+                connection.rollback()
+                raise HistoryConflictError("automatic runtime ledger is not initialized")
+            current = self._decode_state(current_row[0], current_row[1])
+            if resolution.prior_state_digest != current.content_digest:
+                connection.rollback()
+                raise HistoryConflictError("external adoption runtime head changed")
+            try:
+                verify_signed_governance(
+                    resolution.review_event,
+                    resolution.signer_identity,
+                    effective_at=resolution.resolved_at,
+                )
+            except ValueError as error:
+                connection.rollback()
+                raise ValueError("external adoption review signature is invalid") from error
+            if resolution.decision is ApprovalDecision.APPROVED:
+                if state.generation != current.generation + 1 or not state.transitions:
+                    connection.rollback()
+                    raise HistoryConflictError(
+                        "approved external adoption must advance exactly one generation"
+                    )
+                transition = state.transitions[-1]
+                if (
+                    transition.content_digest != resolution.transition_digest
+                    or transition.evaluation.content_digest != resolution.evaluation_digest
+                    or transition.review != resolution.review
+                    or transition.review_event != resolution.review_event
+                    or transition.claim_key != resolution.origin.claim_key
+                    or transition.evidence_ref != resolution.evidence_ref
+                    or state.release is None
+                    or state.release.content_digest != resolution.release_digest
+                    or release_event is None
+                ):
+                    connection.rollback()
+                    raise HistoryConflictError("approved external adoption outputs changed")
+                try:
+                    verify_signed_governance(
+                        release_event,
+                        resolution.signer_identity,
+                        effective_at=resolution.resolved_at,
+                    )
+                except ValueError as error:
+                    connection.rollback()
+                    raise ValueError("external adoption release signature is invalid") from error
+                self._insert_state(connection, state)
+            elif state != current or release_event is not None:
+                connection.rollback()
+                raise HistoryConflictError("rejected external adoption changed governed state")
+            connection.execute(
+                """
+                INSERT INTO automatic_runtime_external_adoptions (
+                    resolution_id, subject_id, package_digest, item_id, decision,
+                    resolved_at, canonical_json, content_sha256
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    resolution.resolution_id,
+                    resolution.subject_id,
+                    package_digest,
+                    resolution.origin.item_id,
+                    resolution.decision.value,
+                    resolution.resolved_at.isoformat(),
+                    payload,
+                    digest,
+                ),
+            )
             connection.commit()
         return True
 
@@ -961,6 +1077,51 @@ class AutomaticRuntimeLedger:
     def unresolved_learning_review_items(self) -> tuple[RuntimeReviewQueueItem, ...]:
         resolved = {item.queue_id for item in self.learning_review_resolutions()}
         return tuple(item for item in self.learning_review_items() if item.queue_id not in resolved)
+
+    def external_adoptions(self) -> tuple[RuntimeExternalAdoptionResolution, ...]:
+        """Return package decisions without mixing them into genuine dogfood measurements."""
+
+        with sqlite3.connect(self._path) as connection:
+            rows = connection.execute(
+                """
+                SELECT canonical_json, content_sha256
+                FROM automatic_runtime_external_adoptions
+                WHERE subject_id = ?
+                ORDER BY resolved_at, resolution_id
+                """,
+                (self._subject_id,),
+            ).fetchall()
+        result: list[RuntimeExternalAdoptionResolution] = []
+        for payload, digest in rows:
+            resolution = RuntimeExternalAdoptionResolution.model_validate_json(payload)
+            if canonical_json(resolution) != payload:
+                raise ValueError("stored external adoption resolution is not canonical")
+            if str(resolution.content_digest).removeprefix("sha256:") != digest:
+                raise ValueError("stored external adoption resolution digest mismatch")
+            result.append(resolution)
+        return tuple(result)
+
+    def external_adoption(
+        self, package_digest: str, item_id: str
+    ) -> RuntimeExternalAdoptionResolution | None:
+        normalized = package_digest.removeprefix("sha256:")
+        with sqlite3.connect(self._path) as connection:
+            row = connection.execute(
+                """
+                SELECT canonical_json, content_sha256
+                FROM automatic_runtime_external_adoptions
+                WHERE subject_id = ? AND package_digest = ? AND item_id = ?
+                """,
+                (self._subject_id, normalized, item_id),
+            ).fetchone()
+        if row is None:
+            return None
+        resolution = RuntimeExternalAdoptionResolution.model_validate_json(row[0])
+        if canonical_json(resolution) != row[0]:
+            raise ValueError("stored external adoption resolution is not canonical")
+        if str(resolution.content_digest).removeprefix("sha256:") != row[1]:
+            raise ValueError("stored external adoption resolution digest mismatch")
+        return resolution
 
     def governance_events(self) -> tuple[GovernanceEvent, ...]:
         """Return signed release and activation actions in append order."""

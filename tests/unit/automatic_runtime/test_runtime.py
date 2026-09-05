@@ -15,6 +15,7 @@ from adaptation_compiler_lab.automatic_runtime import (
     AutomaticRuntimeError,
     AutomationDisposition,
     CapabilityPresetRef,
+    ExternalProposalOriginV1,
     InteractionObservation,
     RuntimeLayerBinding,
     RuntimeReviewQueueItem,
@@ -37,6 +38,7 @@ from adaptation_compiler_lab.domain import (
     ApprovalDecision,
     ArtifactRef,
     ArtifactRoute,
+    BehavioralContract,
     EvaluationCaseState,
     PermittedUse,
     Scope,
@@ -237,6 +239,82 @@ def _context(number: int, *, project_id: str) -> RuntimeProjectionContext:
         target_family="codex",
         evaluated_at=NOW + timedelta(minutes=number),
     )
+
+
+def _external_origin() -> ExternalProposalOriginV1:
+    return ExternalProposalOriginV1(
+        package_id="clear-handoffs",
+        package_digest="sha256:" + "1" * 64,
+        import_receipt_id="import-clear-handoffs",
+        import_receipt_digest="sha256:" + "2" * 64,
+        item_id="purpose-first",
+        item_digest="sha256:" + "3" * 64,
+        claim_key="communication.purpose-first",
+        publisher_key_fingerprint="sha256:" + "4" * 64,
+    )
+
+
+def test_external_behavior_requires_local_approval_and_preserves_origin(
+    tmp_path: Path,
+) -> None:
+    runtime, policy = _runtime(tmp_path)
+    initial = initial_runtime_state(policy)
+    result = runtime.resolve_external_behavior(
+        origin=_external_origin(),
+        behavioral_contract=BehavioralContract(
+            intent="Explain purpose before procedural detail",
+            required_behaviors=("State why a procedure matters before its commands.",),
+            verification_requirements=("Confirm that purpose precedes procedure.",),
+        ),
+        route=ArtifactRoute.PREFERENCE,
+        scope=Scope(
+            subject_ids=("kevin",),
+            project_ids=("ordinary-project",),
+            target_families=("codex",),
+        ),
+        state=initial,
+        decision=ApprovalDecision.APPROVED,
+        resolved_at=NOW + timedelta(minutes=1),
+    )
+
+    assert result.state.generation == 1
+    assert result.resolution.decision is ApprovalDecision.APPROVED
+    assert result.resolution.origin.grants_user_authority is False
+    assert result.resolution.evidence_ref is not None
+    assert result.release_event is not None
+    transition = result.state.transitions[0]
+    assert transition.claim_key == _external_origin().claim_key
+    assert transition.review.decision is ApprovalDecision.APPROVED
+    assert transition.source_evidence.authority_class.value == "user_normative"
+    raw_bytes = b"".join(path.read_bytes() for path in (tmp_path / "raw").rglob("*.*"))
+    assert b"Explain purpose before procedural detail" not in raw_bytes
+
+
+def test_rejected_external_behavior_cannot_change_core(tmp_path: Path) -> None:
+    runtime, policy = _runtime(tmp_path)
+    initial = initial_runtime_state(policy)
+    result = runtime.resolve_external_behavior(
+        origin=_external_origin(),
+        behavioral_contract=BehavioralContract(
+            intent="Explain purpose before procedural detail",
+            required_behaviors=("State why a procedure matters before its commands.",),
+            verification_requirements=("Confirm that purpose precedes procedure.",),
+        ),
+        route=ArtifactRoute.PREFERENCE,
+        scope=Scope(
+            subject_ids=("kevin",),
+            project_ids=("ordinary-project",),
+            target_families=("codex",),
+        ),
+        state=initial,
+        decision=ApprovalDecision.REJECTED,
+        resolved_at=NOW + timedelta(minutes=1),
+    )
+
+    assert result.state == initial
+    assert result.release_event is None
+    assert result.resolution.resulting_state_digest == initial.content_digest
+    assert result.resolution.evidence_ref is None
 
 
 def test_add_correct_revoke_and_remove_last_instruction(tmp_path: Path) -> None:

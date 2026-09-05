@@ -101,6 +101,8 @@ fn main() {
             "package_export",
             "package_import_preview",
             "package_import_stage",
+            "package_review_list",
+            "package_review_decide",
             "modes_list",
             "mode_run_task",
             "task_run",

@@ -22,6 +22,7 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     CapturedInteraction,
     ComposedRuntimeRelease,
     DetectedFeedback,
+    ExternalProposalOriginV1,
     FeedbackDetectorMode,
     FeedbackSignalKind,
     InteractionObservation,
@@ -30,6 +31,7 @@ from adaptation_compiler_lab.automatic_runtime.models import (
     RuntimeCycleReceipt,
     RuntimeDeliveryReceipt,
     RuntimeEvaluationReceipt,
+    RuntimeExternalAdoptionResolution,
     RuntimeLearningAssessment,
     RuntimeLearningAssessmentOutcome,
     RuntimeLearningCycleReceipt,
@@ -162,6 +164,15 @@ class AutomaticReviewResolutionResult:
     release_event: GovernanceEvent | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class AutomaticExternalAdoptionResult:
+    """Exact package-clause decision without counting it as ordinary-work learning."""
+
+    state: AutomaticRuntimeState
+    resolution: RuntimeExternalAdoptionResolution
+    release_event: GovernanceEvent | None = None
+
+
 _ROUTE_TO_KIND = {
     ArtifactRoute.MEMORY: ArtifactKind.MEMORY,
     ArtifactRoute.PREFERENCE: ArtifactKind.PREFERENCE,
@@ -172,6 +183,13 @@ _ROUTE_TO_KIND = {
 _LAYER_PRECEDENCE = {
     AdaptationLayer.PERMANENT_PROFILE: 200,
     AdaptationLayer.CURRENT_CONTEXT: 300,
+}
+_ROUTE_TO_SIGNAL = {
+    ArtifactRoute.MEMORY: FeedbackSignalKind.MEMORY,
+    ArtifactRoute.PREFERENCE: FeedbackSignalKind.PREFERENCE,
+    ArtifactRoute.EXAMPLE: FeedbackSignalKind.POSITIVE_EXAMPLE,
+    ArtifactRoute.PROCEDURE: FeedbackSignalKind.PROCEDURE,
+    ArtifactRoute.PROMPT_RULE: FeedbackSignalKind.PROMPT_RULE,
 }
 
 
@@ -588,6 +606,225 @@ class AutomaticAdaptationRuntime:
             resolved_at=resolved_at,
         )
         return AutomaticReviewResolutionResult(
+            state=new_state,
+            resolution=resolution,
+            release_event=release_event,
+        )
+
+    def resolve_external_behavior(
+        self,
+        *,
+        origin: ExternalProposalOriginV1,
+        behavioral_contract: BehavioralContract,
+        route: ArtifactRoute,
+        scope: Scope,
+        state: AutomaticRuntimeState,
+        decision: ApprovalDecision,
+        resolved_at: datetime,
+    ) -> AutomaticExternalAdoptionResult:
+        """Adopt or reject one signed external clause through local user authority.
+
+        Package signatures establish origin and integrity only. On approval, the exact local
+        decision becomes newly captured user-authority evidence and passes the same deterministic
+        evaluation, transition, release, and signing path as ordinary reviewed learning. This
+        deliberately does not create a dogfood learning cycle, so imported material cannot fill
+        the genuine longitudinal gate.
+        """
+
+        if resolved_at.tzinfo is None or resolved_at.utcoffset() is None:
+            raise AutomaticRuntimeError("external review time must be timezone-aware")
+        self._verify_policy(resolved_at)
+        self._validate_state(state)
+        require_policy_scope(scope, self._policy)
+        token = str(origin.content_digest).removeprefix("sha256:")[:24]
+        review = Approval(
+            decision=decision,
+            approver=self._user_actor,
+            decided_at=resolved_at,
+            policy_version=self._policy.policy_version,
+            rationale=(
+                "The owner explicitly adopted this externally authored clause as a local rule."
+                if decision is ApprovalDecision.APPROVED
+                else "The owner rejected this externally authored clause."
+            ),
+        )
+        if decision is ApprovalDecision.REJECTED:
+            review_event = self._governance_event(
+                event_id=f"external-review-event-{token}",
+                event_type=GovernanceEventType.REVIEW_DECISION,
+                target_ref=f"external-proposal:{origin.package_id}:{origin.item_id}",
+                target_digest=origin.content_digest,
+                decision=decision.value,
+                reason="Reject the exact external proposal after local review.",
+                occurred_at=resolved_at,
+            )
+            resolution = RuntimeExternalAdoptionResolution(
+                resolution_id=f"external-adoption-{token}",
+                subject_id=state.subject_id,
+                origin=origin,
+                decision=decision,
+                review=review,
+                review_event=review_event,
+                signer_identity=self._identity,
+                prior_state_digest=state.content_digest,
+                resulting_state_digest=state.content_digest,
+                resolved_at=resolved_at,
+            )
+            return AutomaticExternalAdoptionResult(state=state, resolution=resolution)
+
+        if route not in _ROUTE_TO_KIND or route not in self._policy.allowed_routes:
+            raise AutomaticRuntimeError("external behavior route is not supported or authorized")
+        observation = InteractionObservation(
+            observation_id=f"external-adoption-{token}",
+            subject_id=state.subject_id,
+            task_ref=TaskRecordRef(
+                record_id=f"external-package-{token}",
+                record_version="1.0.0",
+            ),
+            turn_id=f"external-review-{token}",
+            actor=self._user_actor,
+            source_class=SourceClass.EXPLICIT_USER_FEEDBACK,
+            text=(
+                "I explicitly adopt this reviewed external behavior for future use.\n"
+                f"Package digest: {origin.package_digest}\n"
+                f"Item digest: {origin.item_digest}\n"
+                f"Intent: {behavioral_contract.intent}\n"
+                "Required behavior:\n- " + "\n- ".join(behavioral_contract.required_behaviors)
+            ),
+            scope=scope,
+            observed_at=resolved_at,
+            source_system="local_interaction_runtime",
+            source_version="temper-package-review/1.0.0",
+            source_schema_digest=canonical_digest(
+                RuntimeExternalAdoptionResolution.model_json_schema()
+            ),
+        )
+        detection = DetectedFeedback(
+            candidate_id=f"external-candidate-{token}",
+            observation_digest=observation.content_digest,
+            signal_kind=_ROUTE_TO_SIGNAL[route],
+            normalized_behavior=behavioral_contract.intent,
+            requested_route=route,
+            claim_key=origin.claim_key,
+            scope=scope,
+            layer=infer_layer(scope),
+            disposition=AutomationDisposition.REVIEW_REQUIRED,
+            reasons=(
+                "External origin grants no authority; explicit local review is required.",
+                "The owner selected the exact package clause and local scope.",
+            ),
+            detected_at=resolved_at,
+            detector_id="temper-package-review",
+            detector_version="1.0.0",
+        )
+        captured = self._capture(observation, detection, resolved_at)
+        candidate_evaluation = self._evaluate(
+            detection,
+            captured,
+            state=state,
+            processed_at=resolved_at,
+        )
+        candidate = candidate_evaluation.candidate_case.model_copy(
+            update={
+                "expected_behaviors": behavioral_contract.required_behaviors,
+                "failure_criteria": tuple(
+                    sorted(
+                        {
+                            "Any deterministic promotion or package-origin gate fails.",
+                            *behavioral_contract.non_goals,
+                        }
+                    )
+                ),
+            }
+        )
+        approved_case = EvaluationCase.model_validate(
+            {
+                **candidate.model_dump(mode="python"),
+                "record_version": "1.1.0",
+                "created_at": resolved_at,
+                "state": EvaluationCaseState.APPROVED,
+                "review": review,
+            }
+        )
+        evaluation = RuntimeEvaluationReceipt(
+            receipt_id=f"external-evaluation-{token}",
+            candidate_digest=detection.content_digest,
+            candidate_case=candidate,
+            approved_case=approved_case,
+            checks=tuple(
+                sorted(
+                    {
+                        *candidate_evaluation.checks,
+                        "Package signature established origin and integrity but no authority.",
+                        "The local owner approved the exact clause and recipient-local scope.",
+                    }
+                )
+            ),
+            passed=True,
+            review_required=False,
+            evaluated_at=resolved_at,
+        )
+        review_event = self._governance_event(
+            event_id=f"external-review-event-{token}",
+            event_type=GovernanceEventType.REVIEW_DECISION,
+            target_ref=f"runtime-evaluation:{evaluation.receipt_id}",
+            target_digest=evaluation.content_digest,
+            decision=decision.value,
+            reason=(
+                f"Approve external proposal {origin.content_digest} as a locally governed behavior."
+            ),
+            occurred_at=resolved_at,
+        )
+        transition = self._transition(
+            detection,
+            captured,
+            evaluation,
+            state=state,
+            processed_at=resolved_at,
+            review=review,
+            review_event=review_event,
+            behavioral_contract=behavioral_contract,
+        )
+        transitions = (*state.transitions, transition)
+        release = compile_runtime_release(transitions, subject_id=state.subject_id)
+        prior_releases = compile_runtime_releases(state.transitions, subject_id=state.subject_id)
+        new_state = AutomaticRuntimeState(
+            subject_id=state.subject_id,
+            standing_policy_digest=state.standing_policy_digest,
+            generation=len(transitions),
+            transitions=transitions,
+            release=release,
+            previous_release_digests=tuple(
+                sorted({item.content_digest for item in prior_releases})
+            ),
+        )
+        release_event = self._governance_event(
+            event_id=f"external-release-event-{token}",
+            event_type=GovernanceEventType.RELEASE_DECISION,
+            target_ref=f"composed-runtime-release:{release.governed_release.release_ref.record_id}",
+            target_digest=release.content_digest,
+            decision="released",
+            reason="Release the exact locally approved external behavior.",
+            occurred_at=resolved_at,
+        )
+        resolution = RuntimeExternalAdoptionResolution(
+            resolution_id=f"external-adoption-{token}",
+            subject_id=state.subject_id,
+            origin=origin,
+            decision=decision,
+            review=review,
+            review_event=review_event,
+            signer_identity=self._identity,
+            prior_state_digest=state.content_digest,
+            resulting_state_digest=new_state.content_digest,
+            evidence_ref=self._evidence_ref(captured.evidence),
+            evaluation_digest=evaluation.content_digest,
+            transition_digest=transition.content_digest,
+            release_digest=release.content_digest,
+            release_event_digest=canonical_digest(release_event),
+            resolved_at=resolved_at,
+        )
+        return AutomaticExternalAdoptionResult(
             state=new_state,
             resolution=resolution,
             release_event=release_event,
@@ -1131,6 +1368,7 @@ class AutomaticAdaptationRuntime:
         processed_at: datetime,
         review: Approval | None = None,
         review_event: GovernanceEvent | None = None,
+        behavioral_contract: BehavioralContract | None = None,
     ) -> RuntimeLearningTransition:
         sequence = state.generation + 1
         if (review is None) != (review_event is None):
@@ -1169,6 +1407,7 @@ class AutomaticAdaptationRuntime:
                 sequence=sequence,
                 state=state,
                 created_at=processed_at,
+                behavioral_contract=behavioral_contract,
             )
             if detection.signal_kind is FeedbackSignalKind.CORRECTION:
                 affected = self._active_artifact(state, affected_id)
@@ -1216,6 +1455,7 @@ class AutomaticAdaptationRuntime:
         sequence: int,
         state: AutomaticRuntimeState,
         created_at: datetime,
+        behavioral_contract: BehavioralContract | None = None,
     ) -> ArtifactRenderProjection:
         route = cast(ArtifactRoute, detection.requested_route)
         if detection.signal_kind is FeedbackSignalKind.CORRECTION:
@@ -1226,6 +1466,13 @@ class AutomaticAdaptationRuntime:
         else:
             artifact_kind = _ROUTE_TO_KIND[route]
         behavior = cast(str, detection.normalized_behavior)
+        contract = behavioral_contract or BehavioralContract(
+            intent=behavior,
+            required_behaviors=(behavior,),
+            verification_requirements=(
+                "Before finishing, check that the applicable user adaptation was followed.",
+            ),
+        )
         evaluation_ref = evaluation.approved_case_ref
         if evaluation_ref is None:
             raise AutomaticRuntimeError("promoted instruction lacks an approved evaluation")
@@ -1234,12 +1481,15 @@ class AutomaticAdaptationRuntime:
         artifact_payload = {
             "artifact_id": artifact_id,
             "artifact_kind": artifact_kind.value,
-            "behavior": behavior,
             "evidence_ref": evidence_ref.model_dump(mode="json"),
             "evaluation_ref": evaluation_ref.model_dump(mode="json"),
             "layer": detection.layer.value,
             "scope": detection.scope.model_dump(mode="json"),
         }
+        if behavioral_contract is None:
+            artifact_payload["behavior"] = behavior
+        else:
+            artifact_payload["behavioral_contract"] = contract.model_dump(mode="json")
         claim_type = (
             ClaimType.USER_CORRECTION
             if detection.signal_kind is FeedbackSignalKind.CORRECTION
@@ -1252,13 +1502,7 @@ class AutomaticAdaptationRuntime:
                 content_digest=canonical_digest(artifact_payload),
             ),
             artifact_type=artifact_kind,
-            behavioral_contract=BehavioralContract(
-                intent=behavior,
-                required_behaviors=(behavior,),
-                verification_requirements=(
-                    "Before finishing, check that the applicable user adaptation was followed.",
-                ),
-            ),
+            behavioral_contract=contract,
             scope=detection.scope,
             evidence_links=EvidenceLinks(
                 supporting=(evidence_ref,),

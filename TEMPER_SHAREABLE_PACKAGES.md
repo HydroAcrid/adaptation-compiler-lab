@@ -1,6 +1,6 @@
 # Temper Shareable Packages
 
-Status: implemented local safety boundary; imported items remain inactive pending governed review.
+Status: implemented local safety boundary and recipient-side governed adoption.
 
 ## Purpose
 
@@ -34,14 +34,28 @@ install scripts, tools, plugins, dependencies, hooks, MCP servers, or network ac
 requests are idempotent; a reused key for different content and a signed downgrade both fail
 closed.
 
-## Current product limit
+Every staged item then appears in a separate local review queue. Temper verifies both the
+publisher package and the recipient's signed import receipt on every read. Exact duplicates,
+conflicts, and owner-only items cannot be approved through this queue. A new behavior clause may be
+approved only after mapping its requested scope to registered local projects. That click creates a
+new encrypted local user attestation and sends the clause through Temper's normal evaluation,
+transition, signed release, and compact-Core path. The package origin remains attached as lineage;
+it never supplies the authority.
 
-This slice safely exports built-in Modes and the owner's approved behavioral specifications, and
-stages imported packages durably. Imported clauses do not yet appear in the ordinary suggestion
-queue, so there is deliberately no claim that the complete recipient approval/promotion flow is
-finished. That integration must reuse the existing governed review service rather than invent a
-second activation path.
+An imported Mode may be approved only into the inactive Mode catalog. It never auto-activates and
+can reach an agent only when the owner explicitly selects it for one governed task. The local
+decision receipt binds the exact reviewed item, mapped projects, resulting runtime adoption where
+applicable, and recipient signing key. Tampering with either import or decision receipts fails
+closed.
+
+## Current product limits
+
+This slice safely exports built-in Modes and the owner's approved behavioral specifications,
+stages imported packages durably, and completes local review/adoption without a parallel authority
+path. External adoptions are deliberately excluded from genuine longitudinal interaction counts,
+so importing a pack cannot manufacture learning evidence.
 
 Personal Mode overlays have a signed owner-bound format, but the product does not yet expose an
-overlay editor. The three built-in Modes remain experimental until their frozen same-agent
+overlay editor or safe overlay-composition runtime. They remain reject-only on import. The three
+built-in Modes and any imported Mode remain experimental until their frozen same-agent
 effectiveness comparisons pass.
