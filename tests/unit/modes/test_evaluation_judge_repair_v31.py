@@ -30,8 +30,9 @@ def test_v31_repair_binds_the_unchanged_blind_target_report() -> None:
 
 def test_v31_repair_accepts_only_one_notice_and_still_forbids_tools() -> None:
     protocol = load_object(BENCHMARK / "JUDGE_REPAIR_PROTOCOL-v3.1.json")
+    notice = protocol["accepted_notice"]
 
-    assert protocol["accepted_notice"].startswith("Code Mode is unavailable")
+    assert isinstance(notice, str) and notice.startswith("Code Mode is unavailable")
     assert protocol["tool_events_remain_forbidden"] is True
     assert protocol["trace_smoke_required"] is True
     assert protocol["judge_sessions_required"] == 3
