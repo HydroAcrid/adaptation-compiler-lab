@@ -1344,3 +1344,8 @@ structured response and usage, and continues rejecting every other error, unknow
 tool event, reroute, persistence, or teardown defect. It forbids target-grid reexecution and binds
 the repaired judge and unblinder sources. Three fresh judges remain blocked until one separately
 recorded tool-free trace smoke passes.
+
+The v3.1 Sol/xhigh trace smoke now passes. It normalized the exact expected disabled-host notice,
+returned a valid tool-free structured answer, continued rejecting an injected command-execution
+event, and destroyed its temporary workspace. It made no provider-billed call and accessed no
+condition mapping. The three repaired blind judges are now admitted.
