@@ -1,0 +1,83 @@
+{
+  "$defs": {
+    "CapabilityResourceKind": {
+      "description": "Declarative resource classes admitted by the first Foundry policy.",
+      "enum": [
+        "instruction",
+        "reference",
+        "example",
+        "static_asset",
+        "script",
+        "hook",
+        "dependency",
+        "tool"
+      ],
+      "title": "CapabilityResourceKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Content-free inventory entry for one upstream skill resource.",
+  "properties": {
+    "admission_reason": {
+      "minLength": 1,
+      "title": "Admission Reason",
+      "type": "string"
+    },
+    "admitted": {
+      "title": "Admitted",
+      "type": "boolean"
+    },
+    "digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Digest",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/CapabilityResourceKind"
+    },
+    "relative_path": {
+      "minLength": 1,
+      "title": "Relative Path",
+      "type": "string"
+    },
+    "resource_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Resource Id",
+      "type": "string"
+    },
+    "resource_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Resource Version",
+      "type": "string"
+    },
+    "source_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Source Id",
+      "type": "string"
+    },
+    "utf8_bytes": {
+      "maximum": 262144,
+      "minimum": 0,
+      "title": "Utf8 Bytes",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "resource_id",
+    "source_id",
+    "relative_path",
+    "kind",
+    "digest",
+    "utf8_bytes",
+    "admitted",
+    "admission_reason"
+  ],
+  "title": "CapabilityResourceV1",
+  "type": "object"
+}

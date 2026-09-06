@@ -25,6 +25,9 @@ commands.allow = [
   "profile_export",
   "profile_import_preview",
   "profile_import_stage",
+  "hub_catalog_get",
+  "hub_mode_get",
   "modes_list",
+  "mode_activation_preview",
   "mode_run_task"
 ]

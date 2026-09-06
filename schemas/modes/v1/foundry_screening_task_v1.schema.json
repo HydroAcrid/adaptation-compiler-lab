@@ -1,0 +1,47 @@
+{
+  "additionalProperties": false,
+  "description": "One relevance-bearing task selected before curated Mode inference.",
+  "properties": {
+    "kind": {
+      "enum": [
+        "diagnostic",
+        "neutral_control"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "mode_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Mode Id",
+      "type": "string"
+    },
+    "prompt_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Prompt Digest",
+      "type": "string"
+    },
+    "task_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Task Id",
+      "type": "string"
+    },
+    "task_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Task Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "task_id",
+    "mode_id",
+    "kind",
+    "prompt_digest"
+  ],
+  "title": "FoundryScreeningTaskV1",
+  "type": "object"
+}

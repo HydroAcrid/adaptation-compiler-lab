@@ -1,0 +1,61 @@
+{
+  "additionalProperties": false,
+  "description": "One upstream assumption; recording it never grants the capability.",
+  "properties": {
+    "kind": {
+      "enum": [
+        "agent_feature",
+        "external_account",
+        "filesystem_write",
+        "model",
+        "network",
+        "provider_tool",
+        "subagent",
+        "system_tool"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "name": {
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "portable": {
+      "title": "Portable",
+      "type": "boolean"
+    },
+    "rationale": {
+      "minLength": 1,
+      "title": "Rationale",
+      "type": "string"
+    },
+    "required": {
+      "title": "Required",
+      "type": "boolean"
+    },
+    "requirement_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Requirement Id",
+      "type": "string"
+    },
+    "requirement_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Requirement Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "requirement_id",
+    "kind",
+    "name",
+    "required",
+    "portable",
+    "rationale"
+  ],
+  "title": "SourceCapabilityRequirementV1",
+  "type": "object"
+}

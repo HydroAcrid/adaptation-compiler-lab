@@ -1,5 +1,23 @@
 # Temper desktop third-party notices
 
+## Curated Mode source material
+
+Temper's bundled Mode catalog contains narrowed, declarative behavioral clauses derived from the
+following pinned permissively licensed skills. It does not bundle or execute their scripts, hooks,
+dependencies, plugins, tools, or provider integrations. Exact paths, commit SHAs, source digests,
+license digests, omissions, and transformation lineage are stored in the signed catalog.
+
+- OpenAI [`plugins`](https://github.com/openai/plugins), `frontend-app-builder`, MIT.
+- GitHub [`awesome-copilot`](https://github.com/github/awesome-copilot),
+  `premium-frontend-ui` and `security-review`, MIT.
+- Jesse Vincent / obra [`superpowers`](https://github.com/obra/superpowers),
+  `systematic-debugging` and `verification-before-completion`, MIT.
+- Anthropic [`defending-code-reference-harness`](https://github.com/anthropics/defending-code-reference-harness),
+  `vuln-scan`, Apache-2.0.
+
+These names identify provenance only and do not imply endorsement of Temper. Upstream popularity
+does not establish the effectiveness of a compiled Mode.
+
 ## Tauri NSIS installer template
 
 - Bundled file: `src-tauri/windows/installer-template.nsi`

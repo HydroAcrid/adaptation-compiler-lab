@@ -1,5 +1,13 @@
 """Built-in Mode catalog and public same-agent evaluation designs."""
 
+# ruff: noqa: E501 -- evaluation briefs remain readable as complete product requirements.
+
+from adaptation_compiler_lab.modes.curated_catalog import (
+    CURATED_MODE_CATALOG,
+    FRONTEND_STUDIO_CURATED_MODE,
+    READ_ONLY_SECURITY_REVIEW_MODE,
+    SYSTEMATIC_DEBUGGER_MODE,
+)
 from adaptation_compiler_lab.modes.frontend_studio import FRONTEND_STUDIO_MODE
 from adaptation_compiler_lab.modes.models import (
     CapabilityMode,
@@ -14,12 +22,20 @@ MODE_CATALOG: tuple[CapabilityMode, ...] = (
     RESEARCH_ANALYST_MODE,
     SECURE_BACKEND_MODE,
 )
+HISTORICAL_MODE_CATALOG = MODE_CATALOG
 
 
 def mode_by_id(mode_id: str) -> CapabilityMode | None:
     """Return one exact built-in Mode without fuzzy or alias matching."""
 
-    return next((mode for mode in MODE_CATALOG if mode.mode_id == mode_id), None)
+    return next(
+        (
+            mode
+            for mode in (*CURATED_MODE_CATALOG, *HISTORICAL_MODE_CATALOG)
+            if mode.mode_id == mode_id
+        ),
+        None,
+    )
 
 
 FRONTEND_STUDIO_EVALUATION = ModeEvaluationDesignV1(
@@ -222,6 +238,127 @@ SECURE_BACKEND_EVALUATION = ModeEvaluationDesignV1(
     ),
 )
 
+CURATED_MODE_EVALUATION_DESIGNS: tuple[ModeEvaluationDesignV1, ...] = (
+    ModeEvaluationDesignV1(
+        mode_id=FRONTEND_STUDIO_CURATED_MODE.mode_id,
+        mode_version=FRONTEND_STUDIO_CURATED_MODE.mode_version,
+        mode_digest=FRONTEND_STUDIO_CURATED_MODE.content_digest,
+        tasks=FRONTEND_STUDIO_EVALUATION.tasks,
+    ),
+    ModeEvaluationDesignV1(
+        mode_id=READ_ONLY_SECURITY_REVIEW_MODE.mode_id,
+        mode_version=READ_ONLY_SECURITY_REVIEW_MODE.mode_version,
+        mode_digest=READ_ONLY_SECURITY_REVIEW_MODE.content_digest,
+        tasks=(
+            ModeEvaluationTask(
+                task_id="security-01-tenant-boundary",
+                kind="diagnostic",
+                title="Cross-tenant access review",
+                task_class="security_review",
+                brief="Review a supplied multi-file endpoint for authorization and cross-tenant risks without modifying it.",
+                success_checks=(
+                    "The report traces trusted identity and attacker-controlled identifiers to the access decision.",
+                    "Findings distinguish evidence from inference and propose no automatic patch.",
+                ),
+            ),
+            ModeEvaluationTask(
+                task_id="security-02-log-redaction",
+                kind="diagnostic",
+                title="Sensitive logging review",
+                task_class="security_audit",
+                brief="Review a failure path for credential and private-data exposure without executing target code.",
+                success_checks=(
+                    "The report traces sensitive values into logs and responses.",
+                    "Every location and severity is supported by inspected source.",
+                ),
+            ),
+            ModeEvaluationTask(
+                task_id="security-03-false-positive",
+                kind="diagnostic",
+                title="Framework protection check",
+                task_class="threat_analysis",
+                brief="Review a suspected injection path where framework validation may make the apparent sink safe.",
+                success_checks=(
+                    "The review checks upstream validation before reporting exploitability.",
+                    "Uncertainty remains explicit when the supplied source cannot prove a conclusion.",
+                ),
+            ),
+            ModeEvaluationTask(
+                task_id="security-04-neutral-copy",
+                kind="neutral_control",
+                title="Release-note summary",
+                task_class="documentation",
+                brief="Summarize a supplied release note without conducting a security audit.",
+                success_checks=("The summary is accurate without irrelevant security findings.",),
+            ),
+            ModeEvaluationTask(
+                task_id="security-05-neutral-parser",
+                kind="neutral_control",
+                title="Deterministic parser repair",
+                task_class="backend",
+                brief="Repair a local parser defect with supplied tests and no security-review request.",
+                success_checks=("The repair stays focused without unsolicited audit output.",),
+            ),
+        ),
+    ),
+    ModeEvaluationDesignV1(
+        mode_id=SYSTEMATIC_DEBUGGER_MODE.mode_id,
+        mode_version=SYSTEMATIC_DEBUGGER_MODE.mode_version,
+        mode_digest=SYSTEMATIC_DEBUGGER_MODE.content_digest,
+        tasks=(
+            ModeEvaluationTask(
+                task_id="debug-01-shared-state",
+                kind="diagnostic",
+                title="Intermittent shared-state leak",
+                task_class="debugging",
+                brief="Diagnose and repair an intermittent test failure caused by state leaking between requests.",
+                success_checks=(
+                    "The failure is reproduced and traced to the first incorrect shared state.",
+                    "The focused reproduction and bounded regression suite are rerun.",
+                ),
+            ),
+            ModeEvaluationTask(
+                task_id="debug-02-failed-fix",
+                kind="diagnostic",
+                title="Misleading previous repair",
+                task_class="test_failure",
+                brief="Repair a defect after the documented previous fix fails against the supplied reproduction.",
+                success_checks=(
+                    "The live failure is re-diagnosed rather than trusting the stale note.",
+                    "One root-cause repair is made and verified.",
+                ),
+            ),
+            ModeEvaluationTask(
+                task_id="debug-03-boundary",
+                kind="diagnostic",
+                title="Multi-layer value corruption",
+                task_class="incident_analysis",
+                brief="Find where a valid input becomes corrupted across parser, service, and persistence boundaries.",
+                success_checks=(
+                    "Evidence identifies the first incorrect component boundary.",
+                    "The repair remains focused and the end-to-end reproduction passes.",
+                ),
+            ),
+            ModeEvaluationTask(
+                task_id="debug-04-neutral-copy",
+                kind="neutral_control",
+                title="Documentation clarification",
+                task_class="documentation",
+                brief="Clarify a short setup paragraph without changing executable behavior.",
+                success_checks=("The wording is clearer without unnecessary debugging ceremony.",),
+            ),
+            ModeEvaluationTask(
+                task_id="debug-05-neutral-layout",
+                kind="neutral_control",
+                title="Static layout adjustment",
+                task_class="frontend_design",
+                brief="Adjust spacing in a supplied static component without changing its behavior.",
+                success_checks=("The visual adjustment stays narrow and correct.",),
+            ),
+        ),
+    ),
+)
+
 MODE_EVALUATION_DESIGNS: tuple[ModeEvaluationDesignV1, ...] = (
     FRONTEND_STUDIO_EVALUATION,
     RESEARCH_ANALYST_EVALUATION,
@@ -230,4 +367,14 @@ MODE_EVALUATION_DESIGNS: tuple[ModeEvaluationDesignV1, ...] = (
 
 
 def evaluation_design_by_mode_id(mode_id: str) -> ModeEvaluationDesignV1 | None:
-    return next((design for design in MODE_EVALUATION_DESIGNS if design.mode_id == mode_id), None)
+    return next(
+        (
+            design
+            for design in (
+                *CURATED_MODE_EVALUATION_DESIGNS,
+                *MODE_EVALUATION_DESIGNS,
+            )
+            if design.mode_id == mode_id
+        ),
+        None,
+    )

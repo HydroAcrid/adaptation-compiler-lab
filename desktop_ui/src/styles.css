@@ -4676,6 +4676,54 @@ strong {
   line-height: 1.5;
 }
 
+.mode-source-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 18px;
+}
+
+.mode-source-list h3 {
+  color: var(--faint);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.mode-source-list > div {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 11px;
+  border: 1px solid var(--folio-rule);
+  border-radius: 8px;
+  color: var(--text-soft);
+}
+
+.mode-source-list small {
+  color: var(--faint);
+  font-size: 9px;
+}
+
+.mode-activation-preview {
+  display: grid;
+  gap: 4px;
+  margin-top: 13px;
+  padding: 12px 13px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--folio-rule));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.mode-activation-preview strong {
+  color: var(--text);
+  font-size: 11px;
+}
+
 .mode-task-form {
   margin-top: 19px;
   padding-top: 2px;

@@ -2,6 +2,9 @@ import { invoke } from "@tauri-apps/api/core";
 
 import type {
   CapabilityModeSummary,
+  CuratedCatalogSummary,
+  CuratedModeDetail,
+  ModeActivationPreview,
   PackageReviewItem,
   PortableProfilePreview,
   ShareablePackagePreview,
@@ -1685,6 +1688,47 @@ export async function loadModes(): Promise<CapabilityModeSummary[]> {
     throw new Error("Temper refused an unsafe Mode catalog.");
   }
   return result.modes;
+}
+
+export async function loadCuratedCatalog(): Promise<CuratedCatalogSummary> {
+  const result = assertSuccessful(
+    await invoke<EngineResponse<CuratedCatalogSummary>>("hub_catalog_get"),
+  );
+  if (result.raw_payloads_exposed) {
+    throw new Error("Temper refused an unsafe curated catalog.");
+  }
+  return result;
+}
+
+export async function loadCuratedMode(
+  modeId: string,
+): Promise<CuratedModeDetail> {
+  const result = assertSuccessful(
+    await invoke<EngineResponse<CuratedModeDetail>>("hub_mode_get", {
+      modeId,
+    }),
+  );
+  if (result.raw_payloads_exposed) {
+    throw new Error("Temper refused unsafe curated Mode details.");
+  }
+  return result;
+}
+
+export async function previewModeActivation(
+  modeId: string,
+  projectId: string,
+  task: string,
+): Promise<ModeActivationPreview> {
+  const result = assertSuccessful(
+    await invoke<EngineResponse<ModeActivationPreview>>(
+      "mode_activation_preview",
+      { modeId, projectId, task },
+    ),
+  );
+  if (result.raw_payloads_exposed) {
+    throw new Error("Temper refused an unsafe Mode preview.");
+  }
+  return result;
 }
 
 export async function runModeTask(

@@ -1,0 +1,253 @@
+{
+  "$defs": {
+    "CapabilityResourceKind": {
+      "description": "Declarative resource classes admitted by the first Foundry policy.",
+      "enum": [
+        "instruction",
+        "reference",
+        "example",
+        "static_asset",
+        "script",
+        "hook",
+        "dependency",
+        "tool"
+      ],
+      "title": "CapabilityResourceKind",
+      "type": "string"
+    },
+    "CapabilityResourceV1": {
+      "additionalProperties": false,
+      "description": "Content-free inventory entry for one upstream skill resource.",
+      "properties": {
+        "admission_reason": {
+          "minLength": 1,
+          "title": "Admission Reason",
+          "type": "string"
+        },
+        "admitted": {
+          "title": "Admitted",
+          "type": "boolean"
+        },
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/CapabilityResourceKind"
+        },
+        "relative_path": {
+          "minLength": 1,
+          "title": "Relative Path",
+          "type": "string"
+        },
+        "resource_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Resource Id",
+          "type": "string"
+        },
+        "resource_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Resource Version",
+          "type": "string"
+        },
+        "source_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "utf8_bytes": {
+          "maximum": 262144,
+          "minimum": 0,
+          "title": "Utf8 Bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "resource_id",
+        "source_id",
+        "relative_path",
+        "kind",
+        "digest",
+        "utf8_bytes",
+        "admitted",
+        "admission_reason"
+      ],
+      "title": "CapabilityResourceV1",
+      "type": "object"
+    },
+    "SourceCapabilityRequirementV1": {
+      "additionalProperties": false,
+      "description": "One upstream assumption; recording it never grants the capability.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "agent_feature",
+            "external_account",
+            "filesystem_write",
+            "model",
+            "network",
+            "provider_tool",
+            "subagent",
+            "system_tool"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "portable": {
+          "title": "Portable",
+          "type": "boolean"
+        },
+        "rationale": {
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        },
+        "requirement_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Requirement Id",
+          "type": "string"
+        },
+        "requirement_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Requirement Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "requirement_id",
+        "kind",
+        "name",
+        "required",
+        "portable",
+        "rationale"
+      ],
+      "title": "SourceCapabilityRequirementV1",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Immutable identity and content inventory for one upstream skill source.",
+  "properties": {
+    "commit_sha": {
+      "minLength": 1,
+      "title": "Commit Sha",
+      "type": "string"
+    },
+    "license_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "License Digest",
+      "type": "string"
+    },
+    "license_locator": {
+      "minLength": 1,
+      "title": "License Locator",
+      "type": "string"
+    },
+    "license_spdx": {
+      "minLength": 1,
+      "title": "License Spdx",
+      "type": "string"
+    },
+    "manifest_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Manifest Version",
+      "type": "string"
+    },
+    "publisher": {
+      "minLength": 1,
+      "title": "Publisher",
+      "type": "string"
+    },
+    "redistribution_permitted": {
+      "title": "Redistribution Permitted",
+      "type": "boolean"
+    },
+    "repository_url": {
+      "minLength": 1,
+      "title": "Repository Url",
+      "type": "string"
+    },
+    "requirements": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/SourceCapabilityRequirementV1"
+      },
+      "title": "Requirements",
+      "type": "array"
+    },
+    "resources": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/CapabilityResourceV1"
+      },
+      "title": "Resources",
+      "type": "array"
+    },
+    "retrieved_at": {
+      "format": "date-time",
+      "title": "Retrieved At",
+      "type": "string"
+    },
+    "source_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Digest",
+      "type": "string"
+    },
+    "source_format": {
+      "enum": [
+        "agent-skill",
+        "codex-plugin-skill",
+        "claude-skill"
+      ],
+      "title": "Source Format",
+      "type": "string"
+    },
+    "source_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Source Id",
+      "type": "string"
+    },
+    "source_path": {
+      "minLength": 1,
+      "title": "Source Path",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_id",
+    "publisher",
+    "repository_url",
+    "commit_sha",
+    "source_path",
+    "source_format",
+    "source_digest",
+    "license_spdx",
+    "license_locator",
+    "license_digest",
+    "redistribution_permitted",
+    "retrieved_at"
+  ],
+  "title": "CuratedSourceManifestV1",
+  "type": "object"
+}

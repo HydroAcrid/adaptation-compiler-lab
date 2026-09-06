@@ -1,0 +1,1022 @@
+{
+  "catalog": {
+    "catalog_id": "temper-curated-modes",
+    "catalog_version": "1.0.0",
+    "generated_at": "2026-09-05T21:00:00Z",
+    "release_version": "1.0.0",
+    "releases": [
+      {
+        "components": [
+          {
+            "component_id": "frontend-craft",
+            "component_version": "1.0.0",
+            "disposition": "adapted",
+            "output_clause_ids": [
+              "curated-frontend-accessibility",
+              "curated-frontend-hierarchy",
+              "curated-frontend-responsive"
+            ],
+            "rationale": "Retain useful craft and performance constraints without prescribing one aesthetic.",
+            "source_id": "github-premium-frontend-ui",
+            "source_locator": "creative foundation, performance, responsive degradation, and accessibility",
+            "source_manifest_digest": "sha256:ebf426eba4fdd70d44f87d8cfbbb90616ad9878a10d4bf0046a8e0e964d9ab13"
+          },
+          {
+            "component_id": "frontend-purpose-process",
+            "component_version": "1.0.0",
+            "disposition": "adapted",
+            "output_clause_ids": [
+              "curated-frontend-brief",
+              "curated-frontend-concept",
+              "curated-frontend-product-copy",
+              "curated-frontend-states",
+              "curated-frontend-verify"
+            ],
+            "rationale": "Preserve the purpose-led build-and-inspect workflow without provider-specific tools.",
+            "source_id": "openai-frontend-app-builder",
+            "source_locator": "core standard, real surface, design system, and browser verification",
+            "source_manifest_digest": "sha256:5d931af6e5cc9fce31d97c61b55a49557719026fcfee04530b07f67bf1a49760"
+          },
+          {
+            "component_id": "frontend-universal-effects-omitted",
+            "component_version": "1.0.0",
+            "disposition": "omitted",
+            "output_clause_ids": [],
+            "rationale": "Universal effects conflict with subject-specific design and can regress accessibility.",
+            "source_id": "github-premium-frontend-ui",
+            "source_locator": "mandatory preloaders, parallax, custom cursors, glass, and animation libraries",
+            "source_manifest_digest": "sha256:ebf426eba4fdd70d44f87d8cfbbb90616ad9878a10d4bf0046a8e0e964d9ab13"
+          }
+        ],
+        "evaluation_digest": null,
+        "evaluation_status": "curated_unproven",
+        "known_limitations": [
+          "No image generation or browser tool is granted by this Mode.",
+          "Its current status proves curation and conformance, not task-performance uplift."
+        ],
+        "mode": {
+          "activation_default": "one_task",
+          "applicable_task_classes": [
+            "design_system",
+            "frontend_design",
+            "frontend_implementation"
+          ],
+          "auto_activates": false,
+          "clauses": [
+            {
+              "category": "accessibility",
+              "claim_key": "frontend.accessibility",
+              "clause_id": "curated-frontend-accessibility",
+              "source_component_ids": [
+                "frontend-craft"
+              ],
+              "text": "Keep interactions keyboard reachable, visibly focused, contrast-safe, screen-reader labeled, and respectful of reduced motion."
+            },
+            {
+              "category": "workflow",
+              "claim_key": "frontend.brief",
+              "clause_id": "curated-frontend-brief",
+              "source_component_ids": [
+                "frontend-purpose-process"
+              ],
+              "text": "Derive the interface's audience, primary job, real content, and constraints before choosing a visual direction."
+            },
+            {
+              "category": "visual_direction",
+              "claim_key": "frontend.concept",
+              "clause_id": "curated-frontend-concept",
+              "source_component_ids": [
+                "frontend-purpose-process"
+              ],
+              "text": "Choose one subject-specific visual concept and a compact color, type, spacing, and motion system; reject choices that could fit any product."
+            },
+            {
+              "category": "design_system",
+              "claim_key": "frontend.hierarchy",
+              "clause_id": "curated-frontend-hierarchy",
+              "source_component_ids": [
+                "frontend-craft"
+              ],
+              "text": "Use typography, alignment, density, and structural devices to communicate hierarchy; decoration must encode meaning or be removed."
+            },
+            {
+              "category": "design_system",
+              "claim_key": "frontend.product-copy",
+              "clause_id": "curated-frontend-product-copy",
+              "source_component_ids": [
+                "frontend-purpose-process"
+              ],
+              "text": "Write interface copy from the user's perspective with plain, truthful action labels and no filler or invented success state."
+            },
+            {
+              "category": "responsive",
+              "claim_key": "frontend.responsive",
+              "clause_id": "curated-frontend-responsive",
+              "source_component_ids": [
+                "frontend-craft"
+              ],
+              "text": "Deliberately verify narrow and wide layouts, overflow, touch targets, content density, and mobile degradation."
+            },
+            {
+              "category": "workflow",
+              "claim_key": "frontend.states",
+              "clause_id": "curated-frontend-states",
+              "source_component_ids": [
+                "frontend-purpose-process"
+              ],
+              "text": "Implement only the loading, empty, error, populated, disabled, focus, and success states the real feature can enter."
+            },
+            {
+              "category": "validation",
+              "claim_key": "frontend.verify",
+              "clause_id": "curated-frontend-verify",
+              "source_component_ids": [
+                "frontend-purpose-process"
+              ],
+              "text": "Inspect the rendered result at relevant sizes and run bounded checks; distinguish what was observed from what remains unverified."
+            }
+          ],
+          "compatible_target_families": [
+            "claude-code",
+            "codex"
+          ],
+          "evaluation_digest": null,
+          "evaluation_status": "curated_unproven",
+          "maximum_projection_utf8_bytes": 4000,
+          "mode_id": "curated-frontend-studio",
+          "mode_schema_version": "1.2.0",
+          "mode_version": "1.0.0",
+          "mutates_permanent_core": false,
+          "name": "Frontend Studio",
+          "prohibited_implicit_capabilities": [
+            "dependencies",
+            "hooks",
+            "mcp",
+            "network",
+            "plugins",
+            "scripts",
+            "tools"
+          ],
+          "publisher": "Temper Curated",
+          "requested_tools": [],
+          "required_capabilities": [],
+          "security_posture": {
+            "dependency_installation": "forbidden",
+            "executable_content": "forbidden",
+            "mcp_configuration": "forbidden",
+            "network_access": "not_requested",
+            "plugin_installation": "forbidden",
+            "tool_installation": "forbidden"
+          },
+          "source_kind": "curated",
+          "source_license": "MIT sources; attribution included",
+          "source_revision": "catalog-1.0.0",
+          "summary": "Purpose-led frontend design with responsive implementation and visual verification.",
+          "supports_personal_overlay": true,
+          "target_compatibility": [
+            {
+              "delivery_surface": "temper-managed-task",
+              "target_family": "codex",
+              "version_constraint": "0.153.1"
+            }
+          ],
+          "task_lease_hours": 4
+        },
+        "release_id": "release-curated-frontend-studio-1",
+        "release_schema_version": "1.0.0",
+        "released_at": "2026-09-05T21:00:00Z",
+        "source_manifests": [
+          {
+            "commit_sha": "7b1ebe6333397841ca918dec904d24d4695fe953",
+            "license_digest": "sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823",
+            "license_locator": "LICENSE",
+            "license_spdx": "MIT",
+            "manifest_version": "1.0.0",
+            "publisher": "GitHub community catalog",
+            "redistribution_permitted": true,
+            "repository_url": "https://github.com/github/awesome-copilot",
+            "requirements": [],
+            "resources": [
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:b7edf35b33931d15ea0c1d271f3c05d469e2b6923ed4df1c955d4da86287d9fb",
+                "kind": "instruction",
+                "relative_path": "SKILL.md",
+                "resource_id": "github-premium-frontend-ui-skill-md-0e95f5a366",
+                "resource_version": "1.0.0",
+                "source_id": "github-premium-frontend-ui",
+                "utf8_bytes": 7188
+              }
+            ],
+            "retrieved_at": "2026-09-05T21:00:00Z",
+            "source_digest": "sha256:b7edf35b33931d15ea0c1d271f3c05d469e2b6923ed4df1c955d4da86287d9fb",
+            "source_format": "agent-skill",
+            "source_id": "github-premium-frontend-ui",
+            "source_path": "skills/premium-frontend-ui/SKILL.md"
+          },
+          {
+            "commit_sha": "1e285826e604f66f7208f7ac4dba0fe8341d1f57",
+            "license_digest": "sha256:7bc0085538adf72c31b5c2b42410fe699e6fe15e382fdc309cfd973c4c5db9a0",
+            "license_locator": "plugins/build-web-apps/.codex-plugin/plugin.json#license",
+            "license_spdx": "MIT",
+            "manifest_version": "1.0.0",
+            "publisher": "OpenAI",
+            "redistribution_permitted": true,
+            "repository_url": "https://github.com/openai/plugins",
+            "requirements": [
+              {
+                "kind": "provider_tool",
+                "name": "Browser inspection",
+                "portable": false,
+                "rationale": "The upstream workflow can use browser tooling; Temper never grants it.",
+                "required": false,
+                "requirement_id": "openai-browser-inspection",
+                "requirement_version": "1.0.0"
+              },
+              {
+                "kind": "provider_tool",
+                "name": "Image generation",
+                "portable": false,
+                "rationale": "The upstream workflow can use image generation; the portable Mode omits it.",
+                "required": false,
+                "requirement_id": "openai-image-generation",
+                "requirement_version": "1.0.0"
+              }
+            ],
+            "resources": [
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:dab34c13d0cc9b0ded83371995bedb30c7454a2d2429f864d71420a98170507c",
+                "kind": "reference",
+                "relative_path": "agents/openai.yaml",
+                "resource_id": "openai-frontend-app-builder-agents-openai-yaml-deb9755d27",
+                "resource_version": "1.0.0",
+                "source_id": "openai-frontend-app-builder",
+                "utf8_bytes": 204
+              },
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:f91e229a26d15e5611f2cd8917fec516e66175119acdb8e6e15639c64ef70836",
+                "kind": "reference",
+                "relative_path": "references/imagegen-website-concepts.md",
+                "resource_id": "openai-frontend-app-builder-references-imagegen-website-conc-ba005ad729",
+                "resource_version": "1.0.0",
+                "source_id": "openai-frontend-app-builder",
+                "utf8_bytes": 19673
+              },
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:9273de02827b29534be28fb2b37154c1571ac38b4e20d3ef5482b7e22af67394",
+                "kind": "instruction",
+                "relative_path": "SKILL.md",
+                "resource_id": "openai-frontend-app-builder-skill-md-0e95f5a366",
+                "resource_version": "1.0.0",
+                "source_id": "openai-frontend-app-builder",
+                "utf8_bytes": 31802
+              }
+            ],
+            "retrieved_at": "2026-09-05T21:00:00Z",
+            "source_digest": "sha256:9273de02827b29534be28fb2b37154c1571ac38b4e20d3ef5482b7e22af67394",
+            "source_format": "codex-plugin-skill",
+            "source_id": "openai-frontend-app-builder",
+            "source_path": "plugins/build-web-apps/skills/frontend-app-builder/SKILL.md"
+          }
+        ],
+        "source_reviews": [
+          {
+            "declarative_only": true,
+            "findings": [
+              "Universal animation and visual-style mandates were excluded as over-broad defaults."
+            ],
+            "license_verified": true,
+            "provenance_verified": true,
+            "review_id": "review-github-premium-frontend-ui",
+            "review_version": "1.0.0",
+            "reviewed_at": "2026-09-05T21:00:00Z",
+            "source_manifest_digest": "sha256:ebf426eba4fdd70d44f87d8cfbbb90616ad9878a10d4bf0046a8e0e964d9ab13",
+            "static_safety_passed": true,
+            "status": "reviewed"
+          },
+          {
+            "declarative_only": true,
+            "findings": [
+              "Provider-specific image generation and browser assumptions were excluded.",
+              "Credential terminology was observed; every key and provider-setup direction was omitted."
+            ],
+            "license_verified": true,
+            "provenance_verified": true,
+            "review_id": "review-openai-frontend-app-builder",
+            "review_version": "1.0.0",
+            "reviewed_at": "2026-09-05T21:00:00Z",
+            "source_manifest_digest": "sha256:5d931af6e5cc9fce31d97c61b55a49557719026fcfee04530b07f67bf1a49760",
+            "static_safety_passed": true,
+            "status": "reviewed"
+          }
+        ]
+      },
+      {
+        "components": [
+          {
+            "component_id": "security-data-flow",
+            "component_version": "1.0.0",
+            "disposition": "adapted",
+            "output_clause_ids": [
+              "security-data-flow",
+              "security-no-autofix",
+              "security-scope",
+              "security-self-check"
+            ],
+            "rationale": "Keep data-flow reasoning and self-verification while separating patch application.",
+            "source_id": "github-security-review",
+            "source_locator": "scope, data-flow review, self-verification, and remediation proposals",
+            "source_manifest_digest": "sha256:1ce38d447c6fc35fba4163bb138076483ef2fe6152936873a27291852c974041"
+          },
+          {
+            "component_id": "security-read-only-workflow",
+            "component_version": "1.0.0",
+            "disposition": "adapted",
+            "output_clause_ids": [
+              "security-evidence",
+              "security-read-only",
+              "security-report"
+            ],
+            "rationale": "Keep bounded static review without subagents, shell execution, or network access.",
+            "source_id": "anthropic-read-only-vulnerability-scan",
+            "source_locator": "read-only constraints, evidence discipline, and candidate reporting",
+            "source_manifest_digest": "sha256:41372db27791537aeeeefadaaa2a60ec90f6ca368fcfb25f8476651c3bfcdbce"
+          }
+        ],
+        "evaluation_digest": null,
+        "evaluation_status": "curated_unproven",
+        "known_limitations": [
+          "Findings are static-review candidates, not exploit-confirmed vulnerabilities.",
+          "The portable Mode omits parallel subagents and execution-based validation."
+        ],
+        "mode": {
+          "activation_default": "one_task",
+          "applicable_task_classes": [
+            "security_audit",
+            "security_review",
+            "threat_analysis"
+          ],
+          "auto_activates": false,
+          "clauses": [
+            {
+              "category": "security",
+              "claim_key": "security.data-flow",
+              "clause_id": "security-data-flow",
+              "source_component_ids": [
+                "security-data-flow"
+              ],
+              "text": "Trace untrusted data across files to sensitive sinks, authorization decisions, secret handling, cryptography, and dependency boundaries."
+            },
+            {
+              "category": "evidence",
+              "claim_key": "security.evidence",
+              "clause_id": "security-evidence",
+              "source_component_ids": [
+                "security-read-only-workflow"
+              ],
+              "text": "Tie each candidate to inspected code and an explicit exploit path; never invent file locations, line numbers, sanitization, or reachability."
+            },
+            {
+              "category": "data_protection",
+              "claim_key": "security.no-autofix",
+              "clause_id": "security-no-autofix",
+              "source_component_ids": [
+                "security-data-flow"
+              ],
+              "text": "Do not apply patches during the review; proposed changes require a separate explicit user request and normal project policy."
+            },
+            {
+              "category": "data_protection",
+              "claim_key": "security.read-only",
+              "clause_id": "security-read-only",
+              "source_component_ids": [
+                "security-read-only-workflow"
+              ],
+              "text": "Inspect only the authorized source tree; do not execute target code, access the network, follow escaping symlinks, or modify product files."
+            },
+            {
+              "category": "accuracy",
+              "claim_key": "security.report",
+              "clause_id": "security-report",
+              "source_component_ids": [
+                "security-read-only-workflow"
+              ],
+              "text": "Separate verified facts from static-review candidates and report severity, confidence, evidence, impact, and a focused remediation direction."
+            },
+            {
+              "category": "threat_model",
+              "claim_key": "security.scope",
+              "clause_id": "security-scope",
+              "source_component_ids": [
+                "security-data-flow"
+              ],
+              "text": "Define the review boundary, protected assets, entry points, trust boundaries, and attacker-controlled inputs before listing findings."
+            },
+            {
+              "category": "validation",
+              "claim_key": "security.self-check",
+              "clause_id": "security-self-check",
+              "source_component_ids": [
+                "security-data-flow"
+              ],
+              "text": "Recheck each candidate for upstream validation, framework guarantees, unreachable paths, and duplicate root causes before assigning severity."
+            }
+          ],
+          "compatible_target_families": [
+            "claude-code",
+            "codex"
+          ],
+          "evaluation_digest": null,
+          "evaluation_status": "curated_unproven",
+          "maximum_projection_utf8_bytes": 3700,
+          "mode_id": "curated-read-only-security-review",
+          "mode_schema_version": "1.2.0",
+          "mode_version": "1.0.0",
+          "mutates_permanent_core": false,
+          "name": "Read-only Security Review",
+          "prohibited_implicit_capabilities": [
+            "dependencies",
+            "hooks",
+            "mcp",
+            "network",
+            "plugins",
+            "scripts",
+            "tools"
+          ],
+          "publisher": "Temper Curated",
+          "requested_tools": [],
+          "required_capabilities": [],
+          "security_posture": {
+            "dependency_installation": "forbidden",
+            "executable_content": "forbidden",
+            "mcp_configuration": "forbidden",
+            "network_access": "not_requested",
+            "plugin_installation": "forbidden",
+            "tool_installation": "forbidden"
+          },
+          "source_kind": "curated",
+          "source_license": "MIT and Apache-2.0 sources; attribution included",
+          "source_revision": "catalog-1.0.0",
+          "summary": "Bounded source review that traces trust boundaries and reports evidence-backed vulnerability candidates.",
+          "supports_personal_overlay": true,
+          "target_compatibility": [
+            {
+              "delivery_surface": "temper-managed-task",
+              "target_family": "codex",
+              "version_constraint": "0.153.1"
+            }
+          ],
+          "task_lease_hours": 4
+        },
+        "release_id": "release-curated-read-only-security-review-1",
+        "release_schema_version": "1.0.0",
+        "released_at": "2026-09-05T21:00:00Z",
+        "source_manifests": [
+          {
+            "commit_sha": "d3bea6b5793b5f3d59a75ebe69a58efa88383145",
+            "license_digest": "sha256:c18f8a7d5d8278d44045405023c1465a135f13ae5a4ac3764a8ce42f73ddec81",
+            "license_locator": "LICENSE",
+            "license_spdx": "Apache-2.0",
+            "manifest_version": "1.0.0",
+            "publisher": "Anthropic",
+            "redistribution_permitted": true,
+            "repository_url": "https://github.com/anthropics/defending-code-reference-harness",
+            "requirements": [
+              {
+                "kind": "subagent",
+                "name": "Parallel review agents",
+                "portable": false,
+                "rationale": "The portable read-only Mode uses one agent and grants no subagent capability.",
+                "required": false,
+                "requirement_id": "anthropic-parallel-review",
+                "requirement_version": "1.0.0"
+              },
+              {
+                "kind": "filesystem_write",
+                "name": "Finding report output",
+                "portable": true,
+                "rationale": "Writing a report is optional and remains within the managed task workspace.",
+                "required": false,
+                "requirement_id": "anthropic-report-write",
+                "requirement_version": "1.0.0"
+              }
+            ],
+            "resources": [
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:49e44d80ef199e695cae11801bb4f38d5efc15bcd7e5b5522116c977c77e2405",
+                "kind": "instruction",
+                "relative_path": "SKILL.md",
+                "resource_id": "anthropic-read-only-vulnerability-scan-skill-md-0e95f5a366",
+                "resource_version": "1.0.0",
+                "source_id": "anthropic-read-only-vulnerability-scan",
+                "utf8_bytes": 12126
+              }
+            ],
+            "retrieved_at": "2026-09-05T21:00:00Z",
+            "source_digest": "sha256:49e44d80ef199e695cae11801bb4f38d5efc15bcd7e5b5522116c977c77e2405",
+            "source_format": "claude-skill",
+            "source_id": "anthropic-read-only-vulnerability-scan",
+            "source_path": ".claude/skills/vuln-scan/SKILL.md"
+          },
+          {
+            "commit_sha": "7b1ebe6333397841ca918dec904d24d4695fe953",
+            "license_digest": "sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823",
+            "license_locator": "LICENSE",
+            "license_spdx": "MIT",
+            "manifest_version": "1.0.0",
+            "publisher": "GitHub community catalog",
+            "redistribution_permitted": true,
+            "repository_url": "https://github.com/github/awesome-copilot",
+            "requirements": [],
+            "resources": [
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:ddfbcbb68b9d605789c85a168a274219f0ad86f5fc76b46b5332eb42f0c042b3",
+                "kind": "reference",
+                "relative_path": "references/language-patterns.md",
+                "resource_id": "github-security-review-references-language-patterns-md-36c70581a3",
+                "resource_version": "1.0.0",
+                "source_id": "github-security-review",
+                "utf8_bytes": 5341
+              },
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:688ef9f2862303527314eb17a090a72d512b907a685f5d1f122d6ebd5ae66db1",
+                "kind": "reference",
+                "relative_path": "references/report-format.md",
+                "resource_id": "github-security-review-references-report-format-md-a46f2ca2d3",
+                "resource_version": "1.0.0",
+                "source_id": "github-security-review",
+                "utf8_bytes": 6780
+              },
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:38f84f60021490d785f33fc70f2ce784888d2a751781a881372e6862e7e11288",
+                "kind": "reference",
+                "relative_path": "references/secret-patterns.md",
+                "resource_id": "github-security-review-references-secret-patterns-md-89c01a9c11",
+                "resource_version": "1.0.0",
+                "source_id": "github-security-review",
+                "utf8_bytes": 3524
+              },
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:d06159479bd92b9dcf3a2842e09f7712f1fd297c0bc9792fe20bc3cb69188df5",
+                "kind": "reference",
+                "relative_path": "references/vuln-categories.md",
+                "resource_id": "github-security-review-references-vuln-categories-md-bb2815e60e",
+                "resource_version": "1.0.0",
+                "source_id": "github-security-review",
+                "utf8_bytes": 7913
+              },
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:8693a6a258bad18a8a1d0925bc1eae9c744071ff37a36b8f1da83adca93608af",
+                "kind": "reference",
+                "relative_path": "references/vulnerable-packages.md",
+                "resource_id": "github-security-review-references-vulnerable-packages-m-caec457b7f",
+                "resource_version": "1.0.0",
+                "source_id": "github-security-review",
+                "utf8_bytes": 3979
+              },
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:002392d88637b89e4cbc409a0531834970937f3b57c0b448a17e04b5ca6d356c",
+                "kind": "instruction",
+                "relative_path": "SKILL.md",
+                "resource_id": "github-security-review-skill-md-0e95f5a366",
+                "resource_version": "1.0.0",
+                "source_id": "github-security-review",
+                "utf8_bytes": 9094
+              }
+            ],
+            "retrieved_at": "2026-09-05T21:00:00Z",
+            "source_digest": "sha256:002392d88637b89e4cbc409a0531834970937f3b57c0b448a17e04b5ca6d356c",
+            "source_format": "agent-skill",
+            "source_id": "github-security-review",
+            "source_path": "skills/security-review/SKILL.md"
+          }
+        ],
+        "source_reviews": [
+          {
+            "declarative_only": true,
+            "findings": [
+              "Subagent and command assumptions were removed from the portable projection."
+            ],
+            "license_verified": true,
+            "provenance_verified": true,
+            "review_id": "review-anthropic-read-only-vulnerability-scan",
+            "review_version": "1.0.0",
+            "reviewed_at": "2026-09-05T21:00:00Z",
+            "source_manifest_digest": "sha256:41372db27791537aeeeefadaaa2a60ec90f6ca368fcfb25f8476651c3bfcdbce",
+            "static_safety_passed": true,
+            "status": "reviewed"
+          },
+          {
+            "declarative_only": true,
+            "findings": [
+              "Patch generation was separated from the default read-only review workflow.",
+              "Credential and egress terminology describes risks to identify, not authority to access secrets or transmit data."
+            ],
+            "license_verified": true,
+            "provenance_verified": true,
+            "review_id": "review-github-security-review",
+            "review_version": "1.0.0",
+            "reviewed_at": "2026-09-05T21:00:00Z",
+            "source_manifest_digest": "sha256:1ce38d447c6fc35fba4163bb138076483ef2fe6152936873a27291852c974041",
+            "static_safety_passed": true,
+            "status": "reviewed"
+          }
+        ]
+      },
+      {
+        "components": [
+          {
+            "component_id": "debug-current-verification",
+            "component_version": "1.0.0",
+            "disposition": "adapted",
+            "output_clause_ids": [
+              "debug-verify-focused",
+              "debug-verify-regression"
+            ],
+            "rationale": "Retain current-result verification while keeping the check set task-bounded.",
+            "source_id": "superpowers-verification-before-completion",
+            "source_locator": "fresh evidence before completion claims",
+            "source_manifest_digest": "sha256:b2b2bc02b65f533ca0cf533b09aad7296a30e0f98928ac8e6c5fac1cad49ea3f"
+          },
+          {
+            "component_id": "debug-root-cause",
+            "component_version": "1.0.0",
+            "disposition": "adapted",
+            "output_clause_ids": [
+              "debug-boundaries",
+              "debug-hypothesis",
+              "debug-one-fix",
+              "debug-rediagnose",
+              "debug-reproduce"
+            ],
+            "rationale": "Adapt the evidence-first workflow to debugging tasks rather than every interaction.",
+            "source_id": "superpowers-systematic-debugging",
+            "source_locator": "root-cause investigation, hypothesis, repair, and re-diagnosis",
+            "source_manifest_digest": "sha256:83ed9e590ea331ec8bdb5785d9b64d6e94861224738b16efc18d959525e0157f"
+          }
+        ],
+        "evaluation_digest": null,
+        "evaluation_status": "curated_unproven",
+        "known_limitations": [
+          "The upstream framework's global mandatory orchestration is intentionally excluded.",
+          "Its current status proves curation and conformance, not task-performance uplift."
+        ],
+        "mode": {
+          "activation_default": "one_task",
+          "applicable_task_classes": [
+            "debugging",
+            "incident_analysis",
+            "test_failure"
+          ],
+          "auto_activates": false,
+          "clauses": [
+            {
+              "category": "evidence",
+              "claim_key": "debug.boundaries",
+              "clause_id": "debug-boundaries",
+              "source_component_ids": [
+                "debug-root-cause"
+              ],
+              "text": "Trace inputs and outputs across the smallest relevant component boundaries until the first incorrect state is identified."
+            },
+            {
+              "category": "workflow",
+              "claim_key": "debug.hypothesis",
+              "clause_id": "debug-hypothesis",
+              "source_component_ids": [
+                "debug-root-cause"
+              ],
+              "text": "Form one falsifiable root-cause hypothesis from the evidence and test it with the smallest discriminating check."
+            },
+            {
+              "category": "workflow",
+              "claim_key": "debug.one-fix",
+              "clause_id": "debug-one-fix",
+              "source_component_ids": [
+                "debug-root-cause"
+              ],
+              "text": "Make one focused repair for the confirmed cause; do not bundle unrelated cleanup or symptom workarounds."
+            },
+            {
+              "category": "failure_handling",
+              "claim_key": "debug.rediagnose",
+              "clause_id": "debug-rediagnose",
+              "source_component_ids": [
+                "debug-root-cause"
+              ],
+              "text": "If the repair fails, return to the live evidence and revise the diagnosis instead of stacking another speculative fix."
+            },
+            {
+              "category": "failure_handling",
+              "claim_key": "debug.reproduce",
+              "clause_id": "debug-reproduce",
+              "source_component_ids": [
+                "debug-root-cause"
+              ],
+              "text": "Reproduce the reported behavior and record the exact observed failure before changing code; if it is intermittent, state that and preserve evidence."
+            },
+            {
+              "category": "validation",
+              "claim_key": "debug.verify-focused",
+              "clause_id": "debug-verify-focused",
+              "source_component_ids": [
+                "debug-current-verification"
+              ],
+              "text": "After the repair, rerun the focused reproduction and inspect its current output before claiming the defect is resolved."
+            },
+            {
+              "category": "validation",
+              "claim_key": "debug.verify-regression",
+              "clause_id": "debug-verify-regression",
+              "source_component_ids": [
+                "debug-current-verification"
+              ],
+              "text": "Run the bounded regression checks that cover the changed behavior and report failures, blockers, or unavailable checks honestly."
+            }
+          ],
+          "compatible_target_families": [
+            "claude-code",
+            "codex"
+          ],
+          "evaluation_digest": null,
+          "evaluation_status": "curated_unproven",
+          "maximum_projection_utf8_bytes": 3500,
+          "mode_id": "curated-systematic-debugger",
+          "mode_schema_version": "1.2.0",
+          "mode_version": "1.0.0",
+          "mutates_permanent_core": false,
+          "name": "Systematic Debugger",
+          "prohibited_implicit_capabilities": [
+            "dependencies",
+            "hooks",
+            "mcp",
+            "network",
+            "plugins",
+            "scripts",
+            "tools"
+          ],
+          "publisher": "Temper Curated",
+          "requested_tools": [],
+          "required_capabilities": [],
+          "security_posture": {
+            "dependency_installation": "forbidden",
+            "executable_content": "forbidden",
+            "mcp_configuration": "forbidden",
+            "network_access": "not_requested",
+            "plugin_installation": "forbidden",
+            "tool_installation": "forbidden"
+          },
+          "source_kind": "curated",
+          "source_license": "MIT",
+          "source_revision": "catalog-1.0.0",
+          "summary": "Evidence-first debugging that reproduces, isolates, repairs, and verifies the actual failure.",
+          "supports_personal_overlay": true,
+          "target_compatibility": [
+            {
+              "delivery_surface": "temper-managed-task",
+              "target_family": "codex",
+              "version_constraint": "0.153.1"
+            }
+          ],
+          "task_lease_hours": 4
+        },
+        "release_id": "release-curated-systematic-debugger-1",
+        "release_schema_version": "1.0.0",
+        "released_at": "2026-09-05T21:00:00Z",
+        "source_manifests": [
+          {
+            "commit_sha": "b36e0829c6d0140e93cfef2ca599b1b07d4a7797",
+            "license_digest": "sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
+            "license_locator": "LICENSE",
+            "license_spdx": "MIT",
+            "manifest_version": "1.0.0",
+            "publisher": "Jesse Vincent / obra",
+            "redistribution_permitted": true,
+            "repository_url": "https://github.com/obra/superpowers",
+            "requirements": [],
+            "resources": [
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:40ae5ebe497fdf310200e43fe986552546d0a22837c0d39e855db1cfd33eb88e",
+                "kind": "example",
+                "relative_path": "condition-based-waiting-example.ts",
+                "resource_id": "superpowers-systematic-debugging-condition-based-waiting-example--bdade94e15",
+                "resource_version": "1.0.0",
+                "source_id": "superpowers-systematic-debugging",
+                "utf8_bytes": 5054
+              },
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:e89fec8400d6cd50f43407cec9fab50976ba4d55d0ec2eb51c0bd68036b54c26",
+                "kind": "reference",
+                "relative_path": "condition-based-waiting.md",
+                "resource_id": "superpowers-systematic-debugging-condition-based-waiting-md-d2f9fe4d95",
+                "resource_version": "1.0.0",
+                "source_id": "superpowers-systematic-debugging",
+                "utf8_bytes": 3516
+              },
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:c24733a5b1821bd6bed1fc950261f0b9f4e90097e0bbb96459d8179713730789",
+                "kind": "reference",
+                "relative_path": "CREATION-LOG.md",
+                "resource_id": "superpowers-systematic-debugging-creation-log-md-ff52b1150e",
+                "resource_version": "1.0.0",
+                "source_id": "superpowers-systematic-debugging",
+                "utf8_bytes": 4257
+              },
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:1e175fb86fc357e58c6aebf5441e481e1b7868b4380c0456b63a17eefbd18ba7",
+                "kind": "reference",
+                "relative_path": "defense-in-depth.md",
+                "resource_id": "superpowers-systematic-debugging-defense-in-depth-md-137c994677",
+                "resource_version": "1.0.0",
+                "source_id": "superpowers-systematic-debugging",
+                "utf8_bytes": 3650
+              },
+              {
+                "admission_reason": "Executable and capability-changing material is quarantined.",
+                "admitted": false,
+                "digest": "sha256:dd7b8f13c4cc2a24b33ff87b18da9248f3e1c80a085c3316224f69ff0fa5c43c",
+                "kind": "script",
+                "relative_path": "find-polluter.sh",
+                "resource_id": "superpowers-systematic-debugging-find-polluter-sh-612388fd42",
+                "resource_version": "1.0.0",
+                "source_id": "superpowers-systematic-debugging",
+                "utf8_bytes": 1986
+              },
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:6b0622269e098ca1399e123e553fd385f0b6412d88ef0e9c4f5a8ea9cf1cec7b",
+                "kind": "reference",
+                "relative_path": "root-cause-tracing.md",
+                "resource_id": "superpowers-systematic-debugging-root-cause-tracing-md-d36569c3e7",
+                "resource_version": "1.0.0",
+                "source_id": "superpowers-systematic-debugging",
+                "utf8_bytes": 5316
+              },
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:808fc5717aa88ad65efff312b11c186294d3e6ee301afb584e2f86599b137787",
+                "kind": "instruction",
+                "relative_path": "SKILL.md",
+                "resource_id": "superpowers-systematic-debugging-skill-md-0e95f5a366",
+                "resource_version": "1.0.0",
+                "source_id": "superpowers-systematic-debugging",
+                "utf8_bytes": 9465
+              },
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:fe2ba480d78ac0d686dc025f41c2a32a43d642bf533f91b0c6053a04d35d6486",
+                "kind": "example",
+                "relative_path": "test-academic.md",
+                "resource_id": "superpowers-systematic-debugging-test-academic-md-64c493c0d8",
+                "resource_version": "1.0.0",
+                "source_id": "superpowers-systematic-debugging",
+                "utf8_bytes": 653
+              },
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:0b6a915db0054577819834c79be9eb614e97bddba10d73768e1fbe91cfed048a",
+                "kind": "example",
+                "relative_path": "test-pressure-1.md",
+                "resource_id": "superpowers-systematic-debugging-test-pressure-1-md-7217e8e7d4",
+                "resource_version": "1.0.0",
+                "source_id": "superpowers-systematic-debugging",
+                "utf8_bytes": 1900
+              },
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:b2030aeffba07050e8ad573ddf87486457c4a016a786bb326235bebd856f2016",
+                "kind": "example",
+                "relative_path": "test-pressure-2.md",
+                "resource_id": "superpowers-systematic-debugging-test-pressure-2-md-23cab38bd9",
+                "resource_version": "1.0.0",
+                "source_id": "superpowers-systematic-debugging",
+                "utf8_bytes": 2283
+              },
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:96b50a52e2c7989c9cf20fb752c47c1e9a3a70dc362f8f7989f8f5b64dac7708",
+                "kind": "example",
+                "relative_path": "test-pressure-3.md",
+                "resource_id": "superpowers-systematic-debugging-test-pressure-3-md-6b726147fe",
+                "resource_version": "1.0.0",
+                "source_id": "superpowers-systematic-debugging",
+                "utf8_bytes": 2692
+              }
+            ],
+            "retrieved_at": "2026-09-05T21:00:00Z",
+            "source_digest": "sha256:808fc5717aa88ad65efff312b11c186294d3e6ee301afb584e2f86599b137787",
+            "source_format": "agent-skill",
+            "source_id": "superpowers-systematic-debugging",
+            "source_path": "skills/systematic-debugging/SKILL.md"
+          },
+          {
+            "commit_sha": "b36e0829c6d0140e93cfef2ca599b1b07d4a7797",
+            "license_digest": "sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
+            "license_locator": "LICENSE",
+            "license_spdx": "MIT",
+            "manifest_version": "1.0.0",
+            "publisher": "Jesse Vincent / obra",
+            "redistribution_permitted": true,
+            "repository_url": "https://github.com/obra/superpowers",
+            "requirements": [],
+            "resources": [
+              {
+                "admission_reason": "Declarative material is eligible for review.",
+                "admitted": true,
+                "digest": "sha256:2befe7fc55bcadaa3d97dd9e8efeb633d2561c0ebe74c5a8b17c4d9e7e4520b3",
+                "kind": "instruction",
+                "relative_path": "SKILL.md",
+                "resource_id": "superpowers-verification-before-completion-skill-md-0e95f5a366",
+                "resource_version": "1.0.0",
+                "source_id": "superpowers-verification-before-completion",
+                "utf8_bytes": 3646
+              }
+            ],
+            "retrieved_at": "2026-09-05T21:00:00Z",
+            "source_digest": "sha256:2befe7fc55bcadaa3d97dd9e8efeb633d2561c0ebe74c5a8b17c4d9e7e4520b3",
+            "source_format": "agent-skill",
+            "source_id": "superpowers-verification-before-completion",
+            "source_path": "skills/verification-before-completion/SKILL.md"
+          }
+        ],
+        "source_reviews": [
+          {
+            "declarative_only": true,
+            "findings": [
+              "Global mandatory orchestration language was narrowed to debugging tasks.",
+              "Credential terminology and a script were observed; no credential action or executable resource was admitted."
+            ],
+            "license_verified": true,
+            "provenance_verified": true,
+            "review_id": "review-superpowers-systematic-debugging",
+            "review_version": "1.0.0",
+            "reviewed_at": "2026-09-05T21:00:00Z",
+            "source_manifest_digest": "sha256:83ed9e590ea331ec8bdb5785d9b64d6e94861224738b16efc18d959525e0157f",
+            "static_safety_passed": true,
+            "status": "reviewed"
+          },
+          {
+            "declarative_only": true,
+            "findings": [
+              "Verification remains bounded by the task and available execution surface."
+            ],
+            "license_verified": true,
+            "provenance_verified": true,
+            "review_id": "review-superpowers-verification-before-completion",
+            "review_version": "1.0.0",
+            "reviewed_at": "2026-09-05T21:00:00Z",
+            "source_manifest_digest": "sha256:b2b2bc02b65f533ca0cf533b09aad7296a30e0f98928ac8e6c5fac1cad49ea3f",
+            "static_safety_passed": true,
+            "status": "reviewed"
+          }
+        ]
+      }
+    ]
+  },
+  "public_key_base64": "LQRCJJR37KypqeRAIZFoHTwmo5eJYVvPdHwolxGGrC4=",
+  "signature": {
+    "algorithm": "Ed25519",
+    "canonicalization_version": "1.0.0",
+    "key_fingerprint": "sha256:7cc1751f32ab92a2eba116e6f5f7732a6da24edc5cc2dcd43368250ac435ceb4",
+    "purpose": "curated_mode_catalog",
+    "signature_base64": "VeDMdWI+BS8J0sKHwVGBVjQWlT4DPgZTv9Y5XRhLZBa7RdBo0fF8efMUa5WK970hi7dYAjVLv28UjDimKjNUCA==",
+    "signed_at": "2026-09-05T21:00:00Z",
+    "signer_identity_id": "temper-foundry-development-release"
+  },
+  "signed_catalog_version": "1.0.0"
+}

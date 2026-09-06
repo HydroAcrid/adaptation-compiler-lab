@@ -1,0 +1,1002 @@
+{
+  "$defs": {
+    "CapabilityMode": {
+      "additionalProperties": false,
+      "description": "Versioned first-party expertise kept separate from a user's permanent Core.",
+      "properties": {
+        "activation_default": {
+          "const": "one_task",
+          "default": "one_task",
+          "title": "Activation Default",
+          "type": "string"
+        },
+        "applicable_task_classes": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Applicable Task Classes",
+          "type": "array"
+        },
+        "auto_activates": {
+          "const": false,
+          "default": false,
+          "title": "Auto Activates",
+          "type": "boolean"
+        },
+        "clauses": {
+          "items": {
+            "$ref": "#/$defs/ModeClause"
+          },
+          "minItems": 1,
+          "title": "Clauses",
+          "type": "array"
+        },
+        "compatible_target_families": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Compatible Target Families",
+          "type": "array"
+        },
+        "evaluation_digest": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evaluation Digest"
+        },
+        "evaluation_status": {
+          "$ref": "#/$defs/ModeEvaluationStatus",
+          "default": "experimental"
+        },
+        "maximum_projection_utf8_bytes": {
+          "exclusiveMinimum": 0,
+          "maximum": 12000,
+          "title": "Maximum Projection Utf8 Bytes",
+          "type": "integer"
+        },
+        "mode_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Mode Id",
+          "type": "string"
+        },
+        "mode_schema_version": {
+          "default": "1.1.0",
+          "enum": [
+            "1.0.0",
+            "1.1.0",
+            "1.2.0"
+          ],
+          "title": "Mode Schema Version",
+          "type": "string"
+        },
+        "mode_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Mode Version",
+          "type": "string"
+        },
+        "mutates_permanent_core": {
+          "const": false,
+          "default": false,
+          "title": "Mutates Permanent Core",
+          "type": "boolean"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "prohibited_implicit_capabilities": {
+          "default": [
+            "dependencies",
+            "hooks",
+            "mcp",
+            "network",
+            "plugins",
+            "scripts",
+            "tools"
+          ],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Prohibited Implicit Capabilities",
+          "type": "array"
+        },
+        "publisher": {
+          "minLength": 1,
+          "title": "Publisher",
+          "type": "string"
+        },
+        "requested_tools": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Requested Tools",
+          "type": "array"
+        },
+        "required_capabilities": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Required Capabilities",
+          "type": "array"
+        },
+        "security_posture": {
+          "$ref": "#/$defs/ModeSecurityPosture",
+          "default": {
+            "dependency_installation": "forbidden",
+            "executable_content": "forbidden",
+            "mcp_configuration": "forbidden",
+            "network_access": "not_requested",
+            "plugin_installation": "forbidden",
+            "tool_installation": "forbidden"
+          }
+        },
+        "source_kind": {
+          "default": "first_party",
+          "enum": [
+            "curated",
+            "first_party",
+            "imported"
+          ],
+          "title": "Source Kind",
+          "type": "string"
+        },
+        "source_license": {
+          "minLength": 1,
+          "title": "Source License",
+          "type": "string"
+        },
+        "source_revision": {
+          "minLength": 1,
+          "title": "Source Revision",
+          "type": "string"
+        },
+        "summary": {
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "supports_personal_overlay": {
+          "const": true,
+          "default": true,
+          "title": "Supports Personal Overlay",
+          "type": "boolean"
+        },
+        "target_compatibility": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ModeTargetCompatibility"
+          },
+          "title": "Target Compatibility",
+          "type": "array"
+        },
+        "task_lease_hours": {
+          "default": 4,
+          "maximum": 24,
+          "minimum": 1,
+          "title": "Task Lease Hours",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "mode_id",
+        "mode_version",
+        "name",
+        "summary",
+        "publisher",
+        "source_revision",
+        "source_license",
+        "applicable_task_classes",
+        "compatible_target_families",
+        "clauses",
+        "maximum_projection_utf8_bytes"
+      ],
+      "title": "CapabilityMode",
+      "type": "object"
+    },
+    "CapabilityResourceKind": {
+      "description": "Declarative resource classes admitted by the first Foundry policy.",
+      "enum": [
+        "instruction",
+        "reference",
+        "example",
+        "static_asset",
+        "script",
+        "hook",
+        "dependency",
+        "tool"
+      ],
+      "title": "CapabilityResourceKind",
+      "type": "string"
+    },
+    "CapabilityResourceV1": {
+      "additionalProperties": false,
+      "description": "Content-free inventory entry for one upstream skill resource.",
+      "properties": {
+        "admission_reason": {
+          "minLength": 1,
+          "title": "Admission Reason",
+          "type": "string"
+        },
+        "admitted": {
+          "title": "Admitted",
+          "type": "boolean"
+        },
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/CapabilityResourceKind"
+        },
+        "relative_path": {
+          "minLength": 1,
+          "title": "Relative Path",
+          "type": "string"
+        },
+        "resource_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Resource Id",
+          "type": "string"
+        },
+        "resource_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Resource Version",
+          "type": "string"
+        },
+        "source_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "utf8_bytes": {
+          "maximum": 262144,
+          "minimum": 0,
+          "title": "Utf8 Bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "resource_id",
+        "source_id",
+        "relative_path",
+        "kind",
+        "digest",
+        "utf8_bytes",
+        "admitted",
+        "admission_reason"
+      ],
+      "title": "CapabilityResourceV1",
+      "type": "object"
+    },
+    "CatalogEvaluationStatus": {
+      "enum": [
+        "curated_unproven",
+        "failed",
+        "product_evaluated",
+        "revoked"
+      ],
+      "title": "CatalogEvaluationStatus",
+      "type": "string"
+    },
+    "CuratedCatalogManifestV1": {
+      "additionalProperties": false,
+      "description": "Offline catalog payload distributed with one Temper build.",
+      "properties": {
+        "catalog_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Catalog Id",
+          "type": "string"
+        },
+        "catalog_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Catalog Version",
+          "type": "string"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "release_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$",
+          "title": "Release Version",
+          "type": "string"
+        },
+        "releases": {
+          "items": {
+            "$ref": "#/$defs/CuratedModeReleaseV1"
+          },
+          "minItems": 1,
+          "title": "Releases",
+          "type": "array"
+        }
+      },
+      "required": [
+        "catalog_id",
+        "release_version",
+        "releases",
+        "generated_at"
+      ],
+      "title": "CuratedCatalogManifestV1",
+      "type": "object"
+    },
+    "CuratedModeReleaseV1": {
+      "additionalProperties": false,
+      "description": "One reviewed Mode composition; effectiveness remains an explicit status.",
+      "properties": {
+        "components": {
+          "items": {
+            "$ref": "#/$defs/ModeComponentV1"
+          },
+          "minItems": 1,
+          "title": "Components",
+          "type": "array"
+        },
+        "evaluation_digest": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evaluation Digest"
+        },
+        "evaluation_status": {
+          "$ref": "#/$defs/CatalogEvaluationStatus"
+        },
+        "known_limitations": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Known Limitations",
+          "type": "array"
+        },
+        "mode": {
+          "$ref": "#/$defs/CapabilityMode"
+        },
+        "release_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Release Id",
+          "type": "string"
+        },
+        "release_schema_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Release Schema Version",
+          "type": "string"
+        },
+        "released_at": {
+          "format": "date-time",
+          "title": "Released At",
+          "type": "string"
+        },
+        "source_manifests": {
+          "items": {
+            "$ref": "#/$defs/CuratedSourceManifestV1"
+          },
+          "minItems": 1,
+          "title": "Source Manifests",
+          "type": "array"
+        },
+        "source_reviews": {
+          "items": {
+            "$ref": "#/$defs/SourceReviewV1"
+          },
+          "minItems": 1,
+          "title": "Source Reviews",
+          "type": "array"
+        }
+      },
+      "required": [
+        "release_id",
+        "mode",
+        "source_manifests",
+        "source_reviews",
+        "components",
+        "evaluation_status",
+        "released_at"
+      ],
+      "title": "CuratedModeReleaseV1",
+      "type": "object"
+    },
+    "CuratedSourceManifestV1": {
+      "additionalProperties": false,
+      "description": "Immutable identity and content inventory for one upstream skill source.",
+      "properties": {
+        "commit_sha": {
+          "minLength": 1,
+          "title": "Commit Sha",
+          "type": "string"
+        },
+        "license_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "License Digest",
+          "type": "string"
+        },
+        "license_locator": {
+          "minLength": 1,
+          "title": "License Locator",
+          "type": "string"
+        },
+        "license_spdx": {
+          "minLength": 1,
+          "title": "License Spdx",
+          "type": "string"
+        },
+        "manifest_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Manifest Version",
+          "type": "string"
+        },
+        "publisher": {
+          "minLength": 1,
+          "title": "Publisher",
+          "type": "string"
+        },
+        "redistribution_permitted": {
+          "title": "Redistribution Permitted",
+          "type": "boolean"
+        },
+        "repository_url": {
+          "minLength": 1,
+          "title": "Repository Url",
+          "type": "string"
+        },
+        "requirements": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SourceCapabilityRequirementV1"
+          },
+          "title": "Requirements",
+          "type": "array"
+        },
+        "resources": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/CapabilityResourceV1"
+          },
+          "title": "Resources",
+          "type": "array"
+        },
+        "retrieved_at": {
+          "format": "date-time",
+          "title": "Retrieved At",
+          "type": "string"
+        },
+        "source_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Source Digest",
+          "type": "string"
+        },
+        "source_format": {
+          "enum": [
+            "agent-skill",
+            "codex-plugin-skill",
+            "claude-skill"
+          ],
+          "title": "Source Format",
+          "type": "string"
+        },
+        "source_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "source_path": {
+          "minLength": 1,
+          "title": "Source Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "publisher",
+        "repository_url",
+        "commit_sha",
+        "source_path",
+        "source_format",
+        "source_digest",
+        "license_spdx",
+        "license_locator",
+        "license_digest",
+        "redistribution_permitted",
+        "retrieved_at"
+      ],
+      "title": "CuratedSourceManifestV1",
+      "type": "object"
+    },
+    "ModeClause": {
+      "additionalProperties": false,
+      "description": "One compact default that may be suppressed by a higher-authority claim.",
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/ModeClauseCategory"
+        },
+        "claim_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Claim Key",
+          "type": "string"
+        },
+        "clause_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Clause Id",
+          "type": "string"
+        },
+        "source_component_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Source Component Ids",
+          "type": "array"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "clause_id",
+        "claim_key",
+        "category",
+        "text"
+      ],
+      "title": "ModeClause",
+      "type": "object"
+    },
+    "ModeClauseCategory": {
+      "description": "Bounded kinds of expertise a Mode may add to one task.",
+      "enum": [
+        "accessibility",
+        "accuracy",
+        "data_protection",
+        "design_system",
+        "evidence",
+        "failure_handling",
+        "responsive",
+        "security",
+        "threat_model",
+        "validation",
+        "visual_direction",
+        "workflow"
+      ],
+      "title": "ModeClauseCategory",
+      "type": "string"
+    },
+    "ModeComponentV1": {
+      "additionalProperties": false,
+      "description": "Exact transformation lineage from upstream source to a Mode clause.",
+      "properties": {
+        "component_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Component Id",
+          "type": "string"
+        },
+        "component_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Component Version",
+          "type": "string"
+        },
+        "disposition": {
+          "enum": [
+            "adapted",
+            "adopted",
+            "omitted"
+          ],
+          "title": "Disposition",
+          "type": "string"
+        },
+        "output_clause_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Output Clause Ids",
+          "type": "array"
+        },
+        "rationale": {
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "source_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "source_locator": {
+          "minLength": 1,
+          "title": "Source Locator",
+          "type": "string"
+        },
+        "source_manifest_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Source Manifest Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "component_id",
+        "source_id",
+        "source_manifest_digest",
+        "source_locator",
+        "disposition",
+        "rationale"
+      ],
+      "title": "ModeComponentV1",
+      "type": "object"
+    },
+    "ModeEvaluationStatus": {
+      "description": "Honest product status; conformance is not effectiveness evidence.",
+      "enum": [
+        "experimental",
+        "curated_unproven",
+        "failed",
+        "product_evaluated",
+        "revoked"
+      ],
+      "title": "ModeEvaluationStatus",
+      "type": "string"
+    },
+    "ModeSecurityPosture": {
+      "additionalProperties": false,
+      "description": "Explicit capability posture; omission never grants ambient capability.",
+      "properties": {
+        "dependency_installation": {
+          "const": "forbidden",
+          "default": "forbidden",
+          "title": "Dependency Installation",
+          "type": "string"
+        },
+        "executable_content": {
+          "const": "forbidden",
+          "default": "forbidden",
+          "title": "Executable Content",
+          "type": "string"
+        },
+        "mcp_configuration": {
+          "const": "forbidden",
+          "default": "forbidden",
+          "title": "Mcp Configuration",
+          "type": "string"
+        },
+        "network_access": {
+          "const": "not_requested",
+          "default": "not_requested",
+          "title": "Network Access",
+          "type": "string"
+        },
+        "plugin_installation": {
+          "const": "forbidden",
+          "default": "forbidden",
+          "title": "Plugin Installation",
+          "type": "string"
+        },
+        "tool_installation": {
+          "const": "forbidden",
+          "default": "forbidden",
+          "title": "Tool Installation",
+          "type": "string"
+        }
+      },
+      "title": "ModeSecurityPosture",
+      "type": "object"
+    },
+    "ModeTargetCompatibility": {
+      "additionalProperties": false,
+      "description": "One version-pinned target surface for managed Mode delivery.",
+      "properties": {
+        "delivery_surface": {
+          "minLength": 1,
+          "title": "Delivery Surface",
+          "type": "string"
+        },
+        "target_family": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Target Family",
+          "type": "string"
+        },
+        "version_constraint": {
+          "minLength": 1,
+          "title": "Version Constraint",
+          "type": "string"
+        }
+      },
+      "required": [
+        "target_family",
+        "version_constraint",
+        "delivery_surface"
+      ],
+      "title": "ModeTargetCompatibility",
+      "type": "object"
+    },
+    "SignatureEnvelope": {
+      "additionalProperties": false,
+      "description": "Detached Ed25519 signature metadata included in a signed object.",
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519",
+          "default": "Ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "canonicalization_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Canonicalization Version",
+          "type": "string"
+        },
+        "key_fingerprint": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Key Fingerprint",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "signature_base64": {
+          "minLength": 1,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        },
+        "signer_identity_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Signer Identity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_identity_id",
+        "key_fingerprint",
+        "purpose",
+        "signed_at",
+        "signature_base64"
+      ],
+      "title": "SignatureEnvelope",
+      "type": "object"
+    },
+    "SourceCapabilityRequirementV1": {
+      "additionalProperties": false,
+      "description": "One upstream assumption; recording it never grants the capability.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "agent_feature",
+            "external_account",
+            "filesystem_write",
+            "model",
+            "network",
+            "provider_tool",
+            "subagent",
+            "system_tool"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "portable": {
+          "title": "Portable",
+          "type": "boolean"
+        },
+        "rationale": {
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        },
+        "requirement_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Requirement Id",
+          "type": "string"
+        },
+        "requirement_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Requirement Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "requirement_id",
+        "kind",
+        "name",
+        "required",
+        "portable",
+        "rationale"
+      ],
+      "title": "SourceCapabilityRequirementV1",
+      "type": "object"
+    },
+    "SourceReviewStatus": {
+      "enum": [
+        "candidate",
+        "rejected",
+        "reviewed"
+      ],
+      "title": "SourceReviewStatus",
+      "type": "string"
+    },
+    "SourceReviewV1": {
+      "additionalProperties": false,
+      "description": "Deterministic and human-reviewable admission result for one source.",
+      "properties": {
+        "declarative_only": {
+          "title": "Declarative Only",
+          "type": "boolean"
+        },
+        "findings": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Findings",
+          "type": "array"
+        },
+        "license_verified": {
+          "title": "License Verified",
+          "type": "boolean"
+        },
+        "provenance_verified": {
+          "title": "Provenance Verified",
+          "type": "boolean"
+        },
+        "review_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Review Id",
+          "type": "string"
+        },
+        "review_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Review Version",
+          "type": "string"
+        },
+        "reviewed_at": {
+          "format": "date-time",
+          "title": "Reviewed At",
+          "type": "string"
+        },
+        "source_manifest_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Source Manifest Digest",
+          "type": "string"
+        },
+        "static_safety_passed": {
+          "title": "Static Safety Passed",
+          "type": "boolean"
+        },
+        "status": {
+          "$ref": "#/$defs/SourceReviewStatus"
+        }
+      },
+      "required": [
+        "review_id",
+        "source_manifest_digest",
+        "status",
+        "license_verified",
+        "provenance_verified",
+        "declarative_only",
+        "static_safety_passed",
+        "reviewed_at"
+      ],
+      "title": "SourceReviewV1",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Detached catalog signature plus its explicit public verification key.",
+  "properties": {
+    "catalog": {
+      "$ref": "#/$defs/CuratedCatalogManifestV1"
+    },
+    "public_key_base64": {
+      "minLength": 1,
+      "title": "Public Key Base64",
+      "type": "string"
+    },
+    "signature": {
+      "$ref": "#/$defs/SignatureEnvelope"
+    },
+    "signed_catalog_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Signed Catalog Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "catalog",
+    "public_key_base64",
+    "signature"
+  ],
+  "title": "SignedCuratedCatalogV1",
+  "type": "object"
+}

@@ -65,7 +65,7 @@
         },
         "maximum_projection_utf8_bytes": {
           "exclusiveMinimum": 0,
-          "maximum": 3000,
+          "maximum": 12000,
           "title": "Maximum Projection Utf8 Bytes",
           "type": "integer"
         },
@@ -80,7 +80,8 @@
           "default": "1.1.0",
           "enum": [
             "1.0.0",
-            "1.1.0"
+            "1.1.0",
+            "1.2.0"
           ],
           "title": "Mode Schema Version",
           "type": "string"
@@ -161,6 +162,7 @@
         "source_kind": {
           "default": "first_party",
           "enum": [
+            "curated",
             "first_party",
             "imported"
           ],
@@ -241,6 +243,17 @@
           "title": "Clause Id",
           "type": "string"
         },
+        "source_component_ids": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+            "type": "string"
+          },
+          "title": "Source Component Ids",
+          "type": "array"
+        },
         "text": {
           "minLength": 1,
           "title": "Text",
@@ -279,8 +292,10 @@
       "description": "Honest product status; conformance is not effectiveness evidence.",
       "enum": [
         "experimental",
+        "curated_unproven",
         "failed",
-        "product_evaluated"
+        "product_evaluated",
+        "revoked"
       ],
       "title": "ModeEvaluationStatus",
       "type": "string"
