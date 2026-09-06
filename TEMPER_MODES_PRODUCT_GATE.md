@@ -106,6 +106,10 @@ exact nonfatal disabled-host notice and leaves real tool events forbidden. It do
 rerun any target, reveal a condition, alter a task, or revise a score. One tool-free trace smoke must
 pass before the three new condition-blind judges run.
 
+That separate Sol/xhigh trace smoke passes and is preserved. It accepted only the exact notice,
+rejected a command-execution event, and destroyed its workspace. The repaired judges are admitted;
+the smoke is not a quality result.
+
 ## Passing rule
 
 A Mode may move from `experimental` to `product_evaluated` only when:
