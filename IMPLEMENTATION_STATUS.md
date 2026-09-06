@@ -1349,3 +1349,20 @@ The v3.1 Sol/xhigh trace smoke now passes. It normalized the exact expected disa
 returned a valid tool-free structured answer, continued rejecting an injected command-execution
 event, and destroyed its temporary workspace. It made no provider-billed call and accessed no
 condition mapping. The three repaired blind judges are now admitted.
+
+All three repaired blind judges and the deterministic v3.2 unblind are now complete. No target or
+judge was rerun during the unblind repair, and no provider-billed call occurred. The formal frozen
+gate passes Frontend Studio and fails Research Analyst and Secure Backend. Core-only and
+Core-plus-Mode tied on all 15 automated task comparisons: each condition passed 35 of 46 hidden
+checks. The judge recorded 12 ties, two Mode preferences, and one Core preference. Frontend
+Studio's formal pass depends entirely on a small maintainability preference on its unrelated
+neutral parser task; its three diagnostics all tied. Secure Backend's one diagnostic preference
+also had identical code and hidden scores and differed only in the accuracy of the final response.
+
+Accordingly, all three Modes remain experimental. The result validates exact one-task activation,
+deactivation, isolation, compact projections, hidden scoring, and no measured objective
+regression. It does not demonstrate specialty benefit. The fixtures were too prescriptive and
+small to measure the architectural and judgment advantages the Modes are intended to provide. A
+successor must use fewer, higher-signal diagnostic tasks and must never count a neutral-control
+preference as evidence of Mode effectiveness. The frozen result remains unchanged; this is a
+post-hoc product interpretation.

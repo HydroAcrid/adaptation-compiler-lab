@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from adaptation_compiler_lab.modes.evaluation import ModeJudgeDecisionV1
-from adaptation_compiler_lab.serialization import canonical_json
+from adaptation_compiler_lab.serialization import canonical_digest, canonical_json
 from scripts.mode_evaluation_v31_judge_common import load_object
 from scripts.mode_evaluation_v32_unblind_common import validate_unblind_repair
 
@@ -31,6 +31,11 @@ def test_v32_parses_the_json_round_trip_strictly() -> None:
     assert decision.content_digest == receipt["decision_digest"]
 
 
-def test_v32_has_not_written_a_result_before_execution() -> None:
-    assert not (BENCHMARK / "results-v3/unblinded-result-v32.json").exists()
-    assert not (BENCHMARK / "results-v3/MODE_EVALUATION_RESULT-v32.md").exists()
+def test_v32_result_is_bound_without_target_or_judge_reexecution() -> None:
+    result = load_object(BENCHMARK / "results-v3/unblinded-result-v32.json")
+    completion = load_object(BENCHMARK / "results-v3/unblind-completion-v32.json")
+
+    assert completion["result_digest"] == canonical_digest(result)
+    assert completion["target_grid_reexecuted"] is False
+    assert result["provider_billed_calls"] == 0
+    assert result["external_validation_accessed"] is False
