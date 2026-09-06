@@ -101,6 +101,11 @@ classified Codex `0.153.1`'s benign “Code Mode disabled” startup diagnostic 
 was revealed and the remaining judges did not run. The blind target grid is preserved; only the
 judge adapter may be repaired.
 
+The v3.1 judge-only repair is frozen against the exact blind-report digest. It recognizes only the
+exact nonfatal disabled-host notice and leaves real tool events forbidden. It does not change or
+rerun any target, reveal a condition, alter a task, or revise a score. One tool-free trace smoke must
+pass before the three new condition-blind judges run.
+
 ## Passing rule
 
 A Mode may move from `experimental` to `product_evaluated` only when:

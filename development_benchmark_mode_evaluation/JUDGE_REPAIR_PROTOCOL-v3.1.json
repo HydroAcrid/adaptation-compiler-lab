@@ -1,0 +1,12 @@
+{
+  "accepted_notice": "Code Mode is unavailable because code-mode host is disabled. Code mode will fail closed; enable `features.code_mode_host` and install `codex-code-mode-host`.",
+  "blind_report_digest": "sha256:09218344b7f8c12aab6eb07defa53c70f843a97fe826477177ebe3d271fdf097",
+  "condition_mapping_revealed": false,
+  "external_validation_accessed": false,
+  "judge_sessions_required": 3,
+  "provider_billed_calls": 0,
+  "repair_version": "3.1.0",
+  "target_grid_reexecution_allowed": false,
+  "tool_events_remain_forbidden": true,
+  "trace_smoke_required": true
+}

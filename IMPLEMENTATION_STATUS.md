@@ -1337,3 +1337,10 @@ unblinded. The first condition-blind judge was rejected before receipt because t
 tool-use parser mistook Codex `0.153.1`'s deterministic “Code Mode disabled” startup diagnostic for
 a tool item. The other two judges did not run. Preserve the target grid and repair only the blind-
 judge trace adapter before scoring or unblinding.
+
+A judge-only v3.1 repair is now frozen against the exact blinded v3 report digest. It accepts only
+Codex `0.153.1`'s exact deterministic disabled-host startup notice, reconstructs the otherwise valid
+structured response and usage, and continues rejecting every other error, unknown item, actual
+tool event, reroute, persistence, or teardown defect. It forbids target-grid reexecution and binds
+the repaired judge and unblinder sources. Three fresh judges remain blocked until one separately
+recorded tool-free trace smoke passes.

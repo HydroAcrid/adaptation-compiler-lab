@@ -592,7 +592,9 @@ after valid trials.
   no-inference preflight and one-cell live smoke pass, admitting the unchanged comparison without
   constituting Mode-effectiveness evidence themselves. All 30 v3 target cells are now preserved
   integrity-valid and still blinded; judging paused when the trace parser mistook an exact benign
-  startup diagnostic for tool use. No Mode result is claimed yet.
+  startup diagnostic for tool use. A judge-only v3.1 repair is frozen to the exact blind report and
+  still rejects genuine tool events; its trace smoke and three blind judgments remain. No Mode
+  result is claimed yet.
 - [`MILESTONE_6B_ARCHITECTURE_DRAFT.md`](MILESTONE_6B_ARCHITECTURE_DRAFT.md): docs-only portable
   specialty preset composition and the proposed Frontend Studio demonstration.
 - [`development_benchmark_compact_projection`](development_benchmark_compact_projection): frozen
