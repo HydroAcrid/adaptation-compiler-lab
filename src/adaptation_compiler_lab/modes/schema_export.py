@@ -20,6 +20,19 @@ from adaptation_compiler_lab.modes.evaluation import (
     ModeJudgePairDecisionV1,
     ModePolicyObservationV1,
 )
+from adaptation_compiler_lab.modes.foundry_models import (
+    CapabilityResourceV1,
+    CuratedCatalogManifestV1,
+    CuratedModeReleaseV1,
+    CuratedSourceManifestV1,
+    FoundryScreeningCellV1,
+    FoundryScreeningDesignV1,
+    FoundryScreeningTaskV1,
+    ModeComponentV1,
+    SignedCuratedCatalogV1,
+    SourceCapabilityRequirementV1,
+    SourceReviewV1,
+)
 from adaptation_compiler_lab.modes.models import (
     CapabilityMode,
     ModeActivationReceipt,
@@ -35,7 +48,14 @@ from adaptation_compiler_lab.modes.models import (
 )
 
 _MODELS: dict[str, type[BaseModel]] = {
+    "capability_resource_v1": CapabilityResourceV1,
     "capability_mode": CapabilityMode,
+    "curated_catalog_manifest_v1": CuratedCatalogManifestV1,
+    "curated_mode_release_v1": CuratedModeReleaseV1,
+    "curated_source_manifest_v1": CuratedSourceManifestV1,
+    "foundry_screening_cell_v1": FoundryScreeningCellV1,
+    "foundry_screening_design_v1": FoundryScreeningDesignV1,
+    "foundry_screening_task_v1": FoundryScreeningTaskV1,
     "mode_activation_receipt": ModeActivationReceipt,
     "mode_clause": ModeClause,
     "mode_deactivation_receipt": ModeDeactivationReceipt,
@@ -54,9 +74,13 @@ _MODELS: dict[str, type[BaseModel]] = {
     "mode_evaluation_task_outcome_v1": ModeEvaluationTaskOutcomeV1,
     "mode_judge_decision_v1": ModeJudgeDecisionV1,
     "mode_judge_pair_decision_v1": ModeJudgePairDecisionV1,
+    "mode_component_v1": ModeComponentV1,
     "mode_policy_observation_v1": ModePolicyObservationV1,
     "mode_security_posture": ModeSecurityPosture,
     "mode_target_compatibility": ModeTargetCompatibility,
+    "signed_curated_catalog_v1": SignedCuratedCatalogV1,
+    "source_capability_requirement_v1": SourceCapabilityRequirementV1,
+    "source_review_v1": SourceReviewV1,
 }
 
 

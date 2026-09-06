@@ -85,15 +85,15 @@ describe("Temper prototype", () => {
     render(<App />);
     await user.click(screen.getByRole("button", { name: "Modes" }));
 
-    expect(screen.getByRole("heading", { name: "Modes" })).toBeInTheDocument();
-    expect(screen.getByText("Frontend Studio")).toBeInTheDocument();
-    expect(screen.getByText("Research Analyst")).toBeInTheDocument();
-    expect(screen.getByText("Secure Backend")).toBeInTheDocument();
-    expect(screen.getByText("Personalized")).toBeInTheDocument();
-    expect(screen.getAllByText(/experimental/i)).toHaveLength(3);
     expect(
-      screen.getByText(/Core stays yours and stays unchanged/i),
+      screen.getByRole("heading", { name: "Modes Hub" }),
     ).toBeInTheDocument();
+    expect(screen.getByText("Frontend Studio")).toBeInTheDocument();
+    expect(screen.getByText("Read-only Security Review")).toBeInTheDocument();
+    expect(screen.getByText("Systematic Debugger")).toBeInTheDocument();
+    expect(screen.getByText("Personalized")).toBeInTheDocument();
+    expect(screen.getAllByText(/evaluation pending/i)).toHaveLength(3);
+    expect(screen.getByText(/Core stays unchanged/i)).toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: "View Mode" })[0]!);
     expect(
       screen.getByRole("dialog", { name: "Frontend Studio" }),
@@ -102,7 +102,9 @@ describe("Temper prototype", () => {
     expect(
       screen.getByText(/6 conformance checks passed/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/comparison not run yet/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/comparative evaluation pending/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/approved overlay is applied for this task only/i),
     ).toBeInTheDocument();

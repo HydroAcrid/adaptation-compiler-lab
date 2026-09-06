@@ -1606,6 +1606,41 @@ fn modes_list(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, Pu
 }
 
 #[tauri::command]
+fn hub_catalog_get(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
+    call_engine(&state, "hub.catalog.get", json!({}), None, None)
+}
+
+#[tauri::command]
+fn hub_mode_get(
+    state: tauri::State<'_, EngineState>,
+    mode_id: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "hub.mode.get",
+        json!({"mode_id": mode_id}),
+        None,
+        None,
+    )
+}
+
+#[tauri::command]
+fn mode_activation_preview(
+    state: tauri::State<'_, EngineState>,
+    mode_id: String,
+    project_id: String,
+    task: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "mode.activation.preview",
+        json!({"mode_id": mode_id, "project_id": project_id, "task": task}),
+        None,
+        None,
+    )
+}
+
+#[tauri::command]
 fn mode_run_task(
     state: tauri::State<'_, EngineState>,
     mode_id: String,
@@ -1766,7 +1801,10 @@ pub fn run() {
             package_import_stage,
             package_review_list,
             package_review_decide,
+            hub_catalog_get,
+            hub_mode_get,
             modes_list,
+            mode_activation_preview,
             mode_run_task,
             task_run,
             task_apply,
@@ -1870,7 +1908,10 @@ mod tests {
             "package_import_stage",
             "package_review_list",
             "package_review_decide",
+            "hub_catalog_get",
+            "hub_mode_get",
             "modes_list",
+            "mode_activation_preview",
             "mode_run_task",
             "task_run",
             "task_apply",

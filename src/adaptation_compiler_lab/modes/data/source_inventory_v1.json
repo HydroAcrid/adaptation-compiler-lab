@@ -1,0 +1,308 @@
+{
+  "inventory_version": "1.0.0",
+  "verified": [
+    {
+      "finding_labels": [],
+      "resource_count": 1,
+      "resources": [
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:49e44d80ef199e695cae11801bb4f38d5efc15bcd7e5b5522116c977c77e2405",
+          "kind": "instruction",
+          "relative_path": "SKILL.md",
+          "resource_id": "anthropic-read-only-vulnerability-scan-skill-md-0e95f5a366",
+          "resource_version": "1.0.0",
+          "source_id": "anthropic-read-only-vulnerability-scan",
+          "utf8_bytes": 12126
+        }
+      ],
+      "source_id": "anthropic-read-only-vulnerability-scan"
+    },
+    {
+      "finding_labels": [],
+      "resource_count": 1,
+      "resources": [
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:b7edf35b33931d15ea0c1d271f3c05d469e2b6923ed4df1c955d4da86287d9fb",
+          "kind": "instruction",
+          "relative_path": "SKILL.md",
+          "resource_id": "github-premium-frontend-ui-skill-md-0e95f5a366",
+          "resource_version": "1.0.0",
+          "source_id": "github-premium-frontend-ui",
+          "utf8_bytes": 7188
+        }
+      ],
+      "source_id": "github-premium-frontend-ui"
+    },
+    {
+      "finding_labels": [
+        "credential-access",
+        "external-egress"
+      ],
+      "resource_count": 6,
+      "resources": [
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:ddfbcbb68b9d605789c85a168a274219f0ad86f5fc76b46b5332eb42f0c042b3",
+          "kind": "reference",
+          "relative_path": "references/language-patterns.md",
+          "resource_id": "github-security-review-references-language-patterns-md-36c70581a3",
+          "resource_version": "1.0.0",
+          "source_id": "github-security-review",
+          "utf8_bytes": 5341
+        },
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:688ef9f2862303527314eb17a090a72d512b907a685f5d1f122d6ebd5ae66db1",
+          "kind": "reference",
+          "relative_path": "references/report-format.md",
+          "resource_id": "github-security-review-references-report-format-md-a46f2ca2d3",
+          "resource_version": "1.0.0",
+          "source_id": "github-security-review",
+          "utf8_bytes": 6780
+        },
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:38f84f60021490d785f33fc70f2ce784888d2a751781a881372e6862e7e11288",
+          "kind": "reference",
+          "relative_path": "references/secret-patterns.md",
+          "resource_id": "github-security-review-references-secret-patterns-md-89c01a9c11",
+          "resource_version": "1.0.0",
+          "source_id": "github-security-review",
+          "utf8_bytes": 3524
+        },
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:d06159479bd92b9dcf3a2842e09f7712f1fd297c0bc9792fe20bc3cb69188df5",
+          "kind": "reference",
+          "relative_path": "references/vuln-categories.md",
+          "resource_id": "github-security-review-references-vuln-categories-md-bb2815e60e",
+          "resource_version": "1.0.0",
+          "source_id": "github-security-review",
+          "utf8_bytes": 7913
+        },
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:8693a6a258bad18a8a1d0925bc1eae9c744071ff37a36b8f1da83adca93608af",
+          "kind": "reference",
+          "relative_path": "references/vulnerable-packages.md",
+          "resource_id": "github-security-review-references-vulnerable-packages-m-caec457b7f",
+          "resource_version": "1.0.0",
+          "source_id": "github-security-review",
+          "utf8_bytes": 3979
+        },
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:002392d88637b89e4cbc409a0531834970937f3b57c0b448a17e04b5ca6d356c",
+          "kind": "instruction",
+          "relative_path": "SKILL.md",
+          "resource_id": "github-security-review-skill-md-0e95f5a366",
+          "resource_version": "1.0.0",
+          "source_id": "github-security-review",
+          "utf8_bytes": 9094
+        }
+      ],
+      "source_id": "github-security-review"
+    },
+    {
+      "finding_labels": [
+        "credential-access",
+        "excluded-script"
+      ],
+      "resource_count": 11,
+      "resources": [
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:40ae5ebe497fdf310200e43fe986552546d0a22837c0d39e855db1cfd33eb88e",
+          "kind": "example",
+          "relative_path": "condition-based-waiting-example.ts",
+          "resource_id": "superpowers-systematic-debugging-condition-based-waiting-example--bdade94e15",
+          "resource_version": "1.0.0",
+          "source_id": "superpowers-systematic-debugging",
+          "utf8_bytes": 5054
+        },
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:e89fec8400d6cd50f43407cec9fab50976ba4d55d0ec2eb51c0bd68036b54c26",
+          "kind": "reference",
+          "relative_path": "condition-based-waiting.md",
+          "resource_id": "superpowers-systematic-debugging-condition-based-waiting-md-d2f9fe4d95",
+          "resource_version": "1.0.0",
+          "source_id": "superpowers-systematic-debugging",
+          "utf8_bytes": 3516
+        },
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:c24733a5b1821bd6bed1fc950261f0b9f4e90097e0bbb96459d8179713730789",
+          "kind": "reference",
+          "relative_path": "CREATION-LOG.md",
+          "resource_id": "superpowers-systematic-debugging-creation-log-md-ff52b1150e",
+          "resource_version": "1.0.0",
+          "source_id": "superpowers-systematic-debugging",
+          "utf8_bytes": 4257
+        },
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:1e175fb86fc357e58c6aebf5441e481e1b7868b4380c0456b63a17eefbd18ba7",
+          "kind": "reference",
+          "relative_path": "defense-in-depth.md",
+          "resource_id": "superpowers-systematic-debugging-defense-in-depth-md-137c994677",
+          "resource_version": "1.0.0",
+          "source_id": "superpowers-systematic-debugging",
+          "utf8_bytes": 3650
+        },
+        {
+          "admission_reason": "Executable and capability-changing material is quarantined.",
+          "admitted": false,
+          "digest": "sha256:dd7b8f13c4cc2a24b33ff87b18da9248f3e1c80a085c3316224f69ff0fa5c43c",
+          "kind": "script",
+          "relative_path": "find-polluter.sh",
+          "resource_id": "superpowers-systematic-debugging-find-polluter-sh-612388fd42",
+          "resource_version": "1.0.0",
+          "source_id": "superpowers-systematic-debugging",
+          "utf8_bytes": 1986
+        },
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:6b0622269e098ca1399e123e553fd385f0b6412d88ef0e9c4f5a8ea9cf1cec7b",
+          "kind": "reference",
+          "relative_path": "root-cause-tracing.md",
+          "resource_id": "superpowers-systematic-debugging-root-cause-tracing-md-d36569c3e7",
+          "resource_version": "1.0.0",
+          "source_id": "superpowers-systematic-debugging",
+          "utf8_bytes": 5316
+        },
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:808fc5717aa88ad65efff312b11c186294d3e6ee301afb584e2f86599b137787",
+          "kind": "instruction",
+          "relative_path": "SKILL.md",
+          "resource_id": "superpowers-systematic-debugging-skill-md-0e95f5a366",
+          "resource_version": "1.0.0",
+          "source_id": "superpowers-systematic-debugging",
+          "utf8_bytes": 9465
+        },
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:fe2ba480d78ac0d686dc025f41c2a32a43d642bf533f91b0c6053a04d35d6486",
+          "kind": "example",
+          "relative_path": "test-academic.md",
+          "resource_id": "superpowers-systematic-debugging-test-academic-md-64c493c0d8",
+          "resource_version": "1.0.0",
+          "source_id": "superpowers-systematic-debugging",
+          "utf8_bytes": 653
+        },
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:0b6a915db0054577819834c79be9eb614e97bddba10d73768e1fbe91cfed048a",
+          "kind": "example",
+          "relative_path": "test-pressure-1.md",
+          "resource_id": "superpowers-systematic-debugging-test-pressure-1-md-7217e8e7d4",
+          "resource_version": "1.0.0",
+          "source_id": "superpowers-systematic-debugging",
+          "utf8_bytes": 1900
+        },
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:b2030aeffba07050e8ad573ddf87486457c4a016a786bb326235bebd856f2016",
+          "kind": "example",
+          "relative_path": "test-pressure-2.md",
+          "resource_id": "superpowers-systematic-debugging-test-pressure-2-md-23cab38bd9",
+          "resource_version": "1.0.0",
+          "source_id": "superpowers-systematic-debugging",
+          "utf8_bytes": 2283
+        },
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:96b50a52e2c7989c9cf20fb752c47c1e9a3a70dc362f8f7989f8f5b64dac7708",
+          "kind": "example",
+          "relative_path": "test-pressure-3.md",
+          "resource_id": "superpowers-systematic-debugging-test-pressure-3-md-6b726147fe",
+          "resource_version": "1.0.0",
+          "source_id": "superpowers-systematic-debugging",
+          "utf8_bytes": 2692
+        }
+      ],
+      "source_id": "superpowers-systematic-debugging"
+    },
+    {
+      "finding_labels": [],
+      "resource_count": 1,
+      "resources": [
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:2befe7fc55bcadaa3d97dd9e8efeb633d2561c0ebe74c5a8b17c4d9e7e4520b3",
+          "kind": "instruction",
+          "relative_path": "SKILL.md",
+          "resource_id": "superpowers-verification-before-completion-skill-md-0e95f5a366",
+          "resource_version": "1.0.0",
+          "source_id": "superpowers-verification-before-completion",
+          "utf8_bytes": 3646
+        }
+      ],
+      "source_id": "superpowers-verification-before-completion"
+    },
+    {
+      "finding_labels": [
+        "credential-access"
+      ],
+      "resource_count": 3,
+      "resources": [
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:dab34c13d0cc9b0ded83371995bedb30c7454a2d2429f864d71420a98170507c",
+          "kind": "reference",
+          "relative_path": "agents/openai.yaml",
+          "resource_id": "openai-frontend-app-builder-agents-openai-yaml-deb9755d27",
+          "resource_version": "1.0.0",
+          "source_id": "openai-frontend-app-builder",
+          "utf8_bytes": 204
+        },
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:f91e229a26d15e5611f2cd8917fec516e66175119acdb8e6e15639c64ef70836",
+          "kind": "reference",
+          "relative_path": "references/imagegen-website-concepts.md",
+          "resource_id": "openai-frontend-app-builder-references-imagegen-website-conc-ba005ad729",
+          "resource_version": "1.0.0",
+          "source_id": "openai-frontend-app-builder",
+          "utf8_bytes": 19673
+        },
+        {
+          "admission_reason": "Declarative material is eligible for review.",
+          "admitted": true,
+          "digest": "sha256:9273de02827b29534be28fb2b37154c1571ac38b4e20d3ef5482b7e22af67394",
+          "kind": "instruction",
+          "relative_path": "SKILL.md",
+          "resource_id": "openai-frontend-app-builder-skill-md-0e95f5a366",
+          "resource_version": "1.0.0",
+          "source_id": "openai-frontend-app-builder",
+          "utf8_bytes": 31802
+        }
+      ],
+      "source_id": "openai-frontend-app-builder"
+    }
+  ]
+}

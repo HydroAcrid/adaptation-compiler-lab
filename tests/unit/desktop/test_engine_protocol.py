@@ -34,7 +34,7 @@ from adaptation_compiler_lab.instruction_environment.models import (
     InstructionEnvironmentSummaryV1,
     NativeTarget,
 )
-from adaptation_compiler_lab.modes import FRONTEND_STUDIO_MODE
+from adaptation_compiler_lab.modes import CURATED_MODE_CATALOG
 from adaptation_compiler_lab.portability import (
     PackageImportItemPreviewV1,
     PackageImportPreviewV1,
@@ -636,16 +636,70 @@ def test_mode_catalog_is_raw_free_and_labels_conformance_separately_from_effecti
     modes = response.result["modes"]
     assert isinstance(modes, tuple)
     assert tuple(item["mode_id"] for item in modes) == (
-        "frontend-studio",
-        "research-analyst",
-        "secure-backend",
+        "curated-frontend-studio",
+        "curated-read-only-security-review",
+        "curated-systematic-debugger",
     )
     assert all(item["evaluation_valid"] is True for item in modes)
-    assert all(item["evaluation_status"] == "experimental" for item in modes)
+    assert all(item["evaluation_status"] == "curated_unproven" for item in modes)
     assert all(item["effectiveness_evaluated"] is False for item in modes)
     assert all(item["requested_tools"] == [] for item in modes)
     assert all(item["required_capabilities"] == [] for item in modes)
     assert all(item["personalized"] is False for item in modes)
+    assert all(item["source_kind"] == "curated" for item in modes)
+    assert all(item["source_count"] >= 1 for item in modes)
+    assert all(item["catalog_digest"].startswith("sha256:") for item in modes)
+
+
+def test_curated_hub_catalog_and_details_are_raw_free() -> None:
+    router = EngineProtocolRouter(None)
+
+    catalog = router.handle(_request("hub.catalog.get"))
+    detail = router.handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="hub-detail-request",
+            method="hub.mode.get",
+            params={"mode_id": "curated-frontend-studio"},
+        )
+    )
+
+    assert catalog.ok is True
+    assert catalog.result is not None
+    assert catalog.result["distribution"] == "bundled_offline"
+    assert catalog.result["signature_status"] == "verified_development"
+    assert catalog.result["mode_count"] == 3
+    assert catalog.result["raw_payloads_exposed"] is False
+    assert detail.ok is True
+    assert detail.result is not None
+    assert detail.result["source_count"] == 2
+    assert detail.result["raw_payloads_exposed"] is False
+    assert all(
+        source["commit_sha"] and source["source_path"] for source in detail.result["sources"]
+    )
+
+
+def test_mode_activation_preview_is_bounded_and_grants_no_capability() -> None:
+    response = EngineProtocolRouter(None).handle(
+        EngineRequest(
+            protocol_version=PROTOCOL_VERSION,
+            request_id="mode-preview-request",
+            method="mode.activation.preview",
+            params={
+                "mode_id": "curated-systematic-debugger",
+                "project_id": "kairn",
+                "task": "Find the cause of this deterministic failing test.",
+            },
+        )
+    )
+
+    assert response.ok is True
+    assert response.result is not None
+    assert response.result["expires_after_task"] is True
+    assert response.result["projection_utf8_bytes"] <= 12_000
+    assert response.result["requested_tools"] == ()
+    assert response.result["required_capabilities"] == ()
+    assert response.result["raw_payloads_exposed"] is False
 
 
 def test_mode_catalog_marks_only_the_exact_personalized_mode() -> None:
@@ -653,9 +707,9 @@ def test_mode_catalog_marks_only_the_exact_personalized_mode() -> None:
     portability.accepted_imported_modes.return_value = ()
     portability.accepted_personal_overlays.return_value = (
         MagicMock(
-            base_mode_id=FRONTEND_STUDIO_MODE.mode_id,
-            base_mode_version=FRONTEND_STUDIO_MODE.mode_version,
-            base_mode_digest=FRONTEND_STUDIO_MODE.content_digest,
+            base_mode_id=CURATED_MODE_CATALOG[0].mode_id,
+            base_mode_version=CURATED_MODE_CATALOG[0].mode_version,
+            base_mode_digest=CURATED_MODE_CATALOG[0].content_digest,
         ),
     )
 

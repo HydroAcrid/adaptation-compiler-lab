@@ -16,6 +16,8 @@ import {
   loadEngineSnapshot,
   loadInstructionEnvironments,
   loadDiagnostics,
+  loadCuratedCatalog,
+  loadCuratedMode,
   loadModes,
   loadPackageReviews,
   loadPackageImportPreview,
@@ -24,6 +26,7 @@ import {
   previewExistingInstallation,
   previewCopilotConnection,
   previewNativeInstructionChange,
+  previewModeActivation,
   previewPersonalInstructionSetup,
   previewSetupProject,
   restoreRecovery,
@@ -742,6 +745,91 @@ describe("Tauri engine boundary", () => {
 
     expect(modes[0]?.mode_id).toBe("frontend-studio");
     expect(invoke).toHaveBeenCalledWith("modes_list");
+  });
+
+  it("loads verified curated hub metadata and previews one bounded activation", async () => {
+    invoke
+      .mockResolvedValueOnce({
+        protocol_version: ENGINE_PROTOCOL_VERSION,
+        request_id: "catalog",
+        ok: true,
+        result: {
+          catalog_id: "temper-curated-modes",
+          catalog_version: "1.0.0",
+          catalog_digest: "sha256:" + "a".repeat(64),
+          distribution: "bundled_offline",
+          signature_status: "verified_development",
+          mode_count: 3,
+          statuses: {},
+          raw_payloads_exposed: false,
+        },
+        error: null,
+        snapshot_digest: null,
+      })
+      .mockResolvedValueOnce({
+        protocol_version: ENGINE_PROTOCOL_VERSION,
+        request_id: "detail",
+        ok: true,
+        result: {
+          mode_id: "curated-frontend-studio",
+          mode_digest: "sha256:" + "b".repeat(64),
+          release_digest: "sha256:" + "c".repeat(64),
+          evaluation_status: "curated_unproven",
+          source_count: 1,
+          sources: [],
+          components: [],
+          known_limitations: ["Evaluation pending."],
+          raw_payloads_exposed: false,
+        },
+        error: null,
+        snapshot_digest: null,
+      })
+      .mockResolvedValueOnce({
+        protocol_version: ENGINE_PROTOCOL_VERSION,
+        request_id: "preview",
+        ok: true,
+        result: {
+          mode_id: "curated-frontend-studio",
+          mode_digest: "sha256:" + "b".repeat(64),
+          project_id: "kairn",
+          activation_default: "one_task",
+          expires_after_task: true,
+          projection_utf8_bytes: 1400,
+          included_clause_count: 8,
+          source_count: 2,
+          requested_tools: [],
+          required_capabilities: [],
+          known_limitations: [],
+          raw_payloads_exposed: false,
+        },
+        error: null,
+        snapshot_digest: null,
+      });
+
+    await expect(loadCuratedCatalog()).resolves.toMatchObject({
+      mode_count: 3,
+    });
+    await expect(
+      loadCuratedMode("curated-frontend-studio"),
+    ).resolves.toMatchObject({
+      source_count: 1,
+    });
+    await expect(
+      previewModeActivation(
+        "curated-frontend-studio",
+        "kairn",
+        "Refine this view.",
+      ),
+    ).resolves.toMatchObject({ requested_tools: [] });
+    expect(invoke).toHaveBeenNthCalledWith(1, "hub_catalog_get");
+    expect(invoke).toHaveBeenNthCalledWith(2, "hub_mode_get", {
+      modeId: "curated-frontend-studio",
+    });
+    expect(invoke).toHaveBeenNthCalledWith(3, "mode_activation_preview", {
+      modeId: "curated-frontend-studio",
+      projectId: "kairn",
+      task: "Refine this view.",
+    });
   });
 
   it("binds a Mode run to one exact project, task, snapshot, and retry key", async () => {

@@ -47,7 +47,15 @@ from adaptation_compiler_lab.instruction_environment.models import (
     InstructionSourceSummaryV1,
     NativeTarget,
 )
-from adaptation_compiler_lab.modes import MODE_CATALOG, evaluate_mode_conformance
+from adaptation_compiler_lab.modes import (
+    CURATED_CATALOG,
+    CURATED_MODE_CATALOG,
+    curated_release_by_mode_id,
+    evaluate_mode_conformance,
+    mode_by_id,
+    render_mode_material,
+)
+from adaptation_compiler_lab.modes.bundled_catalog import load_bundled_catalog
 from adaptation_compiler_lab.portability import (
     EncryptedProfileEnvelope,
     PackageImportPreviewV1,
@@ -422,10 +430,143 @@ class EngineProtocolRouter:
             return self._discard_task(request)
         if request.method == "diagnostics.get":
             return self._diagnostics(request)
+        if request.method == "hub.catalog.get":
+            if request.params:
+                return self._error(
+                    request, "invalid_params", "hub.catalog.get takes no parameters."
+                )
+            try:
+                signed_catalog = load_bundled_catalog()
+            except ValueError:
+                return self._error(
+                    request,
+                    "curated_catalog_unavailable",
+                    "Temper could not verify its bundled Mode catalog.",
+                )
+            if signed_catalog.catalog.content_digest != CURATED_CATALOG.content_digest:
+                return self._error(
+                    request,
+                    "curated_catalog_unavailable",
+                    "Temper's bundled Mode catalog does not match this engine.",
+                )
+            return EngineResponse(
+                request_id=request.request_id,
+                ok=True,
+                result={
+                    "catalog_id": CURATED_CATALOG.catalog_id,
+                    "catalog_version": CURATED_CATALOG.release_version,
+                    "catalog_digest": CURATED_CATALOG.content_digest,
+                    "distribution": "bundled_offline",
+                    "signature_status": "verified_development",
+                    "mode_count": len(CURATED_CATALOG.releases),
+                    "statuses": {
+                        release.mode.mode_id: release.evaluation_status.value
+                        for release in CURATED_CATALOG.releases
+                    },
+                    "raw_payloads_exposed": False,
+                },
+            )
+        if request.method == "hub.mode.get":
+            if set(request.params) != {"mode_id"} or not isinstance(
+                request.params.get("mode_id"), str
+            ):
+                return self._error(
+                    request, "invalid_params", "hub.mode.get requires one exact mode_id."
+                )
+            release = curated_release_by_mode_id(request.params["mode_id"])
+            if release is None:
+                return self._error(request, "mode_not_found", "That curated Mode is unavailable.")
+            return EngineResponse(
+                request_id=request.request_id,
+                ok=True,
+                result={
+                    "mode_id": release.mode.mode_id,
+                    "mode_digest": release.mode.content_digest,
+                    "release_digest": release.content_digest,
+                    "evaluation_status": release.evaluation_status.value,
+                    "source_count": len(release.source_manifests),
+                    "sources": tuple(
+                        {
+                            "publisher": source.publisher,
+                            "repository_url": source.repository_url,
+                            "commit_sha": source.commit_sha,
+                            "source_path": source.source_path,
+                            "license_spdx": source.license_spdx,
+                            "license_locator": source.license_locator,
+                            "resource_count": len(source.resources),
+                            "excluded_resource_count": sum(
+                                not resource.admitted for resource in source.resources
+                            ),
+                        }
+                        for source in release.source_manifests
+                    ),
+                    "components": tuple(
+                        {
+                            "component_id": component.component_id,
+                            "disposition": component.disposition,
+                            "rationale": component.rationale,
+                        }
+                        for component in release.components
+                    ),
+                    "known_limitations": release.known_limitations,
+                    "raw_payloads_exposed": False,
+                },
+            )
+        if request.method == "mode.activation.preview":
+            if set(request.params) != {"mode_id", "project_id", "task"} or not all(
+                isinstance(request.params.get(key), str)
+                for key in ("mode_id", "project_id", "task")
+            ):
+                return self._error(
+                    request,
+                    "invalid_params",
+                    "mode.activation.preview requires mode_id, project_id, and task.",
+                )
+            mode = mode_by_id(request.params["mode_id"])
+            if mode is None:
+                return self._error(request, "mode_not_found", "That Mode is unavailable.")
+            if not request.params["project_id"].strip() or not request.params["task"].strip():
+                return self._error(
+                    request, "invalid_params", "Mode preview requires a project and task."
+                )
+            material = render_mode_material(mode)
+            release = curated_release_by_mode_id(mode.mode_id)
+            return EngineResponse(
+                request_id=request.request_id,
+                ok=True,
+                result={
+                    "mode_id": mode.mode_id,
+                    "mode_digest": mode.content_digest,
+                    "project_id": request.params["project_id"],
+                    "activation_default": mode.activation_default,
+                    "expires_after_task": True,
+                    "projection_utf8_bytes": len(material.encode("utf-8")),
+                    "included_clause_count": len(mode.clauses),
+                    "source_count": len(release.source_manifests) if release else 0,
+                    "requested_tools": mode.requested_tools,
+                    "required_capabilities": mode.required_capabilities,
+                    "known_limitations": release.known_limitations if release else (),
+                    "raw_payloads_exposed": False,
+                },
+            )
         if request.method == "mode.list":
             if request.params:
                 return self._error(request, "invalid_params", "mode.list takes no parameters.")
-            modes = list(MODE_CATALOG)
+            try:
+                signed_catalog = load_bundled_catalog()
+            except ValueError:
+                return self._error(
+                    request,
+                    "curated_catalog_unavailable",
+                    "Temper could not verify its bundled Mode catalog.",
+                )
+            if signed_catalog.catalog.content_digest != CURATED_CATALOG.content_digest:
+                return self._error(
+                    request,
+                    "curated_catalog_unavailable",
+                    "Temper's bundled Mode catalog does not match this engine.",
+                )
+            modes = list(CURATED_MODE_CATALOG)
             overlays: tuple[PersonalModeOverlayV1, ...] = ()
             if self._portability is not None:
                 try:
@@ -473,6 +614,17 @@ class EngineProtocolRouter:
                             "mutates_permanent_core": False,
                             "auto_activates": False,
                             "source_kind": mode.source_kind,
+                            "catalog_digest": (
+                                CURATED_CATALOG.content_digest
+                                if mode.source_kind == "curated"
+                                else None
+                            ),
+                            "source_count": (
+                                len(release.source_manifests) if release is not None else 0
+                            ),
+                            "known_limitations": (
+                                release.known_limitations if release is not None else ()
+                            ),
                             "personalized": any(
                                 overlay.base_mode_id == mode.mode_id
                                 and overlay.base_mode_version == mode.mode_version
@@ -481,6 +633,7 @@ class EngineProtocolRouter:
                             ),
                         }
                         for mode, report in catalog
+                        for release in (curated_release_by_mode_id(mode.mode_id),)
                     ),
                     "raw_payloads_exposed": False,
                 },

@@ -1,0 +1,71 @@
+{
+  "additionalProperties": false,
+  "description": "Exact transformation lineage from upstream source to a Mode clause.",
+  "properties": {
+    "component_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Component Id",
+      "type": "string"
+    },
+    "component_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Component Version",
+      "type": "string"
+    },
+    "disposition": {
+      "enum": [
+        "adapted",
+        "adopted",
+        "omitted"
+      ],
+      "title": "Disposition",
+      "type": "string"
+    },
+    "output_clause_ids": {
+      "default": [],
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Output Clause Ids",
+      "type": "array"
+    },
+    "rationale": {
+      "minLength": 1,
+      "title": "Rationale",
+      "type": "string"
+    },
+    "source_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Source Id",
+      "type": "string"
+    },
+    "source_locator": {
+      "minLength": 1,
+      "title": "Source Locator",
+      "type": "string"
+    },
+    "source_manifest_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Manifest Digest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "component_id",
+    "source_id",
+    "source_manifest_digest",
+    "source_locator",
+    "disposition",
+    "rationale"
+  ],
+  "title": "ModeComponentV1",
+  "type": "object"
+}

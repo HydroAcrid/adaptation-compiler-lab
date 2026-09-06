@@ -2,6 +2,23 @@
 
 Last updated: 2026-09-05
 
+## Curated Modes Hub
+
+The prior handcrafted three-Mode catalog remains immutable as historical evaluation evidence, but
+is no longer the desktop's built-in product catalog. The current development catalog contains
+Frontend Studio, Systematic Debugger, and Read-only Security Review assembled from pinned OpenAI,
+GitHub, obra/superpowers, and Anthropic skill sources. Each release records source and license
+digests, review decisions, capability omissions, clause-level lineage, limitations, and a signed
+offline catalog envelope. Foundry intake reads only bounded declarative resources and quarantines
+scripts, hooks, dependencies, tools, and symlink escapes without execution.
+
+The React/Tauri interface lists these releases as `curated_unproven`, exposes their sources and
+limitations, and creates a task-bound activation preview before managed execution. Static
+conformance and upstream popularity do not count as effectiveness. A bounded successor comparison
+must improve a specialty diagnostic—not a neutral-control preference—before an exact release can
+become `product_evaluated`. No provider-billed run or sealed Milestone 6 access was introduced by
+the hub foundation.
+
 ## GitHub Copilot CLI governed delivery
 
 Temper now distinguishes nine GitHub Copilot surfaces using a typed, versioned 2026-09-05 support

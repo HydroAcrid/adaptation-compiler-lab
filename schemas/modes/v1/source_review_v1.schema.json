@@ -1,0 +1,80 @@
+{
+  "$defs": {
+    "SourceReviewStatus": {
+      "enum": [
+        "candidate",
+        "rejected",
+        "reviewed"
+      ],
+      "title": "SourceReviewStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Deterministic and human-reviewable admission result for one source.",
+  "properties": {
+    "declarative_only": {
+      "title": "Declarative Only",
+      "type": "boolean"
+    },
+    "findings": {
+      "default": [],
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Findings",
+      "type": "array"
+    },
+    "license_verified": {
+      "title": "License Verified",
+      "type": "boolean"
+    },
+    "provenance_verified": {
+      "title": "Provenance Verified",
+      "type": "boolean"
+    },
+    "review_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Review Id",
+      "type": "string"
+    },
+    "review_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Review Version",
+      "type": "string"
+    },
+    "reviewed_at": {
+      "format": "date-time",
+      "title": "Reviewed At",
+      "type": "string"
+    },
+    "source_manifest_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Source Manifest Digest",
+      "type": "string"
+    },
+    "static_safety_passed": {
+      "title": "Static Safety Passed",
+      "type": "boolean"
+    },
+    "status": {
+      "$ref": "#/$defs/SourceReviewStatus"
+    }
+  },
+  "required": [
+    "review_id",
+    "source_manifest_digest",
+    "status",
+    "license_verified",
+    "provenance_verified",
+    "declarative_only",
+    "static_safety_passed",
+    "reviewed_at"
+  ],
+  "title": "SourceReviewV1",
+  "type": "object"
+}

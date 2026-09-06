@@ -24,7 +24,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { AgentBrandMark } from "./AgentBrandMark";
 import {
@@ -35,6 +35,8 @@ import {
   applyNativeInstructionChange,
   disablePersonalInstructionSetup,
   enablePersonalInstructionSetup,
+  loadCuratedMode,
+  previewModeActivation,
   previewNativeInstructionChange,
   previewClaudeConnection,
   previewCopilotConnection,
@@ -65,10 +67,12 @@ import {
 } from "../engine";
 import type {
   CapabilityModeSummary,
+  CuratedModeDetail,
   CoreItem,
   CoreKind,
   EvidenceStrength,
   FeedbackValue,
+  ModeActivationPreview,
   AgentConnection,
   ProjectName,
   RegisteredProject,
@@ -1350,11 +1354,11 @@ export function ModesPage({
     <div className="page folio-page modes-page">
       <header className="modes-heading">
         <div>
-          <span className="folio-kicker">Temporary expertise</span>
-          <h1>Modes</h1>
+          <span className="folio-kicker">Curated capability library</span>
+          <h1>Modes Hub</h1>
           <p>
-            Give an agent a focused way of working for one task. Your permanent
-            Core stays yours and stays unchanged.
+            Reviewed workflows from respected open-source sources, compiled into
+            bounded one-task capabilities. Core stays unchanged.
           </p>
         </div>
         <div className="modes-heading__actions">
@@ -1407,8 +1411,15 @@ export function ModesPage({
             </div>
             <div className="mode-card__copy">
               <span className="folio-kicker">
-                {mode.source_kind === "imported" ? "Imported" : "Built-in"} · v
-                {mode.mode_version} · {mode.evaluation_status.replace("_", " ")}
+                {mode.source_kind === "imported" ? "Imported" : "Curated"} · v
+                {mode.mode_version} ·{" "}
+                {mode.evaluation_status === "product_evaluated"
+                  ? "Tested"
+                  : mode.evaluation_status === "failed"
+                    ? "Did not pass testing"
+                    : mode.evaluation_status === "revoked"
+                      ? "Unavailable"
+                      : "Evaluation pending"}
               </span>
               <h2>{mode.name}</h2>
               <p>{mode.summary}</p>
@@ -1416,6 +1427,10 @@ export function ModesPage({
                 <span>One task</span>
                 {mode.personalized ? <span>Personalized</span> : null}
                 <span>{mode.projection_utf8_bytes} bytes</span>
+                <span>
+                  {mode.source_count} reviewed source
+                  {mode.source_count === 1 ? "" : "s"}
+                </span>
                 <span>
                   {mode.requested_tools.length
                     ? "Requests tools"
@@ -1509,6 +1524,8 @@ function ModeDetailsDialog({
   const [task, setTask] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [detail, setDetail] = useState<CuratedModeDetail | null>(null);
+  const [preview, setPreview] = useState<ModeActivationPreview | null>(null);
   const canRun = Boolean(
     nativeRuntime &&
     runnerReady &&
@@ -1521,6 +1538,40 @@ function ModeDetailsDialog({
     (environment) =>
       environment.project_id === projectId && environment.target === "codex",
   );
+
+  useEffect(() => {
+    if (!nativeRuntime || mode.source_kind !== "curated") return;
+    let active = true;
+    void loadCuratedMode(mode.mode_id)
+      .then((value) => {
+        if (active) setDetail(value);
+      })
+      .catch(() => {
+        if (active) setDetail(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [mode.mode_id, mode.source_kind, nativeRuntime]);
+
+  async function createPreview() {
+    if (!canRun) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setPreview(
+        await previewModeActivation(mode.mode_id, projectId, task.trim()),
+      );
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Temper could not create a safe Mode preview.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function startTask() {
     if (!canRun || !snapshotDigest) return;
@@ -1567,6 +1618,24 @@ function ModeDetailsDialog({
           <Dialog.Description>{mode.summary}</Dialog.Description>
           <dl className="mode-detail-list">
             <div>
+              <dt>Catalog status</dt>
+              <dd>
+                {mode.evaluation_status === "product_evaluated"
+                  ? "Product evaluated"
+                  : "Curated and reviewed; comparative testing pending"}
+              </dd>
+            </div>
+            <div>
+              <dt>Source lineage</dt>
+              <dd>
+                {detail
+                  ? detail.sources
+                      .map((source) => source.publisher)
+                      .join(" and ")
+                  : `${mode.source_count} pinned open-source source${mode.source_count === 1 ? "" : "s"}`}
+              </dd>
+            </div>
+            <div>
               <dt>Life span</dt>
               <dd>
                 One exact managed task, up to {mode.task_lease_hours} hours,
@@ -1602,7 +1671,7 @@ function ModeDetailsDialog({
               <dd>
                 {mode.effectiveness_evaluated
                   ? "Passed the frozen product comparison"
-                  : "Experimental — comparison not run yet"}
+                  : "Not established — comparative evaluation pending"}
               </dd>
             </div>
             <div>
@@ -1614,6 +1683,23 @@ function ModeDetailsDialog({
               </dd>
             </div>
           </dl>
+          {detail ? (
+            <section className="mode-source-list" aria-label="Mode sources">
+              <h3>Reviewed sources</h3>
+              {detail.sources.map((source) => (
+                <div key={`${source.repository_url}:${source.source_path}`}>
+                  <span>{source.publisher}</span>
+                  <small>
+                    {source.repository_url.replace("https://github.com/", "")} ·{" "}
+                    {source.license_spdx} · {source.commit_sha.slice(0, 8)}
+                    {source.excluded_resource_count
+                      ? ` · ${source.excluded_resource_count} executable resource excluded`
+                      : ""}
+                  </small>
+                </div>
+              ))}
+            </section>
+          ) : null}
           <div className="mode-authority-note">
             Your request, project rules, security constraints, and Core always
             outrank Mode defaults.
@@ -1655,7 +1741,10 @@ function ModeDetailsDialog({
               <TemperSelect
                 ariaLabel="Project"
                 disabled={!nativeRuntime}
-                onValueChange={setProjectId}
+                onValueChange={(value) => {
+                  setProjectId(value);
+                  setPreview(null);
+                }}
                 options={modeProjects.map((project) => ({
                   label: project.label,
                   value: project.id,
@@ -1668,7 +1757,10 @@ function ModeDetailsDialog({
               <span>Task</span>
               <textarea
                 disabled={!nativeRuntime}
-                onChange={(event) => setTask(event.target.value)}
+                onChange={(event) => {
+                  setTask(event.target.value);
+                  setPreview(null);
+                }}
                 placeholder={`Describe the ${mode.name.toLowerCase()} work for this one managed task`}
                 rows={3}
                 value={task}
@@ -1687,6 +1779,21 @@ function ModeDetailsDialog({
                 {error}
               </div>
             ) : null}
+            {preview ? (
+              <div className="mode-activation-preview" role="status">
+                <strong>Ready for one task</strong>
+                <span>
+                  {preview.included_clause_count} clauses ·{" "}
+                  {preview.projection_utf8_bytes} bytes · {preview.source_count}{" "}
+                  sources
+                </span>
+                <span>
+                  {preview.requested_tools.length === 0
+                    ? "No tools or permissions are added."
+                    : "This Mode requests additional capabilities."}
+                </span>
+              </div>
+            ) : null}
           </div>
           <div className="core-dialog__actions">
             <Button onClick={onClose} tone="quiet">
@@ -1695,12 +1802,18 @@ function ModeDetailsDialog({
             <Button disabled={!nativeRuntime} onClick={onExport} tone="quiet">
               <Share2 aria-hidden="true" size={14} /> Export package
             </Button>
-            <Button disabled={!canRun} onClick={startTask} tone="primary">
+            <Button
+              disabled={!canRun}
+              onClick={preview ? startTask : createPreview}
+              tone="primary"
+            >
               {busy
                 ? "Running isolated task…"
                 : nativeRuntime
                   ? runnerReady
-                    ? "Run with this Mode"
+                    ? preview
+                      ? "Confirm and run"
+                      : "Preview for this task"
                     : "Unavailable"
                   : "Available in desktop app"}
             </Button>

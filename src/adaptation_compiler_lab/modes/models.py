@@ -42,8 +42,10 @@ class ModeEvaluationStatus(StrEnum):
     """Honest product status; conformance is not effectiveness evidence."""
 
     EXPERIMENTAL = "experimental"
+    CURATED_UNPROVEN = "curated_unproven"
     FAILED = "failed"
     PRODUCT_EVALUATED = "product_evaluated"
+    REVOKED = "revoked"
 
 
 class ModeTargetCompatibility(FrozenModel):
@@ -72,12 +74,20 @@ class ModeClause(FrozenModel):
     claim_key: Identifier
     category: ModeClauseCategory
     text: NonEmptyStr
+    source_component_ids: tuple[Identifier, ...] = ()
+
+    @field_validator("source_component_ids")
+    @classmethod
+    def source_components_are_sorted_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if not strings_are_sorted_unique(value):
+            raise ValueError("clause source component IDs must be sorted and unique")
+        return value
 
 
 class CapabilityMode(FrozenModel):
     """Versioned first-party expertise kept separate from a user's permanent Core."""
 
-    mode_schema_version: Literal["1.0.0", "1.1.0"] = "1.1.0"
+    mode_schema_version: Literal["1.0.0", "1.1.0", "1.2.0"] = "1.1.0"
     mode_id: Identifier
     mode_version: SemVer
     name: NonEmptyStr
@@ -85,7 +95,7 @@ class CapabilityMode(FrozenModel):
     publisher: NonEmptyStr
     source_revision: NonEmptyStr
     source_license: NonEmptyStr
-    source_kind: Literal["first_party", "imported"] = "first_party"
+    source_kind: Literal["curated", "first_party", "imported"] = "first_party"
     applicable_task_classes: Annotated[tuple[Identifier, ...], Field(min_length=1)]
     compatible_target_families: Annotated[tuple[Identifier, ...], Field(min_length=1)]
     target_compatibility: tuple[ModeTargetCompatibility, ...] = ()
@@ -102,7 +112,7 @@ class CapabilityMode(FrozenModel):
     )
     security_posture: ModeSecurityPosture = ModeSecurityPosture()
     clauses: Annotated[tuple[ModeClause, ...], Field(min_length=1)]
-    maximum_projection_utf8_bytes: int = Field(gt=0, le=3000)
+    maximum_projection_utf8_bytes: int = Field(gt=0, le=12_000)
     activation_default: Literal["one_task"] = "one_task"
     task_lease_hours: int = Field(default=4, ge=1, le=24)
     supports_personal_overlay: Literal[True] = True
@@ -158,10 +168,19 @@ class CapabilityMode(FrozenModel):
                 raise ValueError("a product-evaluated Mode requires its evaluation digest")
         elif self.evaluation_digest is not None:
             raise ValueError("an unevaluated or failed Mode cannot claim an evaluation digest")
+        if self.source_kind == "curated" and any(
+            not clause.source_component_ids for clause in self.clauses
+        ):
+            raise ValueError("every curated Mode clause requires exact source component lineage")
         return self
 
     @property
     def content_digest(self) -> Sha256Digest:
+        if self.mode_schema_version != "1.2.0":
+            payload = self.model_dump(mode="json")
+            for clause in payload["clauses"]:
+                clause.pop("source_component_ids", None)
+            return canonical_digest(payload)
         return canonical_digest(self)
 
 

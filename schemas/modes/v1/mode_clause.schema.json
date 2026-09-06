@@ -40,6 +40,17 @@
       "title": "Clause Id",
       "type": "string"
     },
+    "source_component_ids": {
+      "default": [],
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "title": "Source Component Ids",
+      "type": "array"
+    },
     "text": {
       "minLength": 1,
       "title": "Text",

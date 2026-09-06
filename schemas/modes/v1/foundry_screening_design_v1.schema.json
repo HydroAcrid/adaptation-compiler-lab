@@ -1,0 +1,195 @@
+{
+  "$defs": {
+    "FoundryScreeningCellV1": {
+      "additionalProperties": false,
+      "description": "One bounded target cell in the three-condition Foundry screen.",
+      "properties": {
+        "condition": {
+          "enum": [
+            "compiled_mode",
+            "core_only",
+            "upstream_safe"
+          ],
+          "title": "Condition",
+          "type": "string"
+        },
+        "mode_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Mode Id",
+          "type": "string"
+        },
+        "run_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "sequence": {
+          "maximum": 24,
+          "minimum": 1,
+          "title": "Sequence",
+          "type": "integer"
+        },
+        "task_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Task Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sequence",
+        "run_id",
+        "mode_id",
+        "task_id",
+        "condition"
+      ],
+      "title": "FoundryScreeningCellV1",
+      "type": "object"
+    },
+    "FoundryScreeningTaskV1": {
+      "additionalProperties": false,
+      "description": "One relevance-bearing task selected before curated Mode inference.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "diagnostic",
+            "neutral_control"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "mode_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Mode Id",
+          "type": "string"
+        },
+        "prompt_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Prompt Digest",
+          "type": "string"
+        },
+        "task_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "task_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Task Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id",
+        "mode_id",
+        "kind",
+        "prompt_digest"
+      ],
+      "title": "FoundryScreeningTaskV1",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Small pre-product comparison that cannot itself establish broad effectiveness.",
+  "properties": {
+    "authentication": {
+      "const": "saved_chatgpt",
+      "default": "saved_chatgpt",
+      "title": "Authentication",
+      "type": "string"
+    },
+    "catalog_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Catalog Digest",
+      "type": "string"
+    },
+    "cells": {
+      "items": {
+        "$ref": "#/$defs/FoundryScreeningCellV1"
+      },
+      "maxItems": 24,
+      "minItems": 24,
+      "title": "Cells",
+      "type": "array"
+    },
+    "design_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Design Version",
+      "type": "string"
+    },
+    "per_run_timeout_seconds": {
+      "const": 600,
+      "default": 600,
+      "title": "Per Run Timeout Seconds",
+      "type": "integer"
+    },
+    "provider_billed_calls": {
+      "const": 0,
+      "default": 0,
+      "title": "Provider Billed Calls",
+      "type": "integer"
+    },
+    "reasoning_effort": {
+      "const": "medium",
+      "default": "medium",
+      "title": "Reasoning Effort",
+      "type": "string"
+    },
+    "release_digests": {
+      "items": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "maxItems": 3,
+      "minItems": 3,
+      "title": "Release Digests",
+      "type": "array"
+    },
+    "sealed_external_validation_accessed": {
+      "const": false,
+      "default": false,
+      "title": "Sealed External Validation Accessed",
+      "type": "boolean"
+    },
+    "target_model": {
+      "const": "gpt-5.6-luna",
+      "default": "gpt-5.6-luna",
+      "title": "Target Model",
+      "type": "string"
+    },
+    "tasks": {
+      "items": {
+        "$ref": "#/$defs/FoundryScreeningTaskV1"
+      },
+      "maxItems": 9,
+      "minItems": 9,
+      "title": "Tasks",
+      "type": "array"
+    },
+    "tuning_after_first_run": {
+      "const": false,
+      "default": false,
+      "title": "Tuning After First Run",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "catalog_digest",
+    "release_digests",
+    "tasks",
+    "cells"
+  ],
+  "title": "FoundryScreeningDesignV1",
+  "type": "object"
+}

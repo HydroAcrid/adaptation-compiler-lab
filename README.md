@@ -1,5 +1,11 @@
 # adaptation-compiler-lab
 
+Temper now includes a development **Curated Modes Hub**: temporary one-task capabilities compiled
+from pinned and reviewed open-source agent skills. The first releases are Frontend Studio,
+Systematic Debugger, and Read-only Security Review. They remain `curated_unproven` until each exact
+release passes a relevant comparative evaluation; upstream popularity is discovery evidence, not
+proof of effectiveness. See [`TEMPER_CURATED_MODES_HUB.md`](TEMPER_CURATED_MODES_HUB.md).
+
 Temper's native product-completion sequence is active. The Tauri application now supports live
 first-run setup, existing-runtime adoption, truthful Codex/Claude inspection, prospective project
 registration, review/scope decisions, revoke/undo, activation feedback, consent renewal, four

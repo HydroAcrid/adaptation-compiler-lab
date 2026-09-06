@@ -167,15 +167,74 @@ export interface CapabilityModeSummary {
   compatible_target_families: string[];
   requested_tools: string[];
   required_capabilities: string[];
-  evaluation_status: "experimental" | "product_evaluated" | "failed";
+  evaluation_status:
+    | "curated_unproven"
+    | "experimental"
+    | "product_evaluated"
+    | "failed"
+    | "revoked";
   effectiveness_evaluated: boolean;
   projection_utf8_bytes: number;
   evaluation_valid: boolean;
   evaluation_case_count: number;
   mutates_permanent_core: false;
   auto_activates: false;
-  source_kind: "first_party" | "imported";
+  source_kind: "curated" | "first_party" | "imported";
+  catalog_digest: string | null;
+  source_count: number;
+  known_limitations: string[];
   personalized: boolean;
+}
+
+export interface CuratedCatalogSummary {
+  catalog_id: string;
+  catalog_version: string;
+  catalog_digest: string;
+  distribution: "bundled_offline";
+  signature_status: "verified_development" | "verified_release";
+  mode_count: number;
+  statuses: Record<string, CapabilityModeSummary["evaluation_status"]>;
+  raw_payloads_exposed: false;
+}
+
+export interface CuratedModeDetail {
+  mode_id: string;
+  mode_digest: string;
+  release_digest: string;
+  evaluation_status: CapabilityModeSummary["evaluation_status"];
+  source_count: number;
+  sources: Array<{
+    publisher: string;
+    repository_url: string;
+    commit_sha: string;
+    source_path: string;
+    license_spdx: string;
+    license_locator: string;
+    resource_count: number;
+    excluded_resource_count: number;
+  }>;
+  components: Array<{
+    component_id: string;
+    disposition: "adapted" | "adopted" | "omitted";
+    rationale: string;
+  }>;
+  known_limitations: string[];
+  raw_payloads_exposed: false;
+}
+
+export interface ModeActivationPreview {
+  mode_id: string;
+  mode_digest: string;
+  project_id: string;
+  activation_default: "one_task";
+  expires_after_task: true;
+  projection_utf8_bytes: number;
+  included_clause_count: number;
+  source_count: number;
+  requested_tools: string[];
+  required_capabilities: string[];
+  known_limitations: string[];
+  raw_payloads_exposed: false;
 }
 
 export interface AgentConnection {

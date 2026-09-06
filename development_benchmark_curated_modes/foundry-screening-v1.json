@@ -1,0 +1,251 @@
+{
+  "authentication": "saved_chatgpt",
+  "catalog_digest": "sha256:d7fe80d528b13df0a17c5ad7bfceb0ad9a3204ecbdd729d04d318609819fefe6",
+  "cells": [
+    {
+      "condition": "compiled_mode",
+      "mode_id": "curated-systematic-debugger",
+      "run_id": "foundry-run-34c18dc2770e572e",
+      "sequence": 1,
+      "task_id": "foundry-debug-01-shared-state"
+    },
+    {
+      "condition": "core_only",
+      "mode_id": "curated-systematic-debugger",
+      "run_id": "foundry-run-f63784f8ef70087f",
+      "sequence": 2,
+      "task_id": "foundry-debug-01-shared-state"
+    },
+    {
+      "condition": "upstream_safe",
+      "mode_id": "curated-systematic-debugger",
+      "run_id": "foundry-run-8a5677e7e845121a",
+      "sequence": 3,
+      "task_id": "foundry-debug-01-shared-state"
+    },
+    {
+      "condition": "compiled_mode",
+      "mode_id": "curated-systematic-debugger",
+      "run_id": "foundry-run-596ee5e3fc4f6dd3",
+      "sequence": 4,
+      "task_id": "foundry-debug-02-failed-fix"
+    },
+    {
+      "condition": "core_only",
+      "mode_id": "curated-systematic-debugger",
+      "run_id": "foundry-run-c4ee0c88209ee017",
+      "sequence": 5,
+      "task_id": "foundry-debug-02-failed-fix"
+    },
+    {
+      "condition": "upstream_safe",
+      "mode_id": "curated-systematic-debugger",
+      "run_id": "foundry-run-8881d1ed0abda49c",
+      "sequence": 6,
+      "task_id": "foundry-debug-02-failed-fix"
+    },
+    {
+      "condition": "compiled_mode",
+      "mode_id": "curated-systematic-debugger",
+      "run_id": "foundry-run-101f2d8ba138994b",
+      "sequence": 7,
+      "task_id": "foundry-debug-04-neutral-copy"
+    },
+    {
+      "condition": "core_only",
+      "mode_id": "curated-systematic-debugger",
+      "run_id": "foundry-run-cf29d16456bb3ac5",
+      "sequence": 8,
+      "task_id": "foundry-debug-04-neutral-copy"
+    },
+    {
+      "condition": "compiled_mode",
+      "mode_id": "curated-frontend-studio",
+      "run_id": "foundry-run-6558e51275a70247",
+      "sequence": 9,
+      "task_id": "foundry-frontend-01-settings"
+    },
+    {
+      "condition": "core_only",
+      "mode_id": "curated-frontend-studio",
+      "run_id": "foundry-run-f69837156877785b",
+      "sequence": 10,
+      "task_id": "foundry-frontend-01-settings"
+    },
+    {
+      "condition": "upstream_safe",
+      "mode_id": "curated-frontend-studio",
+      "run_id": "foundry-run-d8f7f3ed2812eff1",
+      "sequence": 11,
+      "task_id": "foundry-frontend-01-settings"
+    },
+    {
+      "condition": "compiled_mode",
+      "mode_id": "curated-frontend-studio",
+      "run_id": "foundry-run-948af9a52e7f4ae0",
+      "sequence": 12,
+      "task_id": "foundry-frontend-02-review-queue"
+    },
+    {
+      "condition": "core_only",
+      "mode_id": "curated-frontend-studio",
+      "run_id": "foundry-run-db373240eb0dada1",
+      "sequence": 13,
+      "task_id": "foundry-frontend-02-review-queue"
+    },
+    {
+      "condition": "upstream_safe",
+      "mode_id": "curated-frontend-studio",
+      "run_id": "foundry-run-61a7073a9dfcf280",
+      "sequence": 14,
+      "task_id": "foundry-frontend-02-review-queue"
+    },
+    {
+      "condition": "compiled_mode",
+      "mode_id": "curated-frontend-studio",
+      "run_id": "foundry-run-e791b74ae5bc4a41",
+      "sequence": 15,
+      "task_id": "foundry-frontend-04-neutral-parser"
+    },
+    {
+      "condition": "core_only",
+      "mode_id": "curated-frontend-studio",
+      "run_id": "foundry-run-8e23ce72778c494d",
+      "sequence": 16,
+      "task_id": "foundry-frontend-04-neutral-parser"
+    },
+    {
+      "condition": "compiled_mode",
+      "mode_id": "curated-read-only-security-review",
+      "run_id": "foundry-run-38c808966e36c979",
+      "sequence": 17,
+      "task_id": "foundry-security-01-tenant-boundary"
+    },
+    {
+      "condition": "core_only",
+      "mode_id": "curated-read-only-security-review",
+      "run_id": "foundry-run-5fcb99eea395807f",
+      "sequence": 18,
+      "task_id": "foundry-security-01-tenant-boundary"
+    },
+    {
+      "condition": "upstream_safe",
+      "mode_id": "curated-read-only-security-review",
+      "run_id": "foundry-run-247c64c6693b7e73",
+      "sequence": 19,
+      "task_id": "foundry-security-01-tenant-boundary"
+    },
+    {
+      "condition": "compiled_mode",
+      "mode_id": "curated-read-only-security-review",
+      "run_id": "foundry-run-b1b67e7ac442bf4a",
+      "sequence": 20,
+      "task_id": "foundry-security-02-log-redaction"
+    },
+    {
+      "condition": "core_only",
+      "mode_id": "curated-read-only-security-review",
+      "run_id": "foundry-run-89642a65b4aba4af",
+      "sequence": 21,
+      "task_id": "foundry-security-02-log-redaction"
+    },
+    {
+      "condition": "upstream_safe",
+      "mode_id": "curated-read-only-security-review",
+      "run_id": "foundry-run-ea3ef532475aff23",
+      "sequence": 22,
+      "task_id": "foundry-security-02-log-redaction"
+    },
+    {
+      "condition": "compiled_mode",
+      "mode_id": "curated-read-only-security-review",
+      "run_id": "foundry-run-c16c823576dd60a0",
+      "sequence": 23,
+      "task_id": "foundry-security-04-neutral-copy"
+    },
+    {
+      "condition": "core_only",
+      "mode_id": "curated-read-only-security-review",
+      "run_id": "foundry-run-51859fc82ffbf5e5",
+      "sequence": 24,
+      "task_id": "foundry-security-04-neutral-copy"
+    }
+  ],
+  "design_version": "1.0.0",
+  "per_run_timeout_seconds": 600,
+  "provider_billed_calls": 0,
+  "reasoning_effort": "medium",
+  "release_digests": [
+    "sha256:3c2e820bd94e3d551aec37d5dcd62aa65c2d0c004086f9a5105b55a26cc41854",
+    "sha256:a7b64068166373d05714be0c64c524c0edf418f9af745b0427a9ec616601d598",
+    "sha256:c3743438171c841980c617280870a25931fa56f75b47362bd0cae4e9b1b5e393"
+  ],
+  "sealed_external_validation_accessed": false,
+  "target_model": "gpt-5.6-luna",
+  "tasks": [
+    {
+      "kind": "diagnostic",
+      "mode_id": "curated-systematic-debugger",
+      "prompt_digest": "sha256:af583fee5eb1c47aec432e8055ca27d4b7d7a7224385e0cfa63568e548a6a298",
+      "task_id": "foundry-debug-01-shared-state",
+      "task_version": "1.0.0"
+    },
+    {
+      "kind": "diagnostic",
+      "mode_id": "curated-systematic-debugger",
+      "prompt_digest": "sha256:8ef650fdf1f1a665720054dc9d44aa717474d4726e5fc9d03547eaf5e311835c",
+      "task_id": "foundry-debug-02-failed-fix",
+      "task_version": "1.0.0"
+    },
+    {
+      "kind": "neutral_control",
+      "mode_id": "curated-systematic-debugger",
+      "prompt_digest": "sha256:98ebe5085d0540d772c0be8635aed2e70b676c6edb17922f5505e36c6a03f425",
+      "task_id": "foundry-debug-04-neutral-copy",
+      "task_version": "1.0.0"
+    },
+    {
+      "kind": "diagnostic",
+      "mode_id": "curated-frontend-studio",
+      "prompt_digest": "sha256:251f9ef360b7b229e3e88285ca66cd070fd7f94b65b0cb404ef88c4a81791a0d",
+      "task_id": "foundry-frontend-01-settings",
+      "task_version": "1.0.0"
+    },
+    {
+      "kind": "diagnostic",
+      "mode_id": "curated-frontend-studio",
+      "prompt_digest": "sha256:74d6e524b8beeeb820eef423baeebab9730c387e859fd7e19864e534839c03da",
+      "task_id": "foundry-frontend-02-review-queue",
+      "task_version": "1.0.0"
+    },
+    {
+      "kind": "neutral_control",
+      "mode_id": "curated-frontend-studio",
+      "prompt_digest": "sha256:a011aa184b22371d03bb6ac3eba998f229aef3923b9029ab8eb0ec19f5c1894f",
+      "task_id": "foundry-frontend-04-neutral-parser",
+      "task_version": "1.0.0"
+    },
+    {
+      "kind": "diagnostic",
+      "mode_id": "curated-read-only-security-review",
+      "prompt_digest": "sha256:66abfc527dcca04ef47cb3b8bc47f8681ba0b77639e769b179de28138dec81ed",
+      "task_id": "foundry-security-01-tenant-boundary",
+      "task_version": "1.0.0"
+    },
+    {
+      "kind": "diagnostic",
+      "mode_id": "curated-read-only-security-review",
+      "prompt_digest": "sha256:6cc4100fbc58a91d9126dcab858459edc199872ea96f629d4930a50a8a3b1f40",
+      "task_id": "foundry-security-02-log-redaction",
+      "task_version": "1.0.0"
+    },
+    {
+      "kind": "neutral_control",
+      "mode_id": "curated-read-only-security-review",
+      "prompt_digest": "sha256:8eb9d5d0202fae0b7911b2c96181a93348015eb8cc52c7cad520cdd5cb1a770d",
+      "task_id": "foundry-security-04-neutral-copy",
+      "task_version": "1.0.0"
+    }
+  ],
+  "tuning_after_first_run": false
+}
