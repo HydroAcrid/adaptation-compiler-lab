@@ -41,6 +41,11 @@ from adaptation_compiler_lab.modes.foundry import (
     sign_catalog,
     verify_catalog,
 )
+from adaptation_compiler_lab.modes.foundry_execution import (
+    FoundryExecutionContractV1,
+    FoundryScreeningResultV1,
+    FoundryTrialResultV1,
+)
 from adaptation_compiler_lab.modes.foundry_models import (
     CapabilityResourceKind,
     CapabilityResourceV1,
@@ -114,10 +119,13 @@ __all__ = [
     "CuratedCatalogManifestV1",
     "CuratedModeReleaseV1",
     "CuratedSourceManifestV1",
+    "FoundryExecutionContractV1",
     "FoundryIntakeError",
     "FoundryScreeningCellV1",
     "FoundryScreeningDesignV1",
+    "FoundryScreeningResultV1",
     "FoundryScreeningTaskV1",
+    "FoundryTrialResultV1",
     "ModeActivationReceipt",
     "ModeClause",
     "ModeClauseCategory",
