@@ -20,6 +20,11 @@ from adaptation_compiler_lab.modes.evaluation import (
     ModeJudgePairDecisionV1,
     ModePolicyObservationV1,
 )
+from adaptation_compiler_lab.modes.foundry_execution import (
+    FoundryExecutionContractV1,
+    FoundryScreeningResultV1,
+    FoundryTrialResultV1,
+)
 from adaptation_compiler_lab.modes.foundry_models import (
     CapabilityResourceV1,
     CuratedCatalogManifestV1,
@@ -55,7 +60,10 @@ _MODELS: dict[str, type[BaseModel]] = {
     "curated_source_manifest_v1": CuratedSourceManifestV1,
     "foundry_screening_cell_v1": FoundryScreeningCellV1,
     "foundry_screening_design_v1": FoundryScreeningDesignV1,
+    "foundry_execution_contract_v1": FoundryExecutionContractV1,
+    "foundry_screening_result_v1": FoundryScreeningResultV1,
     "foundry_screening_task_v1": FoundryScreeningTaskV1,
+    "foundry_trial_result_v1": FoundryTrialResultV1,
     "mode_activation_receipt": ModeActivationReceipt,
     "mode_clause": ModeClause,
     "mode_deactivation_receipt": ModeDeactivationReceipt,

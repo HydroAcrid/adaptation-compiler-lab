@@ -1,0 +1,306 @@
+{
+  "$defs": {
+    "ModeEvaluationFixtureV1": {
+      "additionalProperties": false,
+      "description": "One public task binding plus hidden independent scorer cases.",
+      "properties": {
+        "allowed_change_paths": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Allowed Change Paths",
+          "type": "array"
+        },
+        "fixture_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Fixture Digest",
+          "type": "string"
+        },
+        "fixture_directory": {
+          "minLength": 1,
+          "title": "Fixture Directory",
+          "type": "string"
+        },
+        "fixture_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Fixture Version",
+          "type": "string"
+        },
+        "function_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Function Name",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "diagnostic",
+            "neutral_control"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "mode_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Mode Id",
+          "type": "string"
+        },
+        "prompt": {
+          "minLength": 1,
+          "title": "Prompt",
+          "type": "string"
+        },
+        "scenarios": {
+          "items": {
+            "$ref": "#/$defs/ModeEvaluationScenarioV1"
+          },
+          "minItems": 3,
+          "title": "Scenarios",
+          "type": "array"
+        },
+        "task_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "visible_test_command": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Visible Test Command",
+          "type": "array"
+        }
+      },
+      "required": [
+        "task_id",
+        "mode_id",
+        "kind",
+        "title",
+        "prompt",
+        "function_name",
+        "fixture_directory",
+        "fixture_digest",
+        "allowed_change_paths",
+        "visible_test_command",
+        "scenarios"
+      ],
+      "title": "ModeEvaluationFixtureV1",
+      "type": "object"
+    },
+    "ModeEvaluationScenarioV1": {
+      "additionalProperties": false,
+      "description": "One answer-bearing scorer case that never enters a target workspace.",
+      "properties": {
+        "arguments": {
+          "items": {},
+          "title": "Arguments",
+          "type": "array"
+        },
+        "expected": {
+          "title": "Expected"
+        },
+        "metric": {
+          "enum": [
+            "diagnostic",
+            "neutral"
+          ],
+          "title": "Metric",
+          "type": "string"
+        },
+        "scenario_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Scenario Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scenario_id",
+        "arguments",
+        "expected",
+        "metric"
+      ],
+      "title": "ModeEvaluationScenarioV1",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Exact eight-cell Systematic Debugger execution contract.",
+  "properties": {
+    "api_keys_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Api Keys Allowed",
+      "type": "boolean"
+    },
+    "authentication": {
+      "const": "saved_chatgpt",
+      "default": "saved_chatgpt",
+      "title": "Authentication",
+      "type": "string"
+    },
+    "bubblewrap_digest": {
+      "const": "sha256:d78807229d616606e339c5988392b9e0ab4a6a6998fa51e4590837f426a12fca",
+      "default": "sha256:d78807229d616606e339c5988392b9e0ab4a6a6998fa51e4590837f426a12fca",
+      "title": "Bubblewrap Digest",
+      "type": "string"
+    },
+    "catalog_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Catalog Digest",
+      "type": "string"
+    },
+    "code_mode_host_digest": {
+      "const": "sha256:c215117917037afd6b7621ba11ca18054ebdb890c314454f485b27574a73e1b7",
+      "default": "sha256:c215117917037afd6b7621ba11ca18054ebdb890c314454f485b27574a73e1b7",
+      "title": "Code Mode Host Digest",
+      "type": "string"
+    },
+    "compiled_material_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Compiled Material Digest",
+      "type": "string"
+    },
+    "compiled_material_utf8_bytes": {
+      "maximum": 12000,
+      "minimum": 1,
+      "title": "Compiled Material Utf8 Bytes",
+      "type": "integer"
+    },
+    "contract_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "design_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Design Digest",
+      "type": "string"
+    },
+    "external_validation_accessed": {
+      "const": false,
+      "default": false,
+      "title": "External Validation Accessed",
+      "type": "boolean"
+    },
+    "fixtures": {
+      "items": {
+        "$ref": "#/$defs/ModeEvaluationFixtureV1"
+      },
+      "maxItems": 3,
+      "minItems": 3,
+      "title": "Fixtures",
+      "type": "array"
+    },
+    "mode_id": {
+      "const": "curated-systematic-debugger",
+      "default": "curated-systematic-debugger",
+      "title": "Mode Id",
+      "type": "string"
+    },
+    "observer_source_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Observer Source Digest",
+      "type": "string"
+    },
+    "provider_billed_calls": {
+      "const": 0,
+      "default": 0,
+      "title": "Provider Billed Calls",
+      "type": "integer"
+    },
+    "release_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Release Digest",
+      "type": "string"
+    },
+    "runner_source_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Runner Source Digest",
+      "type": "string"
+    },
+    "scorer_source_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Scorer Source Digest",
+      "type": "string"
+    },
+    "target_cli_digest": {
+      "const": "sha256:b9315df68cb0e2827c940ffacb66f7524e820d9744060c755fbf938724ad2b76",
+      "default": "sha256:b9315df68cb0e2827c940ffacb66f7524e820d9744060c755fbf938724ad2b76",
+      "title": "Target Cli Digest",
+      "type": "string"
+    },
+    "target_cli_version": {
+      "const": "codex-cli 0.153.1",
+      "default": "codex-cli 0.153.1",
+      "title": "Target Cli Version",
+      "type": "string"
+    },
+    "target_model": {
+      "const": "gpt-5.6-luna",
+      "default": "gpt-5.6-luna",
+      "title": "Target Model",
+      "type": "string"
+    },
+    "target_reasoning_effort": {
+      "const": "medium",
+      "default": "medium",
+      "title": "Target Reasoning Effort",
+      "type": "string"
+    },
+    "target_runs": {
+      "const": 8,
+      "default": 8,
+      "title": "Target Runs",
+      "type": "integer"
+    },
+    "target_timeout_seconds": {
+      "const": 600,
+      "default": 600,
+      "title": "Target Timeout Seconds",
+      "type": "integer"
+    },
+    "tuning_after_first_run": {
+      "const": false,
+      "default": false,
+      "title": "Tuning After First Run",
+      "type": "boolean"
+    },
+    "upstream_material_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Upstream Material Digest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "design_digest",
+    "catalog_digest",
+    "release_digest",
+    "fixtures",
+    "upstream_material_digest",
+    "compiled_material_digest",
+    "compiled_material_utf8_bytes",
+    "runner_source_digest",
+    "scorer_source_digest",
+    "observer_source_digest"
+  ],
+  "title": "FoundryExecutionContractV1",
+  "type": "object"
+}

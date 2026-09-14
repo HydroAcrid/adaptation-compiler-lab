@@ -1,0 +1,283 @@
+{
+  "$defs": {
+    "FoundryTrialResultV1": {
+      "additionalProperties": false,
+      "description": "Immutable public outcome for one condition/task cell.",
+      "properties": {
+        "behavior_conformant": {
+          "title": "Behavior Conformant",
+          "type": "boolean"
+        },
+        "behavior_failures": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Behavior Failures",
+          "type": "array"
+        },
+        "cached_input_tokens": {
+          "minimum": 0,
+          "title": "Cached Input Tokens",
+          "type": "integer"
+        },
+        "command_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Command Digest",
+          "type": "string"
+        },
+        "condition": {
+          "enum": [
+            "compiled_mode",
+            "core_only",
+            "upstream_safe"
+          ],
+          "title": "Condition",
+          "type": "string"
+        },
+        "contract_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Contract Digest",
+          "type": "string"
+        },
+        "diff_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Diff Digest",
+          "type": "string"
+        },
+        "duration_seconds": {
+          "minimum": 0,
+          "title": "Duration Seconds",
+          "type": "number"
+        },
+        "encrypted_trace_ref": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Encrypted Trace Ref",
+          "type": "string"
+        },
+        "environment_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Environment Digest",
+          "type": "string"
+        },
+        "external_validation_accessed": {
+          "const": false,
+          "default": false,
+          "title": "External Validation Accessed",
+          "type": "boolean"
+        },
+        "final_response_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Final Response Digest",
+          "type": "string"
+        },
+        "focused_reproduction_observed": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Focused Reproduction Observed"
+        },
+        "hidden_checks_passed": {
+          "minimum": 0,
+          "title": "Hidden Checks Passed",
+          "type": "integer"
+        },
+        "hidden_checks_total": {
+          "minimum": 1,
+          "title": "Hidden Checks Total",
+          "type": "integer"
+        },
+        "input_tokens": {
+          "minimum": 0,
+          "title": "Input Tokens",
+          "type": "integer"
+        },
+        "integrity_failures": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Integrity Failures",
+          "type": "array"
+        },
+        "integrity_valid": {
+          "title": "Integrity Valid",
+          "type": "boolean"
+        },
+        "output_tokens": {
+          "minimum": 0,
+          "title": "Output Tokens",
+          "type": "integer"
+        },
+        "provider_billed_calls": {
+          "const": 0,
+          "default": 0,
+          "title": "Provider Billed Calls",
+          "type": "integer"
+        },
+        "reasoning_output_tokens": {
+          "minimum": 0,
+          "title": "Reasoning Output Tokens",
+          "type": "integer"
+        },
+        "regression_command_observed": {
+          "title": "Regression Command Observed",
+          "type": "boolean"
+        },
+        "run_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "source_commit": {
+          "title": "Source Commit",
+          "type": "string"
+        },
+        "task_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "task_kind": {
+          "enum": [
+            "diagnostic",
+            "neutral_control"
+          ],
+          "title": "Task Kind",
+          "type": "string"
+        },
+        "trace_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Trace Digest",
+          "type": "string"
+        },
+        "trial_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Trial Version",
+          "type": "string"
+        },
+        "visible_tests_passed": {
+          "title": "Visible Tests Passed",
+          "type": "boolean"
+        },
+        "workspace_destroyed": {
+          "title": "Workspace Destroyed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "run_id",
+        "task_id",
+        "task_kind",
+        "condition",
+        "contract_digest",
+        "source_commit",
+        "trace_digest",
+        "diff_digest",
+        "final_response_digest",
+        "command_digest",
+        "environment_digest",
+        "encrypted_trace_ref",
+        "hidden_checks_passed",
+        "hidden_checks_total",
+        "visible_tests_passed",
+        "focused_reproduction_observed",
+        "regression_command_observed",
+        "behavior_conformant",
+        "integrity_valid",
+        "duration_seconds",
+        "input_tokens",
+        "cached_input_tokens",
+        "output_tokens",
+        "reasoning_output_tokens",
+        "workspace_destroyed"
+      ],
+      "title": "FoundryTrialResultV1",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Deterministic eight-cell screen with deliberately bounded claims.",
+  "properties": {
+    "contract_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "title": "Contract Digest",
+      "type": "string"
+    },
+    "disposition": {
+      "enum": [
+        "advance_to_blinded_comparison",
+        "compiler_regression",
+        "no_specialty_signal",
+        "instrumentation_failure"
+      ],
+      "title": "Disposition",
+      "type": "string"
+    },
+    "external_validation_accessed": {
+      "const": false,
+      "default": false,
+      "title": "External Validation Accessed",
+      "type": "boolean"
+    },
+    "instrument_valid": {
+      "title": "Instrument Valid",
+      "type": "boolean"
+    },
+    "product_evaluated": {
+      "const": false,
+      "default": false,
+      "title": "Product Evaluated",
+      "type": "boolean"
+    },
+    "provider_billed_calls": {
+      "const": 0,
+      "default": 0,
+      "title": "Provider Billed Calls",
+      "type": "integer"
+    },
+    "reason": {
+      "title": "Reason",
+      "type": "string"
+    },
+    "result_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Result Version",
+      "type": "string"
+    },
+    "source_commit": {
+      "title": "Source Commit",
+      "type": "string"
+    },
+    "trials": {
+      "items": {
+        "$ref": "#/$defs/FoundryTrialResultV1"
+      },
+      "maxItems": 8,
+      "minItems": 8,
+      "title": "Trials",
+      "type": "array"
+    }
+  },
+  "required": [
+    "contract_digest",
+    "source_commit",
+    "trials",
+    "instrument_valid",
+    "disposition",
+    "reason"
+  ],
+  "title": "FoundryScreeningResultV1",
+  "type": "object"
+}
