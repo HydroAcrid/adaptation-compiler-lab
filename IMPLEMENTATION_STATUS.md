@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: 2026-09-05
+Last updated: 2026-09-13
 
 ## Curated Modes Hub
 
@@ -18,6 +18,15 @@ conformance and upstream popularity do not count as effectiveness. A bounded suc
 must improve a specialty diagnostic—not a neutral-control preference—before an exact release can
 become `product_evaluated`. No provider-billed run or sealed Milestone 6 access was introduced by
 the hub foundation.
+
+The first exact Systematic Debugger screen is now complete and preserved. Its eight Luna/medium
+records were integrity-valid: every condition passed all hidden and visible checks, both debugging
+tasks included a focused reproduction and regression suite, and the neutral control did not
+regress. Core only, upstream-safe instructions, and the compiled Mode tied, so the frozen result is
+`no_specialty_signal`. It proves the repaired bounded execution/scoring path works but supplies no
+evidence that this Mode improves Luna over Core. No judge or rerun followed, and the release remains
+`curated_unproven`. The screen used saved ChatGPT authentication and zero provider-billed calls;
+account-level weekly usage moved from 11% to 19% during the eight sessions.
 
 ## GitHub Copilot CLI governed delivery
 

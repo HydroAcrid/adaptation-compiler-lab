@@ -5,6 +5,9 @@ from pinned and reviewed open-source agent skills. The first releases are Fronte
 Systematic Debugger, and Read-only Security Review. They remain `curated_unproven` until each exact
 release passes a relevant comparative evaluation; upstream popularity is discovery evidence, not
 proof of effectiveness. See [`TEMPER_CURATED_MODES_HUB.md`](TEMPER_CURATED_MODES_HUB.md).
+The first eight-cell Systematic Debugger screen completed without a regression, but Core,
+upstream-safe material, and the compiled Mode all solved the diagnostic tasks. Its preserved
+`no_specialty_signal` result keeps the Mode unproven and avoids an uninformative blind-judge pass.
 
 Temper's native product-completion sequence is active. The Tauri application now supports live
 first-run setup, existing-runtime adoption, truthful Codex/Claude inspection, prospective project
