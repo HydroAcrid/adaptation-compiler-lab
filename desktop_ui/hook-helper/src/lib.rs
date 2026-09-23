@@ -67,8 +67,21 @@ impl HookIpcServer {
         descriptor_path: PathBuf,
         handler: impl Fn(Value) -> Option<Value> + Send + Sync + 'static,
     ) -> io::Result<Self> {
+        #[cfg(unix)]
+        {
+            let parent = descriptor_path.parent().ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidInput, "descriptor root missing")
+            })?;
+            fs::create_dir_all(parent)?;
+            set_private_directory(parent)?;
+        }
         let descriptor = new_descriptor(&descriptor_path)?;
         let listener = create_listener(&descriptor)?;
+        #[cfg(target_os = "macos")]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&descriptor.endpoint, fs::Permissions::from_mode(0o600))?;
+        }
         listener.set_nonblocking(ListenerNonblockingMode::Accept)?;
         persist_descriptor(&descriptor_path, &descriptor)?;
         let (stop_sender, stop_receiver) = mpsc::channel();
@@ -312,7 +325,7 @@ fn new_descriptor(_path: &Path) -> io::Result<HookEndpointDescriptorV1> {
         _path
             .parent()
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "descriptor root missing"))?
-            .join(format!(".temper-hook-{endpoint_nonce}.sock"))
+            .join(format!(".th-{endpoint_nonce}.sock"))
             .to_string_lossy()
             .into_owned(),
     );
@@ -367,7 +380,7 @@ fn endpoint_name(
 fn create_listener(descriptor: &HookEndpointDescriptorV1) -> io::Result<Listener> {
     let name = endpoint_name(descriptor)?;
     let options = ListenerOptions::new().name(name);
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "macos")))]
     let options = {
         use interprocess::os::unix::local_socket::ListenerOptionsExt;
         options.mode(0o600)
@@ -511,9 +524,21 @@ mod tests {
     use serde_json::json;
     use std::time::Instant;
 
+    fn test_root() -> tempfile::TempDir {
+        // macOS Unix socket paths are short; the CI runner's default temp path
+        // can exceed that limit before the randomized socket name is appended.
+        #[cfg(unix)]
+        return tempfile::Builder::new()
+            .prefix("th-")
+            .tempdir_in("/tmp")
+            .expect("temporary directory");
+        #[cfg(not(unix))]
+        return tempfile::tempdir().expect("temporary directory");
+    }
+
     #[test]
     fn local_round_trip_is_bounded_and_returns_only_handler_output() {
-        let root = tempfile::tempdir().expect("temporary directory");
+        let root = test_root();
         let descriptor = root.path().join("hook.json");
         let server = HookIpcServer::start(descriptor.clone(), |payload| {
             assert_eq!(payload["hook_event_name"], "UserPromptSubmit");
@@ -542,7 +567,7 @@ mod tests {
 
     #[test]
     fn unavailable_or_tampered_descriptor_is_a_silent_noop() {
-        let root = tempfile::tempdir().expect("temporary directory");
+        let root = test_root();
         let missing = root.path().join("missing.json");
         assert!(invoke_from_descriptor(&missing, json!({})).is_none());
 
@@ -570,7 +595,7 @@ mod tests {
 
     #[test]
     fn server_shutdown_removes_the_sensitive_descriptor() {
-        let root = tempfile::tempdir().expect("temporary directory");
+        let root = test_root();
         let descriptor = root.path().join("hook.json");
         let server = HookIpcServer::start(descriptor.clone(), |_| None).expect("start hook server");
         assert!(descriptor.exists());
@@ -580,7 +605,7 @@ mod tests {
 
     #[test]
     fn newer_server_atomically_replaces_stale_descriptor_and_retains_ownership() {
-        let root = tempfile::tempdir().expect("temporary directory");
+        let root = test_root();
         let descriptor = root.path().join("hook.json");
         fs::write(&descriptor, b"stale endpoint").expect("stale descriptor");
 
@@ -606,13 +631,22 @@ mod tests {
     fn descriptor_permissions_are_owner_only() {
         use std::os::unix::fs::PermissionsExt;
 
-        let root = tempfile::tempdir().expect("temporary directory");
+        let root = test_root();
         let descriptor = root.path().join("hook.json");
         let _server =
             HookIpcServer::start(descriptor.clone(), |_| None).expect("start hook server");
         assert_eq!(
             fs::metadata(descriptor)
                 .expect("descriptor metadata")
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
+        let endpoint = PathBuf::from(_server.descriptor.endpoint.as_str());
+        assert_eq!(
+            fs::metadata(endpoint)
+                .expect("socket metadata")
                 .permissions()
                 .mode()
                 & 0o777,
