@@ -281,11 +281,11 @@ fn engine_command() -> Result<Command, PublicError> {
 }
 
 fn claude_hook_helper_path() -> Option<PathBuf> {
-    if cfg!(debug_assertions)
-        && let Some(path) = env::var_os("TEMPER_HOOK_HELPER_BINARY")
-    {
-        let candidate = PathBuf::from(path);
-        return candidate.is_file().then_some(candidate);
+    if cfg!(debug_assertions) {
+        if let Some(path) = env::var_os("TEMPER_HOOK_HELPER_BINARY") {
+            let candidate = PathBuf::from(path);
+            return candidate.is_file().then_some(candidate);
+        }
     }
     let current = env::current_exe().ok()?;
     let name = if cfg!(target_os = "windows") {
@@ -532,15 +532,16 @@ fn run_background_poll(app: &tauri::AppHandle) {
         json!({}),
         None,
         None,
-    ) && let Some((project_id, target)) = pending_instruction_analysis(&environments)
-    {
-        let _ = call_engine(
-            state.inner(),
-            "instruction_environment.analyze",
-            json!({"project_id": project_id, "target": target}),
-            Some(&current_snapshot_digest),
-            Some(&Uuid::new_v4().to_string()),
-        );
+    ) {
+        if let Some((project_id, target)) = pending_instruction_analysis(&environments) {
+            let _ = call_engine(
+                state.inner(),
+                "instruction_environment.analyze",
+                json!({"project_id": project_id, "target": target}),
+                Some(&current_snapshot_digest),
+                Some(&Uuid::new_v4().to_string()),
+            );
+        }
     }
     let Ok(after) = call_engine(state.inner(), "snapshot.get", json!({}), None, None) else {
         return;
