@@ -35,12 +35,14 @@ def _git(root: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
-def _repository(tmp_path: Path) -> Path:
+def _repository(tmp_path: Path, *, autocrlf: bool | None = None) -> Path:
     root = tmp_path / "canonical"
     root.mkdir()
     _git(root, "init")
     _git(root, "config", "user.name", "Test")
     _git(root, "config", "user.email", "test@example.invalid")
+    if autocrlf is not None:
+        _git(root, "config", "core.autocrlf", "true" if autocrlf else "false")
     (root / "kept.txt").write_text("before\n")
     (root / "deleted.txt").write_text("delete me\n")
     _git(root, "add", ".")
@@ -79,8 +81,13 @@ def test_verification_commands_are_explicitly_phase_scoped() -> None:
     assert shared.runs_during("postflight") is True
 
 
-def test_capture_apply_and_independent_verification(tmp_path: Path) -> None:
-    canonical = _repository(tmp_path)
+@pytest.mark.parametrize("autocrlf", [False, True])
+def test_capture_apply_and_independent_verification(tmp_path: Path, autocrlf: bool) -> None:
+    canonical = _repository(tmp_path, autocrlf=autocrlf)
+    (canonical / "kept.txt").unlink()
+    (canonical / "deleted.txt").unlink()
+    _git(canonical, "checkout-index", "--all", "--force")
+    _git(canonical, "add", "--renormalize", ".")
     provider = GitWorktreeProvider(tmp_path / "workspaces")
     workspace = provider.create(
         canonical_root=canonical,
@@ -223,7 +230,10 @@ def test_dirty_canonical_and_symlink_changes_fail_closed(tmp_path: Path) -> None
         project_id="fixture",
         session_id="session-4",
     )
-    (workspace.root / "escape").symlink_to(tmp_path / "outside")
+    try:
+        (workspace.root / "escape").symlink_to(tmp_path / "outside")
+    except OSError:
+        pytest.skip("symlink creation is unavailable on this host")
     store = EncryptedChangeBundleStore(
         LocalRawPayloadStore(tmp_path / "raw", encryption_key=RawEncryptionKey(b"x" * 32))
     )

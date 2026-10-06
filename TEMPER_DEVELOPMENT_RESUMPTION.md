@@ -29,6 +29,14 @@ runtime before committing the final configuration and credential binding.
 - Focused Windows suite: 182 passed, one host-dependent symlink test skipped.
 - Frozen pin suite: nine tests passed on WSL, including its POSIX-only checks.
 - Ruff and mypy passed for the changed implementation and regression tests.
+- Combined-source Mac validation passed 126 focused tests and native disposable
+  onboarding with Keychain enrollment, restart, and exact temporary-key cleanup.
+- Windows Apply validation found an additional baseline-byte mismatch under Git
+  checkout conversion. Baseline reads now use Git's worktree filters, preserving
+  exact LF/CRLF bytes for application and rollback. Eleven gateway tests passed on
+  both Windows and WSL, with one platform-dependent skip on each. The gateway module
+  typechecks with POSIX stubs; native Windows stubs still report pre-existing POSIX
+  resource/signal attribute errors.
 
 These results validate source behavior and bounded native services. They do not prove
 a full rendered desktop workflow, a model-backed task/feedback loop, or independent
@@ -52,8 +60,12 @@ is concrete and verified.
 The Mac audit also found an unsealed linker-signed app bundle. The candidate's engine
 and hook hashes matched its manifest, but `codesign --verify` failed because the complete
 bundle lacked a resource seal. That package defect is separate from Codex conformance.
-Development admission must verify the complete app and DMG copy; trusted distribution
-still requires Developer ID/notarization and independent validation.
+The repair seals the completed development app before constructing its DMG, and
+development admission verifies the complete staged app and mounted DMG copy. A copied
+recorded candidate passed native development smoke with the repair, retaining the
+exact engine and hook hashes. Trusted distribution still requires Developer
+ID/notarization and independent validation. A fresh combined source build remains
+separate from this repaired historical-artifact trial.
 
 Continue with the native installed-app walkthrough, independent package checks, the
 existing ordinary-use protocol and Base-versus-Temper comparison, and supported

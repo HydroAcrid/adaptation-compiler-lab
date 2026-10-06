@@ -3211,6 +3211,7 @@ def _native_recovery_service() -> LocalRecoveryService:
         return select_product_codex_runtime_lock(
             executable, "win32" if paths.platform == "windows" else sys.platform
         )
+
     return LocalRecoveryService(
         paths=paths,
         preferences_store=product_preferences_store(paths),
