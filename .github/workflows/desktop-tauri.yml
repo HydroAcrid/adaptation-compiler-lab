@@ -198,11 +198,18 @@ jobs:
       - name: Install desktop dependencies
         working-directory: desktop_ui
         run: pnpm install --frozen-lockfile
-      - name: Build unsigned internal app and DMG
+      - name: Build internal app
         env:
           MACOSX_DEPLOYMENT_TARGET: "13.0"
         working-directory: desktop_ui
-        run: pnpm tauri build --bundles app,dmg
+        run: pnpm tauri build --bundles app
+      - name: Seal complete development app and build DMG from its exact bytes
+        run: |
+          uv run python packaging/macos/seal_development_bundle.py \
+            --app desktop_ui/src-tauri/target/release/bundle/macos/Temper.app \
+            --dmg desktop_ui/src-tauri/target/release/bundle/dmg/Temper_0.3.0-alpha.2_aarch64.dmg \
+            --engine-manifest desktop_ui/src-tauri/binaries/temper-engine-aarch64-apple-darwin.manifest.json \
+            --hook-manifest desktop_ui/src-tauri/binaries/temper-hook-aarch64-apple-darwin.manifest.json
       - name: Stage exact ephemeral candidates
         run: |
           set -euo pipefail

@@ -63,13 +63,20 @@ def _require_developer_id(path: Path, *, deep: bool = False) -> None:
         raise ValueError("trusted policy requires a Developer ID Application identity")
 
 
+def _require_development_seal(app: Path) -> None:
+    if not (app / "Contents" / "_CodeSignature" / "CodeResources").is_file():
+        raise ValueError("development app has no complete bundle resource seal")
+    _run(["/usr/bin/codesign", "--verify", "--deep", "--strict", "--verbose=4", str(app)])
+    observed = _run(["/usr/bin/codesign", "--display", "--verbose=4", str(app)])
+    details = observed.stdout + observed.stderr
+    if "Signature=adhoc" not in details or "Sealed Resources version=2" not in details:
+        raise ValueError("development app is not an ad hoc sealed bundle")
+
+
 def _verify_signature(app: Path, dmg: Path, *, policy: SignaturePolicy) -> str:
     if policy == "development":
-        observed = _run(
-            ["/usr/bin/codesign", "--display", "--verbose=2", str(app)],
-            check=False,
-        )
-        return "unsigned" if observed.returncode else "development-signed"
+        _require_development_seal(app)
+        return "development-ad-hoc-sealed"
     _require_developer_id(app, deep=True)
     _require_developer_id(app / "Contents" / "MacOS" / "temper-engine")
     _require_developer_id(app / "Contents" / "MacOS" / "temper-hook")
@@ -220,7 +227,7 @@ def _verify_hook(sidecar: Path, manifest_path: Path) -> dict[str, object]:
     return manifest
 
 
-def _verify_dmg(dmg: Path, mountpoint: Path) -> None:
+def _verify_dmg(dmg: Path, mountpoint: Path, *, app: Path, policy: SignaturePolicy) -> None:
     mounted = False
     mountpoint.mkdir(parents=True)
     try:
@@ -237,8 +244,25 @@ def _verify_dmg(dmg: Path, mountpoint: Path) -> None:
             timeout=60,
         )
         mounted = True
-        if not (mountpoint / "Temper.app").is_dir():
+        mounted_app = mountpoint / "Temper.app"
+        if not mounted_app.is_dir():
             raise ValueError("DMG does not contain Temper.app")
+        if policy == "development":
+            _require_development_seal(mounted_app)
+        else:
+            _require_developer_id(mounted_app, deep=True)
+        for relative in (
+            "Contents/MacOS/Temper",
+            "Contents/MacOS/temper-engine",
+            "Contents/MacOS/temper-hook",
+            "Contents/Info.plist",
+            "Contents/_CodeSignature/CodeResources",
+        ):
+            if (
+                hashlib.sha256((app / relative).read_bytes()).digest()
+                != hashlib.sha256((mounted_app / relative).read_bytes()).digest()
+            ):
+                raise ValueError(f"DMG copy differs from exact staged app: {relative}")
     finally:
         if mounted:
             _run(["/usr/bin/hdiutil", "detach", str(mountpoint)], check=False, timeout=30)
@@ -315,7 +339,7 @@ def run_smoke(
     signature = _verify_signature(app, dmg, policy=signature_policy)
     with tempfile.TemporaryDirectory(prefix="temper-apple-smoke-") as value:
         scratch = Path(value).resolve()
-        _verify_dmg(dmg, scratch / "mounted")
+        _verify_dmg(dmg, scratch / "mounted", app=app, policy=signature_policy)
         _launch_first_run(app, scratch, window_probe)
     return {
         "status": "passed",

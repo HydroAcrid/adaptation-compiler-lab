@@ -75,8 +75,10 @@ uv run python packaging/macos/smoke_package.py \
   --expected-version 0.3.0a2
 ```
 
-CI must pass `--signature-policy development` explicitly for an unsigned one-day internal
-candidate. That exception verifies functionality only. A distributable macOS alpha still requires
+CI must pass `--signature-policy development` explicitly for an ad hoc sealed, one-day internal
+candidate. The development builder seals the completed app bundle before constructing the DMG;
+the smoke verifies the complete seal and exact app bytes inside the DMG. This exception verifies
+internal functionality and bundle integrity only. A distributable macOS alpha still requires
 a Developer ID Application identity, nested-code signing, hardened runtime, notarization,
 stapling, and the same clean-machine smoke under the default trusted policy. The trusted policy
 checks `codesign`, Gatekeeper assessment, and stapled tickets for the app and DMG. None of those
