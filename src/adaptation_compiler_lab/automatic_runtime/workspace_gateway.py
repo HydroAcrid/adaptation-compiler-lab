@@ -555,7 +555,7 @@ class EncryptedChangeBundleStore:
     @staticmethod
     def _git_bytes(root: Path, relative: str) -> bytes:
         completed = subprocess.run(
-            ["git", "-C", str(root), "show", f"HEAD:{relative}"],
+            ["git", "-C", str(root), "cat-file", "--filters", f"HEAD:{relative}"],
             capture_output=True,
             timeout=30,
             check=False,

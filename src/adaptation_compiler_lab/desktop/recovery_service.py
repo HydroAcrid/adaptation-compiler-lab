@@ -29,6 +29,10 @@ from adaptation_compiler_lab.automatic_runtime.dogfood_cli import (
     _load_config,
 )
 from adaptation_compiler_lab.automatic_runtime.models import CodexProjectRecoveryBindingV1
+from adaptation_compiler_lab.connectors.pins import (
+    persist_codex_runtime_lock,
+    persistent_codex_runtime_lock_path,
+)
 from adaptation_compiler_lab.desktop.platform import PlatformPaths
 from adaptation_compiler_lab.desktop.preferences import LocalDesktopPreferencesStore
 from adaptation_compiler_lab.domain import Sha256Digest
@@ -312,6 +316,8 @@ class LocalRecoveryService:
             )
             for project in source_config.projects
         )
+        runtime_pin_source = self._runtime_pin_path().expanduser().resolve()
+        runtime_pin_path = persistent_codex_runtime_lock_path(runtime_pin_source, destination)
         restored = CodexDogfoodLocalConfig.model_validate(
             source_config.model_copy(
                 update={
@@ -323,7 +329,7 @@ class LocalRecoveryService:
                     "source_codex_home": self._source_codex_home().expanduser().resolve(),
                     "codex_executable": executable.resolve(),
                     "windows_interop": False,
-                    "runtime_pin_path": self._runtime_pin_path().expanduser().resolve(),
+                    "runtime_pin_path": runtime_pin_path,
                     "projects": projects,
                     "target_codex_home": None,
                     "target_codex_executable": None,
@@ -344,6 +350,7 @@ class LocalRecoveryService:
             runtime_secrets=runtime_secrets,
             signer=signer,
             restored_at=restored_at,
+            runtime_pin_source=runtime_pin_source,
         )
         try:
             preferences = self._preferences.load().model_copy(
@@ -378,6 +385,7 @@ class LocalRecoveryService:
         runtime_secrets: RuntimeSecrets,
         signer: GovernanceSigner,
         restored_at: datetime,
+        runtime_pin_source: Path,
     ) -> RecoveryRestoreReceiptV1:
         destination = restored.state_root
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -390,6 +398,7 @@ class LocalRecoveryService:
                     raise TemperRecoveryError("recovery file escaped its staging directory")
                 target.parent.mkdir(parents=True, exist_ok=True)
                 _write_new_file(target, item.payload)
+            persist_codex_runtime_lock(runtime_pin_source, destination, staging_root=stage)
             staged_config = restored.model_copy(
                 update={
                     "state_root": destination,

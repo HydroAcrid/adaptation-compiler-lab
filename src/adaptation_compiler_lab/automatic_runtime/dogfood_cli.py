@@ -3172,6 +3172,9 @@ def _execute_gateway_session(
             reasoning_effort=config.semantic_reasoning_effort,
         ),
         include_persisted_global_roots=False,
+        codex_cli_version=load_dogfood_runtime_pins(
+            config.effective_target_runtime_pin_path
+        ).codex.executable.package_version,
     )
     instruction_environment = instruction_service.refresh(
         project_id=project.project_id,

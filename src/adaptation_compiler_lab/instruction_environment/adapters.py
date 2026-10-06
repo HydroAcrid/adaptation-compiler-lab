@@ -300,6 +300,11 @@ class CodexInstructionSourceAdapter(InstructionSourceAdapter):
     surface = "codex-cli"
     surface_contract_version = "codex-cli-0.153.1"
 
+    def __init__(self, *, cli_version: str = "0.153.1") -> None:
+        if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-.][A-Za-z0-9.-]+)?", cli_version):
+            raise ValueError("invalid Codex instruction contract version")
+        self.surface_contract_version = f"codex-cli-{cli_version}"
+
     def _native_instruction_limit(self, global_roots: tuple[Path, ...]) -> int | None:
         configured = _codex_config_value(global_roots, "project_doc_max_bytes")
         if isinstance(configured, int) and not isinstance(configured, bool) and configured > 0:

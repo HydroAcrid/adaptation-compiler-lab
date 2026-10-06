@@ -31,7 +31,9 @@ from adaptation_compiler_lab.connectors.codex_app_server import (
 from adaptation_compiler_lab.connectors.models import JsonObject
 from adaptation_compiler_lab.connectors.pins import (
     CodexAppServerPin,
+    RuntimeConformanceError,
     VerifiedCodexRuntime,
+    sha256_file,
     verify_codex_runtime,
 )
 from adaptation_compiler_lab.domain import (
@@ -809,7 +811,7 @@ def open_codex_dogfood(
     executable: Path,
     codex_home: Path,
     pin: CodexAppServerPin,
-    schema_root: Path = DEFAULT_CODEX_DOGFOOD_SCHEMA_ROOT,
+    schema_root: Path | None = None,
     windows_interop: bool = False,
     experimental_api: bool = False,
 ) -> Iterator[tuple[VerifiedCodexRuntime, CodexDogfoodSchemaSet, CodexAppServerProcess]]:
@@ -820,7 +822,7 @@ def open_codex_dogfood(
         pin,
         windows_interop=windows_interop,
     )
-    schemas = CodexDogfoodSchemaSet(schema_root)
+    schemas = codex_dogfood_schemas(pin, schema_root=schema_root)
     with CodexAppServerProcess(
         runtime,
         codex_home=codex_home,
@@ -829,3 +831,19 @@ def open_codex_dogfood(
     ) as rpc:
         require_chatgpt_account(rpc, schemas=schemas)
         yield runtime, schemas, rpc
+
+
+def codex_dogfood_schemas(
+    pin: CodexAppServerPin, *, schema_root: Path | None = None
+) -> CodexDogfoodSchemaSet:
+    """Use the exact pinned version's snapshots for every pickup and delivery."""
+
+    if schema_root is None:
+        version = pin.executable.package_version
+        if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-.][A-Za-z0-9.-]+)?", version):
+            raise RuntimeConformanceError("invalid pinned Codex schema version")
+        schema_root = DEFAULT_CODEX_DOGFOOD_SCHEMA_ROOT.parent / version
+    for relative, expected in pin.schema_file_sha256.items():
+        if sha256_file(schema_root / relative) != expected:
+            raise RuntimeConformanceError("checked-in Codex schema differs from runtime pin")
+    return CodexDogfoodSchemaSet(schema_root)

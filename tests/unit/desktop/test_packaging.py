@@ -32,6 +32,15 @@ def _macos_smoke_module() -> ModuleType:
     return module
 
 
+def _macos_development_seal_module() -> ModuleType:
+    path = ROOT / "packaging" / "macos" / "seal_development_bundle.py"
+    spec = importlib.util.spec_from_file_location("temper_macos_development_seal", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def test_native_builder_produces_target_suffixed_tauri_sidecar() -> None:
     command = _build_module().build_command(
         ROOT,
@@ -495,7 +504,9 @@ def test_apple_silicon_workflow_is_native_ephemeral_and_development_only() -> No
     assert "apple-silicon-clean-smoke:" in source
     assert source.count("runs-on: macos-15") == 2
     assert source.count('test "$(uname -m)" = "arm64"') == 2
-    assert "pnpm tauri build --bundles app,dmg" in source
+    assert "pnpm tauri build --bundles app" in source
+    assert "pnpm tauri build --bundles app,dmg" not in source
+    assert "packaging/macos/seal_development_bundle.py" in source
     assert "--signature-policy development" in source
     assert "retention-days: 1" in source
     assert 'test "$app" = "$temp_root/Applications/Temper.app"' in source
@@ -544,18 +555,54 @@ def test_macos_development_policy_never_runs_trusted_admission(
     app = tmp_path / "Temper.app"
     dmg = tmp_path / "Temper.dmg"
     app.mkdir()
+    seal = app / "Contents" / "_CodeSignature" / "CodeResources"
+    seal.parent.mkdir(parents=True)
+    seal.write_bytes(b"synthetic seal")
     dmg.write_bytes(b"synthetic")
     calls: list[list[str]] = []
 
     def fake_run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
         calls.append(command)
-        return subprocess.CompletedProcess(command, 1, "", "not signed")
+        details = "Signature=adhoc\nSealed Resources version=2 rules=13 files=3\n"
+        return subprocess.CompletedProcess(command, 0, "", details)
 
     monkeypatch.setattr(module, "_run", fake_run)
 
-    assert module._verify_signature(app, dmg, policy="development") == "unsigned"
-    assert len(calls) == 1
-    assert calls[0][1:3] == ["--display", "--verbose=2"]
+    assert module._verify_signature(app, dmg, policy="development") == "development-ad-hoc-sealed"
+    assert len(calls) == 2
+    assert calls[0][1:5] == ["--verify", "--deep", "--strict", "--verbose=4"]
+    assert calls[1][1:3] == ["--display", "--verbose=4"]
+
+
+def test_macos_development_policy_rejects_linker_signature_without_resource_seal(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _macos_smoke_module()
+    app = tmp_path / "Temper.app"
+    app.mkdir()
+
+    def forbidden_run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        pytest.fail("an unsealed app must fail before codesign --display")
+
+    monkeypatch.setattr(module, "_run", forbidden_run)
+    with pytest.raises(ValueError, match="complete bundle resource seal"):
+        module._verify_signature(app, tmp_path / "Temper.dmg", policy="development")
+
+
+def test_macos_development_builder_rejects_manifest_drift_before_signing(tmp_path: Path) -> None:
+    module = _macos_development_seal_module()
+    app = tmp_path / "Temper.app"
+    sidecar = app / "Contents" / "MacOS" / "temper-engine"
+    sidecar.parent.mkdir(parents=True)
+    sidecar.write_bytes(b"exact engine")
+    manifest = tmp_path / "engine-manifest.json"
+    manifest.write_text(
+        json.dumps({"target_triple": "aarch64-apple-darwin", "binary_sha256": "0" * 64})
+    )
+
+    with pytest.raises(ValueError, match="exact Apple manifest"):
+        module._bound_sidecar(app, "temper-engine", manifest)
 
 
 def test_macos_trusted_policy_rejects_missing_developer_id(

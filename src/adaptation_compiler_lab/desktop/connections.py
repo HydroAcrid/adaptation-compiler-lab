@@ -11,12 +11,11 @@ from pathlib import Path
 from typing import Protocol
 
 from adaptation_compiler_lab.connectors.pins import (
-    DEFAULT_DOGFOOD_RUNTIME_LOCK,
-    DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK,
     DEFAULT_RUNTIME_LOCK,
     RuntimeConformanceError,
     load_dogfood_runtime_pins,
     load_runtime_pins,
+    select_product_codex_runtime_lock,
     sha256_file,
     verify_codex_runtime,
 )
@@ -68,11 +67,7 @@ class AgentConnectionInspector:
         self._runner = runner or LocalProbeRunner()
         self._environ = os.environ if environ is None else environ
         self._platform = sys.platform if platform_name is None else platform_name
-        self._codex_pin_path = codex_pin_path or (
-            DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK
-            if self._platform == "win32"
-            else DEFAULT_DOGFOOD_RUNTIME_LOCK
-        )
+        self._codex_pin_path = codex_pin_path
         self._claude_pin_path = claude_pin_path or DEFAULT_RUNTIME_LOCK
 
     def inspect(self) -> tuple[AgentConnectionV1, AgentConnectionV1, AgentConnectionV1]:
@@ -97,8 +92,11 @@ class AgentConnectionInspector:
         authentication = self._codex_authentication(executable)
         conformant = False
         try:
-            pin = load_dogfood_runtime_pins(self._codex_pin_path).codex
-            verify_codex_runtime(executable, pin)
+            if self._codex_pin_path is None:
+                select_product_codex_runtime_lock(executable, self._platform)
+            else:
+                pin = load_dogfood_runtime_pins(self._codex_pin_path).codex
+                verify_codex_runtime(executable, pin)
             conformant = True
         except (OSError, RuntimeConformanceError):
             pass
