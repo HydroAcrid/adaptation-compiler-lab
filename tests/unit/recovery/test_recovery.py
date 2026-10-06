@@ -18,6 +18,10 @@ from adaptation_compiler_lab.automatic_runtime.dogfood_cli import (
 )
 from adaptation_compiler_lab.automatic_runtime.models import StandingAutomationPolicy
 from adaptation_compiler_lab.automatic_runtime.service import initial_runtime_state
+from adaptation_compiler_lab.connectors.pins import (
+    DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK,
+    load_dogfood_runtime_pins,
+)
 from adaptation_compiler_lab.desktop.platform import PlatformPaths
 from adaptation_compiler_lab.desktop.preferences import (
     DesktopPreferences,
@@ -263,7 +267,7 @@ def test_recovery_restores_identity_ledger_raw_payload_and_rebinds_project(
     target_codex_home = tmp_path / "restored" / "codex-home"
     target_codex_home.mkdir()
     target_pin = tmp_path / "restored" / "runtime-pin.json"
-    target_pin.write_text("{}", encoding="utf-8")
+    target_pin.write_bytes(DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK.read_bytes())
     target_preferences = LocalDesktopPreferencesStore(target_paths.config_root)
     target_preferences.save(DesktopPreferences())
     target_service = LocalRecoveryService(
@@ -297,6 +301,9 @@ def test_recovery_restores_identity_ledger_raw_payload_and_rebinds_project(
 
     restored_path = target_paths.state_root / "runtime" / "config.json"
     restored = CodexDogfoodLocalConfig.model_validate_json(restored_path.read_text(), strict=True)
+    assert restored.runtime_pin_path.is_relative_to(restored.state_root)
+    target_pin.unlink()
+    assert load_dogfood_runtime_pins(restored.runtime_pin_path).codex.executable.package_version
     restored_secrets = _store(restored.state_root).unlock(
         subject_id=restored.subject_id,
         config_digest=restored.credential_binding_digest,

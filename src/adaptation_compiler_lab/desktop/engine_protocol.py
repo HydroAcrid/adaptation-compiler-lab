@@ -2887,6 +2887,8 @@ def build_router(
                 target_authorized_artifact_refs=authorized_refs,
             )
 
+        from adaptation_compiler_lab.connectors.pins import load_dogfood_runtime_pins
+
         return InstructionEnvironmentService(
             projects={item.project_id: item.root for item in config.projects},
             state_root=config.state_root,
@@ -2903,6 +2905,9 @@ def build_router(
                 reasoning_effort=config.semantic_reasoning_effort,
             ),
             projection_provider=projection_provider,
+            codex_cli_version=load_dogfood_runtime_pins(
+                config.effective_target_runtime_pin_path
+            ).codex.executable.package_version,
         )
 
     instruction_instance: InstructionEnvironmentService | None = None
@@ -3182,8 +3187,7 @@ def _native_recovery_service() -> LocalRecoveryService:
     """Construct recovery lazily so an idle first-run engine stays lightweight."""
 
     from adaptation_compiler_lab.connectors.pins import (
-        DEFAULT_DOGFOOD_RUNTIME_LOCK,
-        DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK,
+        select_product_codex_runtime_lock,
     )
     from adaptation_compiler_lab.desktop.connections import AgentConnectionInspector
     from adaptation_compiler_lab.desktop.platform import platform_paths, product_preferences_store
@@ -3200,17 +3204,19 @@ def _native_recovery_service() -> LocalRecoveryService:
             return None
         return inspector.codex_executable()
 
-    pin_path = (
-        DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK
-        if paths.platform == "windows"
-        else DEFAULT_DOGFOOD_RUNTIME_LOCK
-    )
+    def runtime_pin_path() -> Path:
+        executable = compatible_codex()
+        if executable is None:
+            raise ValueError("a compatible Codex installation is unavailable")
+        return select_product_codex_runtime_lock(
+            executable, "win32" if paths.platform == "windows" else sys.platform
+        )
     return LocalRecoveryService(
         paths=paths,
         preferences_store=product_preferences_store(paths),
         codex_executable=compatible_codex,
         source_codex_home=lambda: Path.home() / ".codex",
-        runtime_pin_path=lambda: pin_path,
+        runtime_pin_path=runtime_pin_path,
     )
 
 

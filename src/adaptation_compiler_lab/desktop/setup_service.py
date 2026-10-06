@@ -14,8 +14,6 @@ from time import monotonic
 from typing import Literal
 
 from adaptation_compiler_lab.automatic_runtime.codex_dogfood import (
-    DEFAULT_CODEX_DOGFOOD_SCHEMA_ROOT,
-    WINDOWS_PRODUCT_CODEX_SCHEMA_ROOT,
     open_codex_dogfood,
 )
 from adaptation_compiler_lab.automatic_runtime.credentials import (
@@ -40,9 +38,9 @@ from adaptation_compiler_lab.automatic_runtime.models import (
 )
 from adaptation_compiler_lab.automatic_runtime.service import initial_runtime_state
 from adaptation_compiler_lab.connectors.pins import (
-    DEFAULT_DOGFOOD_RUNTIME_LOCK,
-    DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK,
     load_dogfood_runtime_pins,
+    persist_codex_runtime_lock,
+    select_product_codex_runtime_lock,
 )
 from adaptation_compiler_lab.desktop.connections import AgentConnectionInspector
 from adaptation_compiler_lab.desktop.models import (
@@ -425,24 +423,18 @@ class DesktopSetupApplicationService:
         codex_home = Path.home() / ".codex"
         if not (codex_home / "auth.json").is_file():
             raise ValueError("saved ChatGPT authentication is unavailable")
-        pin_path = (
-            DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK
-            if self._paths.platform == "windows"
-            else DEFAULT_DOGFOOD_RUNTIME_LOCK
+        pin_path = select_product_codex_runtime_lock(
+            executable, "win32" if self._paths.platform == "windows" else sys.platform
         )
         pins = load_dogfood_runtime_pins(pin_path)
         with open_codex_dogfood(
             executable=executable,
             codex_home=codex_home,
             pin=pins.codex,
-            schema_root=(
-                WINDOWS_PRODUCT_CODEX_SCHEMA_ROOT
-                if self._paths.platform == "windows"
-                else DEFAULT_CODEX_DOGFOOD_SCHEMA_ROOT
-            ),
             windows_interop=False,
         ):
             pass
+        pin_path = persist_codex_runtime_lock(pin_path, state)
         config = CodexDogfoodLocalConfig(
             subject_id=subject_id,
             repository_root=held.root,

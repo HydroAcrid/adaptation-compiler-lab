@@ -45,7 +45,9 @@ def test_codex_connection_reports_separate_truthful_capabilities(
     executable = tmp_path / "codex.exe"
     executable.write_bytes(b"synthetic")
     executable.chmod(0o700)
-    monkeypatch.setattr(connections, "verify_codex_runtime", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        connections, "select_product_codex_runtime_lock", lambda *_args, **_kwargs: executable
+    )
     inspector = AgentConnectionInspector(
         runner=FakeRunner(),
         environ={"PATH": str(tmp_path), "OPENAI_API_KEY": "must-not-be-used"},

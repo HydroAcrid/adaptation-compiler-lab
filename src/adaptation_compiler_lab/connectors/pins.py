@@ -36,6 +36,68 @@ DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK: Final = (
 )
 
 
+def product_codex_runtime_locks(platform_name: str) -> tuple[Path, ...]:
+    """Keep native product releases separate from frozen research locks."""
+
+    root = Path(__file__).resolve().parent / "runtime_pins"
+    if platform_name == "win32":
+        return (root / "desktop_codex_windows_0_160_1.json", DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK)
+    if platform_name == "darwin":
+        return (root / "desktop_codex_macos_0_157_0.json",)
+    return (DEFAULT_DOGFOOD_RUNTIME_LOCK,)
+
+
+def select_product_codex_runtime_lock(executable: Path, platform_name: str) -> Path:
+    """Admit only a checked-in exact binary and its regenerated protocol contract."""
+
+    for path in product_codex_runtime_locks(platform_name):
+        try:
+            pin = load_dogfood_runtime_pins(path).codex
+            verify_codex_runtime(executable, pin)
+        except (OSError, RuntimeConformanceError):
+            continue
+        return path
+    raise RuntimeConformanceError("installed Codex has no verified native product runtime lock")
+
+
+def persistent_codex_runtime_lock_path(source: Path, state_root: Path) -> Path:
+    """Bind a runtime to content-addressed data outside onefile extraction paths."""
+
+    load_dogfood_runtime_pins(source)
+    digest = sha256_file(source).removeprefix("sha256:")
+    return state_root.resolve() / "runtime-pins" / f"{digest}.json"
+
+
+def persist_codex_runtime_lock(
+    source: Path, state_root: Path, *, staging_root: Path | None = None
+) -> Path:
+    """Copy an immutable pin before config enrollment, optionally into a restore stage."""
+
+    final = persistent_codex_runtime_lock_path(source, state_root)
+    destination = (staging_root.resolve() / "runtime-pins" / final.name) if staging_root else final
+    if destination.parent.is_symlink():
+        raise RuntimeConformanceError("runtime lock directory must not be a symlink")
+    destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if destination.is_symlink():
+        raise RuntimeConformanceError("persisted runtime lock must not be a symlink")
+    if destination.exists():
+        if sha256_file(destination) != sha256_file(source):
+            raise RuntimeConformanceError("persisted runtime lock content changed")
+        return final
+    descriptor, temporary_name = tempfile.mkstemp(prefix=".runtime-pin-", dir=destination.parent)
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(source.read_bytes())
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.chmod(0o600)
+        os.replace(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return final
+
+
 class RuntimeConformanceError(RuntimeError):
     """A runtime cannot prove that it matches the frozen study contract."""
 

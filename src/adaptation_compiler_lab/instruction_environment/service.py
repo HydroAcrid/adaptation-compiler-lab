@@ -111,6 +111,7 @@ class InstructionEnvironmentService:
             Callable[[str, NativeTarget], CanonicalRuntimeProjection | None] | None
         ) = None,
         adapters: Mapping[NativeTarget, InstructionSourceAdapter] | None = None,
+        codex_cli_version: str = "0.153.1",
         include_persisted_global_roots: bool = True,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
@@ -132,7 +133,7 @@ class InstructionEnvironmentService:
         self._adapters = dict(
             adapters
             or {
-                NativeTarget.CODEX: CodexInstructionSourceAdapter(),
+                NativeTarget.CODEX: CodexInstructionSourceAdapter(cli_version=codex_cli_version),
                 NativeTarget.CLAUDE: ClaudeInstructionSourceAdapter(),
                 NativeTarget.COPILOT: CopilotInstructionSourceAdapter(),
             }
