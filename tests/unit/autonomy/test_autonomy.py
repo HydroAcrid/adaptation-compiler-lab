@@ -198,6 +198,7 @@ def test_independent_tasks_across_two_dates_can_trial_without_user_preference_ph
     assert service.hypotheses()[0].habit_id == habit_id
     assert service.hypotheses()[0].state is HabitState.TRIAL
     assert service.hypotheses()[0].origin == "inferred"
+    assert service.hypotheses()[0].evidence_strength == "repeated"
     assert service.applicability("unrelated", TaskClass.PROGRESS_UPDATE)["applies"] == []
 
 
@@ -270,6 +271,7 @@ def test_three_checked_opportunities_can_promote_and_unknown_outcomes_do_not(app
         )
     )
     assert service.hypotheses()[0].state is HabitState.ACTIVE
+    assert service.hypotheses()[0].evidence_strength == "checked"
 
 
 def test_contradiction_pauses_and_owner_revoke_blocks_regeneration(app: Any) -> None:

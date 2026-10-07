@@ -165,6 +165,7 @@ class HabitHypothesisV1(FrozenModel):
     origin: Literal["inferred", "expressed_preference"]
     support_episode_ids: tuple[Identifier, ...]
     support_dates: tuple[str, ...]
+    evidence_strength: Literal["sparse", "repeated", "checked", "contradicted"] = "sparse"
     contradiction_episode_ids: tuple[Identifier, ...] = ()
     state: HabitState = HabitState.PROVISIONAL
     first_seen_at: datetime

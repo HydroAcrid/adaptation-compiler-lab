@@ -422,6 +422,15 @@ class AutonomyApplicationService:
             origin=proposal.origin,
             support_episode_ids=support,
             support_dates=dates,
+            evidence_strength=(
+                "contradicted"
+                if contradictions
+                else "checked"
+                if existing and existing.state is HabitState.ACTIVE
+                else "repeated"
+                if len(support) >= SUPPORT_TASKS and len(dates) >= SUPPORT_DATES
+                else "sparse"
+            ),
             contradiction_episode_ids=contradictions,
             state=state,
             first_seen_at=existing.first_seen_at if existing else now,
@@ -508,7 +517,15 @@ class AutonomyApplicationService:
             state = HabitState.ACTIVE
         if state is not habit.state:
             self._save_habit(
-                habit.model_copy(update={"revision": habit.revision + 1, "state": state})
+                habit.model_copy(
+                    update={
+                        "revision": habit.revision + 1,
+                        "state": state,
+                        "evidence_strength": "checked"
+                        if state is HabitState.ACTIVE
+                        else "contradicted",
+                    }
+                )
             )
             if self.switch("personalization"):
                 self.publish()
