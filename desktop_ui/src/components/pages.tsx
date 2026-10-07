@@ -27,6 +27,7 @@ import {
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { AgentBrandMark } from "./AgentBrandMark";
+import { AutonomousLearningPanel } from "./AutonomousLearningPanel";
 import {
   analyzeInstructionEnvironment,
   applyClaudeConnection,
@@ -106,6 +107,7 @@ export function TodayPage({
   liveSummary,
   instructionEnvironments = [],
   liveProjects = [],
+  nativeAutonomy = false,
 }: {
   onReview: (suggestionId: string) => void;
   onOpenCore: () => void;
@@ -127,6 +129,7 @@ export function TodayPage({
   };
   instructionEnvironments?: EngineInstructionEnvironmentSummary[];
   liveProjects?: EngineProject[];
+  nativeAutonomy?: boolean;
 }) {
   const applicableEnvironments = instructionEnvironments.filter(
     (environment) =>
@@ -226,6 +229,7 @@ export function TodayPage({
     : "Preview";
   return (
     <div className="page folio-page folio-page--today">
+      {nativeAutonomy && <AutonomousLearningPanel projects={liveProjects} />}
       <header className="folio-page-meta">
         <span>
           {new Intl.DateTimeFormat(undefined, {

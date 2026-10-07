@@ -2,6 +2,13 @@
 
 Status: product direction accepted October 6, 2026; implementation and calibration pending.
 
+October 7 implementation checkpoint: the baseline candidates are installed, Windows
+endpoint migration is verified, and the first autonomy backend and desktop controls
+are implemented on a separate branch. Live capture and serving remain disabled because
+current clients cannot attest human origin. See [implementation status](TEMPER_AUTONOMY_IMPLEMENTATION.md)
+for verified work and the remaining gates. The historical design-only authorization
+statement below is superseded by owner implementation decisions D-301 and D-302.
+
 Temper should learn useful work habits from normal collaboration. Users should not need special
 phrases, a preference questionnaire, or approval for every routine adaptation. After one scoped
 onboarding consent, the intended everyday mode observes eligible work, develops hypotheses,

@@ -1,0 +1,129 @@
+"""One background lane using a source-adapter seam and a prospective cursor."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from typing import Any
+
+from adaptation_compiler_lab.autonomy.analyzer import HabitSensor, analyzer_digest
+from adaptation_compiler_lab.autonomy.models import StyleEpisodeV1
+from adaptation_compiler_lab.autonomy.retention import purge_expired_raw
+from adaptation_compiler_lab.autonomy.service import AutonomyApplicationService
+from adaptation_compiler_lab.serialization import canonical_digest
+
+
+@dataclass(frozen=True)
+class CapturePage:
+    cursor: str
+    episodes: tuple[StyleEpisodeV1, ...]
+
+
+class BackgroundHabitWorker:
+    def __init__(
+        self,
+        service: AutonomyApplicationService,
+        *,
+        read_completed: Callable[[datetime, str | None], CapturePage] | None = None,
+        sensor: HabitSensor | None = None,
+        remaining_capacity: Callable[[], float | None] | None = None,
+        context: Callable[[str], str] | None = None,
+    ) -> None:
+        self.service = service
+        self.read_completed = read_completed
+        self.sensor = sensor
+        self.remaining_capacity = remaining_capacity
+        self.context = context
+
+    def poll(self) -> dict[str, Any]:
+        service = self.service
+        now = service.clock()
+        purged = purge_expired_raw(service.store, now=now)
+        result: dict[str, Any] = {
+            "captured": 0,
+            "analyzed": 0,
+            "purged": purged,
+            "raw_payloads_exposed": False,
+        }
+        grant = service.grant()
+        if grant is None or not service.switch("learning"):
+            return {**result, "status": "paused"}
+        if service.provenance_verifier is None or self.read_completed is None:
+            return {**result, "status": "source_verification_required"}
+        service.ensure_lease()
+        cursor = service.store.latest("cursor")
+        previous_cursor = (
+            str(cursor["cursor"]) if cursor and cursor["grant_id"] == grant.grant_id else None
+        )
+        page = self.read_completed(grant.issued_at, previous_cursor)
+        for episode in page.episodes:
+            result["captured"] += int(service.ingest_episode(episode))
+        service.store.append(
+            "cursor-" + str(canonical_digest({"grant": grant.grant_id, "cursor": page.cursor}))[7:],
+            "cursor",
+            {"grant_id": grant.grant_id, "cursor": page.cursor},
+            at=now,
+        )
+        done = {
+            episode_id
+            for event in service.store.events()
+            if event["type"] == "analysis_completed"
+            for episode_id in event["payload"]["episode_ids"]
+        }
+        pending = [
+            value
+            for key, value in sorted(service.episodes().items())
+            if key not in done
+            and value["grant_id"] == grant.grant_id
+            and datetime.fromisoformat(value["completed_at"]) > now - timedelta(days=30)
+        ]
+        if not pending:
+            service.publish()
+            return {**result, "status": "idle"}
+        if self.sensor is None or self.remaining_capacity is None or self.context is None:
+            return {**result, "status": "analysis_verification_required"}
+        capacity = self.remaining_capacity()
+        if not service.budget_available(capacity):
+            return {**result, "status": "capacity_deferred"}
+        project = pending[0]["project_id"]
+        selected = sorted(
+            (
+                value
+                for value in service.episodes().values()
+                if value["project_id"] == project
+                and value["grant_id"] == grant.grant_id
+                and datetime.fromisoformat(value["completed_at"]) > now - timedelta(days=30)
+            ),
+            key=lambda value: (value["completed_at"], value["episode_id"]),
+        )[-24:]
+        episodes = tuple(
+            StyleEpisodeV1.model_validate_json(service.store.raw(value["raw_ref"]), strict=True)
+            for value in selected
+        )
+        batch_key = str(
+            canonical_digest({"episodes": [e.episode_id for e in episodes], "at": now.isoformat()})
+        )[7:]
+        service.begin_analysis(capacity, key="analysis-" + batch_key)
+        batch = self.sensor.analyze(episodes, context=self.context(project))
+        for proposal in batch.proposals:
+            service.record_proposal(proposal)
+        raw = service.store.save_raw(batch.model_dump_json().encode())
+        service.store.append(
+            "analysis-completed-" + batch_key,
+            "analysis_completed",
+            {
+                "episode_ids": [episode.episode_id for episode in episodes],
+                "analyzer_digest": analyzer_digest(),
+                "result_digest": canonical_digest(batch),
+                "raw_ref": asdict(raw),
+                "completed_at": now.isoformat(),
+            },
+            at=now,
+        )
+        result["analyzed"] = len(episodes)
+        service.publish()
+        return {
+            **result,
+            "status": "shadow" if not service.switch("personalization") else "updated",
+        }

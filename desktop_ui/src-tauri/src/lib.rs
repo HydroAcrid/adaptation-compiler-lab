@@ -131,7 +131,9 @@ impl EngineProcess {
         stdin.flush().map_err(|_| unavailable())?;
 
         let timeout = match method {
-            "instruction_environment.analyze" => ENGINE_ANALYSIS_TIMEOUT,
+            "instruction_environment.analyze" | "autonomy.background.poll" => {
+                ENGINE_ANALYSIS_TIMEOUT
+            }
             "recovery.export.preview" | "recovery.export.create" | "recovery.restore" => {
                 ENGINE_RECOVERY_TIMEOUT
             }
@@ -497,6 +499,38 @@ fn show_review_notification(app: &tauri::AppHandle) {
 
 fn run_background_poll(app: &tauri::AppHandle) {
     let state = app.state::<EngineState>();
+    // A persistent habit grant has its own lease and cursor. Never double-capture through
+    // the legacy explicit-feedback lane, whose research consent remains unchanged.
+    let Ok(autonomy) = call_engine(state.inner(), "autonomy.status", json!({}), None, None) else {
+        return;
+    };
+    if !autonomy.ok {
+        return; // An unreadable grant must never fall back to another observation lane.
+    }
+    let Some(digest) = autonomy.snapshot_digest.as_deref() else {
+        return;
+    };
+    let Ok(maintenance) = call_engine(
+        state.inner(),
+        "autonomy.background.poll",
+        json!({}),
+        Some(digest),
+        Some(&Uuid::new_v4().to_string()),
+    ) else {
+        return;
+    };
+    if !maintenance.ok {
+        return;
+    }
+    if autonomy
+        .result
+        .as_ref()
+        .and_then(|value| value.get("grant_enabled"))
+        .and_then(Value::as_bool)
+        == Some(true)
+    {
+        return;
+    }
     let before = match call_engine(state.inner(), "snapshot.get", json!({}), None, None) {
         Ok(response) => response,
         Err(_) => return,
@@ -1714,6 +1748,111 @@ fn diagnostics_get(state: tauri::State<'_, EngineState>) -> Result<EngineRespons
     call_engine(&state, "diagnostics.get", json!({}), None, None)
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum AutonomyAction {
+    PauseLearning,
+    ResumeLearning,
+    EnablePersonalization,
+    DisablePersonalization,
+    RevokeGrant,
+    RevokeHabit,
+}
+
+#[tauri::command]
+fn autonomy_status(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
+    call_engine(&state, "autonomy.status", json!({}), None, None)
+}
+
+#[tauri::command]
+fn autonomy_grant_preview(
+    state: tauri::State<'_, EngineState>,
+    project_ids: Vec<String>,
+    categories: Vec<String>,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "autonomy.grant.preview",
+        json!({"project_ids": project_ids, "categories": categories}),
+        None,
+        None,
+    )
+}
+
+#[tauri::command]
+fn autonomy_grant_enable(
+    state: tauri::State<'_, EngineState>,
+    preview_token: String,
+    confirmed: bool,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "autonomy.grant.enable",
+        json!({"preview_token": preview_token, "confirmed": confirmed}),
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+fn autonomy_control(
+    state: tauri::State<'_, EngineState>,
+    action: AutonomyAction,
+    habit_id: Option<String>,
+    expected_snapshot_digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    let (method, params) = match action {
+        AutonomyAction::PauseLearning => ("autonomy.learning.pause", json!({})),
+        AutonomyAction::ResumeLearning => ("autonomy.learning.resume", json!({})),
+        AutonomyAction::EnablePersonalization => ("autonomy.personalization.enable", json!({})),
+        AutonomyAction::DisablePersonalization => ("autonomy.personalization.disable", json!({})),
+        AutonomyAction::RevokeGrant => ("autonomy.grant.revoke", json!({})),
+        AutonomyAction::RevokeHabit => (
+            "autonomy.habit.revoke",
+            json!({"habit_id": habit_id.ok_or_else(unavailable)?}),
+        ),
+    };
+    call_engine(
+        &state,
+        method,
+        params,
+        Some(&expected_snapshot_digest),
+        Some(&idempotency_key),
+    )
+}
+
+#[tauri::command]
+fn autonomy_habit_explain(
+    state: tauri::State<'_, EngineState>,
+    habit_id: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "autonomy.habit.explain",
+        json!({"habit_id": habit_id}),
+        None,
+        None,
+    )
+}
+
+#[tauri::command]
+fn autonomy_applicability_preview(
+    state: tauri::State<'_, EngineState>,
+    project_id: String,
+    task_class: String,
+) -> Result<EngineResponse, PublicError> {
+    call_engine(
+        &state,
+        "autonomy.applicability.preview",
+        json!({"project_id": project_id, "task_class": task_class}),
+        None,
+        None,
+    )
+}
+
 fn notification_permission_label(state: PermissionState) -> &'static str {
     match state {
         PermissionState::Granted => "granted",
@@ -1811,6 +1950,12 @@ pub fn run() {
             task_apply,
             task_discard,
             diagnostics_get,
+            autonomy_status,
+            autonomy_grant_preview,
+            autonomy_grant_enable,
+            autonomy_control,
+            autonomy_habit_explain,
+            autonomy_applicability_preview,
             notification_permission
         ])
         .run(tauri::generate_context!())
