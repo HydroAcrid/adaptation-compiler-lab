@@ -470,6 +470,14 @@ class AutonomyApplicationService:
         )
 
     def record_outcome(self, outcome: HabitOutcomeV1) -> None:
+        key = "outcome-" + outcome.outcome_id
+        prior = next((event for event in self.store.events() if event["key"] == key), None)
+        if prior is not None:
+            if prior["type"] != "outcome" or canonical_digest(prior["payload"]) != canonical_digest(
+                outcome
+            ):
+                raise AutonomyIntegrityError("outcome replay content changed")
+            return
         self.expire_trials()
         habit = next(
             (value for value in self.hypotheses() if value.habit_id == outcome.habit_id), None
@@ -490,7 +498,7 @@ class AutonomyApplicationService:
         ):
             raise AutonomyIntegrityError("outcome assessment cannot be verified")
         self.store.append(
-            "outcome-" + outcome.outcome_id,
+            key,
             "outcome",
             outcome.model_dump(mode="json"),
             at=self._now(),
@@ -504,7 +512,9 @@ class AutonomyApplicationService:
             and value.occurred_at >= habit.trial_started_at
         }
         state = habit.state
-        if outcome.scope_regression or outcome.harmful is True:
+        if habit.state is not HabitState.RETIRED and (
+            outcome.scope_regression or outcome.harmful is True
+        ):
             state = HabitState.PAUSED
         elif (
             state is HabitState.TRIAL
@@ -617,6 +627,11 @@ class AutonomyApplicationService:
                 ids,
                 at=self._now(),
                 initial_digest=None if initial is None else initial["native_before_digest"],
+                habit_versions={
+                    habit.habit_id: {"revision": habit.revision, "digest": habit.content_digest}
+                    for habit in self.hypotheses()
+                    if habit.habit_id in ids
+                },
             )
         except (OSError, ValueError):
             self.store.append(

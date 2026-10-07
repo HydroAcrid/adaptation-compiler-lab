@@ -113,6 +113,7 @@ class NativeStylePublisher:
         *,
         at: datetime,
         initial_digest: str | None = None,
+        habit_versions: dict[str, dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         path = active_codex_instruction_file(self.home)
         if str(path) != grant.destination or path.is_symlink():
@@ -172,6 +173,7 @@ class NativeStylePublisher:
             "managed_digest": _digest(encoded) if encoded else None,
             "backup": asdict(backup),
             "habit_ids": habit_ids,
+            "habit_versions": habit_versions or {},
             "published_at": at.isoformat(),
             "delivery_confirmed": False,
         }

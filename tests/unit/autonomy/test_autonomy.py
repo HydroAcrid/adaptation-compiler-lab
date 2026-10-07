@@ -272,6 +272,8 @@ def test_three_checked_opportunities_can_promote_and_unknown_outcomes_do_not(app
     )
     assert service.hypotheses()[0].state is HabitState.ACTIVE
     assert service.hypotheses()[0].evidence_strength == "checked"
+    service.record_outcome(service.outcomes()[-1])
+    assert len(service.outcomes()) == 4
 
 
 def test_contradiction_pauses_and_owner_revoke_blocks_regeneration(app: Any) -> None:
