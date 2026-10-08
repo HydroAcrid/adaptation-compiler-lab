@@ -1,0 +1,33 @@
+{
+  "proof_version": "1.0.0",
+  "recorded_on": "2026-10-08",
+  "source_commit": "38f04949a58959c52bf5290b8bd6abbe7a171a11",
+  "platform": "darwin-arm64",
+  "cli_version": "0.157.0",
+  "executable_digest": "sha256:61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70",
+  "schema_regeneration": "exact_bytes_match",
+  "native_reads": {
+    "saved_chatgpt_account": "ready",
+    "quota_response": "schema_valid",
+    "ordinary_usage_permission": "allowed_at_probe_time",
+    "subscription_capacity_threshold": "at_least_20_percent_at_probe_time",
+    "spend_and_rate_limit_gate": "not_reached_at_probe_time",
+    "catalog_response": "schema_valid",
+    "configured_model_and_effort": "available_at_probe_time"
+  },
+  "strict_isolated_profile": "initialized_with_temporary_auth",
+  "fictional_turn": {
+    "attempts": 1,
+    "result": "completed",
+    "model": "gpt-5.6-luna",
+    "reasoning_effort": "medium",
+    "provider_fallback": false,
+    "tool_use": false,
+    "output_sha256": "sha256:4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+    "output_retained": false
+  },
+  "temporary_auth_and_encrypted_output_removed": true,
+  "personal_runtime_changed": false,
+  "human_message_origin_attested": false,
+  "native_instruction_conflict_admitted": false
+}
