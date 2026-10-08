@@ -64,6 +64,7 @@ def test_pinned_message_contract_has_no_positive_human_origin_witness(
         {"originator": "codex_desktop", "source": "appServer"},
         {"hook_event_name": "UserPromptSubmit", "permission_mode": "default"},
         {"producerSignature": "unverified-self-assertion"},
+        {"internal_chat_message_metadata_passthrough": {"content_item_kinds": ["user.text"]}},
     ],
 )
 def test_unverified_metadata_cannot_upgrade_user_role_to_human(metadata: dict[str, Any]) -> None:

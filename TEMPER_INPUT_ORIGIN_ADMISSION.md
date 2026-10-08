@@ -48,3 +48,35 @@ keyboard monitoring, or an alternative capture source would change the approved
 ordinary-Codex scope and permissions. None was installed as a workaround. Until a
 supported producer route exists, verified read-only status/context remains usable,
 while capture and automatic serving remain disabled.
+
+## Native submission counterexample
+
+After Kevin resumed the attribution task, metadata-only inspection of the actual
+Windows/Mac Temper chats found `internal_chat_message_metadata_passthrough` fields
+omitted by public thread history. Direct text had `content_item_kinds=["user.text"]`;
+goal, environment and instruction records had different kinds. Received Mac
+coordinator messages remained function outputs. These observations initially made
+the sideband look like a possible origin witness.
+
+A real Windows counterexample against the exact `0.162.0-alpha.2` binary disproved
+that interpretation. A plain programmatic `turn/start` created both a `user.text`
+record and a native UserMessage completion event. The caller could also claim a
+desktop client name during initialization. Separately, a programmatic raw-item
+injection preserved caller-provided `user.text` metadata outside an active turn.
+Thus these fields label content and do not independently prove a human submission.
+
+The probes used fictional text, a disposable auth-only home and workspace, disabled
+capabilities, exact model/effort and subscription-capacity checks. The final input
+probe was interrupted after its input event. Private authentication/state were
+deleted on exit; no personal capture, grant, publication, or CI occurred. The Mac
+programmatic counterpart remains deferred; its own-chat metadata inspection is not
+a substitute for that native fixture.
+
+Reliable positive attribution needs an independent record from the submission
+boundary. A Temper-controlled composer could create a separate producer record
+before forwarding the message to Codex, while the existing Codex conversation
+adapter remains the capture system. This changes the selected source/input route
+and needs an owner workflow decision. It must expose no agent-callable operation
+that can simply assert a human origin, preserve project/source/category permission,
+and pass actual human and automated native fixtures before admission. Keeping the
+existing Codex composer unchanged remains unsupported by the inspected metadata.
