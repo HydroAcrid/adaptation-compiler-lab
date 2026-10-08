@@ -38,7 +38,12 @@ manifest remain unchanged. No precision/recall release gate is claimed.
 Latest local checks: 201 Windows Python tests, one macOS-only skip, 79 UI tests,
 42 POSIX connector/transport tests in WSL, changed-source lint/typing, and UI production
 build. The Mac is not currently connected, so new native Mac checks are deferred.
-Native Windows package build/admission is being completed locally.
+Windows source candidate `101e52d` built the native engine, hook, Tauri app, and NSIS
+installer locally and is installed with its prior binaries preserved. Installed engine
+and hook hashes match their manifests. Two disposable-profile starts and configured-
+engine admission passed; protected-store access is available, with grant/learning/
+personalization off and zero habits. The terminal CLI uses the same source. This is
+development evidence, without trusted-signing or independent-install claims.
 
 Live source attribution and native policy/conflict integration remain unadmitted.
 The worker exits before analysis while those prerequisites are missing. Ordinary
