@@ -1,0 +1,12 @@
+{
+  "contract_version": "1.0.0",
+  "platform": "win32",
+  "cli_version": "0.162.0-alpha.2",
+  "executable_digest": "sha256:3553cd6e7df5a093d8cb8301cd8088a57e0971aba71ddbe0e67f7f44a15cdf68",
+  "schemas": {
+    "GetAccountRateLimitsResponse.json": "sha256:cb9655e68130116f634ed9353e45b336492e6069a6628f424d1cd52e54eda0e0",
+    "NullableGetAccountRateLimitsParams.json": "sha256:072f813ca1c696831a7f2fbd934feaa8cad228a6b3d44a4be8877547c796341b",
+    "ModelListParams.json": "sha256:de29a536c00a5b8f46f34dba417dabd93365305571a8ed200e33bea85db68b5a",
+    "ModelListResponse.json": "sha256:2fb387a2ed258fc74258828ea342d68f89ce4e8e22cd0329ca59d2b423f9108b"
+  }
+}

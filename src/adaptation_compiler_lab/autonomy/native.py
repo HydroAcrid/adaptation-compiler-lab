@@ -42,10 +42,22 @@ def native_autonomy_service(config_path: Path) -> AutonomyApplicationService:
         secure_store_available=secure_store_available,
     )
     from adaptation_compiler_lab.autonomy.codex_transport import ConfiguredCodexHabitSensor
+    from adaptation_compiler_lab.autonomy.native_policy import NativeStylePolicy
     from adaptation_compiler_lab.autonomy.worker import BackgroundHabitWorker
+    from adaptation_compiler_lab.connectors.pins import load_dogfood_runtime_pins
+
+    policy = NativeStylePolicy(
+        projects=service.projects,
+        codex_home=config.source_codex_home,
+        cli_version=load_dogfood_runtime_pins(
+            config.runtime_pin_path
+        ).codex.executable.package_version,
+        store=store,
+    )
+    service.native_conflict_checker = policy.blocked
 
     sensor = ConfiguredCodexHabitSensor(config_path)
     service.background_worker = BackgroundHabitWorker(
-        service, sensor=sensor, remaining_capacity=sensor.remaining_capacity
+        service, sensor=sensor, remaining_capacity=sensor.remaining_capacity, context=policy.context
     )
     return service

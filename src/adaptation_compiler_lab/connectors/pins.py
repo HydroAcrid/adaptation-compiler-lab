@@ -41,7 +41,11 @@ def product_codex_runtime_locks(platform_name: str) -> tuple[Path, ...]:
 
     root = Path(__file__).resolve().parent / "runtime_pins"
     if platform_name == "win32":
-        return (root / "desktop_codex_windows_0_160_1.json", DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK)
+        return (
+            root / "desktop_codex_windows_0_162_0_alpha_2.json",
+            root / "desktop_codex_windows_0_160_1.json",
+            DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK,
+        )
     if platform_name == "darwin":
         return (root / "desktop_codex_macos_0_157_0.json",)
     return (DEFAULT_DOGFOOD_RUNTIME_LOCK,)

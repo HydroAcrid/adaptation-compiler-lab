@@ -1,0 +1,42 @@
+{
+  "lock_version": "1.0.0",
+  "codex": {
+    "executable": {
+      "package": "@openai/codex Windows x64",
+      "package_version": "0.162.0-alpha.2",
+      "package_integrity": "codex-desktop-bundle-9691020b546a15b2",
+      "executable_sha256": "sha256:3553cd6e7df5a093d8cb8301cd8088a57e0971aba71ddbe0e67f7f44a15cdf68",
+      "version_args": [
+        "--version"
+      ],
+      "version_stdout": "codex-cli 0.162.0-alpha.2",
+      "required_help_flags": [
+        "app-server"
+      ]
+    },
+    "schema_generation_args": [
+      "app-server",
+      "generate-json-schema",
+      "--out",
+      "{output}",
+      "--experimental"
+    ],
+    "schema_bundle_sha256": "sha256:6f1c35075938de7be6ff018b919df38d4ab2adc8ea9ba4c7687b353f7397d5f1",
+    "schema_file_sha256": {
+      "v1/InitializeParams.json": "sha256:b55124e7c0f36a1789396daa5578217a92be67f053903696236686e59f6f212e",
+      "v1/InitializeResponse.json": "sha256:62ad689c2cb6379913c1d72749cfd8de5089d35760214123518eb92eef11acc9",
+      "v2/GetAccountParams.json": "sha256:30b545275f60975b55bd6fbaafd70f15505801d14168ee82d3931b6e93c78aab",
+      "v2/GetAccountResponse.json": "sha256:67ac3095b058a7d3c1627ff4dd9e52c8ee3c55f961cb1b980959ac15336d6827",
+      "v2/ItemCompletedNotification.json": "sha256:d04b9153de38cd8302a2a418a44a65e8265d4c7586d46ea2cc801b594c6acf5b",
+      "v2/ThreadListParams.json": "sha256:5daf371b2852c409d4405c95f79cddb2d92a1ee89da808b2c5112ef16a57432c",
+      "v2/ThreadListResponse.json": "sha256:71bbacb41798b25111f2226771cb87a737d137660ce013c3f3e3739796bd3fe9",
+      "v2/ThreadReadParams.json": "sha256:dfe040c6ac71d30795b8be3f3ff232e66f362a37f883b491e5d1ea367f470db4",
+      "v2/ThreadReadResponse.json": "sha256:37eda4eeaccd22a16f2b42c53cfb526f6b24b2fc4a5af484ee99f573847d6864",
+      "v2/ThreadStartParams.json": "sha256:80a40a7fac15b4bf70efb7f893fb353acc0a0d30c68f54aee4f01923deca85de",
+      "v2/ThreadStartResponse.json": "sha256:bcb709ddaed237632beda448e79621d3fbfcc449fee661221088fa16d8b55914",
+      "v2/TurnCompletedNotification.json": "sha256:4669009c1bad2d8a26da821d9aaaef847865085bba3c8293d8cc92a6919237fb",
+      "v2/TurnStartParams.json": "sha256:f4a07f33f33d5962bf5a770d1c1bb6a6de1412ccef9fb62705c4d9a83a956dbf",
+      "v2/TurnStartResponse.json": "sha256:92d0c40c75ff98bb31aca940a5484885e475bbf2920bb18198ff4fd5450b3a4a"
+    }
+  }
+}

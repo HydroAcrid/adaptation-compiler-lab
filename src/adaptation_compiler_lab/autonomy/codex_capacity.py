@@ -20,13 +20,20 @@ from adaptation_compiler_lab.connectors.pins import VerifiedCodexRuntime, sha256
 class CodexAnalysisContract:
     def __init__(self, runtime: VerifiedCodexRuntime, root: Path | None = None) -> None:
         if root is None:
-            if sys.platform != "win32" or runtime.version != "0.160.1":
+            supported = {
+                ("win32", "0.160.1"): "windows_0_160_1",
+                ("win32", "0.162.0-alpha.2"): "windows_0_162_0_alpha_2",
+                ("darwin", "0.157.0"): "macos_0_157_0",
+            }
+            directory = supported.get((sys.platform, runtime.version))
+            if directory is None:
                 raise ValueError("native analysis metadata contract is unavailable for this client")
-            root = Path(__file__).parent / "contracts" / "windows_0_160_1"
+            root = Path(__file__).parent / "contracts" / directory
         self.root = root
         manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
         if (
             manifest["contract_version"] != "1.0.0"
+            or manifest["platform"] != sys.platform
             or runtime.version != manifest["cli_version"]
             or sha256_file(runtime.executable) != manifest["executable_digest"]
         ):
