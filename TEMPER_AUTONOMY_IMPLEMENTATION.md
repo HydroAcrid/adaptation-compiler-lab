@@ -37,7 +37,9 @@ rebound through protected credential migration after Codex removed its old execu
 Identity, policy, projects, and database bytes were preserved. Expired legacy consent
 was not upgraded. The Mac's native contract and fictional model-turn proof passed;
 at `3e7bea1`, all 59 Mac autonomy tests and bridge checks passed. That result does not
-validate later source changes or a new packaged app.
+validate later source changes or a new packaged app. At functional source `4bd400d`,
+the Mac subsequently passed all 110 requested autonomy/instruction/product-pin tests
+and the registered bridge from outside the repository. Its app was not replaced.
 
 ## Human origin admission
 
@@ -108,8 +110,24 @@ leases, encryption/retention, concurrent instruction edits, independent comparis
 uncertainty/cache invalidation, quota accounting, trial reevaluation, transport
 isolation, legacy migration, and desktop contracts. Name exact commits and hashes
 for native package results. Local smoke does not establish independent installation
-or trusted signing. Existing installed Windows candidate `101e52d` and Mac baseline
-`56e2028` require fresh validation when replaced.
+or trusted signing. Windows candidate `4bd400d` rebuilt its native engine, hook,
+desktop UI/app, and NSIS installer locally, then replaced `101e52d` with previous
+binaries preserved. Two disposable-profile starts and configured engine admission
+passed. Config, protected envelope, and history database bytes are unchanged;
+protected-store access is available, with zero habits and all learning/serving off.
+The terminal CLI contains the same functional source. Subsequent `9c9b79f` changes
+only product-pin fixture formatting; its nine tests passed. Mac app remains at its
+previous `56e2028` baseline.
+
+Candidate SHA-256 hashes:
+
+- Engine: `9100a182b0def668ee8e5b2cad7fc62d26b761e6998017809806a5fecb3f781f`
+- Hook: `d4d05f6bd40c5d005ddc55a47d602761c0037b96f7ce8db87ea5794bf73fe937`
+- Installer: `5c0f5a69315d709f35fadaa0de00216828b78d358e77748dad87b09b536e4ded`
+
+At `4bd400d`, 260 Windows Python tests passed with three native/host-only skips;
+110 native Mac tests passed. Changed source lint/format/typing passed. This is local
+development evidence; signing and independent installation remain open.
 
 Milestone B remains open for a production origin-proof route and execution/adjudication
 of the frozen evaluation. Milestone C additionally requires calibration, scoped owner
