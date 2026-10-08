@@ -65,12 +65,16 @@ desktop client name during initialization. Separately, a programmatic raw-item
 injection preserved caller-provided `user.text` metadata outside an active turn.
 Thus these fields label content and do not independently prove a human submission.
 
+The Mac counterpart then reproduced the same programmatic `user.text` marker and
+UserMessage event on exact native `0.157.0`, using driver commit `a079fa5` with script
+SHA-256 `ae09d0cd5cf405dc78023ef2fdb1ecfa1a43e2ad638b6f24bc5c74f92afe68e3`.
+Its binary SHA-256 was `61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70`.
+
 The probes used fictional text, a disposable auth-only home and workspace, disabled
 capabilities, exact model/effort and subscription-capacity checks. The final input
 probe was interrupted after its input event. Private authentication/state were
 deleted on exit; no personal capture, grant, publication, or CI occurred. The Mac
-programmatic counterpart remains deferred; its own-chat metadata inspection is not
-a substitute for that native fixture.
+checkout and registered bridge remained at `4bd400d`; the temporary driver was removed.
 
 Reliable positive attribution needs an independent record from the submission
 boundary. A Temper-controlled composer could create a separate producer record
@@ -80,3 +84,8 @@ and needs an owner workflow decision. It must expose no agent-callable operation
 that can simply assert a human origin, preserve project/source/category permission,
 and pass actual human and automated native fixtures before admission. Keeping the
 existing Codex composer unchanged remains unsupported by the inspected metadata.
+
+The input-route question is pending with Kevin. No submission bridge or new source
+permission has been created. The signed receipt validator does not itself establish
+that a UI submission was human; a new producer still needs a reviewed native boundary
+and actual human-versus-automation fixtures before it can grant that classification.
