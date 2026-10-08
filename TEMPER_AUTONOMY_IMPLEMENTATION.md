@@ -4,6 +4,46 @@ This is an implementation checkpoint for the owner-approved resumption plan. The
 ordinary-chat learning product is **not enabled or release-ready**. Historical
 explicit-feedback policies, evidence, experiments, and results retain their own gates.
 
+## October 7 continuation: local validation
+
+The owner requested no GitHub CI pipelines. Automatic PR triggers are removed; the
+workflow definition remains available only for an explicitly requested manual run.
+Local results are not described as independent clean-machine validation.
+
+The Windows analysis transport is now wired to the existing native worker. Its
+additional quota/catalog schemas were regenerated with exact pinned Codex `0.160.1`
+and matched the original native contract. It uses a temporary auth-only home, an
+empty workspace, disabled capabilities/memory/hooks, an exact configured model with
+fallback disabled, and a network-denied read-only tool sandbox. Temporary auth and
+session files are removed on exit. Missing isolation metadata, unknown/stale capacity,
+limits, or unavailable model/effort stop analysis. No API-key provider, credit purchase,
+quota reset, or reserve fallback is used.
+
+A read-only Windows probe established subscription capacity and the configured model
+catalog entry. One real schema-bound model turn on a frozen **fictional** scenario
+passed; its output is encrypted in separate local validation storage. It did not
+observe personal work, enable a grant, publish instructions, or complete calibration.
+
+The worker now processes fresh backlog episodes rather than repeatedly selecting the
+same recent window. Later turns in one task remain observable but cannot multiply its
+support. Separate fresh counterevidence can pause a known habit after old raw text
+expires. Native outcome summaries are bound to the current hypothesis revision;
+unknown helpfulness stays unmeasured. The desktop refreshes its status without a user
+message.
+
+These contradiction-contract changes use `habit-eval-v2`. Its 120 fictional sequences
+retain v1's labels and thresholds and were frozen before v2 execution. V1's corpus and
+manifest remain unchanged. No precision/recall release gate is claimed.
+
+Latest local checks: 201 Windows Python tests, one macOS-only skip, 79 UI tests,
+42 POSIX connector/transport tests in WSL, changed-source lint/typing, and UI production
+build. The Mac is not currently connected, so new native Mac checks are deferred.
+Native Windows package build/admission is being completed locally.
+
+Live source attribution and native policy/conflict integration remain unadmitted.
+The worker exits before analysis while those prerequisites are missing. Ordinary
+capture and automatic serving remain disabled.
+
 ## Baseline and migration
 
 PRs #90 and #91 remain a draft stack; #91's combined candidate is commit `56e2028`.

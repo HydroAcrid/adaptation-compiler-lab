@@ -317,6 +317,8 @@ blind ratings, holdout isolation, or any fixed exclusion.
 
 ## Decision process
 
+| D-303 | Local-only resumption validation and contradiction evaluation v2 | **October 7, 2026.** Kevin requested continued implementation without GitHub CI pipelines. Disable automatic PR workflow triggers and use honest native local checks; preserve independent/trusted-install gates as separate evidence. A deterministic worker audit found backlog starvation and inability to report fresh contradictions once old raw support expired. Add independent counterevidence targets and task-level support counting under `habit-eval-v2`; freeze the same 120 fictional sequences and thresholds before v2 execution, retaining v1 unchanged. The single v1 fictional transport smoke is not calibration or personal-work evidence. |
+
 When an open item is decided, add the date, owner, selected option, affected documents, and any
 migration/test impact. Do not delete the prior recommendation. Changes motivated by seen held-out
 results are post hoc and cannot replace the preregistered decision for that experiment.

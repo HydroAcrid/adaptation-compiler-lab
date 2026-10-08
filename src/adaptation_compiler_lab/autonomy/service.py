@@ -10,7 +10,7 @@ from contextlib import suppress
 from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from adaptation_compiler_lab.autonomy.defaults import (
     CHECKED_OPPORTUNITIES,
@@ -24,6 +24,7 @@ from adaptation_compiler_lab.autonomy.defaults import (
 )
 from adaptation_compiler_lab.autonomy.models import (
     CalibrationReleaseV1,
+    HabitContradictionProposalV1,
     HabitHypothesisV1,
     HabitOutcomeV1,
     HabitProposalV1,
@@ -46,6 +47,9 @@ _UNSAFE_BEHAVIOR = re.compile(
     r"(?:install|enable).{0,20}(?:tool|plugin|mcp)|(?:send|upload|publish).{0,30}(?:data|file|message))",
     re.IGNORECASE,
 )
+
+if TYPE_CHECKING:
+    from adaptation_compiler_lab.autonomy.worker import BackgroundHabitWorker
 
 
 class AutonomyApplicationService:
@@ -72,6 +76,7 @@ class AutonomyApplicationService:
         self.outcome_verifier = outcome_verifier
         self.secure_store_available = secure_store_available or (lambda: True)
         self._previews: dict[str, dict[str, Any]] = {}
+        self.background_worker: BackgroundHabitWorker | None = None
 
     def _now(self) -> datetime:
         result = self.clock()
@@ -293,8 +298,11 @@ class AutonomyApplicationService:
             if (value["source_client"], value["source_task_id"]) == (
                 episode.source_client,
                 episode.source_task_id,
+            ) and (
+                value["project_id"] != episode.project_id
+                or datetime.fromisoformat(value["created_at"]) != episode.created_at
             ):
-                return False
+                raise AutonomyIntegrityError("source task attribution changed")
             if set(value["observation_ids"]) & set(episode.observation_ids):
                 raise AutonomyIntegrityError("one observation cannot manufacture independent tasks")
         raw = self.store.save_raw(json.dumps(episode.model_dump(mode="json")).encode())
@@ -368,6 +376,11 @@ class AutonomyApplicationService:
             and (existing is None or existing.evaluation_version == proposal.evaluation_version)
         )
         support = tuple(sorted(set(proposal.evidence_episode_ids) | set(prior_support)))
+        independent: dict[tuple[str, str], str] = {}
+        for key in sorted(support, key=lambda value: (episodes[value]["completed_at"], value)):
+            task = (episodes[key]["source_client"], episodes[key]["source_task_id"])
+            independent.setdefault(task, key)
+        support = tuple(sorted(independent.values()))
         contradictions = tuple(
             sorted(
                 set(proposal.contradictory_episode_ids)
@@ -468,6 +481,98 @@ class AutonomyApplicationService:
             for event in self.store.events()
             if event["type"] == "outcome"
         )
+
+    def outcome_summary(self, habit: HabitHypothesisV1) -> dict[str, Any]:
+        publication = self.store.latest("publication")
+        revision = (
+            None
+            if publication is None
+            else publication.get("habit_versions", {}).get(habit.habit_id, {}).get("revision")
+        )
+        values = sorted(
+            (
+                value
+                for value in self.outcomes()
+                if value.habit_id == habit.habit_id and value.habit_revision == habit.revision
+            ),
+            key=lambda value: (value.occurred_at, value.outcome_id),
+        )
+
+        def latest(name: str) -> bool | None:
+            return next(
+                (
+                    getattr(value, name)
+                    for value in reversed(values)
+                    if getattr(value, name) is not None
+                ),
+                None,
+            )
+
+        return {
+            "habit_revision": habit.revision,
+            "published": bool(
+                publication and publication["managed_digest"] and revision == habit.revision
+            ),
+            "delivered": latest("delivered"),
+            "followed": latest("followed"),
+            "helpful": latest("helpful"),
+            "harmful": latest("harmful"),
+            "checked_opportunities": len(
+                {value.episode_id for value in values if value.followed is not None}
+            ),
+        }
+
+    def record_contradiction(self, proposal: HabitContradictionProposalV1) -> None:
+        grant = self.grant()
+        habit = next(
+            (value for value in self.hypotheses() if value.habit_id == proposal.habit_id), None
+        )
+        if (
+            grant is None
+            or not self.switch("learning")
+            or habit is None
+            or habit.project_id not in grant.project_ids
+            or habit.category not in grant.categories
+        ):
+            raise AutonomyIntegrityError("contradiction is outside enabled learning scope")
+        if habit.state is HabitState.RETIRED:
+            return
+        episodes = self.episodes()
+        if any(
+            key not in episodes
+            or episodes[key]["grant_id"] != grant.grant_id
+            or episodes[key]["project_id"] != habit.project_id
+            for key in proposal.evidence_episode_ids
+        ):
+            raise AutonomyIntegrityError(
+                "contradiction references unavailable or wrong-scope evidence"
+            )
+        if set(proposal.evidence_episode_ids) & set(habit.support_episode_ids):
+            raise AutonomyIntegrityError("old positive support is not fresh counterevidence")
+        contradictions = tuple(
+            sorted(set(habit.contradiction_episode_ids) | set(proposal.evidence_episode_ids))
+        )
+        if contradictions == habit.contradiction_episode_ids:
+            return
+        self._save_habit(
+            habit.model_copy(
+                update={
+                    "revision": habit.revision + 1,
+                    "state": HabitState.PAUSED,
+                    "contradiction_episode_ids": contradictions,
+                    "last_seen_at": self._now(),
+                    "evidence_strength": "contradicted",
+                }
+            )
+        )
+        self.store.append(
+            "contradiction-" + str(canonical_digest(proposal))[7:],
+            "contradiction",
+            proposal.model_dump(mode="json"),
+            at=self._now(),
+        )
+        if self.switch("personalization"):
+            self.publish()
 
     def record_outcome(self, outcome: HabitOutcomeV1) -> None:
         key = "outcome-" + outcome.outcome_id
@@ -693,6 +798,9 @@ class AutonomyApplicationService:
             "personalization_enabled": self.switch("personalization") and grant is not None,
             "automatic_serving_ready": self.automatic_ready(),
             "provenance_state": "verified" if self.provenance_verifier else "unverified",
+            "analysis_transport_state": "configured_not_admitted"
+            if self.background_worker and self.background_worker.sensor
+            else "unconfigured",
             "secure_store_ready": self.secure_store_available(),
             "capture_state": (
                 "paused"

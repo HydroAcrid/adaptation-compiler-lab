@@ -7,7 +7,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from adaptation_compiler_lab.autonomy.analyzer import analyzer_digest
+from adaptation_compiler_lab.autonomy.analyzer import EVALUATION_VERSION, analyzer_digest
 from adaptation_compiler_lab.autonomy.defaults import frozen_defaults
 from adaptation_compiler_lab.serialization import canonical_digest
 
@@ -25,7 +25,7 @@ def load_frozen_scenarios(path: Path, manifest: Path) -> dict[str, Any]:
     value: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
     frozen = json.loads(manifest.read_text(encoding="utf-8"))
     if (
-        value.get("evaluation_version") != "habit-eval-v1"
+        value.get("evaluation_version") != EVALUATION_VERSION
         or value.get("synthetic") is not True
         or canonical_digest(value) != frozen["dataset_digest"]
         or analyzer_digest() != frozen["analyzer_digest"]

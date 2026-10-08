@@ -87,16 +87,23 @@ class BackgroundHabitWorker:
         if not service.budget_available(capacity):
             return {**result, "status": "capacity_deferred"}
         project = pending[0]["project_id"]
-        selected = sorted(
+        fresh = sorted(
+            (value for value in pending if value["project_id"] == project),
+            key=lambda value: (value["completed_at"], value["episode_id"]),
+        )[:16]
+        fresh_ids = {value["episode_id"] for value in fresh}
+        prior = sorted(
             (
                 value
                 for value in service.episodes().values()
                 if value["project_id"] == project
+                and value["episode_id"] in done
                 and value["grant_id"] == grant.grant_id
                 and datetime.fromisoformat(value["completed_at"]) > now - timedelta(days=30)
             ),
             key=lambda value: (value["completed_at"], value["episode_id"]),
-        )[-24:]
+        )[-(24 - len(fresh)) :]
+        selected = [*prior, *fresh]
         episodes = tuple(
             StyleEpisodeV1.model_validate_json(service.store.raw(value["raw_ref"]), strict=True)
             for value in selected
@@ -105,7 +112,11 @@ class BackgroundHabitWorker:
             canonical_digest({"episodes": [e.episode_id for e in episodes], "at": now.isoformat()})
         )[7:]
         service.begin_analysis(capacity, key="analysis-" + batch_key)
-        batch = self.sensor.analyze(episodes, context=self.context(project))
+        batch = self.sensor.analyze(
+            episodes, context=self.context(project), existing_habits=service.hypotheses()
+        )
+        for contradiction in batch.contradictions:
+            service.record_contradiction(contradiction)
         for proposal in batch.proposals:
             service.record_proposal(proposal)
         raw = service.store.save_raw(batch.model_dump_json().encode())
@@ -113,7 +124,7 @@ class BackgroundHabitWorker:
             "analysis-completed-" + batch_key,
             "analysis_completed",
             {
-                "episode_ids": [episode.episode_id for episode in episodes],
+                "episode_ids": sorted(fresh_ids),
                 "analyzer_digest": analyzer_digest(),
                 "result_digest": canonical_digest(batch),
                 "raw_ref": asdict(raw),

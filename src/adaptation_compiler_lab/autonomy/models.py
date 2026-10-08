@@ -202,6 +202,14 @@ class HabitHypothesisV1(FrozenModel):
         return canonical_digest(self)
 
 
+class HabitContradictionProposalV1(FrozenModel):
+    """Fresh counterevidence can pause a known habit without inventing new support."""
+
+    habit_id: Identifier
+    evidence_episode_ids: tuple[Identifier, ...] = Field(min_length=1)
+    evaluation_version: NonEmptyStr
+
+
 class HabitOutcomeV1(FrozenModel):
     outcome_version: Literal["1.0.0"] = "1.0.0"
     outcome_id: Identifier

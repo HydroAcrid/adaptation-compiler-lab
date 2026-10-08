@@ -29,6 +29,16 @@ export interface AutonomyState {
   recent_changes: { type: string; digest: string }[];
   raw_payloads_exposed: false;
 }
+
+export interface HabitOutcomeSummary {
+  habit_revision: number;
+  published: boolean;
+  delivered: boolean | null;
+  followed: boolean | null;
+  helpful: boolean | null;
+  harmful: boolean | null;
+  checked_opportunities: number;
+}
 export interface GrantPreview {
   preview_token: string;
   native_destination: string;
@@ -103,6 +113,7 @@ export function explainHabit(habitId: string): Promise<
     habit: Habit;
     support_count: number;
     contradiction_count: number;
+    outcome_summary: HabitOutcomeSummary;
     raw_payloads_exposed: false;
   }>
 > {

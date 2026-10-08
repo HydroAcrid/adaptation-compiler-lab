@@ -10,10 +10,11 @@ from typing import Any
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from adaptation_compiler_lab.autonomy.analyzer import SchemaBoundHabitSensor
+from adaptation_compiler_lab.autonomy.analyzer import EVALUATION_VERSION, SchemaBoundHabitSensor
 from adaptation_compiler_lab.autonomy.evaluation import load_frozen_scenarios, score_hypotheses
 from adaptation_compiler_lab.autonomy.models import (
     CalibrationReleaseV1,
+    HabitContradictionProposalV1,
     HabitOutcomeV1,
     HabitProposalV1,
     HabitState,
@@ -95,7 +96,7 @@ def episode(index: int, clock: Clock, **changes: Any) -> StyleEpisodeV1:
 def calibrated(service: AutonomyApplicationService, clock: Clock) -> None:
     service.install_calibration(
         CalibrationReleaseV1(
-            evaluation_version="habit-eval-v1",
+            evaluation_version=EVALUATION_VERSION,
             dataset_digest=DIGEST,
             analyzer_digest=DIGEST,
             precision=0.98,
@@ -117,7 +118,7 @@ def proposal(ids: tuple[str, ...], **changes: Any) -> HabitProposalV1:
             "category": StyleCategory.COMMUNICATION_DETAIL,
             "task_class": TaskClass.PROGRESS_UPDATE,
             "evidence_episode_ids": ids,
-            "evaluation_version": "habit-eval-v1",
+            "evaluation_version": EVALUATION_VERSION,
             **changes,
         }
     )
@@ -371,7 +372,9 @@ def test_snapshot_never_contains_raw_episode_text_or_native_destination(app: Any
 def test_aliases_and_shared_observations_cannot_manufacture_tasks(app: Any) -> None:
     service, clock = app
     assert service.ingest_episode(episode(0, clock))
-    assert not service.ingest_episode(episode(1, clock, source_task_id="source-task-0"))
+    assert service.ingest_episode(episode(1, clock, source_task_id="source-task-0"))
+    habit = service.record_proposal(proposal(("task-0", "task-1")))
+    assert len(habit.support_episode_ids) == 1
     with pytest.raises(AutonomyIntegrityError, match="independent tasks"):
         service.ingest_episode(episode(2, clock, observation_ids=("message-0",)))
 
@@ -510,7 +513,7 @@ def test_untrusted_outcome_never_counts_as_compliance(app: Any) -> None:
 
 def test_frozen_evaluation_counts_and_digest_cannot_drift(tmp_path: Path) -> None:
     root = Path(__file__).parents[2] / "fixtures" / "autonomy"
-    path, manifest = root / "habit_eval_v1.json", root / "habit_eval_v1.manifest.json"
+    path, manifest = root / "habit_eval_v2.json", root / "habit_eval_v2.manifest.json"
     assert len(load_frozen_scenarios(path, manifest)["cases"]) == 120
     changed = json.loads(path.read_text(encoding="utf-8"))
     changed["cases"][0]["expected"]["style_keys"] = []
@@ -539,3 +542,103 @@ def test_native_human_and_automated_input_fixtures_require_origin_proof(version:
         }
         assert ground_truth  # Ground truth is fixture-only.
         assert codex_message_origin(item, client_version=version) is InputOrigin.UNKNOWN
+
+
+def test_fresh_contradiction_pauses_after_old_raw_evidence_expires(app: Any) -> None:
+    service, clock = app
+    habit_id = trial(service, clock)
+    clock.value += timedelta(days=31)
+    purge_expired_raw(service.store, now=clock.value)
+    fresh = episode(
+        30, clock, text="That shorter format no longer works. Stop applying it to these updates."
+    )
+    service.ingest_episode(fresh)
+    sensor = SchemaBoundHabitSensor(
+        lambda *args: json.dumps(
+            {
+                "proposals": [],
+                "contradictions": [
+                    {
+                        "habit_id": habit_id,
+                        "evidence_episode_ids": [fresh.episode_id],
+                        "evaluation_version": EVALUATION_VERSION,
+                    }
+                ],
+            }
+        )
+    )
+    batch = sensor.analyze((fresh,), context="", existing_habits=service.hypotheses())
+    service.record_contradiction(batch.contradictions[0])
+    assert service.hypotheses()[0].state is HabitState.PAUSED
+    assert service.hypotheses()[0].support_episode_ids == ("task-0", "task-1", "task-2")
+    assert service.hypotheses()[0].contradiction_episode_ids == ("task-30",)
+    revision = service.hypotheses()[0].revision
+    service.record_contradiction(batch.contradictions[0])
+    assert service.hypotheses()[0].revision == revision
+    with pytest.raises(ValueError, match="invented contradiction"):
+        sensor.analyze((fresh,), context="", existing_habits=())
+
+
+def test_owner_retirement_cannot_be_undone_by_counterevidence(app: Any) -> None:
+    service, clock = app
+    habit_id = trial(service, clock)
+    service.retire(habit_id, key="owner-undo")
+    service.ingest_episode(episode(20, clock))
+    service.record_contradiction(
+        HabitContradictionProposalV1(
+            habit_id=habit_id,
+            evidence_episode_ids=("task-20",),
+            evaluation_version=EVALUATION_VERSION,
+        )
+    )
+    assert service.hypotheses()[0].state is HabitState.RETIRED
+
+
+def test_later_turn_can_contradict_same_task_without_counting_as_new_support(app: Any) -> None:
+    service, clock = app
+    service.ingest_episode(episode(0, clock))
+    habit = service.record_proposal(proposal(("task-0",)))
+    clock.value += timedelta(minutes=5)
+    service.ingest_episode(episode(1, clock, source_task_id="source-task-0", created_at=NOW))
+    service.record_contradiction(
+        HabitContradictionProposalV1(
+            habit_id=habit.habit_id,
+            evidence_episode_ids=("task-1",),
+            evaluation_version=EVALUATION_VERSION,
+        )
+    )
+    assert service.hypotheses()[0].state is HabitState.PAUSED
+    assert len(service.hypotheses()[0].support_episode_ids) == 1
+
+
+def test_large_backlog_is_processed_once_without_starving_older_tasks(app: Any) -> None:
+    from adaptation_compiler_lab.autonomy.analyzer import HabitBatchV1
+
+    service, clock = app
+    captured = tuple(episode(index, clock) for index in range(40))
+    seen = []
+
+    class Sensor:
+        def analyze(self, episodes, **kwargs):
+            seen.append({value.episode_id for value in episodes})
+            return HabitBatchV1(proposals=())
+
+    worker = BackgroundHabitWorker(
+        service,
+        read_completed=lambda *args: CapturePage("all-40", captured),
+        sensor=Sensor(),
+        remaining_capacity=lambda: 50,
+        context=lambda project: "",
+    )
+    for _ in range(3):
+        worker.poll()
+        clock.value += timedelta(minutes=5)
+    completed = {
+        episode_id
+        for event in service.store.events()
+        if event["type"] == "analysis_completed"
+        for episode_id in event["payload"]["episode_ids"]
+    }
+    assert completed == {value.episode_id for value in captured}
+    assert all(len(value) <= 24 for value in seen)
+    assert worker.poll()["analyzed"] == 0

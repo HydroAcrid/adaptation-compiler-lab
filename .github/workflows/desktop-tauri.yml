@@ -1,22 +1,8 @@
 name: Temper desktop
 
 on:
-  pull_request:
-    paths:
-      - "desktop_ui/**"
-      - "packaging/**"
-      - "pyproject.toml"
-      - "uv.lock"
-      - "src/adaptation_compiler_lab/desktop/**"
-      - "src/adaptation_compiler_lab/autonomy/**"
-      - "src/adaptation_compiler_lab/automatic_runtime/dogfood_cli.py"
-      - "src/adaptation_compiler_lab/automatic_runtime/credentials.py"
-      - "src/adaptation_compiler_lab/automatic_runtime/macos_keychain.py"
-      - "tests/unit/automatic_runtime/test_gateway_credentials.py"
-      - "tests/unit/desktop/**"
-      - "tests/unit/autonomy/**"
-      - "tests/fixtures/autonomy/**"
-      - ".github/workflows/desktop-tauri.yml"
+  # Owner requested local validation only on 2026-10-07. Retain the workflow for
+  # an explicitly requested future run, but PR updates must not launch pipelines.
   workflow_dispatch:
 
 permissions:

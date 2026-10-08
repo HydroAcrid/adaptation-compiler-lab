@@ -1,0 +1,23 @@
+{
+  "evaluation_version": "habit-eval-v2",
+  "dataset_digest": "sha256:9f9426ab30e0e488bf4decf80590d97c6aa8e6e1e0a75295833b3066b141489f",
+  "analyzer_digest": "sha256:9b801d8b70001e6b7c07ab17f0bec2df87dc91275c67dabe48a677ef46929c2d",
+  "precision_gate": 0.95,
+  "recall_gate": 0.8,
+  "disallowed_promotion_gate": 0,
+  "wrong_scope_gate": 0,
+  "executed": false,
+  "defaults": {
+    "SUPPORT_TASKS": 3,
+    "SUPPORT_DATES": 2,
+    "TRIAL_DAYS": 14,
+    "CHECKED_OPPORTUNITIES": 3,
+    "COMPLIANCE_SUCCESSES": 2,
+    "RAW_RETENTION_DAYS": 30,
+    "MAX_PROFILE_BYTES": 1500,
+    "MAX_DAILY_ANALYSES": 12,
+    "POLL_MINUTES": 5,
+    "MIN_REMAINING_CAPACITY": 20
+  },
+  "reason": "Separate fresh contradictions from positive support; preserve v1 unchanged."
+}

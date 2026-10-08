@@ -10,6 +10,7 @@ import {
   type Bound,
   type GrantPreview,
   type StyleCategory,
+  type HabitOutcomeSummary,
 } from "../autonomy";
 import { engineFailureMessage, type EngineProject } from "../engine";
 import { Button, StatusPill } from "./ui";
@@ -34,17 +35,22 @@ export function AutonomousLearningPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<HabitOutcomeSummary | null>(null);
   useEffect(() => {
     let live = true;
-    loadAutonomy()
-      .then((value) => {
-        if (live) setState(value);
-      })
-      .catch((value) => {
-        if (live) setError(engineFailureMessage(value));
-      });
+    const refresh = () =>
+      loadAutonomy()
+        .then((value) => {
+          if (live) setState(value);
+        })
+        .catch((value) => {
+          if (live) setError(engineFailureMessage(value));
+        });
+    void refresh();
+    const interval = window.setInterval(() => void refresh(), 30_000);
     return () => {
       live = false;
+      window.clearInterval(interval);
     };
   }, []);
 
@@ -255,6 +261,7 @@ export function AutonomousLearningPanel({
                       setExplanation(
                         `${result.value.support_count} independent supporting tasks; ${result.value.contradiction_count} contradictions. Silence does not count as success.`,
                       );
+                      setOutcome(result.value.outcome_summary);
                     })
                   }
                 >
@@ -270,6 +277,40 @@ export function AutonomousLearningPanel({
             ))}
           </ul>
           {explanation && <p role="status">{explanation}</p>}
+          {outcome && (
+            <div>
+              <p>
+                Observed results for version {outcome.habit_revision}. Older
+                results remain in local history.
+              </p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Published</th>
+                    <th>Delivered</th>
+                    <th>Followed</th>
+                    <th>Helpful</th>
+                    <th>Harmful</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    {[
+                      outcome.published,
+                      outcome.delivered,
+                      outcome.followed,
+                      outcome.helpful,
+                      outcome.harmful,
+                    ].map((value, index) => (
+                      <td key={index}>
+                        {value === null ? "Unmeasured" : value ? "Yes" : "No"}
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
           <details>
             <summary>Recent learning changes</summary>
             <ul>

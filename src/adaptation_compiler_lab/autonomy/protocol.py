@@ -17,7 +17,7 @@ class AutonomyProtocol:
         self, service: AutonomyApplicationService, worker: BackgroundHabitWorker | None = None
     ) -> None:
         self.service = service
-        self.worker = worker or BackgroundHabitWorker(service)
+        self.worker = worker or service.background_worker or BackgroundHabitWorker(service)
 
     def dispatch(
         self,
@@ -76,6 +76,7 @@ class AutonomyProtocol:
                     for value in self.service.outcomes()
                     if value.habit_id == habit.habit_id
                 ],
+                "outcome_summary": self.service.outcome_summary(habit),
                 "raw_payloads_exposed": False,
             }
         allowed = {

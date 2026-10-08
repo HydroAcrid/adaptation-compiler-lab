@@ -35,9 +35,17 @@ def native_autonomy_service(config_path: Path) -> AutonomyApplicationService:
             ),
         ),
     )
-    return AutonomyApplicationService(
+    service = AutonomyApplicationService(
         store=store,
         projects={project.project_id: project.root for project in config.projects},
         codex_home=config.source_codex_home,
         secure_store_available=secure_store_available,
     )
+    from adaptation_compiler_lab.autonomy.codex_transport import ConfiguredCodexHabitSensor
+    from adaptation_compiler_lab.autonomy.worker import BackgroundHabitWorker
+
+    sensor = ConfiguredCodexHabitSensor(config_path)
+    service.background_worker = BackgroundHabitWorker(
+        service, sensor=sensor, remaining_capacity=sensor.remaining_capacity
+    )
+    return service
