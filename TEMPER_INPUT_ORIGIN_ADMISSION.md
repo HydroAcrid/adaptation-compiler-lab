@@ -1,0 +1,50 @@
+# Ordinary Codex input-origin admission — October 8, 2026
+
+Production human-message attribution is not admitted. The native factory has no
+provenance verifier or conversation reader for the new learning lane, so it stops
+before capture. A signed receipt validator is implemented; it is not a producer of
+trustworthy origin facts. The supported clients cannot presently supply those facts.
+
+## Audited surfaces
+
+| Surface | Evidence | Admission result |
+|---|---|---|
+| Windows 0.162.0-alpha.2 and retained 0.160.1 | Exact binary/schema pins; `UserMessageThreadItem` exposes type, id, content, clientId. | No positive human-origin witness. |
+| Apple Silicon macOS 0.157.0 | Native contract and exact binary previously validated; same four message fields. | No positive human-origin witness. |
+| Thread source/originator | Metadata identifies thread creation context, not the producer of every later message. | Cannot establish human origin. |
+| UserPromptSubmit hook | Documented event-specific fields are turn ID and prompt; common fields identify session, working directory, hook event, model, permissions, transcript. | Event name does not attest a human producer. |
+| Stop continuation | Official documentation describes a generated continuation prompt acting as a new user prompt. | Counterexample to user-prompt-as-human attribution. |
+| Known coordination function output | Explicit send-message/delegation tool provenance identifies automation. | May exclude delegated input; its absence cannot prove human input. |
+
+Hook facts were checked against the current
+[official hooks documentation](https://learn.chatgpt.com/docs/hooks#userpromptsubmit)
+and its [Stop continuation behavior](https://learn.chatgpt.com/docs/hooks#stop).
+The inference is that these documented fields alone cannot distinguish all human
+and automated inputs. This is a bounded finding about the inspected interfaces;
+it is not a claim that future Codex versions or an additional supported interface
+can never provide reliable origin information.
+
+`test_provenance_admission.py` verifies the pinned schemas and synthetic negative
+controls. Those fixtures cannot count as successful real human/automated client
+admission. Client IDs, thread metadata, hook names, caller-provided origin labels,
+and self-asserted signatures must remain excluded as positive witnesses.
+
+## Evidence required to unblock the current product
+
+A supported source producer must distinguish human input from automated/delegated
+input independently of caller-supplied prompt fields. The verified record must bind
+the actual message and text to the exact client/version/binary, project and task.
+Both real human and automated fixture paths must pass on Windows and macOS before
+that producer is admitted. Unknown origin must continue to be excluded.
+
+The existing signed receipt boundary can bind and check such verified records; it
+must not sign a guessed human label into apparent authority. The eventual adapter
+must use the existing prospective conversation source, not a second raw capture
+system. Keep ambiguous material and programmatic coordination outside personal
+preference evidence; raw private fixtures must stay encrypted outside Git/vault.
+
+Enabling learning does not resolve this missing source fact. A new input UI, general
+keyboard monitoring, or an alternative capture source would change the approved
+ordinary-Codex scope and permissions. None was installed as a workaround. Until a
+supported producer route exists, verified read-only status/context remains usable,
+while capture and automatic serving remain disabled.

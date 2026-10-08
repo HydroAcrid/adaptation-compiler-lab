@@ -56,6 +56,12 @@ user-message inputs remain unknown and excluded. Fixture producers are test-only
 The native worker stops before capture or model analysis while provenance is missing.
 Receipt validation does not establish ordinary Codex human attribution.
 
+The current hook documentation also confirms that automated Stop continuation can
+create a new user prompt. Thread source/originator and prompt-hook event names are
+not per-message human witnesses. See `TEMPER_INPUT_ORIGIN_ADMISSION.md` for the
+audited surfaces, synthetic negative controls, and exact evidence needed to unblock
+production admission. These controls do not replace real supported-client fixtures.
+
 ## Native instruction conflicts
 
 The native factory uses fresh source discovery, exact duplicate omission, and two
