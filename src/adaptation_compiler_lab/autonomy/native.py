@@ -41,10 +41,16 @@ def native_autonomy_service(config_path: Path) -> AutonomyApplicationService:
         codex_home=config.source_codex_home,
         secure_store_available=secure_store_available,
     )
-    from adaptation_compiler_lab.autonomy.codex_transport import ConfiguredCodexHabitSensor
+    from adaptation_compiler_lab.autonomy.codex_transport import (
+        ConfiguredCodexHabitSensor,
+        ConfiguredNativeRelationSensor,
+    )
     from adaptation_compiler_lab.autonomy.native_policy import NativeStylePolicy
     from adaptation_compiler_lab.autonomy.worker import BackgroundHabitWorker
     from adaptation_compiler_lab.connectors.pins import load_dogfood_runtime_pins
+    from adaptation_compiler_lab.instruction_environment.codex_semantic import (
+        instruction_relation_analyzer_digest,
+    )
 
     policy = NativeStylePolicy(
         projects=service.projects,
@@ -53,11 +59,19 @@ def native_autonomy_service(config_path: Path) -> AutonomyApplicationService:
             config.runtime_pin_path
         ).codex.executable.package_version,
         store=store,
+        analyzer_digest=instruction_relation_analyzer_digest(
+            model=config.semantic_model, reasoning_effort=config.semantic_reasoning_effort
+        ),
     )
     service.native_conflict_checker = policy.blocked
 
     sensor = ConfiguredCodexHabitSensor(config_path)
     service.background_worker = BackgroundHabitWorker(
-        service, sensor=sensor, remaining_capacity=sensor.remaining_capacity, context=policy.context
+        service,
+        sensor=sensor,
+        remaining_capacity=sensor.remaining_capacity,
+        context=policy.context,
+        native_policy=policy,
+        relation_analyzer=ConfiguredNativeRelationSensor(config_path),
     )
     return service

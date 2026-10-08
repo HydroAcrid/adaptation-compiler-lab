@@ -1,132 +1,124 @@
-# Autonomous learning implementation — October 7, 2026
+# Autonomous learning implementation — October 8, 2026
 
-This is an implementation checkpoint for the owner-approved resumption plan. The
-ordinary-chat learning product is **not enabled or release-ready**. Historical
-explicit-feedback policies, evidence, experiments, and results retain their own gates.
+The owner-approved ordinary-chat product remains in development. Windows and Apple
+Silicon macOS have a read-only agent connection. Automatic learning and serving remain
+disabled until production origin attribution, prospective calibration, and scoped
+owner onboarding pass. Historical explicit-feedback evidence and gates are separate.
 
-## October 7 continuation: local validation
+## Agent connections and native adapters
+
+The local `temper` MCP server exposes only `temper_status` and `temper_context`
+(`project_id`, `task_class`). It cannot ingest evidence, change permission, approve an
+adaptation, or publish instructions. Its packets identify themselves as agent context,
+never independent human evidence. Current requests and native instructions win.
+
+Global registration and bounded user instruction guidance are installed on Windows
+and the connected Mac. The Windows coordinator, Mac validation chat, FFG chat, and
+Relay chat exercised status/context successfully. Existing live tool lists have not
+discovered the server; verified stdio invocation supplies immediate read-only access.
+New chats or a supported reload are needed for native tool discovery. Configuration
+writes do not prove an active chat loaded instructions.
+
+Run with a locked environment containing this package:
+
+```text
+python -m adaptation_compiler_lab.autonomy.agent_bridge --agent-id codex-local
+```
+
+Optional `--config` selects an existing runtime; otherwise the normal product location
+is used. Missing configuration yields an empty profile. The Mac has no personal runtime
+configured. Windows retains its identity, history, and `my-portfolio` registration;
+unregistered projects receive no profile. Connection does not transfer permissions.
+
+Analysis admission binds exact binary, platform, version, generated schemas, quota,
+and configured model/effort. Contracts support Windows Codex `0.162.0-alpha.2` and
+retained `0.160.1`, plus Apple Silicon macOS Codex `0.157.0`. The Windows runtime was
+rebound through protected credential migration after Codex removed its old executable.
+Identity, policy, projects, and database bytes were preserved. Expired legacy consent
+was not upgraded. The Mac's native contract and fictional model-turn proof passed;
+at `3e7bea1`, all 59 Mac autonomy tests and bridge checks passed. That result does not
+validate later source changes or a new packaged app.
+
+## Human origin admission
+
+Current Codex messages expose opaque client IDs and user-message shapes without an
+attested human-input producer. Documented UserPromptSubmit hooks also lack producer
+attestation. Role, client ID, absence of an automation marker, and agent assertions
+cannot prove human origin.
+
+The implemented receipt boundary binds a trusted producer signature to the exact
+client binary/version, project, task, message, and text digest. Human admission also
+requires successful human and automated fixtures for that producer. No production
+producer is admitted. Known coordination tool inputs are delegated; ambiguous
+user-message inputs remain unknown and excluded. Fixture producers are test-only.
+The native worker stops before capture or model analysis while provenance is missing.
+Receipt validation does not establish ordinary Codex human attribution.
+
+## Native instruction conflicts
+
+The native factory uses fresh source discovery, exact duplicate omission, and two
+independent semantic passes for nonexact relations. Temper's own managed style section
+is removed before comparison. Incomplete reads and unresolved conditional skills stay
+unknown. Native policy explains or limits a habit; it cannot establish one.
+
+Comparison uses auth-only temporary homes, empty workspaces, disabled tools/memory/hooks,
+exact configured model/effort, disabled fallback, and verified network-denied read-only
+tool sandboxes. Each pass starts fresh and checks normal subscription capacity.
+Authentication is deleted on exit. There is no API-key, reserve, reset, or purchase path.
+
+The worker performs one analysis batch per tick. Native comparisons reserve both model
+sessions against the shared 12-session rolling-day budget and five-minute spacing.
+Fresh learning evidence is processed first. Unchanged unknown verdicts are not retried
+every tick. Verdicts bind the configured analyzer and fresh native source digest;
+concurrent edits invalidate them. Publication/applicability recheck current policy.
+Stale profiles are removed before replacement analysis; failure cannot grant safety.
+
+One real Windows two-pass smoke on fictional pairs produced the expected conflict and
+compatible resolutions. Results are encrypted in separate private validation storage.
+This is bounded transport evidence, not calibration or general semantic accuracy.
+
+## Implemented autonomy lane
+
+- Selected-scope persistent grants, preview/confirmation, finite renewable leases,
+  revocation, locked-store handling, and independent 30-day raw retention.
+- Separate signed append-only events and encrypted raw storage outside Git. Replays
+  and repetitions within a source task cannot manufacture independent support.
+- Reviewed style defaults, inferred-versus-expressed hypotheses, support/contradiction
+  references, scoped applicability, evaluation versions, and evidence strength.
+- Three-task/two-date trial admission, 14-day trials, three checked opportunities with
+  two compliance successes, contradiction pause, expiry, and undo suppression.
+- Prospective bounded worker, fresh backlog processing, saved-ChatGPT analysis,
+  subscription capacity checks, and separate fresh contradiction proposals.
+- Active native destination precedence, 1,500-byte profiles, preserved manual text,
+  encrypted backups, atomic replacement, digest checks, receipts, and marker-edit pause.
+- Closed desktop onboarding/status/explanation/applicability/pause/disable/undo APIs.
+  Publication, delivery, compliance, helpfulness, and harm remain distinct; unknown
+  assessments remain unmeasured and outcomes bind the current hypothesis revision.
+- Frozen `habit-eval-v2` corpus of 120 fictional sequences with approved labels and
+  lifecycle defaults. V1 and historical research results remain unchanged.
+
+## Validation and remaining gates
 
 The owner requested no GitHub CI pipelines. Automatic PR triggers are removed; the
-workflow definition remains available only for an explicitly requested manual run.
-Local results are not described as independent clean-machine validation.
+manual-only workflow was not invoked. Draft PR #92 remains stacked on draft #91.
+PR #91's seven earlier checks apply only to its exact `56e2028` baseline.
 
-The Windows analysis transport is now wired to the existing native worker. Its
-additional quota/catalog schemas were regenerated with exact pinned Codex `0.160.1`
-and matched the original native contract. It uses a temporary auth-only home, an
-empty workspace, disabled capabilities/memory/hooks, an exact configured model with
-fallback disabled, and a network-denied read-only tool sandbox. Temporary auth and
-session files are removed on exit. Missing isolation metadata, unknown/stale capacity,
-limits, or unavailable model/effort stop analysis. No API-key provider, credit purchase,
-quota reset, or reserve fallback is used.
+Current local tests cover provenance forgery/scope/replay, independent tasks, grants,
+leases, encryption/retention, concurrent instruction edits, independent comparison,
+uncertainty/cache invalidation, quota accounting, trial reevaluation, transport
+isolation, legacy migration, and desktop contracts. Name exact commits and hashes
+for native package results. Local smoke does not establish independent installation
+or trusted signing. Existing installed Windows candidate `101e52d` and Mac baseline
+`56e2028` require fresh validation when replaced.
 
-A read-only Windows probe established subscription capacity and the configured model
-catalog entry. One real schema-bound model turn on a frozen **fictional** scenario
-passed; its output is encrypted in separate local validation storage. It did not
-observe personal work, enable a grant, publish instructions, or complete calibration.
+Milestone B remains open for a production origin-proof route and execution/adjudication
+of the frozen evaluation. Milestone C additionally requires calibration, scoped owner
+onboarding, and verified outcomes. The complete rendered registration/task/Apply/
+Discard/recovery workflow, preference correction, real-work comparison, explicit
+same-owner transfer/rebinding/revocation, current packages, signing, documentation,
+and private alpha remain open. No precision/recall or efficacy gate is claimed.
 
-The worker now processes fresh backlog episodes rather than repeatedly selecting the
-same recent window. Later turns in one task remain observable but cannot multiply its
-support. Separate fresh counterevidence can pause a known habit after old raw text
-expires. Native outcome summaries are bound to the current hypothesis revision;
-unknown helpfulness stays unmeasured. The desktop refreshes its status without a user
-message.
-
-These contradiction-contract changes use `habit-eval-v2`. Its 120 fictional sequences
-retain v1's labels and thresholds and were frozen before v2 execution. V1's corpus and
-manifest remain unchanged. No precision/recall release gate is claimed.
-
-Latest local checks: 201 Windows Python tests, one macOS-only skip, 79 UI tests,
-42 POSIX connector/transport tests in WSL, changed-source lint/typing, and UI production
-build. The Mac is not currently connected, so new native Mac checks are deferred.
-Windows source candidate `101e52d` built the native engine, hook, Tauri app, and NSIS
-installer locally and is installed with its prior binaries preserved. Installed engine
-and hook hashes match their manifests. Two disposable-profile starts and configured-
-engine admission passed; protected-store access is available, with grant/learning/
-personalization off and zero habits. The terminal CLI uses the same source. This is
-development evidence, without trusted-signing or independent-install claims.
-
-Live source attribution and native policy/conflict integration remain unadmitted.
-The worker exits before analysis while those prerequisites are missing. Ordinary
-capture and automatic serving remain disabled.
-
-## Baseline and migration
-
-PRs #90 and #91 remain a draft stack; #91's combined candidate is commit `56e2028`.
-Its seven CI checks passed: three native contracts, two development package builds,
-and two independent development package smokes. These do not establish trusted signing.
-
-The exact combined CI candidates are installed on Windows and Apple Silicon macOS,
-with previous installations preserved. Both hosts passed two fresh-profile engine
-admissions and application starts. The Mac verified complete ad hoc seals and exact
-packaged sidecars. This is bounded development evidence, not a complete rendered
-registration/task/Apply/Discard/recovery walkthrough or ordinary-use proof.
-
-Windows endpoint migration used the protected credential-rebind mechanism. It
-preserved owner identity, policy authorization and expiry, registrations, prospective
-cutoffs, and history database bytes. Protected-key access succeeds after migration.
-An exact legacy serialization repair handles config defaults that changed the
-reconstructed digest: compatibility is admitted only when the preserved serialized
-config matches enrollment. An arbitrary envelope-advertised digest is not accepted.
-Migration does not enable persistent learning or renew expired research consent.
-
-## Implemented in the separate autonomy lane
-
-- Signed persistent grants for selected projects, source, style categories, and exact
-  active native destination, with preview/confirmation and renewable finite leases.
-- A signed append-only event chain and encrypted raw namespace. Thirty-day purging
-  runs independently of observation permission. Replays and task aliases cannot
-  manufacture independent evidence.
-- Typed reviewed style defaults, inferred-versus-expressed hypotheses, support and
-  contradiction references, project/task scope, evaluation version, and lifecycle.
-  Model output cannot write arbitrary executable instructions or change capabilities.
-- Three-task/two-date trial admission; 14-day trials; three verified opportunities
-  with two compliance successes for promotion. Unknown outcomes remain unknown.
-  Contradictions pause, expiry retires, and undo prevents immediate regeneration.
-- A separate schema-bound habit sensor and bounded worker with prospective cursors,
-  one batch per tick, rolling subscription budgets, and no paid API fallback.
-- Publication only in the granted active user instruction file, respecting override
-  precedence and the 1,500-byte limit. Manual bytes, newline style, encrypted backups,
-  atomic replacement, digest checks, and signed receipts are preserved. Edited or
-  removed markers stop publication. Revocation completes even if cleanup is blocked.
-- Closed desktop operations and native controls for scoped onboarding, status,
-  explanation, applicability, pause/resume, disabling personalization, and undo.
-  Publication, delivery, compliance, and helpfulness stay distinct. Renderer callers
-  cannot inject episodes, proposals, or calibration results.
-- Frozen 120 fictional naturalistic scenario sequences, with the approved group
-  counts, dataset/analyzer digests, and lifecycle defaults. Drift requires a new version.
-
-## Live-source blocker and remaining wiring
-
-Verified Windows Codex `0.160.1` and macOS Codex `0.157.0` expose opaque `clientId`
-and thread-source metadata, but no attested per-message human origin. A human and a
-delegated/programmatic prompt can have the same `userMessage` shape. Fixture labels
-cannot establish production provenance.
-
-The native factory therefore has no admitted provenance verifier, trusted calibration
-release, native-policy conflict admission, or verified semantic worker transport. It
-does not read ordinary conversations or start background model turns. The UI reports
-the blocker and keeps automatic serving disabled. Worker tests use explicit synthetic
-adapters. Wire the existing Codex source adapter only after a supported origin-proof
-route passes human/automated client fixtures; do not add another capture system.
-
-Milestone B remains open. Next are source admission, isolated saved-ChatGPT transport,
-subscription-capacity admission, policy/conflict integration, and execution/adjudication
-of the frozen evaluation. Milestone C requires those gates plus owner onboarding.
-Preference correction and the complete per-adaptation outcome display remain open.
-
-## Validation and later milestones
-
-Windows passed 32 autonomy tests, two migration tests, existing desktop/CLI/native-
-credential checks, 79 UI tests in aggregate, TypeScript, production UI build, lint,
-format, focused Python typing, and 15 native Rust tests. CI now runs the autonomy and
-desktop backend contracts on each native-contract platform. Name exact source commits
-for later Mac and package checks.
-
-The semantic 95% precision/80% recall and zero forbidden-source/wrong-scope gates have
-not passed. Natural-work comparison, transfer/rebinding/revocation, fresh candidate
-packages, signing/trusted installation, recovery documentation, and private alpha
-remain open. Fictional fixtures cannot satisfy the separate historical research gate.
-
-The website is Milestone F and requires a truthful native demonstration and review.
-Finish it before preparing LinkedIn content. Public posting or downloads require
-explicit owner authorization and the relevant release gates.
+Coding habits, additional agents, Modes, broader profiling, and continuous product-state
+sync remain outside v1. Cross-machine chat coordination is development infrastructure.
+Finish/review the focused website before LinkedIn preparation. Downloads require the
+applicable release gates; public posting requires an explicit owner request.

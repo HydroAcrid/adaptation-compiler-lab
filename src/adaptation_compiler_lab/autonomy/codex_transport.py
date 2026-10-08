@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import shutil
 import tempfile
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -28,6 +28,17 @@ from adaptation_compiler_lab.autonomy.models import HabitHypothesisV1, StyleEpis
 from adaptation_compiler_lab.connectors.codex_app_server import CodexAppServerProcess
 from adaptation_compiler_lab.connectors.models import JsonObject
 from adaptation_compiler_lab.connectors.pins import load_dogfood_runtime_pins, verify_codex_runtime
+from adaptation_compiler_lab.instruction_environment.codex_semantic import (
+    bind_instruction_relation_output,
+    instruction_relation_analyzer_digest,
+    instruction_relation_contract,
+    instruction_relation_output_schema,
+    instruction_relation_prompt,
+)
+from adaptation_compiler_lab.instruction_environment.semantic import (
+    ClauseRelationAnalysisV1,
+    InstructionRelationPairV1,
+)
 from adaptation_compiler_lab.serialization import canonical_digest
 
 # These flags are known in the exact native client. Other clients require their own admission.
@@ -327,4 +338,57 @@ class ConfiguredCodexHabitSensor:
 
             return SchemaBoundHabitSensor(run).analyze(
                 episodes, context=context, existing_habits=existing_habits
+            )
+
+
+class ConfiguredNativeRelationSensor:
+    """One fresh, auth-only, quota-checked context per independent comparison pass."""
+
+    def __init__(self, config_path: Path) -> None:
+        self.config_path = config_path
+
+    def compare(
+        self, pairs: Sequence[InstructionRelationPairV1]
+    ) -> Mapping[str, ClauseRelationAnalysisV1]:
+        if not pairs:
+            return {}
+        prompt = instruction_relation_prompt(pairs)
+        if len(prompt.encode("utf-8")) > 65_536:
+            raise ValueError("native relation input exceeds its bounded batch")
+        with configured_analysis_session(self.config_path) as (
+            config,
+            schemas,
+            contract,
+            rpc,
+            workspace,
+        ):
+            remaining = read_capacity(rpc, contract)
+            if remaining is None or remaining < 20:
+                raise ValueError("native relation analysis is deferred by subscription capacity")
+            verify_model(
+                rpc, contract, model=config.semantic_model, effort=config.semantic_reasoning_effort
+            )
+            output = run_habit_turn(
+                rpc,
+                schemas,
+                workspace=workspace,
+                model=config.semantic_model,
+                effort=config.semantic_reasoning_effort,
+                contract=instruction_relation_contract(),
+                prompt=prompt,
+                output_schema=instruction_relation_output_schema(),
+            )
+            return bind_instruction_relation_output(
+                pairs,
+                output,
+                interpreter_digest=canonical_digest(
+                    {
+                        "analyzer": instruction_relation_analyzer_digest(
+                            model=config.semantic_model,
+                            reasoning_effort=config.semantic_reasoning_effort,
+                        ),
+                        "output": output,
+                        "pin": config.runtime_pin_path.read_bytes().hex(),
+                    }
+                ),
             )

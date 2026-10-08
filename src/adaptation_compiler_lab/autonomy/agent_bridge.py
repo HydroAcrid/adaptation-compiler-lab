@@ -52,6 +52,18 @@ class TemperAgentBridge:
             raise ValueError("invalid context request")
         if name not in {"temper_status", "temper_context"}:
             raise ValueError("unsupported context tool")
+        project = ""
+        task = TaskClass.SUMMARY
+        if name == "temper_context":
+            project = arguments["project_id"]
+            if (
+                not isinstance(project, str)
+                or not project
+                or len(project) > 160
+                or any(ord(char) < 32 for char in project)
+            ):
+                raise ValueError("project identity is invalid")
+            task = TaskClass(arguments["task_class"])
         profile = ""
         ids: tuple[str, ...] = ()
         status: dict[str, Any] = {
@@ -82,10 +94,6 @@ class TemperAgentBridge:
                 },
             }
             if name == "temper_context":
-                project = arguments["project_id"]
-                if not isinstance(project, str):
-                    raise ValueError("project identity is invalid")
-                task = TaskClass(arguments["task_class"])
                 project_registered = project in service.projects
                 if status["personalization_enabled"] and status["automatic_serving_ready"]:
                     applies = set(service.applicability(project, task)["applies"])

@@ -8,9 +8,11 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from adaptation_compiler_lab.autonomy.analyzer import HabitSensor, analyzer_digest
-from adaptation_compiler_lab.autonomy.models import StyleEpisodeV1
+from adaptation_compiler_lab.autonomy.models import HabitProposalV1, HabitState, StyleEpisodeV1
+from adaptation_compiler_lab.autonomy.native_policy import NativeStylePolicy
 from adaptation_compiler_lab.autonomy.retention import purge_expired_raw
 from adaptation_compiler_lab.autonomy.service import AutonomyApplicationService
+from adaptation_compiler_lab.instruction_environment.semantic import InstructionRelationAnalyzer
 from adaptation_compiler_lab.serialization import canonical_digest
 
 
@@ -29,12 +31,16 @@ class BackgroundHabitWorker:
         sensor: HabitSensor | None = None,
         remaining_capacity: Callable[[], float | None] | None = None,
         context: Callable[[str], str] | None = None,
+        native_policy: NativeStylePolicy | None = None,
+        relation_analyzer: InstructionRelationAnalyzer | None = None,
     ) -> None:
         self.service = service
         self.read_completed = read_completed
         self.sensor = sensor
         self.remaining_capacity = remaining_capacity
         self.context = context
+        self.native_policy = native_policy
+        self.relation_analyzer = relation_analyzer
 
     def poll(self) -> dict[str, Any]:
         service = self.service
@@ -43,6 +49,7 @@ class BackgroundHabitWorker:
         result: dict[str, Any] = {
             "captured": 0,
             "analyzed": 0,
+            "policy_checked": 0,
             "purged": purged,
             "raw_payloads_exposed": False,
         }
@@ -79,6 +86,9 @@ class BackgroundHabitWorker:
             and datetime.fromisoformat(value["completed_at"]) > now - timedelta(days=30)
         ]
         if not pending:
+            policy_result = self.check_policy(result)
+            if policy_result is not None:
+                return policy_result
             service.publish()
             return {**result, "status": "idle"}
         if self.sensor is None or self.remaining_capacity is None or self.context is None:
@@ -138,3 +148,59 @@ class BackgroundHabitWorker:
             **result,
             "status": "shadow" if not service.switch("personalization") else "updated",
         }
+
+    def check_policy(self, result: dict[str, Any]) -> dict[str, Any] | None:
+        """Check one unchanged hypothesis in a separate tick, reserving both fresh passes."""
+        service = self.service
+        grant = service.grant()
+        if (
+            grant is None
+            or self.native_policy is None
+            or self.relation_analyzer is None
+            or self.remaining_capacity is None
+        ):
+            return None
+        candidates = sorted(
+            (
+                habit
+                for habit in service.hypotheses()
+                if habit.project_id in grant.project_ids
+                and habit.category in grant.categories
+                and habit.state in {HabitState.PROVISIONAL, HabitState.TRIAL, HabitState.ACTIVE}
+                and self.native_policy.needs_analysis(habit)
+            ),
+            key=lambda habit: (-len(habit.support_episode_ids), habit.habit_id),
+        )
+        if not candidates:
+            return None
+        capacity = self.remaining_capacity()
+        if not service.budget_available(capacity, sessions=2):
+            service.publish()
+            return {**result, "status": "capacity_deferred"}
+        habit = candidates[0]
+        # Remove a stale available profile before spending quota on its replacement verdict.
+        service.publish()
+        key = str(
+            canonical_digest({"habit": habit.content_digest, "at": service.clock().isoformat()})
+        )[7:]
+        service.begin_analysis(capacity, key="native-analysis-" + key, sessions=2)
+        try:
+            verdict = self.native_policy.analyze(habit, self.relation_analyzer)
+        except (OSError, ValueError):
+            service.publish()
+            raise
+        if verdict["state"] == "safe" and habit.state is HabitState.PROVISIONAL:
+            service.record_proposal(
+                HabitProposalV1(
+                    behavior=habit.behavior,
+                    style_key=habit.style_key,
+                    category=habit.category,
+                    task_class=habit.task_class,
+                    evidence_episode_ids=habit.support_episode_ids,
+                    contradictory_episode_ids=habit.contradiction_episode_ids,
+                    origin=habit.origin,
+                    evaluation_version=habit.evaluation_version,
+                )
+            )
+        service.publish()
+        return {**result, "policy_checked": 1, "status": "native_policy_checked"}

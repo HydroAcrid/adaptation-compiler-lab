@@ -168,6 +168,24 @@ def test_role_alone_or_unknown_provenance_is_insufficient(app: Any) -> None:
     assert not service.automatic_ready()
 
 
+def test_delegated_tool_inputs_are_excluded_and_opaque_client_ids_never_attest_human():
+    for version in ("0.157.0", "0.160.1", "0.162.0-alpha.2", "unknown"):
+        assert (
+            codex_message_origin(
+                {"type": "functionCallOutput", "name": "send_message_to_thread"},
+                client_version=version,
+            )
+            is InputOrigin.DELEGATED
+        )
+        assert (
+            codex_message_origin(
+                {"type": "userMessage", "clientId": "human", "origin": "human"},
+                client_version=version,
+            )
+            is InputOrigin.UNKNOWN
+        )
+
+
 def test_replay_is_idempotent_and_raw_text_is_encrypted(app: Any) -> None:
     service, clock = app
     value = episode(0, clock)

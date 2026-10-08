@@ -55,3 +55,16 @@ def test_mcp_protocol_exposes_only_closed_read_only_tools(tmp_path: Path) -> Non
     assert all(tool["annotations"]["readOnlyHint"] for tool in replies[1]["result"]["tools"])
     assert replies[2]["result"]["isError"] is False
     assert "error" in replies[3]
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"project_id": [], "task_class": "summary"},
+        {"project_id": "", "task_class": "summary"},
+        {"project_id": "project", "task_class": "invented"},
+    ],
+)
+def test_unconfigured_bridge_still_validates_closed_context_arguments(arguments):
+    with pytest.raises((ValueError, TypeError)):
+        TemperAgentBridge(config_path=None, agent_id="agent").call("temper_context", arguments)

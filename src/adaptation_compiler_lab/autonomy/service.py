@@ -681,7 +681,9 @@ class AutonomyApplicationService:
                     )
                 )
 
-    def budget_available(self, remaining_percent: float | None) -> bool:
+    def budget_available(self, remaining_percent: float | None, *, sessions: int = 1) -> bool:
+        if type(sessions) is not int or not 1 <= sessions <= MAX_DAILY_ANALYSES:
+            return False
         if remaining_percent is None or not MIN_REMAINING_CAPACITY <= remaining_percent <= 100:
             return False
         now = self._now()
@@ -691,17 +693,29 @@ class AutonomyApplicationService:
             for event in analysis
             if datetime.fromisoformat(event["payload"]["started_at"]) > now - timedelta(days=1)
         ]
-        if len(recent) >= MAX_DAILY_ANALYSES:
+        if (
+            sum(event["payload"].get("sessions", 1) for event in recent) + sessions
+            > MAX_DAILY_ANALYSES
+        ):
             return False
         return not analysis or datetime.fromisoformat(
             analysis[-1]["payload"]["started_at"]
         ) <= now - timedelta(minutes=POLL_MINUTES)
 
-    def begin_analysis(self, remaining_percent: float | None, *, key: str) -> None:
-        if not self.switch("learning") or not self.budget_available(remaining_percent):
+    def begin_analysis(
+        self, remaining_percent: float | None, *, key: str, sessions: int = 1
+    ) -> None:
+        if not self.switch("learning") or not self.budget_available(
+            remaining_percent, sessions=sessions
+        ):
             raise AutonomyIntegrityError("background analysis is paused by its budget")
         self.ensure_lease()
-        self.store.append(key, "analysis", {"started_at": self._now().isoformat()}, at=self._now())
+        self.store.append(
+            key,
+            "analysis",
+            {"started_at": self._now().isoformat(), "sessions": sessions},
+            at=self._now(),
+        )
 
     def publish(self) -> dict[str, Any]:
         grant = self.grant()

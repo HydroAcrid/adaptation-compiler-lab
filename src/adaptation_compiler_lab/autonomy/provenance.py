@@ -11,6 +11,12 @@ def codex_message_origin(item: Mapping[str, Any], *, client_version: str) -> Inp
     # cannot distinguish a typed message from send_message_to_thread or a delegated prompt.
     # A new client must pass human/automated fixtures with a verifiable origin proof before
     # this boundary can admit HUMAN. Unknown versions remain excluded as well.
+    if item.get("type") == "functionCallOutput" and item.get("name") in {
+        "send_message_to_thread",
+        "followup_task",
+        "send_message",
+    }:
+        return InputOrigin.DELEGATED
     if item.get("type") != "userMessage":
         return InputOrigin.AGENT
     return InputOrigin.UNKNOWN

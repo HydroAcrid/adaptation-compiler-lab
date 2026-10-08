@@ -49,11 +49,13 @@ class NativeStylePolicy:
         codex_home: Path,
         cli_version: str,
         store: AutonomyStore,
+        analyzer_digest: str = "deterministic-only",
     ) -> None:
         self.projects = dict(projects)
         self.home = codex_home
         self.adapter = CodexInstructionSourceAdapter(cli_version=cli_version)
         self.store = store
+        self.analyzer_digest = analyzer_digest
 
     def snapshot(self, project_id: str) -> NativePolicySnapshot:
         root = self.projects.get(project_id)
@@ -122,8 +124,7 @@ class NativeStylePolicy:
             ),
         )
 
-    @staticmethod
-    def cache_key(habit: HabitHypothesisV1, snapshot: NativePolicySnapshot) -> str:
+    def cache_key(self, habit: HabitHypothesisV1, snapshot: NativePolicySnapshot) -> str:
         return str(
             canonical_digest(
                 {
@@ -132,6 +133,8 @@ class NativeStylePolicy:
                     "task_class": habit.task_class,
                     "behavior": habit.behavior,
                     "native_digest": snapshot.digest,
+                    "policy_version": "1.0.0",
+                    "analyzer_digest": self.analyzer_digest,
                 }
             )
         )
@@ -160,6 +163,21 @@ class NativeStylePolicy:
             )
             state = "unknown" if result is None else result["state"]
         return {"state": state, "native_digest": snapshot.digest, "raw_payloads_exposed": False}
+
+    def needs_analysis(self, habit: HabitHypothesisV1) -> bool:
+        snapshot = self.snapshot(habit.project_id)
+        if (
+            not snapshot.complete
+            or not snapshot.clauses
+            or self.assess(habit)["state"] != "unknown"
+        ):
+            return False
+        key = self.cache_key(habit, snapshot)
+        # A measured unknown is not retried every tick against unchanged inputs.
+        return not any(
+            event["type"] == "native_policy" and event["payload"]["cache_key"] == key
+            for event in self.store.events()
+        )
 
     def blocked(self, habit: HabitHypothesisV1) -> bool:
         return bool(self.assess(habit)["state"] != "safe")
