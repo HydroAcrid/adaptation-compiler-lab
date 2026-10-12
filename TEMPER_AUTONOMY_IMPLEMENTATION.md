@@ -7,6 +7,11 @@ owner onboarding pass. Historical explicit-feedback evidence and gates are separ
 
 ## October 12 continuation
 
+The later [native-fix and immediate-evaluation checkpoint](TEMPER_LOCAL_VALIDATION_OCTOBER_12.md)
+supersedes the initial candidate/counts below. Windows now has installed functional
+candidate `448ab1b`, native engine registration/review/recovery checks, and a separately
+bound foreground evaluation driver. The original paced run and freeze are preserved.
+
 Windows Codex updated to `0.162.0-alpha.17.2`. Its exact binary, generated source
 schemas, and quota/catalog contract are now admitted. Protected endpoint rebind
 preserved identity, policy, registered projects, cutoffs, and history database bytes;
@@ -26,9 +31,10 @@ to be required. No usable model result was produced. The strict schema compiler
 requires all properties, closes objects, and pins the evaluation version while keeping
 host validation. `habit-eval-v3` was frozen before its execution with all 120 cases,
 labels, thresholds, model instructions and lifecycle defaults unchanged. V1/v2 assets
-and the failed v2 attempt are preserved. V3 has completed 2/120 cases with the expected
-scoped hypotheses, no failed phases, and encrypted results. This is preliminary
-fictional evidence, not calibration, accuracy, efficacy or personal learning.
+and the failed v2 attempt are preserved. The initial paced v3 run is retained with
+seven completed cases. The separately bound foreground execution is described in
+the later checkpoint. Fictional partial scores are not calibration, efficacy or
+personal learning.
 
 Read progress without inference from the source checkout:
 
@@ -65,10 +71,10 @@ never independent human evidence. Current requests and native instructions win.
 
 Global registration and bounded user instruction guidance are installed on Windows
 and the connected Mac. The Windows coordinator, Mac validation chat, FFG chat, and
-Relay chat exercised status/context successfully. Existing live tool lists have not
-discovered the server; verified stdio invocation supplies immediate read-only access.
-New chats or a supported reload are needed for native tool discovery. Configuration
-writes do not prove an active chat loaded instructions.
+Relay chat exercised status/context successfully. On October 12, both currently active
+Windows chats exercised native MCP discovery and status/context calls. The Mac's last
+checks used verified stdio invocation; no new Mac check is claimed while disconnected.
+Configuration writes do not prove an active chat loaded instructions.
 
 Run with a locked environment containing this package:
 
@@ -153,8 +159,8 @@ This is bounded transport evidence, not calibration or general semantic accuracy
 - Closed desktop onboarding/status/explanation/applicability/pause/disable/undo APIs.
   Publication, delivery, compliance, helpfulness, and harm remain distinct; unknown
   assessments remain unmeasured and outcomes bind the current hypothesis revision.
-- Frozen `habit-eval-v2` corpus of 120 fictional sequences with approved labels and
-  lifecycle defaults. V1 and historical research results remain unchanged.
+- Frozen `habit-eval-v3` corpus of 120 fictional sequences with approved labels and
+  lifecycle defaults. V1/v2 and historical research results remain unchanged.
 
 ## Validation and remaining gates
 
