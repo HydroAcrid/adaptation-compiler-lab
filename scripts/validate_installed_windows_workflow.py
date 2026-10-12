@@ -342,7 +342,7 @@ def validate(executable: Path, codex: Path, root: Path) -> dict[str, Any]:
         snapshot = process.request("snapshot.get")
         preview = process.request("recovery.export.preview")["result"]
         passphrase = secrets.token_urlsafe(32)
-        destination = root / "fictional-recovery.temper"
+        destination = root / "fictional-recovery.temper-recovery"
         process.request(
             "recovery.export.create",
             {
