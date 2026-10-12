@@ -8,7 +8,12 @@ from typing import Any
 import pytest
 from jsonschema import Draft202012Validator
 
-from adaptation_compiler_lab.autonomy.analyzer import HabitBatchV1, habit_output_schema
+from adaptation_compiler_lab.autonomy.analyzer import (
+    EVALUATION_VERSION,
+    HabitAnalysisV1,
+    HabitBatchV1,
+    habit_output_schema,
+)
 from adaptation_compiler_lab.autonomy.budget import background_budget_available
 from adaptation_compiler_lab.autonomy.evaluation_run import ShadowEvaluationRunner
 from adaptation_compiler_lab.autonomy.models import HabitContradictionProposalV1
@@ -16,8 +21,8 @@ from adaptation_compiler_lab.autonomy.store import AutonomyIntegrityError
 from tests.unit.autonomy.test_autonomy import app as app
 from tests.unit.autonomy.test_autonomy import proposal
 
-DATASET = Path("tests/fixtures/autonomy/habit_eval_v3.json")
-MANIFEST = Path("tests/fixtures/autonomy/habit_eval_v3.manifest.json")
+DATASET = Path("tests/fixtures/autonomy/habit_eval_v4.json")
+MANIFEST = Path("tests/fixtures/autonomy/habit_eval_v4.manifest.json")
 BINDING = {"model": "fictional-model", "effort": "medium", "runtime_pin_digest": "fixture-pin"}
 
 
@@ -30,12 +35,12 @@ def test_provider_schema_requires_every_property_and_preserves_host_constraints(
         if "properties" in value:
             assert set(value["required"]) == set(value["properties"])
             assert value["additionalProperties"] is False
-    batch = HabitBatchV1(proposals=(proposal(("fictional-task",)),))
+    batch = HabitAnalysisV1(candidates=(), known_habit_assessments=())
     Draft202012Validator(schema).validate(batch.model_dump(mode="json"))
     assert "default" not in json.dumps(schema)
     assert HabitBatchV1.model_json_schema()["properties"]["contradictions"]["default"] == []
     wrong = batch.model_dump(mode="json")
-    wrong["proposals"][0]["evaluation_version"] = "unfrozen-version"
+    wrong["evaluation_version"] = "unfrozen-version"
     assert not Draft202012Validator(schema).is_valid(wrong)
 
 
@@ -52,7 +57,7 @@ class Sensor:
                     HabitContradictionProposalV1(
                         habit_id=kwargs["existing_habits"][0].habit_id,
                         evidence_episode_ids=(episodes[0].episode_id,),
-                        evaluation_version="habit-eval-v3",
+                        evaluation_version=EVALUATION_VERSION,
                     ),
                 ),
             )

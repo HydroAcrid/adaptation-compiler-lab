@@ -349,6 +349,7 @@ class ShadowEvaluationRunner:
         return {
             "run_id": self.run_id,
             "evaluation_version": self.data["evaluation_version"],
+            "evaluation_purpose": self.data.get("purpose", "prospective_shadow_detection"),
             "phases_completed": len(done),
             "phases_total": len(self.phases),
             "cases_completed": completed_cases,

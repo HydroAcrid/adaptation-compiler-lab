@@ -474,7 +474,24 @@ def test_background_worker_is_shadow_budgeted_and_restart_idempotent(app: Any) -
     def run(contract: str, prompt: str, schema: Any) -> str:
         calls.append((contract, prompt))
         return json.dumps(
-            {"proposals": [proposal(("task-0", "task-1", "task-2")).model_dump(mode="json")]}
+            {
+                "evaluation_version": EVALUATION_VERSION,
+                "candidates": [
+                    {
+                        "style_key": "concise_progress",
+                        "origin": "inferred",
+                        "evidence": [
+                            {
+                                "episode_id": e.episode_id,
+                                "quote": e.text,
+                                "basis": "personal_choice",
+                            }
+                            for e in page.episodes
+                        ],
+                    }
+                ],
+                "known_habit_assessments": [],
+            }
         )
 
     worker = BackgroundHabitWorker(
@@ -497,8 +514,20 @@ def test_background_worker_is_shadow_budgeted_and_restart_idempotent(app: Any) -
 
 def test_model_cannot_add_unknown_styles_or_invent_evidence(app: Any) -> None:
     _service, clock = app
-    invalid = proposal(("invented-task",)).model_dump_json()
-    sensor = SchemaBoundHabitSensor(lambda *args: '{"proposals":[' + invalid + "]}")
+    invalid = {
+        "evaluation_version": EVALUATION_VERSION,
+        "candidates": [
+            {
+                "style_key": "concise_progress",
+                "origin": "inferred",
+                "evidence": [
+                    {"episode_id": "invented-task", "quote": "invented", "basis": "personal_choice"}
+                ],
+            }
+        ],
+        "known_habit_assessments": [],
+    }
+    sensor = SchemaBoundHabitSensor(lambda *args: json.dumps(invalid))
     with pytest.raises(ValueError, match="invented supporting tasks"):
         sensor.analyze((episode(0, clock),), context="")
     with pytest.raises(ValueError, match="reviewed v1"):
@@ -531,7 +560,7 @@ def test_untrusted_outcome_never_counts_as_compliance(app: Any) -> None:
 
 def test_frozen_evaluation_counts_and_digest_cannot_drift(tmp_path: Path) -> None:
     root = Path(__file__).parents[2] / "fixtures" / "autonomy"
-    path, manifest = root / "habit_eval_v3.json", root / "habit_eval_v3.manifest.json"
+    path, manifest = root / "habit_eval_v4.json", root / "habit_eval_v4.manifest.json"
     assert len(load_frozen_scenarios(path, manifest)["cases"]) == 120
     changed = json.loads(path.read_text(encoding="utf-8"))
     changed["cases"][0]["expected"]["style_keys"] = []
@@ -574,12 +603,19 @@ def test_fresh_contradiction_pauses_after_old_raw_evidence_expires(app: Any) -> 
     sensor = SchemaBoundHabitSensor(
         lambda *args: json.dumps(
             {
-                "proposals": [],
-                "contradictions": [
+                "evaluation_version": EVALUATION_VERSION,
+                "candidates": [],
+                "known_habit_assessments": [
                     {
                         "habit_id": habit_id,
-                        "evidence_episode_ids": [fresh.episode_id],
-                        "evaluation_version": EVALUATION_VERSION,
+                        "verdict": "personal_change",
+                        "evidence": [
+                            {
+                                "episode_id": fresh.episode_id,
+                                "quote": fresh.text,
+                                "basis": "personal_choice",
+                            }
+                        ],
                     }
                 ],
             }
