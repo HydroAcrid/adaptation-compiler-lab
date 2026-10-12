@@ -190,3 +190,33 @@ the complete candidate regression and fresh prospective series must decide the g
 
 No v9/v10 score was substituted into an older run. Fresh prospective materials remain unexecuted.
 No personal grant, source permission, profile, native loading/following claim or release was added.
+
+## Current v10 Windows package and live candidate
+
+Functional source `f75cb9b9d5d6886a9c2892f727d91990b5e099a8` rebuilt the Windows engine/hook,
+Tauri app and NSIS installer locally. The rebuilt engine passed disposable setup/consent,
+registration/replay/restart, fixture Apply/Discard/postflight rollback and encrypted recovery
+with preserved identity/history, safe path rebinding and restored restart. Zero provider calls;
+successful temporary state removed. The personal runtime remains the earlier installation.
+
+| Artifact | SHA-256 |
+|---|---|
+| Engine | `b30c520f55fce048571ae083abad41a64caaf0e78d031e131f0641ab434aeb33` |
+| Hook | `d4d05f6bd40c5d005ddc55a47d602761c0037b96f7ce8db87ea5794bf73fe937` |
+| App | `5ee43f9bf31d14088191fcf5018b3db246eddc207f269e7fa9710d6829d727e8` |
+| Installer | `fabd985c5e2cce39a3ae369bdaf2056c98f8a4dc5d07e8ce23d4a60ab9342194` |
+
+A fresh Windows run of learner/runtime/persistence/desktop/native-instruction/product-pin tests
+passed 395 checks with four platform skips. Broad pin-test inclusion initially ran two POSIX-only
+fixtures on Windows: DrvFS path conversion and a shell-script executable. Their platform
+requirements are now explicit; all nine pin tests pass separately in WSL against this same source.
+No production pin or runtime behavior changed to accommodate those fixtures. Test lint/format pass.
+These counts describe this selected scope, not a full repository test result.
+
+Live v10 candidate `aec45c632958ae94bc20583b` is running with explicitly selected GPT-6.1 Sol,
+medium effort, saved ChatGPT authentication and an exact separate model-bound store. The first
+41 completed cases have no false hypotheses or processing failures; this is incomplete evidence.
+The full regression and all twenty pauses must pass before the previously authored, unexecuted
+prospective set starts. Preserve failed runs, labels, scoring and lifecycle defaults. Native
+publication/loading, supported human attribution, fresh Mac validation, everyday usefulness,
+trusted signing and independent installation remain separate release gates. No CI or serving enabled.

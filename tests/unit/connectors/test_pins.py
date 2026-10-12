@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 from pathlib import Path
 
@@ -125,6 +126,7 @@ def test_checked_in_codex_dogfood_runtime_lock_is_separate_and_complete() -> Non
     assert windows.codex.schema_bundle_sha256 != pins.codex.schema_bundle_sha256
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="DrvFS path conversion requires a POSIX host")
 def test_windows_interop_path_conversion_is_narrow() -> None:
     assert (
         _as_windows_interop_path(Path("/mnt/c/Users/example/codex.exe"))
@@ -134,6 +136,7 @@ def test_windows_interop_path_conversion_is_narrow() -> None:
         _as_windows_interop_path(Path("/home/example/codex.exe"))
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="the synthetic executable uses a POSIX shell")
 def test_executable_version_and_help_contract(tmp_path: Path) -> None:
     executable = tmp_path / "runtime"
     _write_executable(
