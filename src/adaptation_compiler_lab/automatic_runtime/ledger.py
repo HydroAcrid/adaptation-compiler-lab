@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 from adaptation_compiler_lab.automatic_runtime.models import (
@@ -45,7 +46,7 @@ class AutomaticRuntimeLedger:
         self._validate_state_subject(state)
         if state.generation != 0:
             raise ValueError("automatic runtime initialization requires generation zero")
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             initial = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -84,7 +85,7 @@ class AutomaticRuntimeLedger:
         self._validate_governance_events(cycle, state, governance_events)
         cycle_json = canonical_json(cycle)
         cycle_digest = str(canonical_digest(cycle)).removeprefix("sha256:")
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
             existing = connection.execute(
                 """
@@ -167,7 +168,7 @@ class AutomaticRuntimeLedger:
         self._validate_learning_event(cycle, state, release_event)
         payload = canonical_json(cycle)
         digest = str(cycle.content_digest).removeprefix("sha256:")
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
             existing = connection.execute(
                 """
@@ -250,7 +251,7 @@ class AutomaticRuntimeLedger:
             raise ValueError("runtime review resolution release event binding changed")
         payload = canonical_json(resolution)
         digest = str(resolution.content_digest).removeprefix("sha256:")
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
             existing = connection.execute(
                 """
@@ -420,7 +421,7 @@ class AutomaticRuntimeLedger:
         payload = canonical_json(resolution)
         digest = str(resolution.content_digest).removeprefix("sha256:")
         package_digest = str(resolution.origin.package_digest).removeprefix("sha256:")
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
             existing = connection.execute(
                 """
@@ -524,7 +525,7 @@ class AutomaticRuntimeLedger:
             raise ValueError("runtime activation crossed the ledger subject boundary")
         payload = canonical_json(activation)
         digest = str(activation.content_digest).removeprefix("sha256:")
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
             existing = connection.execute(
                 """
@@ -592,7 +593,7 @@ class AutomaticRuntimeLedger:
             raise ValueError("runtime checkpoint crossed the ledger subject boundary")
         payload = canonical_json(checkpoint)
         digest = str(checkpoint.content_digest).removeprefix("sha256:")
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
             existing = connection.execute(
                 """
@@ -660,7 +661,7 @@ class AutomaticRuntimeLedger:
             raise ValueError("delivery acknowledgement crossed the ledger subject boundary")
         payload = canonical_json(acknowledgement)
         digest = str(acknowledgement.content_digest).removeprefix("sha256:")
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
             existing = connection.execute(
                 """
@@ -716,12 +717,12 @@ class AutomaticRuntimeLedger:
         return True
 
     def current(self) -> AutomaticRuntimeState | None:
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             row = self._current_row(connection)
         return None if row is None else self._decode_state(row[0], row[1])
 
     def cycles(self) -> tuple[RuntimeCycleReceipt, ...]:
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             rows = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -744,7 +745,7 @@ class AutomaticRuntimeLedger:
     def cycle_for_observation(self, observation_id: str) -> RuntimeCycleReceipt | None:
         """Return the exact prior result used to replay an interrupted host delivery."""
 
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             row = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -767,7 +768,7 @@ class AutomaticRuntimeLedger:
     ) -> RuntimeLearningCycleReceipt | None:
         """Return an exact prior pickup result so a source page can be replayed safely."""
 
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             row = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -786,7 +787,7 @@ class AutomaticRuntimeLedger:
         return cycle
 
     def learning_cycles(self) -> tuple[RuntimeLearningCycleReceipt, ...]:
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             rows = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -807,7 +808,7 @@ class AutomaticRuntimeLedger:
         return tuple(result)
 
     def learning_cycle(self, cycle_id: str) -> RuntimeLearningCycleReceipt | None:
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             row = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -826,7 +827,7 @@ class AutomaticRuntimeLedger:
         return cycle
 
     def activation(self, activation_id: str) -> RuntimeTaskActivationReceipt | None:
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             row = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -845,7 +846,7 @@ class AutomaticRuntimeLedger:
         return activation
 
     def activations(self) -> tuple[RuntimeTaskActivationReceipt, ...]:
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             rows = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -868,7 +869,7 @@ class AutomaticRuntimeLedger:
     def delivery_acknowledgement(
         self, activation_id: str
     ) -> RuntimeTargetDeliveryAcknowledgement | None:
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             row = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -889,7 +890,7 @@ class AutomaticRuntimeLedger:
     def delivery_acknowledgements(
         self,
     ) -> tuple[RuntimeTargetDeliveryAcknowledgement, ...]:
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             rows = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -910,7 +911,7 @@ class AutomaticRuntimeLedger:
         return tuple(result)
 
     def current_checkpoint(self, source_id: str) -> RuntimeSourceCheckpoint | None:
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             row = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -934,7 +935,7 @@ class AutomaticRuntimeLedger:
         """Load an immutable historical state by its canonical digest."""
 
         normalized = digest.removeprefix("sha256:")
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             row = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -948,7 +949,7 @@ class AutomaticRuntimeLedger:
     def review_items(self) -> tuple[RuntimeReviewQueueItem, ...]:
         """Return durable raw-free review work in append order."""
 
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             rows = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -969,7 +970,7 @@ class AutomaticRuntimeLedger:
         return tuple(result)
 
     def review_item_for_cycle(self, cycle_id: str) -> RuntimeReviewQueueItem | None:
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             row = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -990,7 +991,7 @@ class AutomaticRuntimeLedger:
     def learning_review_items(self) -> tuple[RuntimeReviewQueueItem, ...]:
         """Return review work produced by post-task Codex pickup."""
 
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             rows = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -1011,7 +1012,7 @@ class AutomaticRuntimeLedger:
         return tuple(result)
 
     def learning_review_item_for_cycle(self, cycle_id: str) -> RuntimeReviewQueueItem | None:
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             row = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -1032,7 +1033,7 @@ class AutomaticRuntimeLedger:
     def learning_review_resolutions(self) -> tuple[RuntimeLearningReviewResolution, ...]:
         """Return immutable owner decisions in resolution order."""
 
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             rows = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -1056,7 +1057,7 @@ class AutomaticRuntimeLedger:
         self,
         queue_id: str,
     ) -> RuntimeLearningReviewResolution | None:
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             row = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -1081,7 +1082,7 @@ class AutomaticRuntimeLedger:
     def external_adoptions(self) -> tuple[RuntimeExternalAdoptionResolution, ...]:
         """Return package decisions without mixing them into genuine dogfood measurements."""
 
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             rows = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -1105,7 +1106,7 @@ class AutomaticRuntimeLedger:
         self, package_digest: str, item_id: str
     ) -> RuntimeExternalAdoptionResolution | None:
         normalized = package_digest.removeprefix("sha256:")
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             row = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -1126,7 +1127,7 @@ class AutomaticRuntimeLedger:
     def governance_events(self) -> tuple[GovernanceEvent, ...]:
         """Return signed release and activation actions in append order."""
 
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             rows = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -1153,7 +1154,7 @@ class AutomaticRuntimeLedger:
             raise ValueError("runtime learning assessment crossed the subject boundary")
         payload = canonical_json(assessment)
         digest = str(assessment.content_digest).removeprefix("sha256:")
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
             existing = connection.execute(
                 """
@@ -1215,7 +1216,7 @@ class AutomaticRuntimeLedger:
         return True
 
     def learning_assessments(self) -> tuple[RuntimeLearningAssessment, ...]:
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             rows = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -1242,7 +1243,7 @@ class AutomaticRuntimeLedger:
             raise ValueError("automatic runtime feedback crossed the ledger subject boundary")
         payload = canonical_json(feedback)
         digest = str(feedback.content_digest).removeprefix("sha256:")
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             existing_legacy = connection.execute(
                 """
                 SELECT canonical_json, content_sha256
@@ -1361,7 +1362,7 @@ class AutomaticRuntimeLedger:
         return True
 
     def feedback(self) -> tuple[RuntimeActivationFeedback, ...]:
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             legacy_rows = connection.execute(
                 """
                 SELECT canonical_json, content_sha256

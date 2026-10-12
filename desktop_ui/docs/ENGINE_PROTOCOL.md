@@ -10,6 +10,12 @@ require the exact snapshot digest and an idempotency key. A mismatched version o
 oversized frame, malformed response, unavailable process, stale snapshot, replay conflict, or
 unknown method fails closed with a sanitized message.
 
+The desktop snapshot digest binds state rather than refresh time. It excludes the three
+generated timestamps and pending-review ages derived from unchanged proposal timestamps.
+Consent status/expiry, current projects, proposals, adaptations, feedback, undo eligibility,
+runtime generation, secure-store status, and preferences remain bound. A clock refresh alone
+does not invalidate a click; a state change or expiry transition does.
+
 ## Renderer command allowlist
 
 - `engine_handshake`

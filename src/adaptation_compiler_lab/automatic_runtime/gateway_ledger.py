@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from datetime import datetime
 from pathlib import Path
 from typing import TypeVar
@@ -45,7 +46,7 @@ class GatewayLedger:
         values: tuple[object, ...],
         model: BaseModel,
     ) -> bool:
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             inserted = self._insert(
                 connection,
                 table=table,
@@ -220,7 +221,7 @@ class GatewayLedger:
 
         if self.session(receipt.session_id) is None:
             raise ValueError("change application crossed the ledger subject")
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             for verification in verifications:
                 self._insert(
                     connection,
@@ -289,7 +290,7 @@ class GatewayLedger:
         return None if not applications else applications[0]
 
     def change_bundle(self, session_id: str) -> CapturedChangeBundle | None:
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             row = connection.execute(
                 """
                 SELECT canonical_json, content_sha256, raw_sha256, raw_size_bytes,
@@ -317,7 +318,7 @@ class GatewayLedger:
         )
 
     def metrics(self, *, generated_at: datetime) -> GatewayInstrumentMetrics:
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
 
             def scalar(query: str, values: tuple[object, ...] = ()) -> int:
                 row = connection.execute(query, values).fetchone()
@@ -369,7 +370,7 @@ class GatewayLedger:
         values: tuple[object, ...],
         model_type: type[ModelT],
     ) -> tuple[ModelT, ...]:
-        with sqlite3.connect(self._path) as connection:
+        with closing(sqlite3.connect(self._path)) as connection, connection:
             rows = connection.execute(query, values).fetchall()
         result: list[ModelT] = []
         for payload, digest in rows:

@@ -14,6 +14,11 @@ from adaptation_compiler_lab.automatic_runtime.models import (
 )
 from adaptation_compiler_lab.automatic_runtime.product_dogfood import TerminalAlphaSnapshot
 from adaptation_compiler_lab.connectors.pins import RuntimeConformanceError
+from adaptation_compiler_lab.desktop.engine_protocol import (
+    PROTOCOL_VERSION,
+    EngineProtocolRouter,
+    EngineRequest,
+)
 from adaptation_compiler_lab.desktop.models import DesktopChangeReview
 from adaptation_compiler_lab.desktop.service import (
     DesktopApplicationService,
@@ -163,6 +168,68 @@ def test_snapshot_v11_projects_live_suggestions_adaptations_and_feedback(tmp_pat
     assert len(active_snapshot.adaptations) == 1
     assert len(active_snapshot.activation_feedback) == 1
     assert active_snapshot.adaptations[0].artifact_digest.startswith("sha256:")
+
+
+def test_review_click_survives_refresh_times_but_rejects_changed_state(tmp_path: Path) -> None:
+    pending, _active = _review_and_active_snapshots(tmp_path)
+    backend = FakeDesktopBackend(pending)
+    clock = [NOW + timedelta(minutes=5)]
+    service = DesktopApplicationService(backend, clock=lambda: clock[0])
+    router = EngineProtocolRouter(service)
+    preview = service.load()
+    clock[0] += timedelta(minutes=1)
+    review = pending.review_mode
+    backend.terminal = pending.model_copy(
+        update={
+            "review_mode": review.model_copy(
+                update={
+                    "generated_at": clock[0],
+                    "gate": review.gate.model_copy(update={"generated_at": clock[0]}),
+                    "metrics": review.metrics.model_copy(
+                        update={
+                            "pending_review_age_seconds": tuple(
+                                value + 60 for value in review.metrics.pending_review_age_seconds
+                            )
+                        }
+                    ),
+                }
+            )
+        }
+    )
+    refreshed = service.load()
+    assert refreshed.generated_at != preview.generated_at
+    assert refreshed.terminal.review_mode.metrics != preview.terminal.review_mode.metrics
+    assert refreshed.content_digest == preview.content_digest
+    request = EngineRequest(
+        protocol_version=PROTOCOL_VERSION,
+        request_id="elapsed-clock-click",
+        method="task.discard",
+        params={"session_id": "fictional-session"},
+        expected_snapshot_digest=preview.content_digest,
+        idempotency_key="first-click",
+    )
+    assert router.handle(request).ok
+    assert backend.discarded == ["fictional-session"]
+    service.set_local_preferences(background_enabled=True, aggregate_reporting_enabled=False)
+    stale = router.handle(
+        request.model_copy(
+            update={"request_id": "changed-state-click", "idempotency_key": "new-click"}
+        )
+    )
+    assert not stale.ok and stale.error is not None and stale.error.code == "stale_snapshot"
+    assert backend.discarded == ["fictional-session"]
+
+
+def test_snapshot_binding_still_changes_at_consent_expiry(tmp_path: Path) -> None:
+    terminal, _state = _empty_snapshot(tmp_path)
+    backend = FakeDesktopBackend(terminal)
+    clock = [NOW + backend.expires_delta - timedelta(seconds=1)]
+    service = DesktopApplicationService(backend, clock=lambda: clock[0])
+    before = service.load()
+    clock[0] += timedelta(seconds=2)
+    after = service.load()
+    assert not before.consent.renewal_required and after.consent.renewal_required
+    assert before.content_digest != after.content_digest
 
 
 def test_revoke_and_feedback_require_exact_current_digests(tmp_path: Path) -> None:
