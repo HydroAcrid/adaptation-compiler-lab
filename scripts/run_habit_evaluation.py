@@ -11,6 +11,7 @@ from adaptation_compiler_lab.automatic_runtime.dogfood_cli import (
     _registration_signer,
     _runtime_secrets,
 )
+from adaptation_compiler_lab.autonomy.analyzer import EVALUATION_VERSION
 from adaptation_compiler_lab.autonomy.codex_transport import ConfiguredCodexHabitSensor
 from adaptation_compiler_lab.autonomy.evaluation_run import ShadowEvaluationRunner
 from adaptation_compiler_lab.autonomy.store import AutonomyStore
@@ -24,7 +25,12 @@ def main() -> None:
     parser.add_argument("--advance", action="store_true")
     args = parser.parse_args()
     config = _load_config(args.config)
-    root = config.state_root / "autonomy" / "validation" / "shadow-eval-v2"
+    root = (
+        config.state_root
+        / "autonomy"
+        / "validation"
+        / ("shadow-eval-" + EVALUATION_VERSION.rsplit("-", 1)[-1])
+    )
     store = AutonomyStore(
         root / "events.sqlite3",
         signer=_registration_signer(config),
@@ -38,8 +44,8 @@ def main() -> None:
     fixture_root = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "autonomy"
     sensor = ConfiguredCodexHabitSensor(args.config)
     runner = ShadowEvaluationRunner(
-        dataset=fixture_root / "habit_eval_v2.json",
-        manifest=fixture_root / "habit_eval_v2.manifest.json",
+        dataset=fixture_root / (EVALUATION_VERSION.replace("-", "_") + ".json"),
+        manifest=fixture_root / (EVALUATION_VERSION.replace("-", "_") + ".manifest.json"),
         store=store,
         sensor=sensor,
         remaining_capacity=sensor.remaining_capacity,

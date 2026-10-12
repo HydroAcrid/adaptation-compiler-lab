@@ -531,7 +531,7 @@ def test_untrusted_outcome_never_counts_as_compliance(app: Any) -> None:
 
 def test_frozen_evaluation_counts_and_digest_cannot_drift(tmp_path: Path) -> None:
     root = Path(__file__).parents[2] / "fixtures" / "autonomy"
-    path, manifest = root / "habit_eval_v2.json", root / "habit_eval_v2.manifest.json"
+    path, manifest = root / "habit_eval_v3.json", root / "habit_eval_v3.manifest.json"
     assert len(load_frozen_scenarios(path, manifest)["cases"]) == 120
     changed = json.loads(path.read_text(encoding="utf-8"))
     changed["cases"][0]["expected"]["style_keys"] = []
