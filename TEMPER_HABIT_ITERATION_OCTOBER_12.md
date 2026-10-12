@@ -132,3 +132,22 @@ changed-source/script typing and lint/format pass. Known requirement and inciden
 remain in selected diagnostics. Full v9 regression must determine whether the fixed gates are met.
 All v1-v9 materials and signed runs are preserved. The fresh prospective cases remain unexecuted;
 v9 changes only their version binding. No real observation, grant, profile or calibration was added.
+
+## Native Windows candidate
+
+Functional source `54b2217` rebuilt the Windows engine/hook, Tauri app and NSIS installer locally.
+The rebuilt engine passed disposable consent/setup/registration/replay/restart, fixture-bundle
+Apply/Discard/postflight rollback and encrypted same-owner recovery with identity/history
+preservation, path rebinding and restored restart. Zero provider calls were used; successful
+temporary state was removed. The personal installation remains the earlier candidate.
+
+| Artifact | SHA-256 |
+|---|---|
+| Engine | `273d8ee656d0869a48d1aaf3bc51c3f2942459baf79c529bd67e430504a459a0` |
+| Hook | `d4d05f6bd40c5d005ddc55a47d602761c0037b96f7ce8db87ea5794bf73fe937` |
+| App | `c39e26c4d78b533eba7852dfa15f11c05a235bf40b9c7c74e9c69ba9edbedb44` |
+| Installer | `1c0995df73ff7ab2ed186bef752e6639474d590036228786b4aa99b0964d9248` |
+
+Artifacts/receipts are held privately for recovery and review. These are same-host development
+checks, not independent installation, trusted signing, rendered desktop workflow or proof that
+an agent loaded/followed a new habit. No installer was published and no serving gate was enabled.
