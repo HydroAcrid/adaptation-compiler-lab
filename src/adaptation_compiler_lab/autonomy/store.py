@@ -6,6 +6,7 @@ import base64
 import json
 import sqlite3
 from collections.abc import Mapping
+from contextlib import closing
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -38,7 +39,7 @@ class AutonomyStore:
         self._public = base64.b64encode(
             signer.private_key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
         ).decode("ascii")
-        with sqlite3.connect(root) as connection:
+        with closing(sqlite3.connect(root)) as connection, connection:
             connection.executescript(
                 """
                 CREATE TABLE IF NOT EXISTS autonomy_events (
@@ -58,7 +59,7 @@ class AutonomyStore:
             )
 
     def events(self) -> tuple[dict[str, Any], ...]:
-        with sqlite3.connect(self.path) as connection:
+        with closing(sqlite3.connect(self.path)) as connection, connection:
             rows = connection.execute(
                 "SELECT sequence,event_key,event_type,payload,envelope,"
                 "previous_digest,content_digest "
@@ -106,7 +107,7 @@ class AutonomyStore:
     def append(self, key: str, kind: str, payload: Mapping[str, Any], *, at: datetime) -> bool:
         verified = self.events()
         before = verified[-1]["digest"] if verified else "sha256:" + "0" * 64
-        with sqlite3.connect(self.path) as connection:
+        with closing(sqlite3.connect(self.path)) as connection, connection:
             connection.execute("BEGIN IMMEDIATE")
             existing = connection.execute(
                 "SELECT event_type,payload FROM autonomy_events WHERE event_key=?", (key,)

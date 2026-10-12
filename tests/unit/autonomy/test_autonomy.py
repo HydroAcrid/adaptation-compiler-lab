@@ -168,7 +168,7 @@ def test_role_alone_or_unknown_provenance_is_insufficient(app: Any) -> None:
     assert not service.automatic_ready()
 
 
-def test_delegated_tool_inputs_are_excluded_and_opaque_client_ids_never_attest_human():
+def test_delegated_tool_inputs_are_excluded_and_opaque_client_ids_never_attest_human() -> None:
     for version in ("0.157.0", "0.160.1", "0.162.0-alpha.2", "unknown"):
         assert (
             codex_message_origin(
@@ -358,7 +358,7 @@ def test_failure_recording_publication_restores_original_bytes(app: Any, monkeyp
     def refuse(key: str, kind: str, payload: Any, **kwargs: Any) -> bool:
         if kind == "publication":
             raise OSError("ledger unavailable")
-        return append(key, kind, payload, **kwargs)
+        return bool(append(key, kind, payload, **kwargs))
 
     monkeypatch.setattr(service.store, "append", refuse)
     with pytest.raises(OSError, match="unavailable"):
@@ -637,7 +637,7 @@ def test_large_backlog_is_processed_once_without_starving_older_tasks(app: Any) 
     seen = []
 
     class Sensor:
-        def analyze(self, episodes, **kwargs):
+        def analyze(self, episodes: Any, **kwargs: Any) -> HabitBatchV1:
             seen.append({value.episode_id for value in episodes})
             return HabitBatchV1(proposals=())
 

@@ -26,7 +26,12 @@ def load_frozen_scenarios(path: Path, manifest: Path) -> dict[str, Any]:
     frozen = json.loads(manifest.read_text(encoding="utf-8"))
     if (
         value.get("evaluation_version") != EVALUATION_VERSION
+        or frozen.get("evaluation_version") != EVALUATION_VERSION
         or value.get("synthetic") is not True
+        or frozen.get("precision_gate") != 0.95
+        or frozen.get("recall_gate") != 0.8
+        or frozen.get("disallowed_promotion_gate") != 0
+        or frozen.get("wrong_scope_gate") != 0
         or canonical_digest(value) != frozen["dataset_digest"]
         or analyzer_digest() != frozen["analyzer_digest"]
         or frozen_defaults() != frozen["defaults"]

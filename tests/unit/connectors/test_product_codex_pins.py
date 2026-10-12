@@ -22,7 +22,7 @@ from adaptation_compiler_lab.connectors.pins import (
 
 
 @pytest.mark.parametrize(
-    "platform_name,version", [("win32", "0.162.0-alpha.2"), ("darwin", "0.157.0")]
+    "platform_name,version", [("win32", "0.162.0-alpha.17.2"), ("darwin", "0.157.0")]
 )
 def test_native_product_pin_uses_its_exact_schema_version(platform_name: str, version: str) -> None:
     pin = load_dogfood_runtime_pins(product_codex_runtime_locks(platform_name)[0]).codex
@@ -82,7 +82,8 @@ def test_runtime_pin_survives_onefile_source_removal(tmp_path: Path) -> None:
     source.unlink()
     assert persisted.is_relative_to(state)
     assert (
-        load_dogfood_runtime_pins(persisted).codex.executable.package_version == "0.162.0-alpha.2"
+        load_dogfood_runtime_pins(persisted).codex.executable.package_version
+        == "0.162.0-alpha.17.2"
     )
 
 

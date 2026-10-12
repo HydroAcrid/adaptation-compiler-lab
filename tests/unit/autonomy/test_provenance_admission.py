@@ -22,7 +22,12 @@ from adaptation_compiler_lab.connectors.pins import (
 
 @pytest.mark.parametrize(
     "platform,version",
-    [("win32", "0.162.0-alpha.2"), ("win32", "0.160.1"), ("darwin", "0.157.0")],
+    [
+        ("win32", "0.162.0-alpha.17.2"),
+        ("win32", "0.162.0-alpha.2"),
+        ("win32", "0.160.1"),
+        ("darwin", "0.157.0"),
+    ],
 )
 def test_pinned_message_contract_has_no_positive_human_origin_witness(
     platform: str,

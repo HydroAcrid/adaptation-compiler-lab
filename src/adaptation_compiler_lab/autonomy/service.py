@@ -15,9 +15,6 @@ from typing import TYPE_CHECKING, Any
 from adaptation_compiler_lab.autonomy.defaults import (
     CHECKED_OPPORTUNITIES,
     COMPLIANCE_SUCCESSES,
-    MAX_DAILY_ANALYSES,
-    MIN_REMAINING_CAPACITY,
-    POLL_MINUTES,
     SUPPORT_DATES,
     SUPPORT_TASKS,
     TRIAL_DAYS,
@@ -682,25 +679,14 @@ class AutonomyApplicationService:
                 )
 
     def budget_available(self, remaining_percent: float | None, *, sessions: int = 1) -> bool:
-        if type(sessions) is not int or not 1 <= sessions <= MAX_DAILY_ANALYSES:
-            return False
-        if remaining_percent is None or not MIN_REMAINING_CAPACITY <= remaining_percent <= 100:
-            return False
-        now = self._now()
-        analysis = [event for event in self.store.events() if event["type"] == "analysis"]
-        recent = [
-            event
-            for event in analysis
-            if datetime.fromisoformat(event["payload"]["started_at"]) > now - timedelta(days=1)
-        ]
-        if (
-            sum(event["payload"].get("sessions", 1) for event in recent) + sessions
-            > MAX_DAILY_ANALYSES
-        ):
-            return False
-        return not analysis or datetime.fromisoformat(
-            analysis[-1]["payload"]["started_at"]
-        ) <= now - timedelta(minutes=POLL_MINUTES)
+        from adaptation_compiler_lab.autonomy.budget import background_budget_available
+
+        return background_budget_available(
+            self.store.events(),
+            now=self._now(),
+            remaining_percent=remaining_percent,
+            sessions=sessions,
+        )
 
     def begin_analysis(
         self, remaining_percent: float | None, *, key: str, sessions: int = 1
