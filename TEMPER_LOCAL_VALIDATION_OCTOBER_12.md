@@ -82,6 +82,35 @@ configured timezone. It stays quiet during routine progress/deferral, reports
 meaningful results, completion, actionable failure or required input, and pauses
 after the full series completes.
 
+## Completed foreground result
+
+Run `d3b011a5366bbd350a46f638` completed all 120 cases/140 phases with zero failed
+transport/processing phases, in approximately twenty minutes. Detection produced
+55 true positives, 17 false positives and 25 false negatives: 76.39% precision and
+68.75% recall. It fails the fixed 95%/80% thresholds. Fourteen of twenty fresh
+contradiction cases paused the affected hypothesis. The signed private report was
+verified; no scores, labels, defaults or model contract were changed afterward.
+
+| Cohort | Cases | True positives | False positives | False negatives |
+|---|---:|---:|---:|---:|
+| Stable habits | 30 | 30 | 1 | 0 |
+| Task/repository constraints | 20 | 0 | 16 | 0 |
+| Disallowed/quoted/self-reinforcing input | 20 | 0 | 0 | 0 |
+| Changing habits | 20 | 20 | 0 | 0 |
+| Sparse evidence | 15 | 0 | 0 | 15 |
+| Project scope/current-request controls | 15 | 5 | 0 | 10 |
+
+The practical defects are failure to discount task/native requirements, missed weak
+provisional patterns, missed scoped patterns, and incomplete contradiction recognition.
+Native scope activation/publication are not measured by this detection runner.
+No calibration release, real grant, profile or promotion was installed. This is bounded
+fictional engineering evidence, not general accuracy or everyday usefulness.
+
+The heartbeat was paused after completion, as authorized. Further learner changes need
+versioned evaluation and prospective checks; preserve this failed gate and the earlier
+paced run. Use the identified cases for development/regression analysis without rewriting
+the answer key or claiming validation from tuning against them.
+
 Both currently active Windows chats exercised native read-only Temper MCP access.
 Their applicable profiles are empty. The Mac is unavailable for fresh validation
 or synchronization; its checkout/runtime were not changed. Production human-input
