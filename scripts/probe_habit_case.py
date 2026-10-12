@@ -31,6 +31,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--case-id", required=True)
+    parser.add_argument(
+        "--candidate-model", help="Explicit developer candidate; no personal configuration change."
+    )
     args = parser.parse_args()
     config = _load_config(args.config)
     root = (
@@ -65,7 +68,9 @@ def main() -> None:
             at=runner.clock(),
         )
 
-    sensor = ConfiguredCodexHabitSensor(args.config, on_result=capture)
+    sensor = ConfiguredCodexHabitSensor(
+        args.config, on_result=capture, candidate_model=args.candidate_model
+    )
     fixtures = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "autonomy"
     prefix = EVALUATION_VERSION.replace("-", "_")
     runner = ShadowEvaluationRunner(
@@ -75,7 +80,7 @@ def main() -> None:
         sensor=sensor,
         remaining_capacity=sensor.remaining_capacity,
         runtime_binding={
-            "model": config.semantic_model,
+            "model": args.candidate_model or config.semantic_model,
             "effort": config.semantic_reasoning_effort,
             "runtime_pin_digest": sha256_file(config.runtime_pin_path),
         },

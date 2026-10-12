@@ -204,6 +204,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument(
+        "--candidate-model", help="Explicit developer candidate; no personal configuration change."
+    )
+    parser.add_argument(
         "--prospective", action="store_true", help="Use the separately bound fresh fictional suite."
     )
     parser.add_argument(
@@ -212,6 +215,8 @@ def main() -> None:
     args = parser.parse_args()
     config = _load_config(args.config)
     suffix = "-prospective" if args.prospective else ""
+    if args.candidate_model:
+        suffix += "-model-" + str(canonical_digest({"model": args.candidate_model}))[7:19]
     root = (
         config.state_root
         / "autonomy"
@@ -246,7 +251,9 @@ def main() -> None:
             at=runner.clock(),
         )
 
-    sensor = ConfiguredCodexHabitSensor(args.config, on_result=capture_wire)
+    sensor = ConfiguredCodexHabitSensor(
+        args.config, on_result=capture_wire, candidate_model=args.candidate_model
+    )
     fixture_prefix = EVALUATION_VERSION.replace("-", "_")
     if args.prospective:
         fixture_prefix += "_prospective"
@@ -257,7 +264,7 @@ def main() -> None:
         sensor=sensor,
         remaining_capacity=sensor.remaining_capacity,
         runtime_binding={
-            "model": config.semantic_model,
+            "model": args.candidate_model or config.semantic_model,
             "effort": config.semantic_reasoning_effort,
             "runtime_pin_digest": sha256_file(config.runtime_pin_path),
         },

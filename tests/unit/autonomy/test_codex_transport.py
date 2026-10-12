@@ -236,7 +236,10 @@ def test_native_relation_passes_use_fresh_sessions_and_exact_model(tmp_path, mon
     assert len(model_checks) == 2
 
 
-def test_habit_proposal_and_review_have_separate_quota_checked_contexts(tmp_path, monkeypatch):
+@pytest.mark.parametrize("candidate", [None, "explicit-candidate"])
+def test_habit_proposal_and_review_have_separate_quota_checked_contexts(
+    tmp_path, monkeypatch, candidate
+):
     import adaptation_compiler_lab.autonomy.codex_transport as transport
     from adaptation_compiler_lab.autonomy.analyzer import EVALUATION_VERSION
     from tests.unit.autonomy.test_autonomy import Clock, episode
@@ -267,7 +270,7 @@ def test_habit_proposal_and_review_have_separate_quota_checked_contexts(tmp_path
         yield config, object(), object(), marker, tmp_path
 
     def turn(rpc, schemas, **kwargs):
-        assert kwargs["model"] == "exact-model" and kwargs["effort"] == "medium"
+        assert kwargs["model"] == (candidate or "exact-model") and kwargs["effort"] == "medium"
         return wire_result(payload, kwargs["output_schema"])
 
     monkeypatch.setattr(transport, "configured_analysis_session", session)
@@ -275,8 +278,11 @@ def test_habit_proposal_and_review_have_separate_quota_checked_contexts(tmp_path
     monkeypatch.setattr(transport, "verify_model", lambda *args, **kwargs: None)
     monkeypatch.setattr(transport, "run_habit_turn", turn)
     sensor = transport.ConfiguredCodexHabitSensor(
-        tmp_path / "config", on_result=lambda stage, raw: captures.append(stage)
+        tmp_path / "config",
+        on_result=lambda stage, raw: captures.append(stage),
+        candidate_model=candidate,
     )
     assert len(sensor.analyze((e,), context="").proposals) == 1
     assert len(sessions) == len(quota_checks) == 2 and sessions[0] is not sessions[1]
     assert captures == ["proposal", "evidence_review"] and sensor.analysis_sessions == 2
+    assert config.semantic_model == "exact-model"

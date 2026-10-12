@@ -151,3 +151,42 @@ temporary state was removed. The personal installation remains the earlier candi
 Artifacts/receipts are held privately for recovery and review. These are same-host development
 checks, not independent installation, trusted signing, rendered desktop workflow or proof that
 an agent loaded/followed a new habit. No installer was published and no serving gate was enabled.
+
+## Completed v9 and the next candidate
+
+V9 run `63d048bea268e31ddb4d0e07` completed all 120 cases/140 phases with zero failed phases.
+It found 80 TP / 5 FP / 0 FN: 94.12% precision, 100% recall. Nineteen of twenty contradictions
+paused the affected habit. Recall improved from v3's 68.75%; task-requirement false hypotheses
+fell from sixteen to two. This still fails the fixed precision and contradiction gates.
+
+| Cohort | Cases | TP | FP | FN |
+|---|---:|---:|---:|---:|
+| Stable | 30 | 30 | 1 | 0 |
+| Required task/native format | 20 | 0 | 2 | 0 |
+| Automated/quoted/self-reinforcing | 20 | 0 | 0 | 0 |
+| Changing | 20 | 20 | 1 | 0 |
+| Sparse | 15 | 15 | 0 | 0 |
+| Scope/current-request | 15 | 15 | 1 | 0 |
+
+V10 keeps two-pass corroboration for positive support. A credible, correctly attributed and scoped
+fresh personal-change assessment from either pass can suspend an existing default; an unrelated
+second-pass assessment cannot veto that safety pause. Literal-quote, reference, scope and origin
+checks remain mandatory. Explicit temporary task exceptions alone do not pause a habit.
+
+The new offline signed-wire replay checks unchanged fictional cases/labels and a complete,
+successful source run. It explicitly migrates only the wire-version stamp, preserves the original
+semantic decisions, and executes the new host deterministically with zero provider calls. V10
+replay `5eb9c11e4ae0870983ee8d16` retained 94.12%/100% detection and corrected all 20 pauses.
+That is development replay, not new live evidence or a serving calibration. Precision still fails.
+
+The owner was informed of an explicitly selected GPT-6.1 Sol developer candidate. Its availability
+and medium effort were verified in the authenticated native model catalog. The candidate flag
+uses a separate model-bound store, checks that exact model before each turn, and does not change
+personal configuration or permit fallback. Saved ChatGPT authentication and the known >=20%
+capacity floor remain; no paid API is used. Selected live diagnostics found the expected ordering
+habit without the former companion hypothesis, and paused the previously missed correction.
+One requirement diagnostic still produced a hypothesis. These are selected diagnostics only;
+the complete candidate regression and fresh prospective series must decide the gates.
+
+No v9/v10 score was substituted into an older run. Fresh prospective materials remain unexecuted.
+No personal grant, source permission, profile, native loading/following claim or release was added.

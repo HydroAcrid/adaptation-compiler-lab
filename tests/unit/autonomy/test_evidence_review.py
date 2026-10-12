@@ -17,7 +17,7 @@ from adaptation_compiler_lab.autonomy.analyzer import (
 from adaptation_compiler_lab.autonomy.retention import purge_expired_raw
 from adaptation_compiler_lab.autonomy.styles import StyleKey
 from tests.unit.autonomy.test_autonomy import app as app
-from tests.unit.autonomy.test_autonomy import episode
+from tests.unit.autonomy.test_autonomy import episode, trial
 from tests.unit.autonomy.test_classified_evidence import response
 from tests.unit.autonomy.wire_fixture import wire_result
 
@@ -168,3 +168,36 @@ def test_failed_analysis_wire_results_remain_encrypted_and_expire(app: Any) -> N
     assert purge_expired_raw(service.store, now=clock.value) == 0
     assert purge_expired_raw(service.store, now=clock.value + timedelta(days=31)) == 1
     assert not raw.exists()
+
+
+@pytest.mark.parametrize("first_changed", [True, False])
+def test_either_credible_fresh_correction_can_suspend_existing_default(
+    app: Any, first_changed: bool
+) -> None:
+    service, clock = app
+    habit_id = trial(service, clock)
+    e = episode(
+        10, clock, text="That earlier format is not working now. Stop applying it to these tasks."
+    )
+    service.ingest_episode(e)
+
+    def payload(changed: bool) -> dict[str, Any]:
+        return {
+            "evaluation_version": EVALUATION_VERSION,
+            "candidates": [],
+            "known_habit_assessments": [
+                {
+                    "habit_id": habit_id,
+                    "verdict": "personal_change" if changed else "unrelated",
+                    "evidence": [{"episode_id": e.episode_id, "quote": e.text}],
+                }
+            ],
+        }
+
+    outputs = iter((payload(first_changed), payload(not first_changed)))
+    batch = SchemaBoundHabitSensor(lambda *args: wire_result(next(outputs), args[-1])).analyze(
+        (e,), context="", existing_habits=service.hypotheses()
+    )
+    assert len(batch.contradictions) == 1
+    service.record_contradiction(batch.contradictions[0])
+    assert service.hypotheses()[0].state.value == "paused"

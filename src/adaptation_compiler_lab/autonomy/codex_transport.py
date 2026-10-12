@@ -303,10 +303,19 @@ class ConfiguredCodexHabitSensor:
     analysis_sessions = SchemaBoundHabitSensor.analysis_sessions
 
     def __init__(
-        self, config_path: Path, *, on_result: Callable[[str, str], None] | None = None
+        self,
+        config_path: Path,
+        *,
+        on_result: Callable[[str, str], None] | None = None,
+        candidate_model: str | None = None,
     ) -> None:
         self.config_path = config_path
         self.on_result = on_result
+        if candidate_model is not None and (
+            not candidate_model or candidate_model.strip() != candidate_model
+        ):
+            raise ValueError("developer candidate requires an exact nonempty model ID")
+        self.candidate_model = candidate_model
 
     def remaining_capacity(self) -> float | None:
         try:
@@ -341,14 +350,14 @@ class ConfiguredCodexHabitSensor:
                 verify_model(
                     rpc,
                     contract,
-                    model=config.semantic_model,
+                    model=self.candidate_model or config.semantic_model,
                     effort=config.semantic_reasoning_effort,
                 )
                 result = run_habit_turn(
                     rpc,
                     schemas,
                     workspace=workspace,
-                    model=config.semantic_model,
+                    model=self.candidate_model or config.semantic_model,
                     effort=config.semantic_reasoning_effort,
                     contract=instructions,
                     prompt=prompt,
