@@ -23,6 +23,7 @@ from adaptation_compiler_lab.autonomy.codex_transport import (
 )
 from adaptation_compiler_lab.instruction_environment.semantic import InstructionRelationPairV1
 from adaptation_compiler_lab.serialization import canonical_digest
+from tests.unit.autonomy.wire_fixture import wire_result
 from tests.unit.instruction_environment.test_codex_semantic import _SemanticRpc
 
 NOW = datetime(2026, 10, 7, tzinfo=UTC)
@@ -139,6 +140,34 @@ def test_sensor_rejects_tools_before_accepting_output(tmp_path: Path) -> None:
         run(tmp_path, _SemanticRpc(response="{}", item_type="commandExecution"))
 
 
+def test_quiet_notification_interval_waits_for_the_same_turn(tmp_path: Path) -> None:
+    from adaptation_compiler_lab.connectors.codex_app_server import CodexProtocolError
+
+    class QuietOnce(_SemanticRpc):
+        quiet = True
+
+        def next_notification(self, *, timeout_seconds=120):
+            if self.quiet:
+                self.quiet = False
+                raise CodexProtocolError("Codex app-server notification timed out")
+            return super().next_notification(timeout_seconds=timeout_seconds)
+
+    rpc = QuietOnce(response='{"proposals":[]}')
+    assert run(tmp_path, rpc) == '{"proposals":[]}'
+    assert sum(method == "turn/start" for method, _ in rpc.calls) == 1
+
+
+def test_other_protocol_errors_are_not_swallowed_as_quiet_intervals(tmp_path: Path) -> None:
+    from adaptation_compiler_lab.connectors.codex_app_server import CodexProtocolError
+
+    class Broken(_SemanticRpc):
+        def next_notification(self, *, timeout_seconds=120):
+            raise CodexProtocolError("unhandled Codex server request or out-of-order response")
+
+    with pytest.raises(CodexProtocolError, match="out-of-order"):
+        run(tmp_path, Broken(response="{}"))
+
+
 def test_missing_isolation_metadata_blocks_before_model_turn(tmp_path: Path) -> None:
     class MissingSources(_SemanticRpc):
         def request(self, method, params):
@@ -239,7 +268,7 @@ def test_habit_proposal_and_review_have_separate_quota_checked_contexts(tmp_path
 
     def turn(rpc, schemas, **kwargs):
         assert kwargs["model"] == "exact-model" and kwargs["effort"] == "medium"
-        return json.dumps(payload)
+        return wire_result(payload, kwargs["output_schema"])
 
     monkeypatch.setattr(transport, "configured_analysis_session", session)
     monkeypatch.setattr(transport, "read_capacity", lambda *args: quota_checks.append(args) or 50)

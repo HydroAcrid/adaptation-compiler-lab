@@ -103,3 +103,32 @@ Full v6 regression must measure the remaining error; no perfect requirement hand
 V6 prospective materials preserve the previously authored, never-executed fresh v5 cases with
 only the evaluation-version binding changed. V5 prospective has no private run store. Prior
 manifests, labels, thresholds and failed runs remain intact; no serving calibration is installed.
+
+## Review protocol and notification handling
+
+V6 run `d87318d3987258369713f0bc` was interrupted after nine completed phases by a native
+notification timeout. Its completed prefix was 2 TP / 0 FP / 7 FN; the next reserved phase remains
+unresumable without explicit attention. The reviewer was treating ordinary requests as task
+requirements. This is failed development evidence, not a pass or a complete series.
+
+V7/v8 were targeted diagnostic candidates only. A distinct review schema now requires explicit
+per-style/per-episode decisions and a specific-behavior check. Provider schemas constrain supplied
+episode IDs, known-habit IDs and review style keys, while host checks remain mandatory. Empty known
+target lists require zero target assessments. The contract uses the underlying-work counterfactual
+to distinguish external acceptance requirements from discretionary communication corrections.
+Requirements and quotations can still exclude evidence; no positive inference comes from context.
+
+V9 coalesces multiple valid quotations from one episode into one supporting/counterevidence
+reference. Every quotation is still checked, so a later invented quote cannot hide behind a
+previously valid ID. This implements the one-completed-task limit without rejecting legitimate
+multiple quotations. The previously failing changing diagnostic now pauses the old habit.
+
+The native sensor waits through quiet 30-second notification intervals until the original
+180-second deadline. It does not start another model turn. Other protocol errors still fail
+closed and are recorded with safe diagnostics. Tests verify both behaviors.
+
+Current local checks: 124 learner tests and 381 surrounding tests pass, with four platform skips;
+changed-source/script typing and lint/format pass. Known requirement and incidental-style errors
+remain in selected diagnostics. Full v9 regression must determine whether the fixed gates are met.
+All v1-v9 materials and signed runs are preserved. The fresh prospective cases remain unexecuted;
+v9 changes only their version binding. No real observation, grant, profile or calibration was added.

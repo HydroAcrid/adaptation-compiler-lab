@@ -30,6 +30,7 @@ from adaptation_compiler_lab.autonomy.defaults import SUPPORT_DATES, SUPPORT_TAS
 from adaptation_compiler_lab.autonomy.evaluation_run import EvaluationPhase, ShadowEvaluationRunner
 from adaptation_compiler_lab.autonomy.retention import purge_expired_raw
 from adaptation_compiler_lab.autonomy.store import AutonomyIntegrityError, AutonomyStore
+from adaptation_compiler_lab.connectors.codex_app_server import CodexProtocolError
 from adaptation_compiler_lab.connectors.pins import sha256_file
 from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore
 from adaptation_compiler_lab.serialization import canonical_digest
@@ -178,7 +179,7 @@ class OwnerRequestedEvaluationRunner(ShadowEvaluationRunner):
                     },
                     at=now,
                 )
-            except (OSError, ValueError) as error:
+            except (OSError, ValueError, CodexProtocolError) as error:
                 payload = {
                     "phase": phase.key,
                     "case_id": phase.case_id,

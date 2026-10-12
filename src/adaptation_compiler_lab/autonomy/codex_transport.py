@@ -25,7 +25,10 @@ from adaptation_compiler_lab.autonomy.codex_capacity import (
     require_catalog_model,
 )
 from adaptation_compiler_lab.autonomy.models import HabitHypothesisV1, StyleEpisodeV1
-from adaptation_compiler_lab.connectors.codex_app_server import CodexAppServerProcess
+from adaptation_compiler_lab.connectors.codex_app_server import (
+    CodexAppServerProcess,
+    CodexProtocolError,
+)
 from adaptation_compiler_lab.connectors.models import JsonObject
 from adaptation_compiler_lab.connectors.pins import load_dogfood_runtime_pins, verify_codex_runtime
 from adaptation_compiler_lab.instruction_environment.codex_semantic import (
@@ -249,7 +252,13 @@ def run_habit_turn(
     messages: list[str] = []
     deadline = monotonic() + timeout
     while monotonic() < deadline:
-        notification = rpc.next_notification(timeout_seconds=min(30, deadline - monotonic()))
+        try:
+            notification = rpc.next_notification(timeout_seconds=min(30, deadline - monotonic()))
+        except CodexProtocolError as error:
+            if str(error) != "Codex app-server notification timed out":
+                raise
+            # A quiet interval is not a new model attempt or an overall turn timeout.
+            continue
         method = notification.get("method")
         values = notification.get("params")
         if not isinstance(values, dict):

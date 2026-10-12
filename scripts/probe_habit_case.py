@@ -22,6 +22,7 @@ from adaptation_compiler_lab.autonomy.evaluation_run import ShadowEvaluationRunn
 from adaptation_compiler_lab.autonomy.models import HabitProposalV1, StyleCategory, TaskClass
 from adaptation_compiler_lab.autonomy.store import AutonomyStore
 from adaptation_compiler_lab.autonomy.styles import StyleKey, style_contract
+from adaptation_compiler_lab.connectors.codex_app_server import CodexProtocolError
 from adaptation_compiler_lab.connectors.pins import sha256_file
 from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore
 
@@ -135,7 +136,7 @@ def main() -> None:
                 "contradictions": len(batch.contradictions),
                 "states": [h.state.value for h in service.hypotheses()],
             }
-        except (ValueError, OSError) as error:
+        except (ValueError, OSError, CodexProtocolError) as error:
             result = {
                 "status": "failed",
                 "error_type": type(error).__name__,

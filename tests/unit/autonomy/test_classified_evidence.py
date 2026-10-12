@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
 import pytest
@@ -11,6 +10,7 @@ from adaptation_compiler_lab.autonomy.store import AutonomyIntegrityError
 from adaptation_compiler_lab.serialization import canonical_digest
 from tests.unit.autonomy.test_autonomy import app as app
 from tests.unit.autonomy.test_autonomy import episode, proposal, trial
+from tests.unit.autonomy.wire_fixture import wire_result
 
 
 def response(
@@ -32,7 +32,7 @@ def test_repeated_nonpersonal_evidence_cannot_support_a_habit(app: Any, basis: s
     payload = response(
         [{"episode_id": e.episode_id, "quote": e.text, "basis": basis} for e in episodes]
     )
-    batch = SchemaBoundHabitSensor(lambda *args: json.dumps(payload)).analyze(
+    batch = SchemaBoundHabitSensor(lambda *args: wire_result(payload, args[-1])).analyze(
         episodes, context="The required incident template determines the response format."
     )
     assert not batch.proposals and not batch.contradictions
@@ -43,7 +43,9 @@ def test_single_discretionary_request_is_weak_not_trial_evidence(app: Any) -> No
     e = episode(0, clock)
     payload = response([{"episode_id": e.episode_id, "quote": e.text, "basis": "personal_choice"}])
     service.ingest_episode(e)
-    batch = SchemaBoundHabitSensor(lambda *args: json.dumps(payload)).analyze((e,), context="")
+    batch = SchemaBoundHabitSensor(lambda *args: wire_result(payload, args[-1])).analyze(
+        (e,), context=""
+    )
     habit = service.record_proposal(batch.proposals[0])
     assert habit.state is HabitState.PROVISIONAL
     assert habit.support_episode_ids == (e.episode_id,)
@@ -56,7 +58,7 @@ def test_semantic_personal_label_cannot_override_source_attribution(app: Any, or
     e = episode(0, clock, origin=origin)
     payload = response([{"episode_id": e.episode_id, "quote": e.text, "basis": "personal_choice"}])
     assert (
-        not SchemaBoundHabitSensor(lambda *args: json.dumps(payload))
+        not SchemaBoundHabitSensor(lambda *args: wire_result(payload, args[-1]))
         .analyze((e,), context="")
         .proposals
     )
@@ -79,7 +81,7 @@ def test_changed_style_pauses_but_temporary_task_exception_does_not(app: Any, ve
             }
         ],
     }
-    batch = SchemaBoundHabitSensor(lambda *args: json.dumps(payload)).analyze(
+    batch = SchemaBoundHabitSensor(lambda *args: wire_result(payload, args[-1])).analyze(
         (e,), context="", existing_habits=service.hypotheses()
     )
     for change in batch.contradictions:
@@ -94,7 +96,7 @@ def test_every_known_target_must_be_assessed_and_quotes_must_be_real(app: Any) -
     payload = response(
         [{"episode_id": e.episode_id, "quote": "invented", "basis": "personal_choice"}]
     )
-    sensor = SchemaBoundHabitSensor(lambda *args: json.dumps(payload))
+    sensor = SchemaBoundHabitSensor(lambda *args: wire_result(payload, args[-1]))
     with pytest.raises(ValueError, match="omitted or invented contradiction"):
         sensor.analyze((e,), context="", existing_habits=service.hypotheses())
     with pytest.raises(ValueError, match="evidence quotes"):
@@ -107,7 +109,7 @@ def test_task_context_limits_support_but_cannot_create_it(app: Any) -> None:
     payload = response([{"episode_id": e.episode_id, "quote": e.text, "basis": "personal_choice"}])
     service.ingest_episode(e)
     assert (
-        not SchemaBoundHabitSensor(lambda *args: json.dumps(payload))
+        not SchemaBoundHabitSensor(lambda *args: wire_result(payload, args[-1]))
         .analyze((e,), context="")
         .proposals
     )
@@ -116,7 +118,7 @@ def test_task_context_limits_support_but_cannot_create_it(app: Any) -> None:
     payload["candidates"][0]["style_key"] = "concise_summary"
     payload["candidates"][0]["evidence"][0]["basis"] = "task_requirement"
     assert (
-        not SchemaBoundHabitSensor(lambda *args: json.dumps(payload))
+        not SchemaBoundHabitSensor(lambda *args: wire_result(payload, args[-1]))
         .analyze((e,), context="Required report format")
         .proposals
     )

@@ -32,6 +32,7 @@ from adaptation_compiler_lab.autonomy.styles import StyleKey
 from adaptation_compiler_lab.autonomy.worker import BackgroundHabitWorker, CapturePage
 from adaptation_compiler_lab.governance.signing import GovernanceSigner
 from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore, RawEncryptionKey
+from tests.unit.autonomy.wire_fixture import wire_result
 
 DIGEST = "sha256:" + "a" * 64
 NOW = datetime(2026, 10, 6, 12, tzinfo=UTC)
@@ -473,7 +474,7 @@ def test_background_worker_is_shadow_budgeted_and_restart_idempotent(app: Any) -
 
     def run(contract: str, prompt: str, schema: Any) -> str:
         calls.append((contract, prompt))
-        return json.dumps(
+        return wire_result(
             {
                 "evaluation_version": EVALUATION_VERSION,
                 "candidates": [
@@ -491,7 +492,8 @@ def test_background_worker_is_shadow_budgeted_and_restart_idempotent(app: Any) -
                     }
                 ],
                 "known_habit_assessments": [],
-            }
+            },
+            schema,
         )
 
     worker = BackgroundHabitWorker(
@@ -602,7 +604,7 @@ def test_fresh_contradiction_pauses_after_old_raw_evidence_expires(app: Any) -> 
     )
     service.ingest_episode(fresh)
     sensor = SchemaBoundHabitSensor(
-        lambda *args: json.dumps(
+        lambda *args: wire_result(
             {
                 "evaluation_version": EVALUATION_VERSION,
                 "candidates": [],
@@ -618,7 +620,8 @@ def test_fresh_contradiction_pauses_after_old_raw_evidence_expires(app: Any) -> 
                         ],
                     }
                 ],
-            }
+            },
+            args[-1],
         )
     )
     batch = sensor.analyze((fresh,), context="", existing_habits=service.hypotheses())
