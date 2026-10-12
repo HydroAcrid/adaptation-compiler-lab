@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import shutil
 import tempfile
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -291,8 +291,13 @@ def run_habit_turn(
 
 
 class ConfiguredCodexHabitSensor:
-    def __init__(self, config_path: Path) -> None:
+    analysis_sessions = SchemaBoundHabitSensor.analysis_sessions
+
+    def __init__(
+        self, config_path: Path, *, on_result: Callable[[str, str], None] | None = None
+    ) -> None:
         self.config_path = config_path
+        self.on_result = on_result
 
     def remaining_capacity(self) -> float | None:
         try:
@@ -308,24 +313,29 @@ class ConfiguredCodexHabitSensor:
         context: str,
         existing_habits: Sequence[HabitHypothesisV1] = (),
     ) -> HabitBatchV1:
-        with configured_analysis_session(self.config_path) as (
-            config,
-            schemas,
-            contract,
-            rpc,
-            workspace,
-        ):
-            remaining = read_capacity(rpc, contract)
-            if remaining is None or remaining < 20:
-                raise ValueError(
-                    "subscription capacity is unknown or below the background threshold"
-                )
-            verify_model(
-                rpc, contract, model=config.semantic_model, effort=config.semantic_reasoning_effort
-            )
+        stages = iter(("proposal", "evidence_review"))
 
-            def run(instructions: str, prompt: str, output: dict[str, object]) -> str:
-                return run_habit_turn(
+        def run(instructions: str, prompt: str, output: dict[str, object]) -> str:
+            stage = next(stages)
+            with configured_analysis_session(self.config_path) as (
+                config,
+                schemas,
+                contract,
+                rpc,
+                workspace,
+            ):
+                remaining = read_capacity(rpc, contract)
+                if remaining is None or remaining < 20:
+                    raise ValueError(
+                        "subscription capacity is unknown or below the background threshold"
+                    )
+                verify_model(
+                    rpc,
+                    contract,
+                    model=config.semantic_model,
+                    effort=config.semantic_reasoning_effort,
+                )
+                result = run_habit_turn(
                     rpc,
                     schemas,
                     workspace=workspace,
@@ -335,10 +345,13 @@ class ConfiguredCodexHabitSensor:
                     prompt=prompt,
                     output_schema=output,
                 )
+                if self.on_result is not None:
+                    self.on_result(stage, result)
+                return result
 
-            return SchemaBoundHabitSensor(run).analyze(
-                episodes, context=context, existing_habits=existing_habits
-            )
+        return SchemaBoundHabitSensor(run).analyze(
+            episodes, context=context, existing_habits=existing_habits
+        )
 
 
 class ConfiguredNativeRelationSensor:

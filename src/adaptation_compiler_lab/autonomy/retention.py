@@ -14,7 +14,7 @@ def purge_expired_raw(store: AutonomyStore, *, now: datetime) -> int:
     references: dict[str, tuple[dict[str, Any], datetime]] = {}
     for event in store.events():
         payload = event["payload"]
-        if event["type"] in {"episode", "analysis_completed"}:
+        if event["type"] in {"episode", "analysis_completed", "evaluation_wire"}:
             ref, timestamp = payload["raw_ref"], payload["completed_at"]
         elif event["type"] == "publication":
             ref, timestamp = payload["backup"], payload["published_at"]

@@ -503,11 +503,11 @@ def test_background_worker_is_shadow_budgeted_and_restart_idempotent(app: Any) -
     )
     before = (service.publisher.home / "AGENTS.md").read_bytes()
     assert worker.poll()["analyzed"] == 3
-    assert len(calls) == 1
+    assert len(calls) == 2
     assert service.hypotheses()[0].state is HabitState.PROVISIONAL
     assert (service.publisher.home / "AGENTS.md").read_bytes() == before
     assert worker.poll()["analyzed"] == 0
-    assert len(calls) == 1
+    assert len(calls) == 2
     service.provenance_verifier = None
     assert worker.poll()["status"] == "source_verification_required"
 
@@ -614,7 +614,6 @@ def test_fresh_contradiction_pauses_after_old_raw_evidence_expires(app: Any) -> 
                             {
                                 "episode_id": fresh.episode_id,
                                 "quote": fresh.text,
-                                "basis": "personal_choice",
                             }
                         ],
                     }

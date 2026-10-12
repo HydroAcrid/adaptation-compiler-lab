@@ -7,7 +7,11 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-from adaptation_compiler_lab.autonomy.analyzer import HabitSensor, analyzer_digest
+from adaptation_compiler_lab.autonomy.analyzer import (
+    HabitSensor,
+    analysis_session_count,
+    analyzer_digest,
+)
 from adaptation_compiler_lab.autonomy.models import HabitProposalV1, HabitState, StyleEpisodeV1
 from adaptation_compiler_lab.autonomy.native_policy import NativeStylePolicy
 from adaptation_compiler_lab.autonomy.retention import purge_expired_raw
@@ -94,7 +98,8 @@ class BackgroundHabitWorker:
         if self.sensor is None or self.remaining_capacity is None or self.context is None:
             return {**result, "status": "analysis_verification_required"}
         capacity = self.remaining_capacity()
-        if not service.budget_available(capacity):
+        sessions = analysis_session_count(self.sensor)
+        if not service.budget_available(capacity, sessions=sessions):
             return {**result, "status": "capacity_deferred"}
         project = pending[0]["project_id"]
         fresh = sorted(
@@ -121,7 +126,7 @@ class BackgroundHabitWorker:
         batch_key = str(
             canonical_digest({"episodes": [e.episode_id for e in episodes], "at": now.isoformat()})
         )[7:]
-        service.begin_analysis(capacity, key="analysis-" + batch_key)
+        service.begin_analysis(capacity, key="analysis-" + batch_key, sessions=sessions)
         batch = self.sensor.analyze(
             episodes, context=self.context(project), existing_habits=service.hypotheses()
         )

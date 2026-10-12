@@ -68,3 +68,38 @@ and were read back as `enabled: false`, matching the owner's no-CI instruction.
 
 Windows implementation stays on the draft autonomy branch. No Mac source/runtime was synchronized,
 no historical research was promoted, and no personal grant or native profile was installed.
+
+## Independent evidence review
+
+V5 regression `f29ea026fc9670ba1f04cc85` also stopped on a validation failure, at 74/140 phases.
+Its incomplete report covered 72 cases: 31 TP / 6 FP / 1 FN, 83.78% precision and 96.88% recall.
+It was not resumed or combined with any other run. The unexecuted prospective set remains fresh.
+
+V6 adds a second evidence review in a fresh, empty Codex context. The reviewer sees the original
+episodes, context and proposed style keys, without the author's classifications or verdicts.
+Both passes must independently support the same episode for that specific style before it can
+count. Both must identify a personal change with matching fresh evidence before the old habit
+pauses. The host still controls provenance, references, scope, counting and lifecycle. A reviewer
+cannot introduce another style or supply uncorroborated supporting episodes.
+
+The contradiction wire type now carries literal quotes and a verdict without a redundant,
+potentially inconsistent positive-support classification. Unknown or uncorroborated results are
+withheld. Invalid IDs, quotes, target coverage or schemas remain validation failures. Owner-run
+wire responses are saved encrypted before validation and expire after 30 days, including rejected
+outputs. Public diagnostics contain only safe codes and known schema-field names.
+
+Both passes are quota checked and use the exact configured model/effort, separately isolated,
+with no tools, native instructions, learned memory or model fallback. Background accounting
+reserves two sessions before either pass; the twelve-session daily limit and five-minute cadence
+are unchanged. Foreground fictional evaluation remains a separate owner-requested execution path.
+
+Local checks: 120 learner tests passed, one Mac skip; 381 surrounding checks passed, three platform
+skips. Changed-source/script typing and lint/format pass. A targeted fictional diagnostic for the
+previously failing changing case paused the seeded old habit with no invented replacement.
+Two of three targeted requirement cases produced no hypothesis; one still produced a provisional
+hypothesis. These explicitly selected diagnostics do not count as full-suite scores or calibration.
+Full v6 regression must measure the remaining error; no perfect requirement handling is claimed.
+
+V6 prospective materials preserve the previously authored, never-executed fresh v5 cases with
+only the evaluation-version binding changed. V5 prospective has no private run store. Prior
+manifests, labels, thresholds and failed runs remain intact; no serving calibration is installed.

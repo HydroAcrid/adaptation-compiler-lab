@@ -14,7 +14,13 @@ from typing import Any
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from adaptation_compiler_lab.autonomy.analyzer import HabitBatchV1, HabitSensor, analyzer_digest
+from adaptation_compiler_lab.autonomy.analyzer import (
+    HabitBatchV1,
+    HabitSensor,
+    analysis_session_count,
+    analyzer_digest,
+    safe_analysis_failure,
+)
 from adaptation_compiler_lab.autonomy.budget import background_budget_available
 from adaptation_compiler_lab.autonomy.defaults import SUPPORT_DATES, SUPPORT_TASKS, frozen_defaults
 from adaptation_compiler_lab.autonomy.evaluation import load_frozen_scenarios, score_hypotheses
@@ -80,6 +86,9 @@ class ShadowEvaluationRunner:
                     "host": Path(__file__).with_name("service.py").read_text(encoding="utf-8"),
                     "scorer": Path(__file__).with_name("evaluation.py").read_text(encoding="utf-8"),
                     "budget": Path(__file__).with_name("budget.py").read_text(encoding="utf-8"),
+                    "retention": Path(__file__)
+                    .with_name("retention.py")
+                    .read_text(encoding="utf-8"),
                     "store": Path(__file__).with_name("store.py").read_text(encoding="utf-8"),
                     "analyzer_host": Path(__file__)
                     .with_name("analyzer.py")
@@ -245,7 +254,10 @@ class ShadowEvaluationRunner:
             if eligible:
                 capacity = self.remaining_capacity()
                 if not background_budget_available(
-                    self.store.events(), now=now, remaining_percent=capacity
+                    self.store.events(),
+                    now=now,
+                    remaining_percent=capacity,
+                    sessions=analysis_session_count(self.sensor),
                 ):
                     return {
                         "status": "capacity_or_cadence_deferred",
@@ -258,7 +270,7 @@ class ShadowEvaluationRunner:
                     "analysis",
                     {
                         "started_at": now.isoformat(),
-                        "sessions": 1,
+                        "sessions": analysis_session_count(self.sensor),
                         "purpose": "frozen_shadow_evaluation",
                     },
                     at=now,
@@ -318,6 +330,7 @@ class ShadowEvaluationRunner:
                     "stage": phase.stage,
                     "status": "failed",
                     "error_type": type(error).__name__,
+                    **safe_analysis_failure(error),
                     "synthetic": True,
                 }
             self.store.append(reservation + "-result", "evaluation_phase", payload, at=now)

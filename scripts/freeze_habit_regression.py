@@ -14,6 +14,7 @@ from adaptation_compiler_lab.serialization import canonical_digest
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prospective", action="store_true")
+    parser.add_argument("--prospective-source", type=Path)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "autonomy"
     source = root / "habit_eval_v3.json"
@@ -27,9 +28,11 @@ def main() -> None:
     prefix = EVALUATION_VERSION.replace("-", "_")
     if args.prospective:
         prefix += "_prospective"
-        data = json.loads((root / (prefix + ".json")).read_text(encoding="utf-8"))
+        source = args.prospective_source or root / (prefix + ".json")
+        data = json.loads(source.read_text(encoding="utf-8"))
         if data.get("purpose") != "prospective_shadow_detection":
             raise ValueError("prospective binding requires previously authored fresh materials")
+        data["evaluation_version"] = EVALUATION_VERSION
     manifest = {
         "evaluation_version": EVALUATION_VERSION,
         "purpose": data["purpose"],

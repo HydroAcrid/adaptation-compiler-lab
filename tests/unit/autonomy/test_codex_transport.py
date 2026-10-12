@@ -205,3 +205,49 @@ def test_native_relation_passes_use_fresh_sessions_and_exact_model(tmp_path, mon
     with pytest.raises(ValueError, match="capacity"):
         sensor.compare((pair,))
     assert len(model_checks) == 2
+
+
+def test_habit_proposal_and_review_have_separate_quota_checked_contexts(tmp_path, monkeypatch):
+    import adaptation_compiler_lab.autonomy.codex_transport as transport
+    from adaptation_compiler_lab.autonomy.analyzer import EVALUATION_VERSION
+    from tests.unit.autonomy.test_autonomy import Clock, episode
+
+    e = episode(0, Clock())
+    payload = {
+        "evaluation_version": EVALUATION_VERSION,
+        "candidates": [
+            {
+                "style_key": "concise_progress",
+                "origin": "inferred",
+                "evidence": [
+                    {"episode_id": e.episode_id, "quote": e.text, "basis": "personal_choice"}
+                ],
+            }
+        ],
+        "known_habit_assessments": [],
+    }
+    sessions = []
+    quota_checks = []
+    captures = []
+    config = SimpleNamespace(semantic_model="exact-model", semantic_reasoning_effort="medium")
+
+    @contextmanager
+    def session(path):
+        marker = object()
+        sessions.append(marker)
+        yield config, object(), object(), marker, tmp_path
+
+    def turn(rpc, schemas, **kwargs):
+        assert kwargs["model"] == "exact-model" and kwargs["effort"] == "medium"
+        return json.dumps(payload)
+
+    monkeypatch.setattr(transport, "configured_analysis_session", session)
+    monkeypatch.setattr(transport, "read_capacity", lambda *args: quota_checks.append(args) or 50)
+    monkeypatch.setattr(transport, "verify_model", lambda *args, **kwargs: None)
+    monkeypatch.setattr(transport, "run_habit_turn", turn)
+    sensor = transport.ConfiguredCodexHabitSensor(
+        tmp_path / "config", on_result=lambda stage, raw: captures.append(stage)
+    )
+    assert len(sensor.analyze((e,), context="").proposals) == 1
+    assert len(sessions) == len(quota_checks) == 2 and sessions[0] is not sessions[1]
+    assert captures == ["proposal", "evidence_review"] and sensor.analysis_sessions == 2

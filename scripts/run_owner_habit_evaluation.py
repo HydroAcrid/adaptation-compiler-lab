@@ -19,7 +19,12 @@ from adaptation_compiler_lab.automatic_runtime.dogfood_cli import (
     _registration_signer,
     _runtime_secrets,
 )
-from adaptation_compiler_lab.autonomy.analyzer import EVALUATION_VERSION, HabitBatchV1
+from adaptation_compiler_lab.autonomy.analyzer import (
+    EVALUATION_VERSION,
+    HabitBatchV1,
+    analysis_session_count,
+    safe_analysis_failure,
+)
 from adaptation_compiler_lab.autonomy.codex_transport import ConfiguredCodexHabitSensor
 from adaptation_compiler_lab.autonomy.defaults import SUPPORT_DATES, SUPPORT_TASKS
 from adaptation_compiler_lab.autonomy.evaluation_run import EvaluationPhase, ShadowEvaluationRunner
@@ -45,6 +50,7 @@ class OwnerRequestedEvaluationRunner(ShadowEvaluationRunner):
             "driver_digest": sha256_file(Path(__file__)),
             "minimum_remaining_capacity": 20,
             "parallel_sessions": 1,
+            "analysis_sessions_reserved_per_phase": analysis_session_count(kwargs["sensor"]),
             "background_observation": False,
             "background_budget_consumed": 0,
             "personal_capture": False,
@@ -119,7 +125,7 @@ class OwnerRequestedEvaluationRunner(ShadowEvaluationRunner):
                     "owner_evaluation_analysis",
                     {
                         "started_at": now.isoformat(),
-                        "sessions": 1,
+                        "sessions": analysis_session_count(self.sensor),
                         "purpose": "owner_requested_frozen_evaluation",
                     },
                     at=now,
@@ -179,6 +185,7 @@ class OwnerRequestedEvaluationRunner(ShadowEvaluationRunner):
                     "stage": phase.stage,
                     "status": "failed",
                     "error_type": type(error).__name__,
+                    **safe_analysis_failure(error),
                     "synthetic": True,
                 }
             self.store.append(reservation + "-result", "evaluation_phase", payload, at=now)
@@ -221,7 +228,24 @@ def main() -> None:
         ),
     )
     fixture_root = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "autonomy"
-    sensor = ConfiguredCodexHabitSensor(args.config)
+
+    def capture_wire(stage: str, result: str) -> None:
+        phase = next(p for p in runner.phases if p.key not in runner.completed())
+        raw = store.save_raw(result.encode("utf-8"))
+        store.append(
+            "evaluation-wire-" + runner.run_id + "-" + phase.key + "-" + stage,
+            "evaluation_wire",
+            {
+                "phase": phase.key,
+                "stage": stage,
+                "raw_ref": asdict(raw),
+                "synthetic": True,
+                "completed_at": runner.clock().isoformat(),
+            },
+            at=runner.clock(),
+        )
+
+    sensor = ConfiguredCodexHabitSensor(args.config, on_result=capture_wire)
     fixture_prefix = EVALUATION_VERSION.replace("-", "_")
     if args.prospective:
         fixture_prefix += "_prospective"

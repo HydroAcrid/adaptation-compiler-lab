@@ -75,9 +75,7 @@ def test_changed_style_pauses_but_temporary_task_exception_does_not(app: Any, ve
             {
                 "habit_id": habit_id,
                 "verdict": verdict,
-                "evidence": [
-                    {"episode_id": e.episode_id, "quote": e.text, "basis": "personal_choice"}
-                ],
+                "evidence": [{"episode_id": e.episode_id, "quote": e.text}],
             }
         ],
     }
