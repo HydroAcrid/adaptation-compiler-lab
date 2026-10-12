@@ -196,11 +196,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument(
+        "--prospective", action="store_true", help="Use the separately bound fresh fictional suite."
+    )
+    parser.add_argument(
         "--run-now", action="store_true", help="Explicitly run eligible phases now."
     )
     args = parser.parse_args()
     config = _load_config(args.config)
-    root = config.state_root / "autonomy" / "validation" / ("owner-eval-" + EVALUATION_VERSION)
+    suffix = "-prospective" if args.prospective else ""
+    root = (
+        config.state_root
+        / "autonomy"
+        / "validation"
+        / ("owner-eval-" + EVALUATION_VERSION + suffix)
+    )
     store = AutonomyStore(
         root / "events.sqlite3",
         signer=_registration_signer(config),
@@ -213,9 +222,12 @@ def main() -> None:
     )
     fixture_root = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "autonomy"
     sensor = ConfiguredCodexHabitSensor(args.config)
+    fixture_prefix = EVALUATION_VERSION.replace("-", "_")
+    if args.prospective:
+        fixture_prefix += "_prospective"
     runner = OwnerRequestedEvaluationRunner(
-        dataset=fixture_root / (EVALUATION_VERSION.replace("-", "_") + ".json"),
-        manifest=fixture_root / (EVALUATION_VERSION.replace("-", "_") + ".manifest.json"),
+        dataset=fixture_root / (fixture_prefix + ".json"),
+        manifest=fixture_root / (fixture_prefix + ".manifest.json"),
         store=store,
         sensor=sensor,
         remaining_capacity=sensor.remaining_capacity,

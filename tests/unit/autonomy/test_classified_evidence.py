@@ -6,9 +6,11 @@ from typing import Any
 import pytest
 
 from adaptation_compiler_lab.autonomy.analyzer import EVALUATION_VERSION, SchemaBoundHabitSensor
-from adaptation_compiler_lab.autonomy.models import HabitState, InputOrigin
+from adaptation_compiler_lab.autonomy.models import HabitState, InputOrigin, TaskClass
+from adaptation_compiler_lab.autonomy.store import AutonomyIntegrityError
+from adaptation_compiler_lab.serialization import canonical_digest
 from tests.unit.autonomy.test_autonomy import app as app
-from tests.unit.autonomy.test_autonomy import episode, trial
+from tests.unit.autonomy.test_autonomy import episode, proposal, trial
 
 
 def response(
@@ -99,3 +101,53 @@ def test_every_known_target_must_be_assessed_and_quotes_must_be_real(app: Any) -
         sensor.analyze((e,), context="", existing_habits=service.hypotheses())
     with pytest.raises(ValueError, match="evidence quotes"):
         sensor.analyze((e,), context="")
+
+
+def test_task_context_limits_support_but_cannot_create_it(app: Any) -> None:
+    service, clock = app
+    e = episode(0, clock, task_class=TaskClass.SUMMARY)
+    payload = response([{"episode_id": e.episode_id, "quote": e.text, "basis": "personal_choice"}])
+    service.ingest_episode(e)
+    assert (
+        not SchemaBoundHabitSensor(lambda *args: json.dumps(payload))
+        .analyze((e,), context="")
+        .proposals
+    )
+    with pytest.raises(AutonomyIntegrityError, match="observed task class"):
+        service.record_proposal(proposal((e.episode_id,)))
+    payload["candidates"][0]["style_key"] = "concise_summary"
+    payload["candidates"][0]["evidence"][0]["basis"] = "task_requirement"
+    assert (
+        not SchemaBoundHabitSensor(lambda *args: json.dumps(payload))
+        .analyze((e,), context="Required report format")
+        .proposals
+    )
+
+
+def test_unrelated_task_class_cannot_pause_a_known_habit(app: Any) -> None:
+    service, clock = app
+    habit_id = trial(service, clock)
+    e = episode(10, clock, task_class=TaskClass.SUMMARY)
+    service.ingest_episode(e)
+    from adaptation_compiler_lab.autonomy.models import HabitContradictionProposalV1
+
+    with pytest.raises(AutonomyIntegrityError, match="wrong-scope"):
+        service.record_contradiction(
+            HabitContradictionProposalV1(
+                habit_id=habit_id,
+                evidence_episode_ids=(e.episode_id,),
+                evaluation_version=EVALUATION_VERSION,
+            )
+        )
+    assert service.hypotheses()[0].state is HabitState.TRIAL
+
+
+def test_legacy_episode_replay_preserves_identity_without_a_task_hint(app: Any) -> None:
+    service, clock = app
+    e = episode(0, clock)
+    legacy = e.model_dump(mode="json", exclude={"task_class"})
+    assert e.source_digest == canonical_digest(legacy)
+    assert service.ingest_episode(e)
+    assert not service.ingest_episode(e)
+    with pytest.raises(AutonomyIntegrityError, match="replay content"):
+        service.ingest_episode(e.model_copy(update={"task_class": TaskClass.SUMMARY}))

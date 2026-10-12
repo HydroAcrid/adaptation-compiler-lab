@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
-from adaptation_compiler_lab.autonomy.styles import STYLE_DEFAULTS
+from adaptation_compiler_lab.autonomy.styles import STYLE_DEFAULTS, StyleKey
 from adaptation_compiler_lab.serialization import canonical_digest
 
 # Independently worded, ordinary choices. These are synthetic, not personal observations.
@@ -110,7 +111,7 @@ def build() -> dict[str, object]:
     for group, count in groups:
         for index in range(count):
             key = keys[index % len(keys)]
-            task_class = STYLE_DEFAULTS[key][1]
+            task_class = STYLE_DEFAULTS[StyleKey(key)][1]
             case_id = f"prospective-{group}-{index:02}"
             episodes = []
             size = (1 if index % 2 == 0 else 2) if group == "sparse" else 3
@@ -135,7 +136,7 @@ def build() -> dict[str, object]:
                     }
                 )
             context = "No required assistant response format. Task context limits scope only."
-            expected = {
+            expected: dict[str, Any] = {
                 "style_keys": [key],
                 "project_id": "fictional-harbor",
                 "state": "provisional" if group == "sparse" else "trial_eligible",
@@ -160,7 +161,7 @@ def build() -> dict[str, object]:
                 )
                 episodes.append(final)
                 expected["state"] = "paused"
-            case = {
+            case: dict[str, Any] = {
                 "id": case_id,
                 "group": group,
                 "context": context,

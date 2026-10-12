@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -11,6 +12,9 @@ from adaptation_compiler_lab.serialization import canonical_digest
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--prospective", action="store_true")
+    args = parser.parse_args()
     root = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "autonomy"
     source = root / "habit_eval_v3.json"
     data = json.loads(source.read_text(encoding="utf-8"))
@@ -20,9 +24,15 @@ def main() -> None:
         "Previously executed fictional v3 scenarios. Labels unchanged. "
         "Used for development regression, never fresh prospective release validation."
     )
+    prefix = EVALUATION_VERSION.replace("-", "_")
+    if args.prospective:
+        prefix += "_prospective"
+        data = json.loads((root / (prefix + ".json")).read_text(encoding="utf-8"))
+        if data.get("purpose") != "prospective_shadow_detection":
+            raise ValueError("prospective binding requires previously authored fresh materials")
     manifest = {
         "evaluation_version": EVALUATION_VERSION,
-        "purpose": "development_regression",
+        "purpose": data["purpose"],
         "source_dataset_digest": canonical_digest(json.loads(source.read_text(encoding="utf-8"))),
         "dataset_digest": canonical_digest(data),
         "analyzer_digest": analyzer_digest(),
@@ -36,7 +46,6 @@ def main() -> None:
             "Classified evidence and complete known-habit assessment; preserve prior failures."
         ),
     }
-    prefix = EVALUATION_VERSION.replace("-", "_")
     for name, value in ((prefix + ".json", data), (prefix + ".manifest.json", manifest)):
         path = root / name
         encoded = json.dumps(value, ensure_ascii=False, indent=2) + "\n"
@@ -45,7 +54,7 @@ def main() -> None:
                 raise ValueError("Existing regression binding changed; create a new version")
         else:
             path.write_text(encoded, encoding="utf-8")
-    print(json.dumps({"version": EVALUATION_VERSION, "purpose": "development_regression"}))
+    print(json.dumps({"version": EVALUATION_VERSION, "purpose": data["purpose"]}))
 
 
 if __name__ == "__main__":

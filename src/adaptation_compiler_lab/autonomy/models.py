@@ -111,6 +111,9 @@ class StyleEpisodeV1(FrozenModel):
     completed_at: datetime
     created_at: datetime
     text: NonEmptyStr = Field(max_length=32_768)
+    # Observed task context may limit a hypothesis, never establish a personal choice.
+    # Legacy readers and clients without a supported context hint remain valid.
+    task_class: TaskClass | None = None
     terminal: bool = True
     ephemeral: bool = False
 
@@ -123,6 +126,15 @@ class StyleEpisodeV1(FrozenModel):
         if len(set(self.observation_ids)) != len(self.observation_ids):
             raise ValueError("episode observation IDs must be unique")
         return self
+
+    @property
+    def source_digest(self) -> Sha256Digest:
+        # Preserve legacy replay identity when no new contextual field was supplied.
+        return canonical_digest(
+            self.model_dump(
+                mode="json", exclude={"task_class"} if self.task_class is None else set()
+            )
+        )
 
 
 class HabitProposalV1(FrozenModel):

@@ -288,7 +288,7 @@ class AutonomyApplicationService:
         self.ensure_lease()
         previous = self.episodes().get(episode.episode_id)
         if previous:
-            if previous["source_digest"] != canonical_digest(episode):
+            if previous["source_digest"] not in {episode.source_digest, canonical_digest(episode)}:
                 raise AutonomyIntegrityError("episode replay content changed")
             return False
         for value in self.episodes().values():
@@ -304,7 +304,7 @@ class AutonomyApplicationService:
                 raise AutonomyIntegrityError("one observation cannot manufacture independent tasks")
         raw = self.store.save_raw(json.dumps(episode.model_dump(mode="json")).encode())
         metadata = episode.model_dump(mode="json", exclude={"text"})
-        metadata["source_digest"] = canonical_digest(episode)
+        metadata["source_digest"] = episode.source_digest
         metadata["raw_ref"] = asdict(raw)
         metadata["grant_id"] = grant.grant_id
         return self.store.append(
@@ -347,6 +347,11 @@ class AutonomyApplicationService:
             raise AutonomyIntegrityError("proposal references unavailable evidence")
         if any(episodes[key]["grant_id"] != grant.grant_id for key in requested):
             raise AutonomyIntegrityError("proposal references evidence outside the current grant")
+        if any(
+            episodes[key].get("task_class") not in {None, proposal.task_class.value}
+            for key in requested
+        ):
+            raise AutonomyIntegrityError("proposal crossed the observed task class")
         projects = {episodes[key]["project_id"] for key in requested}
         if len(projects) != 1:
             raise AutonomyIntegrityError("inferred habits cannot broaden across projects")
@@ -539,6 +544,7 @@ class AutonomyApplicationService:
             key not in episodes
             or episodes[key]["grant_id"] != grant.grant_id
             or episodes[key]["project_id"] != habit.project_id
+            or episodes[key].get("task_class") not in {None, habit.task_class.value}
             for key in proposal.evidence_episode_ids
         ):
             raise AutonomyIntegrityError(

@@ -18,7 +18,12 @@ from adaptation_compiler_lab.autonomy.analyzer import HabitBatchV1, HabitSensor,
 from adaptation_compiler_lab.autonomy.budget import background_budget_available
 from adaptation_compiler_lab.autonomy.defaults import SUPPORT_DATES, SUPPORT_TASKS, frozen_defaults
 from adaptation_compiler_lab.autonomy.evaluation import load_frozen_scenarios, score_hypotheses
-from adaptation_compiler_lab.autonomy.models import InputOrigin, StyleCategory, StyleEpisodeV1
+from adaptation_compiler_lab.autonomy.models import (
+    InputOrigin,
+    StyleCategory,
+    StyleEpisodeV1,
+    TaskClass,
+)
 from adaptation_compiler_lab.autonomy.retention import purge_expired_raw
 from adaptation_compiler_lab.autonomy.service import AutonomyApplicationService
 from adaptation_compiler_lab.autonomy.store import AutonomyIntegrityError, AutonomyStore
@@ -76,6 +81,15 @@ class ShadowEvaluationRunner:
                     "scorer": Path(__file__).with_name("evaluation.py").read_text(encoding="utf-8"),
                     "budget": Path(__file__).with_name("budget.py").read_text(encoding="utf-8"),
                     "store": Path(__file__).with_name("store.py").read_text(encoding="utf-8"),
+                    "analyzer_host": Path(__file__)
+                    .with_name("analyzer.py")
+                    .read_text(encoding="utf-8"),
+                    "episode_models": Path(__file__)
+                    .with_name("models.py")
+                    .read_text(encoding="utf-8"),
+                    "transport": Path(__file__)
+                    .with_name("codex_transport.py")
+                    .read_text(encoding="utf-8"),
                 }
             ),
             "runtime": dict(runtime_binding),
@@ -120,6 +134,7 @@ class ShadowEvaluationRunner:
                 created_at=datetime.fromisoformat(value["date"] + "T12:00:00+00:00"),
                 completed_at=datetime.fromisoformat(value["date"] + "T12:00:00+00:00"),
                 text="\n".join(value["user_messages"]),
+                task_class=TaskClass(value["task_class"]),
                 terminal=value["terminal"],
             )
             for value in case["episodes"]

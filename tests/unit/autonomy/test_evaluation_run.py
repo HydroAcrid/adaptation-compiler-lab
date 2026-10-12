@@ -16,13 +16,20 @@ from adaptation_compiler_lab.autonomy.analyzer import (
 )
 from adaptation_compiler_lab.autonomy.budget import background_budget_available
 from adaptation_compiler_lab.autonomy.evaluation_run import ShadowEvaluationRunner
-from adaptation_compiler_lab.autonomy.models import HabitContradictionProposalV1
+from adaptation_compiler_lab.autonomy.models import (
+    HabitContradictionProposalV1,
+    StyleCategory,
+    TaskClass,
+)
 from adaptation_compiler_lab.autonomy.store import AutonomyIntegrityError
+from adaptation_compiler_lab.autonomy.styles import StyleKey, style_contract
 from tests.unit.autonomy.test_autonomy import app as app
 from tests.unit.autonomy.test_autonomy import proposal
 
-DATASET = Path("tests/fixtures/autonomy/habit_eval_v4.json")
-MANIFEST = Path("tests/fixtures/autonomy/habit_eval_v4.manifest.json")
+ROOT = Path("tests/fixtures/autonomy")
+PREFIX = EVALUATION_VERSION.replace("-", "_")
+DATASET = ROOT / (PREFIX + ".json")
+MANIFEST = ROOT / (PREFIX + ".manifest.json")
 BINDING = {"model": "fictional-model", "effort": "medium", "runtime_pin_digest": "fixture-pin"}
 
 
@@ -61,7 +68,24 @@ class Sensor:
                     ),
                 ),
             )
-        return HabitBatchV1(proposals=(proposal(tuple(e.episode_id for e in episodes)),))
+        key = {
+            TaskClass.PROGRESS_UPDATE: StyleKey.CONCISE_PROGRESS,
+            TaskClass.SUMMARY: StyleKey.CONCISE_SUMMARY,
+            TaskClass.PRESENTATION: StyleKey.NUMBERED_STEPS,
+            TaskClass.SUGGESTIONS: StyleKey.SHORT_SUGGESTION_LIST,
+        }[episodes[0].task_class or TaskClass.PROGRESS_UPDATE]
+        category, task_class, behavior = style_contract(key)
+        return HabitBatchV1(
+            proposals=(
+                proposal(
+                    tuple(e.episode_id for e in episodes),
+                    style_key=key,
+                    category=StyleCategory(category),
+                    task_class=TaskClass(task_class),
+                    behavior=behavior,
+                ),
+            )
+        )
 
 
 def runner(app: Any, sensor: Any, capacity: Any = lambda: 50) -> ShadowEvaluationRunner:
