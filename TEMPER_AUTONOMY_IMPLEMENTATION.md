@@ -1,9 +1,60 @@
-# Autonomous learning implementation — October 8, 2026
+# Autonomous learning implementation — October 12, 2026
 
 The owner-approved ordinary-chat product remains in development. Windows and Apple
 Silicon macOS have a read-only agent connection. Automatic learning and serving remain
 disabled until production origin attribution, prospective calibration, and scoped
 owner onboarding pass. Historical explicit-feedback evidence and gates are separate.
+
+## October 12 continuation
+
+Windows Codex updated to `0.162.0-alpha.17.2`. Its exact binary, generated source
+schemas, and quota/catalog contract are now admitted. Protected endpoint rebind
+preserved identity, policy, registered projects, cutoffs, and history database bytes;
+no new learning permission was granted. Native quota/catalog and configured-model
+checks passed. The Mac host is currently unreachable; no Mac checkout was synchronized.
+
+The resumable shadow evaluator runs the 120 frozen fictional cases as 140 phases,
+including separate initial and fresh-contradiction phases. It signs progress, encrypts
+raw results, binds resume to dataset/manifest/analyzer/protocol/model/runtime, shares
+the conservative budget rules, and refuses silent retries of interrupted analyses.
+Its disposable project/runtime simulations cannot install personal permission or
+calibration. Partial detection scores cover completed cases only; native serving,
+scope and publication controls are not claimed by this runner.
+
+The first v2 attempt failed because the provider requires every output-schema property
+to be required. No usable model result was produced. The strict schema compiler
+requires all properties, closes objects, and pins the evaluation version while keeping
+host validation. `habit-eval-v3` was frozen before its execution with all 120 cases,
+labels, thresholds, model instructions and lifecycle defaults unchanged. V1/v2 assets
+and the failed v2 attempt are preserved. V3 has completed 2/120 cases with the expected
+scoped hypotheses, no failed phases, and encrypted results. This is preliminary
+fictional evidence, not calibration, accuracy, efficacy or personal learning.
+
+Read progress without inference from the source checkout:
+
+```powershell
+.venv\Scripts\python.exe scripts/run_habit_evaluation.py --config <existing-config>
+```
+
+Add `--advance` to request one next phase. Capacity below 20%/unknown, the five-minute
+cadence, or the rolling 12-session budget defers inference. A changed binding preserves
+the old run and refuses resume. The original frozen manifests remain unchanged as
+preregistration artifacts; signed private progress records execution separately.
+
+Fixed SQLite connection closure so Windows disposable evaluation state can be removed
+reliably. Current local validation: 283 Python tests passed with three platform-only
+skips, plus changed-source typing/lint/format and native Windows build admission.
+Candidate `4758667` rebuilt engine/hook, desktop UI/app and NSIS installer and is installed
+with previous binaries preserved. Two disposable-profile starts and configured-engine
+admission passed; protected store is available, config/envelope/history bytes are
+unchanged, zero personal habits, grant/learning/personalization/serving off. The terminal
+CLI contains the same source. No GitHub CI ran. This is development evidence.
+
+Candidate engine SHA-256: `e69f00785a42fd8b989d9e55da648e16f10881bc53004836d3291ca03b7fa53d`.
+Installer SHA-256: `fe5b933858836f308d55561ed42a9a2afa3bb55c8eec823747c97239c3f91cf5`.
+No submission composer or source permission was added. Ordinary Codex attribution
+and the input-route decision remain open alongside the remaining evaluation and
+native outcome gates.
 
 ## Agent connections and native adapters
 
