@@ -238,3 +238,17 @@ repair changes neither semantic contract, direct shadow-host evaluation, fixture
 nor lifecycle defaults. The running v10 model series remains bound to its unchanged direct
 detection path. Its results do not measure this background path; the separate tests establish
 these guards. The earlier f75cb9b package predates this worker repair and must be rebuilt again.
+
+The source-`4be07ef51bf499c6bc0d8f3c44a474765263b30b` engine/hook, app and NSIS rebuilds completed
+locally. The rebuilt engine passed the same disposable native setup/restart/replay, fixture
+Apply/Discard/postflight rollback and encrypted recovery workflow with preserved identity/history,
+safe path rebinding, zero provider calls and removed temporary state. Artifacts and receipt are
+preserved privately. The personal installation remains unchanged; same-host engine checks do not
+prove rendered UI behavior, independent installation, signing or automatic serving.
+
+| Artifact | SHA-256 |
+|---|---|
+| Engine | `9aa6cc1c3857e4ad3efad20dade20694b5ebb5e654daa8501dfc2b40e0def793` |
+| Hook | `d4d05f6bd40c5d005ddc55a47d602761c0037b96f7ce8db87ea5794bf73fe937` |
+| App | `e009c04fbe23ef50f715142bf59efb50c94296f438993e7d7b345d2ea1850d07` |
+| Installer | `1456db3dd687fa89e6f4acf766cb1d033072bafffcaf59a170cca4d704915138` |
