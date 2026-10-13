@@ -315,3 +315,22 @@ V12 signed-wire regression replay `32b010344ec985435d709876` again reproduces 80
 or calibration is claimed. The full selected Windows scope passes 404 checks with four platform
 skips; changed typing/lint/format pass. Fresh v12 live validation starts only after these source
 and material bindings are pushed. Personal configuration, grants, profiles and serving remain off.
+
+Source `7c39d1114d96c2283d07ac18f078093132c1867a` rebuilt the Windows engine/hook, app and NSIS
+installer locally. The same disposable native setup/registration/replay/restart, fixture
+Apply/Discard/postflight rollback and encrypted recovery checks passed, with zero provider calls,
+preserved identity/history, safe path rebinding and removed temporary state. The selected WSL
+fixture-lifecycle/material/raw-store/POSIX-pin scope passed 34 checks. Same-host development
+evidence does not establish rendered UI behavior, independent installation, signing or serving.
+
+| Artifact | SHA-256 |
+|---|---|
+| Engine | `a3b305dff2fb5bca5d2a48bfdc4327696b9c2a9d2c71d126e57585169209c6df` |
+| Hook | `d4d05f6bd40c5d005ddc55a47d602761c0037b96f7ce8db87ea5794bf73fe937` |
+| App | `52584abb11fe19a667058e8ce64c42d0e03d4da303661afa8723065b1622c328` |
+| Installer | `bca5233ab8b393bccd02e748532da162c7d126536d364b775f4437f431a5a918` |
+
+Fresh v12 run `ca744d9ca39c0984b77367d5` is live and incomplete. Do not start a duplicate or
+change its source/material bindings. The active daily continuation follows this model-specific
+prospective run and the preserved passing v10 regression/current replay. Personal model and
+permissions remain unchanged, and the new internal package is retained privately for review.
