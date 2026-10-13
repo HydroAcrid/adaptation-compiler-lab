@@ -252,3 +252,32 @@ prove rendered UI behavior, independent installation, signing or automatic servi
 | Hook | `d4d05f6bd40c5d005ddc55a47d602761c0037b96f7ce8db87ea5794bf73fe937` |
 | App | `e009c04fbe23ef50f715142bf59efb50c94296f438993e7d7b345d2ea1850d07` |
 | Installer | `1456db3dd687fa89e6f4acf766cb1d033072bafffcaf59a170cca4d704915138` |
+
+## Complete live v10 regression and prospective storage repair
+
+Explicit GPT-6.1 Sol / medium run `aec45c632958ae94bc20583b` completed all 120 cases/140 phases:
+80 TP / 2 FP / 0 FN, **97.56% precision, 100% recall, 20/20 contradiction pauses**, zero failed
+phases. It passes the fixed direct detection/pause thresholds. All thirty stable targets,
+twenty changing targets and fifteen sparse/scope targets were detected without companion habits.
+The twenty untrusted controls produced none. The two task-constraint errors (`context-11` reasoning
+and `context-17` tradeoffs) remain counted, including their shadow trial eligibility. This is
+bounded synthetic development evidence, not general accuracy or native serving calibration.
+
+The previously authored prospective series `b947d4b13a1212db3eb08245` initially failed on raw
+file creation before its first model analysis. Signed-store checks confirmed zero reservations,
+wire responses and completed phases; the pre-analysis store is preserved privately and a signed
+instrument-incident record documents the failure and explicit repair. A separate 304-character
+fictional-path reproducer confirmed the Windows file-open limit.
+
+The raw store now uses absolute extended Windows I/O paths while retaining identical encrypted
+envelopes, relative references and content addresses. This follows
+[Microsoft's extended-path guidance](https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation).
+Existing and long-root encrypted writes, idempotent reads/reopen, traversal rejection and exact
+discard pass. No cases, labels, semantic contract, direct evaluation binding or lifecycle defaults
+changed; the series explicitly continued from zero analyses rather than retrying a model result.
+The first prospective case completed successfully. It remains incomplete and cannot pass a gate yet.
+
+Selected Windows checks now pass 401 tests with four platform skips. Nineteen raw-store and POSIX
+pin checks pass separately in WSL. Changed storage typing/lint/format pass. The previous 4be07ef
+package predates this I/O fix; another rebuild is required. Personal configuration, permissions,
+learning and serving remain unchanged; no GitHub CI, download or release was initiated.
