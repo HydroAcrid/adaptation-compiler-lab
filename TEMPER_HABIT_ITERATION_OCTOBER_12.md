@@ -334,3 +334,38 @@ Fresh v12 run `ca744d9ca39c0984b77367d5` is live and incomplete. Do not start a 
 change its source/material bindings. The active daily continuation follows this model-specific
 prospective run and the preserved passing v10 regression/current replay. Personal model and
 permissions remain unchanged, and the new internal package is retained privately for review.
+
+## Complete fresh v12 and versioned lifecycle measurement correction
+
+Live fresh v12 `ca744d9ca39c0984b77367d5` completed 120 cases/140 phases with zero processing
+failures: **80 TP / 3 FP / 0 FN, 96.39% precision, 100% recall**. All stable/sparse/scope targets
+matched; all twenty task-requirement controls and twenty untrusted controls produced no habits.
+Three changing cases produced an additional provisional reasoning hypothesis from a request for
+more detailed closing explanations. They remain false positives against the frozen labels and
+are not trial eligible. No positive label or precision threshold was changed.
+
+The original frozen report records 17/20 pauses because it required every resulting hypothesis
+to be paused, including new provisional hypotheses. Signed-state inspection confirms the affected
+old habit paused in all twenty cases. The original report/labels remain preserved; this diagnostic
+does not turn that old report into a full release pass.
+
+V13 explicitly advances the measurement protocol to `shadow-detection-eval-v2`. It measures the
+affected old habits in their exact project/task/style scope, rather than unrelated replacement
+hypotheses. Missing, duplicated, wrong-scope or unpaused targets still fail. New hypotheses remain
+in the unchanged precision/recall calculation. Seven focused checks plus a report-level regression
+test verify that a provisional replacement cannot hide a real old-habit failure or its own false
+positive. The existing learner, semantic contracts and lifecycle defaults are unchanged apart
+from the explicit evaluation-version stamp.
+
+V13 replay `645eac600b97373e878b6842` of the complete signed v12 responses records 80 TP / 3 FP /
+0 FN, 96.39%/100% detection and 20/20 affected-habit pauses. Zero provider calls, identical messages,
+dates, scopes, controls, labels and semantic decisions. The source was prospective when executed;
+the newly bound replay is development measurement evidence, not a new live series or serving
+calibration. V13 replay-only prospective fixtures are explicitly marked development data; no
+unexecuted v13 prospective release set is claimed.
+
+412 selected Windows checks pass with four platform skips. Changed typing/lint/format pass.
+The bounded detector results meet the fixed 95%/80% standard and the affected-habit pause rule
+when measured correctly. Production human origin, native loading/behavior and publication/scope
+controls, everyday usefulness, fresh Mac checks, signing and independent installation remain
+release gates. Personal learning/personalization remain off; public Git source is a prototype.

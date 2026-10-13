@@ -24,6 +24,7 @@ from adaptation_compiler_lab.autonomy.analyzer import (
 from adaptation_compiler_lab.autonomy.budget import background_budget_available
 from adaptation_compiler_lab.autonomy.defaults import SUPPORT_DATES, SUPPORT_TASKS, frozen_defaults
 from adaptation_compiler_lab.autonomy.evaluation import load_frozen_scenarios, score_hypotheses
+from adaptation_compiler_lab.autonomy.lifecycle_evaluation import affected_habits_paused
 from adaptation_compiler_lab.autonomy.models import (
     InputOrigin,
     StyleCategory,
@@ -43,7 +44,7 @@ from adaptation_compiler_lab.persistence.raw import (
 )
 from adaptation_compiler_lab.serialization import canonical_digest
 
-PROTOCOL_VERSION = "shadow-detection-eval-v1"
+PROTOCOL_VERSION = "shadow-detection-eval-v2"
 
 
 @dataclass(frozen=True)
@@ -90,6 +91,9 @@ class ShadowEvaluationRunner:
                     "runner": Path(__file__).read_text(encoding="utf-8"),
                     "host": Path(__file__).with_name("service.py").read_text(encoding="utf-8"),
                     "scorer": Path(__file__).with_name("evaluation.py").read_text(encoding="utf-8"),
+                    "lifecycle_scorer": Path(__file__)
+                    .with_name("lifecycle_evaluation.py")
+                    .read_text(encoding="utf-8"),
                     "budget": Path(__file__).with_name("budget.py").read_text(encoding="utf-8"),
                     "retention": Path(__file__)
                     .with_name("retention.py")
@@ -374,10 +378,14 @@ class ShadowEvaluationRunner:
                 )
             if case["group"] == "changing":
                 paused_checked += 1
-                paused_passed += int(
-                    bool(result.get("hypotheses"))
-                    and all(value["state"] == "paused" for value in result.get("hypotheses", []))
+                project = case["expected"].get("project_id", case["episodes"][0]["project_id"])
+                target_styles = case["expected"].get(
+                    "pause_style_keys", case["expected"]["style_keys"]
                 )
+                targets = frozenset(
+                    (project, style_contract(StyleKey(key))[1], key) for key in target_styles
+                )
+                paused_passed += int(affected_habits_paused(result.get("hypotheses", []), targets))
         failed = sum(value["status"] != "complete" for value in done.values())
         completed_cases = sum(value is not None for value in final.values())
         detection = score_hypotheses(expected, observed)

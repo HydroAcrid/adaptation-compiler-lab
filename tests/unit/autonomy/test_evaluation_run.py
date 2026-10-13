@@ -127,6 +127,43 @@ def test_deep_windows_fixture_paths_complete_and_remove_the_temporary_tree(app: 
     assert not list(deep.path.parent.glob("fixture-*"))
 
 
+def test_pause_report_checks_the_affected_habit_but_retains_extra_hypothesis_errors(
+    app: Any,
+) -> None:
+    value = runner(app, Sensor())
+    case = next(case for case in value.cases.values() if case["group"] == "changing")
+    style = case["expected"]["style_keys"][0]
+    project = case["expected"].get("project_id", case["episodes"][0]["project_id"])
+    old = {
+        "project_id": project,
+        "task_class": style_contract(StyleKey(style))[1],
+        "style_key": style,
+        "state": "paused",
+    }
+    replacement = {
+        "project_id": project,
+        "task_class": "summary",
+        "style_key": "explain_reasoning",
+        "state": "provisional",
+    }
+    value.store.append(
+        "measurement-regression",
+        "evaluation_phase",
+        {
+            "phase": case["id"] + ":contradiction",
+            "case_id": case["id"],
+            "stage": "contradiction",
+            "status": "complete",
+            "hypotheses": [old, replacement],
+        },
+        at=value.clock(),
+    )
+    report = value.report()
+    assert report["contradiction_checks"] == report["contradiction_pauses"] == 1
+    assert report["hypothesis_detection"]["false_positive"] == 1
+    assert not report["complete_detection_thresholds_met"]
+
+
 def mark_prefix_complete(value: ShadowEvaluationRunner, stop_case: str) -> None:
     for phase in value.phases:
         if phase.case_id == stop_case:

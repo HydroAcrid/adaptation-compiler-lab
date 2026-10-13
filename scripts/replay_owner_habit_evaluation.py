@@ -49,16 +49,16 @@ def main() -> None:
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--source-version", required=True)
     parser.add_argument("--source-candidate-model")
+    parser.add_argument("--source-prospective", action="store_true")
     args = parser.parse_args()
     config = _load_config(args.config)
     fixtures = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "autonomy"
-    source_data = json.loads(
-        (fixtures / (args.source_version.replace("-", "_") + ".json")).read_text(encoding="utf-8")
+    source_prefix = args.source_version.replace("-", "_") + (
+        "_prospective" if args.source_prospective else ""
     )
+    source_data = json.loads((fixtures / (source_prefix + ".json")).read_text(encoding="utf-8"))
     source_manifest = json.loads(
-        (fixtures / (args.source_version.replace("-", "_") + ".manifest.json")).read_text(
-            encoding="utf-8"
-        )
+        (fixtures / (source_prefix + ".manifest.json")).read_text(encoding="utf-8")
     )
 
     def store(root: Path) -> AutonomyStore:
@@ -79,7 +79,8 @@ def main() -> None:
         if args.source_candidate_model
         else ""
     )
-    source_path = base / ("owner-eval-" + args.source_version + model_suffix)
+    purpose_suffix = "-prospective" if args.source_prospective else ""
+    source_path = base / ("owner-eval-" + args.source_version + purpose_suffix + model_suffix)
     if not (source_path / "events.sqlite3").is_file():
         raise AutonomyIntegrityError("source live run is unavailable")
     source = store(source_path)
@@ -110,7 +111,15 @@ def main() -> None:
         if e["type"] == "evaluation_wire"
     }
     target = store(
-        base / ("replay-" + EVALUATION_VERSION + "-from-" + args.source_version + model_suffix)
+        base
+        / (
+            "replay-"
+            + EVALUATION_VERSION
+            + "-from-"
+            + args.source_version
+            + purpose_suffix
+            + model_suffix
+        )
     )
     current = [""]
     stages: list[Iterator[str]] = [iter(())]
@@ -126,7 +135,9 @@ def main() -> None:
             target_version=EVALUATION_VERSION,
         )
 
-    prefix = EVALUATION_VERSION.replace("-", "_")
+    prefix = EVALUATION_VERSION.replace("-", "_") + (
+        "_replay_prospective" if args.source_prospective else ""
+    )
     runner = ShadowEvaluationRunner(
         dataset=fixtures / (prefix + ".json"),
         manifest=fixtures / (prefix + ".manifest.json"),
@@ -141,6 +152,7 @@ def main() -> None:
         "execution_policy": "offline_signed_wire_replay_v1",
         "source_binding_digest": canonical_digest(binding),
         "source_version": args.source_version,
+        "source_purpose": source_data.get("purpose", "unspecified"),
         "source_phase_digest": canonical_digest(phases),
         "source_wire_reference_digest": canonical_digest(
             {"wires": [{"phase": k[0], "stage": k[1], "ref": v} for k, v in sorted(wires.items())]}
