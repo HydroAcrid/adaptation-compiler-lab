@@ -300,3 +300,18 @@ This is replay evidence, not a new live evaluation or serving calibration. New v
 prospective utterances were authored independently; no message overlaps the old prospective set.
 The v11 prospective materials remain unexecuted. The learner/raw scope passed 145 checks with
 one Mac skip; changed typing/lint/format pass. No personal configuration or permission changed.
+
+## V12 blinded identifiers and fresh materials
+
+Before any fresh v11 execution, review found cohort names in its task IDs. V12 preserves those
+never-executed independently authored utterances and labels, but replaces model-visible task IDs
+with unique opaque identifiers. Observation IDs inherit those opaque IDs; internal case/cohort
+labels are not sent to the sensor. Legitimate source, project, task-class and date context remains.
+Old freezes are preserved. The fresh dataset digest is
+`sha256:9f0a4bf5e7037d1f5248c10f3166522805046d7e5c66d4faed0739e1dc21b40b`.
+
+V12 signed-wire regression replay `32b010344ec985435d709876` again reproduces 80 TP / 2 FP / 0 FN,
+97.56% precision, 100% recall and twenty pauses with zero provider calls. No new live regression
+or calibration is claimed. The full selected Windows scope passes 404 checks with four platform
+skips; changed typing/lint/format pass. Fresh v12 live validation starts only after these source
+and material bindings are pushed. Personal configuration, grants, profiles and serving remain off.
