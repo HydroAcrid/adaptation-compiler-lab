@@ -369,3 +369,18 @@ The bounded detector results meet the fixed 95%/80% standard and the affected-ha
 when measured correctly. Production human origin, native loading/behavior and publication/scope
 controls, everyday usefulness, fresh Mac checks, signing and independent installation remain
 release gates. Personal learning/personalization remain off; public Git source is a prototype.
+
+Final source `e88ea0600fdd40013389779e0d6c4a88db1b98ed` rebuilt the Windows engine/hook, app and
+NSIS installer and passed the same disposable native setup/registration/restart/replay,
+fixture Apply/Discard/postflight rollback and encrypted recovery checks. Zero provider calls;
+identity/history preserved, paths safely rebound, successful temporary state removed. The
+personal installation remains unchanged. Forty-two selected WSL checks pass. The daily evaluation
+heartbeat is paused after its bounded completion, preserving every failed/partial run. Future
+semantic changes require fresh prospective validation; corrected replay is not new live evidence.
+
+| Artifact | SHA-256 |
+|---|---|
+| Engine | `55a615991af48bcdf5f73a00ecf0b2a285501ae30d99d9379bbbaee65c4fc83d` |
+| Hook | `d4d05f6bd40c5d005ddc55a47d602761c0037b96f7ce8db87ea5794bf73fe937` |
+| App | `91660207d7356d24608b521a5c41994cf59e0fa31282d93b000865857402b145` |
+| Installer | `60b55117a26d6822a26e7ed8b728b65ece7f3214fa987a6f0cd4fd0f8874ffd7` |
