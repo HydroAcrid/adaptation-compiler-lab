@@ -281,3 +281,22 @@ Selected Windows checks now pass 401 tests with four platform skips. Nineteen ra
 pin checks pass separately in WSL. Changed storage typing/lint/format pass. The previous 4be07ef
 package predates this I/O fix; another rebuild is required. Personal configuration, permissions,
 learning and serving remain unchanged; no GitHub CI, download or release was initiated.
+
+## V11 instrument repair and preserved partial prospective result
+
+V10 prospective completed one case (1 TP / 0 FP / 0 FN), then temporary-directory cleanup failed
+on the same deep Windows file path. The result/wire records are preserved; this is an incomplete
+instrument failure, not a full prospective pass. The partly executed set is development data.
+
+V11 propagates extended Windows paths into the temporary fixture directory itself, so creation,
+SQLite/raw I/O and cleanup use the same supported path. A deep-path lifecycle test passed. The
+semantic contracts, classification/contradiction logic, labels and defaults remain unchanged;
+only the explicit evaluation stamp and runner binding advance. Candidate-store selection in the
+offline replay now binds the exact source model and uses a separate model-specific replay store.
+
+V11 replay `11aa433d226ea94b8d246044` completed 120/140 cases/phases from signed v10 Sol decisions:
+80 TP / 2 FP / 0 FN, 97.56% precision, 100% recall, all twenty pauses, zero new provider calls.
+This is replay evidence, not a new live evaluation or serving calibration. New v11 fictional
+prospective utterances were authored independently; no message overlaps the old prospective set.
+The v11 prospective materials remain unexecuted. The learner/raw scope passed 145 checks with
+one Mac skip; changed typing/lint/format pass. No personal configuration or permission changed.

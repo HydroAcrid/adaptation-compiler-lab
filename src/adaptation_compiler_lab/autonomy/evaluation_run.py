@@ -36,7 +36,11 @@ from adaptation_compiler_lab.autonomy.store import AutonomyIntegrityError, Auton
 from adaptation_compiler_lab.autonomy.styles import StyleKey, style_contract
 from adaptation_compiler_lab.connectors.codex_app_server import CodexProtocolError
 from adaptation_compiler_lab.governance.signing import GovernanceSigner
-from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore, RawEncryptionKey
+from adaptation_compiler_lab.persistence.raw import (
+    LocalRawPayloadStore,
+    RawEncryptionKey,
+    _raw_io_root,
+)
 from adaptation_compiler_lab.serialization import canonical_digest
 
 PROTOCOL_VERSION = "shadow-detection-eval-v1"
@@ -156,7 +160,10 @@ class ShadowEvaluationRunner:
     ) -> Iterator[tuple[AutonomyApplicationService, list[datetime]]]:
         """A synthetic verifier/grant exists only inside a disposable fake project tree."""
         episodes = self.episodes(case)
-        with tempfile.TemporaryDirectory(prefix="fixture-", dir=self.store.path.parent) as name:
+        # The prefix must also reach tempfile's cleanup, not just the encrypted file writer.
+        with tempfile.TemporaryDirectory(
+            prefix="fixture-", dir=_raw_io_root(self.store.path.parent)
+        ) as name:
             root = Path(name)
             projects = {episode.project_id: root / episode.project_id for episode in episodes}
             for path in projects.values():

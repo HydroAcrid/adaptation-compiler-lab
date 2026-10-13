@@ -48,6 +48,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--source-version", required=True)
+    parser.add_argument("--source-candidate-model")
     args = parser.parse_args()
     config = _load_config(args.config)
     fixtures = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "autonomy"
@@ -73,7 +74,12 @@ def main() -> None:
         )
 
     base = config.state_root / "autonomy" / "validation"
-    source_path = base / ("owner-eval-" + args.source_version)
+    model_suffix = (
+        "-model-" + str(canonical_digest({"model": args.source_candidate_model}))[7:19]
+        if args.source_candidate_model
+        else ""
+    )
+    source_path = base / ("owner-eval-" + args.source_version + model_suffix)
     if not (source_path / "events.sqlite3").is_file():
         raise AutonomyIntegrityError("source live run is unavailable")
     source = store(source_path)
@@ -84,6 +90,8 @@ def main() -> None:
         or (binding["manifest_digest"] != canonical_digest(source_manifest))
     ):
         raise AutonomyIntegrityError("source live binding changed")
+    if binding["runtime"]["model"] != (args.source_candidate_model or config.semantic_model):
+        raise AutonomyIntegrityError("source live model does not match the selected store")
     phases = {
         e["payload"]["phase"]: e["payload"]
         for e in source.events()
@@ -101,7 +109,9 @@ def main() -> None:
         for e in source.events()
         if e["type"] == "evaluation_wire"
     }
-    target = store(base / ("replay-" + EVALUATION_VERSION + "-from-" + args.source_version))
+    target = store(
+        base / ("replay-" + EVALUATION_VERSION + "-from-" + args.source_version + model_suffix)
+    )
     current = [""]
     stages: list[Iterator[str]] = [iter(())]
 

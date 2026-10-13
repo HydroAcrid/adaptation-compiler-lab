@@ -101,6 +101,32 @@ def runner(app: Any, sensor: Any, capacity: Any = lambda: 50) -> ShadowEvaluatio
     )
 
 
+def test_deep_windows_fixture_paths_complete_and_remove_the_temporary_tree(app: Any) -> None:
+    from adaptation_compiler_lab.autonomy.store import AutonomyStore
+    from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore, RawEncryptionKey
+
+    service, clock = app
+    raw = LocalRawPayloadStore(
+        service.store.path.parent / ("a" * 70) / ("b" * 70) / "raw",
+        encryption_key=RawEncryptionKey(b"k" * 32),
+    )
+    deep = AutonomyStore(
+        raw.root.parent / "events.sqlite3", signer=service.store.signer, raw_store=raw
+    )
+    value = ShadowEvaluationRunner(
+        dataset=DATASET,
+        manifest=MANIFEST,
+        store=deep,
+        sensor=Sensor(),
+        remaining_capacity=lambda: 50,
+        runtime_binding=BINDING,
+        clock=clock,
+    )
+    assert value.advance()["status"] == "advanced"
+    assert len(value.completed()) == 1
+    assert not list(deep.path.parent.glob("fixture-*"))
+
+
 def mark_prefix_complete(value: ShadowEvaluationRunner, stop_case: str) -> None:
     for phase in value.phases:
         if phase.case_id == stop_case:
