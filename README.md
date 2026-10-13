@@ -13,6 +13,9 @@ Iteration uses these cases for development regression and requires fresh prospec
 before release claims. Personal automatic learning and serving remain disabled. See
 [`TEMPER_AUTONOMY_IMPLEMENTATION.md`](TEMPER_AUTONOMY_IMPLEMENTATION.md) and
 [`TEMPER_LOCAL_VALIDATION_OCTOBER_12.md`](TEMPER_LOCAL_VALIDATION_OCTOBER_12.md).
+The subsequent learner fixes, complete failed runs, selected model candidates and current
+Windows package checks are recorded in
+[`TEMPER_HABIT_ITERATION_OCTOBER_12.md`](TEMPER_HABIT_ITERATION_OCTOBER_12.md).
 
 Checks and packages are built locally; this work does not depend on GitHub CI. Raw personal
 conversations, credentials, local runtime state, and generated personal learning stay outside Git.
