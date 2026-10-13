@@ -220,3 +220,21 @@ The full regression and all twenty pauses must pass before the previously author
 prospective set starts. Preserve failed runs, labels, scoring and lifecycle defaults. Native
 publication/loading, supported human attribution, fresh Mac validation, everyday usefulness,
 trusted signing and independent installation remain separate release gates. No CI or serving enabled.
+
+## Fresh corrections in the background lane
+
+Independent review reproduced another runtime defect: the background worker supplies previously
+analyzed conversations for comparison alongside newly processed work. An old non-supporting
+request could become a new contradiction, and citing old positive support could abort an otherwise
+valid batch. Three focused tests failed before the repair. The worker now intersects counterevidence
+with this batch's newly processed episode IDs, ignores cached-only corrections, and retains a real
+fresh correction when its citations also include cached context. References outside the supplied
+batch remain an integrity failure. Cached context is still available for explanation and positive
+support, with the existing independent-task limits.
+
+Four focused freshness/integrity tests pass. The full selected Windows scope now passes 399 checks
+with the same four platform skips; changed worker/test typing, lint and format pass. This worker
+repair changes neither semantic contract, direct shadow-host evaluation, fixture labels, scoring
+nor lifecycle defaults. The running v10 model series remains bound to its unchanged direct
+detection path. Its results do not measure this background path; the separate tests establish
+these guards. The earlier f75cb9b package predates this worker repair and must be rebuilt again.

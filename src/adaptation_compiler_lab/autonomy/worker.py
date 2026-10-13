@@ -16,6 +16,7 @@ from adaptation_compiler_lab.autonomy.models import HabitProposalV1, HabitState,
 from adaptation_compiler_lab.autonomy.native_policy import NativeStylePolicy
 from adaptation_compiler_lab.autonomy.retention import purge_expired_raw
 from adaptation_compiler_lab.autonomy.service import AutonomyApplicationService
+from adaptation_compiler_lab.autonomy.store import AutonomyIntegrityError
 from adaptation_compiler_lab.instruction_environment.semantic import InstructionRelationAnalyzer
 from adaptation_compiler_lab.serialization import canonical_digest
 
@@ -130,8 +131,19 @@ class BackgroundHabitWorker:
         batch = self.sensor.analyze(
             episodes, context=self.context(project), existing_habits=service.hypotheses()
         )
+        batch_ids = {episode.episode_id for episode in episodes}
         for contradiction in batch.contradictions:
-            service.record_contradiction(contradiction)
+            if not set(contradiction.evidence_episode_ids) <= batch_ids:
+                raise AutonomyIntegrityError(
+                    "counterevidence references tasks outside the current batch"
+                )
+            # Replayed context can help explain a choice, but cannot become a new change.
+            # Keep a genuine fresh correction even when the sensor also cites old context.
+            fresh_evidence = tuple(sorted(set(contradiction.evidence_episode_ids) & fresh_ids))
+            if fresh_evidence:
+                service.record_contradiction(
+                    contradiction.model_copy(update={"evidence_episode_ids": fresh_evidence})
+                )
         for proposal in batch.proposals:
             service.record_proposal(proposal)
         raw = service.store.save_raw(batch.model_dump_json().encode())
