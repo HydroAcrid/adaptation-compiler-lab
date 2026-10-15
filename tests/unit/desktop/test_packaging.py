@@ -5,13 +5,53 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import re
 import subprocess
+import tomllib
 from pathlib import Path
 from types import ModuleType
 
 import pytest
 
 ROOT = Path(__file__).parents[3]
+
+
+def test_packaged_acl_matches_typed_product_commands_and_renderer_routes() -> None:
+    tauri = ROOT / "desktop_ui/src-tauri"
+    allowed = set(
+        tomllib.loads((tauri / "permissions/engine.toml").read_text())["permission"][0]["commands"][
+            "allow"
+        ]
+    )
+    source = (tauri / "src/lib.rs").read_text()
+    handler = source.split(".invoke_handler(tauri::generate_handler![", 1)[1].split("])", 1)[0]
+    registered = set(re.findall(r"\b[a-z][a-z_]+\b", handler))
+    manifest = (
+        (tauri / "build.rs")
+        .read_text()
+        .split("AppManifest::new().commands(&[", 1)[1]
+        .split("])", 1)[0]
+    )
+    declared = set(re.findall(r'"([a-z_]+)"', manifest))
+    assert allowed == registered, "Packaged ACL must expose exactly typed product handlers"
+    assert declared == registered, "Tauri must generate metadata for every product handler"
+    # Catch both direct invoke and typed helper/request command strings, including bootstrap.
+    renderer_commands = set()
+    for filename in ("engine.ts", "autonomy.ts"):
+        renderer = (ROOT / "desktop_ui/src" / filename).read_text()
+        renderer_commands.update(re.findall(r'"([a-z]+_[a-z_]+)"', renderer))
+    assert renderer_commands & registered <= allowed
+    assert {"instruction_environment_get", "package_review_list", "autonomy_status"} <= allowed
+    assert (
+        not {
+            "engine_request",
+            "autonomy_episode_ingest",
+            "autonomy_calibration_install",
+            "claude_hook_handle",
+            "copilot_hook_handle",
+        }
+        & allowed
+    )
 
 
 def _build_module() -> ModuleType:
