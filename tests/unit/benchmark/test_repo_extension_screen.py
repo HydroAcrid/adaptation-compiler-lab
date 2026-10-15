@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import hashlib
+import io
 import json
 import queue
+import tarfile
 from collections import deque
 from pathlib import Path
 from typing import Any
@@ -17,6 +20,7 @@ from adaptation_compiler_lab.benchmark.repo_extension_screen import (
     selected_text,
     summarize,
 )
+from scripts.run_repo_extension_screen import copy_candidate_production, extract
 
 
 def test_selection_is_exact_attributed_source_with_a_byte_bound() -> None:
@@ -155,3 +159,41 @@ def test_source_scope_excludes_configuration_and_history() -> None:
     assert scope_failures(
         ["src/code.py", "tests/check.py", "config.toml", ".git/HEAD"], ["src/", "tests/"]
     ) == ["config.toml", ".git/HEAD"]
+
+
+def test_candidate_tests_cannot_replace_authoritative_tests(tmp_path: Path) -> None:
+    candidate, graded = tmp_path / "candidate", tmp_path / "graded"
+    for root in (candidate, graded):
+        (root / "tests").mkdir(parents=True)
+        (root / "src").mkdir()
+    (graded / "tests/check.py").write_text("assert real_behavior()\n")
+    (candidate / "tests/check.py").write_text("assert True\n")
+    (candidate / "tests/new_test.py").write_text("assert True\n")
+    (candidate / "src/code.py").write_text("fixed = True\n")
+    copy_candidate_production(
+        candidate, graded, ["tests/check.py", "tests/new_test.py", "src/code.py"], []
+    )
+    assert (graded / "tests/check.py").read_text() == "assert real_behavior()\n"
+    assert not (graded / "tests/new_test.py").exists()
+    assert (graded / "src/code.py").read_text() == "fixed = True\n"
+
+
+def test_readonly_node_workspace_has_a_mountpoint_before_binding(tmp_path: Path) -> None:
+    fixtures, destination = tmp_path / "fixtures", tmp_path / "project"
+    fixture = fixtures / "case"
+    fixture.mkdir(parents=True)
+    archive = fixture / "base.tar"
+    with tarfile.open(archive, "w") as tar:
+        payload = b"source = True\n"
+        member = tarfile.TarInfo("code.py")
+        member.size = len(payload)
+        tar.addfile(member, io.BytesIO(payload))
+    case = {
+        "id": "case",
+        "kind": "node",
+        "archive_sha256": "sha256:" + hashlib.sha256(archive.read_bytes()).hexdigest(),
+    }
+    extract(case, fixtures, destination, git_init=False)
+    assert (destination / "node_modules").is_dir()
+    assert not list((destination / "node_modules").iterdir())
+    assert (destination / "code.py").read_bytes() == payload

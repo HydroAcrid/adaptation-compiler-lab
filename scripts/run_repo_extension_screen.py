@@ -51,6 +51,9 @@ RUNTIME = {
     "node_runtime": "/home/kevin_dotel/.nvm/versions/node/v24.18.0",
 }
 MODULE = ROOT / "src/adaptation_compiler_lab/benchmark/repo_extension_screen.py"
+ACTIVE_PROTOCOL = BENCH / "protocol-validated-v2.json"
+ACTIVE_ADMISSION = BENCH / "instrument-admission-v2.json"
+EXPECTED_CHECKS = {"temper-live-policy": 55, "kairn-runtime-cache": 98}
 
 
 def extended(path: Path) -> Path:
@@ -121,6 +124,9 @@ def extract(
         if any(m.issym() or m.islnk() for m in tar.getmembers()):
             raise ValueError("unsafe historical source archive")
         tar.extractall(destination, filter="data")
+    if case["kind"] == "node":
+        # A read-only workspace cannot create this dependency mountpoint later.
+        (destination / "node_modules").mkdir(exist_ok=True)
     if git_init:
 
         def git(*args: str) -> None:
@@ -175,12 +181,27 @@ def grade(
         elapsed_seconds=sum(c["elapsed_seconds"] for c in shell.calls),
     )
     result["complete"] &= typecheck is None or typecheck["returncode"] == 0
+    result["complete"] &= result["passed"] == EXPECTED_CHECKS[case["id"]]
     result["candidate_execution_failed"] = admitted and not result["receipt_present"]
     return result, {"unit": outcome, "typecheck": typecheck}
 
 
+def copy_candidate_production(
+    project: Path, graded: Path, modified: list[str], scope: list[str]
+) -> None:
+    for relative in modified:
+        # Candidate tests are evaluated separately. They cannot weaken the
+        # independent original and withheld acceptance suite, or inflate counts.
+        if relative.startswith("tests/") or relative in scope:
+            continue
+        source = project / relative
+        if source.is_file():
+            (graded / relative).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, graded / relative)
+
+
 def controls(fixtures: Path, output: Path) -> None:
-    cases = json.loads((BENCH / "cases.json").read_text())
+    cases = json.loads((BENCH / "cases.json").read_text(encoding="utf-8"))
     output.mkdir(parents=True, exist_ok=False)
     receipts = []
     for case in cases:
@@ -223,15 +244,22 @@ def freeze() -> None:
             ROOT / "src/adaptation_compiler_lab/connectors/codex_app_server.py",
             BENCH / "sources.json",
             BENCH / "cases.json",
-            BENCH / "instrument-admission.json",
+            ACTIVE_ADMISSION,
         ]
     }
     new_json(
-        BENCH / "protocol.json",
+        ACTIVE_PROTOCOL,
         {
             "created_at": datetime.now(UTC).isoformat(),
             "bound_files": bound,
             "purpose": "development_only_historical_real_repository_replay",
+            "instrument_version": 2,
+            "repair": "Precreate the read-only Node dependency mountpoint; "
+            "reject selector infrastructure failures; preserve all "
+            "authoritative tests and fixed expected counts. Task "
+            "inputs, source catalog, model, budgets and selection "
+            "contract are unchanged.",
+            "authoritative_test_counts": EXPECTED_CHECKS,
             "arms": list(ARMS),
             "repeats": 2,
             "maximum_model_turns": 14,
@@ -281,7 +309,7 @@ def freeze() -> None:
             ],
         },
     )
-    print("Frozen " + file_hash(BENCH / "protocol.json"))
+    print("Frozen " + file_hash(ACTIVE_PROTOCOL))
 
 
 def install_skills(
@@ -323,6 +351,7 @@ def model_call(
     material: str | None = None,
     direct: bool = False,
     selector: bool = False,
+    expected_model: tuple[str, str] | None = None,
 ) -> dict[str, Any]:
     start = time.monotonic()
     with benchmark_session(config_path) as (
@@ -332,6 +361,11 @@ def model_call(
         rpc,
         native_workspace,
     ):
+        if (
+            expected_model is not None
+            and (config.semantic_model, config.semantic_reasoning_effort) != expected_model
+        ):
+            raise ValueError("configured model or effort changed during the comparison")
         remaining = read_capacity(rpc, contract)
         if remaining is None or remaining < 20:
             raise ValueError("subscription capacity unknown or below threshold")
@@ -448,7 +482,9 @@ def candidate_test_sensitivity(
     shutil.copytree(
         candidate, after, ignore=shutil.ignore_patterns(".git", "__pycache__", ".pytest_cache")
     )
-    for p in tests:
+    for p in changed:
+        if not p.startswith("tests/") or not (candidate / p).is_file():
+            continue
         (before / p).parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(candidate / p, before / p)
     command = (
@@ -476,11 +512,11 @@ def candidate_test_sensitivity(
 
 
 def run(config_path: Path, fixtures: Path, output: Path) -> None:
-    protocol = json.loads((BENCH / "protocol.json").read_text())
+    protocol = json.loads(ACTIVE_PROTOCOL.read_text(encoding="utf-8"))
     for relative, expected in protocol["bound_files"].items():
         if file_hash(ROOT / relative) != expected:
             raise ValueError("frozen implementation or input changed")
-    admission = json.loads((BENCH / "instrument-admission.json").read_text())
+    admission = json.loads(ACTIVE_ADMISSION.read_text(encoding="utf-8"))
     if not admission["native_skill_and_tool_probe_passed"] or not admission["all_controls_passed"]:
         raise ValueError("instrument has not passed its real execution controls")
     if subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True):
@@ -495,8 +531,13 @@ def run(config_path: Path, fixtures: Path, output: Path) -> None:
             workspace_root=config.repository_root
         ),
     )
-    cases = json.loads((BENCH / "cases.json").read_text())
-    sources = json.loads((BENCH / "sources.json").read_text())
+    cases = json.loads((BENCH / "cases.json").read_text(encoding="utf-8"))
+    sources = json.loads((BENCH / "sources.json").read_text(encoding="utf-8"))
+    if any(
+        "sha256:" + hashlib.sha256(s["text"].encode()).hexdigest() != s["source_sha256"]
+        for s in sources
+    ):
+        raise ValueError("loaded upstream source text does not match its pinned digest")
     started = time.monotonic()
     new_json(
         output / "execution.json",
@@ -504,7 +545,7 @@ def run(config_path: Path, fixtures: Path, output: Path) -> None:
             "source_commit": subprocess.check_output(
                 ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
             ).strip(),
-            "protocol_sha256": file_hash(BENCH / "protocol.json"),
+            "protocol_sha256": file_hash(ACTIVE_PROTOCOL),
             "model": config.semantic_model,
             "effort": config.semantic_reasoning_effort,
             "started_at": datetime.now(UTC).isoformat(),
@@ -558,12 +599,27 @@ def run(config_path: Path, fixtures: Path, output: Path) -> None:
             RepoShell(project, runtime_for(case), readonly=True),
             [],
             selector=True,
+            expected_model=(config.semantic_model, config.semantic_reasoning_effort),
         )
-        if selection["status"] != "completed" or tree(project) != before:
-            raise ValueError("selector failed or changed read-only source")
+        raw_ref = raw.put(json.dumps(selection).encode(), media_type="application/json")
+        if (
+            selection["status"] != "completed"
+            or tree(project) != before
+            or not all(t["instrument_valid"] for t in selection["tool_calls"])
+        ):
+            new_json(
+                output / "selectors" / (case["id"] + "-failed.json"),
+                {
+                    "task_id": case["id"],
+                    "instrument_valid": False,
+                    "usage": selection["usage"],
+                    "elapsed_seconds": selection["elapsed_seconds"],
+                    "raw_ref": asdict(raw_ref),
+                },
+            )
+            raise ValueError("selector failed its admitted read-only tool environment")
         ids = json.loads(selection["messages"][-1])["clause_ids"]
         plans[case["id"]] = selected_text(sources, ids)
-        raw_ref = raw.put(json.dumps(selection).encode(), media_type="application/json")
         receipt = {
             "task_id": case["id"],
             "clause_ids": ids,
@@ -604,6 +660,7 @@ def run(config_path: Path, fixtures: Path, output: Path) -> None:
                     sources,
                     direct=arm == "direct_skills",
                     material=plans[case["id"]] if arm == "temper_selected" else None,
+                    expected_model=(config.semantic_model, config.semantic_reasoning_effort),
                 )
                 modified = changed_paths(before, tree(project))
                 scope = scope_failures(modified, case["allowed_prefixes"])
@@ -611,10 +668,7 @@ def run(config_path: Path, fixtures: Path, output: Path) -> None:
                 grade_start = time.monotonic()
                 graded = folder / "authoritative-grade"
                 extract(case, fixtures, graded)
-                for p in modified:
-                    if (project / p).is_file() and p not in scope:
-                        (graded / p).parent.mkdir(parents=True, exist_ok=True)
-                        shutil.copyfile(project / p, graded / p)
+                copy_candidate_production(project, graded, modified, scope)
                 # Restore historical reference tests, so candidate test weakening cannot pass.
                 put(graded, mapping(case, fixtures, "grading"))
                 result, grade_raw = grade(case, graded, admitted=True)
@@ -656,6 +710,8 @@ def run(config_path: Path, fixtures: Path, output: Path) -> None:
                     "arm": arm,
                     "repeat": repeat,
                     "model_status": value["status"],
+                    "model": value["model"],
+                    "effort": value["effort"],
                     "complete": bool(
                         result["complete"]
                         and value["status"] == "completed"

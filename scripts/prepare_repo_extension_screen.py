@@ -210,7 +210,9 @@ def main(fixtures: Path) -> None:
         )
     source_start = time.monotonic()
     previous = json.loads(
-        (ROOT / "development_benchmark_extensions/rapid-v1/sources.json").read_text()
+        (ROOT / "development_benchmark_extensions/rapid-v1/sources.json").read_text(
+            encoding="utf-8"
+        )
     )
     ponytail = previous[0]
     pstack = previous[1]

@@ -1,0 +1,57 @@
+{
+  "created_at": "2026-10-15T04:27:53.995031+00:00",
+  "bound_files": {
+    "scripts/run_repo_extension_screen.py": "sha256:beeb1cce1b443b836cb287c937330e839e953f4587cd38e51d054560935ce82e",
+    "src/adaptation_compiler_lab/benchmark/repo_extension_screen.py": "sha256:bc50e0d34d69aebeb0e6083e01757e3e1d38e2888a347bd291f917801e5468ae",
+    "scripts/prepare_repo_extension_screen.py": "sha256:2b3b23c42c974a5f68e0a4c18606311b205299f384e354d162338262ae3fbcc7",
+    "src/adaptation_compiler_lab/benchmark/extension_screen.py": "sha256:742b15e519725e5225825118c42d887a59a873841052520f05e3dd934fb0237e",
+    "src/adaptation_compiler_lab/autonomy/codex_transport.py": "sha256:c89df5723ade7374a4ec0bfe434e4087a991cf82661569726cacbf2b8d1ab7b8",
+    "src/adaptation_compiler_lab/connectors/codex_app_server.py": "sha256:6db3b68f840e4dbec1d28eaee48d523a68b52edc2e704e4d99f5dbdea94ab561",
+    "development_benchmark_extensions/real-repo-v1/sources.json": "sha256:94f61b7cba6fc1dac4ff8a3b9516fb311b3e281bfadb86563f2ebd7a5fc814ad",
+    "development_benchmark_extensions/real-repo-v1/cases.json": "sha256:54bc6d0051c9eedeb77f919bfe4ff82b4e9dd49b8c21ad6eb14b37ea40b26a60",
+    "development_benchmark_extensions/real-repo-v1/instrument-admission-v2.json": "sha256:7fd842af9e82894cb3a30f93f717b2323409c957683823adce43d51e45b35ee7"
+  },
+  "purpose": "development_only_historical_real_repository_replay",
+  "instrument_version": 2,
+  "repair": "Precreate the read-only Node dependency mountpoint; reject selector infrastructure failures; preserve all authoritative tests and fixed expected counts. Task inputs, source catalog, model, budgets and selection contract are unchanged.",
+  "authoritative_test_counts": {
+    "temper-live-policy": 55,
+    "kairn-runtime-cache": 98
+  },
+  "arms": [
+    "baseline",
+    "direct_skills",
+    "temper_selected"
+  ],
+  "repeats": 2,
+  "maximum_model_turns": 14,
+  "additional_transport_probe_turns": 3,
+  "solver_seconds": 480,
+  "selector_seconds": 150,
+  "tool_seconds": 45,
+  "max_executed_solver_tools": 60,
+  "model_policy": "configured_verified_model_and_effort_no_fallback_minimum_20_percent_known_capacity",
+  "native_skill_delivery": "explicit skill input items and a read-only /skills mirror for full upstream files or exact selected paragraphs; actual source loading is verified by a probe",
+  "rule": "A completion advantage over direct skills must repeat on the same task, with no baseline/direct completion regression. Otherwise no repeated completion advantage. Failures and scope violations remain failures; instrument failures invalidate conclusions.",
+  "secondary_measures": [
+    "authoritative checks",
+    "candidate test sensitivity before/after",
+    "actual tools",
+    "changed paths",
+    "wall time",
+    "all reported model tokens",
+    "mechanical skill setup"
+  ],
+  "performance_rule": "Two repeats only: descriptive usage and timings; no general efficiency claim.",
+  "overhead": "Include both task selectors, skill publication, fresh native auth/context/catalog, all tool calls, workspace creation, authoritative grading, candidate-test counterfactuals and cleanup. Account shared source acquisition separately. Do not represent unknown human research, integration, maintenance or prototype development effort as zero.",
+  "shared_preexisting_setup": "Already installed local Python and Node dependencies. No fresh-machine install or model download measured.",
+  "not_claimed": [
+    "new product router",
+    "full pstack suite",
+    "Pi runtime",
+    "market demand",
+    "independent unseen tasks",
+    "native GUI workflows",
+    "private-alpha release gate"
+  ]
+}

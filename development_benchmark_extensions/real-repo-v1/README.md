@@ -4,6 +4,15 @@ This development experiment asks whether selecting and composing guidance adds
 value over direct use of relevant upstream skills during actual software repair.
 It follows the earlier fictional screen, whose complete tie remains unchanged.
 
+The first real-repo attempt at `282e72f` was stopped after two selector calls and
+one saved repair call when a read-only Node mount defect was detected. Its
+`protocol.json` and first admission record are preserved. It is an aborted
+instrument attempt, and its scores are not reused in the repaired comparison.
+The repaired instrument also keeps every original acceptance test independent
+of candidate test edits and enforces the known 55/98 test counts. The active
+freeze is `protocol-validated-v2.json` with `instrument-admission-v2.json`.
+Task specifications and source catalog remain byte-for-byte unchanged.
+
 ## Tasks and comparisons
 
 Two public historical repairs are replayed from their actual parent commits:
