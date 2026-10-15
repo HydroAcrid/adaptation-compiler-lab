@@ -53,7 +53,9 @@ class NativeStylePolicy:
     ) -> None:
         self.projects = dict(projects)
         self.home = codex_home
-        self.adapter = CodexInstructionSourceAdapter(cli_version=cli_version)
+        self.adapter = CodexInstructionSourceAdapter(
+            cli_version=cli_version, exact_codex_homes=True
+        )
         self.store = store
         self.analyzer_digest = analyzer_digest
 
@@ -61,7 +63,7 @@ class NativeStylePolicy:
         root = self.projects.get(project_id)
         if root is None:
             raise ValueError("native policy project is unregistered")
-        # Codex's adapter expects a home root containing .codex, or an exact .codex root.
+        # source_codex_home is the exact client home, including arbitrary CODEX_HOME paths.
         sources = self.adapter.discover(
             project_id=project_id, project_root=root, global_roots=(self.home,)
         )

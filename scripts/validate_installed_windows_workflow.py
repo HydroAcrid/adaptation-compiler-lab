@@ -249,6 +249,8 @@ def validate(executable: Path, codex: Path, root: Path) -> dict[str, Any]:
         assert process.request("system.handshake")["result"]["configured"]
         no_personalization(process)
         snapshot = process.request("snapshot.get")
+        # The real desktop has already read learning status before project registration.
+        process.request("autonomy.status")
         preview = process.request("project.registration.preview", {"path": str(second)})["result"]
         params = {"preview_token": preview["preview_token"]}
         process.request(
@@ -265,6 +267,14 @@ def validate(executable: Path, codex: Path, root: Path) -> dict[str, Any]:
             "project.register", params, digest=snapshot["snapshot_digest"], key="register"
         )
         assert replay["result"] == registered["result"]
+        process.request(
+            "autonomy.grant.preview",
+            {
+                "project_ids": [registered["result"]["project_id"]],
+                "categories": ["communication_detail"],
+                "trust_authorized_chats": True,
+            },
+        )
         no_personalization(process)
     config = _load_config(config_path)
     assert config.subject_id == initialized["subject_id"] and len(config.projects) == 2

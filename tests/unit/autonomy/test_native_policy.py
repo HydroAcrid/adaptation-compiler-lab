@@ -63,6 +63,7 @@ def test_temper_section_cannot_become_native_policy_or_self_evidence(app) -> Non
         store=service.store,
     )
     before = policy.snapshot("project")
+    assert before.clauses, "Manual global instructions must be present before exclusion is tested"
     path = service.publisher.home / "AGENTS.md"
     path.write_text(
         path.read_text() + "\n" + START + "\nPrefer concise progress updates.\n" + END + "\n"
@@ -70,6 +71,29 @@ def test_temper_section_cannot_become_native_policy_or_self_evidence(app) -> Non
     after = policy.snapshot("project")
     assert [value.text for value in before.clauses] == [value.text for value in after.clauses]
     assert all(clause.text != "Prefer concise progress updates." for clause in after.clauses)
+
+
+def test_custom_codex_home_guidance_override_and_config_are_observed(app) -> None:
+    service, clock = app
+    service.ingest_episode(episode(0, clock))
+    habit = service.record_proposal(proposal(("task-0",)))
+    policy = NativeStylePolicy(
+        projects=service.projects,
+        codex_home=service.publisher.home,
+        cli_version="0.160.1",
+        store=service.store,
+    )
+    home = service.publisher.home
+    assert home.name != ".codex"
+    (home / "AGENTS.md").write_text("Require detailed progress updates.\n")
+    assert "Require detailed progress updates." in policy.context("project")
+    assert policy.assess(habit)["state"] == "unknown"
+    (home / "AGENTS.override.md").write_text(habit.behavior + "\n")
+    assert policy.assess(habit)["state"] == "duplicate"
+    assert "Require detailed progress updates." not in policy.context("project")
+    (home / "config.toml").write_text("project_doc_max_bytes = 8\n")
+    assert not policy.snapshot("project").complete
+    assert policy.blocked(habit)
 
 
 class Relations:

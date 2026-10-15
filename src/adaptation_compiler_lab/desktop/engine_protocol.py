@@ -327,6 +327,7 @@ class EngineProtocolRouter:
                     raise ValueError
                 current = self._service.load()
                 self._instruction_environment = None
+                self._autonomy_protocol = None
             except (OSError, ValueError):
                 return self._error(
                     request,

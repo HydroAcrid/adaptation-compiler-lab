@@ -286,3 +286,22 @@ def test_habit_proposal_and_review_have_separate_quota_checked_contexts(
     assert len(sessions) == len(quota_checks) == 2 and sessions[0] is not sessions[1]
     assert captures == ["proposal", "evidence_review"] and sensor.analysis_sessions == 2
     assert config.semantic_model == "exact-model"
+
+
+def test_native_background_deadline_covers_two_actual_model_turn_budgets() -> None:
+    import inspect
+    import re
+    from pathlib import Path
+
+    from adaptation_compiler_lab.autonomy.codex_transport import run_habit_turn
+
+    source = (Path(__file__).parents[3] / "desktop_ui/src-tauri/src/lib.rs").read_text()
+    match = re.search(
+        r"const ENGINE_AUTONOMY_TIMEOUT: Duration = Duration::from_secs\((\d+)\)", source
+    )
+    assert match is not None
+    child_seconds = inspect.signature(run_habit_turn).parameters["timeout"].default
+    assert int(match[1]) > 2 * child_seconds + 120, (
+        "Parent must cover both child turns and admission"
+    )
+    assert '"autonomy.background.poll" => ENGINE_AUTONOMY_TIMEOUT' in source
