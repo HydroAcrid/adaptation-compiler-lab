@@ -29,6 +29,14 @@ not establish the value of an unattended discovery hub or a launch claim.
   Managers run in credential-free, offline WSL namespaces. Network is enabled
   separately only for public package/source acquisition.
 
+The bound hashes describe the executed working-tree bytes. A final replay audit
+also checked candidate Git blobs: 29 match exactly; the older
+`development_benchmark_extensions/lifecycle-v1/sources.json` fixture uses CRLF
+in the frozen working tree and LF in Git. Its parsed values and all other bytes
+are identical. No code, labels or source revisions differ. Fresh checkouts must
+restore those line endings before the frozen runner's strict byte check; the
+recipe below verifies the expected hash before writing. The protocol is unchanged.
+
 The registry contains 74 canonical main-root skills from pinned
 [pstack](https://github.com/backnotprop/pstack/tree/1f0f9c3bac03c4297f6fc8f7644fa412eda57085),
 [Ponytail](https://github.com/DietrichGebert/ponytail/tree/84740e3d344b69b4a133201fa519eb37a62a2b2a),
@@ -271,4 +279,11 @@ and retained primary receipts (use new private output directories):
 .venv\Scripts\python.exe -m scripts.prepare_discovery_maintenance
 .venv\Scripts\python.exe -m scripts.probe_skillkit_minimal --output <new-private-basic-controls>
 .venv\Scripts\python.exe -m scripts.probe_skillkit_minimal --full-controls-only --output <new-private-full-control>
+```
+
+For a fresh checkout that will replay the frozen primary, restore its exact
+legacy fixture bytes first (no JSON values change):
+
+```text
+.venv\Scripts\python.exe -c "from pathlib import Path; import hashlib; p=Path('development_benchmark_extensions/lifecycle-v1/sources.json'); b=p.read_bytes().replace(b'\r\n',b'\n').replace(b'\n',b'\r\n'); assert hashlib.sha256(b).hexdigest()=='ac22624ad1290f7a8f4134023ad560b48c66eb12cd19756d9b5a093342b7c2ad'; p.write_bytes(b)"
 ```

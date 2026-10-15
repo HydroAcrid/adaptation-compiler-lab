@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "recorded_at": "2026-10-15T17:57:09.774331+00:00",
+  "recorded_at": "2026-10-15T17:58:53.306894+00:00",
   "candidate_commit": "fdc465e615523d12a1b150ee7bddf846857390a0",
   "protocol_sha256": "1999a539e0cbac435e2ef361b310adb2c4535a3721ddcdfe6a98496c2b2e930c",
   "protocol_frozen_at": "2026-10-15T17:00:29.132996+00:00",
@@ -2717,6 +2717,18 @@
     "abrupt_subprocess_exit_recovery_test_passed": true,
     "frozen_input_files_intact": true,
     "frozen_input_file_count": 30,
+    "candidate_git_blobs_matching_exactly": 29,
+    "candidate_git_blob_newline_differences": [
+      {
+        "file": "development_benchmark_extensions/lifecycle-v1/sources.json",
+        "executed_worktree_sha256": "ac22624ad1290f7a8f4134023ad560b48c66eb12cd19756d9b5a093342b7c2ad",
+        "git_blob_sha256": "1aeeadd1aa1b59c95882c8ff0a0f5ef044f09df8f4d931a0769c6c6678f798eb",
+        "executed_line_endings": "CRLF",
+        "git_line_endings": "LF",
+        "json_values_equal": true,
+        "only_newline_difference": true
+      }
+    ],
     "shared_source_trees_intact": true,
     "stale_git_locks_in_twelve_corrected_project_trees": 0,
     "legacy_benchmark_suite": {
