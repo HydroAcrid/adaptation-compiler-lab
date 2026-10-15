@@ -130,8 +130,18 @@ Final installed/package SHA-256:
 - Installer: `63b50e9a3c6f20d12471aae18194aabc268cb912b1ac4c3180434e76128f26ad`.
 - Terminal wheel: `ae1e7e212926b0f62c8d3b93606b6ed4a0dd58893f19059b4771d7665535b2e6`.
 
-The owner has been asked whether to preserve the existing Codex composer or introduce
+At this earlier checkpoint, the owner had been asked whether to preserve the existing Codex composer or introduce
 a Temper-owned composer that can produce submission receipts. This choice changes the
 ordinary-chat workflow and potentially the approved input source; no replacement source
 or producer was enabled while awaiting that choice. A new producer would still require
 native human/automated qualification before its receipts could admit personal evidence.
+
+## Subsequent owner decision
+
+The owner chose the existing composer and explicitly authorized trusted conversation
+inputs, including relayed agent requests with uncertain human authorship. The new
+versioned opt-in policy and current candidate checks are recorded in
+[`TEMPER_AUTHORIZED_CHAT_INPUT.md`](TEMPER_AUTHORIZED_CHAT_INPUT.md). The strict producer
+requirements above continue to describe legacy grants; they no longer block the new
+owner-authorized input policy. This does not establish human authorship or qualify
+automatic serving.

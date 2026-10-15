@@ -10,7 +10,11 @@ The current focus is separating personal choices from task requirements, recogni
 preferences, and validating safe instruction delivery. The first complete fictional evaluation
 failed the fixed detection gates: 76.39% precision, 68.75% recall, and 14/20 contradiction pauses.
 Iteration uses these cases for development regression and requires fresh prospective evidence
-before release claims. Personal automatic learning and serving remain disabled. See
+before release claims. Automatic serving remains disabled. The owner has authorized
+shadow learning through the existing Codex composer, including trusted conversation
+relays with uncertain human authorship. This requires the explicit new grant; old grants
+remain strict. See [`TEMPER_AUTHORIZED_CHAT_INPUT.md`](TEMPER_AUTHORIZED_CHAT_INPUT.md) for
+the current policy, bounded development checks and installation boundary. See
 [`TEMPER_AUTONOMY_IMPLEMENTATION.md`](TEMPER_AUTONOMY_IMPLEMENTATION.md) and
 [`TEMPER_LOCAL_VALIDATION_OCTOBER_12.md`](TEMPER_LOCAL_VALIDATION_OCTOBER_12.md).
 The subsequent learner fixes, complete failed runs, selected model candidates and current

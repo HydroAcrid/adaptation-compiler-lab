@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from adaptation_compiler_lab.autonomy import codex_capacity, codex_transport
-from adaptation_compiler_lab.connectors.pins import RuntimeConformanceError, VerifiedCodexRuntime
+from adaptation_compiler_lab.connectors.pins import (
+    RuntimeConformanceError,
+    VerifiedCodexRuntime,
+    sha256_file,
+)
 
 
 def test_analysis_contract_distinguishes_binary_builds_with_the_same_version(
@@ -16,8 +21,8 @@ def test_analysis_contract_distinguishes_binary_builds_with_the_same_version(
     executable = tmp_path / "codex.exe"
     executable.write_bytes(b"fictional native fixture")
     expected = "sha256:e98c516f1c8935789aabe9122ee7e05ec4c3efd1ba6acf179242e031c495b99e"
-    original = codex_capacity.sha256_file
-    monkeypatch.setattr(codex_capacity.sys, "platform", "win32")
+    original = sha256_file
+    monkeypatch.setattr(sys, "platform", "win32")
     monkeypatch.setattr(
         codex_capacity, "sha256_file", lambda p: expected if p == executable else original(p)
     )

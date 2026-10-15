@@ -269,6 +269,42 @@ def validate(executable: Path, codex: Path, root: Path) -> dict[str, Any]:
     config = _load_config(config_path)
     assert config.subject_id == initialized["subject_id"] and len(config.projects) == 2
     print(json.dumps({"checkpoint": "registration_restart_and_replay", "passed": True}), flush=True)
+    with engine(executable, env, root) as process:
+        preview = process.request(
+            "autonomy.grant.preview",
+            {
+                "project_ids": [config.projects[0].project_id],
+                "categories": ["communication_detail"],
+                "trust_authorized_chats": True,
+            },
+        )
+        enabled = process.request(
+            "autonomy.grant.enable",
+            {
+                "preview_token": preview["result"]["preview_token"],
+                "confirmed": True,
+            },
+            digest=preview["snapshot_digest"],
+            key="fixture-trusted-input",
+        )
+        assert enabled["result"]["provenance_state"] == "owner_authorized"
+        assert enabled["result"]["learning_enabled"]
+        assert not enabled["result"]["automatic_serving_ready"]
+    with engine(executable, env, root) as process:
+        current = process.request("autonomy.status")
+        assert current["result"]["input_policy"] == "owner_authorized_conversations"
+        paused = process.request(
+            "autonomy.learning.pause", digest=current["snapshot_digest"], key="fixture-pause"
+        )
+        assert not paused["result"]["learning_enabled"]
+        process.request(
+            "autonomy.grant.revoke", digest=paused["snapshot_digest"], key="fixture-revoke"
+        )
+        no_personalization(process)
+    print(
+        json.dumps({"checkpoint": "trusted_input_grant_restart_pause_revocation", "passed": True}),
+        flush=True,
+    )
     fixture_specs = (
         VerificationCommandSpec(
             command_id="fictional-preflight",
@@ -420,6 +456,7 @@ def validate(executable: Path, codex: Path, root: Path) -> dict[str, Any]:
         "installed_engine_sha256": hashlib.sha256(executable.read_bytes()).hexdigest(),
         "codex_sha256": hashlib.sha256(codex.read_bytes()).hexdigest(),
         "setup_consent_registration_restart_replay": "passed",
+        "owner_trusted_input_grant_restart_pause_revocation": "passed",
         "fixture_bundle_apply_discard_postflight_rollback": "passed",
         "encrypted_recovery_identity_history_path_rebind_restart": "passed",
         "synthetic": True,
