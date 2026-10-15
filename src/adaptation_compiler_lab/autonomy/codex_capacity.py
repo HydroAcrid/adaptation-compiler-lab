@@ -27,6 +27,13 @@ class CodexAnalysisContract:
                 ("darwin", "0.157.0"): "macos_0_157_0",
             }
             directory = supported.get((sys.platform, runtime.version))
+            if (
+                sys.platform == "win32"
+                and runtime.version == "0.162.0-alpha.17.2"
+                and sha256_file(runtime.executable)
+                == "sha256:e98c516f1c8935789aabe9122ee7e05ec4c3efd1ba6acf179242e031c495b99e"
+            ):
+                directory = "windows_0_162_0_alpha_17_2_build_9614f1d9"
             if directory is None:
                 raise ValueError("native analysis metadata contract is unavailable for this client")
             root = Path(__file__).parent / "contracts" / directory

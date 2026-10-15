@@ -385,7 +385,23 @@ class ConfiguredCodexHabitSource:
         )
 
     def admitted(self) -> bool:
+        from adaptation_compiler_lab.automatic_runtime.dogfood_cli import _load_config
+        from adaptation_compiler_lab.connectors.pins import (
+            RuntimeConformanceError,
+            load_dogfood_runtime_pins,
+            sha256_file,
+        )
+
         grant = self.service.grant()
+        if grant is None:
+            return False
+        try:
+            config = _load_config(self.config_path)
+            pin = load_dogfood_runtime_pins(config.runtime_pin_path).codex
+            if sha256_file(config.codex_executable) != pin.executable.executable_sha256:
+                return False
+        except (OSError, ValueError, RuntimeConformanceError):
+            return False
         return bool(
             grant
             and (

@@ -30,7 +30,11 @@ from adaptation_compiler_lab.connectors.codex_app_server import (
     CodexProtocolError,
 )
 from adaptation_compiler_lab.connectors.models import JsonObject
-from adaptation_compiler_lab.connectors.pins import load_dogfood_runtime_pins, verify_codex_runtime
+from adaptation_compiler_lab.connectors.pins import (
+    RuntimeConformanceError,
+    load_dogfood_runtime_pins,
+    verify_codex_runtime,
+)
 from adaptation_compiler_lab.instruction_environment.codex_semantic import (
     bind_instruction_relation_output,
     instruction_relation_analyzer_digest,
@@ -321,7 +325,7 @@ class ConfiguredCodexHabitSensor:
         try:
             with configured_analysis_session(self.config_path) as (_, _, contract, rpc, _):
                 return read_capacity(rpc, contract)
-        except (OSError, ValueError):
+        except (OSError, ValueError, RuntimeConformanceError):
             return None
 
     def analyze(

@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -214,6 +215,9 @@ class OwnerRequestedEvaluationRunner(ShadowEvaluationRunner):
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument(
+        "--run-label", default="", help="Separate an explicitly recorded instrument repair attempt."
+    )
     parser.add_argument("--trusted-conversations", action="store_true")
     parser.add_argument(
         "--case", action="append", default=[], help="Explicit development screening subset."
@@ -228,8 +232,12 @@ def main() -> None:
         "--run-now", action="store_true", help="Explicitly run eligible phases now."
     )
     args = parser.parse_args()
+    if args.run_label and not re.fullmatch(r"[a-z0-9-]{1,24}", args.run_label):
+        raise ValueError("run label must be a short lowercase identifier")
     config = _load_config(args.config)
     suffix = "-prospective" if args.prospective else ""
+    if args.run_label:
+        suffix += "-" + args.run_label
     if args.trusted_conversations:
         if args.prospective:
             raise ValueError("trusted conversation controls are not prospective")
