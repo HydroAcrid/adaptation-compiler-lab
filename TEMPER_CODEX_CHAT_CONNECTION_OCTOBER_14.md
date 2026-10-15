@@ -105,3 +105,33 @@ native message schemas, encrypted admission, replay, prefix edits, task counting
 cutoffs, unsupported clients, missing completion times, producer revocation/key replacement,
 and the existing worker integration. No live model accuracy series was needed or claimed
 for this transport-only change. Fresh native package validation remains a separate check.
+
+## Final installed reader candidate
+
+Functional source `3653625869c48060247b6229adfdfbcc7cf08444` was committed and pushed before
+the native build. The engine/hook, React/Tauri app, NSIS installer and terminal wheel
+were rebuilt locally. The compiled engine passed the disposable setup, registration,
+restart/replay, fixture Apply/Discard/rollback and encrypted recovery suite, with zero
+model calls and removed temporary state. Both compiled and installed engines loaded the
+actual protected personal configuration and returned the expected disabled/unverified
+autonomy state through the native protocol.
+
+The rebuilt reader candidate is now installed. Its engine matches the tested compiled
+binary exactly. All seven protected baseline files remain unchanged; the previous e88ea06
+installation is also preserved for rollback. Installed app liveness passed for eight
+seconds, and the updated terminal dashboard loaded. No rendered UI, independent-machine,
+trusted-signature or real-learning claim follows from these checks.
+
+Final installed/package SHA-256:
+
+- Engine: `32f4123b1d0e67d5c76582455891103cf73ca097fe2700ff89205aa54f91367d`.
+- Hook: `d4d05f6bd40c5d005ddc55a47d602761c0037b96f7ce8db87ea5794bf73fe937`.
+- Installed app: `1edee5421a3256d55a72652677c91e7dbbd44d35f431bd12ae5a3c5a0623878b`.
+- Installer: `63b50e9a3c6f20d12471aae18194aabc268cb912b1ac4c3180434e76128f26ad`.
+- Terminal wheel: `ae1e7e212926b0f62c8d3b93606b6ed4a0dd58893f19059b4771d7665535b2e6`.
+
+The owner has been asked whether to preserve the existing Codex composer or introduce
+a Temper-owned composer that can produce submission receipts. This choice changes the
+ordinary-chat workflow and potentially the approved input source; no replacement source
+or producer was enabled while awaiting that choice. A new producer would still require
+native human/automated qualification before its receipts could admit personal evidence.
