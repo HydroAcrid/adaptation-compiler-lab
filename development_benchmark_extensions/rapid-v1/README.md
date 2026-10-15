@@ -3,6 +3,9 @@
 Question: does selecting task-relevant source clauses add value over giving the same
 agent the upstream guidance directly, beyond its native task-solving ability?
 
+Executed result: [no incremental quality signal](RESULTS.md). All three conditions
+passed 6/6 task runs; selector overhead is included in the raw-free result report.
+
 This development-only prototype compares baseline, full direct Ponytail/pstack-how
 guidance (the agent can apply relevant advice), and a Temper-style source-clause
 selector. The selector can copy only attributed source paragraphs; it cannot invent
