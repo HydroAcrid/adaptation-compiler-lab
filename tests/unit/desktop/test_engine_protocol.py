@@ -73,7 +73,7 @@ def test_legacy_hook_project_digest_serializes_validated_scope() -> None:
     from adaptation_compiler_lab.domain import Scope
     from adaptation_compiler_lab.serialization import canonical_digest
 
-    scope = Scope(project_ids=("fictional",))
+    scope = Scope(subject_ids=("fictional-owner",), project_ids=("fictional",))
     digest = _legacy_project_registration_digest("fictional", 100, scope)
     assert digest == canonical_digest(
         {
