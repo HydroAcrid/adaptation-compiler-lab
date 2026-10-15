@@ -1,0 +1,2738 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-15T17:57:09.774331+00:00",
+  "candidate_commit": "fdc465e615523d12a1b150ee7bddf846857390a0",
+  "protocol_sha256": "1999a539e0cbac435e2ef361b310adb2c4535a3721ddcdfe6a98496c2b2e930c",
+  "protocol_frozen_at": "2026-10-15T17:00:29.132996+00:00",
+  "github_ci_used": false,
+  "product_installed_or_modified": false,
+  "conclusion": "All six corrected journeys passed. No operator/owner-effort advantage demonstrated; Temper was slower in this bounded development screen. Human attention remains unmeasured.",
+  "by_arm": {
+    "native_managers": {
+      "n": 2,
+      "passed": 2,
+      "seconds_sum_before_cleanup": 464.12600000000384,
+      "seconds_median_before_cleanup": 232.06300000000192,
+      "seconds_range_before_cleanup": [
+        225.2190000000046,
+        238.90699999999924
+      ],
+      "tools": 54,
+      "nonzero_tools": 4,
+      "usage": {
+        "totalTokens": 2066649,
+        "inputTokens": 2059860,
+        "cachedInputTokens": 1949440,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 6789,
+        "reasoningOutputTokens": 228,
+        "uncachedInputTokens": 110420
+      },
+      "setup_seconds_sum": 69.73500000000058,
+      "tool_seconds_sum": 147.8139999999985,
+      "observation_seconds_sum": 41.62500000001455,
+      "owner_escalations": 0,
+      "all_audits_pass": true,
+      "cleanup_seconds_sum": 7.078000000001339,
+      "seconds_sum_including_fixture_cleanup": 471.2040000000052,
+      "seconds_median_including_fixture_cleanup": 235.6020000000026,
+      "seconds_range_including_fixture_cleanup": [
+        228.73500000000786,
+        242.46899999999732
+      ],
+      "observed_peak_workspace_bytes_range": [
+        123339979,
+        123364528
+      ]
+    },
+    "skillkit": {
+      "n": 2,
+      "passed": 2,
+      "seconds_sum_before_cleanup": 505.92199999999866,
+      "seconds_median_before_cleanup": 252.96099999999933,
+      "seconds_range_before_cleanup": [
+        250.20299999999406,
+        255.7190000000046
+      ],
+      "tools": 60,
+      "nonzero_tools": 4,
+      "usage": {
+        "totalTokens": 1823003,
+        "inputTokens": 1815163,
+        "cachedInputTokens": 1636224,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 7840,
+        "reasoningOutputTokens": 318,
+        "uncachedInputTokens": 178939
+      },
+      "setup_seconds_sum": 70.92199999999866,
+      "tool_seconds_sum": 167.37600000000384,
+      "observation_seconds_sum": 43.64500000001135,
+      "owner_escalations": 0,
+      "all_audits_pass": true,
+      "cleanup_seconds_sum": 7.063000000001921,
+      "seconds_sum_including_fixture_cleanup": 512.9850000000006,
+      "seconds_median_including_fixture_cleanup": 256.4925000000003,
+      "seconds_range_including_fixture_cleanup": [
+        253.7809999999954,
+        259.2040000000052
+      ],
+      "observed_peak_workspace_bytes_range": [
+        123344400,
+        123344794
+      ]
+    },
+    "temper_prototype": {
+      "n": 2,
+      "passed": 2,
+      "seconds_sum_before_cleanup": 654.9220000000059,
+      "seconds_median_before_cleanup": 327.46100000000297,
+      "seconds_range_before_cleanup": [
+        327.26600000000326,
+        327.6560000000027
+      ],
+      "tools": 56,
+      "nonzero_tools": 2,
+      "usage": {
+        "totalTokens": 2064532,
+        "inputTokens": 2059085,
+        "cachedInputTokens": 1958144,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 5447,
+        "reasoningOutputTokens": 91,
+        "uncachedInputTokens": 100941
+      },
+      "setup_seconds_sum": 71.28100000000268,
+      "tool_seconds_sum": 346.73599999996077,
+      "observation_seconds_sum": 43.62100000002101,
+      "owner_escalations": 0,
+      "all_audits_pass": true,
+      "cleanup_seconds_sum": 8.014999999999418,
+      "seconds_sum_including_fixture_cleanup": 662.9370000000054,
+      "seconds_median_including_fixture_cleanup": 331.4685000000027,
+      "seconds_range_including_fixture_cleanup": [
+        331.04699999999866,
+        331.8900000000067
+      ],
+      "observed_peak_workspace_bytes_range": [
+        123331050,
+        123331432
+      ]
+    }
+  },
+  "rows": [
+    {
+      "version": "run-v1",
+      "arm": "native_managers",
+      "repeat": 0,
+      "status": "completed",
+      "completed": true,
+      "passed": true,
+      "tool_calls": 26,
+      "native_tool_requests": 26,
+      "nonzero_tools": 1,
+      "tool_seconds": 82.70200000001932,
+      "usage": {
+        "totalTokens": 902563,
+        "inputTokens": 899782,
+        "cachedInputTokens": 852480,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 2781,
+        "reasoningOutputTokens": 166,
+        "uncachedInputTokens": 47302
+      },
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "instrument_valid": true,
+      "native_call_seconds": 208.93700000000536,
+      "requested_owner_interventions": 0,
+      "actual_owner_attention_seconds": null,
+      "observed_peak_workspace_bytes": 123516175,
+      "instrument_observation_seconds": 19.01699999999255,
+      "whole_trial_seconds_before_cleanup": 242.96800000000076,
+      "audit": {
+        "start_and_finish": true,
+        "one_completed_turn": true,
+        "all_tool_requests_accounted": true,
+        "token_usage_reconciled": true,
+        "tool_commands_match": true,
+        "all_native_requests_executed": true
+      },
+      "phase_tool_counts": {
+        "0": 7,
+        "1": 4,
+        "2": 2,
+        "3": 3,
+        "4": 2,
+        "5": 3,
+        "6": 3,
+        "7": 2
+      },
+      "setup_seconds": 31.468000000000757,
+      "cleanup_seconds": 3.561999999998079,
+      "whole_trial_seconds_including_fixture_cleanup": 246.52999999999884,
+      "checkpoints": [
+        {
+          "phase": 0,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": [
+            "systematic-debugging",
+            "test-driven-development"
+          ]
+        },
+        {
+          "phase": 1,
+          "project": "typescript",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": [
+            "technical-writing",
+            "unslop"
+          ]
+        },
+        {
+          "phase": 2,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "project_profile_survives_switch": true
+          },
+          "passed": true,
+          "active": [
+            "systematic-debugging",
+            "test-driven-development"
+          ]
+        },
+        {
+          "phase": 3,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "compatible_update_applied": true
+          },
+          "passed": true,
+          "active": [
+            "systematic-debugging",
+            "test-driven-development"
+          ]
+        },
+        {
+          "phase": 4,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "incompatible_update_not_activated": true
+          },
+          "passed": true,
+          "active": [
+            "systematic-debugging",
+            "test-driven-development"
+          ]
+        },
+        {
+          "phase": 5,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true
+          },
+          "passed": true,
+          "active": [
+            "systematic-debugging",
+            "test-driven-development"
+          ]
+        },
+        {
+          "phase": 6,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "irrelevant_profile_disabled": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": []
+        },
+        {
+          "phase": 7,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "both_profiles_removed": true,
+            "manager_registrations_cleaned": true
+          },
+          "passed": true,
+          "active": []
+        }
+      ]
+    },
+    {
+      "version": "run-v1",
+      "arm": "skillkit",
+      "repeat": 0,
+      "status": "completed",
+      "completed": true,
+      "passed": true,
+      "tool_calls": 30,
+      "native_tool_requests": 30,
+      "nonzero_tools": 2,
+      "tool_seconds": 82.98500000000058,
+      "usage": {
+        "totalTokens": 1053971,
+        "inputTokens": 1049943,
+        "cachedInputTokens": 984576,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 4028,
+        "reasoningOutputTokens": 230,
+        "uncachedInputTokens": 65367
+      },
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "instrument_valid": true,
+      "native_call_seconds": 237.04699999999866,
+      "requested_owner_interventions": 0,
+      "actual_owner_attention_seconds": null,
+      "observed_peak_workspace_bytes": 123445812,
+      "instrument_observation_seconds": 22.439999999987776,
+      "whole_trial_seconds_before_cleanup": 273.7350000000006,
+      "audit": {
+        "start_and_finish": true,
+        "one_completed_turn": true,
+        "all_tool_requests_accounted": true,
+        "token_usage_reconciled": true,
+        "tool_commands_match": true,
+        "all_native_requests_executed": true
+      },
+      "phase_tool_counts": {
+        "0": 7,
+        "1": 5,
+        "2": 2,
+        "3": 4,
+        "4": 2,
+        "5": 3,
+        "6": 3,
+        "7": 4
+      },
+      "setup_seconds": 34.04699999999866,
+      "cleanup_seconds": 3.5939999999973224,
+      "whole_trial_seconds_including_fixture_cleanup": 277.3289999999979,
+      "checkpoints": [
+        {
+          "phase": 0,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": [
+            "systematic-debugging",
+            "test-driven-development"
+          ]
+        },
+        {
+          "phase": 1,
+          "project": "typescript",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": [
+            "technical-writing",
+            "unslop"
+          ]
+        },
+        {
+          "phase": 2,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "project_profile_survives_switch": true
+          },
+          "passed": true,
+          "active": [
+            "systematic-debugging",
+            "test-driven-development"
+          ]
+        },
+        {
+          "phase": 3,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "compatible_update_applied": true
+          },
+          "passed": true,
+          "active": [
+            "systematic-debugging",
+            "test-driven-development"
+          ]
+        },
+        {
+          "phase": 4,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "incompatible_update_not_activated": true
+          },
+          "passed": true,
+          "active": [
+            "systematic-debugging",
+            "test-driven-development"
+          ]
+        },
+        {
+          "phase": 5,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true
+          },
+          "passed": true,
+          "active": [
+            "systematic-debugging",
+            "test-driven-development"
+          ]
+        },
+        {
+          "phase": 6,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "irrelevant_profile_disabled": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": []
+        },
+        {
+          "phase": 7,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "both_profiles_removed": true,
+            "manager_registrations_cleaned": true
+          },
+          "passed": true,
+          "active": []
+        }
+      ]
+    },
+    {
+      "version": "run-v2",
+      "arm": "native_managers",
+      "repeat": 0,
+      "status": "completed",
+      "completed": true,
+      "passed": true,
+      "tool_calls": 27,
+      "native_tool_requests": 27,
+      "nonzero_tools": 2,
+      "tool_seconds": 72.36000000000786,
+      "usage": {
+        "totalTokens": 1037069,
+        "inputTokens": 1033939,
+        "cachedInputTokens": 975232,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 3130,
+        "reasoningOutputTokens": 104,
+        "uncachedInputTokens": 58707
+      },
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "instrument_valid": true,
+      "native_call_seconds": 188.85899999999674,
+      "requested_owner_interventions": 0,
+      "actual_owner_attention_seconds": null,
+      "observed_peak_workspace_bytes": 123339979,
+      "instrument_observation_seconds": 20.515000000006694,
+      "whole_trial_seconds_before_cleanup": 225.2190000000046,
+      "audit": {
+        "start_and_finish": true,
+        "one_completed_turn": true,
+        "all_tool_requests_accounted": true,
+        "token_usage_reconciled": true,
+        "tool_commands_match": true,
+        "all_native_requests_executed": true
+      },
+      "phase_tool_counts": {
+        "0": 8,
+        "1": 4,
+        "2": 2,
+        "3": 3,
+        "4": 2,
+        "5": 3,
+        "6": 2,
+        "7": 3
+      },
+      "setup_seconds": 33.5940000000046,
+      "cleanup_seconds": 3.5160000000032596,
+      "whole_trial_seconds_including_fixture_cleanup": 228.73500000000786,
+      "checkpoints": [
+        {
+          "phase": 0,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "declared_dependency_closure": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 1,
+          "project": "typescript",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "declared_dependency_closure": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": [
+            "technical-writing",
+            "unslop"
+          ]
+        },
+        {
+          "phase": 2,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "project_profile_survives_switch": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 3,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "compatible_update_applied": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 4,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "incompatible_update_not_activated": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 5,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 6,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "irrelevant_profile_disabled": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": []
+        },
+        {
+          "phase": 7,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "both_profiles_removed": true,
+            "manager_registrations_cleaned": true
+          },
+          "passed": true,
+          "active": []
+        }
+      ]
+    },
+    {
+      "version": "run-v2",
+      "arm": "native_managers",
+      "repeat": 1,
+      "status": "completed",
+      "completed": true,
+      "passed": true,
+      "tool_calls": 27,
+      "native_tool_requests": 27,
+      "nonzero_tools": 2,
+      "tool_seconds": 75.45399999999063,
+      "usage": {
+        "totalTokens": 1029580,
+        "inputTokens": 1025921,
+        "cachedInputTokens": 974208,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 3659,
+        "reasoningOutputTokens": 124,
+        "uncachedInputTokens": 51713
+      },
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "instrument_valid": true,
+      "native_call_seconds": 200.07800000000134,
+      "requested_owner_interventions": 0,
+      "actual_owner_attention_seconds": null,
+      "observed_peak_workspace_bytes": 123364528,
+      "instrument_observation_seconds": 21.110000000007858,
+      "whole_trial_seconds_before_cleanup": 238.90699999999924,
+      "audit": {
+        "start_and_finish": true,
+        "one_completed_turn": true,
+        "all_tool_requests_accounted": true,
+        "token_usage_reconciled": true,
+        "tool_commands_match": true,
+        "all_native_requests_executed": true
+      },
+      "phase_tool_counts": {
+        "0": 8,
+        "1": 4,
+        "2": 2,
+        "3": 3,
+        "4": 2,
+        "5": 3,
+        "6": 2,
+        "7": 3
+      },
+      "setup_seconds": 36.140999999995984,
+      "cleanup_seconds": 3.561999999998079,
+      "whole_trial_seconds_including_fixture_cleanup": 242.46899999999732,
+      "checkpoints": [
+        {
+          "phase": 0,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "declared_dependency_closure": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 1,
+          "project": "typescript",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "declared_dependency_closure": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": [
+            "technical-writing",
+            "unslop"
+          ]
+        },
+        {
+          "phase": 2,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "project_profile_survives_switch": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 3,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "compatible_update_applied": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 4,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "incompatible_update_not_activated": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 5,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 6,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "irrelevant_profile_disabled": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": []
+        },
+        {
+          "phase": 7,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "both_profiles_removed": true,
+            "manager_registrations_cleaned": true
+          },
+          "passed": true,
+          "active": []
+        }
+      ]
+    },
+    {
+      "version": "run-v2",
+      "arm": "skillkit",
+      "repeat": 0,
+      "status": "completed",
+      "completed": true,
+      "passed": true,
+      "tool_calls": 31,
+      "native_tool_requests": 31,
+      "nonzero_tools": 3,
+      "tool_seconds": 85.65500000000611,
+      "usage": {
+        "totalTokens": 800851,
+        "inputTokens": 796927,
+        "cachedInputTokens": 708480,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 3924,
+        "reasoningOutputTokens": 167,
+        "uncachedInputTokens": 88447
+      },
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "instrument_valid": true,
+      "native_call_seconds": 212.51600000000326,
+      "requested_owner_interventions": 0,
+      "actual_owner_attention_seconds": null,
+      "observed_peak_workspace_bytes": 123344400,
+      "instrument_observation_seconds": 22.501000000018394,
+      "whole_trial_seconds_before_cleanup": 250.20299999999406,
+      "audit": {
+        "start_and_finish": true,
+        "one_completed_turn": true,
+        "all_tool_requests_accounted": true,
+        "token_usage_reconciled": true,
+        "tool_commands_match": true,
+        "all_native_requests_executed": true
+      },
+      "phase_tool_counts": {
+        "0": 7,
+        "1": 6,
+        "2": 2,
+        "3": 4,
+        "4": 2,
+        "5": 3,
+        "6": 3,
+        "7": 4
+      },
+      "setup_seconds": 34.9059999999954,
+      "cleanup_seconds": 3.5780000000013388,
+      "whole_trial_seconds_including_fixture_cleanup": 253.7809999999954,
+      "checkpoints": [
+        {
+          "phase": 0,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "declared_dependency_closure": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 1,
+          "project": "typescript",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "declared_dependency_closure": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": [
+            "technical-writing",
+            "unslop"
+          ]
+        },
+        {
+          "phase": 2,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "project_profile_survives_switch": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 3,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "compatible_update_applied": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 4,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "incompatible_update_not_activated": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 5,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 6,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "irrelevant_profile_disabled": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": []
+        },
+        {
+          "phase": 7,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "both_profiles_removed": true,
+            "manager_registrations_cleaned": true
+          },
+          "passed": true,
+          "active": []
+        }
+      ]
+    },
+    {
+      "version": "run-v2",
+      "arm": "skillkit",
+      "repeat": 1,
+      "status": "completed",
+      "completed": true,
+      "passed": true,
+      "tool_calls": 29,
+      "native_tool_requests": 29,
+      "nonzero_tools": 1,
+      "tool_seconds": 81.72099999999773,
+      "usage": {
+        "totalTokens": 1022152,
+        "inputTokens": 1018236,
+        "cachedInputTokens": 927744,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 3916,
+        "reasoningOutputTokens": 151,
+        "uncachedInputTokens": 90492
+      },
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "instrument_valid": true,
+      "native_call_seconds": 216.93699999999808,
+      "requested_owner_interventions": 0,
+      "actual_owner_attention_seconds": null,
+      "observed_peak_workspace_bytes": 123344794,
+      "instrument_observation_seconds": 21.143999999992957,
+      "whole_trial_seconds_before_cleanup": 255.7190000000046,
+      "audit": {
+        "start_and_finish": true,
+        "one_completed_turn": true,
+        "all_tool_requests_accounted": true,
+        "token_usage_reconciled": true,
+        "tool_commands_match": true,
+        "all_native_requests_executed": true
+      },
+      "phase_tool_counts": {
+        "0": 7,
+        "1": 5,
+        "2": 2,
+        "3": 4,
+        "4": 2,
+        "5": 3,
+        "6": 3,
+        "7": 3
+      },
+      "setup_seconds": 36.01600000000326,
+      "cleanup_seconds": 3.485000000000582,
+      "whole_trial_seconds_including_fixture_cleanup": 259.2040000000052,
+      "checkpoints": [
+        {
+          "phase": 0,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "declared_dependency_closure": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 1,
+          "project": "typescript",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "declared_dependency_closure": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": [
+            "technical-writing",
+            "unslop"
+          ]
+        },
+        {
+          "phase": 2,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "project_profile_survives_switch": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 3,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "compatible_update_applied": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 4,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "incompatible_update_not_activated": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 5,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 6,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "irrelevant_profile_disabled": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": []
+        },
+        {
+          "phase": 7,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "both_profiles_removed": true,
+            "manager_registrations_cleaned": true
+          },
+          "passed": true,
+          "active": []
+        }
+      ]
+    },
+    {
+      "version": "run-v2",
+      "arm": "temper_prototype",
+      "repeat": 0,
+      "status": "completed",
+      "completed": true,
+      "passed": true,
+      "tool_calls": 27,
+      "native_tool_requests": 27,
+      "nonzero_tools": 1,
+      "tool_seconds": 164.9699999999866,
+      "usage": {
+        "totalTokens": 898961,
+        "inputTokens": 896228,
+        "cachedInputTokens": 849408,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 2733,
+        "reasoningOutputTokens": 42,
+        "uncachedInputTokens": 46820
+      },
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "instrument_valid": true,
+      "native_call_seconds": 289.1880000000019,
+      "requested_owner_interventions": 0,
+      "actual_owner_attention_seconds": null,
+      "observed_peak_workspace_bytes": 123331432,
+      "instrument_observation_seconds": 20.339000000007218,
+      "whole_trial_seconds_before_cleanup": 327.26600000000326,
+      "audit": {
+        "start_and_finish": true,
+        "one_completed_turn": true,
+        "all_tool_requests_accounted": true,
+        "token_usage_reconciled": true,
+        "tool_commands_match": true,
+        "all_native_requests_executed": true
+      },
+      "phase_tool_counts": {
+        "0": 8,
+        "1": 5,
+        "2": 2,
+        "3": 3,
+        "4": 2,
+        "5": 3,
+        "6": 2,
+        "7": 2
+      },
+      "setup_seconds": 35.20300000000134,
+      "cleanup_seconds": 3.7809999999954016,
+      "whole_trial_seconds_including_fixture_cleanup": 331.04699999999866,
+      "checkpoints": [
+        {
+          "phase": 0,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "declared_dependency_closure": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 1,
+          "project": "typescript",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "declared_dependency_closure": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": [
+            "technical-writing",
+            "unslop"
+          ]
+        },
+        {
+          "phase": 2,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "project_profile_survives_switch": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 3,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "compatible_update_applied": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 4,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "incompatible_update_not_activated": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 5,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 6,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "irrelevant_profile_disabled": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": []
+        },
+        {
+          "phase": 7,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "both_profiles_removed": true,
+            "manager_registrations_cleaned": true
+          },
+          "passed": true,
+          "active": []
+        }
+      ]
+    },
+    {
+      "version": "run-v2",
+      "arm": "temper_prototype",
+      "repeat": 1,
+      "status": "completed",
+      "completed": true,
+      "passed": true,
+      "tool_calls": 29,
+      "native_tool_requests": 29,
+      "nonzero_tools": 1,
+      "tool_seconds": 181.76599999997416,
+      "usage": {
+        "totalTokens": 1165571,
+        "inputTokens": 1162857,
+        "cachedInputTokens": 1108736,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 2714,
+        "reasoningOutputTokens": 49,
+        "uncachedInputTokens": 54121
+      },
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "instrument_valid": true,
+      "native_call_seconds": 288.875,
+      "requested_owner_interventions": 0,
+      "actual_owner_attention_seconds": null,
+      "observed_peak_workspace_bytes": 123331050,
+      "instrument_observation_seconds": 23.282000000013795,
+      "whole_trial_seconds_before_cleanup": 327.6560000000027,
+      "audit": {
+        "start_and_finish": true,
+        "one_completed_turn": true,
+        "all_tool_requests_accounted": true,
+        "token_usage_reconciled": true,
+        "tool_commands_match": true,
+        "all_native_requests_executed": true
+      },
+      "phase_tool_counts": {
+        "0": 10,
+        "1": 5,
+        "2": 2,
+        "3": 3,
+        "4": 2,
+        "5": 3,
+        "6": 2,
+        "7": 2
+      },
+      "setup_seconds": 36.07800000000134,
+      "cleanup_seconds": 4.234000000004016,
+      "whole_trial_seconds_including_fixture_cleanup": 331.8900000000067,
+      "checkpoints": [
+        {
+          "phase": 0,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "declared_dependency_closure": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 1,
+          "project": "typescript",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "declared_dependency_closure": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": [
+            "technical-writing",
+            "unslop"
+          ]
+        },
+        {
+          "phase": 2,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "project_profile_survives_switch": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 3,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "compatible_update_applied": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 4,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "incompatible_update_not_activated": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 5,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "small_applicable_profile": true,
+            "complete_source_resources": true,
+            "declared_dependency_closure": true
+          },
+          "passed": true,
+          "active": [
+            "principle-fix-root-causes",
+            "tdd"
+          ]
+        },
+        {
+          "phase": 6,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "irrelevant_profile_disabled": true,
+            "native_discoverability_matches_profile": true,
+            "native_skill_reader_no_errors": true
+          },
+          "passed": true,
+          "active": []
+        },
+        {
+          "phase": 7,
+          "project": "python",
+          "checks": {
+            "python_app_source_unchanged": true,
+            "python_owner_policy_preserved": true,
+            "python_owner_skill_preserved": true,
+            "typescript_app_source_unchanged": true,
+            "typescript_owner_policy_preserved": true,
+            "typescript_owner_skill_preserved": true,
+            "owner_config_preserved": true,
+            "concurrent_notes_preserved": true,
+            "source_feed_preserved": true,
+            "catalog_preserved": true,
+            "both_profiles_removed": true,
+            "manager_registrations_cleaned": true
+          },
+          "passed": true,
+          "active": []
+        }
+      ]
+    }
+  ],
+  "accounting": {
+    "completed_local_benchmark_model_turns": 8,
+    "corrected_comparison_turns": 6,
+    "retained_aborted_version_turns": 2,
+    "aborted_version_temper_model_turns": 0,
+    "additional_selector_model_turns": 0,
+    "model_usage_all_eight_completed_turns": {
+      "totalTokens": 7910718,
+      "inputTokens": 7883833,
+      "cachedInputTokens": 7380864,
+      "cacheWriteInputTokens": 0,
+      "outputTokens": 26885,
+      "reasoningOutputTokens": 1033,
+      "uncachedInputTokens": 502969
+    },
+    "whole_model_journeys_seconds_before_fixture_cleanup": 2141.67300000001,
+    "whole_model_journeys_seconds_including_fixture_cleanup": 2170.985000000008,
+    "all_disposable_windows_workspaces_removed": true,
+    "windows_workspace_cleanup": [
+      {
+        "workspace": "admission-v1/workspace",
+        "cleanup_seconds": 2.813000000001921,
+        "removed": true
+      },
+      {
+        "workspace": "run-v1/native_managers-0/workspace",
+        "cleanup_seconds": 3.561999999998079,
+        "removed": true
+      },
+      {
+        "workspace": "run-v1/skillkit-0/workspace",
+        "cleanup_seconds": 3.5939999999973224,
+        "removed": true
+      },
+      {
+        "workspace": "run-v1/temper_prototype-0/workspace",
+        "cleanup_seconds": 0.20300000000133878,
+        "removed": true
+      },
+      {
+        "workspace": "run-v2/native_managers-0/workspace",
+        "cleanup_seconds": 3.5160000000032596,
+        "removed": true
+      },
+      {
+        "workspace": "run-v2/native_managers-1/workspace",
+        "cleanup_seconds": 3.561999999998079,
+        "removed": true
+      },
+      {
+        "workspace": "run-v2/skillkit-0/workspace",
+        "cleanup_seconds": 3.5780000000013388,
+        "removed": true
+      },
+      {
+        "workspace": "run-v2/skillkit-1/workspace",
+        "cleanup_seconds": 3.485000000000582,
+        "removed": true
+      },
+      {
+        "workspace": "run-v2/temper_prototype-0/workspace",
+        "cleanup_seconds": 3.7809999999954016,
+        "removed": true
+      },
+      {
+        "workspace": "run-v2/temper_prototype-1/workspace",
+        "cleanup_seconds": 4.234000000004016,
+        "removed": true
+      },
+      {
+        "workspace": "controls-v1/native_managers-0",
+        "cleanup_seconds": 3.2969999999986612,
+        "removed": true
+      },
+      {
+        "workspace": "controls-v2/native_managers-0",
+        "cleanup_seconds": 4.046999999998661,
+        "removed": true
+      },
+      {
+        "workspace": "controls-v3/native_managers-0",
+        "cleanup_seconds": 4.234000000004016,
+        "removed": true
+      },
+      {
+        "workspace": "controls-v3/skillkit-0",
+        "cleanup_seconds": 3.6719999999986612,
+        "removed": true
+      },
+      {
+        "workspace": "controls-v3/temper_prototype-0",
+        "cleanup_seconds": 3.75,
+        "removed": true
+      },
+      {
+        "workspace": "controls-v4/native_managers-0",
+        "cleanup_seconds": 3.860000000000582,
+        "removed": true
+      },
+      {
+        "workspace": "controls-v4/skillkit-0",
+        "cleanup_seconds": 3.6559999999954016,
+        "removed": true
+      },
+      {
+        "workspace": "controls-v4/temper_prototype-0",
+        "cleanup_seconds": 3.797000000005937,
+        "removed": true
+      },
+      {
+        "workspace": "controls-v5/native_managers-0",
+        "cleanup_seconds": 3.764999999999418,
+        "removed": true
+      },
+      {
+        "workspace": "controls-v5/skillkit-0",
+        "cleanup_seconds": 4.031999999999243,
+        "removed": true
+      },
+      {
+        "workspace": "controls-v5/temper_prototype-0",
+        "cleanup_seconds": 3.6559999999954016,
+        "removed": true
+      },
+      {
+        "workspace": "controls-v6/native_managers-0",
+        "cleanup_seconds": 3.7190000000045984,
+        "removed": true
+      },
+      {
+        "workspace": "controls-v6/skillkit-0",
+        "cleanup_seconds": 3.686999999998079,
+        "removed": true
+      },
+      {
+        "workspace": "controls-v6/temper_prototype-0",
+        "cleanup_seconds": 3.610000000000582,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-full-control-v1/skillkit-0",
+        "cleanup_seconds": 3.625,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-full-control-v2/skillkit-0",
+        "cleanup_seconds": 4.0460000000020955,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-full-control-v3/skillkit-0",
+        "cleanup_seconds": 4.0310000000026776,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v1/default-0",
+        "cleanup_seconds": 0.0,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v1/default-1",
+        "cleanup_seconds": 0.01599999999598367,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v1/default-2",
+        "cleanup_seconds": 0.0,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v1/default-3",
+        "cleanup_seconds": 0.0,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v1/default-4",
+        "cleanup_seconds": 0.0,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v1/minimal-0",
+        "cleanup_seconds": 0.0,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v1/minimal-1",
+        "cleanup_seconds": 0.0,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v1/minimal-2",
+        "cleanup_seconds": 0.01600000000325963,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v1/minimal-3",
+        "cleanup_seconds": 0.0,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v1/minimal-4",
+        "cleanup_seconds": 0.0,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v2/default-0",
+        "cleanup_seconds": 0.0,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v2/default-1",
+        "cleanup_seconds": 0.0,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v2/default-2",
+        "cleanup_seconds": 0.0,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v2/default-3",
+        "cleanup_seconds": 0.0,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v2/default-4",
+        "cleanup_seconds": 0.0,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v2/minimal-0",
+        "cleanup_seconds": 0.0,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v2/minimal-1",
+        "cleanup_seconds": 0.0,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v2/minimal-2",
+        "cleanup_seconds": 0.0,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v2/minimal-3",
+        "cleanup_seconds": 0.0,
+        "removed": true
+      },
+      {
+        "workspace": "minimal-v2/minimal-4",
+        "cleanup_seconds": 0.014999999999417923,
+        "removed": true
+      }
+    ],
+    "one_time_native_setup_seconds": {
+      "skills": 1.562999999994645,
+      "skillkit": 24.109000000004016
+    },
+    "lab_native_script_diagnostics": {
+      "optional-script-approval": {
+        "returncode": 1,
+        "seconds": 0.6090000000040163
+      },
+      "optional-script-approval-v2": {
+        "returncode": 0,
+        "seconds": 0.4529999999940628
+      },
+      "native-optional-rebuild": {
+        "returncode": 0,
+        "seconds": 1.8280000000013388
+      },
+      "native-sqlite-probe": {
+        "returncode": 0,
+        "seconds": 0.10899999999674037
+      },
+      "native-llama-probe": {
+        "returncode": 1,
+        "seconds": 0.3280000000013388
+      },
+      "native-llama-probe-v2": {
+        "returncode": 0,
+        "seconds": 0.7969999999986612
+      }
+    },
+    "exact_dependency_restoration": {
+      "restored": [
+        {
+          "manager": "skills",
+          "seconds": 0.9380000000019209
+        },
+        {
+          "manager": "skillkit",
+          "seconds": 16.92199999999866
+        }
+      ],
+      "versions": "1.7.2\n1.24.0\n",
+      "default_optional_dependencies": true
+    },
+    "post_cleanup_replay_dependency_restoration": {
+      "restored": [
+        {
+          "manager": "skills",
+          "seconds": 1.1089999999967404
+        },
+        {
+          "manager": "skillkit",
+          "seconds": 17.906000000002678
+        }
+      ],
+      "versions": "1.7.2\n1.24.0\n",
+      "default_optional_dependencies": true
+    },
+    "restored_native_qualification": {
+      "returncode": 0,
+      "seconds": 0.5619999999980791
+    },
+    "dependency_lab_cleanup_before_and_after_restore": [
+      {
+        "bytes_before": 1743665679,
+        "cleanup_seconds": 0.5416712339992955,
+        "removed": true
+      },
+      {
+        "bytes_before": 1449671683,
+        "cleanup_seconds": 0.5754868900003203,
+        "removed": true
+      },
+      {
+        "bytes_before": 1621353329,
+        "cleanup_seconds": 0.7180643589999818,
+        "removed": true
+      }
+    ],
+    "shared_preexisting_public_source_cache_bytes": 133320090,
+    "shared_public_source_cache_preserved": true,
+    "coordinator_tokens": null,
+    "coordinator_active_seconds": null,
+    "actual_human_attention_seconds": null,
+    "user_research_seconds": null,
+    "prototype_and_instrument_development_seconds": null,
+    "reporting_and_audit_seconds": null,
+    "provider_http_requests": null,
+    "billed_cost": null,
+    "mac_read_only_coordination_turn_seconds": 28.114,
+    "timing_note": "Setup, tools and observations are nested within whole journey times, not additive. One-time installations, diagnostics, development, controls, refresh, reconstitution and shared dependency-cache cleanup are outside per-arm totals. Unknown costs are not zero."
+  },
+  "reference_controls": [
+    {
+      "attempt": "controls-v1",
+      "summary_present": false,
+      "completed_rows": [],
+      "failure_evidence_retained": false,
+      "note": "Windows long-path fixture preparation failure; exact duration/terminal record unavailable."
+    },
+    {
+      "attempt": "controls-v2",
+      "summary_present": false,
+      "completed_rows": [],
+      "failure_evidence_retained": false,
+      "note": "Node --input-type=module with file invocation setup failure; exact duration/terminal record unavailable."
+    },
+    {
+      "attempt": "controls-v3",
+      "summary_present": false,
+      "completed_rows": [
+        {
+          "arm": "native_managers",
+          "repeat": 0,
+          "passed": true,
+          "seconds": 71.21800000000076,
+          "commands": 18,
+          "setup_seconds": 31.906000000002678
+        },
+        {
+          "arm": "skillkit",
+          "repeat": 0,
+          "passed": true,
+          "seconds": 71.90699999999924,
+          "commands": 18,
+          "setup_seconds": 33.0
+        }
+      ],
+      "failure_evidence_retained": true,
+      "note": "Temper incorrectly selected TypeScript implementation guidance for documentation; failed flow retained."
+    },
+    {
+      "attempt": "controls-v4",
+      "summary_present": false,
+      "completed_rows": [
+        {
+          "arm": "native_managers",
+          "repeat": 0,
+          "passed": true,
+          "seconds": 71.11000000000058,
+          "commands": 18,
+          "setup_seconds": 32.42199999999866
+        },
+        {
+          "arm": "skillkit",
+          "repeat": 0,
+          "passed": true,
+          "seconds": 75.88999999999942,
+          "commands": 18,
+          "setup_seconds": 33.18699999999808
+        }
+      ],
+      "failure_evidence_retained": true,
+      "note": "Temper selected weak incidental-word filler; pre-freeze repaired reference resumption retained.",
+      "pre_freeze_reference_resumption": {
+        "completed": true,
+        "command_seconds_sum": 41.85899999999674,
+        "whole_elapsed_seconds": null
+      }
+    },
+    {
+      "attempt": "controls-v5",
+      "summary_present": true,
+      "completed_rows": [
+        {
+          "arm": "native_managers",
+          "repeat": 0,
+          "passed": true,
+          "seconds": 72.65600000000268,
+          "commands": 18,
+          "setup_seconds": 31.31300000000192
+        },
+        {
+          "arm": "skillkit",
+          "repeat": 0,
+          "passed": true,
+          "seconds": 74.2039999999979,
+          "commands": 18,
+          "setup_seconds": 31.67199999999866
+        },
+        {
+          "arm": "temper_prototype",
+          "repeat": 0,
+          "passed": true,
+          "seconds": 94.75,
+          "commands": 15,
+          "setup_seconds": 31.625
+        }
+      ],
+      "failure_evidence_retained": false,
+      "note": "All three v1 reference flows pass."
+    },
+    {
+      "attempt": "controls-v6",
+      "summary_present": true,
+      "completed_rows": [
+        {
+          "arm": "native_managers",
+          "repeat": 0,
+          "passed": true,
+          "seconds": 76.53100000000268,
+          "commands": 18,
+          "setup_seconds": 35.625
+        },
+        {
+          "arm": "skillkit",
+          "repeat": 0,
+          "passed": true,
+          "seconds": 72.76600000000326,
+          "commands": 18,
+          "setup_seconds": 30.92199999999866
+        },
+        {
+          "arm": "temper_prototype",
+          "repeat": 0,
+          "passed": true,
+          "seconds": 124.51599999999598,
+          "commands": 15,
+          "setup_seconds": 33.437999999994645
+        }
+      ],
+      "failure_evidence_retained": false,
+      "note": "All three repaired dependency-aware reference flows pass."
+    }
+  ],
+  "live_public_refresh_probe": {
+    "receipts": [
+      {
+        "sources": [
+          {
+            "source": "obra/superpowers",
+            "revision": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
+            "reused": false,
+            "downloaded_bytes": 680678,
+            "archive_sha256": "496b576d4a4a62c0d72cce4a9e99ff46c57026c07fe503931cbb8afd33006cf2",
+            "http_requests": 2,
+            "tree_sha256": "086a774619547df9f03b5a96eab73f0c103b3a8ec904d32537ff23b4ef61d5eb"
+          }
+        ],
+        "seconds": 1.9060000000026776,
+        "scope": "owner-configured public repositories only"
+      },
+      {
+        "sources": [
+          {
+            "source": "obra/superpowers",
+            "revision": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
+            "reused": true,
+            "downloaded_bytes": 0,
+            "archive_sha256": null,
+            "http_requests": 1,
+            "tree_sha256": "086a774619547df9f03b5a96eab73f0c103b3a8ec904d32537ff23b4ef61d5eb"
+          }
+        ],
+        "seconds": 0.23399999999674037,
+        "scope": "owner-configured public repositories only"
+      },
+      {
+        "sources": [
+          {
+            "source": "obra/superpowers",
+            "revision": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
+            "reused": true,
+            "downloaded_bytes": 0,
+            "archive_sha256": null,
+            "http_requests": 1,
+            "tree_sha256": "086a774619547df9f03b5a96eab73f0c103b3a8ec904d32537ff23b4ef61d5eb"
+          }
+        ],
+        "seconds": 0.25,
+        "scope": "owner-configured public repositories only"
+      },
+      {
+        "sources": [
+          {
+            "source": "obra/superpowers",
+            "revision": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
+            "reused": true,
+            "downloaded_bytes": 0,
+            "archive_sha256": null,
+            "http_requests": 1,
+            "tree_sha256": "086a774619547df9f03b5a96eab73f0c103b3a8ec904d32537ff23b4ef61d5eb"
+          }
+        ],
+        "seconds": 0.20300000000133878,
+        "scope": "owner-configured public repositories only"
+      },
+      {
+        "sources": [
+          {
+            "source": "obra/superpowers",
+            "revision": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
+            "reused": true,
+            "downloaded_bytes": 0,
+            "archive_sha256": null,
+            "http_requests": 1,
+            "tree_sha256": "086a774619547df9f03b5a96eab73f0c103b3a8ec904d32537ff23b4ef61d5eb"
+          }
+        ],
+        "seconds": 0.20300000000133878,
+        "scope": "owner-configured public repositories only"
+      }
+    ],
+    "additional_model_turns": 0,
+    "actual_upstream_transition_observed": false,
+    "earlier_pre_integrity_probe_retained": true
+  },
+  "native_product_bridge_after": {
+    "packet_digest": "sha256:a8c44b3f9705ceb092673d4e4990fc6047b4100e78cf137d8601c26c8bc8e151",
+    "learning_enabled": true,
+    "personalization_enabled": false,
+    "automatic_serving_ready": false,
+    "project_registered": false,
+    "profile": "",
+    "unchanged_from_task_start": true
+  },
+  "minimal_skillkit_supplement": {
+    "post_primary": true,
+    "native_model_turns": 0,
+    "setup_seconds": 9.56199999999808,
+    "basic_controls": {
+      "default": {
+        "n": 5,
+        "passed": 5,
+        "median_seconds": 1.8589999999967404,
+        "range_seconds": [
+          1.8130000000019209,
+          1.875
+        ],
+        "seconds_sum": 9.23399999999674
+      },
+      "minimal": {
+        "n": 5,
+        "passed": 5,
+        "median_seconds": 1.8439999999973224,
+        "range_seconds": [
+          1.812000000005355,
+          1.9060000000026776
+        ],
+        "seconds_sum": 9.281000000002678
+      }
+    },
+    "footprint_bytes": {
+      "default_skillkit": 978493665,
+      "minimal_skillkit": 41401583,
+      "native_skills": 4526335
+    },
+    "identical_cli_code_sha256": "298c7fbb93a69bb3731ce606f29ca0f625b8f05628bfe9cece77b7dd59302425",
+    "identical_core_code_sha256": "ff675a09d9410b46b3b4b643410b5e3eb259de53863263f8af9fea356b47295c",
+    "full_reference_flow": {
+      "arm": "skillkit",
+      "repeat": 0,
+      "passed": true,
+      "seconds": 74.65600000000268,
+      "commands": 18,
+      "setup_seconds": 31.51600000000326
+    },
+    "full_reference_checkpoints_passed": 8,
+    "post_cleanup_replay": {
+      "native_model_turns": 0,
+      "n": 10,
+      "passed": 10,
+      "native_index_count_each": 74,
+      "setup_seconds": 8.360000000000582,
+      "row_seconds_sum_including_native_index_rebuild": 31.0,
+      "native_index_rebuild_seconds_nested": 12.768000000010943,
+      "note": "Replay audit removed dependence on a deleted control fixture. Every neutral index is rebuilt through native SkillKit parser/index exports. Original primary and earlier supplement measurements remain unchanged."
+    },
+    "final_supplementary_script_sha256": "72f9d5a05b25ea5e2732a4606dc71e372fc72488fa8a582080cf7ba64fa44086",
+    "preparatory_attempts": [
+      {
+        "attempt": "minimal-full-control-v1",
+        "result": "incomplete fixture preparation; no result or inference turn; exact terminal error not retained"
+      },
+      {
+        "attempt": "minimal-full-control-v2",
+        "result": "fixture setup failed because the supplementary wrapper expanded the outer WSL PATH; traceback retained"
+      },
+      {
+        "attempt": "minimal-full-control-v3",
+        "result": "constant isolated PATH; eight phases pass"
+      }
+    ],
+    "limits": "Basic recommendation/install/list/remove and scripted eight-phase reference flow. No primary native-model rerun, TUI, embedding/reasoning evaluation or full feature equivalence claim."
+  },
+  "verification": {
+    "focused_unit_tests_passed": 46,
+    "grader_mutations_detected": 6,
+    "exact_source_missing_dependency_mutation_detected": true,
+    "abrupt_subprocess_exit_recovery_test_passed": true,
+    "frozen_input_files_intact": true,
+    "frozen_input_file_count": 30,
+    "shared_source_trees_intact": true,
+    "stale_git_locks_in_twelve_corrected_project_trees": 0,
+    "legacy_benchmark_suite": {
+      "passed": 255,
+      "failed": 26,
+      "limits": "Windows POSIX permission/getuid/bwrap assumptions and historical frozen fixture digest failures; unrelated fixtures not rewritten."
+    }
+  },
+  "limits": [
+    "Two repeats of one previously seen development journey; no statistical superiority/equivalence claim.",
+    "Finite preapproved registry and warm source cache; no open-world tool research or source trust cost measurement.",
+    "Native Windows Codex with offline isolated WSL manager processes on Windows repository trees; no macOS/clean-machine package validation.",
+    "Updates and compatibility events are controlled snapshot replay, not actual upstream release transitions.",
+    "Native skills/list confirms metadata visibility only, not instruction loading, implicit invocation, compliance, usefulness or coding quality.",
+    "All arms share a native Codex operator. No demonstrated human attention savings.",
+    "Optional-free supplement does not replace or alter default-installed frozen primary rows.",
+    "Earlier habit-learning studies and historical research gates remain unchanged."
+  ]
+}
