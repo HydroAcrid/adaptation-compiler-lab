@@ -1,0 +1,33 @@
+{
+  "purpose": "development_screen_not_release_calibration",
+  "created_at": "2026-10-15T03:31:13.148308+00:00",
+  "repeats": 2,
+  "conditions": [
+    "baseline",
+    "direct_sources",
+    "temper_selected"
+  ],
+  "cases_sha256": "sha256:8806bbcd08e309b3c277a73e00ca849dfb49fd49a65907360b0a08e439ee093c",
+  "sources_sha256": "sha256:e619adf800022280d7569540171151bc0468337f07b61faad60d90937ea5ef98",
+  "runner_sha256": "sha256:d11c8bf93bc56068a11a56c9e94dd90b523e233c72b68a1e2b90ea40d4e623b3",
+  "scorer_sha256": "sha256:28f273658df8179687c8c9420782a6e4528aa5902b990dc375821cb1e6721884",
+  "model_policy": "configured_verified_model_no_fallback",
+  "maximum_model_turns": 21,
+  "turn_timeout_seconds": 120,
+  "minimum_remaining_capacity": 20,
+  "correctness_before_cost": true,
+  "rule": "Advance only on an objective gain over direct guidance repeated twice, with no baseline/direct regression and no neutral-task guidance; otherwise report no incremental quality signal, regression or instrument failure.",
+  "performance_rule": "Two repetitions only; report median/range descriptively, no speed/token efficiency claim.",
+  "not_tested": [
+    "native plugins/hooks",
+    "Pi runtime",
+    "persistent personal learning",
+    "market demand",
+    "general effectiveness"
+  ],
+  "task_ids": [
+    "archive-preview",
+    "registry-boundary",
+    "copy-only"
+  ]
+}
