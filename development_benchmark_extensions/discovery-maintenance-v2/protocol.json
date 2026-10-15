@@ -1,0 +1,61 @@
+{
+  "version": "discovery-maintenance-v2",
+  "frozen_at": "2026-10-15T17:00:29.132996+00:00",
+  "executed_at_freeze": false,
+  "bound_files": {
+    "scripts/discovery_maintenance.py": "3e970a773fb6c2b4adfa3ef899f15aba4fa011ba228a09a2d3b74bc125db203c",
+    "scripts/discovery_maintenance_sandbox.py": "121119e488c6db712a38bfbcf661829fb18647a886901441f6893d678d1d6c3e",
+    "scripts/run_discovery_maintenance_screen.py": "83bb07c27ce9bd4059bf8c5de5631f25bd87292595136d27c9de8036f04a74cb",
+    "scripts/probe_discovery_maintenance.py": "177e8a5043416205a0fb4cca135e499e0925d5a797049307d8fd6c2f2f4059b7",
+    "scripts/prepare_discovery_maintenance.py": "f9670c8a0fa87a319c4102717d0e50437c7bb7cd2443bf7db3bf95ec27c219fd",
+    "tests/unit/benchmark/test_discovery_maintenance.py": "71de12a72d2126cffa103aacb3f66ff5b308f642a15a9fb7226201542dedba4c",
+    "tests/unit/benchmark/test_discovery_maintenance_grader.py": "5b76101cda604cbe583b9be6b802dc7c3e70ff830be700764bb7f9f089312fec",
+    "scripts/run_repo_extension_screen.py": "18b6b8100529f22f4123198773c4853c76dfaa04cd45bfdcf21c985f27dbb03a",
+    "scripts/run_extension_lifecycle_screen.py": "cf75ab81056599b84ebad9d3591969a0aad1dacfedf4b33ea354c930539b14bd",
+    "scripts/extension_lifecycle_sandbox.py": "63e3df4b4dcad6d9e4aec0b9d73bae2b2af66118478961ee4757706be0c61498",
+    "src/adaptation_compiler_lab/benchmark/repo_extension_screen.py": "3c91d6e239f3d39d89ef5c5eb1711361427ab0501b2e612a066744c52df27266",
+    "src/adaptation_compiler_lab/autonomy/codex_transport.py": "c89df5723ade7374a4ec0bfe434e4087a991cf82661569726cacbf2b8d1ab7b8",
+    "development_benchmark_extensions/real-repo-v1/cases.json": "54bc6d0051c9eedeb77f919bfe4ff82b4e9dd49b8c21ad6eb14b37ea40b26a60",
+    "development_benchmark_extensions/lifecycle-v1/sources.json": "ac22624ad1290f7a8f4134023ad560b48c66eb12cd19756d9b5a093342b7c2ad",
+    "development_benchmark_extensions/discovery-maintenance-v1/cases.json": "9ccce81ac11b84fa83c461b68289481c418152d5d9b91bbed99b88ba4cbde2e7",
+    "development_benchmark_extensions/discovery-maintenance-v1/distributions.json": "b02d807809b3acd7c0bd039e79fa4625d3ff68e343c5befeb3571103fca6b706",
+    "development_benchmark_extensions/discovery-maintenance-v1/MANAGERS.md": "9ea162a01f903192e24badb50ef9d691ac69741d7f928dd92c6a0ed7faf69ef7",
+    "development_benchmark_extensions/discovery-maintenance-v1/README.md": "65dfdd3649a4ccd9891313c61ebb393938e0691bfd6bf18d03eb162d9a334f4f",
+    "development_benchmark_extensions/discovery-maintenance-v1/skillkit-package-lock.json": "03e77df8d716417480be03106c06817bf6430e5723dc1820b5f6dc507c43961d",
+    "development_benchmark_extensions/discovery-maintenance-v1/skillkit-package.json": "b10ef0bbb5dbb437efd4b296a458755b3731763612f56dacfbfd76862cee757e",
+    "development_benchmark_extensions/discovery-maintenance-v1/skills-package-lock.json": "3eecd3a04174141b603d6472a7b2f509f117355e5272658716dedfb9a72a3dd7",
+    "development_benchmark_extensions/discovery-maintenance-v1/skills-package.json": "ab145ca63d7caaef617eba228c22a6f8fbbb1037c696a1f30be2fbe39378d004",
+    "development_benchmark_extensions/discovery-maintenance-v1/sources.json": "f62e0f23b8d7b1521a1072dd86e7ecf626b67a4ef48f711d4da9a69472458355",
+    "scripts/discovery_maintenance_v2.py": "0ce32b045d6663e2731034cc63731dcfe9e2ce30a16fe0a935402e902699e3b0",
+    "scripts/discovery_maintenance_v2_sandbox.py": "4fefe4044a1e5de5d28b050c602b763c452e7ef82ad374dbe61ce7d7406fe55d",
+    "scripts/run_discovery_maintenance_v2_screen.py": "115810476ca7294340f247e4ab5e5020fb1ec9a5ae98a480abcc553e268eb5de",
+    "tests/unit/benchmark/test_discovery_dependencies.py": "7d756774cff2247d389aa091cd3aefeb1a4cabc0208516f7ffe268d5caa342ee",
+    "development_benchmark_extensions/discovery-maintenance-v2/cases.json": "212d495d8fd0818a33ec4372f6eeed63d38450c470b0c39fa9927e59f4724b1d",
+    "development_benchmark_extensions/discovery-maintenance-v2/MANAGERS.md": "7d80d0fa3198315b9d654acfe4878a156c3e7a541e6195f2fcfeb19e9c29b428",
+    "development_benchmark_extensions/discovery-maintenance-v2/README.md": "872b767a381908907be5424ccddbc30c0ecf394ce61e697596b368eca337e39b"
+  },
+  "source_trees": {
+    "pstack": "33ba3c42958508d4d2bd6e42dde3c2f6e97b195f3af01015caffd80736594c92",
+    "ponytail": "9fb245215cbd95d95d0725334e64ee178997cf9761e676da868f6bb0b94fac80",
+    "superpowers": "086a774619547df9f03b5a96eab73f0c103b3a8ec904d32537ff23b4ef61d5eb"
+  },
+  "model_and_effort": [
+    "gpt-6.1-sol",
+    "medium"
+  ],
+  "model_turns": 6,
+  "github_ci": false,
+  "source_discovery_scope": "74 skill roots in a controlled public registry replay; one separate live public HEAD refresh probe",
+  "owner_attention_measured": false,
+  "platform": "Native Windows Codex operator, isolated WSL native managers against Windows filesystem repositories",
+  "prepared_source_cache": "warm",
+  "default_skillkit_optional_dependencies_included": true,
+  "approved_optional_script_versions": [
+    "better-sqlite3@12.11.1",
+    "node-llama-cpp@3.22.1"
+  ],
+  "repair": "Dependency closure and separate invocation semantics; v1 stopped after two completed baseline turns before Temper. Retain/count diagnostics.",
+  "prior_instrument_sha256": "c04f2324143432f254c23052e8dfb519751513af094d9950cce829f84c59de29",
+  "additional_temper_only_model_calls": 0,
+  "total_native_model_turns_including_aborted_version": 8
+}
