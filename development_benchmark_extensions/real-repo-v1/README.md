@@ -1,5 +1,10 @@
 # Real repository extension comparison
 
+The completed comparison is recorded in [RESULTS.md](RESULTS.md) and sanitized
+[results.json](results.json). No repeated completion advantage was found. Original
+frozen scores are preserved alongside the explicitly diagnostic Kairn fixture
+audit; that audit does not establish a prospective promotion.
+
 This development experiment asks whether selecting and composing guidance adds
 value over direct use of relevant upstream skills during actual software repair.
 It follows the earlier fictional screen, whose complete tie remains unchanged.
