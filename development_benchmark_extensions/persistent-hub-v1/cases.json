@@ -1,0 +1,35 @@
+{
+  "version": "persistent-hub-real-work-v1",
+  "owner_goals": "Kairn's next substantial update and its website, selected by the owner for the hands-on trial.",
+  "arms": ["native_managers", "skillkit", "persistent_hub"],
+  "sessions": [
+    {
+      "id": "kairn-diagnostics",
+      "project": "kairn",
+      "intent": "Implement and verify a small typed feature with meaningful regression tests",
+      "task": "Advance Kairn's pending release-readiness work without retuning its frozen retriever or ranker. Read docs/handoffs/2026-10-06-research-continuation.md and the existing pilot reporting types. Add src/bench/pilotClusterDiagnostics.ts exporting summarizeTaskClusters(evidence, options). evidence contains pairRows with taskId, blockId and signedTotalTokenDelta (Kairn minus vanilla); extra public fields may be ignored. options contains seed and samples (default 5000). Return schemaVersion='codex-pilot-task-clusters.v1', pairCount, taskCount, aggregateSignedTotalTokenDelta, medianSignedTotalTokenDelta, clusteredMedianCi95 (null for fewer than two tasks; otherwise {lower,upper,samples,method:'task_cluster_bootstrap'}), and a tasks array of {taskId,pairCount,totalTokenDelta,meanTokenDelta}, sorted by descending regression contribution then taskId. Resample whole tasks with replacement, retain all their paired observations, and compute the pooled median in each draw. Use a deterministic seeded generator and canonical task/block ordering so row order cannot change the result. Reject duplicate block IDs, empty task/block IDs, non-finite deltas, and nonpositive/noninteger sample counts. Empty input has zero totals and a null median/interval. Add useful tests, including correlated repeats. This is a new offline diagnostic, not a new efficacy study, causal training labels or promotion decision. Keep original pilot outputs and report schemas unchanged. Verify the behavior and leave a short local handoff for a fresh session. Do not run a campaign, download models, change dependencies, CI or release flags. The website public pilot artifact at /work/reference/completed-pilot-evidence.json is the completed 45-pair/15-task research input (its identity matches the handoff); it may be read as real input; do not edit it."
+    },
+    {
+      "id": "website-source-and-evidence",
+      "project": "site",
+      "intent": "Improve website clarity and verify changes without overstating product evidence",
+      "task": "Improve Kairn's actual website for the forthcoming update. Source visibility was verified through GitHub's authenticated repository metadata on October 15: HydroAcrid/kairn is public, while the site repository is private. Correct stale current private-source wording on public pages and active setup docs, add a clear accessible GitHub source link on the homepage, and make the distinction between the published beta and unpromoted semantic research easy to understand near the primary product explanation. Reuse the site's existing visual language; no new dependency or speculative performance claim. Preserve published beta version and all incomplete-comparison/quality gates and public evidence artifacts. Update scripts/check-public-claims.mjs so it permits accurate public-source wording and rejects stale private-source claims on active public surfaces. Add a useful regression check; do not weaken unrelated claims checks. Preserve dated historical statements when explicitly historical. Run claims:check, evidence:check, evidence:test and relevant type/lint/build checks where available offline. Leave a handoff for a fresh session. Do not send invites, deploy, publish a post, change Supabase/backend behavior, dependencies, CI, release versions or source evidence numbers."
+    },
+    {
+      "id": "kairn-return-and-maintenance",
+      "project": "kairn",
+      "intent": "Implement and verify a small typed feature with meaningful regression tests",
+      "task": "Continue the Kairn diagnostic work left in this repository by the earlier session. First maintain the applicable profile: a controlled compatible source update is now available, one installed supporting resource was deleted, and a concurrent preservation note was added. These are study faults, not actual upstream releases or human edits. Preserve all notes and app changes. Complete the feature with scripts/report-pilot-clusters.ts: accept --input, --output, --seed and --samples, read a public pilot evidence JSON containing pairRows, call summarizeTaskClusters, and write a new JSON artifact with the diagnostic fields plus inputSha256, seed and publicationEligible:false. Refuse to overwrite an existing output and leave the input unchanged. Add tests for the CLI's real output/refusal behavior. Write docs/research/value-guard-preregistration.md proposing one bounded general value-guard experiment based on costs, confidence and incremental information, with input identities, fresh lineage-disjoint evaluation, quality/source/scope gates, stopping rule and aggregate plus task-grouped accounting. Do not treat observed pairs as intervention-level causal training labels, reopen a contaminated holdout, train a model, tune thresholds against seen pilot outcomes, run a campaign or claim an efficacy gain. Verify the actual public pilot input without rewriting historical artifacts. No dependencies, release flags, CI, publishing, extra agents or provider changes."
+    }
+  ],
+  "model": "gpt-6.1-sol",
+  "effort": "medium",
+  "maximum_seconds_per_session": 600,
+  "maximum_tools_per_session": 60,
+  "primary_native_turns": 9,
+  "source_update_kind": "controlled compatible snapshot replay",
+  "source_registry": "74 pinned canonical main-root skills; same sources for all arms",
+  "human_attention": "Only explicit participant-operated intervals. Unobserved is null, never zero.",
+  "github_ci": false,
+  "paid_api_fallback": false
+}

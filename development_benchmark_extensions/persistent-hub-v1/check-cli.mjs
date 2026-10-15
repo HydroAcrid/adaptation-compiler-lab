@@ -1,0 +1,28 @@
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
+const input='/work/reference/completed-pilot-evidence.json';
+const bytes=fs.readFileSync(input);
+const evidence=JSON.parse(bytes);
+const output='/work/cluster-cli-'+crypto.randomBytes(8).toString('hex')+'.json';
+const argv=['/work/kairn/node_modules/tsx/dist/cli.mjs','/work/kairn/scripts/report-pilot-clusters.ts',
+ '--input',input,'--output',output,'--seed','17','--samples','1000'];
+const run=()=>spawnSync(process.execPath,argv,{cwd:'/work/kairn',encoding:'utf8'});
+const first=run();
+assert.equal(first.status,0,first.stderr);
+const created=fs.readFileSync(output);
+const result=JSON.parse(created);
+assert.equal(result.schemaVersion,'codex-pilot-task-clusters.v1');
+assert.equal(result.inputSha256,crypto.createHash('sha256').update(bytes).digest('hex'));
+assert.equal(result.seed,17);
+assert.equal(result.publicationEligible,false);
+assert.equal(result.pairCount,evidence.pairRows.length);
+assert.equal(result.taskCount,new Set(evidence.pairRows.map(x=>x.taskId)).size);
+assert.equal(result.aggregateSignedTotalTokenDelta,evidence.pairRows.reduce((s,x)=>s+x.signedTotalTokenDelta,0));
+const second=run();
+assert.notEqual(second.status,0,'existing output must be refused');
+assert.equal(fs.readFileSync(output).compare(created),0);
+assert.equal(fs.readFileSync(input).compare(bytes),0);
+fs.unlinkSync(output);
+console.log(JSON.stringify({checks:11,passed:true,inputPairs:result.pairCount,inputTasks:result.taskCount}));
