@@ -1,0 +1,131 @@
+[
+  {
+    "name": "skills",
+    "version": "1.7.2",
+    "gitHead": "671e8c320810d36fed80fac5f1a2c1bf7e82d812",
+    "dist": {
+      "shasum": "a90b923b26b53ee8fe84e005c9463f9fe9a53094",
+      "tarball": "https://registry.npmjs.org/skills/-/skills-1.7.2.tgz",
+      "fileCount": 19,
+      "integrity": "sha512-j+GzyF/oNahsjjjup6y3lJpFkC1lQjIkf4kAMXICA1hboBqi0fAGXAGoE4x9FRZiP1br/YE9+L3/Tqq6PIAe0A==",
+      "signatures": [
+        {
+          "sig": "MEQCIBOuvBgtnirkTTLaxdp1RZVkCXIdaQD3AxJuYfw/qBrKAiAd3VofiQZZ3/IpG+wo4IGwLleBTSbtzRaeSHj4G5kO7A==",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEYCIQDSP5lU0j7shYIHA943496P3g1j2AV4I0LmBxvcP6sIrgIhALw/aUhH2Qix1TgzvCIemqnefGkOmgC3zk9M/lyWDcTA",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/skills@1.7.2",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 596910
+    },
+    "engines": {
+      "node": ">=22.20.0"
+    },
+    "dependencies": 2
+  },
+  {
+    "name": "@fission-ai/openspec",
+    "version": "1.14.2",
+    "gitHead": null,
+    "dist": {
+      "shasum": "a3eae80c3e75d048d9d5cede4f395fe5c23ca157",
+      "tarball": "https://registry.npmjs.org/@fission-ai/openspec/-/openspec-1.14.2.tgz",
+      "fileCount": 429,
+      "integrity": "sha512-GgCphpZD5FHfk6IGjQPkUtz+pfeztWAz2yqODlSGqOzYHRPqfYQkSds1uY783AP0S5Kx0+HiyrISlJ5LqDcsrw==",
+      "signatures": [
+        {
+          "sig": "MEUCIFVO4VJHBvWaUu9+hLLDm7XAbKJHh5OKv+VsiqRzplUlAiEAuhxz67Jhkvg77ngPGvPPOuPJekGao8NhGXK5SN2++H8=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEUCIQDzq4G8aoedeOJwYt8K49aqyRxeYABc9k8D08yRZc2HQQIgD+AIxlPgKuPORIBk/S5xF74dPGtDgM1aejW9bnu0f64=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@fission-ai%2fopenspec@1.14.2",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 2203773
+    },
+    "engines": {
+      "node": ">=20.19.0"
+    },
+    "dependencies": 10
+  },
+  {
+    "name": "@opengsd/gsd-core",
+    "version": "1.17.0",
+    "gitHead": "962c1192e062b5278281cd3a7bfd671a67a4db44",
+    "dist": {
+      "shasum": "3c219212241c5fce11ffd8854953f615aa158e7c",
+      "tarball": "https://registry.npmjs.org/@opengsd/gsd-core/-/gsd-core-1.17.0.tgz",
+      "fileCount": 1130,
+      "integrity": "sha512-bqr/vZiDFlVsEkz/0Fhht+Ajwk2jQ+dhETO4RBBoHmXgC6Nc999/MjnEPK05iN1fGc6pop/IUc2h2nmhyP8EDw==",
+      "signatures": [
+        {
+          "sig": "MEUCIFK9ntmoSYUTUNFQZfUUGtgse6AtaaBDMq+tzHQDYW6mAiEAihNHQYzhp7rH3NX0QDglGsUUk1+aJ+B21rUmaagX9Ic=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEUCIQC4d69b1ZTpAxy5LzOGtJYpptwM6CdyHdyj9rTUOoysVQIgTyz3aZ2BPJljGo29sydH2lexnpFqxcMH3OXoHf9Hik8=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@opengsd%2fgsd-core@1.17.0",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 18484187
+    },
+    "engines": {
+      "npm": ">=10.0.0",
+      "node": ">=24.0.0"
+    },
+    "dependencies": 2
+  },
+  {
+    "name": "@earendil-works/pi-coding-agent",
+    "version": "1.2.0",
+    "gitHead": null,
+    "dist": {
+      "shasum": "896fb3ad2b050190ac0f0f8acce7fb648487cda1",
+      "tarball": "https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-1.2.0.tgz",
+      "fileCount": 1275,
+      "integrity": "sha512-h/4WaVWv1VlCaY8x8qEN5U+7jbF/e7+Ck6moPeEOFn5juMTWwNAXjwgYM7gRgbBYh8Zppwt6qWvJDzNTf4GNEQ==",
+      "signatures": [
+        {
+          "sig": "MEUCIFynCc5b4O2vRUGuSf0V4kBxBas8WSHIpzhE3MgEvFVUAiEAqIXW5Vq2iuDIEE4aQjI29d5QZcJSgwaQXUzoLxjNCmo=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEQCIA+FHMv1OvZZlIzrtdCKa2k+if4GUggnDJ8d/oKVUDG0AiBVu5iHFU9lIxndZngdopDkMICDZo+QyzYdSkU4t+wenQ==",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@earendil-works%2fpi-coding-agent@1.2.0",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 23199269
+    },
+    "engines": {
+      "node": ">=22.19.0"
+    },
+    "dependencies": 22
+  }
+]

@@ -1,0 +1,82 @@
+[
+  {
+    "id": "pstack",
+    "repository": "https://github.com/backnotprop/pstack",
+    "commit": "1f0f9c3bac03c4297f6fc8f7644fa412eda57085",
+    "archive_sha256": "56bd8cb343751cbb96f038451e98b34f1a82c4ab380d62a3015a436c5bd199a4",
+    "archive_bytes": 2960701,
+    "seconds": 1.0780000000013388,
+    "skill_count": 56,
+    "file_count": 170
+  },
+  {
+    "id": "ponytail",
+    "repository": "https://github.com/DietrichGebert/ponytail",
+    "commit": "84740e3d344b69b4a133201fa519eb37a62a2b2a",
+    "archive_sha256": "ccfe024e46fafd2e634ac6f18fed73bc066410aab60204705ffdda66cc1ccba3",
+    "archive_bytes": 9416947,
+    "seconds": 1.9690000000009604,
+    "skill_count": 12,
+    "file_count": 202
+  },
+  {
+    "id": "superpowers",
+    "repository": "https://github.com/obra/superpowers",
+    "commit": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
+    "archive_sha256": "496b576d4a4a62c0d72cce4a9e99ff46c57026c07fe503931cbb8afd33006cf2",
+    "archive_bytes": 680678,
+    "seconds": 0.5,
+    "skill_count": 15,
+    "file_count": 238
+  },
+  {
+    "id": "openspec",
+    "repository": "https://github.com/Fission-AI/OpenSpec",
+    "commit": "f80d860fc510ba4f51180c8ddde35b91b32de657",
+    "archive_sha256": "3efabe4386f7246682a57f7b5e2718adfcb698a8aeefea144b24e255a6aadb63",
+    "archive_bytes": 2827949,
+    "seconds": 1.3440000000009604,
+    "skill_count": 16,
+    "file_count": 1288
+  },
+  {
+    "id": "spec-kit",
+    "repository": "https://github.com/github/spec-kit",
+    "commit": "3238fa9285694dc539aeb9829b337bfd6aed7317",
+    "archive_sha256": "a8759f3539cf51aa42f4e719da00bad5a584caebea4e89f78417a5e4d2412e49",
+    "archive_bytes": 5054877,
+    "seconds": 1.6720000000022992,
+    "skill_count": 2,
+    "file_count": 929
+  },
+  {
+    "id": "gsd",
+    "repository": "https://github.com/open-gsd/gsd-core",
+    "commit": "927853b21e240b672fd8e20f0db9cf9b507780e0",
+    "archive_sha256": "9536ca1198361f7b0bef70cc88556a5add705e214ae30fd73beb8f68d36c097b",
+    "archive_bytes": 17015740,
+    "seconds": 5.264999999999418,
+    "skill_count": 72,
+    "file_count": 3973
+  },
+  {
+    "id": "pi",
+    "repository": "https://github.com/earendil-works/pi",
+    "commit": "eddebaeebf8168dfc31d6712b7a021e4df3b4e6a",
+    "archive_sha256": "4512395486d481415aad723327085e8235444408f205eeba6c9391381d0b4d79",
+    "archive_bytes": 7990499,
+    "seconds": 2.422000000002299,
+    "skill_count": 17,
+    "file_count": 1923
+  },
+  {
+    "id": "skills-cli",
+    "repository": "https://github.com/vercel-labs/skills",
+    "commit": "13e4063a1cf913f5606d57d42ab83a86f5001e04",
+    "archive_sha256": "19d2b32210a67f7ac30f4caf88543475e2cc8b869c8ee72f2162975b676a3809",
+    "archive_bytes": 277833,
+    "seconds": 0.31300000000192085,
+    "skill_count": 3,
+    "file_count": 138
+  }
+]

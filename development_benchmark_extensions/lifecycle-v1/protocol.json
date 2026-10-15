@@ -1,0 +1,54 @@
+{
+  "created_at": "2026-10-15T14:49:27.732367+00:00",
+  "purpose": "development_extension_lifecycle_screen",
+  "bound_files": {
+    "scripts/extension_lifecycle_manager.py": "35e73d55f2027997a38a68c75357b1cbd056681779b232b6498f3e2e89ac9cd9",
+    "scripts/extension_lifecycle_sandbox.py": "63e3df4b4dcad6d9e4aec0b9d73bae2b2af66118478961ee4757706be0c61498",
+    "scripts/run_extension_lifecycle_screen.py": "cf75ab81056599b84ebad9d3591969a0aad1dacfedf4b33ea354c930539b14bd",
+    "scripts/probe_extension_lifecycle.py": "92c02faf0fc6e3fa04fc47cb475c28005c74b2a05e89d105cd943224dac55bd5",
+    "src/adaptation_compiler_lab/benchmark/repo_extension_screen.py": "3c91d6e239f3d39d89ef5c5eb1711361427ab0501b2e612a066744c52df27266",
+    "scripts/run_repo_extension_screen.py": "18b6b8100529f22f4123198773c4853c76dfaa04cd45bfdcf21c985f27dbb03a",
+    "src/adaptation_compiler_lab/autonomy/codex_transport.py": "c89df5723ade7374a4ec0bfe434e4087a991cf82661569726cacbf2b8d1ab7b8",
+    "src/adaptation_compiler_lab/connectors/codex_app_server.py": "6db3b68f840e4dbec1d28eaee48d523a68b52edc2e704e4d99f5dbdea94ab561",
+    "development_benchmark_extensions/lifecycle-v1/sources.json": "ac22624ad1290f7a8f4134023ad560b48c66eb12cd19756d9b5a093342b7c2ad",
+    "development_benchmark_extensions/lifecycle-v1/distributions.json": "f3f054d4ee04bbaf36d1c2f3d7dcbc3a6e9387f59aceaf2eb0c12b927b5c69f9",
+    "development_benchmark_extensions/lifecycle-v1/cases.json": "0130bd5a284f35fe4e8f83326da60396b3d211881a4e41c5c0efd29ce2f72f60",
+    "development_benchmark_extensions/lifecycle-v1/admission.json": "9560295c07208d9cad77db21c444f3c35c30761dd5f741e2ab18a4a272a08c45",
+    "development_benchmark_extensions/real-repo-v1/cases.json": "54bc6d0051c9eedeb77f919bfe4ff82b4e9dd49b8c21ad6eb14b37ea40b26a60"
+  },
+  "source_trees": {
+    "pstack": "33ba3c42958508d4d2bd6e42dde3c2f6e97b195f3af01015caffd80736594c92",
+    "ponytail": "9fb245215cbd95d95d0725334e64ee178997cf9761e676da868f6bb0b94fac80",
+    "superpowers": "086a774619547df9f03b5a96eab73f0c103b3a8ec904d32537ff23b4ef61d5eb",
+    "openspec": "a64f577b665350340bb62d843c32b11d05d5ec8693fe3bae89c179690d643561",
+    "spec-kit": "1cbc2bbb176d124d5cd86f92d18d0d55668901f97ccd2ddccc3c5c09b14a5635",
+    "gsd": "ac1e5c62a31b7af68356a5a3aefa230131f6e4336320cd5d68a41f91c47b5d6c",
+    "pi": "2c3dec980a7ff60e1cc8efb17956d5c57ee1e9462cef9dca8dbaa6e66c95c1df",
+    "skills-cli": "c0a2c0e804fb73d991452f3eff2f2fff85c02969364013c2c57bf490c99aa20f"
+  },
+  "tooling_binding": "a165d0fe0f5d5a0f4191aa05bd543c01ed2fb384ecf83cc415cd344dac672b5d  /lab/tooling/package-lock.json\ncda9a4dd5cd209c6f1dc551feacbaef503cefb5d8986d3c4cab9a95e1bbc47e6  /lab/tooling/node_modules/skills/bin/cli.mjs\nca136f0e9fd4951dcf93d8ed729ebc97b2d97d3980cd9dc9d42fc80e32e797c6  /lab/tooling/node_modules/@fission-ai/openspec/bin/openspec.js\n",
+  "model": "gpt-6.1-sol",
+  "effort": "medium",
+  "capacity_floor_percent": 20,
+  "native_turns": 8,
+  "repeats": 2,
+  "case_count": 2,
+  "arms": [
+    "direct_native",
+    "temper_prototype"
+  ],
+  "timeout_seconds": 300,
+  "tool_limit": 60,
+  "rule": "Correctness before overhead; compare complete setup, injected-fault recovery and uninstall preserving owner state. Keep all eight outcomes. Two repetitions only support a development screen.",
+  "not_claimed": [
+    "shipping integration",
+    "automatic semantic router",
+    "market demand",
+    "general efficiency",
+    "habit-learning release gate",
+    "cross-platform support",
+    "fresh-machine product onboarding"
+  ],
+  "overhead_rule": "All whole-trial work plus separate shared prerequisites, source acquisition, controls, failures and prototype development. Unknown coordinator/human time and tokens stay unknown.",
+  "no_post_result_tuning": true
+}
