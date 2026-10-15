@@ -61,7 +61,7 @@ class BackgroundHabitWorker:
         grant = service.grant()
         if grant is None or not service.switch("learning"):
             return {**result, "status": "paused"}
-        if service.provenance_verifier is None or self.read_completed is None:
+        if not service.provenance_ready() or self.read_completed is None:
             return {**result, "status": "source_verification_required"}
         service.ensure_lease()
         cursor = service.store.latest("cursor")

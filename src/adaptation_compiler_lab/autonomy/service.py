@@ -58,6 +58,7 @@ class AutonomyApplicationService:
         codex_home: Path,
         clock: Callable[[], datetime] | None = None,
         provenance_verifier: Callable[[StyleEpisodeV1], bool] | None = None,
+        provenance_admission: Callable[[], bool] | None = None,
         native_conflict_checker: Callable[[HabitHypothesisV1], bool] | None = None,
         calibration_verifier: Callable[[CalibrationReleaseV1], bool] | None = None,
         outcome_verifier: Callable[[HabitOutcomeV1], bool] | None = None,
@@ -68,6 +69,7 @@ class AutonomyApplicationService:
         self.publisher = NativeStylePublisher(codex_home=codex_home, store=store)
         self.clock = clock or (lambda: datetime.now(UTC))
         self.provenance_verifier = provenance_verifier
+        self.provenance_admission = provenance_admission
         self.native_conflict_checker = native_conflict_checker
         self.calibration_verifier = calibration_verifier
         self.outcome_verifier = outcome_verifier
@@ -248,17 +250,18 @@ class AutonomyApplicationService:
 
     def automatic_ready(self) -> bool:
         value = self.store.latest("calibration")
-        if (
-            value is None
-            or self.provenance_verifier is None
-            or self.native_conflict_checker is None
-        ):
+        if value is None or not self.provenance_ready() or self.native_conflict_checker is None:
             return False
         release = CalibrationReleaseV1.model_validate_json(json.dumps(value), strict=True)
         return bool(
             release.admits_automatic_trials
             and self.calibration_verifier
             and self.calibration_verifier(release)
+        )
+
+    def provenance_ready(self) -> bool:
+        return self.provenance_verifier is not None and (
+            self.provenance_admission is None or self.provenance_admission()
         )
 
     def episodes(self) -> dict[str, dict[str, Any]]:
@@ -277,6 +280,7 @@ class AutonomyApplicationService:
             or episode.source_client not in grant.source_clients
             or episode.origin is not InputOrigin.HUMAN
             or episode.provenance_digest is None
+            or not self.provenance_ready()
             or self.provenance_verifier is None
             or not self.provenance_verifier(episode)
             or episode.created_at < grant.issued_at
@@ -803,7 +807,7 @@ class AutonomyApplicationService:
             "learning_enabled": self.switch("learning") and grant is not None,
             "personalization_enabled": self.switch("personalization") and grant is not None,
             "automatic_serving_ready": self.automatic_ready(),
-            "provenance_state": "verified" if self.provenance_verifier else "unverified",
+            "provenance_state": "verified" if self.provenance_ready() else "unverified",
             "analysis_transport_state": "configured_not_admitted"
             if self.background_worker and self.background_worker.sensor
             else "unconfigured",
@@ -812,7 +816,7 @@ class AutonomyApplicationService:
                 "paused"
                 if not grant or not self.switch("learning")
                 else "ready"
-                if self.provenance_verifier
+                if self.provenance_ready()
                 else "source_verification_required"
             ),
             "mode": "automatic" if self.switch("personalization") else "shadow",

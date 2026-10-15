@@ -16,6 +16,8 @@ before release claims. Personal automatic learning and serving remain disabled. 
 The subsequent learner fixes, complete failed runs, selected model candidates and current
 Windows package checks are recorded in
 [`TEMPER_HABIT_ITERATION_OCTOBER_12.md`](TEMPER_HABIT_ITERATION_OCTOBER_12.md).
+The Windows installation and completed-chat reader continuation are recorded in
+[`TEMPER_CODEX_CHAT_CONNECTION_OCTOBER_14.md`](TEMPER_CODEX_CHAT_CONNECTION_OCTOBER_14.md).
 
 Checks and packages are built locally; this work does not depend on GitHub CI. Raw personal
 conversations, credentials, local runtime state, and generated personal learning stay outside Git.

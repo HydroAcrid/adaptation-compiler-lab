@@ -41,6 +41,7 @@ def native_autonomy_service(config_path: Path) -> AutonomyApplicationService:
         codex_home=config.source_codex_home,
         secure_store_available=secure_store_available,
     )
+    from adaptation_compiler_lab.autonomy.codex_source import ConfiguredCodexHabitSource
     from adaptation_compiler_lab.autonomy.codex_transport import (
         ConfiguredCodexHabitSensor,
         ConfiguredNativeRelationSensor,
@@ -66,8 +67,12 @@ def native_autonomy_service(config_path: Path) -> AutonomyApplicationService:
     service.native_conflict_checker = policy.blocked
 
     sensor = ConfiguredCodexHabitSensor(config_path)
+    source = ConfiguredCodexHabitSource(config_path, service)
+    service.provenance_verifier = source.verify_episode
+    service.provenance_admission = source.admitted
     service.background_worker = BackgroundHabitWorker(
         service,
+        read_completed=source.read_completed,
         sensor=sensor,
         remaining_capacity=sensor.remaining_capacity,
         context=policy.context,
