@@ -4,6 +4,9 @@ Experimental implementation and same-day separate-session development study.
 This does not replace the installed Temper app or its governed habit learner.
 The earlier discovery/maintenance and frozen learning evaluations are unchanged.
 
+The [recorded results](RESULTS.md) separate functional checks, original grading
+defects, recorded costs and the still-incomplete participant effort comparison.
+
 ## Implemented controller
 
 `scripts/persistent_hub.py` persists a scoped public source index, project

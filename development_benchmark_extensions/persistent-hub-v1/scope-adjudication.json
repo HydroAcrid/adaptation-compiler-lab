@@ -1,0 +1,27 @@
+{
+  "website-scope-adjudication.json": {
+    "version": "website-request-scope-adjudication-v1",
+    "timing": "Written after the first website result, before seeing the other two website implementations. Post-hoc supplemental analysis, not a changed preregistered grade.",
+    "original_primary_grades_preserved": true,
+    "rerun_primary_models": false,
+    "reason": "The actual task allows active source/status documentation and useful regression tests, and forbids dependencies rather than new test commands. The frozen path allowlist was narrower than that task.",
+    "uniform_supplemental_allowances": [
+      "site/README.md may correct current source visibility, while retaining publication/evidence qualifications.",
+      "New site/scripts/*.test.mjs regression tests may exercise the requested claims/source behavior; their assertions must execute and unrelated release/evidence guards must remain intact.",
+      "site/package.json may add a local Node test command pointing at one of those added test files. All existing manifest values, dependencies and existing scripts must be identical to the original. No command may replace or bypass an existing check."
+    ],
+    "all_other_frozen_scope_and_behavior_checks": "unchanged",
+    "quality_review": "Inspect the actual diffs and run added regression tests for all conditions. Keep scripted grades, specification adjudication, browser observations and owner assessment separate.",
+    "human_effort": "Still participant recorded only. Adjudication and repair are additional experiment overhead, not free product performance."
+  },
+  "website-scope-adjudication-v2.json": {
+    "version": "website-request-scope-adjudication-v2",
+    "timing": "Supplement after seeing all three website grades; every original result and v1 rationale remains retained. Not a preregistered success gate.",
+    "prior_rules_sha256": "840177edb711554579b36f48d08488959f510ea5e6ef0d10f36ff5081f66e755",
+    "additional_rule": "A new local scripts/*.mjs helper imported by the authorized claims checker or its regression tests may implement the requested source-status checks. Its reachability and full source must be reviewed; it may not add dependencies, weaken other checks, touch backend/evidence, or create unrelated behavior.",
+    "reason": "The native-manager implementation extracted the source-status matcher into a locally tested helper. The actual task did not require all new logic to be in one checker file. Rejecting that module while allowing equivalent inline code would be an instrumentation artifact.",
+    "comparison_claim": "Keep frozen functional outcomes, frozen scope failures, supplemental specification review, and human assessment separate. No superiority or preregistered full-quality claim follows from post-hoc adjudication.",
+    "original_primary_grades_preserved": true,
+    "rerun_primary_models": false
+  }
+}
