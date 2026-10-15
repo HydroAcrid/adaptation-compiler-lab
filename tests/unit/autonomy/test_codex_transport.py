@@ -167,7 +167,9 @@ def test_deadline_crossing_never_passes_a_nonpositive_notification_timeout(
 
     class DeadlineRpc(_SemanticRpc):
         def next_notification(self, *, timeout_seconds=120):
-            raise AssertionError(f"No notification call is permitted after deadline: {timeout_seconds}")
+            raise AssertionError(
+                f"No notification call is permitted after deadline: {timeout_seconds}"
+            )
 
     rpc = DeadlineRpc(response="{}")
     with pytest.raises(ValueError, match="sensor timed out"):
