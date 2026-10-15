@@ -6,6 +6,11 @@ they helped. The initial workflow is Codex on Windows and Apple Silicon macOS. T
 contains the prototype and its research history; public source availability is not a validated
 autonomous release or a downloadable external alpha.
 
+The current hub direction is to reuse SkillKit's manager capabilities and focus
+Temper on appropriate per-repository setup, maintenance and personal collaboration
+defaults. The controller-only comparison has not established an owner-effort
+advantage. See [the SkillKit-based scope and personalization blockers](TEMPER_SKILLKIT_BASE.md).
+
 The current focus is separating personal choices from task requirements, recognizing changing
 preferences, and validating safe instruction delivery. The first complete fictional evaluation
 failed the fixed detection gates: 76.39% precision, 68.75% recall, and 14/20 contradiction pauses.

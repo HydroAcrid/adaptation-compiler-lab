@@ -114,6 +114,49 @@ def test_restart_reuses_profile_without_discovery_or_install(
     ).read_text() == "Original supporting resource.\n"
 
 
+def test_skillkit_is_the_default_and_does_not_require_the_other_installer(
+    configured: tuple[Path, Path, Path, FakeManager], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home, root, catalog, manager = configured
+    single_home = home.parent / "skillkit-only"
+    assert Hub.initialize(single_home, catalog)["manager"] == "skillkit"
+    binary = home.parent / "skillkit-only.js"
+    binary.write_text("pinned skillkit runtime")
+    looked_up: list[str] = []
+
+    def which(command: str) -> str | None:
+        looked_up.append(command)
+        return None if command == "skills" else str(binary)
+
+    monkeypatch.setattr("scripts.persistent_hub.shutil.which", which)
+    with Hub(single_home, manager).transaction() as hub:
+        hub.register("project", root)
+    result = sync(single_home, manager)
+    assert result["status"] == "ready"
+    assert "skills" not in looked_up
+    assert all(call[0] != "skills" for call in manager.calls)
+    assert (root / ".agents/skills/debugging/resource.txt").is_file()
+    manager.calls.clear()
+    assert sync(single_home, manager)["cache_hit"]
+    assert not manager.calls
+
+
+def test_explicit_legacy_installer_still_requires_its_own_binary(
+    configured: tuple[Path, Path, Path, FakeManager], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home, _, _, manager = configured
+    monkeypatch.setattr(
+        "scripts.persistent_hub.shutil.which",
+        lambda command: None if command == "skills" else sys.executable,
+    )
+    with (
+        Hub(home, manager).transaction() as hub,
+        pytest.raises(ValueError, match="unavailable: skills"),
+    ):
+        hub.manager_identity()
+    assert not manager.calls
+
+
 def test_project_and_goal_scopes_do_not_share_profiles(
     configured: tuple[Path, Path, Path, FakeManager],
 ) -> None:

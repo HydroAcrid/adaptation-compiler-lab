@@ -121,7 +121,7 @@ class Hub:
         self.finished_journals: list[Path] = []
 
     @staticmethod
-    def initialize(home: Path, catalog: Path, manager: str) -> dict[str, Any]:
+    def initialize(home: Path, catalog: Path, manager: str = "skillkit") -> dict[str, Any]:
         if manager not in MANAGERS:
             raise ValueError("Unsupported manager")
         home = home.resolve()
@@ -200,8 +200,14 @@ class Hub:
         return str(result["stdout"])
 
     def manager_identity(self) -> str:
+        # SkillKit supplies discovery/recommendations and the default installer.
+        # Keep the old Skills installer available only for explicitly saved hubs.
+        manager = self.get("config")["manager"]
+        if manager not in MANAGERS:
+            raise ValueError("Unsupported manager")
+        commands = ("skillkit", "node") if manager == "skillkit" else ("skills", "skillkit", "node")
         files = {}
-        for command in ("skills", "skillkit", "node"):
+        for command in commands:
             binary = shutil.which(command)
             if not binary:
                 raise ValueError("Required native manager/runtime is unavailable: " + command)
@@ -209,9 +215,11 @@ class Hub:
             files[command] = core.sha(path.read_bytes())
         digest = fingerprint(files)
         if self.get("manager_identity") != digest:
-            for command, version in MANAGERS.items():
+            for command in commands:
+                if command == "node":
+                    continue
                 observed = self.native([command, "--version"], self.home).strip()
-                if observed != version:
+                if observed != MANAGERS[command]:
                     raise ValueError("Native manager version changed: " + command)
             if not self.native(["node", "--version"], self.home).strip().startswith("v24."):
                 raise ValueError("This prototype admits Node 24 only")
@@ -780,7 +788,7 @@ def main() -> None:
     )
     parser.add_argument("--home", type=Path, required=True)
     parser.add_argument("--catalog", type=Path)
-    parser.add_argument("--manager", choices=tuple(MANAGERS), default="skills")
+    parser.add_argument("--manager", choices=tuple(MANAGERS), default="skillkit")
     parser.add_argument("--project")
     parser.add_argument("--root", type=Path)
     parser.add_argument("--goal", default="")

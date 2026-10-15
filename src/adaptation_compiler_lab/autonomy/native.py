@@ -41,6 +41,7 @@ def native_autonomy_service(config_path: Path) -> AutonomyApplicationService:
         codex_home=config.source_codex_home,
         secure_store_available=secure_store_available,
     )
+    from adaptation_compiler_lab.autonomy.calibration import NativeCalibrationVerifier
     from adaptation_compiler_lab.autonomy.codex_source import ConfiguredCodexHabitSource
     from adaptation_compiler_lab.autonomy.codex_transport import (
         ConfiguredCodexHabitSensor,
@@ -65,6 +66,47 @@ def native_autonomy_service(config_path: Path) -> AutonomyApplicationService:
         ),
     )
     service.native_conflict_checker = policy.blocked
+
+    def calibration_runtime() -> dict[str, str]:
+        from adaptation_compiler_lab.connectors.pins import sha256_file
+
+        current = _load_config(config_path)
+        return {
+            "model": current.semantic_model,
+            "effort": current.semantic_reasoning_effort,
+            "runtime_pin_digest": sha256_file(current.runtime_pin_path),
+        }
+
+    def open_calibration_run(name: str) -> AutonomyStore:
+        from adaptation_compiler_lab.autonomy.store import AutonomyIntegrityError
+
+        base = config.state_root / "autonomy" / "validation"
+        root = base / name
+        database = root / "events.sqlite3"
+        if (
+            root.is_symlink()
+            or database.is_symlink()
+            or root.resolve().parent != base.resolve()
+            or not database.is_file()
+        ):
+            raise AutonomyIntegrityError("calibration run is unavailable or outside validation")
+        return AutonomyStore(
+            database,
+            signer=signer,
+            raw_store=LocalRawPayloadStore(
+                root / "raw",
+                encryption_key=_runtime_secrets(config).raw_encryption_key(
+                    workspace_root=config.repository_root
+                ),
+            ),
+        )
+
+    service.calibration_verifier = NativeCalibrationVerifier(
+        store=store,
+        fixtures=Path(__file__).resolve().parents[3] / "tests/fixtures/autonomy",
+        open_run=open_calibration_run,
+        runtime=calibration_runtime,
+    )
 
     sensor = ConfiguredCodexHabitSensor(config_path)
     source = ConfiguredCodexHabitSource(config_path, service)

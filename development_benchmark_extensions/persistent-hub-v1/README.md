@@ -7,6 +7,12 @@ The earlier discovery/maintenance and frozen learning evaluations are unchanged.
 The [recorded results](RESULTS.md) separate functional checks, original grading
 defects, recorded costs and the still-incomplete participant effort comparison.
 
+Later source defaults new hubs to SkillKit and drops the separate Skills CLI
+dependency for that configuration. Legacy saved manager choices remain unchanged.
+See [the current product scope](../../TEMPER_SKILLKIT_BASE.md). The frozen run
+below used an earlier, explicitly bound candidate; its setup costs and results
+must not be relabeled as evidence for this later change.
+
 ## Implemented controller
 
 `scripts/persistent_hub.py` persists a scoped public source index, project
