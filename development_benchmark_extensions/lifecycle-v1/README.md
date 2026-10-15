@@ -1,5 +1,10 @@
 # Extension setup, compatibility and recovery screen
 
+The completed comparison is in [RESULTS.md](RESULTS.md) and sanitized
+[results.json](results.json): all eight operator workflows passed, with effectively
+identical aggregate elapsed time. The prototype did not demonstrate overall
+effort reduction beyond selective native use.
+
 This follows the real-repository repair comparison, which found no added quality
 benefit from selecting guide paragraphs. The question here is whether project
 setup and recovery offer a useful infrastructure opportunity. No GitHub CI is
@@ -105,6 +110,7 @@ because a repository HEAD is not necessarily the published package commit.
 Run non-model controls and probes into new private output directories:
 
 ```text
+.venv\Scripts\python.exe -m scripts.prepare_extension_lifecycle
 .venv\Scripts\python.exe -m scripts.probe_extension_lifecycle controls --output <new-private-controls>
 .venv\Scripts\python.exe -m scripts.probe_extension_lifecycle native --output <new-private-native-probes>
 .venv\Scripts\python.exe -m scripts.probe_extension_lifecycle foundry --output <new-private-foundry-probes>
@@ -117,3 +123,10 @@ After the exact source/input freeze and local commit:
 ```
 
 No mode promotion, package release, GitHub push or market claim is implied.
+
+The completed run's disposable prerequisite cache was cleaned up. Restore it
+with the preparation command before replaying probes/trials. That command verifies
+the eight source trees, uses the preserved npm lock and exact Python package
+versions, and runs public dependency acquisition in the isolated namespace. It
+still requires the declared preinstalled Python/Node/WSL runtimes. Use
+`--sources-only` to verify/fetch sources without restoring dependencies.
