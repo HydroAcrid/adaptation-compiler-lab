@@ -1,0 +1,32 @@
+[
+  {
+    "id": "pstack",
+    "repository": "https://github.com/backnotprop/pstack",
+    "commit": "1f0f9c3bac03c4297f6fc8f7644fa412eda57085",
+    "archive_sha256": "56bd8cb343751cbb96f038451e98b34f1a82c4ab380d62a3015a436c5bd199a4",
+    "archive_bytes": 2960701,
+    "seconds": 1.0780000000013388,
+    "skill_count": 56,
+    "file_count": 170
+  },
+  {
+    "id": "ponytail",
+    "repository": "https://github.com/DietrichGebert/ponytail",
+    "commit": "84740e3d344b69b4a133201fa519eb37a62a2b2a",
+    "archive_sha256": "ccfe024e46fafd2e634ac6f18fed73bc066410aab60204705ffdda66cc1ccba3",
+    "archive_bytes": 9416947,
+    "seconds": 1.9690000000009604,
+    "skill_count": 12,
+    "file_count": 202
+  },
+  {
+    "id": "superpowers",
+    "repository": "https://github.com/obra/superpowers",
+    "commit": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
+    "archive_sha256": "496b576d4a4a62c0d72cce4a9e99ff46c57026c07fe503931cbb8afd33006cf2",
+    "archive_bytes": 680678,
+    "seconds": 0.5,
+    "skill_count": 15,
+    "file_count": 238
+  }
+]

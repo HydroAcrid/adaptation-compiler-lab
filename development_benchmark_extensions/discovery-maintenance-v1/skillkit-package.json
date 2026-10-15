@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "skillkit": "^1.24.0"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true,
+    "node-llama-cpp@3.22.1": true
+  }
+}

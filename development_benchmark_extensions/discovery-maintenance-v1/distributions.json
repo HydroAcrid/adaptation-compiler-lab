@@ -1,0 +1,102 @@
+{
+  "rows": [
+    {
+      "name": "skillkit",
+      "version": "1.24.0",
+      "engines": {
+        "node": ">=18.0.0"
+      },
+      "bin": {
+        "sk": "dist/cli.js",
+        "skillkit": "dist/cli.js"
+      },
+      "gitHead": null,
+      "dist": {
+        "shasum": "b8242efe975ab6223ec39ed0ec9dd9e12218a227",
+        "tarball": "https://registry.npmjs.org/skillkit/-/skillkit-1.24.0.tgz",
+        "fileCount": 9,
+        "integrity": "sha512-Xl6xADJ1ibsVWCvxb+xk3P3TClv/ZS/6fLSRTaEISmoVj5ZbRK3n6jTSSAp62P6c1xmeDlTvdv5a4SS9mdfI+w==",
+        "signatures": [
+          {
+            "sig": "MEUCIQDXFKbDIQ9UvMK3GyYBQnW3aBlXNfXspEUZhDjqy1bDPAIgB2H2VOtlYVPVEywtzzZPFjSfSrNUAQYpDOuWBQVqhOE=",
+            "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+          }
+        ],
+        "unpackedSize": 38034
+      },
+      "repository": {
+        "url": "git+https://github.com/rohitg00/skillkit.git",
+        "type": "git"
+      },
+      "dependencies": {
+        "clipanion": "^4.0.0-rc.4",
+        "@skillkit/cli": "1.24.0",
+        "@skillkit/core": "1.24.0",
+        "@skillkit/agents": "1.24.0"
+      },
+      "scripts": {
+        "dev": "tsup --watch",
+        "test": "vitest run",
+        "build": "tsup",
+        "typecheck": "tsc --noEmit"
+      }
+    },
+    {
+      "name": "skills",
+      "version": "1.7.2",
+      "engines": {
+        "node": ">=22.20.0"
+      },
+      "bin": {
+        "skills": "bin/cli.mjs",
+        "add-skill": "bin/cli.mjs"
+      },
+      "gitHead": "671e8c320810d36fed80fac5f1a2c1bf7e82d812",
+      "dist": {
+        "shasum": "a90b923b26b53ee8fe84e005c9463f9fe9a53094",
+        "tarball": "https://registry.npmjs.org/skills/-/skills-1.7.2.tgz",
+        "fileCount": 19,
+        "integrity": "sha512-j+GzyF/oNahsjjjup6y3lJpFkC1lQjIkf4kAMXICA1hboBqi0fAGXAGoE4x9FRZiP1br/YE9+L3/Tqq6PIAe0A==",
+        "signatures": [
+          {
+            "sig": "MEQCIBOuvBgtnirkTTLaxdp1RZVkCXIdaQD3AxJuYfw/qBrKAiAd3VofiQZZ3/IpG+wo4IGwLleBTSbtzRaeSHj4G5kO7A==",
+            "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+          },
+          {
+            "sig": "MEYCIQDSP5lU0j7shYIHA943496P3g1j2AV4I0LmBxvcP6sIrgIhALw/aUhH2Qix1TgzvCIemqnefGkOmgC3zk9M/lyWDcTA",
+            "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/skills@1.7.2",
+          "provenance": {
+            "predicateType": "https://slsa.dev/provenance/v1"
+          }
+        },
+        "unpackedSize": 596910
+      },
+      "repository": {
+        "url": "git+https://github.com/vercel-labs/skills.git",
+        "type": "git"
+      },
+      "dependencies": {
+        "tar": "^7.5.20",
+        "yaml": "^2.8.3"
+      },
+      "scripts": {
+        "dev": "node src/cli.ts",
+        "test": "vitest",
+        "build": "node scripts/generate-licenses.ts && obuild",
+        "format": "prettier --write \"src/**/*.ts\" \"scripts/**/*.ts\"",
+        "prepare": "husky",
+        "exec:test": "node scripts/execute-tests.ts",
+        "type-check": "tsc --noEmit",
+        "format:check": "prettier --check \"src/**/*.ts\" \"scripts/**/*.ts\"",
+        "prepublishOnly": "npm run build",
+        "publish:snapshot": "npm version prerelease --preid=snapshot --no-git-tag-version && npm publish --tag snapshot",
+        "generate-licenses": "node scripts/generate-licenses.ts"
+      }
+    }
+  ],
+  "seconds": 0.4850000000005821
+}
