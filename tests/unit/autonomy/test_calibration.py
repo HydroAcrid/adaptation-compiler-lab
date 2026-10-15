@@ -286,7 +286,11 @@ def test_full_detection_pass_still_needs_native_proof_and_rejects_a_checklist(ap
             },
             at=clock(),
         )
-        assert not verifier(release), "Malformed signed checks must reject without crashing"
+        try:
+            accepted = verifier(release)
+        except (AttributeError, TypeError, ValueError) as error:
+            raise AssertionError("Malformed signed checks must reject without crashing") from error
+        assert not accepted, "Malformed signed checks must reject without crashing"
 
 
 def test_independently_disqualified_freeze_cannot_qualify(app: Any) -> None:

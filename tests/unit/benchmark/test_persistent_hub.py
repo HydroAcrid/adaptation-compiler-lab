@@ -126,6 +126,7 @@ def test_skillkit_is_the_default_and_does_not_require_the_other_installer(
 
     def which(command: str) -> str | None:
         looked_up.append(command)
+        assert command != "skills", "SkillKit must not look up the separate Skills installer"
         return None if command == "skills" else str(binary)
 
     monkeypatch.setattr("scripts.persistent_hub.shutil.which", which)
