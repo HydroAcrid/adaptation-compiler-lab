@@ -41,8 +41,12 @@ complete profiles to 8 MB; old active/previous profiles remain separately held.
 The optional foreground watcher checks configured public refs every five minutes,
 without model calls or project writes. It persists each source's integrity receipt
 independently, retries failed acquisitions in a new owned partition, and leaves
-failed evidence available. A 512 MB source-cache bound stops additional growth;
-this prototype does not yet provide automatic source-cache compaction. No watcher
+failed evidence available. The current controller reserves the intake's full
+120 MB expansion ceiling before each source acquisition within a 512 MB file
+content budget. This is conservative even on a cache hit. The frozen comparison
+candidate checked only before a whole batch and could overshoot; the reservation
+fix was qualified separately afterward. This prototype does not yet provide
+automatic source-cache compaction. No watcher
 or service is installed into the owner's environment by the study.
 
 ## Native process and real-work comparison
@@ -132,6 +136,14 @@ unobserved effort of earlier sessions.
 
 The namespace helper requires the declared existing Windows/WSL runtimes and
 cached public sources. Private evidence stays outside Git and Obsidian.
+
+The recorded nine-session run used commit `9e4e605` and the immutable
+`protocol.json`. Check out that exact candidate for a replay. Later code or README
+changes intentionally fail its input-binding checks; do not rewrite the old
+protocol hashes to admit them. Freeze a separate study version for another
+candidate. Preparation also requires the privately authorized source archives,
+completed pilot input and dated project-context snapshots whose hashes are listed
+in that protocol; the dependency preparation helper does not export them for you.
 
 ```text
 .venv\Scripts\python.exe -m scripts.prepare_persistent_hub

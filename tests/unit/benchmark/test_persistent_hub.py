@@ -386,3 +386,64 @@ def test_partial_source_batch_survives_restart_without_losing_receipts(
     assert seen[1]["cache"] != seen[3]["cache"]
     assert Path(seen[1]["cache"], "partial-source.bin").is_file()
     assert (root / "AGENTS.md").read_text() == "Owner instructions.\n"
+
+
+def test_source_intake_reserves_space_before_acquisition(
+    configured: tuple[Path, Path, Path, FakeManager], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home, root, _, manager = configured
+    cache = home / "source-cache"
+    cache.mkdir()
+    (cache / "retained.bin").write_bytes(b"x" * 801)
+    monkeypatch.setattr(hub_module, "SOURCE_CACHE_BUDGET", 1000)
+    monkeypatch.setattr(hub_module, "SOURCE_EXPANSION_BUDGET", 200)
+
+    def unexpected_fetch(*args: Any) -> Any:
+        pytest.fail("Acquisition started without its full expansion reservation")
+
+    monkeypatch.setattr("scripts.persistent_hub.core.refresh", unexpected_fetch)
+    with Hub(home, manager).transaction() as hub, pytest.raises(ValueError, match="intake space"):
+        hub.poll()
+    assert sum(p.stat().st_size for p in cache.rglob("*") if p.is_file()) == 801
+    assert (root / "AGENTS.md").read_text() == "Owner instructions.\n"
+
+
+def test_source_batch_rechecks_space_and_keeps_completed_receipt(
+    configured: tuple[Path, Path, Path, FakeManager],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _, _, catalog, manager = configured
+    data = json.loads(catalog.read_text())
+    data["sources"].append({**data["sources"][0], "id": "second"})
+    catalog.write_text(json.dumps(data))
+    home = tmp_path / "bounded-poll-hub"
+    Hub.initialize(home, catalog, "skills")
+    cache = home / "source-cache"
+    cache.mkdir()
+    retained = cache / "retained.bin"
+    retained.write_bytes(b"x" * 700)
+    monkeypatch.setattr(hub_module, "SOURCE_CACHE_BUDGET", 1000)
+    monkeypatch.setattr(hub_module, "SOURCE_EXPANSION_BUDGET", 200)
+    fetched = []
+
+    def fetch(path: Path, source_cache: Path) -> dict[str, Any]:
+        document = json.loads(path.read_text())
+        source = document["sources"][0]
+        fetched.append(source["id"])
+        (source_cache / "snapshot.bin").write_bytes(b"y" * 150)
+        source.update(revision="new-version", tree_sha256="bound-tree")
+        path.write_text(json.dumps(document))
+        return {"sources": [{"id": source["id"]}]}
+
+    monkeypatch.setattr("scripts.persistent_hub.core.refresh", fetch)
+    with Hub(home, manager).transaction() as hub, pytest.raises(ValueError, match="intake space"):
+        hub.poll()
+    assert fetched == ["source"]
+    assert sum(p.stat().st_size for p in cache.rglob("*") if p.is_file()) == 850
+    receipt = json.loads((home / "source-receipts/source.json").read_text())
+    assert receipt["sources"][0]["tree_sha256"] == "bound-tree"
+    retained.unlink()  # Owner-approved cleanup in this synthetic fixture only.
+    with Hub(home, manager).transaction() as hub:
+        assert hub.poll()["project_files_changed"] is False
+    assert fetched == ["source", "source", "second"]

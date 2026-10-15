@@ -27,6 +27,9 @@ from scripts.discovery_maintenance_v2 import dependencies
 MARKER = ".temper-persistent-hub"
 PROJECT_MARKER = ".temper-hub-project"
 MANAGERS = {"skills": "1.7.2", "skillkit": "1.24.0"}
+SOURCE_CACHE_BUDGET = 512_000_000
+# The pinned core.refresh intake rejects archives expanding beyond this ceiling.
+SOURCE_EXPANSION_BUDGET = 120_000_000
 Run = Callable[[list[str], Path, Path], dict[str, Any]]
 
 
@@ -299,13 +302,19 @@ class Hub:
         receipts = self.home / "source-receipts"
         receipts.mkdir(exist_ok=True)
         size = sum(p.stat().st_size for p in cache.rglob("*") if p.is_file())
-        if size > 512_000_000:
+        if size > SOURCE_CACHE_BUDGET:
             raise ValueError("Source cache reached its 512 MB prototype budget")
         # Complete and persist each source receipt independently. An interrupted
         # batch must not leave a downloaded source without its integrity binding.
         sources = []
         rows = []
         for source in current["sources"]:
+            size = sum(p.stat().st_size for p in cache.rglob("*") if p.is_file())
+            if size + SOURCE_EXPANSION_BUDGET > SOURCE_CACHE_BUDGET:
+                raise ValueError(
+                    "Source cache has insufficient reserved intake space; "
+                    "compact retained snapshots before polling"
+                )
             receipt = receipts / (identifier(source["id"]) + ".json")
             if not receipt.exists():
                 document: dict[str, Any] = {"sources": [source]}
