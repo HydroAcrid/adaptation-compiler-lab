@@ -12,7 +12,7 @@ import statistics
 import subprocess
 import tarfile
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import asdict
 from datetime import UTC, datetime
@@ -51,8 +51,8 @@ RUNTIME = {
     "node_runtime": "/home/kevin_dotel/.nvm/versions/node/v24.18.0",
 }
 MODULE = ROOT / "src/adaptation_compiler_lab/benchmark/repo_extension_screen.py"
-ACTIVE_PROTOCOL = BENCH / "protocol-validated-v2.json"
-ACTIVE_ADMISSION = BENCH / "instrument-admission-v2.json"
+ACTIVE_PROTOCOL = BENCH / "protocol-validated-v3.json"
+ACTIVE_ADMISSION = BENCH / "instrument-admission-v3.json"
 EXPECTED_CHECKS = {"temper-live-policy": 55, "kairn-runtime-cache": 98}
 
 
@@ -253,8 +253,9 @@ def freeze() -> None:
             "created_at": datetime.now(UTC).isoformat(),
             "bound_files": bound,
             "purpose": "development_only_historical_real_repository_replay",
-            "instrument_version": 2,
-            "repair": "Precreate the read-only Node dependency mountpoint; "
+            "instrument_version": 3,
+            "repair": "Recover malformed tool arguments and persist encrypted event "
+            "journals before dispatch. Precreate the read-only Node dependency mountpoint; "
             "reject selector infrastructure failures; preserve all "
             "authoritative tests and fixed expected counts. Task "
             "inputs, source catalog, model, budgets and selection "
@@ -352,8 +353,13 @@ def model_call(
     direct: bool = False,
     selector: bool = False,
     expected_model: tuple[str, str] | None = None,
+    on_event: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     start = time.monotonic()
+    if on_event is not None:
+        on_event(
+            {"method": "benchmark/model-call/start", "params": {"expected_model": expected_model}}
+        )
     with benchmark_session(config_path) as (
         config,
         schemas,
@@ -402,6 +408,14 @@ def model_call(
             output_schema=SELECTOR_SCHEMA if selector else None,
             timeout=150 if selector else 480,
             max_tools=12 if selector else 60,
+            on_event=on_event,
+        )
+    if on_event is not None:
+        on_event(
+            {
+                "method": "benchmark/model-call/finish",
+                "params": {"usage": value["usage"], "status": value["status"]},
+            }
         )
     return {
         **value,
@@ -412,6 +426,45 @@ def model_call(
         "native_skill_inputs": len(skills),
         "remaining_capacity_before": remaining,
     }
+
+
+def event_journal(
+    output: Path, name: str, raw: LocalRawPayloadStore
+) -> Callable[[dict[str, Any]], None]:
+    """Persist significant encrypted events before any dispatcher can reject them."""
+    folder = output / "event-journals"
+    folder.mkdir(exist_ok=True)
+    path = folder / (name + ".jsonl")
+    path.touch(exist_ok=False)
+    significant = {
+        "item/tool/call",
+        "thread/tokenUsage/updated",
+        "turn/started",
+        "turn/completed",
+        "item/completed",
+        "warning",
+        "error",
+        "benchmark/model-call/start",
+        "benchmark/model-call/finish",
+    }
+
+    def save(event: dict[str, Any]) -> None:
+        if event.get("method") not in significant:
+            return
+        ref = raw.put(json.dumps(event).encode(), media_type="application/json")
+        record = {
+            "received_at": datetime.now(UTC).isoformat(),
+            "method": event.get("method"),
+            "raw_ref": asdict(ref),
+        }
+        if event.get("method") == "thread/tokenUsage/updated":
+            record["usage"] = event.get("params", {}).get("tokenUsage", {}).get("total")
+        with path.open("a", encoding="utf-8", newline="\n") as stream:
+            stream.write(json.dumps(record) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+
+    return save
 
 
 def transport_probe(config: Path, fixtures: Path, output: Path) -> None:
@@ -600,6 +653,7 @@ def run(config_path: Path, fixtures: Path, output: Path) -> None:
             [],
             selector=True,
             expected_model=(config.semantic_model, config.semantic_reasoning_effort),
+            on_event=event_journal(output, case["id"] + "-selector", raw),
         )
         raw_ref = raw.put(json.dumps(selection).encode(), media_type="application/json")
         if (
@@ -661,6 +715,7 @@ def run(config_path: Path, fixtures: Path, output: Path) -> None:
                     direct=arm == "direct_skills",
                     material=plans[case["id"]] if arm == "temper_selected" else None,
                     expected_model=(config.semantic_model, config.semantic_reasoning_effort),
+                    on_event=event_journal(output, name, raw),
                 )
                 modified = changed_paths(before, tree(project))
                 scope = scope_failures(modified, case["allowed_prefixes"])
@@ -759,7 +814,12 @@ def run(config_path: Path, fixtures: Path, output: Path) -> None:
                         "a comparison"
                     )
     summary = summarize(trials)
-    summary.update(model_calls=14, selectors=selectors, wall_seconds=time.monotonic() - started)
+    summary.update(
+        native_agent_turns=14,
+        provider_request_count=None,
+        selectors=selectors,
+        wall_seconds=time.monotonic() - started,
+    )
     new_json(output / "summary.json", summary)
     print(json.dumps(summary), flush=True)
 

@@ -13,6 +13,7 @@ import queue
 import re
 import subprocess
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -73,6 +74,21 @@ def selected_text(sources: list[dict[str, Any]], ids: list[str]) -> str:
     if len(text.encode()) > 8000:
         raise ValueError("selected material exceeds the frozen byte bound")
     return text
+
+
+def command_argument(arguments: Any) -> str:
+    """Accept object or JSON-encoded object transport; reject malformed model input."""
+    if isinstance(arguments, str):
+        try:
+            arguments = json.loads(arguments)
+        except ValueError as error:
+            raise ValueError("repo_shell expects one object with a command string") from error
+    if not isinstance(arguments, dict) or set(arguments) != {"command"}:
+        raise ValueError("repo_shell accepts exactly {command: string}; no extra fields")
+    command = arguments["command"]
+    if not isinstance(command, str) or not command.strip() or len(command.encode()) > 32_768:
+        raise ValueError("command must be a nonempty string of at most 32768 UTF-8 bytes")
+    return command
 
 
 def tree(root: Path) -> dict[str, str]:
@@ -263,6 +279,7 @@ def run_tool_turn(
     selector: bool = False,
     timeout: float = 480,
     max_tools: int = 60,
+    on_event: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     instructions = SELECTOR if selector else COMMON
     params = {
@@ -317,6 +334,8 @@ def run_tool_turn(
         except CodexProtocolError:
             continue
         events.append(event)
+        if on_event is not None:
+            on_event(event)
         method, values = event.get("method", ""), event.get("params", {})
         if not isinstance(values, dict):
             raise ValueError("invalid native notification")
@@ -331,10 +350,21 @@ def run_tool_turn(
             if not isinstance(call_id, str) or call_id in seen_calls:
                 raise ValueError("missing or duplicated tool call")
             seen_calls.add(call_id)
-            arguments = values.get("arguments")
-            if not isinstance(arguments, dict) or set(arguments) != {"command"}:
-                raise ValueError("invalid repository tool arguments")
-            if len(tool_records) >= max_tools or deadline - time.monotonic() < 50:
+            try:
+                command = command_argument(values.get("arguments"))
+            except ValueError as error:
+                command = None
+                outcome = {
+                    "returncode": 2,
+                    "output": str(error),
+                    "instrument_valid": True,
+                    "executed": False,
+                    "elapsed_seconds": 0,
+                    "validation_error": True,
+                }
+            if command is None:
+                pass  # A model argument error is a recoverable tool result, not a host crash.
+            elif len(tool_records) >= max_tools or deadline - time.monotonic() < 50:
                 outcome = {
                     "returncode": 124,
                     "output": "Task tool/time budget reached; finish with the current verified "
@@ -344,15 +374,15 @@ def run_tool_turn(
                     "elapsed_seconds": 0,
                 }
             else:
-                outcome = shell.run(arguments["command"])
+                outcome = shell.run(command)
                 outcome["executed"] = True
-            tool_records.append({"call_id": call_id, "command": arguments["command"], **outcome})
+            tool_records.append({"call_id": call_id, "command": command, **outcome})
             rpc._write(
                 {
                     "id": event["id"],
                     "result": {
                         "contentItems": [{"type": "inputText", "text": json.dumps(outcome)}],
-                        "success": True,
+                        "success": bool(outcome.get("executed")),
                     },
                 }
             )

@@ -14,13 +14,19 @@ import pytest
 
 from adaptation_compiler_lab.benchmark.repo_extension_screen import (
     ARMS,
+    command_argument,
     parse_grade,
     run_tool_turn,
     scope_failures,
     selected_text,
     summarize,
 )
-from scripts.run_repo_extension_screen import copy_candidate_production, extract
+from adaptation_compiler_lab.persistence.raw import (
+    LocalRawPayloadStore,
+    RawEncryptionKey,
+    RawPayloadRef,
+)
+from scripts.run_repo_extension_screen import copy_candidate_production, event_journal, extract
 
 
 def test_selection_is_exact_attributed_source_with_a_byte_bound() -> None:
@@ -197,3 +203,63 @@ def test_readonly_node_workspace_has_a_mountpoint_before_binding(tmp_path: Path)
     assert (destination / "node_modules").is_dir()
     assert not list((destination / "node_modules").iterdir())
     assert (destination / "code.py").read_bytes() == payload
+
+
+def test_argument_transport_normalization_and_validation() -> None:
+    assert command_argument('{"command":"printf valid"}') == "printf valid"
+    invalid: Any
+    for invalid in ({"cmd": "wrong"}, {"command": []}, {"command": " ", "timeout": 1}, "not JSON"):
+        with pytest.raises(ValueError):
+            command_argument(invalid)
+
+
+def test_invalid_model_arguments_return_an_error_and_allow_a_retry(tmp_path: Path) -> None:
+    invalid, valid = tool_request(), tool_request()
+    invalid["params"]["arguments"] = {"cmd": "wrong"}
+    valid["params"]["callId"] = "retry"
+    valid["id"] = 102
+    rpc = Rpc(
+        [
+            invalid,
+            valid,
+            {
+                "method": "turn/completed",
+                "params": {"threadId": "thread", "turn": {"id": "turn", "status": "completed"}},
+            },
+        ]
+    )
+    shell = MagicMock()
+    shell.run.return_value = {"returncode": 0, "output": "actual", "instrument_valid": True}
+    seen: list[dict[str, Any]] = []
+    result = run_tool_turn(
+        rpc,
+        MagicMock(),
+        workspace=tmp_path,
+        model="model",
+        effort="medium",
+        prompt="task",
+        shell=shell,
+        skills=[],
+        on_event=seen.append,
+    )
+    assert result["status"] == "completed" and len(result["tool_calls"]) == 2
+    assert result["tool_calls"][0]["validation_error"]
+    assert not rpc.responses[0]["result"]["success"]
+    assert rpc.responses[1]["result"]["success"]
+    shell.run.assert_called_once_with("printf actual")
+    assert seen[0] == invalid
+
+
+def test_event_journal_is_encrypted_and_saved_before_dispatch(tmp_path: Path) -> None:
+    # Synthetic test-only key, never an owner credential.
+    raw = LocalRawPayloadStore(tmp_path / "raw", encryption_key=RawEncryptionKey(b"k" * 32))
+    save = event_journal(tmp_path, "attempt", raw)
+    event = {
+        "method": "item/tool/call",
+        "params": {"arguments": {"private-marker": "invalid input"}},
+    }
+    save(event)
+    text = (tmp_path / "event-journals/attempt.jsonl").read_text(encoding="utf-8")
+    assert "private-marker" not in text and "invalid input" not in text
+    receipt = json.loads(text)
+    assert json.loads(raw.read(RawPayloadRef(**receipt["raw_ref"]))) == event

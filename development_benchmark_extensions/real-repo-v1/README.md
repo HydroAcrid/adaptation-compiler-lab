@@ -10,8 +10,16 @@ one saved repair call when a read-only Node mount defect was detected. Its
 instrument attempt, and its scores are not reused in the repaired comparison.
 The repaired instrument also keeps every original acceptance test independent
 of candidate test edits and enforces the known 55/98 test counts. The active
-freeze is `protocol-validated-v2.json` with `instrument-admission-v2.json`.
+freeze is `protocol-validated-v3.json` with `instrument-admission-v3.json`.
 Task specifications and source catalog remain byte-for-byte unchanged.
+
+The v2 attempt at `1bf03d1` completed both selectors, then stopped on a malformed
+tool argument during its first solver turn. Its partial solver token usage was
+not retained and is unavailable, not zero. V3 returns a bounded validation error
+so the agent can retry, accepts JSON-object transport consistently, and persists
+significant native events encrypted before dispatch. Both aborted attempts and
+their known usage remain in the setup/rework record; neither supplies scores to
+the final comparison.
 
 ## Tasks and comparisons
 

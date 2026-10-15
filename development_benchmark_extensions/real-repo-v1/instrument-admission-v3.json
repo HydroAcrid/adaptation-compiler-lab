@@ -1,0 +1,313 @@
+{
+  "all_controls_passed": true,
+  "native_skill_and_tool_probe_passed": true,
+  "recorded_at": "2026-10-15T04:42:44.734456+00:00",
+  "controls": [
+    {
+      "task_id": "temper-live-policy",
+      "original": {
+        "passed": 52,
+        "failed": 3,
+        "errors": 0,
+        "complete": false,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": null,
+        "elapsed_seconds": 8.141000000061467,
+        "candidate_execution_failed": false
+      },
+      "reference": {
+        "passed": 55,
+        "failed": 0,
+        "errors": 0,
+        "complete": true,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": null,
+        "elapsed_seconds": 6.172000000020489,
+        "candidate_execution_failed": false
+      }
+    },
+    {
+      "task_id": "kairn-runtime-cache",
+      "original": {
+        "passed": 93,
+        "failed": 5,
+        "errors": 0,
+        "complete": false,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": false,
+        "elapsed_seconds": 24.186999999918044,
+        "candidate_execution_failed": false
+      },
+      "reference": {
+        "passed": 98,
+        "failed": 0,
+        "errors": 0,
+        "complete": true,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": true,
+        "elapsed_seconds": 21.73499999998603,
+        "candidate_execution_failed": false
+      }
+    }
+  ],
+  "native_probes": [
+    {
+      "passed": false,
+      "usage": {
+        "totalTokens": 14993,
+        "inputTokens": 14844,
+        "cachedInputTokens": 7168,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 149,
+        "reasoningOutputTokens": 22
+      },
+      "elapsed_seconds": 13.327999999979511,
+      "native_skill_inputs": 1,
+      "tool_calls": 0
+    },
+    {
+      "passed": false,
+      "usage": {
+        "totalTokens": 31329,
+        "inputTokens": 30966,
+        "cachedInputTokens": 22272,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 363,
+        "reasoningOutputTokens": 59
+      },
+      "elapsed_seconds": 18.54700000002049,
+      "native_skill_inputs": 1,
+      "tool_calls": 3
+    },
+    {
+      "passed": true,
+      "usage": {
+        "totalTokens": 23040,
+        "inputTokens": 22871,
+        "cachedInputTokens": 14720,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 169,
+        "reasoningOutputTokens": 0
+      },
+      "elapsed_seconds": 18.531000000075437,
+      "native_skill_inputs": 1,
+      "tool_calls": 2
+    }
+  ],
+  "probe_failure_reasons": [
+    "Native tool host disabled in the sensor profile.",
+    "Tool host enabled; skill file not reachable through the isolated Bash filesystem."
+  ],
+  "probe_resolution": "Benchmark-only code-mode host and read-only /skills mirror. No product profile/config changes.",
+  "fresh_file_source_setup": {
+    "samples": [
+      {
+        "seconds": 0.43799999996554106,
+        "network_seconds": 0.4219999999040738,
+        "bytes": 8773,
+        "https_requests": 4,
+        "published_files": 4
+      },
+      {
+        "seconds": 0.15600000007543713,
+        "network_seconds": 0.1410000000614673,
+        "bytes": 8773,
+        "https_requests": 4,
+        "published_files": 4
+      },
+      {
+        "seconds": 0.17199999990407377,
+        "network_seconds": 0.17199999990407377,
+        "bytes": 8773,
+        "https_requests": 4,
+        "published_files": 4
+      },
+      {
+        "seconds": 0.1720000000204891,
+        "network_seconds": 0.1720000000204891,
+        "bytes": 8773,
+        "https_requests": 4,
+        "published_files": 4
+      },
+      {
+        "seconds": 0.18700000003445894,
+        "network_seconds": 0.1720000000204891,
+        "bytes": 8773,
+        "https_requests": 4,
+        "published_files": 4
+      }
+    ],
+    "scope": "Pinned file-source skill installation into five fresh local profiles; real HTTPS fetches, hash verification, license preservation and file writes. Remote caches uncontrolled; human discovery, native registration and framework/product installation not measured."
+  },
+  "initial_repository_acquisition": {
+    "repository_acquisition": [
+      {
+        "task_id": "temper-live-policy",
+        "archive_and_reference_seconds": 1.1560000000754371,
+        "archive_bytes": 41584640
+      },
+      {
+        "task_id": "kairn-runtime-cache",
+        "archive_and_reference_seconds": 3.172000000020489,
+        "archive_bytes": 67635200
+      }
+    ],
+    "extension_acquisition_seconds": 0.17199999990407377,
+    "extension_acquisition": "Ponytail reused from the previous pinned local snapshot; pstack-tdd fetched at that same pinned pstack commit. This is not a fully cold source installation.",
+    "total_automated_preparation_seconds": 4.5,
+    "human_research_and_harness_development_minutes": null
+  },
+  "coordinator_request_started_at": "2026-10-15T03:42:25+00:00",
+  "request_to_admission_wall_seconds": 3619.734456,
+  "coordinator_active_work_seconds": null,
+  "coordinator_tokens": null,
+  "preparation_scope": "Common experiment research, harness development and repairs, controls, native probes and waits; not a product onboarding measurement. Parent coordinator usage is unavailable, never counted as zero.",
+  "preserved_instrument_failures": [
+    "controls-v1: isolated Python executable alias missing",
+    "controls-v2: Windows long path extraction",
+    "controls-v3: UTF-8 reference binding",
+    "controls-kairn-v4: Vite cache needed private writes; then missing Git metadata"
+  ],
+  "harness_unit_tests_passed": 19,
+  "ruff": "pass",
+  "mypy": "pass",
+  "instrument_version": 3,
+  "read_only_full_node_repository_control": {
+    "passed": true,
+    "returncode": 0,
+    "output": "v24.18.0\nPython 3.12.13\n548b7e60b7c012b4a211757d74a9e5fb1f8b6b22\n",
+    "output_truncated": false,
+    "output_sha256": "1d7636a1c0cfa4ffad31c49ddf6e2ccf15b10128f14840c965cc2808bd2122a4",
+    "instrument_valid": true,
+    "elapsed_seconds": 0.9060000000754371
+  },
+  "source_write_isolation_control": {
+    "passed": true,
+    "precreated_empty_node_modules_mountpoint": true,
+    "result": {
+      "returncode": 0,
+      "output": "v24.18.0\nread-only source and isolated credentials: PASS\n",
+      "output_truncated": false,
+      "output_sha256": "f3adf7a6b973e0a16c08ff3a14917989f0922f66b0dfcf5fb12d00c1a031bc5b",
+      "instrument_valid": true,
+      "elapsed_seconds": 0.875
+    }
+  },
+  "aborted_first_attempt": {
+    "disposition": "aborted_instrumentation_failure",
+    "recorded_at": "2026-10-15T04:25:06.955055+00:00",
+    "reason": "Read-only Node dependency mountpoint was missing; selector infrastructure failures were not rejected. Authoritative grading also needed to exclude all candidate test edits and enforce the fixed acceptance count. No comparative conclusion is drawn.",
+    "source_commit": "282e72f1cb82f83ee21d76895374b9ff89a3a084",
+    "model_calls": 3,
+    "selectors": [
+      {
+        "task_id": "kairn-runtime-cache",
+        "usage": {
+          "totalTokens": 18296,
+          "inputTokens": 18053,
+          "cachedInputTokens": 8704,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 243,
+          "reasoningOutputTokens": 98
+        },
+        "model_call_seconds": 11.375,
+        "total_seconds": 19.96799999999348,
+        "tool_count": 1,
+        "tool_infrastructure_valid": false,
+        "infrastructure_errors": [
+          "bwrap: Can't mkdir /work/node_modules: Read-only file system\n"
+        ]
+      },
+      {
+        "task_id": "temper-live-policy",
+        "usage": {
+          "totalTokens": 9101,
+          "inputTokens": 8856,
+          "cachedInputTokens": 0,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 245,
+          "reasoningOutputTokens": 188
+        },
+        "model_call_seconds": 10.89000000001397,
+        "total_seconds": 41.04700000002049,
+        "tool_count": 0,
+        "tool_infrastructure_valid": true,
+        "infrastructure_errors": []
+      }
+    ],
+    "completed_repair_calls": [
+      {
+        "task_id": "temper-live-policy",
+        "arm": "baseline",
+        "repeat": 0,
+        "usage": {
+          "totalTokens": 755266,
+          "inputTokens": 749514,
+          "cachedInputTokens": 699136,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 5752,
+          "reasoningOutputTokens": 763
+        },
+        "tool_count": 17,
+        "total_seconds": 226.34400000004098
+      }
+    ],
+    "reported_total_tokens": 782663,
+    "stopped_after_durable_receipt": true,
+    "second_repair_model_call_started": false,
+    "remaining_comparison_not_run": true,
+    "trial_scores_not_reused_in_repaired_comparison": true
+  },
+  "repair_scope": "Node dependency mountpoint preparation, selector infrastructure admission, authoritative test independence/fixed counts, explicit UTF-8 source binding and within-run model/effort lock. Task specifications and pinned source catalog bytes are unchanged.",
+  "second_aborted_attempt": {
+    "disposition": "aborted_instrumentation_failure",
+    "source_commit": "1bf03d1a56e5775ffc294752138a3e614c3e49e6",
+    "completed_selector_turns": 2,
+    "failed_solver_turns": 1,
+    "failed_solver_usage": null,
+    "failed_solver_usage_state": "unavailable; the old handler raised before saving a receipt",
+    "known_selector_tokens": 68844,
+    "selector_receipts": [
+      {
+        "task_id": "kairn-runtime-cache",
+        "usage": {
+          "totalTokens": 41276,
+          "inputTokens": 40984,
+          "cachedInputTokens": 19328,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 292,
+          "reasoningOutputTokens": 13
+        },
+        "model_call_seconds": 13.5,
+        "total_seconds": 21.516000000061467,
+        "tool_count": 3
+      },
+      {
+        "task_id": "temper-live-policy",
+        "usage": {
+          "totalTokens": 27568,
+          "inputTokens": 27285,
+          "cachedInputTokens": 17664,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 283,
+          "reasoningOutputTokens": 72
+        },
+        "model_call_seconds": 15.983999999938533,
+        "total_seconds": 43.92099999997299,
+        "tool_count": 2
+      }
+    ],
+    "reason": "Malformed tool arguments incorrectly raised out of the agent loop instead of returning a recoverable tool error.",
+    "scores_reused": false
+  },
+  "argument_error_recovery_and_retry_test": "pass",
+  "encrypted_event_journal_before_dispatch_test": "pass",
+  "grading_and_fixture_functions_unchanged_since_v2": true,
+  "task_and_source_files_unchanged_since_first_freeze": true,
+  "provider_request_count": null,
+  "counting_note": "Counts refer to native agent turns, not individual provider requests; reported turn usage includes model/tool round trips. One old failed solver turn and coordinator usage remain unavailable, never zero."
+}
