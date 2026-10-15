@@ -1,0 +1,80 @@
+[
+  {
+    "id": "temper-live-policy",
+    "repository": "https://github.com/HydroAcrid/adaptation-compiler-lab",
+    "fix": "eb0c396837b84101de8156f41f4f6cb2fce45b9d",
+    "kind": "python",
+    "task": "Repair the live desktop registration and native-policy workflow. After the desktop has read learning status, registering another project must make that project available to learning grant previews without restarting the app. Registration and preview must not silently expand any existing signed learning grant. Also fix native instruction discovery when source_codex_home is an exact custom CODEX_HOME whose directory is not named .codex: manual global instructions, override precedence, config limits, fallback names and disabled skill settings must be read from that exact directory. Preserve the existing adapter's legacy home-root callers and default behavior. Temper-managed instructions must remain excluded as native authority. Add practical regression coverage and verify the affected behavior. Do not change consent/grant scope, product release gates, dependencies or CI.",
+    "visible_check": "python -m pytest -q -p no:cacheprovider tests/unit/autonomy/test_native_policy.py tests/unit/instruction_environment/test_adapters.py tests/unit/desktop/test_engine_protocol.py",
+    "grade_check": "python -m pytest -q -p no:cacheprovider tests/unit/autonomy/test_native_policy.py tests/unit/autonomy/test_registration_refresh.py tests/unit/instruction_environment/test_adapters.py tests/unit/desktop/test_engine_protocol.py",
+    "oracle_paths": [
+      "src/adaptation_compiler_lab/autonomy/native_policy.py",
+      "src/adaptation_compiler_lab/instruction_environment/adapters.py",
+      "src/adaptation_compiler_lab/desktop/engine_protocol.py"
+    ],
+    "grade_paths": [
+      "tests/unit/autonomy/test_native_policy.py",
+      "tests/unit/autonomy/test_registration_refresh.py"
+    ],
+    "allowed_prefixes": [
+      "src/",
+      "tests/"
+    ],
+    "base_commit": "2ab26e486949f8848ea7543de3c1ab2d6a1692ee",
+    "archive_sha256": "sha256:718af0d0baf6863251d25957db987552a0648db3501519e0f5899700425010b6",
+    "oracle_file_sha256": {
+      "src/adaptation_compiler_lab/autonomy/native_policy.py": "sha256:9421d8142451d83b0904b62cafe39c566141b577e0ff2667592d429a90ab5611",
+      "src/adaptation_compiler_lab/instruction_environment/adapters.py": "sha256:8dc6e6bcfd737fec56e3cc6176c837b9f954a2d3440a627d712d85dda22dd41d",
+      "src/adaptation_compiler_lab/desktop/engine_protocol.py": "sha256:57bc21e9f6158cd111be0081aefed5406257f6b6d093033c04e46ddcce9557b1"
+    },
+    "grading_file_sha256": {
+      "tests/unit/autonomy/test_native_policy.py": "sha256:e64eedc49659ce85face2566b0e73f894d3db0db4bb18c9c9a3cf2870486a85d",
+      "tests/unit/autonomy/test_registration_refresh.py": "sha256:a20981c44f192654980ccccf026b094707f559ac12ae2e3a42755122b2066412"
+    }
+  },
+  {
+    "id": "kairn-runtime-cache",
+    "repository": "https://github.com/HydroAcrid/kairn",
+    "fix": "d2469ac57bd98f0c5babcdbbddef86433b8fcca5",
+    "kind": "node",
+    "task": "Fix semantic embedding cache contamination when switching inference runtimes. The same document and model can produce different vectors under native Node and WASM packages or package versions. Carry runtimeBackend ('node' or 'wasm') and the exact runtimeId ('package-name@installed-version') through quantization, indexing, persistence, incremental reuse, retrieval and reusable corpus snapshots. Embeddings for the same document/model under different runtime identities must coexist; no retrieval or snapshot/lineage cache may reuse a different runtime's vectors. Determine actual installed package versions rather than hardcoding the current version. Preserve legacy SQLite data with explicit provenance: entries without runtime fields were produced by wasm onnxruntime-web@1.27.0 and must not be relabeled as the current runtime. Make reopening/migration safe and idempotent. Keep no-network tests executable and update affected typed callers and fixtures. Do not download models, add dependencies, retune the ranker, change frozen evaluation inputs or run CI. Add useful regression coverage and verify the fix.",
+    "visible_check": "node node_modules/vitest/vitest.mjs run tests/store.test.ts tests/semanticCandidates.test.ts tests/evidenceTraining.test.ts --maxWorkers=1 --no-file-parallelism --reporter=json",
+    "grade_check": "node node_modules/vitest/vitest.mjs run tests/store.test.ts tests/semanticCandidates.test.ts tests/evidenceTraining.test.ts --maxWorkers=1 --no-file-parallelism --reporter=json",
+    "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
+    "oracle_paths": [
+      "scripts/evaluate-semantic-model.ts",
+      "scripts/materialize-evidence-corpus.ts",
+      "src/indexer/indexRepo.ts",
+      "src/retrieval/semanticCandidates.ts",
+      "src/semantic/modelRuntime.ts",
+      "src/store/sqliteStore.ts",
+      "src/types/graph.ts"
+    ],
+    "grade_paths": [
+      "tests/store.test.ts",
+      "tests/semanticCandidates.test.ts",
+      "tests/evidenceTraining.test.ts"
+    ],
+    "allowed_prefixes": [
+      "src/",
+      "scripts/",
+      "tests/"
+    ],
+    "base_commit": "c0c2c3b361d31c34d0a2f7c3d9b54b7a8cab14d9",
+    "archive_sha256": "sha256:076a177efced0cbfe0534cbc4d2a8c9c21b5759227f7ae7958a479a638df66cb",
+    "oracle_file_sha256": {
+      "scripts/evaluate-semantic-model.ts": "sha256:74f8c0835d89b43979a5f94f4a80ee187209ee01b9cbfd3c90f162babfe2bcbb",
+      "scripts/materialize-evidence-corpus.ts": "sha256:abb536e4e660964defee7841350eb0dc3a081b50929ae5c8ce75b7f7e9c881f4",
+      "src/indexer/indexRepo.ts": "sha256:ef6d5a041cb48dc93e31a5cedfbb7f8f8b8c8c09302602faba21bfae7eea49bc",
+      "src/retrieval/semanticCandidates.ts": "sha256:71b38dbcc581d0f55a044433c09322c1023f97a0f91ecb1420177631af5effcb",
+      "src/semantic/modelRuntime.ts": "sha256:998c6f0ad96e20c3a22e13494f3b880a1e46876375565d804ee140b975c33d24",
+      "src/store/sqliteStore.ts": "sha256:9f3f8041b2fede5a8c66f80d382dfb2682e5bc2aa4b0e5022bfcc1535c2f22fb",
+      "src/types/graph.ts": "sha256:d372291e2da91946418995e1a75bacf86bde096dd8f3ec6f72f5b845a9739d87"
+    },
+    "grading_file_sha256": {
+      "tests/store.test.ts": "sha256:04483499a53ec513e4f578950a48fff6df268813e531a2cd4828d3c21f129841",
+      "tests/semanticCandidates.test.ts": "sha256:ea358da14cef1002bca114f771d10311788c2f954d6869edf5f538d475c324f9",
+      "tests/evidenceTraining.test.ts": "sha256:a219ea3f920a4bb81f04b79a4fd3dfc4a4edae5dfa95c94e0f9236e08d0f56de"
+    }
+  }
+]

@@ -1,0 +1,178 @@
+{
+  "all_controls_passed": true,
+  "native_skill_and_tool_probe_passed": true,
+  "recorded_at": "2026-10-15T04:13:15.259664+00:00",
+  "controls": [
+    {
+      "task_id": "temper-live-policy",
+      "original": {
+        "passed": 52,
+        "failed": 3,
+        "errors": 0,
+        "complete": false,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": null,
+        "elapsed_seconds": 7.827999999979511,
+        "candidate_execution_failed": false
+      },
+      "reference": {
+        "passed": 55,
+        "failed": 0,
+        "errors": 0,
+        "complete": true,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": null,
+        "elapsed_seconds": 6.172000000020489,
+        "candidate_execution_failed": false
+      }
+    },
+    {
+      "task_id": "kairn-runtime-cache",
+      "original": {
+        "passed": 93,
+        "failed": 5,
+        "errors": 0,
+        "complete": false,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": false,
+        "elapsed_seconds": 23.01500000001397,
+        "candidate_execution_failed": false
+      },
+      "reference": {
+        "passed": 98,
+        "failed": 0,
+        "errors": 0,
+        "complete": true,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": true,
+        "elapsed_seconds": 21.938000000081956,
+        "candidate_execution_failed": false
+      }
+    }
+  ],
+  "native_probes": [
+    {
+      "passed": false,
+      "usage": {
+        "totalTokens": 14993,
+        "inputTokens": 14844,
+        "cachedInputTokens": 7168,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 149,
+        "reasoningOutputTokens": 22
+      },
+      "elapsed_seconds": 13.327999999979511,
+      "native_skill_inputs": 1,
+      "tool_calls": 0
+    },
+    {
+      "passed": false,
+      "usage": {
+        "totalTokens": 31329,
+        "inputTokens": 30966,
+        "cachedInputTokens": 22272,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 363,
+        "reasoningOutputTokens": 59
+      },
+      "elapsed_seconds": 18.54700000002049,
+      "native_skill_inputs": 1,
+      "tool_calls": 3
+    },
+    {
+      "passed": true,
+      "usage": {
+        "totalTokens": 23040,
+        "inputTokens": 22871,
+        "cachedInputTokens": 14720,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 169,
+        "reasoningOutputTokens": 0
+      },
+      "elapsed_seconds": 18.531000000075437,
+      "native_skill_inputs": 1,
+      "tool_calls": 2
+    }
+  ],
+  "probe_failure_reasons": [
+    "Native tool host disabled in the sensor profile.",
+    "Tool host enabled; skill file not reachable through the isolated Bash filesystem."
+  ],
+  "probe_resolution": "Benchmark-only code-mode host and read-only /skills mirror. No product profile/config changes.",
+  "fresh_file_source_setup": {
+    "samples": [
+      {
+        "seconds": 0.43799999996554106,
+        "network_seconds": 0.4219999999040738,
+        "bytes": 8773,
+        "https_requests": 4,
+        "published_files": 4
+      },
+      {
+        "seconds": 0.15600000007543713,
+        "network_seconds": 0.1410000000614673,
+        "bytes": 8773,
+        "https_requests": 4,
+        "published_files": 4
+      },
+      {
+        "seconds": 0.17199999990407377,
+        "network_seconds": 0.17199999990407377,
+        "bytes": 8773,
+        "https_requests": 4,
+        "published_files": 4
+      },
+      {
+        "seconds": 0.1720000000204891,
+        "network_seconds": 0.1720000000204891,
+        "bytes": 8773,
+        "https_requests": 4,
+        "published_files": 4
+      },
+      {
+        "seconds": 0.18700000003445894,
+        "network_seconds": 0.1720000000204891,
+        "bytes": 8773,
+        "https_requests": 4,
+        "published_files": 4
+      }
+    ],
+    "scope": "Pinned file-source skill installation into five fresh local profiles; real HTTPS fetches, hash verification, license preservation and file writes. Remote caches uncontrolled; human discovery, native registration and framework/product installation not measured."
+  },
+  "initial_repository_acquisition": {
+    "repository_acquisition": [
+      {
+        "task_id": "temper-live-policy",
+        "archive_and_reference_seconds": 1.1560000000754371,
+        "archive_bytes": 41584640
+      },
+      {
+        "task_id": "kairn-runtime-cache",
+        "archive_and_reference_seconds": 3.172000000020489,
+        "archive_bytes": 67635200
+      }
+    ],
+    "extension_acquisition_seconds": 0.17199999990407377,
+    "extension_acquisition": "Ponytail reused from the previous pinned local snapshot; pstack-tdd fetched at that same pinned pstack commit. This is not a fully cold source installation.",
+    "total_automated_preparation_seconds": 4.5,
+    "human_research_and_harness_development_minutes": null
+  },
+  "coordinator_request_started_at": "2026-10-15T03:42:25+00:00",
+  "request_to_admission_wall_seconds": 1850.259664,
+  "coordinator_active_work_seconds": null,
+  "coordinator_tokens": null,
+  "preparation_scope": "Common experiment research, harness development and repairs, controls, native probes and waits; not a product onboarding measurement. Parent coordinator usage is unavailable, never counted as zero.",
+  "preserved_instrument_failures": [
+    "controls-v1: isolated Python executable alias missing",
+    "controls-v2: Windows long path extraction",
+    "controls-v3: UTF-8 reference binding",
+    "controls-kairn-v4: Vite cache needed private writes; then missing Git metadata"
+  ],
+  "harness_unit_tests_passed": 14,
+  "ruff": "pass",
+  "mypy": "pass"
+}
