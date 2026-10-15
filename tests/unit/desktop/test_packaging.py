@@ -39,8 +39,17 @@ def test_packaged_acl_matches_typed_product_commands_and_renderer_routes() -> No
     renderer_commands = set()
     for filename in ("engine.ts", "autonomy.ts"):
         renderer = (ROOT / "desktop_ui/src" / filename).read_text()
-        renderer_commands.update(re.findall(r'"([a-z]+_[a-z_]+)"', renderer))
-    assert renderer_commands & registered <= allowed
+        renderer_commands.update(
+            re.findall(
+                r'\b(?:invoke|request|invokeMutation)(?:<[\s\S]*?>)?\(\s*"([a-z_]+)"', renderer
+            )
+        )
+    assert {
+        "instruction_environment_get",
+        "package_review_list",
+        "autonomy_status",
+    } <= renderer_commands
+    assert renderer_commands <= allowed, "Every renderer route must be allowed by packaged ACL"
     assert {"instruction_environment_get", "package_review_list", "autonomy_status"} <= allowed
     assert (
         not {
