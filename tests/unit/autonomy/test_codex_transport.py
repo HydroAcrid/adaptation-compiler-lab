@@ -157,6 +157,24 @@ def test_quiet_notification_interval_waits_for_the_same_turn(tmp_path: Path) -> 
     assert sum(method == "turn/start" for method, _ in rpc.calls) == 1
 
 
+def test_deadline_crossing_never_passes_a_nonpositive_notification_timeout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import adaptation_compiler_lab.autonomy.codex_transport as transport
+
+    moments = iter((0.0, 179.9, 180.1))
+    monkeypatch.setattr(transport, "monotonic", lambda: next(moments))
+
+    class DeadlineRpc(_SemanticRpc):
+        def next_notification(self, *, timeout_seconds=120):
+            pytest.fail(f"No notification call is permitted after deadline: {timeout_seconds}")
+
+    rpc = DeadlineRpc(response="{}")
+    with pytest.raises(ValueError, match="sensor timed out"):
+        run(tmp_path, rpc)
+    assert sum(method == "turn/start" for method, _ in rpc.calls) == 1
+
+
 def test_other_protocol_errors_are_not_swallowed_as_quiet_intervals(tmp_path: Path) -> None:
     from adaptation_compiler_lab.connectors.codex_app_server import CodexProtocolError
 

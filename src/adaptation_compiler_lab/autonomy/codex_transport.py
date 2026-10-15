@@ -256,8 +256,11 @@ def run_habit_turn(
     messages: list[str] = []
     deadline = monotonic() + timeout
     while monotonic() < deadline:
+        remaining = deadline - monotonic()
+        if remaining <= 0:
+            break
         try:
-            notification = rpc.next_notification(timeout_seconds=min(30, deadline - monotonic()))
+            notification = rpc.next_notification(timeout_seconds=min(30, remaining))
         except CodexProtocolError as error:
             if str(error) != "Codex app-server notification timed out":
                 raise

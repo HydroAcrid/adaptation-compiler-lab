@@ -41,6 +41,12 @@ NATIVE_CHECKS = frozenset(
     }
 )
 
+# Independent review CAL-FB-02: unrelated task/recipient context made the negative
+# labels ambiguous. Preserve that freeze and its results; it cannot qualify serving.
+DISQUALIFIED_DATASETS = frozenset(
+    {"sha256:ea86f15e54b7f2f0923f8a08016b60b9e295d472ebd0c04806b1736c199ecb2d"}
+)
+
 
 def verify_native_observations(
     observations: Mapping[str, Any], store: AutonomyStore, runtime: Mapping[str, str]
@@ -192,8 +198,10 @@ def assess_detection(
     manifest: Path,
     runtime: Mapping[str, str],
 ) -> dict[str, Any]:
-    data = load_frozen_scenarios(dataset, manifest)
     frozen = json.loads(manifest.read_text(encoding="utf-8"))
+    if frozen.get("dataset_digest") in DISQUALIFIED_DATASETS:
+        raise AutonomyIntegrityError("adjudicated ambiguous materials cannot qualify calibration")
+    data = load_frozen_scenarios(dataset, manifest)
     if (
         data.get("purpose") != "prospective_shadow_detection"
         or frozen.get("purpose") != data["purpose"]
@@ -321,6 +329,8 @@ class NativeCalibrationVerifier:
                 return False
             checks = native["payload"]
             measured = checks.get("checks", {})
+            if not isinstance(measured, dict):
+                return False
             # A boolean checklist alone is not native evidence. Its separately
             # encrypted observation artifact must be present and integrity checked.
             observations = json.loads(self.store.raw(checks["native_evidence_ref"]))

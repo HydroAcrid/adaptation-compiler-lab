@@ -5,7 +5,7 @@ GitHub CI. The experimental-serving bypass was not implemented. Existing project
 permissions, style categories, lifecycle defaults and public-release requirements
 remain unchanged.
 
-## New prospective attempt
+## Preserved v14 attempt — ineligible for qualification
 
 The v14 trusted-composer learner has a new, separately frozen 120-case fictional
 set with the original six cohort counts. Complete utterances do not overlap the
@@ -26,16 +26,43 @@ negatives among processed cases; none of the changing-preference cases ran. This
 is not a full precision/recall result or a passing calibration.
 
 `cal14-context_constraint-05` produced a trial-eligible shortlist hypothesis under
-the frozen negative label. Its grant-committee context and unrelated software-task
-messages need a ground-truth/coherence review before changing the learner or
-authoring another release set. Preserve the label, response and failed result.
+the frozen negative label. Independent Flight Bot review CAL-FB-02 confirmed that
+its grant-committee context and unrelated software-task messages make the label
+ambiguous. The original label and false-positive result remain unchanged. The
+verifier explicitly disqualifies this dataset digest from serving qualification.
 `cal14-context_constraint-08` failed with a generic ValueError before any response
 was saved. Subsequent read-only admission confirmed the client/model and 64%
 capacity. The generic diagnostic does not establish the failure's cause. Do not
 silently retry this reserved phase or relabel the partly executed set as fresh.
 
+A separately instrumented screening diagnostic used that one case without
+altering the original run. Both native proposal/review sessions succeeded and
+produced no hypothesis. The original failure was not reproduced; its cause is
+still unknown. Safe diagnostics now distinguish exact known transport failures
+without printing arbitrary exception text. A separate deadline-crossing guard
+prevents passing a nonpositive notification timeout. That race has a deterministic
+regression test; it is not asserted to explain the original failure.
+
 All source response data remains encrypted outside Git and the shared vault.
 No personal conversation evidence was used in the fictional evaluation.
+
+## Separately frozen v15 controls
+
+The new 120-case prospective set retains the original cohort counts, thresholds
+and lifecycle defaults. Each negative task requests the same artifact named by
+its acceptance rule, and its correction refers to that artifact rather than
+adding a personal preference cue. All complete utterances are new relative to
+earlier sets. Nine repeated style families remain bounded engineering controls.
+Scope-control metadata alone does not prove native instruction behavior.
+
+- Dataset: `sha256:2214518f43acd536027ad78dcfa30e0209e486a0b22a4b8f70e3559d2fd5ed19`.
+- Analyzer: `sha256:db47636e89130e0c5de688e55aec922e7adea4dbc2823ac7fc3c8651900557e2`.
+- No model execution yet; independent ground-truth review is pending.
+
+Version/schema bindings were finished before execution; old v14 material was not
+changed. The semantic proposal/review instructions were not tuned against the
+ambiguous negative labels. Current source fixes admission robustness and transport
+diagnostics, and starts a separately versioned evaluation.
 
 ## Admission prototype
 
@@ -67,6 +94,14 @@ rejection, model/effort/pin drift, missing native observations and disallowed sc
 A missing-proof regression initially raised the persistence-layer exception;
 the verifier now returns false for that failure. These unit fixtures are not
 actual native validation receipts and cannot qualify the owner's runtime.
+
+Independent review CAL-FB-01 also found that a signed native-check record with a
+list in place of its boolean mapping could crash readiness. The verifier now
+rejects that container before use. Tests retain a complete accepting fixture and
+exercise malformed signed list/scalar containers through the public verifier.
+Independent re-review and candidate-bound sensitivity evidence remain pending.
+The revised autonomy/hub suite passed 222 checks with one exact-macOS-CLI skip;
+Ruff and targeted Mypy checks passed. These are local Windows source controls.
 
 The SkillKit dependency cleanup and its separate native lifecycle controls remain
 recorded in [the hub scope](TEMPER_SKILLKIT_BASE.md). No GitHub CI, source sync to the

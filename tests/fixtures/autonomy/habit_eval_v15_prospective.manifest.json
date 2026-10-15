@@ -1,0 +1,24 @@
+{
+  "evaluation_version": "habit-eval-v15",
+  "purpose": "prospective_shadow_detection",
+  "dataset_digest": "sha256:2214518f43acd536027ad78dcfa30e0209e486a0b22a4b8f70e3559d2fd5ed19",
+  "analyzer_digest": "sha256:db47636e89130e0c5de688e55aec922e7adea4dbc2823ac7fc3c8651900557e2",
+  "precision_gate": 0.95,
+  "recall_gate": 0.8,
+  "disallowed_promotion_gate": 0,
+  "wrong_scope_gate": 0,
+  "executed": false,
+  "defaults": {
+    "SUPPORT_TASKS": 3,
+    "SUPPORT_DATES": 2,
+    "TRIAL_DAYS": 14,
+    "CHECKED_OPPORTUNITIES": 3,
+    "COMPLIANCE_SUCCESSES": 2,
+    "RAW_RETENTION_DAYS": 30,
+    "MAX_PROFILE_BYTES": 1500,
+    "MAX_DAILY_ANALYSES": 12,
+    "POLL_MINUTES": 5,
+    "MIN_REMAINING_CAPACITY": 20
+  },
+  "reason": "Separately frozen coherent controls after independent v14 ground-truth rejection CAL-FB-02; exposed v14 labels and results remain unchanged."
+}

@@ -108,6 +108,20 @@ def test_unknown_schema_fields_never_leak_in_failure_diagnostics() -> None:
     assert "unknown_field" in safe and "sensor_wire_schema_invalid" in safe
 
 
+@pytest.mark.parametrize(
+    ("message", "code"),
+    [
+        ("sensor timed out", "native_turn_timeout"),
+        ("notification timeout must be positive", "native_deadline_expired"),
+        ("sensor input changed", "native_input_changed"),
+        ("private fictional message with a credential", "analysis_failed"),
+        ("sensor timed out: private fictional message", "analysis_failed"),
+    ],
+)
+def test_transport_failure_diagnostics_are_exact_allowlisted_codes(message: str, code: str) -> None:
+    assert safe_analysis_failure(ValueError(message)) == {"error_code": code}
+
+
 def test_provider_review_bounds_known_targets_and_candidate_styles() -> None:
     from jsonschema import Draft202012Validator
 

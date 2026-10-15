@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+from adaptation_compiler_lab.autonomy.analyzer import EVALUATION_VERSION
 from adaptation_compiler_lab.autonomy.calibration import (
     NATIVE_CHECKS,
     NativeCalibrationVerifier,
@@ -23,8 +24,9 @@ from tests.unit.autonomy.test_autonomy import app as app
 from tests.unit.autonomy.test_evaluation_run import BINDING, Sensor
 
 ROOT = Path(__file__).parents[2] / "fixtures/autonomy"
-DATA = ROOT / "habit_eval_v14_prospective.json"
-MANIFEST = ROOT / "habit_eval_v14_prospective.manifest.json"
+PREFIX = EVALUATION_VERSION.replace("-", "_")
+DATA = ROOT / (PREFIX + "_prospective.json")
+MANIFEST = ROOT / (PREFIX + "_prospective.manifest.json")
 
 
 def source(app: Any, store: AutonomyStore | None = None) -> OwnerRequestedEvaluationRunner:
@@ -65,8 +67,8 @@ def test_development_materials_are_not_release_calibration(app: Any) -> None:
     with pytest.raises(AutonomyIntegrityError, match="development/replay"):
         assess_detection(
             app[0].store,
-            dataset=ROOT / "habit_eval_v14_trusted.json",
-            manifest=ROOT / "habit_eval_v14_trusted.manifest.json",
+            dataset=ROOT / (PREFIX + "_trusted.json"),
+            manifest=ROOT / (PREFIX + "_trusted.manifest.json"),
             runtime=BINDING,
         )
 
@@ -257,6 +259,44 @@ def test_full_detection_pass_still_needs_native_proof_and_rejects_a_checklist(ap
     assert not verifier(release.model_copy(update={"precision": 0.99}))
     service.store.raw_store.discard(ref)
     assert not verifier(release), "Missing encrypted native observations must fail closed"
+
+    # Correct signatures do not make malformed containers valid schemas (CAL-FB-01).
+    restored_ref = service.store.save_raw(json.dumps(observations).encode())
+    for index, malformed in enumerate((list(NATIVE_CHECKS), None, True, 0, "checks", [])):
+        service.store.append(
+            f"malformed-native-{index}",
+            "calibration_native_validation",
+            {
+                "native_binding": native_binding(),
+                "runtime": BINDING,
+                "native_evidence_ref": asdict(restored_ref),
+                "checks": malformed,
+            },
+            at=clock(),
+        )
+        service.store.append(
+            f"malformed-qualification-{index}",
+            "calibration_qualification",
+            {
+                "protocol": "native-calibration-v1",
+                "release": release.model_dump(mode="json"),
+                "run_name": "owner-eval-fixture",
+                "source_head_digest": runner.store.head_digest,
+                "native_receipt_digest": service.store.events()[-1]["digest"],
+            },
+            at=clock(),
+        )
+        assert not verifier(release), "Malformed signed checks must reject without crashing"
+
+
+def test_independently_disqualified_freeze_cannot_qualify(app: Any) -> None:
+    with pytest.raises(AutonomyIntegrityError, match="adjudicated ambiguous"):
+        assess_detection(
+            app[0].store,
+            dataset=ROOT / "habit_eval_v14_prospective.json",
+            manifest=ROOT / "habit_eval_v14_prospective.manifest.json",
+            runtime=BINDING,
+        )
 
 
 def test_forged_scope_or_disallowed_eligibility_cannot_hide_behind_precision(app: Any) -> None:
