@@ -223,6 +223,14 @@ def validate(executable: Path, codex: Path, root: Path) -> dict[str, Any]:
     repository(first)
     repository(second)
     env = environment(original, codex)
+    # Match Tauri's actual engine environment, including inactive native hook wiring.
+    helper = executable.with_name("temper-hook.exe")
+    if not helper.is_file():
+        helper = executable.with_name("temper-hook-x86_64-pc-windows-msvc.exe")
+    assert helper.is_file(), "Compiled native workflow requires its packaged hook helper"
+    env["TEMPER_HOOK_HELPER_BINARY"] = str(helper)
+    env["TEMPER_CLAUDE_SETTINGS_PATH"] = str(root / "fictional-claude/settings.json")
+    env["TEMPER_COPILOT_HOOK_PATH"] = str(root / "fictional-copilot/hooks/temper.json")
     config_path = original / "local" / "Temper" / "runtime" / "config.json"
     with engine(executable, env, root) as process:
         assert not process.request("system.handshake")["result"]["configured"]

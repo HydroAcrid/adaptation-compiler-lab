@@ -2744,6 +2744,18 @@ class EngineProtocolRouter:
         )
 
 
+def _legacy_project_registration_digest(
+    project_id: str, capture_after_epoch_seconds: float | int, scope: Scope
+) -> Sha256Digest:
+    return canonical_digest(
+        {
+            "capture_after_epoch_seconds": capture_after_epoch_seconds,
+            "project_id": project_id,
+            "scope": scope.model_dump(mode="json"),
+        }
+    )
+
+
 def build_router(
     config_path: Path | None,
     *,
@@ -2967,16 +2979,12 @@ def build_router(
                 project.project_id: (
                     project.registration.content_digest
                     if project.registration is not None
-                    else canonical_digest(
-                        {
-                            "capture_after_epoch_seconds": (
-                                project.capture_after_epoch_seconds
-                                if project.capture_after_epoch_seconds is not None
-                                else config.capture_after_epoch_seconds
-                            ),
-                            "project_id": project.project_id,
-                            "scope": project.scope,
-                        }
+                    else _legacy_project_registration_digest(
+                        project.project_id,
+                        project.capture_after_epoch_seconds
+                        if project.capture_after_epoch_seconds is not None
+                        else config.capture_after_epoch_seconds,
+                        project.scope,
                     )
                 )
                 for project in config.projects
@@ -3096,16 +3104,12 @@ def build_router(
                 project.project_id: (
                     project.registration.content_digest
                     if project.registration is not None
-                    else canonical_digest(
-                        {
-                            "capture_after_epoch_seconds": (
-                                project.capture_after_epoch_seconds
-                                if project.capture_after_epoch_seconds is not None
-                                else config.capture_after_epoch_seconds
-                            ),
-                            "project_id": project.project_id,
-                            "scope": project.scope,
-                        }
+                    else _legacy_project_registration_digest(
+                        project.project_id,
+                        project.capture_after_epoch_seconds
+                        if project.capture_after_epoch_seconds is not None
+                        else config.capture_after_epoch_seconds,
+                        project.scope,
                     )
                 )
                 for project in config.projects

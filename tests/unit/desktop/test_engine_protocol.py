@@ -68,6 +68,23 @@ assert 'adaptation_compiler_lab.automatic_runtime.dogfood_cli' not in sys.module
     assert completed.returncode == 0, completed.stderr
 
 
+def test_legacy_hook_project_digest_serializes_validated_scope() -> None:
+    from adaptation_compiler_lab.desktop.engine_protocol import _legacy_project_registration_digest
+    from adaptation_compiler_lab.domain import Scope
+    from adaptation_compiler_lab.serialization import canonical_digest
+
+    scope = Scope(project_ids=("fictional",))
+    digest = _legacy_project_registration_digest("fictional", 100, scope)
+    assert digest == canonical_digest(
+        {
+            "capture_after_epoch_seconds": 100,
+            "project_id": "fictional",
+            "scope": scope.model_dump(mode="json"),
+        }
+    )
+    assert digest != _legacy_project_registration_digest("fictional", 101, scope)
+
+
 def _request(method: str, *, request_id: str = "request-1") -> EngineRequest:
     return EngineRequest(
         protocol_version=PROTOCOL_VERSION,
