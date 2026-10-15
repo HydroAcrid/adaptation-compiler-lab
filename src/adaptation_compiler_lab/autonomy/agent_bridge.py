@@ -73,6 +73,7 @@ class TemperAgentBridge:
             "personalization_enabled": False,
             "automatic_serving_ready": False,
             "provenance_state": "unverified",
+            "input_policy": None,
         }
         project_registered = False
         if self.config_path is not None and self.config_path.is_file():
@@ -90,6 +91,7 @@ class TemperAgentBridge:
                         "personalization_enabled",
                         "automatic_serving_ready",
                         "provenance_state",
+                        "input_policy",
                     )
                 },
             }

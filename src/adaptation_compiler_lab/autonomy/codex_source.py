@@ -1,8 +1,9 @@
-"""Prospective completed-chat pickup with independently admitted input receipts.
+"""Prospective completed-chat pickup under an explicit source-authority policy.
 
 The existing Codex source transport supplies conversations, not human attribution. No
 role, client ID, thread origin, hook label, or text classifier can admit a producer.
-Unknown input is neither persisted as raw evidence nor passed to the semantic model.
+Strict mode excludes unknown input. A separately opted-in owner-trusted conversation
+policy admits conversation requests while preserving unknown human authorship.
 """
 
 from __future__ import annotations
@@ -128,6 +129,13 @@ class StoredOriginEvidence:
             or proof["binary_digest"] != self.binary_digest
         ):
             return False
+        if proof.get("input_policy") == "owner_authorized_conversations":
+            return (
+                grant.input_policy == "owner_authorized_conversations"
+                and episode.origin is InputOrigin.AUTHORIZED_CHAT
+            )
+        if episode.origin is not InputOrigin.HUMAN:
+            return False
         # Revoking a producer immediately invalidates its outstanding evidence.
         return bool(proof["producer_digests"]) and all(
             producer_id in producers and canonical_digest(producers[producer_id]) == digest
@@ -181,7 +189,8 @@ class CodexHabitSource:
             if value.completed_at > now - timedelta(days=30)
         }
         producers = self.evidence.producers(self.grant)
-        if not producers:
+        owner_trusted = self.grant.input_policy == "owner_authorized_conversations"
+        if not producers and not owner_trusted:
             raise AutonomyIntegrityError("native human input producer is not admitted")
         params: JsonObject = {
             "archived": False,
@@ -245,6 +254,12 @@ class CodexHabitSource:
                 if text is None or turn_id not in successful_turns:
                     continue
                 message_id = str(item["id"])
+                if owner_trusted:
+                    # This is a request in an opted-in conversation, not human proof.
+                    # Assistant outputs, tool results and native memory are not read here.
+                    text_parts.append(text)
+                    message_ids.append(message_id)
+                    continue
                 receipt = self.evidence.receipt(task_id, message_id)
                 origin = attribute_verified_input(
                     receipt=receipt,
@@ -277,7 +292,7 @@ class CodexHabitSource:
                 observation_ids=tuple(message_ids),
                 project_id=project,
                 source_client=SOURCE_CLIENT,
-                origin=InputOrigin.HUMAN,
+                origin=InputOrigin.AUTHORIZED_CHAT if owner_trusted else InputOrigin.HUMAN,
                 created_at=created,
                 completed_at=completed,
                 text=joined,
@@ -296,6 +311,9 @@ class CodexHabitSource:
                     for key in sorted({receipt.producer_id for receipt in receipts})
                 },
             }
+            if owner_trusted:
+                proof["input_policy"] = "owner_authorized_conversations"
+                proof["source_snapshot_digest"] = canonical_digest(thread)
             digest = canonical_digest(proof)
             self.evidence.store.append(
                 "source-proof-" + str(digest)[7:], "source_episode_proof", proof, at=now
@@ -368,7 +386,13 @@ class ConfiguredCodexHabitSource:
 
     def admitted(self) -> bool:
         grant = self.service.grant()
-        return bool(grant and self._evidence().producers(grant))
+        return bool(
+            grant
+            and (
+                grant.input_policy == "owner_authorized_conversations"
+                or self._evidence().producers(grant)
+            )
+        )
 
     def verify_episode(self, episode: StyleEpisodeV1) -> bool:
         return self._evidence().verify_episode(episode, self.service.grant())
@@ -393,7 +417,7 @@ class ConfiguredCodexHabitSource:
             raise AutonomyIntegrityError("completed-chat capture is paused")
         self.service.ensure_lease()
         evidence = self._evidence()
-        if not evidence.producers(grant):
+        if not evidence.producers(grant) and grant.input_policy != "owner_authorized_conversations":
             raise AutonomyIntegrityError("native human input producer is not admitted")
         config = _load_config(self.config_path)
         pin = load_dogfood_runtime_pins(config.runtime_pin_path).codex

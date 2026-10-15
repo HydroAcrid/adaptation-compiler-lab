@@ -99,7 +99,11 @@ class AutonomyApplicationService:
         return signed.grant
 
     def preview_grant(
-        self, project_ids: tuple[str, ...], categories: tuple[StyleCategory, ...]
+        self,
+        project_ids: tuple[str, ...],
+        categories: tuple[StyleCategory, ...],
+        *,
+        trust_authorized_chats: bool = False,
     ) -> dict[str, Any]:
         if not project_ids or set(project_ids) - self.projects.keys() or not categories:
             raise AutonomyIntegrityError("grant selections are outside registered projects")
@@ -108,6 +112,7 @@ class AutonomyApplicationService:
         self._previews[token] = {
             "project_ids": tuple(sorted(set(project_ids))),
             "categories": tuple(sorted(set(categories))),
+            "trust_authorized_chats": trust_authorized_chats,
             "native": native,
             "head": self.store.head_digest,
             "expires": self._now() + timedelta(minutes=15),
@@ -116,6 +121,13 @@ class AutonomyApplicationService:
             "preview_token": token,
             "project_ids": sorted(set(project_ids)),
             "categories": sorted(set(categories)),
+            "trust_authorized_chats": trust_authorized_chats,
+            "input_authority": (
+                "Owner-trusted conversation inputs, including agent relays; "
+                "authorship remains unknown."
+            )
+            if trust_authorized_chats
+            else "Verified human input only.",
             "permission_duration": "until_disabled",
             "raw_retention_days": 30,
             "native_destination": native["destination"],
@@ -143,6 +155,10 @@ class AutonomyApplicationService:
             raise AutonomyIntegrityError("grant preview changed")
         now = self._now()
         grant = LearningGrantV1(
+            grant_version="1.1.0" if preview["trust_authorized_chats"] else "1.0.0",
+            input_policy="owner_authorized_conversations"
+            if preview["trust_authorized_chats"]
+            else None,
             grant_id="grant-" + secrets.token_hex(12),
             subject_id=self.store.signer.subject_id,
             project_ids=preview["project_ids"],
@@ -278,7 +294,13 @@ class AutonomyApplicationService:
         if (
             episode.project_id not in grant.project_ids
             or episode.source_client not in grant.source_clients
-            or episode.origin is not InputOrigin.HUMAN
+            or (
+                episode.origin is not InputOrigin.HUMAN
+                and not (
+                    episode.origin is InputOrigin.AUTHORIZED_CHAT
+                    and grant.input_policy == "owner_authorized_conversations"
+                )
+            )
             or episode.provenance_digest is None
             or not self.provenance_ready()
             or self.provenance_verifier is None
@@ -438,7 +460,10 @@ class AutonomyApplicationService:
             category=proposal.category,
             project_id=project,
             task_class=proposal.task_class,
-            origin=proposal.origin,
+            origin="expressed_preference"
+            if proposal.origin == "expressed_preference"
+            and all(episodes[key]["origin"] == InputOrigin.HUMAN.value for key in support)
+            else "inferred",
             support_episode_ids=support,
             support_dates=dates,
             evidence_strength=(
@@ -807,7 +832,16 @@ class AutonomyApplicationService:
             "learning_enabled": self.switch("learning") and grant is not None,
             "personalization_enabled": self.switch("personalization") and grant is not None,
             "automatic_serving_ready": self.automatic_ready(),
-            "provenance_state": "verified" if self.provenance_ready() else "unverified",
+            "provenance_state": (
+                "owner_authorized"
+                if self.provenance_ready()
+                and grant
+                and grant.input_policy == "owner_authorized_conversations"
+                else "verified"
+                if self.provenance_ready()
+                else "unverified"
+            ),
+            "input_policy": grant.input_policy if grant else None,
             "analysis_transport_state": "configured_not_admitted"
             if self.background_worker and self.background_worker.sensor
             else "unconfigured",

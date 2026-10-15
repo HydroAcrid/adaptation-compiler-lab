@@ -4,9 +4,15 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Literal, Self
+from typing import Any, Literal, Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import (
+    Field,
+    SerializerFunctionWrapHandler,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from adaptation_compiler_lab.autonomy.styles import StyleKey, style_contract
 from adaptation_compiler_lab.domain import FrozenModel, Identifier, NonEmptyStr, Sha256Digest
@@ -30,6 +36,7 @@ class HabitState(StrEnum):
 
 class InputOrigin(StrEnum):
     HUMAN = "human"
+    AUTHORIZED_CHAT = "owner_authorized_chat"
     AGENT = "agent"
     DELEGATED = "delegated"
     COPIED = "copied"
@@ -51,7 +58,7 @@ def _aware(value: datetime) -> datetime:
 
 
 class LearningGrantV1(FrozenModel):
-    grant_version: Literal["1.0.0"] = "1.0.0"
+    grant_version: Literal["1.0.0", "1.1.0"] = "1.0.0"
     grant_id: Identifier
     subject_id: Identifier
     project_ids: tuple[Identifier, ...] = Field(min_length=1)
@@ -62,6 +69,20 @@ class LearningGrantV1(FrozenModel):
     permission_duration: Literal["until_disabled"] = "until_disabled"
     raw_retention_days: Literal[30] = 30
     automatic_publication: bool = True
+    input_policy: Literal["owner_authorized_conversations"] | None = None
+
+    @model_serializer(mode="wrap")
+    def preserve_legacy_body(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        result: dict[str, Any] = handler(self)
+        if self.input_policy is None:
+            result.pop("input_policy", None)
+        return result
+
+    @model_validator(mode="after")
+    def policy_version(self) -> Self:
+        if (self.grant_version == "1.1.0") != (self.input_policy is not None):
+            raise ValueError("conversation trust requires an explicit versioned grant")
+        return self
 
     _issued_aware = field_validator("issued_at")(_aware)
 

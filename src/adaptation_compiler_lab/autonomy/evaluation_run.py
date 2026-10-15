@@ -190,7 +190,13 @@ class ShadowEvaluationRunner:
                 clock=lambda: clock[0],
                 provenance_verifier=lambda value: value.provenance_digest == canonical_digest(case),
             )
-            preview = service.preview_grant(tuple(projects), tuple(StyleCategory))
+            preview = service.preview_grant(
+                tuple(projects),
+                tuple(StyleCategory),
+                trust_authorized_chats=any(
+                    e.origin is InputOrigin.AUTHORIZED_CHAT for e in episodes
+                ),
+            )
             service.confirm_grant(
                 preview["preview_token"], confirmed=True, idempotency_key="fixture"
             )

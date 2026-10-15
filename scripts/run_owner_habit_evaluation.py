@@ -40,6 +40,7 @@ class OwnerRequestedEvaluationRunner(ShadowEvaluationRunner):
     """Same frozen cases/scoring, with a separate explicit foreground execution policy."""
 
     def __init__(self, **kwargs: Any) -> None:
+        selected = tuple(sorted(set(kwargs.pop("case_ids", ()))))
         store = kwargs["store"]
         if not isinstance(store, AutonomyStore):
             raise TypeError("owner evaluation requires a governed private store")
@@ -57,9 +58,17 @@ class OwnerRequestedEvaluationRunner(ShadowEvaluationRunner):
             "personal_capture": False,
             "serving_calibration": False,
         }
+        if selected:
+            policy["selected_case_ids"] = list(selected)
         if previous is not None and previous != policy:
             raise AutonomyIntegrityError("owner evaluation execution binding changed")
         super().__init__(**kwargs)
+        if selected:
+            if set(selected) - self.cases.keys():
+                raise AutonomyIntegrityError("screening selection names unavailable cases")
+            self.cases = {key: self.cases[key] for key in selected}
+            self.phases = tuple(p for p in self.phases if p.case_id in self.cases)
+        self.selected_case_ids = selected
         self.store.append(
             "owner-evaluation-execution", "owner_evaluation_execution", policy, at=self.clock()
         )
@@ -197,12 +206,18 @@ class OwnerRequestedEvaluationRunner(ShadowEvaluationRunner):
             **super().report(),
             "execution_policy": "owner_requested_foreground_v1",
             "background_budget_consumed": 0,
+            "screening_only": bool(self.selected_case_ids),
+            "selected_case_ids": list(self.selected_case_ids),
         }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--trusted-conversations", action="store_true")
+    parser.add_argument(
+        "--case", action="append", default=[], help="Explicit development screening subset."
+    )
     parser.add_argument(
         "--candidate-model", help="Explicit developer candidate; no personal configuration change."
     )
@@ -215,6 +230,12 @@ def main() -> None:
     args = parser.parse_args()
     config = _load_config(args.config)
     suffix = "-prospective" if args.prospective else ""
+    if args.trusted_conversations:
+        if args.prospective:
+            raise ValueError("trusted conversation controls are not prospective")
+        suffix += "-trusted"
+    if args.case:
+        suffix += "-s-" + str(canonical_digest({"cases": sorted(set(args.case))}))[7:15]
     if args.candidate_model:
         suffix += "-model-" + str(canonical_digest({"model": args.candidate_model}))[7:19]
     root = (
@@ -257,7 +278,10 @@ def main() -> None:
     fixture_prefix = EVALUATION_VERSION.replace("-", "_")
     if args.prospective:
         fixture_prefix += "_prospective"
+    if args.trusted_conversations:
+        fixture_prefix += "_trusted"
     runner = OwnerRequestedEvaluationRunner(
+        case_ids=args.case,
         dataset=fixture_root / (fixture_prefix + ".json"),
         manifest=fixture_root / (fixture_prefix + ".manifest.json"),
         store=store,

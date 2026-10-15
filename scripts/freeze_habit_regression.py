@@ -15,6 +15,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prospective", action="store_true")
     parser.add_argument("--prospective-source", type=Path)
+    parser.add_argument("--trusted-conversations", action="store_true")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "autonomy"
     source = root / "habit_eval_v3.json"
@@ -26,6 +27,19 @@ def main() -> None:
         "Used for development regression, never fresh prospective release validation."
     )
     prefix = EVALUATION_VERSION.replace("-", "_")
+    if args.trusted_conversations:
+        if args.prospective:
+            raise ValueError("trusted conversation controls are development regression")
+        prefix += "_trusted"
+        for case in data["cases"]:
+            for episode in case["episodes"]:
+                if episode["origin"] == "human":
+                    episode["origin"] = "owner_authorized_chat"
+        data["provenance"] = (
+            "Development policy regression: previously seen fictional cases/labels; "
+            "human-origin inputs replaced with explicitly owner-authorized conversation inputs. "
+            "Untrusted origins remain disallowed. Not prospective release validation."
+        )
     if args.prospective:
         prefix += "_prospective"
         source = args.prospective_source or root / (prefix + ".json")

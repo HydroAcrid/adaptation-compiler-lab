@@ -74,6 +74,8 @@ def inspect(config_path: Path) -> dict[str, object]:
         "grant_enabled": state["grant_enabled"],
         "learning_enabled": state["learning_enabled"],
         "human_input_producer_admitted": state["provenance_state"] == "verified",
+        "input_policy": state["input_policy"],
+        "source_capture_authorized": state["capture_state"] == "ready",
         "automatic_serving_ready": state["automatic_serving_ready"],
         "thread_read_calls": 0,
         "model_turns": 0,

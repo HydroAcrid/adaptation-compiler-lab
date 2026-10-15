@@ -19,7 +19,8 @@ export interface AutonomyState {
   personalization_enabled: boolean;
   automatic_serving_ready: boolean;
   secure_store_ready: boolean;
-  provenance_state: "verified" | "unverified";
+  provenance_state: "verified" | "unverified" | "owner_authorized";
+  input_policy?: "owner_authorized_conversations" | null;
   capture_state: string;
   mode: "shadow" | "automatic";
   published: boolean;
@@ -47,6 +48,8 @@ export interface GrantPreview {
   permission_duration: "until_disabled";
   raw_retention_days: 30;
   effect: string;
+  trust_authorized_chats?: boolean;
+  input_authority?: string;
   raw_payloads_exposed: false;
 }
 export type AutonomyControl =
@@ -83,8 +86,13 @@ export function loadAutonomy(): Promise<Bound<AutonomyState>> {
 export function previewLearningGrant(
   projectIds: string[],
   categories: StyleCategory[],
+  trustAuthorizedChats = false,
 ): Promise<Bound<GrantPreview>> {
-  return request("autonomy_grant_preview", { projectIds, categories });
+  return request("autonomy_grant_preview", {
+    projectIds,
+    categories,
+    trustAuthorizedChats,
+  });
 }
 export function enableLearningGrant(
   preview: Bound<GrantPreview>,

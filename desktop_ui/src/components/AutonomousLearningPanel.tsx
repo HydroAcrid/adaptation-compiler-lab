@@ -33,6 +33,7 @@ export function AutonomousLearningPanel({
   );
   const [preview, setPreview] = useState<Bound<GrantPreview> | null>(null);
   const [busy, setBusy] = useState(false);
+  const [trustAuthorizedChats, setTrustAuthorizedChats] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<HabitOutcomeSummary | null>(null);
@@ -84,8 +85,15 @@ export function AutonomousLearningPanel({
       </p>
       {status?.provenance_state === "unverified" && (
         <p role="status">
-          Capture is blocked: this Codex version cannot yet verify which
-          messages came from a person. No conversations are being learned from.
+          Capture needs permission to trust conversation inputs, or a client
+          that verifies human input. No conversations are being learned from.
+        </p>
+      )}
+      {status?.input_policy === "owner_authorized_conversations" && (
+        <p role="status">
+          You trust inputs in the selected conversations, including authorized
+          agent relays. Temper records inferred habits; it does not claim these
+          messages were written by you.
         </p>
       )}
       {error && <p role="alert">{error}</p>}
@@ -139,12 +147,30 @@ export function AutonomousLearningPanel({
             ))}
           </fieldset>
           {!preview && (
+            <label>
+              <input
+                type="checkbox"
+                disabled={busy}
+                checked={trustAuthorizedChats}
+                onChange={(event) =>
+                  setTrustAuthorizedChats(event.target.checked)
+                }
+              />{" "}
+              Trust inputs in these project conversations, including messages
+              relayed by agents. Human authorship may be unknown.
+            </label>
+          )}
+          {!preview && (
             <Button
               disabled={busy || !selected.length || !selectedCategories.length}
               onClick={() =>
                 void run(async () =>
                   setPreview(
-                    await previewLearningGrant(selected, selectedCategories),
+                    await previewLearningGrant(
+                      selected,
+                      selectedCategories,
+                      trustAuthorizedChats,
+                    ),
                   ),
                 )
               }
@@ -159,6 +185,7 @@ export function AutonomousLearningPanel({
                 encrypted locally for 30 days. Only new eligible Codex chats in
                 the selected projects can be observed.
               </p>
+              <p>{preview.value.input_authority}</p>
               <p>
                 Instruction destination:{" "}
                 <code>{preview.value.native_destination}</code>. Temper may
@@ -226,7 +253,7 @@ export function AutonomousLearningPanel({
           </div>
           {!status.automatic_serving_ready && (
             <p>
-              Automatic personalization awaits verified source attribution,
+              Automatic personalization awaits source authorization,
               calibration, and instruction conflict checks.
             </p>
           )}

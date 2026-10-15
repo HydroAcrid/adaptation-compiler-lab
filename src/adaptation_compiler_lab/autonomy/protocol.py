@@ -33,10 +33,16 @@ class AutonomyProtocol:
                 raise AutonomyIntegrityError("autonomy reader takes no parameters")
             return self.service.status()
         if method == "autonomy.grant.preview":
-            if set(params) != {"project_ids", "categories"}:
+            if set(params) not in (
+                {"project_ids", "categories"},
+                {"project_ids", "categories", "trust_authorized_chats"},
+            ):
                 raise AutonomyIntegrityError("invalid grant preview")
             projects = params["project_ids"]
             categories = params["categories"]
+            trust = params.get("trust_authorized_chats", False)
+            if not isinstance(trust, bool):
+                raise AutonomyIntegrityError("invalid conversation trust selection")
             if not isinstance(projects, list) or not all(
                 isinstance(value, str) for value in projects
             ):
@@ -46,7 +52,9 @@ class AutonomyProtocol:
             ):
                 raise AutonomyIntegrityError("invalid grant categories")
             return self.service.preview_grant(
-                tuple(projects), tuple(StyleCategory(value) for value in categories)
+                tuple(projects),
+                tuple(StyleCategory(value) for value in categories),
+                trust_authorized_chats=trust,
             )
         if method == "autonomy.applicability.preview":
             if set(params) != {"project_id", "task_class"}:

@@ -1769,11 +1769,13 @@ fn autonomy_grant_preview(
     state: tauri::State<'_, EngineState>,
     project_ids: Vec<String>,
     categories: Vec<String>,
+    trust_authorized_chats: Option<bool>,
 ) -> Result<EngineResponse, PublicError> {
     call_engine(
         &state,
         "autonomy.grant.preview",
-        json!({"project_ids": project_ids, "categories": categories}),
+        json!({"project_ids": project_ids, "categories": categories,
+            "trust_authorized_chats": trust_authorized_chats.unwrap_or(false)}),
         None,
         None,
     )

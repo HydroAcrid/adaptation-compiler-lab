@@ -46,6 +46,38 @@ def test_explicit_owner_check_runs_immediately_without_background_budget_or_publ
     assert resumed.advance()["phases_completed"] == 14
 
 
+def test_explicit_screening_selection_is_bound_and_reports_only_selected_cases(app: Any) -> None:
+    service, clock = app
+    selected = ("stable-00", "changing-00")
+    value = OwnerRequestedEvaluationRunner(
+        dataset=DATASET,
+        manifest=MANIFEST,
+        store=service.store,
+        sensor=Sensor(),
+        remaining_capacity=lambda: 50,
+        runtime_binding=BINDING,
+        clock=clock,
+        case_ids=selected,
+    )
+    assert value.report()["cases_total"] == 2 and value.report()["phases_total"] == 3
+    assert value.report()["screening_only"] is True
+    for _ in range(3):
+        value.advance()
+    assert value.report()["complete"] is True
+    assert value.report()["automatic_serving_gate_passed"] is False
+    with pytest.raises(AutonomyIntegrityError, match="execution binding changed"):
+        OwnerRequestedEvaluationRunner(
+            dataset=DATASET,
+            manifest=MANIFEST,
+            store=service.store,
+            sensor=Sensor(),
+            remaining_capacity=lambda: 50,
+            runtime_binding=BINDING,
+            clock=clock,
+            case_ids=("stable-00",),
+        )
+
+
 @pytest.mark.parametrize("capacity", [None, 19.9, True, float("nan"), 101])
 def test_owner_check_still_requires_known_sufficient_subscription_capacity(
     app: Any, capacity: Any

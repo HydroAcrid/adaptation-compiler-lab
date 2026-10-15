@@ -39,6 +39,37 @@ afterEach(() => {
   vi.resetAllMocks();
 });
 
+it("makes conversation trust explicit and labels unknown authorship", async () => {
+  api.loadAutonomy.mockResolvedValue({ value: status, digest });
+  api.previewLearningGrant.mockResolvedValue({
+    value: {
+      preview_token: "trust-preview",
+      native_destination: "/synthetic/AGENTS.md",
+      input_authority: "Owner-trusted conversations; authorship unknown.",
+      raw_payloads_exposed: false,
+    },
+    digest,
+  });
+  const user = userEvent.setup();
+  render(<AutonomousLearningPanel projects={[project]} />);
+  await screen.findByText(/Capture needs permission/);
+  const trust = screen.getByRole("checkbox", {
+    name: /Trust inputs in these project/,
+  });
+  expect(trust).not.toBeChecked();
+  await user.click(screen.getByRole("checkbox", { name: "Synthetic project" }));
+  await user.click(screen.getByRole("checkbox", { name: "Amount of detail" }));
+  await user.click(trust);
+  await user.click(screen.getByRole("button", { name: "Preview permission" }));
+  await screen.findByText(/Owner-trusted conversations; authorship unknown/);
+  expect(api.previewLearningGrant).toHaveBeenCalledWith(
+    ["synthetic-project"],
+    ["communication_detail"],
+    true,
+  );
+  expect(api.enableLearningGrant).not.toHaveBeenCalled();
+});
+
 it("requires selected scope and confirmation before granting permission", async () => {
   api.loadAutonomy.mockResolvedValue({ value: status, digest });
   api.previewLearningGrant.mockResolvedValue({
@@ -60,7 +91,7 @@ it("requires selected scope and confirmation before granting permission", async 
   });
   const user = userEvent.setup();
   render(<AutonomousLearningPanel projects={[project]} />);
-  await screen.findByText(/Capture is blocked/);
+  await screen.findByText(/Capture needs permission/);
   expect(
     screen.getByRole("button", { name: "Preview permission" }),
   ).toBeDisabled();
@@ -72,6 +103,7 @@ it("requires selected scope and confirmation before granting permission", async 
   expect(api.previewLearningGrant).toHaveBeenCalledWith(
     ["synthetic-project"],
     ["communication_detail"],
+    false,
   );
   await user.click(
     screen.getByRole("button", { name: "Confirm scoped permission" }),
@@ -103,7 +135,7 @@ it("binds pause to the current autonomy digest and keeps blocked capture visible
     digest,
     undefined,
   );
-  expect(screen.getByText(/Capture is blocked/)).toBeInTheDocument();
+  expect(screen.getByText(/Capture needs permission/)).toBeInTheDocument();
   expect(
     screen.getByText(/Delivery and usefulness have not been established/),
   ).toBeInTheDocument();
