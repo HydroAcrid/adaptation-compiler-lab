@@ -183,7 +183,9 @@ export function TodayPage({
   const headline = nativeConflict
     ? "An instruction conflict needs review."
     : liveSummary?.health === "consent_expired"
-      ? "Consent needs renewal."
+      ? nativeAutonomy
+        ? "Reviewed suggestions need renewed permission."
+        : "Consent needs renewal."
       : liveSummary?.secureStoreReady === false
         ? "Secure storage needs attention."
         : hasSuggestion
@@ -191,7 +193,9 @@ export function TodayPage({
           : liveSummary?.pendingFeedbackCount
             ? `${liveSummary.pendingFeedbackCount} rating${liveSummary.pendingFeedbackCount === 1 ? "" : "s"} waiting.`
             : liveSummary?.health === "paused"
-              ? "Learning is paused."
+              ? nativeAutonomy
+                ? "Reviewed suggestions are paused."
+                : "Learning is paused."
               : liveSummary?.projectCount === 0
                 ? "No projects registered."
                 : liveSummary?.health === "needs_attention"
@@ -204,27 +208,33 @@ export function TodayPage({
   const summary = nativeConflict
     ? "Temper withheld the affected adaptation instead of sending contradictory guidance."
     : liveSummary?.health === "consent_expired"
-      ? `${liveSummary.pendingReviewCount} suggestion${liveSummary.pendingReviewCount === 1 ? " remains" : "s remain"} waiting. Learning, review, and delivery stay stopped until you renew consent.`
+      ? nativeAutonomy
+        ? "Reviewed suggestions and their delivery remain stopped until you renew this permission. Everyday habit learning uses the controls above."
+        : `${liveSummary.pendingReviewCount} suggestion${liveSummary.pendingReviewCount === 1 ? " remains" : "s remain"} waiting. Learning, review, and delivery stay stopped until you renew consent.`
       : liveSummary?.secureStoreReady === false
         ? "Temper cannot approve, deliver, or change adaptations until its local keys are available."
         : hasSuggestion
           ? "Review the first suggestion below. Nothing changes until you decide."
-          : (liveSummary?.message ??
-            (liveSummary?.health === "paused"
-              ? "Temper will not inspect new completed work until you turn background learning on."
-              : liveSummary?.projectCount === 0
-                ? "Register a project in Connections to make new work eligible."
-                : liveSummary?.health === "needs_attention"
-                  ? "Open Advanced for the exact local requirement."
-                  : liveSummary
-                    ? `${liveSummary.activeAdaptationCount} approved adaptation${liveSummary.activeAdaptationCount === 1 ? "" : "s"} available for this view.`
-                    : "This browser preview uses example product data."));
+          : nativeAutonomy && liveSummary?.health === "paused"
+            ? "Capture for reviewed suggestions is paused. Everyday habit learning uses the controls above."
+            : (liveSummary?.message ??
+              (liveSummary?.health === "paused"
+                ? "Temper will not inspect new completed work until you turn background learning on."
+                : liveSummary?.projectCount === 0
+                  ? "Register a project in Connections to make new work eligible."
+                  : liveSummary?.health === "needs_attention"
+                    ? "Open Advanced for the exact local requirement."
+                    : liveSummary
+                      ? `${liveSummary.activeAdaptationCount} approved adaptation${liveSummary.activeAdaptationCount === 1 ? "" : "s"} available for this view.`
+                      : "This browser preview uses example product data."));
   const healthLabel = liveSummary
     ? {
         ready: "Ready",
         needs_attention: "Needs attention",
-        paused: "Learning paused",
-        consent_expired: "Consent expired",
+        paused: nativeAutonomy ? "Suggestions paused" : "Learning paused",
+        consent_expired: nativeAutonomy
+          ? "Suggestion permission expired"
+          : "Consent expired",
       }[liveSummary.health]
     : "Preview";
   return (
@@ -292,9 +302,13 @@ export function TodayPage({
                     : liveSummary.health === "ready"
                       ? "No suggestions to review."
                       : liveSummary.health === "paused"
-                        ? "No new learning is running."
+                        ? nativeAutonomy
+                          ? "Capture for reviewed suggestions is paused."
+                          : "No new learning is running."
                         : liveSummary.health === "consent_expired"
-                          ? "Learning and delivery are stopped."
+                          ? nativeAutonomy
+                            ? "Reviewed suggestions and their delivery are stopped."
+                            : "Learning and delivery are stopped."
                           : "A local requirement is unresolved."
                   : "No suggestion is selected."}
               </h2>
@@ -3110,8 +3124,16 @@ export function SettingsPage({
       <SettingsGroup title="Learning">
         <Toggle
           checked={nativeRuntime ? backgroundLearning : learning}
-          description="Notice possible preferences in completed work from registered projects."
-          label="Background learning"
+          description={
+            nativeRuntime
+              ? "Capture explicit feedback for suggestions you review. Everyday habit learning is controlled on Today."
+              : "Notice possible preferences in completed work from registered projects."
+          }
+          label={
+            nativeRuntime
+              ? "Capture for reviewed suggestions"
+              : "Background learning"
+          }
           disabled={preferenceBusy}
           onCheckedChange={(enabled) => {
             setLearning(enabled);

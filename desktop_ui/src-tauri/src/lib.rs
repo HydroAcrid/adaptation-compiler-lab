@@ -627,7 +627,54 @@ fn pending_instruction_analysis(response: &EngineResponse) -> Option<(String, St
 
 fn toggle_learning(app: &tauri::AppHandle) {
     let state = app.state::<EngineState>();
-    let Ok(snapshot) = call_engine(state.inner(), "snapshot.get", json!({}), None, None) else {
+    toggle_learning_with(|method, params, digest, key| {
+        call_engine(state.inner(), method, params, digest, key)
+    });
+}
+
+fn toggle_learning_with(
+    mut call: impl FnMut(&str, Value, Option<&str>, Option<&str>) -> Result<EngineResponse, PublicError>,
+) {
+    let Ok(autonomy) = call("autonomy.status", json!({}), None, None) else {
+        return;
+    };
+    if !autonomy.ok {
+        return;
+    }
+    let Some(granted) = autonomy
+        .result
+        .as_ref()
+        .and_then(|v| v.get("grant_enabled"))
+        .and_then(Value::as_bool)
+    else {
+        return;
+    };
+    if granted {
+        let Some(learning) = autonomy
+            .result
+            .as_ref()
+            .and_then(|v| v.get("learning_enabled"))
+            .and_then(Value::as_bool)
+        else {
+            return;
+        };
+        let Some(digest) = autonomy.snapshot_digest.as_deref() else {
+            return;
+        };
+        let method = if learning {
+            "autonomy.learning.pause"
+        } else {
+            "autonomy.learning.resume"
+        };
+        let _ = call(
+            method,
+            json!({}),
+            Some(digest),
+            Some(&Uuid::new_v4().to_string()),
+        );
+        return;
+    }
+    let Ok(snapshot) = call("snapshot.get", json!({}), None, None) else {
         return;
     };
     let Some(eligibility) = poll_eligibility(&snapshot) else {
@@ -636,8 +683,7 @@ fn toggle_learning(app: &tauri::AppHandle) {
     let Some(snapshot_digest) = snapshot.snapshot_digest.as_deref() else {
         return;
     };
-    let _ = call_engine(
-        state.inner(),
+    let _ = call(
         "preferences.update",
         json!({
             "background_enabled": !eligibility.background_enabled,
@@ -1971,6 +2017,56 @@ mod tests {
     use super::*;
     use std::fs;
     use std::time::Instant;
+
+    #[test]
+    fn tray_pause_routes_to_the_active_grant_and_refuses_unknown_state() {
+        for (enabled, expected) in [
+            (true, "autonomy.learning.pause"),
+            (false, "autonomy.learning.resume"),
+        ] {
+            let mut calls = Vec::new();
+            toggle_learning_with(|method, _params, digest, key| {
+                calls.push(method.to_owned());
+                if method != "autonomy.status" {
+                    assert_eq!(method, expected);
+                    assert_eq!(digest, Some("grant-digest"));
+                    assert!(key.is_some());
+                }
+                Ok(EngineResponse {
+                    protocol_version: PROTOCOL_VERSION.to_owned(),
+                    request_id: "tray".to_owned(),
+                    ok: true,
+                    result: Some(json!({"grant_enabled":true,"learning_enabled":enabled})),
+                    error: None,
+                    snapshot_digest: Some("grant-digest".to_owned()),
+                })
+            });
+            assert_eq!(calls, ["autonomy.status", expected]);
+        }
+        for result in [
+            json!({}),
+            json!({"grant_enabled":null}),
+            json!({"grant_enabled":true}),
+        ] {
+            let mut calls = 0;
+            toggle_learning_with(|method, _, _, _| {
+                calls += 1;
+                assert_eq!(method, "autonomy.status");
+                Ok(EngineResponse {
+                    protocol_version: PROTOCOL_VERSION.to_owned(),
+                    request_id: "tray".to_owned(),
+                    ok: true,
+                    result: Some(result.clone()),
+                    error: None,
+                    snapshot_digest: None,
+                })
+            });
+            assert_eq!(
+                calls, 1,
+                "Unreadable grant cannot fall back to legacy learning"
+            );
+        }
+    }
 
     #[test]
     fn public_errors_do_not_include_process_or_path_details() {
