@@ -35,9 +35,32 @@ def native_autonomy_service(config_path: Path) -> AutonomyApplicationService:
             ),
         ),
     )
+    from datetime import UTC, datetime
+
+    from adaptation_compiler_lab.autonomy.project_registry import (
+        LearningProjectRegistry,
+        LearningProjectV1,
+    )
+
+    registry = LearningProjectRegistry(
+        store,
+        tuple(
+            LearningProjectV1(
+                project_id=p.project_id,
+                root=str(p.root.resolve()),
+                source_roots=tuple(
+                    sorted(str(root.resolve()) for root in p.effective_source_roots)
+                ),
+                capture_after_epoch_seconds=p.capture_after_epoch_seconds
+                or config.capture_after_epoch_seconds,
+            )
+            for p in config.projects
+        ),
+        clock=lambda: datetime.now(UTC),
+    )
     service = AutonomyApplicationService(
         store=store,
-        projects={project.project_id: project.root for project in config.projects},
+        projects={key: Path(project.root) for key, project in registry.projects().items()},
         codex_home=config.source_codex_home,
         secure_store_available=secure_store_available,
     )
@@ -119,5 +142,6 @@ def native_autonomy_service(config_path: Path) -> AutonomyApplicationService:
         maintenance=lambda now: sweep_validation_raw(
             config.state_root / "autonomy" / "validation", open_calibration_run, now=now
         ),
+        project_registry=registry,
     )
     return service

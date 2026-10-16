@@ -22,6 +22,9 @@ PROTOCOL_FILES = {
     "transport": "codex_transport.py",
 }
 NATIVE_FILES = (
+    "project_registry.py",
+    "protocol.py",
+    "codex_source.py",
     "calibration.py",
     "native.py",
     "publisher.py",

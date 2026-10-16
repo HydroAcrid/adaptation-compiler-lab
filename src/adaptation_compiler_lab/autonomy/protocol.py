@@ -19,6 +19,17 @@ class AutonomyProtocol:
         self.service = service
         self.worker = worker or service.background_worker or BackgroundHabitWorker(service)
 
+    def _refresh_projects(self) -> None:
+        if self.worker.project_registry is not None:
+            from pathlib import Path
+
+            self.service.projects = {
+                key: Path(project.root)
+                for key, project in self.worker.project_registry.projects().items()
+            }
+            if self.worker.native_policy is not None:
+                self.worker.native_policy.projects = dict(self.service.projects)
+
     def dispatch(
         self,
         method: str,
@@ -27,6 +38,21 @@ class AutonomyProtocol:
         expected_digest: str | None,
         idempotency_key: str | None,
     ) -> dict[str, Any]:
+        self._refresh_projects()
+        if method == "autonomy.projects.list":
+            if params or self.worker.project_registry is None:
+                raise AutonomyIntegrityError("learning project registry is unavailable")
+            return {
+                "projects": self.worker.project_registry.summaries(),
+                "raw_payloads_exposed": False,
+            }
+        if method == "autonomy.projects.preview":
+            if set(params) != {"projects"} or self.worker.project_registry is None:
+                raise AutonomyIntegrityError("invalid learning project preview")
+            projects = params["projects"]
+            if not isinstance(projects, list) or not all(isinstance(p, dict) for p in projects):
+                raise AutonomyIntegrityError("invalid learning project selection")
+            return self.worker.project_registry.preview(projects)
         readers = {"autonomy.status", "autonomy.habits.list"}
         if method in readers:
             if params:
@@ -88,6 +114,7 @@ class AutonomyProtocol:
                 "raw_payloads_exposed": False,
             }
         allowed = {
+            "autonomy.projects.register": {"preview_token", "confirmed"},
             "autonomy.grant.enable": {"preview_token", "confirmed"},
             "autonomy.grant.revoke": set(),
             "autonomy.learning.pause": set(),
@@ -116,7 +143,19 @@ class AutonomyProtocol:
             return cast(dict[str, Any], replay["payload"]["result"])
         if expected_digest != self.service.snapshot_digest:
             raise AutonomyIntegrityError("autonomy state changed; refresh before continuing")
-        if method == "autonomy.grant.enable":
+        if method == "autonomy.projects.register":
+            if (
+                self.worker.project_registry is None
+                or not self.service.secure_store_available()
+                or not isinstance(params["preview_token"], str)
+                or params["confirmed"] is not True
+            ):
+                raise AutonomyIntegrityError("learning project registration requires confirmation")
+            self.worker.project_registry.register(
+                params["preview_token"], confirmed=True, key="learning-projects-" + idempotency_key
+            )
+            self._refresh_projects()
+        elif method == "autonomy.grant.enable":
             if not isinstance(params["preview_token"], str) or params["confirmed"] is not True:
                 raise AutonomyIntegrityError("grant requires explicit confirmation")
             self.service.confirm_grant(

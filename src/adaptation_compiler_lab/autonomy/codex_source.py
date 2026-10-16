@@ -155,6 +155,7 @@ class CodexHabitSource:
         source_binding: str,
         clock: Callable[[], datetime],
         project_cutoffs: Mapping[str, datetime] | None = None,
+        most_specific_registered_root: bool = False,
     ) -> None:
         self.rpc = rpc
         self.schemas = schemas
@@ -162,6 +163,7 @@ class CodexHabitSource:
             key: tuple(root.resolve() for root in roots) for key, roots in projects.items()
         }
         self.project_cutoffs = dict(project_cutoffs or {})
+        self.most_specific_registered_root = most_specific_registered_root
         self.grant = grant
         self.evidence = evidence
         self.binding = source_binding
@@ -355,15 +357,37 @@ class CodexHabitSource:
             return None
         path = _resolved_runtime_path(thread["cwd"])
         matches = [
-            key
+            (
+                key,
+                max(
+                    (
+                        len(root.parts)
+                        for root in roots
+                        if path == root or path.is_relative_to(root)
+                    ),
+                    default=0,
+                ),
+            )
             for key, roots in self.projects.items()
-            if key in self.grant.project_ids
+            if (self.most_specific_registered_root or key in self.grant.project_ids)
             and any(path == root or path.is_relative_to(root) for root in roots)
-            and created >= self.project_cutoffs.get(key, cutoff)
+            and (
+                self.most_specific_registered_root
+                or created >= self.project_cutoffs.get(key, cutoff)
+            )
         ]
+        if self.most_specific_registered_root and matches:
+            deepest = max(depth for _, depth in matches)
+            matches = [(key, depth) for key, depth in matches if depth == deepest]
         if len(matches) > 1:
             raise AutonomyIntegrityError("completed chat matches overlapping registered projects")
-        return matches[0] if matches else None
+        project = matches[0][0] if matches else None
+        if project is not None and (
+            project not in self.grant.project_ids
+            or created < self.project_cutoffs.get(project, cutoff)
+        ):
+            return None
+        return project
 
 
 class ConfiguredCodexHabitSource:
@@ -442,6 +466,25 @@ class ConfiguredCodexHabitSource:
         projects = {
             project.project_id: project.effective_source_roots for project in config.projects
         }
+        cutoffs = {
+            p.project_id: datetime.fromtimestamp(p.capture_after_epoch_seconds, UTC)
+            for p in config.projects
+            if p.capture_after_epoch_seconds is not None
+        }
+        registry = (
+            self.service.background_worker.project_registry
+            if self.service.background_worker is not None
+            else None
+        )
+        if registry is not None:
+            registered = registry.projects()
+            projects = {
+                key: tuple(Path(root) for root in p.source_roots) for key, p in registered.items()
+            }
+            cutoffs = {
+                key: datetime.fromtimestamp(p.capture_after_epoch_seconds, UTC)
+                for key, p in registered.items()
+            }
         binding = canonical_digest(
             {
                 "binary": pin.executable.executable_sha256,
@@ -450,6 +493,11 @@ class ConfiguredCodexHabitSource:
                 "projects": {
                     key: [str(path.resolve()) for path in roots] for key, roots in projects.items()
                 },
+                **(
+                    {"scope_resolution": "most_specific_registered_root_v1"}
+                    if registry is not None
+                    else {}
+                ),
             }
         )
         with CodexAppServerProcess(
@@ -460,19 +508,16 @@ class ConfiguredCodexHabitSource:
                 rpc,
                 schemas=schemas,
                 projects=projects,
-                project_cutoffs={
-                    project.project_id: datetime.fromtimestamp(
-                        project.capture_after_epoch_seconds, UTC
-                    )
-                    for project in config.projects
-                    if project.capture_after_epoch_seconds is not None
-                },
+                project_cutoffs=cutoffs,
+                most_specific_registered_root=registry is not None,
                 grant=grant,
                 evidence=evidence,
                 source_binding=binding,
                 clock=self.service.clock,
             )
             page = source.poll(cutoff, cursor)
+            if registry is not None and registry.projects() != registered:
+                raise AutonomyIntegrityError("learning repository registry changed during pickup")
             if _load_config(self.config_path) != config or self.service.grant() != grant:
                 raise AutonomyIntegrityError("learning scope changed during completed-chat pickup")
             return page

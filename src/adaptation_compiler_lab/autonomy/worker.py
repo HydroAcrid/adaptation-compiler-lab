@@ -14,6 +14,7 @@ from adaptation_compiler_lab.autonomy.analyzer import (
 )
 from adaptation_compiler_lab.autonomy.models import HabitProposalV1, HabitState, StyleEpisodeV1
 from adaptation_compiler_lab.autonomy.native_policy import NativeStylePolicy
+from adaptation_compiler_lab.autonomy.project_registry import LearningProjectRegistry
 from adaptation_compiler_lab.autonomy.retention import purge_expired_raw
 from adaptation_compiler_lab.autonomy.service import AutonomyApplicationService
 from adaptation_compiler_lab.autonomy.store import AutonomyIntegrityError
@@ -39,6 +40,7 @@ class BackgroundHabitWorker:
         native_policy: NativeStylePolicy | None = None,
         relation_analyzer: InstructionRelationAnalyzer | None = None,
         maintenance: Callable[[datetime], int] | None = None,
+        project_registry: LearningProjectRegistry | None = None,
     ) -> None:
         self.service = service
         self.read_completed = read_completed
@@ -48,6 +50,7 @@ class BackgroundHabitWorker:
         self.native_policy = native_policy
         self.relation_analyzer = relation_analyzer
         self.maintenance = maintenance
+        self.project_registry = project_registry
 
     def poll(self) -> dict[str, Any]:
         service = self.service
