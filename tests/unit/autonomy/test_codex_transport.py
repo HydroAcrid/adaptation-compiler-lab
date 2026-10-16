@@ -319,7 +319,13 @@ def test_habit_proposal_and_review_have_separate_quota_checked_contexts(
 
     def turn(rpc, schemas, **kwargs):
         assert kwargs["model"] == (candidate or "exact-model") and kwargs["effort"] == "medium"
-        return wire_result(payload, kwargs["output_schema"])
+        wire_payload = json.loads(json.dumps(payload))
+        wire_episode = json.loads(kwargs["prompt"])["episodes"][0]
+        assert wire_episode["episode_id"] == "e0"
+        assert wire_episode["text"] == e.text
+        assert wire_episode["source_task_id"] == e.source_task_id
+        wire_payload["candidates"][0]["evidence"][0]["episode_id"] = wire_episode["episode_id"]
+        return wire_result(wire_payload, kwargs["output_schema"])
 
     monkeypatch.setattr(transport, "configured_analysis_session", session)
     monkeypatch.setattr(transport, "read_capacity", lambda *args: quota_checks.append(args) or 50)
@@ -330,7 +336,9 @@ def test_habit_proposal_and_review_have_separate_quota_checked_contexts(
         on_result=lambda stage, raw: captures.append(stage),
         candidate_model=candidate,
     )
-    assert len(sensor.analyze((e,), context="").proposals) == 1
+    result = sensor.analyze((e,), context="")
+    assert len(result.proposals) == 1
+    assert result.proposals[0].evidence_episode_ids == (e.episode_id,)
     assert len(sessions) == len(quota_checks) == 2 and sessions[0] is not sessions[1]
     assert captures == ["proposal", "evidence_review"] and sensor.analysis_sessions == 2
     assert config.semantic_model == "exact-model"
@@ -353,3 +361,58 @@ def test_native_background_deadline_covers_two_actual_model_turn_budgets() -> No
         "Parent must cover both child turns and admission"
     )
     assert '"autonomy.background.poll" => ENGINE_AUTONOMY_TIMEOUT' in source
+
+
+def test_wire_aliases_restore_long_references_without_rewriting_evidence() -> None:
+    from copy import deepcopy
+
+    from adaptation_compiler_lab.autonomy.analyzer import bound_output_schema, habit_review_schema
+    from adaptation_compiler_lab.autonomy.codex_transport import _alias_habit_references
+
+    long_id, habit_id = "codex-chat-" + "a" * 64, "habit-" + "b" * 64
+    literal = f'Keep these literal words: {long_id}, e0, h0, {{"episode_id":"e1"}}.'
+    body = {
+        "episodes": [
+            {"episode_id": long_id, "source_task_id": "actual-task", "text": literal},
+            {"episode_id": "e0", "source_task_id": "other-task", "text": "Other evidence"},
+        ],
+        "task_and_policy_context": literal,
+        "known_habits_for_counterevidence_only": [{"habit_id": habit_id, "behavior": literal}],
+        "candidate_styles_to_review": [{"evidence_episode_ids": [long_id, "e0"]}],
+    }
+    schema = bound_output_schema(
+        habit_review_schema(), episode_ids={long_id, "e0"}, habit_ids={habit_id}
+    )
+    before = deepcopy(schema)
+    prompt, wire_schema, decode = _alias_habit_references(json.dumps(body), schema)
+    wire = json.loads(prompt)
+    assert wire["episodes"][0] == {**body["episodes"][0], "episode_id": "e0"}
+    assert wire["episodes"][1] == {**body["episodes"][1], "episode_id": "e1"}
+    assert wire["task_and_policy_context"] == literal
+    assert wire["known_habits_for_counterevidence_only"] == [
+        {"habit_id": "h0", "behavior": literal}
+    ]
+    assert wire["candidate_styles_to_review"] == [{"evidence_episode_ids": ["e0", "e1"]}]
+    assert schema == before
+    assert set(
+        wire_schema["$defs"]["ReviewedEvidenceV1"]["properties"]["episode_id"]["enum"]
+    ) == {"e0", "e1"}
+    decoded = json.loads(
+        decode(
+            json.dumps(
+                {
+                    "style_reviews": [{"evidence": [{"episode_id": "e0", "quote": literal}]}],
+                    "known_habit_assessments": [
+                        {"habit_id": "h0", "evidence": [{"episode_id": "e1", "quote": literal}]}
+                    ],
+                }
+            )
+        )
+    )
+    assert decoded["style_reviews"][0]["evidence"] == [{"episode_id": long_id, "quote": literal}]
+    assert decoded["known_habit_assessments"] == [
+        {"habit_id": habit_id, "evidence": [{"episode_id": "e0", "quote": literal}]}
+    ]
+    for forged in ({"episode_id": long_id}, {"episode_id": "e2"}, {"habit_id": "h1"}):
+        with pytest.raises(ValueError, match="invented supporting"):
+            decode(json.dumps(forged))

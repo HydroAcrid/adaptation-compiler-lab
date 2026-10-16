@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import tempfile
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
+from copy import deepcopy
 from datetime import UTC, datetime
 from pathlib import Path
 from time import monotonic
@@ -306,6 +308,66 @@ def run_habit_turn(
     raise ValueError("sensor timed out")
 
 
+def _alias_habit_references(
+    prompt: str, output_schema: dict[str, object]
+) -> tuple[str, dict[str, object], Callable[[str], str]]:
+    """Use short opaque wire references; restore host identities before validation.
+
+    The pinned native decoder fails with long content-addressed enum values.
+    Only reference fields change. Conversation text, policy, task identity and
+    evidence quotes remain verbatim; aliases never enter the signed host ledger.
+    """
+    body = json.loads(prompt)
+    episodes = {item["episode_id"]: f"e{index}" for index, item in enumerate(body["episodes"])}
+    habits = {
+        item["habit_id"]: f"h{index}"
+        for index, item in enumerate(body["known_habits_for_counterevidence_only"])
+    }
+    for item in body["episodes"]:
+        item["episode_id"] = episodes[item["episode_id"]]
+    for item in body["known_habits_for_counterevidence_only"]:
+        item["habit_id"] = habits[item["habit_id"]]
+    for item in body.get("candidate_styles_to_review", []):
+        item["evidence_episode_ids"] = [episodes[key] for key in item["evidence_episode_ids"]]
+    schema = deepcopy(output_schema)
+    definitions = cast(dict[str, Any], schema["$defs"])
+    for name, field, aliases in (
+        ("EvidenceQuoteV1", "episode_id", episodes),
+        ("ClassifiedEvidenceV1", "episode_id", episodes),
+        ("ReviewedEvidenceV1", "episode_id", episodes),
+        ("KnownHabitAssessmentV1", "habit_id", habits),
+    ):
+        if name in definitions:
+            reference = definitions[name]["properties"][field]
+            if "enum" in reference:
+                reference["enum"] = [aliases[key] for key in reference["enum"]]
+    reverse = {
+        "episode_id": {alias: original for original, alias in episodes.items()},
+        "habit_id": {alias: original for original, alias in habits.items()},
+    }
+
+    def decode(result: str) -> str:
+        value = json.loads(result)
+
+        def restore(node: Any) -> None:
+            if isinstance(node, list):
+                for child in node:
+                    restore(child)
+            elif isinstance(node, dict):
+                for field, child in tuple(node.items()):
+                    if field in reverse:
+                        if not isinstance(child, str) or child not in reverse[field]:
+                            raise ValueError("sensor invented supporting tasks or evidence quotes")
+                        node[field] = reverse[field][child]
+                    else:
+                        restore(child)
+
+        restore(value)
+        return json.dumps(value, ensure_ascii=False)
+
+    return json.dumps(body, ensure_ascii=False), schema, decode
+
+
 class ConfiguredCodexHabitSensor:
     analysis_sessions = SchemaBoundHabitSensor.analysis_sessions
 
@@ -342,6 +404,7 @@ class ConfiguredCodexHabitSensor:
 
         def run(instructions: str, prompt: str, output: dict[str, object]) -> str:
             stage = next(stages)
+            wire_prompt, wire_output, decode = _alias_habit_references(prompt, output)
             with configured_analysis_session(self.config_path) as (
                 config,
                 schemas,
@@ -367,9 +430,10 @@ class ConfiguredCodexHabitSensor:
                     model=self.candidate_model or config.semantic_model,
                     effort=config.semantic_reasoning_effort,
                     contract=instructions,
-                    prompt=prompt,
-                    output_schema=output,
+                    prompt=wire_prompt,
+                    output_schema=wire_output,
                 )
+                result = decode(result)
                 if self.on_result is not None:
                     self.on_result(stage, result)
                 return result
