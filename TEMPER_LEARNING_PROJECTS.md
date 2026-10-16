@@ -22,6 +22,11 @@ The owner then previews/confirms the expanded learning grant through existing op
 Preview binds filesystem identities for the repository, Git marker and source aliases;
 replacement at the same pathname invalidates confirmation. Physical directory aliases
 cannot belong to separate project IDs, even when their canonical spellings differ.
+All registry writers hold a cross-process registration mutex through validation and
+signed append. A competing writer fails promptly and can retry after refreshing;
+process exit releases the lock. The preview head is rechecked before append. This
+serializes registrations, rather than globally locking unrelated grant/lease events;
+the existing signed store retains its own verified-snapshot concurrency check.
 
 An explicitly registered nested repository owns its conversations ahead of a broader
 parent root. An ungranted child cannot fall back into a granted parent's scope. Equal

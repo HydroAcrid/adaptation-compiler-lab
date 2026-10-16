@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -148,6 +150,63 @@ def test_reading_registry_rechecks_physical_scope_collisions(app, tmp_path, monk
     )
     with pytest.raises(AutonomyIntegrityError, match="two projects"):
         registry.projects()
+
+
+def test_interleaved_registrations_cannot_poison_registry(app, tmp_path, monkeypatch):
+    service, clock = app
+    first, second = registry_for(service, clock), registry_for(service, clock)
+    a, b = repo(tmp_path, "a"), repo(tmp_path, "b")
+    preview_a = first.preview([{"project_id": "new", "path": str(a)}])
+    preview_b = second.preview([{"project_id": "new", "path": str(b)}])
+    identities = registry_module._preview_identities
+    entered = False
+
+    def interleave(projects):
+        nonlocal entered
+        if not entered:
+            entered = True
+            with pytest.raises(AutonomyIntegrityError, match="registration lock"):
+                second.register(preview_b["preview_token"], confirmed=True, key="b")
+        return identities(projects)
+
+    monkeypatch.setattr(registry_module, "_preview_identities", interleave)
+    first.register(preview_a["preview_token"], confirmed=True, key="a")
+    with pytest.raises(AutonomyIntegrityError, match="current confirmed"):
+        second.register(preview_b["preview_token"], confirmed=True, key="b")
+    assert first.projects()["new"].root == str(a.resolve())
+    assert len(first.projects()) == 2
+    assert sum(e["type"] == "learning_projects_registered" for e in service.store.events()) == 1
+
+
+def test_other_process_registration_lock_fails_closed_and_recovers(app, tmp_path):
+    service, clock = app
+    registry = registry_for(service, clock)
+    root = repo(tmp_path, "second")
+    preview = registry.preview([{"project_id": "second", "path": str(root)}])
+    child = subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            "import sqlite3,sys; c=sqlite3.connect(sys.argv[1],timeout=0); "
+            "c.execute('BEGIN IMMEDIATE'); print('locked',flush=True); "
+            "sys.stdin.readline(); c.close()",
+            str(service.store.path.with_suffix(".registration-lock.sqlite3")),
+        ],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        assert child.stdout.readline().strip() == "locked"
+        with pytest.raises(AutonomyIntegrityError, match="registration lock"):
+            registry.register(preview["preview_token"], confirmed=True, key="second")
+        assert "second" not in registry.projects()
+    finally:
+        child.communicate("release\n", timeout=10)
+    assert child.returncode == 0
+    registry.register(preview["preview_token"], confirmed=True, key="second")
+    assert "second" in registry.projects()
 
 
 def test_unrelated_repository_cannot_be_disguised_as_a_source_alias(app, tmp_path):

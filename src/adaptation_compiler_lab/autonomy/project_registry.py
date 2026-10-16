@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import secrets
+import sqlite3
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import closing
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
@@ -189,6 +191,25 @@ class LearningProjectRegistry:
         }
 
     def register(self, token: str, *, confirmed: bool, key: str) -> None:
+        # Serialize every registry writer across processes. The separate lock DB
+        # holds no evidence and leaves the existing signed ledger format intact.
+        try:
+            with (
+                closing(
+                    sqlite3.connect(
+                        self.store.path.with_suffix(".registration-lock.sqlite3"), timeout=0
+                    )
+                ) as lock,
+                lock,
+            ):
+                lock.execute("BEGIN IMMEDIATE")
+                self._register(token, confirmed=confirmed, key=key)
+        except sqlite3.OperationalError as error:
+            raise AutonomyIntegrityError(
+                "learning repository registration lock is unavailable; refresh and retry"
+            ) from error
+
+    def _register(self, token: str, *, confirmed: bool, key: str) -> None:
         prior = next((e for e in self.store.events() if e["key"] == key), None)
         if prior is not None:
             if (
@@ -223,7 +244,12 @@ class LearningProjectRegistry:
                     raise AutonomyIntegrityError("learning source changed after preview")
         if _preview_identities(preview["records"]) != preview["identities"]:
             raise AutonomyIntegrityError("learning project identity changed after preview")
-        _claim_sources((*self.projects().values(), *preview["records"]))
+        current = self.projects()
+        if any(project.project_id in current for project in preview["records"]):
+            raise AutonomyIntegrityError("learning project IDs cannot be replaced")
+        _claim_sources((*current.values(), *preview["records"]))
+        if self.store.head_digest != preview["head"]:
+            raise AutonomyIntegrityError("learning project preview changed before registration")
         record = ProjectRegistrationV1(
             subject_id=self.store.signer.subject_id,
             projects=preview["records"],
