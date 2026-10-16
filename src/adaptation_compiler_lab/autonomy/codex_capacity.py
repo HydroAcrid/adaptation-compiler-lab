@@ -21,6 +21,7 @@ class CodexAnalysisContract:
     def __init__(self, runtime: VerifiedCodexRuntime, root: Path | None = None) -> None:
         if root is None:
             supported = {
+                ("win32", "0.163.0-alpha.10.2"): "windows_0_163_0_alpha_10_2",
                 ("win32", "0.162.0-alpha.17.2"): "windows_0_162_0_alpha_17_2",
                 ("win32", "0.160.1"): "windows_0_160_1",
                 ("win32", "0.162.0-alpha.2"): "windows_0_162_0_alpha_2",

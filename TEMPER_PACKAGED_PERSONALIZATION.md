@@ -34,9 +34,12 @@ require indefinite retention of conversations. Interrupted installation can resu
 from a current valid certificate. A privileged local holder of the owner's signing
 key can fabricate local attestations, as with the existing owner event ledger.
 
-V15 detection evidence remains unchanged. Because the qualification/native wrapper
-changed, rerun the bounded native delivery controls against the final integration
-source; do not rerun or relabel the completed 120-case detector set.
+V15 detection evidence remains unchanged. Codex removed the validated executable
+during its update to Windows CLI 0.163.0-alpha.10.2. A separate compatibility
+replication must bind the unchanged frozen suite and analyzer to that exact new
+binary and its generated schemas. This is repeat validation, not a fresh unseen
+accuracy estimate. Never relabel the original result or tune against the repeat.
+Rerun the bounded native delivery controls against the final integration source.
 
 ## Install and ordinary-work checks
 
@@ -45,6 +48,8 @@ compiled qualification, appropriate native desktop behavior and independent
 review. Preserve the prior installer/binaries and governed state for recovery.
 Use the installed engine's digest/idempotency-protected personalization operation.
 Check restart, unchanged grant, native publication ownership and real source pickup.
+Use the installed engine's read-only `--agent-context` endpoint for the Codex MCP
+configuration so the connection does not depend on a development Python checkout.
 
 An enabled switch or an empty profile is not evidence that a learned habit was
 delivered or helpful. Report actual eligible task/episode/habit counts; zero and

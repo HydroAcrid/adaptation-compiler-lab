@@ -42,6 +42,7 @@ def product_codex_runtime_locks(platform_name: str) -> tuple[Path, ...]:
     root = Path(__file__).resolve().parent / "runtime_pins"
     if platform_name == "win32":
         return (
+            root / "desktop_codex_windows_0_163_0_alpha_10_2.json",
             root / "desktop_codex_windows_0_162_0_alpha_17_2_build_9614f1d9.json",
             root / "desktop_codex_windows_0_162_0_alpha_17_2.json",
             root / "desktop_codex_windows_0_162_0_alpha_2.json",

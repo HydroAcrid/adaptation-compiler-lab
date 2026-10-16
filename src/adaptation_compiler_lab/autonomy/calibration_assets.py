@@ -46,6 +46,8 @@ PUBLIC_INPUTS = tuple(
                 for name in INSTRUCTION_FILES
             ),
             "src/adaptation_compiler_lab/desktop/engine_main.py",
+            "src/adaptation_compiler_lab/autonomy/codex_capacity.py",
+            "src/adaptation_compiler_lab/connectors/pins.py",
             FIXTURE,
             MANIFEST,
             DRIVER,
@@ -55,14 +57,19 @@ PUBLIC_INPUTS = tuple(
 )
 
 
+def _asset_name(relative: str) -> str:
+    # Short inert filenames avoid Windows MAX_PATH at Nuitka's nested staging root.
+    # The sorted allowlist and its own source are bound into inputs_digest().
+    return f"{PUBLIC_INPUTS.index(relative):03d}.txt"
+
+
 def asset_path(relative: str) -> Path:
     if relative not in PUBLIC_INPUTS:
         raise ValueError("unknown public calibration input")
     if "__compiled__" in globals():
         # Nuitka deliberately excludes Python code from generic data directories.
         # These are inert source snapshots used only for hashing, with .txt suffixes.
-        suffix = ".txt" if relative.endswith(".py") else ""
-        path = Path(__file__).parent / "qualification_assets" / (relative + suffix)
+        path = Path(__file__).parent / "qualification_assets" / _asset_name(relative)
     else:
         path = Path(__file__).resolve().parents[3] / relative
     if path.is_symlink() or not path.is_file():
@@ -88,6 +95,6 @@ def export_assets(repository: Path, destination: Path) -> None:
         source = root / name
         if source.is_symlink() or not source.is_file():
             raise ValueError("public calibration build input is unavailable")
-        path = target / (name + (".txt" if name.endswith(".py") else ""))
+        path = target / _asset_name(name)
         path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, path)
