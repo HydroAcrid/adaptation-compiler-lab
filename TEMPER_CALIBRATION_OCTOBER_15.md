@@ -152,6 +152,9 @@ Temporary authentication, homes and instruction files were removed. The fixture
 habit and diagnostic marker are test instrumentation, not learned owner evidence.
 The unrelated-project check observes the fixture's scoped marker response; it does
 not establish every possible behavior or demonstrate a usefulness advantage.
+`applicable_behavior` is a format-compliance observation under a step-cued request.
+The native baseline might choose numbered steps too; this probe cannot attribute
+that formatting to Temper. Causal attribution needs the later paired comparison.
 
 All attempts are retained: two unsuccessful full native attempts, a separate
 one-turn scope diagnostic, and the successful full attempt. They used 19 native
