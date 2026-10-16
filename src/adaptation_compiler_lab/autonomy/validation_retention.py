@@ -15,6 +15,27 @@ from adaptation_compiler_lab.autonomy.store import AutonomyIntegrityError, Auton
 from adaptation_compiler_lab.governance.models import SignatureEnvelope
 
 
+def checked_validation_run(base: Path, name: str) -> Path:
+    if not re.fullmatch(r"(?:owner-eval-|native-delivery-)[a-z0-9-]{1,160}", name):
+        raise AutonomyIntegrityError("invalid validation run name")
+    root = base / name
+    resolved = root.resolve()
+    database, raw = root / "events.sqlite3", root / "raw"
+    if (
+        base.is_symlink()
+        or base.resolve() != base.parent.resolve() / base.name
+        or root.is_symlink()
+        or resolved != base.resolve() / name
+        or database.is_symlink()
+        or database.resolve() != resolved / "events.sqlite3"
+        or not database.is_file()
+        or raw.is_symlink()
+        or raw.resolve() != resolved / "raw"
+    ):
+        raise AutonomyIntegrityError("validation paths escaped their private namespace")
+    return root
+
+
 def _references(value: Any) -> Iterator[Mapping[str, Any]]:
     if isinstance(value, dict):
         if {"sha256", "relative_path", "size_bytes", "media_type"} <= value.keys():
@@ -33,6 +54,11 @@ def purge_validation_raw(store: AutonomyStore, *, now: datetime) -> int:
     Native turn records predate explicit payload timestamps. Their signed envelope
     provides the time without rewriting historical producer/protocol evidence.
     """
+    expected_raw = store.path.parent / "raw"
+    if expected_raw.is_symlink() or expected_raw.resolve() != expected_raw:
+        raise AutonomyIntegrityError("validation raw root escaped its private namespace")
+    if not expected_raw.samefile(store.raw_store.root):
+        raise AutonomyIntegrityError("validation raw store belongs to another run")
     events = store.events()
     with closing(sqlite3.connect(store.path)) as connection:
         rows = connection.execute(
@@ -99,14 +125,13 @@ def sweep_validation_raw(
     """Only the two governed validation run families, never arbitrary owner folders."""
     if not base.exists():
         return 0
-    if base.is_symlink():
+    if base.is_symlink() or base.resolve() != base.parent.resolve() / base.name:
         raise AutonomyIntegrityError("validation namespace changed")
     total = 0
     for root in sorted(base.iterdir()):
         if not re.fullmatch(r"(?:owner-eval-|native-delivery-)[a-z0-9-]{1,160}", root.name):
             continue
-        if root.is_symlink() or root.resolve().parent != base.resolve():
-            raise AutonomyIntegrityError("validation run escaped its namespace")
         if (root / "events.sqlite3").is_file():
+            checked_validation_run(base, root.name)
             total += purge_validation_raw(open_run(root.name), now=now)
     return total

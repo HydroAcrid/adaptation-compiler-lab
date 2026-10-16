@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import subprocess
+import sys
 from dataclasses import asdict
 from datetime import timedelta
 from pathlib import Path
@@ -8,13 +10,15 @@ from typing import Any
 
 import pytest
 
-from adaptation_compiler_lab.autonomy.store import AutonomyIntegrityError
+from adaptation_compiler_lab.autonomy.store import AutonomyIntegrityError, AutonomyStore
 from adaptation_compiler_lab.autonomy.validation_retention import (
+    checked_validation_run,
     purge_validation_raw,
     sweep_validation_raw,
 )
 from adaptation_compiler_lab.autonomy.worker import BackgroundHabitWorker
 from adaptation_compiler_lab.persistence.errors import RecordNotFoundError
+from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore, RawEncryptionKey
 from tests.unit.autonomy.test_autonomy import app as app
 
 
@@ -97,3 +101,50 @@ def test_validation_sweep_is_bounded_and_runs_while_learning_paused(
     result = worker.poll()
     assert result["status"] == "paused" and result["purged"] == 1
     assert sorted(seen) == ["native-delivery-interrupted", "owner-eval-finished"]
+
+
+@pytest.mark.parametrize("entry", ["sweep", "purge", "qualification_read"])
+def test_raw_root_junction_cannot_delete_or_open_unrelated_owner_data(
+    app: Any, tmp_path: Path, entry: str
+) -> None:
+    service, clock = app
+    outside = tmp_path / "unrelated-owner-store"
+    raw = LocalRawPayloadStore(outside, encryption_key=RawEncryptionKey(b"k" * 32))
+    ref = raw.put(b"unrelated ciphertext must survive", media_type="text/plain")
+    target = raw.root / ref.relative_path
+    old = clock() - timedelta(days=31)
+    os.utime(target, (old.timestamp(), old.timestamp()))
+    base = tmp_path / "validation"
+    run = base / "native-delivery-junction"
+    run.mkdir(parents=True)
+    alias = run / "raw"
+    if sys.platform == "win32":
+        subprocess.run(
+            ["cmd.exe", "/c", "mklink", "/J", str(alias), str(outside)],
+            check=True,
+            capture_output=True,
+        )
+    else:
+        alias.symlink_to(outside, target_is_directory=True)
+    try:
+        store = AutonomyStore(
+            run / "events.sqlite3",
+            signer=service.store.signer,
+            raw_store=LocalRawPayloadStore(alias, encryption_key=RawEncryptionKey(b"k" * 32)),
+        )
+        with pytest.raises(AutonomyIntegrityError, match="escaped"):
+            if entry == "purge":
+                purge_validation_raw(store, now=clock())
+            elif entry == "qualification_read":
+                checked_validation_run(base, run.name)
+            else:
+                sweep_validation_raw(base, lambda _: store, now=clock())
+        assert target.exists() and raw.read(ref) == b"unrelated ciphertext must survive"
+    finally:
+        # Remove only this verified alias entry; never traverse/delete its target.
+        assert alias.parent == run and alias.resolve() == outside.resolve()
+        if alias.is_symlink():
+            alias.unlink()
+        else:
+            assert alias.is_junction()
+            alias.rmdir()

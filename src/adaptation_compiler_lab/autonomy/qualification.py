@@ -167,17 +167,12 @@ def qualify(config_path: Path, *, detection_run: str, native_run: str) -> dict[s
     base = config.state_root / "autonomy/validation"
 
     def open_run(name: str, prefix: str) -> AutonomyStore:
+        from adaptation_compiler_lab.autonomy.validation_retention import checked_validation_run
+
         if not re.fullmatch(re.escape(prefix) + r"[a-z0-9-]{1,160}", name):
             raise AutonomyIntegrityError("invalid qualification run name")
-        root = base / name
+        root = checked_validation_run(base, name)
         database = root / "events.sqlite3"
-        if (
-            root.is_symlink()
-            or database.is_symlink()
-            or root.resolve().parent != base.resolve()
-            or not database.is_file()
-        ):
-            raise AutonomyIntegrityError("qualification evidence is unavailable")
         return AutonomyStore(
             database,
             signer=_registration_signer(config),
