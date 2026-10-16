@@ -33,6 +33,10 @@ after thirty days; that deletion does not erase the signed validation facts or
 require indefinite retention of conversations. Interrupted installation can resume
 from a current valid certificate. A privileged local holder of the owner's signing
 key can fabricate local attestations, as with the existing owner event ledger.
+The existing five-minute app maintenance tick sweeps the bounded validation-run
+stores as well as personal evidence, including when learning is paused. Native
+records use their verified signature times; interrupted orphan writes use file
+age. An app that is closed performs overdue cleanup when maintenance next runs.
 
 V15 detection evidence remains unchanged. Codex removed the validated executable
 during its update to Windows CLI 0.163.0-alpha.10.2. A separate compatibility

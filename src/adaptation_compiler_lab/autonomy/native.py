@@ -49,6 +49,7 @@ def native_autonomy_service(config_path: Path) -> AutonomyApplicationService:
         ConfiguredNativeRelationSensor,
     )
     from adaptation_compiler_lab.autonomy.native_policy import NativeStylePolicy
+    from adaptation_compiler_lab.autonomy.validation_retention import sweep_validation_raw
     from adaptation_compiler_lab.autonomy.worker import BackgroundHabitWorker
     from adaptation_compiler_lab.connectors.pins import load_dogfood_runtime_pins
     from adaptation_compiler_lab.instruction_environment.codex_semantic import (
@@ -121,5 +122,8 @@ def native_autonomy_service(config_path: Path) -> AutonomyApplicationService:
         context=policy.context,
         native_policy=policy,
         relation_analyzer=ConfiguredNativeRelationSensor(config_path),
+        maintenance=lambda now: sweep_validation_raw(
+            config.state_root / "autonomy" / "validation", open_calibration_run, now=now
+        ),
     )
     return service

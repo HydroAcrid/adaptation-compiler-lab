@@ -29,6 +29,8 @@ NATIVE_FILES = (
     "agent_bridge.py",
     "calibration_assets.py",
     "qualification.py",
+    "worker.py",
+    "validation_retention.py",
 )
 INSTRUCTION_FILES = ("adapters.py", "resolver.py", "semantic.py", "codex_semantic.py")
 PREFIX = EVALUATION_VERSION.replace("-", "_") + "_prospective"

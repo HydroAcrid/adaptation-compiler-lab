@@ -38,6 +38,7 @@ class BackgroundHabitWorker:
         context: Callable[[str], str] | None = None,
         native_policy: NativeStylePolicy | None = None,
         relation_analyzer: InstructionRelationAnalyzer | None = None,
+        maintenance: Callable[[datetime], int] | None = None,
     ) -> None:
         self.service = service
         self.read_completed = read_completed
@@ -46,11 +47,14 @@ class BackgroundHabitWorker:
         self.context = context
         self.native_policy = native_policy
         self.relation_analyzer = relation_analyzer
+        self.maintenance = maintenance
 
     def poll(self) -> dict[str, Any]:
         service = self.service
         now = service.clock()
         purged = purge_expired_raw(service.store, now=now)
+        if self.maintenance is not None:
+            purged += self.maintenance(now)
         result: dict[str, Any] = {
             "captured": 0,
             "analyzed": 0,
