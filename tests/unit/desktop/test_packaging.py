@@ -5,13 +5,62 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import re
 import subprocess
+import tomllib
 from pathlib import Path
 from types import ModuleType
 
 import pytest
 
 ROOT = Path(__file__).parents[3]
+
+
+def test_packaged_acl_matches_typed_product_commands_and_renderer_routes() -> None:
+    tauri = ROOT / "desktop_ui/src-tauri"
+    allowed = set(
+        tomllib.loads((tauri / "permissions/engine.toml").read_text())["permission"][0]["commands"][
+            "allow"
+        ]
+    )
+    source = (tauri / "src/lib.rs").read_text()
+    handler = source.split(".invoke_handler(tauri::generate_handler![", 1)[1].split("])", 1)[0]
+    registered = set(re.findall(r"\b[a-z][a-z_]+\b", handler))
+    manifest = (
+        (tauri / "build.rs")
+        .read_text()
+        .split("AppManifest::new().commands(&[", 1)[1]
+        .split("])", 1)[0]
+    )
+    declared = set(re.findall(r'"([a-z_]+)"', manifest))
+    assert allowed == registered, "Packaged ACL must expose exactly typed product handlers"
+    assert declared == registered, "Tauri must generate metadata for every product handler"
+    # Catch both direct invoke and typed helper/request command strings, including bootstrap.
+    renderer_commands = set()
+    for filename in ("engine.ts", "autonomy.ts"):
+        renderer = (ROOT / "desktop_ui/src" / filename).read_text()
+        renderer_commands.update(
+            re.findall(
+                r'\b(?:invoke|request|invokeMutation)(?:<[\s\S]*?>)?\(\s*"([a-z_]+)"', renderer
+            )
+        )
+    assert {
+        "instruction_environment_get",
+        "package_review_list",
+        "autonomy_status",
+    } <= renderer_commands
+    assert renderer_commands <= allowed, "Every renderer route must be allowed by packaged ACL"
+    assert {"instruction_environment_get", "package_review_list", "autonomy_status"} <= allowed
+    assert (
+        not {
+            "engine_request",
+            "autonomy_episode_ingest",
+            "autonomy_calibration_install",
+            "claude_hook_handle",
+            "copilot_hook_handle",
+        }
+        & allowed
+    )
 
 
 def _build_module() -> ModuleType:
@@ -53,12 +102,39 @@ def test_native_builder_produces_target_suffixed_tauri_sidecar() -> None:
     assert "--onefile-no-compression" in command
     assert "--include-package-data=adaptation_compiler_lab" in command
     assert "--include-package=adaptation_compiler_lab.persistence.sql" in command
+    assert any("qualification_assets" in argument for argument in command)
     assert "temper-engine-x86_64-pc-windows-msvc.exe" in rendered
     assert "desktop_ui" in rendered
     assert "src-tauri" in rendered
     assert "PySide6" not in rendered
     assert "qml" not in rendered
     assert ".env" not in rendered
+
+
+@pytest.mark.parametrize("matches", [True, False])
+def test_native_calibration_admission_checks_compiled_inputs_in_an_empty_profile(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    matches: bool,
+) -> None:
+    module = _build_module()
+    expected = {"inputs_digest": "sha256:" + "a" * 64, "raw_payloads_exposed": False}
+    monkeypatch.setattr(module, "_calibration_info", lambda _: expected)
+    monkeypatch.setenv("OPENAI_API_KEY", "fictional-never-send")
+
+    def run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        assert argv[-1] == "--calibration-info"
+        env = kwargs["env"]
+        assert isinstance(env, dict) and "OPENAI_API_KEY" not in env
+        assert Path(str(env["USERPROFILE"])) == kwargs["cwd"]
+        return subprocess.CompletedProcess(argv, 0, json.dumps(expected if matches else {}), "")
+
+    monkeypatch.setattr(module.subprocess, "run", run)
+    if matches:
+        module.verify_calibration_bundle(ROOT, tmp_path / "fictional-engine.exe")
+    else:
+        with pytest.raises(ValueError, match="compiled calibration inputs"):
+            module.verify_calibration_bundle(ROOT, tmp_path / "fictional-engine.exe")
 
 
 def test_windows_release_application_uses_the_gui_subsystem() -> None:

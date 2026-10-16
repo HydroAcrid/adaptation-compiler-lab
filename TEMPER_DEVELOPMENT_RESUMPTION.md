@@ -44,6 +44,12 @@ clean-machine installation.
 
 ## Existing runtime migration
 
+October 7 update: combined candidate `56e2028` passed all seven CI gates and is now
+installed on both native hosts. Windows endpoint migration preserved identity, policy
+expiry, projects/cutoffs, and history bytes and restored protected-key access. It did
+not enable persistent consent. The following October 6 audit remains historical;
+see `TEMPER_AUTONOMY_IMPLEMENTATION.md` for the current implementation checkpoint.
+
 The audited personal Windows runtime still references a removed Codex executable and
 a removed onefile pin path. Its consent expired September 27. Loading the dashboard
 does not establish delivery readiness. This change does not rewrite that configuration,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import base64
 import difflib
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -57,7 +57,7 @@ from adaptation_compiler_lab.desktop.models import (
 from adaptation_compiler_lab.domain import ApprovalDecision, Scope
 from adaptation_compiler_lab.modes import mode_by_id
 from adaptation_compiler_lab.portability import ShareablePackageImportStore
-from adaptation_compiler_lab.serialization import canonical_digest
+from adaptation_compiler_lab.serialization import canonical_digest, canonical_json
 
 
 @dataclass(frozen=True, slots=True)
@@ -249,7 +249,7 @@ class CodexDogfoodDesktopBackend:
         if bundle is None:
             raise ValueError("gateway change bundle is unavailable")
         value = EncryptedChangeBundleStore(_raw_store(config)).load(bundle)
-        baseline = WorkspaceBaseline.model_validate(value.get("baseline"), strict=True)
+        baseline = _review_baseline(value)
         raw_changes = value.get("changes")
         if not isinstance(raw_changes, list):
             raise ValueError("gateway change bundle is invalid")
@@ -324,7 +324,7 @@ class CodexDogfoodDesktopBackend:
         if ledger.application(session_id) is not None:
             raise ValueError("gateway changes already have a decision")
         value = EncryptedChangeBundleStore(_raw_store(config)).load(bundle)
-        baseline = WorkspaceBaseline.model_validate(value.get("baseline"), strict=True)
+        baseline = _review_baseline(value)
         ledger.append_application_outcome(
             ChangeApplicationReceipt(
                 receipt_id=f"apply-{session_id}",
@@ -337,6 +337,13 @@ class CodexDogfoodDesktopBackend:
             ),
             (),
         )
+
+
+def _review_baseline(value: Mapping[str, object]) -> WorkspaceBaseline:
+    baseline = value.get("baseline")
+    if not isinstance(baseline, dict):
+        raise ValueError("gateway change bundle baseline is unavailable")
+    return WorkspaceBaseline.model_validate_json(canonical_json(baseline), strict=True)
 
 
 def _scope_options(scope: Scope | None) -> dict[str, list[str] | None]:

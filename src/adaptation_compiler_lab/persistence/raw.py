@@ -28,6 +28,17 @@ _DIGEST_PATTERN: Final = re.compile(r"^[0-9a-f]{64}$")
 _ENVELOPE_MAGIC: Final = b"ACLAB-RAW-1\n"
 
 
+def _raw_io_root(path: Path) -> Path:
+    """Use absolute extended Windows paths without changing stored relative references."""
+    resolved = path.expanduser().resolve()
+    text = str(resolved)
+    if os.name != "nt" or text.startswith("\\\\?\\"):
+        return resolved
+    if text.startswith("\\\\"):
+        return Path("\\\\?\\UNC\\" + text[2:])
+    return Path("\\\\?\\" + text)
+
+
 class RawPayloadKeyError(ValueError):
     """Raised when the separate AES-256 key is absent, unsafe, or invalid."""
 
@@ -116,7 +127,7 @@ class LocalRawPayloadStore:
         encryption_key: RawEncryptionKey | None = None,
         allow_legacy_plaintext: bool = False,
     ) -> None:
-        self._root = root.expanduser().resolve()
+        self._root = _raw_io_root(root)
         self._key = encryption_key
         self._allow_legacy_plaintext = allow_legacy_plaintext
         self._root.mkdir(parents=True, exist_ok=True)

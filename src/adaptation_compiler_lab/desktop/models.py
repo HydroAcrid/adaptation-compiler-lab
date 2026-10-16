@@ -347,7 +347,23 @@ class DesktopSnapshot(FrozenModel):
 
     @property
     def content_digest(self) -> Sha256Digest:
-        return canonical_digest(self)
+        # Clicks bind the current state. Refresh timestamps and ages derived from
+        # that state must not make every later read look like a concurrent edit.
+        return canonical_digest(
+            self.model_dump(
+                mode="json",
+                exclude={
+                    "generated_at": True,
+                    "terminal": {
+                        "review_mode": {
+                            "generated_at": True,
+                            "gate": {"generated_at": True},
+                            "metrics": {"pending_review_age_seconds": True},
+                        }
+                    },
+                },
+            )
+        )
 
 
 class ActionResult(FrozenModel):

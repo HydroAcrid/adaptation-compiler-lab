@@ -1,0 +1,25 @@
+{
+  "evaluation_version": "habit-eval-v11",
+  "purpose": "prospective_shadow_detection",
+  "source_dataset_digest": "sha256:16b3ddd72ee1007fe60bfcc13d2cbb411fc4cc1bfe992272b454e14304d3841a",
+  "dataset_digest": "sha256:16b3ddd72ee1007fe60bfcc13d2cbb411fc4cc1bfe992272b454e14304d3841a",
+  "analyzer_digest": "sha256:32dd1d7d180872bcdd142fdccdeaefeb5a68f26edc5ae6a324022ab3b84c7f9d",
+  "precision_gate": 0.95,
+  "recall_gate": 0.8,
+  "disallowed_promotion_gate": 0,
+  "wrong_scope_gate": 0,
+  "executed": false,
+  "defaults": {
+    "SUPPORT_TASKS": 3,
+    "SUPPORT_DATES": 2,
+    "TRIAL_DAYS": 14,
+    "CHECKED_OPPORTUNITIES": 3,
+    "COMPLIANCE_SUCCESSES": 2,
+    "RAW_RETENTION_DAYS": 30,
+    "MAX_PROFILE_BYTES": 1500,
+    "MAX_DAILY_ANALYSES": 12,
+    "POLL_MINUTES": 5,
+    "MIN_REMAINING_CAPACITY": 20
+  },
+  "reason": "Classified evidence and complete known-habit assessment; preserve prior failures."
+}

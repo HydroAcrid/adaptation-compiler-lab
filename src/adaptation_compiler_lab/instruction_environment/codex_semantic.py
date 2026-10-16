@@ -232,6 +232,45 @@ def instruction_relation_analyzer_digest(*, model: str, reasoning_effort: str) -
     )
 
 
+def instruction_relation_contract() -> str:
+    return _RELATION_CONTRACT
+
+
+def bind_instruction_relation_output(
+    pairs: Sequence[InstructionRelationPairV1], output: str, *, interpreter_digest: str
+) -> Mapping[str, ClauseRelationAnalysisV1]:
+    """Bind a fallible response to every exact pair; never accept model-supplied authority."""
+    try:
+        parsed = _RelationBatchProposal.model_validate_json(output, strict=True)
+    except ValidationError as error:
+        raise InstructionSemanticTransportError(
+            "instruction relation output violated its typed response"
+        ) from error
+    if parsed.prompt_version != _PROMPT_VERSION:
+        raise InstructionSemanticTransportError("instruction relation prompt drifted")
+    if tuple(item.pair_index for item in parsed.items) != tuple(range(len(pairs))):
+        raise InstructionSemanticTransportError(
+            "instruction relation output omitted, reordered, or invented pairs"
+        )
+    result: dict[str, ClauseRelationAnalysisV1] = {}
+    for proposal in parsed.items:
+        pair = pairs[proposal.pair_index]
+        if proposal.relation is InstructionRelationKind.EXACT_DUPLICATE:
+            raise InstructionSemanticTransportError(
+                "instruction relation sensor attempted a host-only exact relation"
+            )
+        result[pair.pair_id] = ClauseRelationAnalysisV1(
+            pair_id=pair.pair_id,
+            temper_clause_digest=pair.temper_clause_digest,
+            native_clause_id=pair.native_clause_id,
+            native_clause_digest=pair.native_clause_digest,
+            relation=proposal.relation,
+            confidence=proposal.confidence,
+            interpreter_digest=interpreter_digest,
+        )
+    return result
+
+
 def instruction_relation_prompt(pairs: Sequence[InstructionRelationPairV1]) -> str:
     if not pairs or len(pairs) > 1000:
         raise InstructionSemanticTransportError(
@@ -522,18 +561,6 @@ class CodexInstructionRelationAnalyzer(InstructionRelationAnalyzer):
             prompt=prompt,
             output_schema=instruction_relation_output_schema(),
         )
-        try:
-            parsed = _RelationBatchProposal.model_validate_json(output, strict=True)
-        except ValidationError as error:
-            raise InstructionSemanticTransportError(
-                "instruction relation output violated its typed response"
-            ) from error
-        if parsed.prompt_version != _PROMPT_VERSION:
-            raise InstructionSemanticTransportError("instruction relation prompt drifted")
-        if tuple(item.pair_index for item in parsed.items) != tuple(range(len(pairs))):
-            raise InstructionSemanticTransportError(
-                "instruction relation output omitted, reordered, or invented pairs"
-            )
         receipt_digest = canonical_digest(
             {
                 "analyzer_digest": instruction_relation_analyzer_digest(
@@ -546,23 +573,7 @@ class CodexInstructionRelationAnalyzer(InstructionRelationAnalyzer):
                 "turn_digest": sha256_text(turn_id),
             }
         )
-        result: dict[str, ClauseRelationAnalysisV1] = {}
-        for proposal in parsed.items:
-            pair = pairs[proposal.pair_index]
-            if proposal.relation is InstructionRelationKind.EXACT_DUPLICATE:
-                raise InstructionSemanticTransportError(
-                    "instruction relation sensor attempted a host-only exact relation"
-                )
-            result[pair.pair_id] = ClauseRelationAnalysisV1(
-                pair_id=pair.pair_id,
-                temper_clause_digest=pair.temper_clause_digest,
-                native_clause_id=pair.native_clause_id,
-                native_clause_digest=pair.native_clause_digest,
-                relation=proposal.relation,
-                confidence=proposal.confidence,
-                interpreter_digest=receipt_digest,
-            )
-        return result
+        return bind_instruction_relation_output(pairs, output, interpreter_digest=receipt_digest)
 
 
 class ConfiguredCodexInstructionSemanticAnalyzer(InstructionSemanticAnalyzer):

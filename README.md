@@ -1,4 +1,36 @@
-# adaptation-compiler-lab
+# Temper
+
+Temper is a local companion for learning communication and presentation habits from ordinary
+agent work, applying them within their observed project and task context, and measuring whether
+they helped. The initial workflow is Codex on Windows and Apple Silicon macOS. This repository
+contains the prototype and its research history; public source availability is not a validated
+autonomous release or a downloadable external alpha.
+
+The current hub direction is to reuse SkillKit's manager capabilities and focus
+Temper on appropriate per-repository setup, maintenance and personal collaboration
+defaults. The controller-only comparison has not established an owner-effort
+advantage. See [the SkillKit-based scope and personalization blockers](TEMPER_SKILLKIT_BASE.md).
+
+The current focus is separating personal choices from task requirements, recognizing changing
+preferences, and validating safe instruction delivery. The first complete fictional evaluation
+failed the fixed detection gates: 76.39% precision, 68.75% recall, and 14/20 contradiction pauses.
+Iteration uses these cases for development regression and requires fresh prospective evidence
+before release claims. Automatic serving remains disabled. The owner has authorized
+shadow learning through the existing Codex composer, including trusted conversation
+relays with uncertain human authorship. This requires the explicit new grant; old grants
+remain strict. See [`TEMPER_AUTHORIZED_CHAT_INPUT.md`](TEMPER_AUTHORIZED_CHAT_INPUT.md) for
+the current policy, bounded development checks and installation boundary. See
+[`TEMPER_AUTONOMY_IMPLEMENTATION.md`](TEMPER_AUTONOMY_IMPLEMENTATION.md) and
+[`TEMPER_LOCAL_VALIDATION_OCTOBER_12.md`](TEMPER_LOCAL_VALIDATION_OCTOBER_12.md).
+The subsequent learner fixes, complete failed runs, selected model candidates and current
+Windows package checks are recorded in
+[`TEMPER_HABIT_ITERATION_OCTOBER_12.md`](TEMPER_HABIT_ITERATION_OCTOBER_12.md).
+The Windows installation and completed-chat reader continuation are recorded in
+[`TEMPER_CODEX_CHAT_CONNECTION_OCTOBER_14.md`](TEMPER_CODEX_CHAT_CONNECTION_OCTOBER_14.md).
+
+Checks and packages are built locally; this work does not depend on GitHub CI. Raw personal
+conversations, credentials, local runtime state, and generated personal learning stay outside Git.
+Historical Modes and additional-client experiments below remain outside the focused v1 launch.
 
 Temper now includes a development **Curated Modes Hub**: temporary one-task capabilities compiled
 from pinned and reviewed open-source agent skills. The first releases are Frontend Studio,
@@ -13,17 +45,17 @@ Temper's native product-completion sequence is active. The Tauri application now
 first-run setup, existing-runtime adoption, truthful Codex/Claude inspection, prospective project
 registration, review/scope decisions, revoke/undo, activation feedback, consent renewal, four
 product preferences, and the governed task/diff/apply/discard flow through one typed Python
-application service. Codex is pinned to exact `codex-cli 0.153.1` conformance and saved
-ChatGPT login. Claude now has an explicit local Connect/Disconnect lifecycle, but it remains
+application service. Saved ChatGPT login is used with exact admitted Codex builds; the October 12
+Windows candidate admits `0.162.0-alpha.17.2`. Claude has an explicit local Connect/Disconnect lifecycle, but it remains
 unavailable on this machine because Claude Code is not installed. Connection requires an exact
 supported Claude binary, authenticated local Claude status, a redacted settings preview, explicit
 30-day project consent, and a signed settings receipt; it never initiates login or reads an API
 key. Windows DPAPI and native macOS Keychain
 stores both fail closed. The retired PySide6/QML interface has been removed; `temper` remains the
 recovery CLI. See [`TEMPER_NATIVE_PRODUCT_COMPLETION.md`](TEMPER_NATIVE_PRODUCT_COMPLETION.md).
-The `0.3.0a2` source also defines the unsigned internal Apple Silicon build and independent
-clean-runner smoke. Those jobs have not yet started because the repository's GitHub Actions budget
-is currently unavailable, so the app/DMG are not claimed as validated. Publisher certificates and
+The `0.3.0a2` source also defines unsigned internal Apple Silicon builds and independent
+development smokes, completed for the earlier native baseline. Later Windows autonomy changes
+still need fresh Mac validation. Publisher certificates and
 the unchanged default trusted clean-machine gates remain a later external-distribution boundary.
 
 Temper now also has native same-owner offline recovery. Settings creates a custody-signed,
@@ -475,8 +507,8 @@ remain encrypted outside Git and synchronized storage; only minimized signed met
 behavioral artifacts enter the compiler ledger. It has not exposed held-out work to construction
 or executed pilot trials. It never trains or modifies weights,
 automatically creates/installs tools, integrates with Kairn, provides a web UI, uses remote
-research-data storage, publishes publicly, or makes unbounded empirical claims. The private GitHub repository
-is the code/documentation system of record; raw research data, raw traces, and keys must never be
+research-data storage, automatically publishes releases, or makes unbounded empirical claims. The GitHub repository
+is the source/documentation system of record; raw private research data, personal traces, and keys must never be
 committed or pushed. Repository text, webpages, retrieval, agent text, and tool output remain
 untrusted context rather than user instruction.
 

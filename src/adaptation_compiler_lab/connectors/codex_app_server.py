@@ -12,7 +12,7 @@ import queue
 import subprocess
 import threading
 from collections import deque
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager, suppress
 from pathlib import Path
 from types import TracebackType
@@ -113,6 +113,7 @@ class CodexAppServerProcess:
         schemas: CodexSchemaSet,
         request_timeout_seconds: float = 30.0,
         experimental_api: bool = False,
+        isolated_environment: Mapping[str, str] | None = None,
     ) -> None:
         resolved_home = codex_home.expanduser().resolve()
         if not resolved_home.is_dir():
@@ -122,6 +123,7 @@ class CodexAppServerProcess:
         self._schemas = schemas
         self._request_timeout_seconds = request_timeout_seconds
         self._experimental_api = experimental_api
+        self._isolated_environment = isolated_environment
         self._process: subprocess.Popen[str] | None = None
         self._messages: queue.Queue[JsonObject | object] = queue.Queue()
         self._reader_error: BaseException | None = None
@@ -131,7 +133,11 @@ class CodexAppServerProcess:
         self._write_lock = threading.Lock()
 
     def __enter__(self) -> CodexAppServerProcess:
-        environment = os.environ.copy()
+        environment = (
+            dict(self._isolated_environment)
+            if self._isolated_environment is not None
+            else os.environ.copy()
+        )
         environment["CODEX_HOME"] = (
             _as_windows_interop_path(self._codex_home)
             if self._runtime.windows_interop
@@ -161,6 +167,7 @@ class CodexAppServerProcess:
                 bufsize=1,
                 env=environment,
                 start_new_session=True,
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
             )
         except OSError as exc:
             raise CodexProtocolError("unable to start pinned Codex app server") from exc

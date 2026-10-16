@@ -766,6 +766,7 @@ export default function App() {
           screen === "suggestion" ||
           screen === "tray" ? (
             <TodayPage
+              nativeAutonomy={nativeRuntime}
               automaticLearning={automaticLearning}
               feedback={feedback}
               onFeedback={recordFeedback}

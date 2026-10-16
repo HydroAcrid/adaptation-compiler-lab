@@ -37,6 +37,28 @@ def test_raw_payload_round_trip_is_encrypted_and_content_addressed(tmp_path: Pat
     assert store.put(payload, media_type="text/plain") == reference
 
 
+@pytest.mark.parametrize("segment_length", [70, 95])
+def test_deep_raw_paths_preserve_encryption_references_and_safe_discard(
+    tmp_path: Path, segment_length: int
+) -> None:
+    root = tmp_path / ("a" * segment_length) / ("b" * segment_length) / ("c" * 20) / "raw"
+    payload = b"fictional long-path evidence"
+    store = LocalRawPayloadStore(root, encryption_key=_key())
+    reference = store.put(payload, media_type="text/plain")
+    assert len(str(store.root / reference.relative_path)) > 260
+    assert reference.relative_path == f"sha256/{reference.sha256[:2]}/{reference.sha256}"
+    ciphertext = (store.root / reference.relative_path).read_bytes()
+    assert payload not in ciphertext and ciphertext.startswith(b"ACLAB-RAW-1\n")
+    assert store.read(reference) == payload
+    assert store.put(payload, media_type="text/plain") == reference
+    reopened = LocalRawPayloadStore(root, encryption_key=_key())
+    assert reopened.contains(reference) and reopened.read(reference) == payload
+    with pytest.raises(IntegrityError, match="path does not match"):
+        reopened.read(replace(reference, relative_path="../../outside"))
+    assert reopened.discard(reference)
+    assert not reopened.contains(reference)
+
+
 def test_missing_or_wrong_key_fails_closed(tmp_path: Path) -> None:
     root = tmp_path / "raw-evidence"
     reference = LocalRawPayloadStore(root, encryption_key=_key()).put(

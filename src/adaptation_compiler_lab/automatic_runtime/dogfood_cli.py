@@ -731,17 +731,31 @@ def _replace_config_with_credential_rebind(
     path: Path,
     current: CodexDogfoodLocalConfig,
     updated: CodexDogfoodLocalConfig,
+    *,
+    serialized_legacy_binding: bool = False,
 ) -> None:
     """Atomically replace config and roll back if an enrolled envelope cannot rebind."""
 
     credential_store = platform_credential_store(current.state_root)
     enrolled = credential_store.status()
+    binding = (
+        current.credential_binding_digest
+        if enrolled is None
+        else _enrollment_binding_digest(current, enrolled)
+    )
+    if serialized_legacy_binding and enrolled is not None:
+        if _load_config(path) != current:
+            raise AutomaticRuntimeError("legacy configuration changed before credential rebind")
+        serialized_digest = canonical_digest(json.loads(path.read_text(encoding="utf-8")))
+        if serialized_digest != enrolled.config_digest:
+            raise AutomaticRuntimeError("serialized legacy configuration does not match enrollment")
+        binding = serialized_digest
     _write_config(path, updated)
     if enrolled is not None:
         try:
             credential_store.rebind(
                 subject_id=current.subject_id,
-                current_config_digest=_enrollment_binding_digest(current, enrolled),
+                current_config_digest=binding,
                 new_config_digest=updated.credential_binding_digest,
                 signer_fingerprint=current.signer_identity.key_fingerprint,
             )

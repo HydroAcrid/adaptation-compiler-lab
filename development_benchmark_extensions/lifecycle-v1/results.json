@@ -1,0 +1,1002 @@
+{
+  "completed_trials": 8,
+  "arms": {
+    "direct_native": {
+      "trials": 4,
+      "passed": 4,
+      "missing_usage": 0,
+      "usage": {
+        "totalTokens": 2277021,
+        "inputTokens": 2267127,
+        "cachedInputTokens": 2055040,
+        "outputTokens": 9894,
+        "reasoningOutputTokens": 819,
+        "uncachedInputTokens": 212087
+      },
+      "whole_trial_seconds": {
+        "sum": 604.6100000000006,
+        "median": 143.9375,
+        "min": 92.11000000000058,
+        "max": 224.625
+      },
+      "tools": 86,
+      "nonzero_tool_calls": 10,
+      "scratch_bytes": {
+        "sum": 1609402,
+        "median": 261408.5,
+        "min": 40138,
+        "max": 1046447
+      },
+      "by_case": {
+        "python-debug": {
+          "passed": 2,
+          "times": {
+            "sum": 401.75,
+            "median": 200.875,
+            "min": 177.125,
+            "max": 224.625
+          }
+        },
+        "typescript-docs": {
+          "passed": 2,
+          "times": {
+            "sum": 202.86000000000058,
+            "median": 101.43000000000029,
+            "min": 92.11000000000058,
+            "max": 110.75
+          }
+        }
+      }
+    },
+    "temper_prototype": {
+      "trials": 4,
+      "passed": 4,
+      "missing_usage": 0,
+      "usage": {
+        "totalTokens": 2562940,
+        "inputTokens": 2551586,
+        "cachedInputTokens": 2340224,
+        "outputTokens": 11354,
+        "reasoningOutputTokens": 495,
+        "uncachedInputTokens": 211362
+      },
+      "whole_trial_seconds": {
+        "sum": 604.3899999999994,
+        "median": 150.3829999999998,
+        "min": 85.48400000000038,
+        "max": 218.13999999999942
+      },
+      "tools": 73,
+      "nonzero_tool_calls": 11,
+      "scratch_bytes": {
+        "sum": 2544216,
+        "median": 683939.5,
+        "min": 180875,
+        "max": 995462
+      },
+      "by_case": {
+        "python-debug": {
+          "passed": 2,
+          "times": {
+            "sum": 408.9369999999981,
+            "median": 204.46849999999904,
+            "min": 190.79699999999866,
+            "max": 218.13999999999942
+          }
+        },
+        "typescript-docs": {
+          "passed": 2,
+          "times": {
+            "sum": 195.45300000000134,
+            "median": 97.72650000000067,
+            "min": 85.48400000000038,
+            "max": 109.96900000000096
+          }
+        }
+      }
+    }
+  },
+  "trials": [
+    {
+      "case": "python-debug",
+      "arm": "direct_native",
+      "repeat": 0,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "grade": {
+        "checks": {
+          "initial_setup_verified": true,
+          "fault_injected": true,
+          "recovery_verified": true,
+          "requested_skills_removed": true,
+          "owner_guidance_preserved": true,
+          "concurrent_owner_note_preserved": true,
+          "native_policy_preserved": true,
+          "owner_config_preserved": true,
+          "partial_marker_removed": true,
+          "app_source_unchanged": true,
+          "registry_entries_removed": true
+        },
+        "passed": true,
+        "out_of_scope": [],
+        "remaining_skills": [],
+        "checkpoints": [
+          {
+            "phase": "setup",
+            "passed": true,
+            "missing_or_changed": [],
+            "extraneous": [],
+            "skill_count": 4,
+            "installed_file_count": 14,
+            "installed_bytes": 47557
+          },
+          {
+            "phase": "recovered",
+            "passed": true,
+            "missing_or_changed": [],
+            "extraneous": [],
+            "skill_count": 4,
+            "installed_file_count": 15,
+            "installed_bytes": 47622,
+            "owner_preserved": true,
+            "partial_removed": true
+          }
+        ]
+      },
+      "usage": {
+        "totalTokens": 577476,
+        "inputTokens": 575123,
+        "cachedInputTokens": 516864,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 2353,
+        "reasoningOutputTokens": 270
+      },
+      "tool_calls": 25,
+      "nonzero_tool_calls": 3,
+      "tool_seconds": 61.293999999987136,
+      "workspace_setup_seconds": 27.2029999999977,
+      "native_call_seconds": 146.0470000000023,
+      "cleanup_seconds": 2.5,
+      "whole_trial_seconds": 177.125,
+      "instrument_valid": true,
+      "remaining_capacity_before": 97.0,
+      "observed_peak_scratch_bytes": 40138,
+      "instrument_observation_seconds": 0.0
+    },
+    {
+      "case": "python-debug",
+      "arm": "direct_native",
+      "repeat": 1,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "grade": {
+        "checks": {
+          "initial_setup_verified": true,
+          "fault_injected": true,
+          "recovery_verified": true,
+          "requested_skills_removed": true,
+          "owner_guidance_preserved": true,
+          "concurrent_owner_note_preserved": true,
+          "native_policy_preserved": true,
+          "owner_config_preserved": true,
+          "partial_marker_removed": true,
+          "app_source_unchanged": true,
+          "registry_entries_removed": true
+        },
+        "passed": true,
+        "out_of_scope": [],
+        "remaining_skills": [],
+        "checkpoints": [
+          {
+            "phase": "setup",
+            "passed": true,
+            "missing_or_changed": [],
+            "extraneous": [],
+            "skill_count": 4,
+            "installed_file_count": 14,
+            "installed_bytes": 47557
+          },
+          {
+            "phase": "recovered",
+            "passed": true,
+            "missing_or_changed": [],
+            "extraneous": [],
+            "skill_count": 4,
+            "installed_file_count": 15,
+            "installed_bytes": 47622,
+            "owner_preserved": true,
+            "partial_removed": true
+          }
+        ]
+      },
+      "usage": {
+        "totalTokens": 712354,
+        "inputTokens": 709525,
+        "cachedInputTokens": 637312,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 2829,
+        "reasoningOutputTokens": 146
+      },
+      "tool_calls": 17,
+      "nonzero_tool_calls": 2,
+      "tool_seconds": 103.27999999999884,
+      "workspace_setup_seconds": 21.985000000000582,
+      "native_call_seconds": 198.65599999999904,
+      "cleanup_seconds": 2.625,
+      "whole_trial_seconds": 224.625,
+      "instrument_valid": true,
+      "remaining_capacity_before": 95.0,
+      "observed_peak_scratch_bytes": 1046447,
+      "instrument_observation_seconds": 0.07999999999810825
+    },
+    {
+      "case": "python-debug",
+      "arm": "temper_prototype",
+      "repeat": 0,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "grade": {
+        "checks": {
+          "initial_setup_verified": true,
+          "fault_injected": true,
+          "recovery_verified": true,
+          "requested_skills_removed": true,
+          "owner_guidance_preserved": true,
+          "concurrent_owner_note_preserved": true,
+          "native_policy_preserved": true,
+          "owner_config_preserved": true,
+          "partial_marker_removed": true,
+          "app_source_unchanged": true,
+          "registry_entries_removed": true
+        },
+        "passed": true,
+        "out_of_scope": [],
+        "remaining_skills": [],
+        "checkpoints": [
+          {
+            "phase": "setup",
+            "passed": true,
+            "missing_or_changed": [],
+            "extraneous": [],
+            "skill_count": 4,
+            "installed_file_count": 14,
+            "installed_bytes": 47557
+          },
+          {
+            "phase": "recovered",
+            "passed": true,
+            "missing_or_changed": [],
+            "extraneous": [],
+            "skill_count": 4,
+            "installed_file_count": 15,
+            "installed_bytes": 47622,
+            "owner_preserved": true,
+            "partial_removed": true
+          }
+        ]
+      },
+      "usage": {
+        "totalTokens": 661890,
+        "inputTokens": 659018,
+        "cachedInputTokens": 617216,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 2872,
+        "reasoningOutputTokens": 134
+      },
+      "tool_calls": 17,
+      "nonzero_tool_calls": 3,
+      "tool_seconds": 71.77999999999156,
+      "workspace_setup_seconds": 24.875,
+      "native_call_seconds": 161.96899999999732,
+      "cleanup_seconds": 2.6409999999996217,
+      "whole_trial_seconds": 190.79699999999866,
+      "instrument_valid": true,
+      "remaining_capacity_before": 97.0,
+      "observed_peak_scratch_bytes": 888196,
+      "instrument_observation_seconds": 0.08000000000174623
+    },
+    {
+      "case": "python-debug",
+      "arm": "temper_prototype",
+      "repeat": 1,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "grade": {
+        "checks": {
+          "initial_setup_verified": true,
+          "fault_injected": true,
+          "recovery_verified": true,
+          "requested_skills_removed": true,
+          "owner_guidance_preserved": true,
+          "concurrent_owner_note_preserved": true,
+          "native_policy_preserved": true,
+          "owner_config_preserved": true,
+          "partial_marker_removed": true,
+          "app_source_unchanged": true,
+          "registry_entries_removed": true
+        },
+        "passed": true,
+        "out_of_scope": [],
+        "remaining_skills": [],
+        "checkpoints": [
+          {
+            "phase": "setup",
+            "passed": true,
+            "missing_or_changed": [],
+            "extraneous": [],
+            "skill_count": 4,
+            "installed_file_count": 14,
+            "installed_bytes": 47557
+          },
+          {
+            "phase": "recovered",
+            "passed": true,
+            "missing_or_changed": [],
+            "extraneous": [],
+            "skill_count": 4,
+            "installed_file_count": 15,
+            "installed_bytes": 47622,
+            "owner_preserved": true,
+            "partial_removed": true
+          }
+        ]
+      },
+      "usage": {
+        "totalTokens": 895875,
+        "inputTokens": 892438,
+        "cachedInputTokens": 817536,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 3437,
+        "reasoningOutputTokens": 119
+      },
+      "tool_calls": 22,
+      "nonzero_tool_calls": 4,
+      "tool_seconds": 73.37099999999555,
+      "workspace_setup_seconds": 22.889999999999418,
+      "native_call_seconds": 190.93799999999828,
+      "cleanup_seconds": 2.8430000000007567,
+      "whole_trial_seconds": 218.13999999999942,
+      "instrument_valid": true,
+      "remaining_capacity_before": 96.0,
+      "observed_peak_scratch_bytes": 995462,
+      "instrument_observation_seconds": 0.1730000000061409
+    },
+    {
+      "case": "typescript-docs",
+      "arm": "direct_native",
+      "repeat": 0,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "grade": {
+        "checks": {
+          "initial_setup_verified": true,
+          "fault_injected": true,
+          "recovery_verified": true,
+          "requested_skills_removed": true,
+          "owner_guidance_preserved": true,
+          "concurrent_owner_note_preserved": true,
+          "native_policy_preserved": true,
+          "owner_config_preserved": true,
+          "partial_marker_removed": true,
+          "app_source_unchanged": true,
+          "registry_entries_removed": true
+        },
+        "passed": true,
+        "out_of_scope": [],
+        "remaining_skills": [],
+        "checkpoints": [
+          {
+            "phase": "setup",
+            "passed": true,
+            "missing_or_changed": [],
+            "extraneous": [],
+            "skill_count": 4,
+            "installed_file_count": 14,
+            "installed_bytes": 55842
+          },
+          {
+            "phase": "recovered",
+            "passed": true,
+            "missing_or_changed": [],
+            "extraneous": [],
+            "skill_count": 4,
+            "installed_file_count": 15,
+            "installed_bytes": 55907,
+            "owner_preserved": true,
+            "partial_removed": true
+          }
+        ]
+      },
+      "usage": {
+        "totalTokens": 438176,
+        "inputTokens": 436023,
+        "cachedInputTokens": 397568,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 2153,
+        "reasoningOutputTokens": 155
+      },
+      "tool_calls": 20,
+      "nonzero_tool_calls": 1,
+      "tool_seconds": 12.436999999994441,
+      "workspace_setup_seconds": 5.890999999999622,
+      "native_call_seconds": 85.20300000000134,
+      "cleanup_seconds": 0.5940000000009604,
+      "whole_trial_seconds": 92.11000000000058,
+      "instrument_valid": true,
+      "remaining_capacity_before": 96.0,
+      "observed_peak_scratch_bytes": 438758,
+      "instrument_observation_seconds": 0.07700000000113505
+    },
+    {
+      "case": "typescript-docs",
+      "arm": "direct_native",
+      "repeat": 1,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "grade": {
+        "checks": {
+          "initial_setup_verified": true,
+          "fault_injected": true,
+          "recovery_verified": true,
+          "requested_skills_removed": true,
+          "owner_guidance_preserved": true,
+          "concurrent_owner_note_preserved": true,
+          "native_policy_preserved": true,
+          "owner_config_preserved": true,
+          "partial_marker_removed": true,
+          "app_source_unchanged": true,
+          "registry_entries_removed": true
+        },
+        "passed": true,
+        "out_of_scope": [],
+        "remaining_skills": [],
+        "checkpoints": [
+          {
+            "phase": "setup",
+            "passed": true,
+            "missing_or_changed": [],
+            "extraneous": [],
+            "skill_count": 4,
+            "installed_file_count": 14,
+            "installed_bytes": 55842
+          },
+          {
+            "phase": "recovered",
+            "passed": true,
+            "missing_or_changed": [],
+            "extraneous": [],
+            "skill_count": 4,
+            "installed_file_count": 15,
+            "installed_bytes": 55907,
+            "owner_preserved": true,
+            "partial_removed": true
+          }
+        ]
+      },
+      "usage": {
+        "totalTokens": 549015,
+        "inputTokens": 546456,
+        "cachedInputTokens": 503296,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 2559,
+        "reasoningOutputTokens": 248
+      },
+      "tool_calls": 24,
+      "nonzero_tool_calls": 4,
+      "tool_seconds": 16.891999999999825,
+      "workspace_setup_seconds": 7.812999999998283,
+      "native_call_seconds": 101.9220000000023,
+      "cleanup_seconds": 0.5930000000007567,
+      "whole_trial_seconds": 110.75,
+      "instrument_valid": true,
+      "remaining_capacity_before": 95.0,
+      "observed_peak_scratch_bytes": 84059,
+      "instrument_observation_seconds": 0.0639999999984866
+    },
+    {
+      "case": "typescript-docs",
+      "arm": "temper_prototype",
+      "repeat": 0,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "grade": {
+        "checks": {
+          "initial_setup_verified": true,
+          "fault_injected": true,
+          "recovery_verified": true,
+          "requested_skills_removed": true,
+          "owner_guidance_preserved": true,
+          "concurrent_owner_note_preserved": true,
+          "native_policy_preserved": true,
+          "owner_config_preserved": true,
+          "partial_marker_removed": true,
+          "app_source_unchanged": true,
+          "registry_entries_removed": true
+        },
+        "passed": true,
+        "out_of_scope": [],
+        "remaining_skills": [],
+        "checkpoints": [
+          {
+            "phase": "setup",
+            "passed": true,
+            "missing_or_changed": [],
+            "extraneous": [],
+            "skill_count": 4,
+            "installed_file_count": 14,
+            "installed_bytes": 55842
+          },
+          {
+            "phase": "recovered",
+            "passed": true,
+            "missing_or_changed": [],
+            "extraneous": [],
+            "skill_count": 4,
+            "installed_file_count": 15,
+            "installed_bytes": 55907,
+            "owner_preserved": true,
+            "partial_removed": true
+          }
+        ]
+      },
+      "usage": {
+        "totalTokens": 436526,
+        "inputTokens": 434231,
+        "cachedInputTokens": 377216,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 2295,
+        "reasoningOutputTokens": 114
+      },
+      "tool_calls": 15,
+      "nonzero_tool_calls": 1,
+      "tool_seconds": 11.673000000013417,
+      "workspace_setup_seconds": 8.328000000001339,
+      "native_call_seconds": 76.17199999999866,
+      "cleanup_seconds": 0.5780000000013388,
+      "whole_trial_seconds": 85.48400000000038,
+      "instrument_valid": true,
+      "remaining_capacity_before": 96.0,
+      "observed_peak_scratch_bytes": 180875,
+      "instrument_observation_seconds": 0.0319999999992433
+    },
+    {
+      "case": "typescript-docs",
+      "arm": "temper_prototype",
+      "repeat": 1,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "grade": {
+        "checks": {
+          "initial_setup_verified": true,
+          "fault_injected": true,
+          "recovery_verified": true,
+          "requested_skills_removed": true,
+          "owner_guidance_preserved": true,
+          "concurrent_owner_note_preserved": true,
+          "native_policy_preserved": true,
+          "owner_config_preserved": true,
+          "partial_marker_removed": true,
+          "app_source_unchanged": true,
+          "registry_entries_removed": true
+        },
+        "passed": true,
+        "out_of_scope": [],
+        "remaining_skills": [],
+        "checkpoints": [
+          {
+            "phase": "setup",
+            "passed": true,
+            "missing_or_changed": [],
+            "extraneous": [],
+            "skill_count": 4,
+            "installed_file_count": 14,
+            "installed_bytes": 55842
+          },
+          {
+            "phase": "recovered",
+            "passed": true,
+            "missing_or_changed": [],
+            "extraneous": [],
+            "skill_count": 4,
+            "installed_file_count": 15,
+            "installed_bytes": 55907,
+            "owner_preserved": true,
+            "partial_removed": true
+          }
+        ]
+      },
+      "usage": {
+        "totalTokens": 568649,
+        "inputTokens": 565899,
+        "cachedInputTokens": 528256,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 2750,
+        "reasoningOutputTokens": 128
+      },
+      "tool_calls": 19,
+      "nonzero_tool_calls": 3,
+      "tool_seconds": 10.280000000002474,
+      "workspace_setup_seconds": 5.937999999998283,
+      "native_call_seconds": 102.96900000000096,
+      "cleanup_seconds": 0.6410000000032596,
+      "whole_trial_seconds": 109.96900000000096,
+      "instrument_valid": true,
+      "remaining_capacity_before": 94.0,
+      "observed_peak_scratch_bytes": 479683,
+      "instrument_observation_seconds": 0.07999999999810825
+    }
+  ],
+  "journals": [
+    {
+      "name": "python-debug-direct_native-0.jsonl",
+      "counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 42,
+        "item/tool/call": 25,
+        "thread/tokenUsage/updated": 19,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 577476,
+        "inputTokens": 575123,
+        "cachedInputTokens": 516864,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 2353,
+        "reasoningOutputTokens": 270
+      }
+    },
+    {
+      "name": "python-debug-direct_native-1.jsonl",
+      "counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 31,
+        "item/tool/call": 17,
+        "thread/tokenUsage/updated": 24,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 712354,
+        "inputTokens": 709525,
+        "cachedInputTokens": 637312,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 2829,
+        "reasoningOutputTokens": 146
+      }
+    },
+    {
+      "name": "python-debug-temper_prototype-0.jsonl",
+      "counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 29,
+        "item/tool/call": 17,
+        "thread/tokenUsage/updated": 20,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 661890,
+        "inputTokens": 659018,
+        "cachedInputTokens": 617216,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 2872,
+        "reasoningOutputTokens": 134
+      }
+    },
+    {
+      "name": "python-debug-temper_prototype-1.jsonl",
+      "counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 36,
+        "item/tool/call": 22,
+        "thread/tokenUsage/updated": 25,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 895875,
+        "inputTokens": 892438,
+        "cachedInputTokens": 817536,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 3437,
+        "reasoningOutputTokens": 119
+      }
+    },
+    {
+      "name": "typescript-docs-direct_native-0.jsonl",
+      "counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 33,
+        "item/tool/call": 20,
+        "thread/tokenUsage/updated": 15,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 438176,
+        "inputTokens": 436023,
+        "cachedInputTokens": 397568,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 2153,
+        "reasoningOutputTokens": 155
+      }
+    },
+    {
+      "name": "typescript-docs-direct_native-1.jsonl",
+      "counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 39,
+        "item/tool/call": 24,
+        "thread/tokenUsage/updated": 17,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 549015,
+        "inputTokens": 546456,
+        "cachedInputTokens": 503296,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 2559,
+        "reasoningOutputTokens": 248
+      }
+    },
+    {
+      "name": "typescript-docs-temper_prototype-0.jsonl",
+      "counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 27,
+        "item/tool/call": 15,
+        "thread/tokenUsage/updated": 15,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 436526,
+        "inputTokens": 434231,
+        "cachedInputTokens": 377216,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 2295,
+        "reasoningOutputTokens": 114
+      }
+    },
+    {
+      "name": "typescript-docs-temper_prototype-1.jsonl",
+      "counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 30,
+        "item/tool/call": 19,
+        "thread/tokenUsage/updated": 20,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 568649,
+        "inputTokens": 565899,
+        "cachedInputTokens": 528256,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 2750,
+        "reasoningOutputTokens": 128
+      }
+    }
+  ],
+  "execution": {
+    "started_at": "2026-10-15T14:51:05.748697+00:00",
+    "source_commit": "61e8523027ad57e5573d70b9bc0abab421394e0e",
+    "model": "gpt-6.1-sol",
+    "effort": "medium",
+    "protocol_sha256": "639c0b840aca8ceb64d22d9adfc972023615e5e99ce33d7825912f356c9c8d5e",
+    "github_ci_used": false,
+    "product_runtime_changed": false
+  },
+  "summary": {
+    "whole_run_seconds": 1209.0310000000027,
+    "native_turns": 8,
+    "provider_request_count": null,
+    "limits": "Development screen; two repeats and a benchmark-only publishing prototype. No general efficiency or product-readiness claim."
+  },
+  "frozen_files_unchanged": true,
+  "verdict": "no_demonstrated_overall_effort_reduction",
+  "interpretation": "Eight successful operator workflows; aggregate elapsed times effectively tied. Prototype has fewer tool calls, more cumulative tokens and temporary state. This is not a validated general Temper installer or automatic router.",
+  "recorded_at": "2026-10-15T15:21:47.751732+00:00",
+  "overhead": {
+    "preparation_lower_bound_seconds": 2181.748697,
+    "whole_study_elapsed_lower_bound_seconds": 4393.298616,
+    "active_coordinator_seconds": null,
+    "coordinator_tokens": null,
+    "human_onboarding_time": null,
+    "prerequisite_source_acquisition": "8 parallel pinned public archive downloads; per-source bytes/times retained in sources.json",
+    "known_additional_model_turns": 0,
+    "provider_request_count": null,
+    "cleanup": {
+      "temporary_prerequisite_root_removed": true,
+      "apparent_file_bytes_removed": 903553269,
+      "cleanup_seconds": 0.5814714269999968,
+      "whole_cleanup_tool_seconds": 2.5878113
+    },
+    "retained_public_source_bytes": 133320090
+  },
+  "supplemental_compatibility": {
+    "scope": "Post-admission diagnostics; these do not replace or retune frozen operator results.",
+    "old_node": {
+      "node_version": "18.20.4",
+      "skills_cli": "1.7.2",
+      "startup_returncode": 1,
+      "error": "node:util does not export styleText",
+      "configured_test_node": "24.18.0"
+    },
+    "pi_before_project_approval": {
+      "probe": "pi-rpc-with-ponytail",
+      "returncode": 0,
+      "seconds": 0.4850000000005821,
+      "rpc_response_ids": [
+        "state",
+        "commands"
+      ],
+      "ponytail_command_observed": false,
+      "provider_model_turns": 0,
+      "stderr": ""
+    },
+    "pi_after_project_approval": {
+      "project_resources_explicitly_approved_in_disposable_lab": true,
+      "ponytail_command_loaded": true,
+      "commands": [
+        "ponytail",
+        "ponytail-review",
+        "ponytail-audit",
+        "ponytail-gain",
+        "ponytail-debt",
+        "ponytail-help",
+        "llama",
+        "mcp",
+        "skill:ponytail",
+        "skill:ponytail-audit",
+        "skill:ponytail-debt",
+        "skill:ponytail-gain",
+        "skill:ponytail-help",
+        "skill:ponytail-review"
+      ],
+      "message_count": 0,
+      "provider_model_turns": 0,
+      "seconds": 0.6720000000022992,
+      "returncode": 0
+    },
+    "superpowers_helper": {
+      "identified_polluting_test": true,
+      "test": "tests/b.test.js",
+      "returncode": 1,
+      "returncode_meaning": "Documented nonzero result when pollution is identified",
+      "provider_model_turns": 0
+    },
+    "discovery_errors_retained": [
+      "Pi list --local is not supported; no permission was inferred from its failed invocation",
+      "First supplemental helper had a Python import-path error before running; fixed in the separate diagnostic helper"
+    ]
+  },
+  "native_probe_summary": {
+    "gsd": {
+      "samples": 5,
+      "passed": 5,
+      "seconds_median": 16.670999999998457,
+      "seconds_min": 16.21900000000096,
+      "seconds_max": 16.75,
+      "project_files_added": 860,
+      "project_bytes_added": 15747835,
+      "skill_files": 72,
+      "home_files_written": 2
+    },
+    "openspec": {
+      "samples": 5,
+      "passed": 5,
+      "seconds_median": 1.875,
+      "seconds_min": 1.8439999999973224,
+      "seconds_max": 1.875,
+      "project_files_added": 11,
+      "project_bytes_added": 96578,
+      "skill_files": 6,
+      "home_files_written": 0
+    },
+    "pi-ponytail": {
+      "samples": 5,
+      "passed": 5,
+      "seconds_median": 0.4529999999977008,
+      "seconds_min": 0.4220000000022992,
+      "seconds_max": 0.4530000000013388,
+      "project_files_added": 1,
+      "project_bytes_added": 55,
+      "skill_files": 0,
+      "home_files_written": 0
+    },
+    "ponytail-selective": {
+      "samples": 5,
+      "passed": 5,
+      "seconds_median": 0.4370000000017171,
+      "seconds_min": 0.43699999999807915,
+      "seconds_max": 0.4530000000013388,
+      "project_files_added": 2,
+      "project_bytes_added": 3714,
+      "skill_files": 1,
+      "home_files_written": 0
+    },
+    "pstack-full": {
+      "samples": 5,
+      "passed": 5,
+      "seconds_median": 2.922000000002299,
+      "seconds_min": 2.812000000001717,
+      "seconds_max": 3.139999999999418,
+      "project_files_added": 133,
+      "project_bytes_added": 652007,
+      "skill_files": 53,
+      "home_files_written": 0
+    },
+    "pstack-selective": {
+      "samples": 5,
+      "passed": 5,
+      "seconds_median": 0.5940000000009604,
+      "seconds_min": 0.5780000000013388,
+      "seconds_max": 0.625,
+      "project_files_added": 2,
+      "project_bytes_added": 3358,
+      "skill_files": 1,
+      "home_files_written": 0
+    },
+    "pstack-temporary": {
+      "samples": 5,
+      "passed": 5,
+      "seconds_median": 0.5779999999977008,
+      "seconds_min": 0.5620000000017171,
+      "seconds_max": 0.5779999999977008,
+      "project_files_added": 0,
+      "project_bytes_added": 0,
+      "skill_files": 0,
+      "home_files_written": 0
+    },
+    "spec-kit": {
+      "samples": 5,
+      "passed": 5,
+      "seconds_median": 2.2969999999986612,
+      "seconds_min": 2.2820000000028813,
+      "seconds_max": 2.312999999998283,
+      "project_files_added": 30,
+      "project_bytes_added": 244350,
+      "skill_files": 10,
+      "home_files_written": 0
+    },
+    "superpowers-selective": {
+      "samples": 5,
+      "passed": 5,
+      "seconds_median": 0.5469999999986612,
+      "seconds_min": 0.5309999999990396,
+      "seconds_max": 0.5470000000022992,
+      "project_files_added": 12,
+      "project_bytes_added": 41079,
+      "skill_files": 1,
+      "home_files_written": 0
+    }
+  },
+  "finalized_at": "2026-10-15T15:27:57.298616+00:00",
+  "reproduction_validation": {
+    "source_trees_verified": 8,
+    "fresh_dependency_restore_passed": true,
+    "restore_elapsed_seconds": 18.2065155,
+    "restored_cache_removed": true,
+    "npm_lock_sha256": "a165d0fe0f5d5a0f4191aa05bd543c01ed2fb384ecf83cc415cd344dac672b5d",
+    "additional_model_turns": 0
+  }
+}

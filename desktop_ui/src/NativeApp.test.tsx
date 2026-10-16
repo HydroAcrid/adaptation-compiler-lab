@@ -493,7 +493,9 @@ describe("installed Temper state boundaries", () => {
     render(<App />);
 
     expect(
-      await screen.findByRole("heading", { name: "Consent needs renewal." }),
+      await screen.findByRole("heading", {
+        name: "Reviewed suggestions need renewed permission.",
+      }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /review suggestion/i }),
@@ -1093,5 +1095,74 @@ describe("installed Temper state boundaries", () => {
     expect(
       invoke.mock.calls.some(([command]) => command === "preferences_update"),
     ).toBe(false);
+  });
+
+  it("keeps active habit learning distinct from paused reviewed suggestions", async () => {
+    window.__TAURI_INTERNALS__ = {};
+    const user = userEvent.setup();
+    invoke.mockImplementation(async (command: string) => {
+      if (command === "engine_handshake") return handshake(true);
+      if (command === "snapshot_get")
+        return response(
+          {
+            ...snapshot,
+            health: "paused",
+            background_enabled: false,
+            suggestions: [],
+          },
+          digest,
+        );
+      if (command === "setup_status") return response(configuredSetup, digest);
+      if (command === "modes_list")
+        return response({ modes: [], raw_payloads_exposed: false });
+      if (command === "instruction_environment_get")
+        return response({ environments: [], raw_payloads_exposed: false });
+      if (command === "package_review_list")
+        return response({
+          items: [],
+          pending_count: 0,
+          raw_payloads_exposed: false,
+        });
+      if (command === "autonomy_status")
+        return response(
+          {
+            grant_enabled: true,
+            learning_enabled: true,
+            personalization_enabled: false,
+            automatic_serving_ready: false,
+            secure_store_ready: true,
+            provenance_state: "owner_authorized",
+            input_policy: "owner_authorized_conversations",
+            capture_state: "ready",
+            mode: "shadow",
+            published: false,
+            delivery_confirmed: false,
+            publication_needs_attention: false,
+            habits: [],
+            recent_changes: [],
+            raw_payloads_exposed: false,
+          },
+          digest,
+        );
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    render(<App />);
+    expect(
+      await screen.findByRole("button", { name: "Pause learning" }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("heading", { name: "Reviewed suggestions are paused." }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("No new learning is running."),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Learning is paused.")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+    expect(
+      screen.getByRole("switch", { name: "Capture for reviewed suggestions" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("switch", { name: "Background learning" }),
+    ).not.toBeInTheDocument();
   });
 });

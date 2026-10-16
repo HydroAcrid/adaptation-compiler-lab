@@ -1,0 +1,25 @@
+{
+  "evaluation_version": "habit-eval-v13",
+  "purpose": "development_regression",
+  "source_dataset_digest": "sha256:9f0a4bf5e7037d1f5248c10f3166522805046d7e5c66d4faed0739e1dc21b40b",
+  "dataset_digest": "sha256:220b8dbd1e9e040c806f965f5c6c8e07da345bfcd0f855742e4e4eee648aaae9",
+  "analyzer_digest": "sha256:32bc64275ccfe81e312132c5df08b0ff8a32aa32675521c503db16d087659f26",
+  "precision_gate": 0.95,
+  "recall_gate": 0.8,
+  "disallowed_promotion_gate": 0,
+  "wrong_scope_gate": 0,
+  "executed": false,
+  "defaults": {
+    "SUPPORT_TASKS": 3,
+    "SUPPORT_DATES": 2,
+    "TRIAL_DAYS": 14,
+    "CHECKED_OPPORTUNITIES": 3,
+    "COMPLIANCE_SUCCESSES": 2,
+    "RAW_RETENTION_DAYS": 30,
+    "MAX_PROFILE_BYTES": 1500,
+    "MAX_DAILY_ANALYSES": 12,
+    "POLL_MINUTES": 5,
+    "MIN_REMAINING_CAPACITY": 20
+  },
+  "reason": "Versioned scoped affected-habit measurement; preserve original v12 report and every precision error."
+}

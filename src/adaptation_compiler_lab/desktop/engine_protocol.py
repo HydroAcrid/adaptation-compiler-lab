@@ -80,6 +80,7 @@ from adaptation_compiler_lab.runtime.target_authorization import (
 from adaptation_compiler_lab.serialization import canonical_digest
 
 if TYPE_CHECKING:
+    from adaptation_compiler_lab.autonomy.service import AutonomyApplicationService
     from adaptation_compiler_lab.claude_delivery.connection import ClaudeConnectionService
     from adaptation_compiler_lab.copilot_delivery.connection import CopilotConnectionService
     from adaptation_compiler_lab.desktop.portability_service import LocalProfilePortabilityService
@@ -168,6 +169,7 @@ class EngineProtocolRouter:
         target_release_provider: Callable[[], ExternalGovernedRelease | None] | None = None,
         recovery_factory: Callable[[], LocalRecoveryService] | None = None,
         runtime_config_path: Path | None = None,
+        autonomy_factory: Callable[[], AutonomyApplicationService] | None = None,
     ) -> None:
         self._service = service
         self._portability = portability
@@ -183,6 +185,8 @@ class EngineProtocolRouter:
         self._target_release_provider = target_release_provider
         self._recovery_factory = recovery_factory
         self._runtime_config_path = runtime_config_path
+        self._autonomy_factory = autonomy_factory
+        self._autonomy_protocol: Any = None
         self._setup: DesktopSetupApplicationService | None = None
         self._instruction_environment: InstructionEnvironmentService | None = None
         self._recovery: LocalRecoveryService | None = None
@@ -210,6 +214,8 @@ class EngineProtocolRouter:
                 ok=True,
                 result=handshake.model_dump(mode="json"),
             )
+        if request.method.startswith("autonomy."):
+            return self._handle_autonomy(request)
         if request.method == "claude.hook.handle":
             return self._handle_claude_hook(request)
         if request.method == "claude.runtime.refresh":
@@ -321,6 +327,7 @@ class EngineProtocolRouter:
                     raise ValueError
                 current = self._service.load()
                 self._instruction_environment = None
+                self._autonomy_protocol = None
             except (OSError, ValueError):
                 return self._error(
                     request,
@@ -2619,6 +2626,34 @@ class EngineProtocolRouter:
             snapshot_digest=snapshot.content_digest,
         )
 
+    def _handle_autonomy(self, request: EngineRequest) -> EngineResponse:
+        from adaptation_compiler_lab.autonomy.protocol import AutonomyProtocol
+
+        if self._autonomy_factory is None:
+            return self._error(request, "not_configured", "Configure the local runtime first.")
+        try:
+            if self._autonomy_protocol is None:
+                self._autonomy_protocol = AutonomyProtocol(self._autonomy_factory())
+            result = self._autonomy_protocol.dispatch(
+                request.method,
+                request.params,
+                expected_digest=request.expected_snapshot_digest,
+                idempotency_key=request.idempotency_key,
+            )
+            return EngineResponse(
+                request_id=request.request_id,
+                ok=True,
+                result=result,
+                snapshot_digest=self._autonomy_protocol.service.snapshot_digest,
+            )
+        except (OSError, ValueError):
+            return self._error(
+                request,
+                "autonomy_unavailable",
+                "Temper could not complete this learning action. "
+                "Refresh its status before retrying.",
+            )
+
     def _mutation_request(
         self, request: EngineRequest
     ) -> tuple[Sha256Digest, Sha256Digest] | EngineResponse:
@@ -2707,6 +2742,18 @@ class EngineProtocolRouter:
             ok=False,
             error=EngineError(code=code, message=message, retryable=retryable),
         )
+
+
+def _legacy_project_registration_digest(
+    project_id: str, capture_after_epoch_seconds: float | int, scope: Scope
+) -> Sha256Digest:
+    return canonical_digest(
+        {
+            "capture_after_epoch_seconds": capture_after_epoch_seconds,
+            "project_id": project_id,
+            "scope": scope.model_dump(mode="json"),
+        }
+    )
 
 
 def build_router(
@@ -2932,16 +2979,12 @@ def build_router(
                 project.project_id: (
                     project.registration.content_digest
                     if project.registration is not None
-                    else canonical_digest(
-                        {
-                            "capture_after_epoch_seconds": (
-                                project.capture_after_epoch_seconds
-                                if project.capture_after_epoch_seconds is not None
-                                else config.capture_after_epoch_seconds
-                            ),
-                            "project_id": project.project_id,
-                            "scope": project.scope,
-                        }
+                    else _legacy_project_registration_digest(
+                        project.project_id,
+                        project.capture_after_epoch_seconds
+                        if project.capture_after_epoch_seconds is not None
+                        else config.capture_after_epoch_seconds,
+                        project.scope,
                     )
                 )
                 for project in config.projects
@@ -3061,16 +3104,12 @@ def build_router(
                 project.project_id: (
                     project.registration.content_digest
                     if project.registration is not None
-                    else canonical_digest(
-                        {
-                            "capture_after_epoch_seconds": (
-                                project.capture_after_epoch_seconds
-                                if project.capture_after_epoch_seconds is not None
-                                else config.capture_after_epoch_seconds
-                            ),
-                            "project_id": project.project_id,
-                            "scope": project.scope,
-                        }
+                    else _legacy_project_registration_digest(
+                        project.project_id,
+                        project.capture_after_epoch_seconds
+                        if project.capture_after_epoch_seconds is not None
+                        else config.capture_after_epoch_seconds,
+                        project.scope,
                     )
                 )
                 for project in config.projects
@@ -3180,7 +3219,14 @@ def build_router(
         target_release_provider=target_release_provider,
         recovery_factory=_native_recovery_service,
         runtime_config_path=config_path.expanduser().resolve(),
+        autonomy_factory=lambda: _native_autonomy_factory(config_path),
     )
+
+
+def _native_autonomy_factory(config_path: Path) -> AutonomyApplicationService:
+    from adaptation_compiler_lab.autonomy.native import native_autonomy_service
+
+    return native_autonomy_service(config_path)
 
 
 def _native_recovery_service() -> LocalRecoveryService:

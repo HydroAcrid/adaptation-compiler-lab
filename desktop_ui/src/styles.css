@@ -5244,6 +5244,36 @@ strong {
   }
 }
 
+.autonomy-panel {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 28px;
+  padding: 24px;
+}
+
+.autonomy-panel__heading,
+.autonomy-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.autonomy-panel fieldset {
+  border: 0;
+  margin: 16px 0;
+  padding: 0;
+}
+
+.autonomy-panel label {
+  display: block;
+  margin: 8px 0;
+}
+
+.autonomy-panel code {
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 600px) {
   .window-shell {
     min-height: 0;

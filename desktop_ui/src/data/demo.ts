@@ -146,7 +146,8 @@ export const connections: AgentConnection[] = [
     name: "Codex",
     status: "connected",
     sourceCapability: "Learns from completed tasks",
-    targetCapability: "Delivers to fresh Temper-managed tasks",
+    targetCapability:
+      "Approved suggestions go to fresh Temper-managed tasks. Authorized style defaults can also reach ordinary Codex chats through native instructions or scoped MCP context.",
     authDescription: "Signed in with ChatGPT",
     costDescription: "Uses your Codex subscription",
   },

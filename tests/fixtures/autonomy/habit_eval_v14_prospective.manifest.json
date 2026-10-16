@@ -1,0 +1,24 @@
+{
+  "evaluation_version": "habit-eval-v14",
+  "purpose": "prospective_shadow_detection",
+  "dataset_digest": "sha256:ea86f15e54b7f2f0923f8a08016b60b9e295d472ebd0c04806b1736c199ecb2d",
+  "analyzer_digest": "sha256:2ec60f9d68eedfb5d4867cb62e3453a9853c67c5d37529093f530117692341fb",
+  "precision_gate": 0.95,
+  "recall_gate": 0.8,
+  "disallowed_promotion_gate": 0,
+  "wrong_scope_gate": 0,
+  "executed": false,
+  "defaults": {
+    "SUPPORT_TASKS": 3,
+    "SUPPORT_DATES": 2,
+    "TRIAL_DAYS": 14,
+    "CHECKED_OPPORTUNITIES": 3,
+    "COMPLIANCE_SUCCESSES": 2,
+    "RAW_RETENTION_DAYS": 30,
+    "MAX_PROFILE_BYTES": 1500,
+    "MAX_DAILY_ANALYSES": 12,
+    "POLL_MINUTES": 5,
+    "MIN_REMAINING_CAPACITY": 20
+  },
+  "reason": "Fresh current trusted-composer calibration; previous results and thresholds preserved."
+}

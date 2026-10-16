@@ -300,13 +300,16 @@ class CodexInstructionSourceAdapter(InstructionSourceAdapter):
     surface = "codex-cli"
     surface_contract_version = "codex-cli-0.153.1"
 
-    def __init__(self, *, cli_version: str = "0.153.1") -> None:
+    def __init__(self, *, cli_version: str = "0.153.1", exact_codex_homes: bool = False) -> None:
         if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-.][A-Za-z0-9.-]+)?", cli_version):
             raise ValueError("invalid Codex instruction contract version")
         self.surface_contract_version = f"codex-cli-{cli_version}"
+        self.exact_codex_homes = exact_codex_homes
 
     def _native_instruction_limit(self, global_roots: tuple[Path, ...]) -> int | None:
-        configured = _codex_config_value(global_roots, "project_doc_max_bytes")
+        configured = _codex_config_value(
+            global_roots, "project_doc_max_bytes", exact_homes=self.exact_codex_homes
+        )
         if isinstance(configured, int) and not isinstance(configured, bool) and configured > 0:
             return min(configured, MAX_ENVIRONMENT_BYTES)
         return DEFAULT_CODEX_INSTRUCTION_BYTES
@@ -318,7 +321,7 @@ class CodexInstructionSourceAdapter(InstructionSourceAdapter):
             return NativeActivationStatus.ACTIVE
         if not global_roots:
             return NativeActivationStatus.UNKNOWN
-        disabled = _codex_disabled_skill_paths(global_roots)
+        disabled = _codex_disabled_skill_paths(global_roots, exact_homes=self.exact_codex_homes)
         try:
             resolved = candidate.path.expanduser().resolve(strict=True)
         except OSError:
@@ -338,7 +341,9 @@ class CodexInstructionSourceAdapter(InstructionSourceAdapter):
         global_roots: tuple[Path, ...],
     ) -> list[_SourceCandidate]:
         candidates: list[_SourceCandidate] = []
-        fallback_names = _codex_project_fallback_filenames(global_roots)
+        fallback_names = _codex_project_fallback_filenames(
+            global_roots, exact_homes=self.exact_codex_homes
+        )
         for depth, directory in enumerate(_path_chain(root, cwd)):
             chosen = _first_codex_instruction(
                 directory / "AGENTS.override.md",
@@ -371,7 +376,7 @@ class CodexInstructionSourceAdapter(InstructionSourceAdapter):
 
     def _global_candidates(self, root: Path) -> list[_SourceCandidate]:
         candidates: list[_SourceCandidate] = []
-        codex_home = root if root.name == ".codex" else root / ".codex"
+        codex_home = root if self.exact_codex_homes or root.name == ".codex" else root / ".codex"
         chosen = _first_codex_instruction(
             codex_home / "AGENTS.override.md", codex_home / "AGENTS.md"
         )
@@ -384,7 +389,7 @@ class CodexInstructionSourceAdapter(InstructionSourceAdapter):
                     precedence=10,
                 )
             )
-        if root.name != ".codex":
+        if not self.exact_codex_homes and root.name != ".codex":
             candidates.extend(
                 _skill_candidates(
                     root / ".agents" / "skills",
@@ -1017,13 +1022,15 @@ def _frontmatter_inline_values(value: str) -> set[str]:
     return {item.strip().strip("\"'") for item in value.split(",") if item.strip().strip("\"'")}
 
 
-def _codex_disabled_skill_paths(global_roots: tuple[Path, ...]) -> set[Path]:
+def _codex_disabled_skill_paths(
+    global_roots: tuple[Path, ...], *, exact_homes: bool = False
+) -> set[Path]:
     """Read only opted-in Codex config files and return explicit disabled skill paths."""
 
     disabled: set[Path] = set()
     for opted_root in global_roots:
         root = opted_root.expanduser().resolve(strict=True)
-        candidates = _codex_config_candidates(root)
+        candidates = _codex_config_candidates(root, exact_home=exact_homes)
         for config, home in candidates:
             if not config.is_file():
                 continue
@@ -1062,10 +1069,12 @@ def _codex_disabled_skill_paths(global_roots: tuple[Path, ...]) -> set[Path]:
     return disabled
 
 
-def _codex_config_value(global_roots: tuple[Path, ...], key: str) -> object | None:
+def _codex_config_value(
+    global_roots: tuple[Path, ...], key: str, *, exact_homes: bool = False
+) -> object | None:
     for opted_root in global_roots:
         root = opted_root.expanduser().resolve(strict=True)
-        for config, _home in _codex_config_candidates(root):
+        for config, _home in _codex_config_candidates(root, exact_home=exact_homes):
             if not config.is_file():
                 continue
             try:
@@ -1081,8 +1090,12 @@ def _codex_config_value(global_roots: tuple[Path, ...], key: str) -> object | No
     return None
 
 
-def _codex_project_fallback_filenames(global_roots: tuple[Path, ...]) -> tuple[str, ...]:
-    configured = _codex_config_value(global_roots, "project_doc_fallback_filenames")
+def _codex_project_fallback_filenames(
+    global_roots: tuple[Path, ...], *, exact_homes: bool = False
+) -> tuple[str, ...]:
+    configured = _codex_config_value(
+        global_roots, "project_doc_fallback_filenames", exact_homes=exact_homes
+    )
     if not isinstance(configured, list):
         return ()
     names: list[str] = []
@@ -1100,9 +1113,13 @@ def _codex_project_fallback_filenames(global_roots: tuple[Path, ...]) -> tuple[s
     return tuple(dict.fromkeys(names))
 
 
-def _codex_config_candidates(root: Path) -> tuple[tuple[Path, Path], ...]:
+def _codex_config_candidates(
+    root: Path, *, exact_home: bool = False
+) -> tuple[tuple[Path, Path], ...]:
     if root.name == ".codex":
         return ((root / "config.toml", root.parent),)
+    if exact_home:
+        return ((root / "config.toml", Path.home()),)
     return ((root / ".codex" / "config.toml", root),)
 
 

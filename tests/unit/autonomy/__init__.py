@@ -1,0 +1,1 @@
+"""Autonomy contract tests."""

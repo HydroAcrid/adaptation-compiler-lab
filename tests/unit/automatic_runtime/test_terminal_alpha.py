@@ -350,7 +350,11 @@ def test_renderer_has_no_storage_or_capture_dependency() -> None:
         assert forbidden not in text
 
 
-def test_product_cli_help_and_missing_configuration_are_actionable() -> None:
+def test_product_cli_help_and_missing_configuration_are_actionable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("TEMPER_CONFIG_PATH", raising=False)
+    monkeypatch.delenv("TEMPER_PREDECESSOR_CONFIG_PATH", raising=False)
     runner = CliRunner()
     help_result = runner.invoke(temper_cli.app, ["--help"])
     missing = runner.invoke(temper_cli.app, ["status"])

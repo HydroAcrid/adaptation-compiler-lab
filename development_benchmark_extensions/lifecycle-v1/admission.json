@@ -1,0 +1,981 @@
+{
+  "created_at": "2026-10-15T14:49:27.717848+00:00",
+  "native_probes": [
+    {
+      "route": "pstack-full",
+      "repeat": 0,
+      "checks": {
+        "command_passed": true,
+        "skills_present": true
+      },
+      "passed": true,
+      "command_seconds": 3.139999999999418,
+      "project_files_added": 133,
+      "skills_discovered_as_files": 53,
+      "project_bytes_added": 652007,
+      "home_files_written": 0,
+      "whole_probe_seconds": 3.2339999999967404
+    },
+    {
+      "route": "pstack-selective",
+      "repeat": 0,
+      "checks": {
+        "command_passed": true,
+        "one_skill_present": true
+      },
+      "passed": true,
+      "command_seconds": 0.5940000000009604,
+      "project_files_added": 2,
+      "skills_discovered_as_files": 1,
+      "project_bytes_added": 3358,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.6100000000005821
+    },
+    {
+      "route": "pstack-temporary",
+      "repeat": 0,
+      "checks": {
+        "command_passed": true,
+        "no_project_skill_install": true,
+        "source_body_in_prompt": true
+      },
+      "passed": true,
+      "command_seconds": 0.5620000000017171,
+      "project_files_added": 0,
+      "skills_discovered_as_files": 0,
+      "project_bytes_added": 0,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.5780000000013388
+    },
+    {
+      "route": "ponytail-selective",
+      "repeat": 0,
+      "checks": {
+        "command_passed": true,
+        "one_skill_present": true
+      },
+      "passed": true,
+      "command_seconds": 0.43699999999807915,
+      "project_files_added": 2,
+      "skills_discovered_as_files": 1,
+      "project_bytes_added": 3714,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.4530000000013388
+    },
+    {
+      "route": "superpowers-selective",
+      "repeat": 0,
+      "checks": {
+        "command_passed": true,
+        "one_skill_present": true,
+        "script_preserved": true
+      },
+      "passed": true,
+      "command_seconds": 0.5469999999986612,
+      "project_files_added": 12,
+      "skills_discovered_as_files": 1,
+      "project_bytes_added": 41079,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.5779999999977008
+    },
+    {
+      "route": "openspec",
+      "repeat": 0,
+      "checks": {
+        "command_passed": true,
+        "live_status_returned": true
+      },
+      "passed": true,
+      "command_seconds": 1.875,
+      "project_files_added": 11,
+      "skills_discovered_as_files": 6,
+      "project_bytes_added": 96578,
+      "home_files_written": 0,
+      "whole_probe_seconds": 1.875
+    },
+    {
+      "route": "spec-kit",
+      "repeat": 0,
+      "checks": {
+        "command_passed": true,
+        "templates_and_skills_created": true
+      },
+      "passed": true,
+      "command_seconds": 2.312000000001717,
+      "project_files_added": 30,
+      "skills_discovered_as_files": 10,
+      "project_bytes_added": 244350,
+      "home_files_written": 0,
+      "whole_probe_seconds": 2.3440000000009604
+    },
+    {
+      "route": "gsd",
+      "repeat": 0,
+      "checks": {
+        "command_passed": true,
+        "roles_and_hooks_created": true
+      },
+      "passed": true,
+      "command_seconds": 16.670999999998457,
+      "project_files_added": 860,
+      "skills_discovered_as_files": 72,
+      "project_bytes_added": 15747835,
+      "home_files_written": 2,
+      "whole_probe_seconds": 17.17199999999866
+    },
+    {
+      "route": "pi-ponytail",
+      "repeat": 0,
+      "checks": {
+        "command_passed": true,
+        "package_registered_locally": true
+      },
+      "passed": true,
+      "command_seconds": 0.4530000000013388,
+      "project_files_added": 1,
+      "skills_discovered_as_files": 0,
+      "project_bytes_added": 55,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.4690000000009604
+    },
+    {
+      "route": "pi-ponytail",
+      "repeat": 1,
+      "checks": {
+        "command_passed": true,
+        "package_registered_locally": true
+      },
+      "passed": true,
+      "command_seconds": 0.4370000000017171,
+      "project_files_added": 1,
+      "skills_discovered_as_files": 0,
+      "project_bytes_added": 55,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.4530000000013388
+    },
+    {
+      "route": "gsd",
+      "repeat": 1,
+      "checks": {
+        "command_passed": true,
+        "roles_and_hooks_created": true
+      },
+      "passed": true,
+      "command_seconds": 16.71799999999712,
+      "project_files_added": 860,
+      "skills_discovered_as_files": 72,
+      "project_bytes_added": 15747835,
+      "home_files_written": 2,
+      "whole_probe_seconds": 17.139999999999418
+    },
+    {
+      "route": "spec-kit",
+      "repeat": 1,
+      "checks": {
+        "command_passed": true,
+        "templates_and_skills_created": true
+      },
+      "passed": true,
+      "command_seconds": 2.2969999999986612,
+      "project_files_added": 30,
+      "skills_discovered_as_files": 10,
+      "project_bytes_added": 244350,
+      "home_files_written": 0,
+      "whole_probe_seconds": 2.312999999998283
+    },
+    {
+      "route": "openspec",
+      "repeat": 1,
+      "checks": {
+        "command_passed": true,
+        "live_status_returned": true
+      },
+      "passed": true,
+      "command_seconds": 1.875,
+      "project_files_added": 11,
+      "skills_discovered_as_files": 6,
+      "project_bytes_added": 96578,
+      "home_files_written": 0,
+      "whole_probe_seconds": 1.889999999999418
+    },
+    {
+      "route": "superpowers-selective",
+      "repeat": 1,
+      "checks": {
+        "command_passed": true,
+        "one_skill_present": true,
+        "script_preserved": true
+      },
+      "passed": true,
+      "command_seconds": 0.5470000000022992,
+      "project_files_added": 12,
+      "skills_discovered_as_files": 1,
+      "project_bytes_added": 41079,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.5630000000019209
+    },
+    {
+      "route": "ponytail-selective",
+      "repeat": 1,
+      "checks": {
+        "command_passed": true,
+        "one_skill_present": true
+      },
+      "passed": true,
+      "command_seconds": 0.4530000000013388,
+      "project_files_added": 2,
+      "skills_discovered_as_files": 1,
+      "project_bytes_added": 3714,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.4530000000013388
+    },
+    {
+      "route": "pstack-temporary",
+      "repeat": 1,
+      "checks": {
+        "command_passed": true,
+        "no_project_skill_install": true,
+        "source_body_in_prompt": true
+      },
+      "passed": true,
+      "command_seconds": 0.5779999999977008,
+      "project_files_added": 0,
+      "skills_discovered_as_files": 0,
+      "project_bytes_added": 0,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.5939999999973224
+    },
+    {
+      "route": "pstack-selective",
+      "repeat": 1,
+      "checks": {
+        "command_passed": true,
+        "one_skill_present": true
+      },
+      "passed": true,
+      "command_seconds": 0.625,
+      "project_files_added": 2,
+      "skills_discovered_as_files": 1,
+      "project_bytes_added": 3358,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.6399999999994179
+    },
+    {
+      "route": "pstack-full",
+      "repeat": 1,
+      "checks": {
+        "command_passed": true,
+        "skills_present": true
+      },
+      "passed": true,
+      "command_seconds": 2.938000000001921,
+      "project_files_added": 133,
+      "skills_discovered_as_files": 53,
+      "project_bytes_added": 652007,
+      "home_files_written": 0,
+      "whole_probe_seconds": 3.0320000000028813
+    },
+    {
+      "route": "pstack-full",
+      "repeat": 2,
+      "checks": {
+        "command_passed": true,
+        "skills_present": true
+      },
+      "passed": true,
+      "command_seconds": 2.827999999997701,
+      "project_files_added": 133,
+      "skills_discovered_as_files": 53,
+      "project_bytes_added": 652007,
+      "home_files_written": 0,
+      "whole_probe_seconds": 2.9219999999986612
+    },
+    {
+      "route": "pstack-selective",
+      "repeat": 2,
+      "checks": {
+        "command_passed": true,
+        "one_skill_present": true
+      },
+      "passed": true,
+      "command_seconds": 0.5780000000013388,
+      "project_files_added": 2,
+      "skills_discovered_as_files": 1,
+      "project_bytes_added": 3358,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.5930000000007567
+    },
+    {
+      "route": "pstack-temporary",
+      "repeat": 2,
+      "checks": {
+        "command_passed": true,
+        "no_project_skill_install": true,
+        "source_body_in_prompt": true
+      },
+      "passed": true,
+      "command_seconds": 0.5779999999977008,
+      "project_files_added": 0,
+      "skills_discovered_as_files": 0,
+      "project_bytes_added": 0,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.5940000000009604
+    },
+    {
+      "route": "ponytail-selective",
+      "repeat": 2,
+      "checks": {
+        "command_passed": true,
+        "one_skill_present": true
+      },
+      "passed": true,
+      "command_seconds": 0.4379999999982829,
+      "project_files_added": 2,
+      "skills_discovered_as_files": 1,
+      "project_bytes_added": 3714,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.4529999999977008
+    },
+    {
+      "route": "superpowers-selective",
+      "repeat": 2,
+      "checks": {
+        "command_passed": true,
+        "one_skill_present": true,
+        "script_preserved": true
+      },
+      "passed": true,
+      "command_seconds": 0.5309999999990396,
+      "project_files_added": 12,
+      "skills_discovered_as_files": 1,
+      "project_bytes_added": 41079,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.5470000000022992
+    },
+    {
+      "route": "openspec",
+      "repeat": 2,
+      "checks": {
+        "command_passed": true,
+        "live_status_returned": true
+      },
+      "passed": true,
+      "command_seconds": 1.875,
+      "project_files_added": 11,
+      "skills_discovered_as_files": 6,
+      "project_bytes_added": 96578,
+      "home_files_written": 0,
+      "whole_probe_seconds": 1.8909999999996217
+    },
+    {
+      "route": "spec-kit",
+      "repeat": 2,
+      "checks": {
+        "command_passed": true,
+        "templates_and_skills_created": true
+      },
+      "passed": true,
+      "command_seconds": 2.2969999999986612,
+      "project_files_added": 30,
+      "skills_discovered_as_files": 10,
+      "project_bytes_added": 244350,
+      "home_files_written": 0,
+      "whole_probe_seconds": 2.311999999998079
+    },
+    {
+      "route": "gsd",
+      "repeat": 2,
+      "checks": {
+        "command_passed": true,
+        "roles_and_hooks_created": true
+      },
+      "passed": true,
+      "command_seconds": 16.21900000000096,
+      "project_files_added": 860,
+      "skills_discovered_as_files": 72,
+      "project_bytes_added": 15747835,
+      "home_files_written": 2,
+      "whole_probe_seconds": 16.625
+    },
+    {
+      "route": "pi-ponytail",
+      "repeat": 2,
+      "checks": {
+        "command_passed": true,
+        "package_registered_locally": true
+      },
+      "passed": true,
+      "command_seconds": 0.4220000000022992,
+      "project_files_added": 1,
+      "skills_discovered_as_files": 0,
+      "project_bytes_added": 55,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.4530000000013388
+    },
+    {
+      "route": "pi-ponytail",
+      "repeat": 3,
+      "checks": {
+        "command_passed": true,
+        "package_registered_locally": true
+      },
+      "passed": true,
+      "command_seconds": 0.4529999999977008,
+      "project_files_added": 1,
+      "skills_discovered_as_files": 0,
+      "project_bytes_added": 55,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.4690000000009604
+    },
+    {
+      "route": "gsd",
+      "repeat": 3,
+      "checks": {
+        "command_passed": true,
+        "roles_and_hooks_created": true
+      },
+      "passed": true,
+      "command_seconds": 16.75,
+      "project_files_added": 860,
+      "skills_discovered_as_files": 72,
+      "project_bytes_added": 15747835,
+      "home_files_written": 2,
+      "whole_probe_seconds": 17.15599999999904
+    },
+    {
+      "route": "spec-kit",
+      "repeat": 3,
+      "checks": {
+        "command_passed": true,
+        "templates_and_skills_created": true
+      },
+      "passed": true,
+      "command_seconds": 2.312999999998283,
+      "project_files_added": 30,
+      "skills_discovered_as_files": 10,
+      "project_bytes_added": 244350,
+      "home_files_written": 0,
+      "whole_probe_seconds": 2.327999999997701
+    },
+    {
+      "route": "openspec",
+      "repeat": 3,
+      "checks": {
+        "command_passed": true,
+        "live_status_returned": true
+      },
+      "passed": true,
+      "command_seconds": 1.860000000000582,
+      "project_files_added": 11,
+      "skills_discovered_as_files": 6,
+      "project_bytes_added": 96578,
+      "home_files_written": 0,
+      "whole_probe_seconds": 1.875
+    },
+    {
+      "route": "superpowers-selective",
+      "repeat": 3,
+      "checks": {
+        "command_passed": true,
+        "one_skill_present": true,
+        "script_preserved": true
+      },
+      "passed": true,
+      "command_seconds": 0.5470000000022992,
+      "project_files_added": 12,
+      "skills_discovered_as_files": 1,
+      "project_bytes_added": 41079,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.5630000000019209
+    },
+    {
+      "route": "ponytail-selective",
+      "repeat": 3,
+      "checks": {
+        "command_passed": true,
+        "one_skill_present": true
+      },
+      "passed": true,
+      "command_seconds": 0.43699999999807915,
+      "project_files_added": 2,
+      "skills_discovered_as_files": 1,
+      "project_bytes_added": 3714,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.4530000000013388
+    },
+    {
+      "route": "pstack-temporary",
+      "repeat": 3,
+      "checks": {
+        "command_passed": true,
+        "no_project_skill_install": true,
+        "source_body_in_prompt": true
+      },
+      "passed": true,
+      "command_seconds": 0.5779999999977008,
+      "project_files_added": 0,
+      "skills_discovered_as_files": 0,
+      "project_bytes_added": 0,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.5939999999973224
+    },
+    {
+      "route": "pstack-selective",
+      "repeat": 3,
+      "checks": {
+        "command_passed": true,
+        "one_skill_present": true
+      },
+      "passed": true,
+      "command_seconds": 0.5940000000009604,
+      "project_files_added": 2,
+      "skills_discovered_as_files": 1,
+      "project_bytes_added": 3358,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.6090000000003783
+    },
+    {
+      "route": "pstack-full",
+      "repeat": 3,
+      "checks": {
+        "command_passed": true,
+        "skills_present": true
+      },
+      "passed": true,
+      "command_seconds": 2.922000000002299,
+      "project_files_added": 133,
+      "skills_discovered_as_files": 53,
+      "project_bytes_added": 652007,
+      "home_files_written": 0,
+      "whole_probe_seconds": 3.0
+    },
+    {
+      "route": "pstack-full",
+      "repeat": 4,
+      "checks": {
+        "command_passed": true,
+        "skills_present": true
+      },
+      "passed": true,
+      "command_seconds": 2.812000000001717,
+      "project_files_added": 133,
+      "skills_discovered_as_files": 53,
+      "project_bytes_added": 652007,
+      "home_files_written": 0,
+      "whole_probe_seconds": 2.922000000002299
+    },
+    {
+      "route": "pstack-selective",
+      "repeat": 4,
+      "checks": {
+        "command_passed": true,
+        "one_skill_present": true
+      },
+      "passed": true,
+      "command_seconds": 0.625,
+      "project_files_added": 2,
+      "skills_discovered_as_files": 1,
+      "project_bytes_added": 3358,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.625
+    },
+    {
+      "route": "pstack-temporary",
+      "repeat": 4,
+      "checks": {
+        "command_passed": true,
+        "no_project_skill_install": true,
+        "source_body_in_prompt": true
+      },
+      "passed": true,
+      "command_seconds": 0.5779999999977008,
+      "project_files_added": 0,
+      "skills_discovered_as_files": 0,
+      "project_bytes_added": 0,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.5939999999973224
+    },
+    {
+      "route": "ponytail-selective",
+      "repeat": 4,
+      "checks": {
+        "command_passed": true,
+        "one_skill_present": true
+      },
+      "passed": true,
+      "command_seconds": 0.4370000000017171,
+      "project_files_added": 2,
+      "skills_discovered_as_files": 1,
+      "project_bytes_added": 3714,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.4530000000013388
+    },
+    {
+      "route": "superpowers-selective",
+      "repeat": 4,
+      "checks": {
+        "command_passed": true,
+        "one_skill_present": true,
+        "script_preserved": true
+      },
+      "passed": true,
+      "command_seconds": 0.5469999999986612,
+      "project_files_added": 12,
+      "skills_discovered_as_files": 1,
+      "project_bytes_added": 41079,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.5780000000013388
+    },
+    {
+      "route": "openspec",
+      "repeat": 4,
+      "checks": {
+        "command_passed": true,
+        "live_status_returned": true
+      },
+      "passed": true,
+      "command_seconds": 1.8439999999973224,
+      "project_files_added": 11,
+      "skills_discovered_as_files": 6,
+      "project_bytes_added": 96578,
+      "home_files_written": 0,
+      "whole_probe_seconds": 1.8589999999967404
+    },
+    {
+      "route": "spec-kit",
+      "repeat": 4,
+      "checks": {
+        "command_passed": true,
+        "templates_and_skills_created": true
+      },
+      "passed": true,
+      "command_seconds": 2.2820000000028813,
+      "project_files_added": 30,
+      "skills_discovered_as_files": 10,
+      "project_bytes_added": 244350,
+      "home_files_written": 0,
+      "whole_probe_seconds": 2.313000000001921
+    },
+    {
+      "route": "gsd",
+      "repeat": 4,
+      "checks": {
+        "command_passed": true,
+        "roles_and_hooks_created": true
+      },
+      "passed": true,
+      "command_seconds": 16.25,
+      "project_files_added": 860,
+      "skills_discovered_as_files": 72,
+      "project_bytes_added": 15747835,
+      "home_files_written": 2,
+      "whole_probe_seconds": 16.67199999999866
+    },
+    {
+      "route": "pi-ponytail",
+      "repeat": 4,
+      "checks": {
+        "command_passed": true,
+        "package_registered_locally": true
+      },
+      "passed": true,
+      "command_seconds": 0.4530000000013388,
+      "project_files_added": 1,
+      "skills_discovered_as_files": 0,
+      "project_bytes_added": 55,
+      "home_files_written": 0,
+      "whole_probe_seconds": 0.4530000000013388
+    }
+  ],
+  "reference_controls": {
+    "rows": [
+      {
+        "case": "python-debug",
+        "arm": "direct_native",
+        "grade": {
+          "checks": {
+            "initial_setup_verified": true,
+            "fault_injected": true,
+            "recovery_verified": true,
+            "requested_skills_removed": true,
+            "owner_guidance_preserved": true,
+            "concurrent_owner_note_preserved": true,
+            "native_policy_preserved": true,
+            "owner_config_preserved": true,
+            "partial_marker_removed": true,
+            "app_source_unchanged": true,
+            "registry_entries_removed": true
+          },
+          "passed": true,
+          "out_of_scope": [],
+          "remaining_skills": [],
+          "checkpoints": [
+            {
+              "phase": "setup",
+              "passed": true,
+              "missing_or_changed": [],
+              "extraneous": [],
+              "skill_count": 4,
+              "installed_file_count": 14,
+              "installed_bytes": 47557
+            },
+            {
+              "phase": "recovered",
+              "passed": true,
+              "missing_or_changed": [],
+              "extraneous": [],
+              "skill_count": 4,
+              "installed_file_count": 15,
+              "installed_bytes": 47622,
+              "owner_preserved": true,
+              "partial_removed": true
+            }
+          ]
+        },
+        "reference_commands": 13,
+        "whole_seconds": 33.96900000000096
+      },
+      {
+        "case": "python-debug",
+        "arm": "temper_prototype",
+        "grade": {
+          "checks": {
+            "initial_setup_verified": true,
+            "fault_injected": true,
+            "recovery_verified": true,
+            "requested_skills_removed": true,
+            "owner_guidance_preserved": true,
+            "concurrent_owner_note_preserved": true,
+            "native_policy_preserved": true,
+            "owner_config_preserved": true,
+            "partial_marker_removed": true,
+            "app_source_unchanged": true,
+            "registry_entries_removed": true
+          },
+          "passed": true,
+          "out_of_scope": [],
+          "remaining_skills": [],
+          "checkpoints": [
+            {
+              "phase": "setup",
+              "passed": true,
+              "missing_or_changed": [],
+              "extraneous": [],
+              "skill_count": 4,
+              "installed_file_count": 14,
+              "installed_bytes": 47557
+            },
+            {
+              "phase": "recovered",
+              "passed": true,
+              "missing_or_changed": [],
+              "extraneous": [],
+              "skill_count": 4,
+              "installed_file_count": 15,
+              "installed_bytes": 47622,
+              "owner_preserved": true,
+              "partial_removed": true
+            }
+          ]
+        },
+        "reference_commands": 7,
+        "whole_seconds": 33.92199999999866
+      },
+      {
+        "case": "typescript-docs",
+        "arm": "direct_native",
+        "grade": {
+          "checks": {
+            "initial_setup_verified": true,
+            "fault_injected": true,
+            "recovery_verified": true,
+            "requested_skills_removed": true,
+            "owner_guidance_preserved": true,
+            "concurrent_owner_note_preserved": true,
+            "native_policy_preserved": true,
+            "owner_config_preserved": true,
+            "partial_marker_removed": true,
+            "app_source_unchanged": true,
+            "registry_entries_removed": true
+          },
+          "passed": true,
+          "out_of_scope": [],
+          "remaining_skills": [],
+          "checkpoints": [
+            {
+              "phase": "setup",
+              "passed": true,
+              "missing_or_changed": [],
+              "extraneous": [],
+              "skill_count": 4,
+              "installed_file_count": 14,
+              "installed_bytes": 55842
+            },
+            {
+              "phase": "recovered",
+              "passed": true,
+              "missing_or_changed": [],
+              "extraneous": [],
+              "skill_count": 4,
+              "installed_file_count": 15,
+              "installed_bytes": 55907,
+              "owner_preserved": true,
+              "partial_removed": true
+            }
+          ]
+        },
+        "reference_commands": 11,
+        "whole_seconds": 12.625
+      },
+      {
+        "case": "typescript-docs",
+        "arm": "temper_prototype",
+        "grade": {
+          "checks": {
+            "initial_setup_verified": true,
+            "fault_injected": true,
+            "recovery_verified": true,
+            "requested_skills_removed": true,
+            "owner_guidance_preserved": true,
+            "concurrent_owner_note_preserved": true,
+            "native_policy_preserved": true,
+            "owner_config_preserved": true,
+            "partial_marker_removed": true,
+            "app_source_unchanged": true,
+            "registry_entries_removed": true
+          },
+          "passed": true,
+          "out_of_scope": [],
+          "remaining_skills": [],
+          "checkpoints": [
+            {
+              "phase": "setup",
+              "passed": true,
+              "missing_or_changed": [],
+              "extraneous": [],
+              "skill_count": 4,
+              "installed_file_count": 14,
+              "installed_bytes": 55842
+            },
+            {
+              "phase": "recovered",
+              "passed": true,
+              "missing_or_changed": [],
+              "extraneous": [],
+              "skill_count": 4,
+              "installed_file_count": 15,
+              "installed_bytes": 55907,
+              "owner_preserved": true,
+              "partial_removed": true
+            }
+          ]
+        },
+        "reference_commands": 7,
+        "whole_seconds": 11.7970000000023
+      }
+    ],
+    "whole_seconds": 92.31300000000192
+  },
+  "foundry": [
+    {
+      "family": "pstack",
+      "intake_passed": true,
+      "admitted_files": 1,
+      "quarantined": [],
+      "findings": [],
+      "manifest_digest": "sha256:2a8ca5cc7ab1d9dfc951c500c78f355ac91554d8f8c90db8f2118e0f53faaa84",
+      "seconds": 0.0
+    },
+    {
+      "family": "ponytail",
+      "intake_passed": true,
+      "admitted_files": 1,
+      "quarantined": [],
+      "findings": [],
+      "manifest_digest": "sha256:a6afad8847c2bd12aaeae817f5924a9acbf2b171978e73b9fa938bc1121e6536",
+      "seconds": 0.01599999999962165
+    },
+    {
+      "family": "superpowers",
+      "intake_passed": true,
+      "admitted_files": 10,
+      "quarantined": [
+        "find-polluter.sh"
+      ],
+      "findings": [
+        "credential-access",
+        "excluded-script"
+      ],
+      "manifest_digest": "sha256:8bbdce66170e58c85b872272f06fc7dbf177b6da499fc20c85f4f701f2133c30",
+      "seconds": 0.01599999999962165
+    },
+    {
+      "family": "openspec",
+      "intake_passed": true,
+      "admitted_files": 1,
+      "quarantined": [],
+      "findings": [],
+      "manifest_digest": "sha256:21b6795a717b5d59d2ef575281ad097f34d4ab384074a2195f1c6b19009fc187",
+      "seconds": 0.0
+    },
+    {
+      "family": "spec-kit",
+      "intake_passed": false,
+      "reason": "the selected skill must remain inside its checkout",
+      "seconds": 0.0
+    },
+    {
+      "family": "gsd",
+      "intake_passed": true,
+      "admitted_files": 1,
+      "quarantined": [],
+      "findings": [],
+      "manifest_digest": "sha256:8bda1a1fb84f7643b29a47371632e634b10a706ccadc67c48a6c36abd1426d8b",
+      "seconds": 0.014999999999417923
+    },
+    {
+      "family": "pi",
+      "intake_passed": false,
+      "reason": "the selected skill must remain inside its checkout",
+      "seconds": 0.0
+    }
+  ],
+  "native_discovery": {
+    "native_discovery_passed": true,
+    "names": [
+      "owner-guidance",
+      "tdd",
+      "imagegen",
+      "openai-docs",
+      "review-agent",
+      "skill-creator",
+      "skill-installer"
+    ],
+    "model": "gpt-6.1-sol",
+    "effort": "medium",
+    "native_model_turns": 0
+  },
+  "npm_prerequisite_seconds": 16.343000000000757,
+  "python_prerequisite_seconds": 5.436999999998079,
+  "npm_prerequisite_packages": 280,
+  "python_prerequisite_packages": 41,
+  "native_prerequisite_limitations": [
+    "npm withheld two dependency scripts; version/registration probes do not prove the full Pi runtime",
+    "Dependencies already installed for per-project probes and operator trials",
+    "Both conditions share the same read-only tooling/source cache"
+  ],
+  "earliest_recorded_checkpoint": "2026-10-15T14:14:44+00:00",
+  "preparation_elapsed_lower_bound_seconds": 2083.731366634369,
+  "active_coordinator_seconds": null,
+  "coordinator_tokens": null,
+  "unknown_pre_checkpoint_work": true,
+  "instrument_repairs": [
+    "A console encoding error interrupted admission reporting after the successful OpenSpec command; raw receipt retained",
+    "First reference workflow passed but cleanup rejected a mixed long-path prefix; boundary was corrected without changing functional results"
+  ],
+  "harness_tests_passed": 24,
+  "ruff": "pass",
+  "mypy": "pass",
+  "github_ci_used": false,
+  "paid_api_key_provider_used": false
+}

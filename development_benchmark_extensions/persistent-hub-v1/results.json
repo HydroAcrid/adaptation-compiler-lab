@@ -1,0 +1,445 @@
+{
+  "study": "persistent-hub-real-work-v1",
+  "reported_at": "2026-10-15T20:20:32.902137+00:00",
+  "conclusion": "Temper was slower in this single observed journey. Functional recovery worked in all arms. Actual user-effort savings are not established.",
+  "primary_candidate": "9e4e6050852958d13f020745cfb91e3dfdeabf2b",
+  "primary_protocol_sha256": "8c400d6a1a3d2d5a74db41a01b92242d1f222b72aaf2adceb22611536f9655d2",
+  "later_cache_fix_candidate": "d745841e74c7a5a83889f15111c480baeadbdb71",
+  "primary_wall_seconds": 2214.340395,
+  "replication": "One same-day three-session journey per arm; different tasks are not independent repeats. Native processes are fresh; files, manager state and handoffs persist.",
+  "model": "gpt-6.1-sol",
+  "effort": "medium",
+  "native_client": "0.162.0-alpha.17.2",
+  "platform": "Native Windows Codex with credential-free WSL managers and existing read-only project dependencies",
+  "manager_versions": {
+    "skills": "1.7.2",
+    "skillkit": "1.24.0",
+    "node": "24.18.0"
+  },
+  "rows": [
+    {
+      "sessions": 3,
+      "passed_sessions": 1,
+      "whole_session_seconds": 703.765999999996,
+      "executed_tool_calls": 65,
+      "all_native_requests": 65,
+      "nonzero_tool_results": 11,
+      "tool_seconds_nested": 101.65699999997014,
+      "grading_seconds_nested": 8.639000000002852,
+      "usage": {
+        "totalTokens": 2125625,
+        "inputTokens": 2098090,
+        "cachedInputTokens": 1914240,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 27535,
+        "reasoningOutputTokens": 3270,
+        "uncachedInputTokens": 183850
+      },
+      "actual_human_effort_seconds": null,
+      "arm": "native_managers",
+      "functional_sessions_passed": 3,
+      "repo_preparation_seconds": 7.5,
+      "sessions_plus_repo_preparation_seconds": 711.265999999996,
+      "manager_dependency_preparation_seconds": 1.0,
+      "project_profile_bytes": 7456,
+      "manager_home_bytes": 32,
+      "hub_state_bytes": 0,
+      "recovery": {
+        "prior_profile_paths": 1,
+        "current_profile_names": [
+          "verification-before-completion"
+        ],
+        "repair_exercised": true
+      },
+      "strict_scope_failure_paths_by_phase": {
+        "0": [],
+        "1": [
+          "site/README.md",
+          "site/package.json",
+          "site/scripts/public-source-status.mjs"
+        ],
+        "2": [
+          "site/README.md",
+          "site/package.json",
+          "site/scripts/public-source-status.mjs"
+        ]
+      },
+      "automatic_profile": "verification-before-completion only",
+      "actual_user_effort_seconds": null
+    },
+    {
+      "sessions": 3,
+      "passed_sessions": 1,
+      "whole_session_seconds": 708.9380000000019,
+      "executed_tool_calls": 67,
+      "all_native_requests": 67,
+      "nonzero_tool_results": 15,
+      "tool_seconds_nested": 132.06100000001607,
+      "grading_seconds_nested": 8.828000000001339,
+      "usage": {
+        "totalTokens": 2040950,
+        "inputTokens": 2015165,
+        "cachedInputTokens": 1806592,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 25785,
+        "reasoningOutputTokens": 2675,
+        "uncachedInputTokens": 208573
+      },
+      "actual_human_effort_seconds": null,
+      "arm": "skillkit",
+      "functional_sessions_passed": 3,
+      "repo_preparation_seconds": 6.688000000001921,
+      "sessions_plus_repo_preparation_seconds": 715.6260000000038,
+      "manager_dependency_preparation_seconds": 2.485,
+      "project_profile_bytes": 8012,
+      "manager_home_bytes": 45529,
+      "hub_state_bytes": 0,
+      "recovery": {
+        "prior_profile_paths": 1,
+        "current_profile_names": [
+          "verification-before-completion"
+        ],
+        "repair_exercised": true
+      },
+      "strict_scope_failure_paths_by_phase": {
+        "0": [],
+        "1": [
+          "site/README.md",
+          "site/package.json",
+          "site/scripts/public-claims.test.mjs"
+        ],
+        "2": [
+          "site/README.md",
+          "site/package.json",
+          "site/scripts/public-claims.test.mjs"
+        ]
+      },
+      "automatic_profile": "verification-before-completion only",
+      "actual_user_effort_seconds": null
+    },
+    {
+      "sessions": 3,
+      "passed_sessions": 1,
+      "whole_session_seconds": 780.6710000000021,
+      "executed_tool_calls": 66,
+      "all_native_requests": 66,
+      "nonzero_tool_results": 17,
+      "tool_seconds_nested": 146.7309999999561,
+      "grading_seconds_nested": 8.70400000000518,
+      "usage": {
+        "totalTokens": 1878688,
+        "inputTokens": 1848772,
+        "cachedInputTokens": 1659264,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 29916,
+        "reasoningOutputTokens": 5466,
+        "uncachedInputTokens": 189508
+      },
+      "actual_human_effort_seconds": null,
+      "arm": "persistent_hub",
+      "functional_sessions_passed": 3,
+      "repo_preparation_seconds": 6.811999999998079,
+      "sessions_plus_repo_preparation_seconds": 787.4830000000002,
+      "manager_dependency_preparation_seconds": 3.485,
+      "project_profile_bytes": 7456,
+      "manager_home_bytes": 5118,
+      "hub_state_bytes": 592813,
+      "recovery": {
+        "prior_profile_paths": 1,
+        "current_profile_names": [
+          "verification-before-completion"
+        ],
+        "repair_exercised": true
+      },
+      "strict_scope_failure_paths_by_phase": {
+        "0": [],
+        "1": [
+          "site/README.md",
+          "site/package.json",
+          "site/scripts/public-claims.test.mjs"
+        ],
+        "2": [
+          "site/README.md",
+          "site/package.json",
+          "site/scripts/public-claims.test.mjs"
+        ]
+      },
+      "automatic_profile": "verification-before-completion only",
+      "actual_user_effort_seconds": null
+    }
+  ],
+  "primary_native_turns": 9,
+  "auxiliary_native_turns": 2,
+  "visible_primary_tool_requests": 198,
+  "all_visible_requests_executed": true,
+  "primary_token_totals": {
+    "totalTokens": 6045263,
+    "inputTokens": 5962027,
+    "cachedInputTokens": 5380096,
+    "cacheWriteInputTokens": 0,
+    "outputTokens": 83236,
+    "reasoningOutputTokens": 11411
+  },
+  "all_known_experiment_token_totals": {
+    "totalTokens": 6059761,
+    "inputTokens": 5976478,
+    "cachedInputTokens": 5380096,
+    "cacheWriteInputTokens": 0,
+    "outputTokens": 83283,
+    "reasoningOutputTokens": 11411
+  },
+  "actual_billing": null,
+  "coordinator_tokens": null,
+  "mac_coordination_tokens": null,
+  "coordinator_active_seconds": null,
+  "total_study_overhead_seconds": null,
+  "attention": {
+    "measurement": "Participant self-recording only",
+    "completed_effort_comparison": false,
+    "actual_user_effort_seconds": null,
+    "helpfulness": null,
+    "note": "Zero participant events at audit is unmeasured attention, not zero effort. A later review cannot reconstruct earlier setup effort. Human records remain private."
+  },
+  "source_scope": {
+    "canonical_skills": 74,
+    "families": [
+      "pstack",
+      "ponytail",
+      "superpowers"
+    ],
+    "shared_full_source_bytes": 16154297,
+    "new_source_acquisition_cost_for_initial_registry": null,
+    "discovery": "Controlled approved registry, not open-world research. Compatible update and resource loss were synthetic."
+  },
+  "dependency_bytes": {
+    "skills": 4526335,
+    "optional_free_skillkit": 41401662,
+    "preexisting_kairn": 846238685,
+    "preexisting_site": 531532796,
+    "original_runtime_and_project_setup_seconds": null
+  },
+  "qualifications": {
+    "frozen_focused_tests": 25,
+    "current_focused_tests": 27,
+    "current_unit_seconds": 2.92,
+    "ruff": "passed",
+    "mypy": "passed with explicit package bases",
+    "native_fixture_controls": [
+      {
+        "version": "controls-v2",
+        "repeats": 1,
+        "passed": 1,
+        "whole_seconds": 27.937000000005355,
+        "interpretation": "v4 has agent applicability decision and explicit-only exclusion; older successful fixture versions did not establish applicability."
+      },
+      {
+        "version": "controls-v3",
+        "repeats": 5,
+        "passed": 5,
+        "whole_seconds": 137.82800000000134,
+        "interpretation": "v4 has agent applicability decision and explicit-only exclusion; older successful fixture versions did not establish applicability."
+      },
+      {
+        "version": "controls-v4",
+        "repeats": 5,
+        "passed": 5,
+        "whole_seconds": 134.63999999999942,
+        "interpretation": "v4 has agent applicability decision and explicit-only exclusion; older successful fixture versions did not establish applicability."
+      }
+    ],
+    "v4_median_seconds": 26.796000000002095,
+    "v4_range_seconds": [
+      26.73399999999674,
+      27.4059999999954
+    ],
+    "independent_inputs_unchanged": true,
+    "owner_edit_regression_mutation_detected": true,
+    "normal_font_builds": [
+      {
+        "arm": "native_managers",
+        "passed": true,
+        "seconds": 10.68800000000192,
+        "font_bytes": 80448
+      },
+      {
+        "arm": "skillkit",
+        "passed": true,
+        "seconds": 9.68699999999808,
+        "font_bytes": 80448
+      },
+      {
+        "arm": "persistent_hub",
+        "passed": true,
+        "seconds": 9.735000000000582,
+        "font_bytes": 80448
+      }
+    ],
+    "browser": {
+      "feature_story": "Homepage renders unchanged published beta identity plus public-source and research-status copy, exposes a native source anchor, and navigates to the installation documentation.",
+      "conditions": [
+        "native_managers",
+        "skillkit",
+        "persistent_hub"
+      ],
+      "desktop_content_width": 1265,
+      "phone_viewport_request": {
+        "width": 390,
+        "height": 844
+      },
+      "phone_content_width": 375,
+      "phone_scroll_width": 375,
+      "horizontal_overflow": false,
+      "source_anchor": "https://github.com/HydroAcrid/kairn",
+      "source_link_tab_index_all_conditions": 0,
+      "visible_keyboard_focus_checked": {
+        "condition": "persistent_hub",
+        "outline": "rgb(0, 0, 0) solid 2px",
+        "method": "Nine Tab keys from fresh homepage; focused anchor href and screenshot checked"
+      },
+      "normal_fonts_loaded_all_conditions": true,
+      "published_beta_visible_all_conditions": "0.2.0-beta.2",
+      "research_separation_visible_all_conditions": true,
+      "installation_navigation_all_conditions": {
+        "path": "/docs/install",
+        "heading": "Install And Update",
+        "public_source_wording": true
+      },
+      "console": "Only local Vercel Analytics script-unavailable log observed; no application error observed. No analytics configuration or deployment performed.",
+      "viewport_override_reset": true,
+      "screenshots": "Desktop homepage and phone source-link focus inspected through CUA; images remain in tool history, no standalone screenshot file exported.",
+      "limits": "Public source anchor destination and authenticated GitHub metadata verified separately; browser did not navigate to GitHub. No form/backend mutation, deployment, usability rating or claim of a complete accessibility audit.",
+      "additional_review_time_seconds": null
+    },
+    "catalog_scope_and_controlled_revision_verified": true
+  },
+  "grading": {
+    "strict_passed_sessions": 3,
+    "functional_passed_sessions": 9,
+    "explanation": "The frozen path allowlist wrongly rejected task-consistent README/test/helper and added npm-test-script changes. The same paths then caused cumulative return-session scope failures. Original grades are preserved; post-hoc review is separate, not a repaired preregistered pass rate.",
+    "supplemental_website_scope_review": [
+      {
+        "arm": "native_managers",
+        "compatible": true,
+        "functional": true,
+        "additional_regression_tests_passed": true
+      },
+      {
+        "arm": "skillkit",
+        "compatible": true,
+        "functional": true,
+        "additional_regression_tests_passed": true
+      },
+      {
+        "arm": "persistent_hub",
+        "compatible": true,
+        "functional": true,
+        "additional_regression_tests_passed": true
+      }
+    ]
+  },
+  "additional_recorded_overhead": {
+    "source_watcher_processes": [
+      {
+        "version": "live-watch-v1",
+        "process": 0,
+        "outer_windows_seconds": 14.171999999998661,
+        "inner_linux_seconds": 14.639022084000317,
+        "downloaded_bytes": 680678,
+        "http_requests": 2,
+        "reused": false,
+        "revision": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
+        "model_turns": 0,
+        "project_files_changed": false
+      },
+      {
+        "version": "live-watch-v1",
+        "process": 1,
+        "outer_windows_seconds": 8.344000000004598,
+        "inner_linux_seconds": 8.541615802998422,
+        "downloaded_bytes": 0,
+        "http_requests": 1,
+        "reused": true,
+        "revision": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
+        "model_turns": 0,
+        "project_files_changed": false
+      },
+      {
+        "version": "live-watch-v2",
+        "process": 0,
+        "outer_windows_seconds": 13.156000000002678,
+        "inner_linux_seconds": 13.58609956899818,
+        "downloaded_bytes": 680678,
+        "http_requests": 2,
+        "reused": false,
+        "revision": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
+        "model_turns": 0,
+        "project_files_changed": false
+      },
+      {
+        "version": "live-watch-v2",
+        "process": 1,
+        "outer_windows_seconds": 7.921999999998661,
+        "inner_linux_seconds": 8.13949357599995,
+        "downloaded_bytes": 0,
+        "http_requests": 1,
+        "reused": true,
+        "revision": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
+        "model_turns": 0,
+        "project_files_changed": false
+      },
+      {
+        "version": "live-watch-v3",
+        "process": 0,
+        "outer_windows_seconds": 13.359000000004016,
+        "inner_linux_seconds": 13.522755416001019,
+        "downloaded_bytes": 680678,
+        "http_requests": 2,
+        "reused": false,
+        "revision": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
+        "model_turns": 0,
+        "project_files_changed": false
+      },
+      {
+        "version": "live-watch-v3",
+        "process": 1,
+        "outer_windows_seconds": 10.281999999999243,
+        "inner_linux_seconds": 10.36469910699816,
+        "downloaded_bytes": 0,
+        "http_requests": 1,
+        "reused": true,
+        "revision": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
+        "model_turns": 0,
+        "project_files_changed": false
+      }
+    ],
+    "normal_font_build_seconds": 30.110000000000582,
+    "website_adjudication_verification_seconds": 8.312999999994645,
+    "initial_instrument_admission_seconds": 22.656,
+    "input_readback_audit_seconds": 1.4060000000026776,
+    "patch_packaging_success_seconds": 11.296999999998661,
+    "failed_packaging_outer_tool_seconds": [
+      5.3232733,
+      2.6474644
+    ],
+    "boundary_mutation_seconds": 1.5309999999954016,
+    "cleanup_seconds": 1.5780000000013388,
+    "discarded_verified_reconstructible_copy_bytes": 338288866,
+    "repeated_control_failures_and_retries_retained": true,
+    "other_preparation_debugging_typecheck_and_browser_review_time_seconds": null,
+    "supplemental_catalog_and_input_audit_seconds": 0.4539999999979045
+  },
+  "limits": [
+    "No general speed, token, convenience or quality superiority claim.",
+    "No natural multi-day owner-effort comparison completed.",
+    "No complete framework/runtime compatibility solver or arbitrary publisher discovery.",
+    "Profile publication does not prove native loading, compliance or helpfulness. Two separate small probes confirm fresh native project/skill metadata loading only.",
+    "Current cache reservation fix is qualified separately, outside the primary candidate.",
+    "Prototype CLI/controller is not installed into the personal desktop runtime; macOS, signing and independent package validation are not established here."
+  ],
+  "raw_evidence": "Private encrypted model/tool payloads and encrypted event journals; no raw private task evidence, credentials or vault snapshots in Git.",
+  "github_ci": false,
+  "github_push_or_pr": false,
+  "deployment_or_post": false,
+  "installed_personal_runtime_changed": false,
+  "original_owner_repositories_changed": false
+}

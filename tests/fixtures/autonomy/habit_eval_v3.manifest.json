@@ -1,0 +1,23 @@
+{
+  "evaluation_version": "habit-eval-v3",
+  "dataset_digest": "sha256:26bd9ea11ae927fce93101cd5e1aa8926f6418d3b5a19f965d2e235e40f647ba",
+  "analyzer_digest": "sha256:a024ff5531baddce8660fc008373072a5cfcfe01be8cee4dc0631af93afe4608",
+  "precision_gate": 0.95,
+  "recall_gate": 0.8,
+  "disallowed_promotion_gate": 0,
+  "wrong_scope_gate": 0,
+  "executed": false,
+  "defaults": {
+    "SUPPORT_TASKS": 3,
+    "SUPPORT_DATES": 2,
+    "TRIAL_DAYS": 14,
+    "CHECKED_OPPORTUNITIES": 3,
+    "COMPLIANCE_SUCCESSES": 2,
+    "RAW_RETENTION_DAYS": 30,
+    "MAX_PROFILE_BYTES": 1500,
+    "MAX_DAILY_ANALYSES": 12,
+    "POLL_MINUTES": 5,
+    "MIN_REMAINING_CAPACITY": 20
+  },
+  "reason": "Compile the provider-required closed output schema. Preserve labels, defaults, thresholds, v1/v2 artifacts and failed v2 attempt; no model-instruction tuning."
+}

@@ -181,6 +181,12 @@ fn main() {
             "task_apply",
             "task_discard",
             "diagnostics_get",
+            "autonomy_status",
+            "autonomy_grant_preview",
+            "autonomy_grant_enable",
+            "autonomy_control",
+            "autonomy_habit_explain",
+            "autonomy_applicability_preview",
             "notification_permission",
         ]),
     ))

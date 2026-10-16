@@ -1,0 +1,2433 @@
+{
+  "recorded_at": "2026-10-15T06:03:34.059475+00:00",
+  "execution": {
+    "source_commit": "6eecc34e63565a0a20cc13ed11d11e9ccbfa5e31",
+    "protocol_sha256": "sha256:acbd3cbb65506a5291e116af81cb51d29b75c3d52afadc238e7ddc8285ccfde3",
+    "model": "gpt-6.1-sol",
+    "effort": "medium",
+    "started_at": "2026-10-15T04:43:00.028465+00:00",
+    "github_ci_used": false,
+    "personal_runtime_modified": false,
+    "runtime": {
+      "python_runtime": "/home/kevin_dotel/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu",
+      "python_runtime_alias": "/home/kevin_dotel/.local/share/uv/python/cpython-3.12-linux-x86_64-gnu",
+      "python_venv": "/home/kevin_dotel/projects/adaptation-compiler-lab/.venv",
+      "node_runtime": "/home/kevin_dotel/.nvm/versions/node/v24.18.0"
+    },
+    "native_executable_sha256": "sha256:e98c516f1c8935789aabe9122ee7e05ec4c3efd1ba6acf179242e031c495b99e",
+    "native_pin_sha256": "sha256:a165ba94473c72f941fb87ae9c5a238786eee4b0245651ee63633e9f1559ee94"
+  },
+  "bound_files_unchanged": true,
+  "locked_fixture_test_helpers_unchanged": true,
+  "frozen_summary": {
+    "verdict": "no_repeated_completion_advantage",
+    "regression_cells": [],
+    "repeated_gain_tasks": [],
+    "arms": {
+      "baseline": {
+        "complete": 2,
+        "total": 4
+      },
+      "direct_skills": {
+        "complete": 2,
+        "total": 4
+      },
+      "temper_selected": {
+        "complete": 2,
+        "total": 4
+      }
+    },
+    "repeats": 2,
+    "task_types": 2,
+    "trial_count": 12,
+    "performance_claim": "descriptive only; two repetitions are insufficient for a speed or efficiency claim",
+    "human_setup_effort_measured": false,
+    "product_capability_router_validated": false,
+    "native_agent_turns": 14,
+    "provider_request_count": null,
+    "selectors": [
+      {
+        "task_id": "temper-live-policy",
+        "clause_ids": [
+          "ponytail:004",
+          "ponytail:007",
+          "ponytail:008",
+          "ponytail:009",
+          "pstack-tdd:004",
+          "pstack-tdd:009",
+          "pstack-tdd:012"
+        ],
+        "usage": {
+          "totalTokens": 40600,
+          "inputTokens": 40290,
+          "cachedInputTokens": 27648,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 310,
+          "reasoningOutputTokens": 63
+        },
+        "model_call_seconds": 15.827999999979511,
+        "total_seconds": 40.375,
+        "native_skill_inputs": 0,
+        "tool_count": 3
+      },
+      {
+        "task_id": "kairn-runtime-cache",
+        "clause_ids": [
+          "ponytail:004",
+          "ponytail:007",
+          "ponytail:008",
+          "ponytail:009",
+          "pstack-tdd:004",
+          "pstack-tdd:009",
+          "pstack-tdd:012"
+        ],
+        "usage": {
+          "totalTokens": 40217,
+          "inputTokens": 39826,
+          "cachedInputTokens": 26880,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 391,
+          "reasoningOutputTokens": 101
+        },
+        "model_call_seconds": 16.64000000001397,
+        "total_seconds": 25.030999999959022,
+        "native_skill_inputs": 0,
+        "tool_count": 3
+      }
+    ],
+    "wall_seconds": 4774.280999999959
+  },
+  "supplemental_interpretation": "Uniform diagnostic contract and actual-candidate build audit; does not replace frozen scores or establish a prospective promotion.",
+  "arms": {
+    "baseline": {
+      "frozen_complete": 2,
+      "supplemental_contract_and_build_passed": 4,
+      "solver_turns": 4,
+      "selector_turns": 0,
+      "tool_calls_including_selector": 103,
+      "nonzero_solver_tool_calls": 19,
+      "reported_tokens_including_selector": {
+        "totalTokens": 5126382,
+        "inputTokens": 5076517,
+        "cachedInputTokens": 4778240,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 49865,
+        "reasoningOutputTokens": 7343
+      },
+      "whole_work_seconds_including_selector": 1607.3910000000615,
+      "task_timings": {
+        "temper-live-policy": {
+          "sum": 628.375,
+          "median": 314.1875,
+          "min": 312.35899999993853,
+          "max": 316.01600000006147
+        },
+        "kairn-runtime-cache": {
+          "sum": 979.0160000000615,
+          "median": 489.50800000003073,
+          "min": 483.844000000041,
+          "max": 495.1720000000205
+        }
+      },
+      "components_seconds": {
+        "workspace_setup_seconds": 66.4210000000894,
+        "model_call_seconds": 1310.3749999998836,
+        "skill_setup_seconds": 0.0,
+        "tool_seconds": 517.7019999994664,
+        "grading_and_counterfactual_seconds": 199.68799999996554,
+        "cleanup_seconds": 25.157000000122935
+      },
+      "selector_seconds": 0
+    },
+    "direct_skills": {
+      "frozen_complete": 2,
+      "supplemental_contract_and_build_passed": 4,
+      "solver_turns": 4,
+      "selector_turns": 0,
+      "tool_calls_including_selector": 105,
+      "nonzero_solver_tool_calls": 25,
+      "reported_tokens_including_selector": {
+        "totalTokens": 5309078,
+        "inputTokens": 5267325,
+        "cachedInputTokens": 4936576,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 41753,
+        "reasoningOutputTokens": 5553
+      },
+      "whole_work_seconds_including_selector": 1523.185999999987,
+      "task_timings": {
+        "temper-live-policy": {
+          "sum": 582.545999999973,
+          "median": 291.2729999999865,
+          "min": 272.655999999959,
+          "max": 309.89000000001397
+        },
+        "kairn-runtime-cache": {
+          "sum": 940.640000000014,
+          "median": 470.320000000007,
+          "min": 427.7029999999795,
+          "max": 512.9370000000345
+        }
+      },
+      "components_seconds": {
+        "workspace_setup_seconds": 72.60899999993853,
+        "model_call_seconds": 1236.0320000000065,
+        "skill_setup_seconds": 0.0,
+        "tool_seconds": 467.5299999999115,
+        "grading_and_counterfactual_seconds": 186.14099999994505,
+        "cleanup_seconds": 23.186000000103377
+      },
+      "selector_seconds": 0
+    },
+    "temper_selected": {
+      "frozen_complete": 2,
+      "supplemental_contract_and_build_passed": 4,
+      "solver_turns": 4,
+      "selector_turns": 2,
+      "tool_calls_including_selector": 102,
+      "nonzero_solver_tool_calls": 18,
+      "reported_tokens_including_selector": {
+        "totalTokens": 4539120,
+        "inputTokens": 4490086,
+        "cachedInputTokens": 4121856,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 49034,
+        "reasoningOutputTokens": 8130
+      },
+      "whole_work_seconds_including_selector": 1642.7979999999516,
+      "task_timings": {
+        "temper-live-policy": {
+          "sum": 550.438000000082,
+          "median": 275.219000000041,
+          "min": 274.5470000000205,
+          "max": 275.89100000006147
+        },
+        "kairn-runtime-cache": {
+          "sum": 1026.9539999999106,
+          "median": 513.4769999999553,
+          "min": 513.390999999945,
+          "max": 513.5629999999655
+        }
+      },
+      "components_seconds": {
+        "workspace_setup_seconds": 67.14099999994505,
+        "model_call_seconds": 1289.561999999918,
+        "skill_setup_seconds": 0.0,
+        "tool_seconds": 398.66799999959767,
+        "grading_and_counterfactual_seconds": 192.1700000000419,
+        "cleanup_seconds": 23.125
+      },
+      "selector_seconds": 65.40599999995902
+    }
+  },
+  "trials": [
+    {
+      "task_id": "kairn-runtime-cache",
+      "arm": "baseline",
+      "repeat": 0,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "complete": false,
+      "instrument_valid": true,
+      "authoritative": {
+        "passed": 97,
+        "failed": 1,
+        "errors": 0,
+        "complete": false,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": false,
+        "elapsed_seconds": 24.10999999998603,
+        "candidate_execution_failed": false
+      },
+      "scope_failures": [],
+      "deleted_paths": [],
+      "changed_paths": [
+        "scripts/benchmark-semantic-runtime.ts",
+        "scripts/evaluate-semantic-model.ts",
+        "scripts/materialize-evidence-corpus.ts",
+        "src/indexer/indexRepo.ts",
+        "src/retrieval/semanticCandidates.ts",
+        "src/runtime/services/IndexService.ts",
+        "src/semantic/modelRuntime.ts",
+        "src/store/sqliteStore.ts",
+        "src/types/evidence.ts",
+        "src/types/graph.ts",
+        "tests/evidenceTraining.test.ts",
+        "tests/semanticCandidates.test.ts",
+        "tests/semanticRuntimeIsolation.test.ts",
+        "tests/store.test.ts"
+      ],
+      "candidate_tests": {
+        "state": "intended_failure_not_established",
+        "test_paths": [
+          "tests/evidenceTraining.test.ts",
+          "tests/semanticCandidates.test.ts",
+          "tests/semanticRuntimeIsolation.test.ts",
+          "tests/store.test.ts"
+        ],
+        "before": {
+          "passed": 96,
+          "failed": 10,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 105,
+          "failed": 1,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "elapsed_seconds": 28.203000000095926
+      },
+      "usage": {
+        "totalTokens": 1550125,
+        "inputTokens": 1533103,
+        "cachedInputTokens": 1436928,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 17022,
+        "reasoningOutputTokens": 1895
+      },
+      "tool_count": 31,
+      "failed_tool_calls": 3,
+      "tool_seconds": 132.46699999959674,
+      "native_skill_inputs": 0,
+      "workspace_setup_seconds": 6.609000000054948,
+      "model_call_seconds": 425.93799999996554,
+      "skill_setup_seconds": 0.0,
+      "grading_and_counterfactual_seconds": 59.46900000004098,
+      "cleanup_seconds": 2.4070000000065193,
+      "total_seconds": 495.1720000000205,
+      "supplemental_contract_and_build_passed": true
+    },
+    {
+      "task_id": "kairn-runtime-cache",
+      "arm": "baseline",
+      "repeat": 1,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "complete": false,
+      "instrument_valid": true,
+      "authoritative": {
+        "passed": 98,
+        "failed": 0,
+        "errors": 0,
+        "complete": false,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": false,
+        "elapsed_seconds": 22.45299999997951,
+        "candidate_execution_failed": false
+      },
+      "scope_failures": [],
+      "deleted_paths": [],
+      "changed_paths": [
+        "scripts/benchmark-semantic-runtime.ts",
+        "scripts/evaluate-cross-encoder-reranker.ts",
+        "scripts/evaluate-semantic-model.ts",
+        "scripts/materialize-evidence-corpus.ts",
+        "src/indexer/indexRepo.ts",
+        "src/retrieval/semanticCandidates.ts",
+        "src/semantic/modelRuntime.ts",
+        "src/store/sqliteStore.ts",
+        "src/types/evidence.ts",
+        "src/types/graph.ts",
+        "tests/evidenceTraining.test.ts",
+        "tests/runtimeProvenance.test.ts",
+        "tests/semanticCandidates.test.ts",
+        "tests/store.test.ts"
+      ],
+      "candidate_tests": {
+        "state": "intended_failure_not_established",
+        "test_paths": [
+          "tests/evidenceTraining.test.ts",
+          "tests/runtimeProvenance.test.ts",
+          "tests/semanticCandidates.test.ts",
+          "tests/store.test.ts"
+        ],
+        "before": {
+          "passed": 93,
+          "failed": 10,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 102,
+          "failed": 1,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "elapsed_seconds": 31.125
+      },
+      "usage": {
+        "totalTokens": 1827317,
+        "inputTokens": 1808309,
+        "cachedInputTokens": 1720960,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 19008,
+        "reasoningOutputTokens": 3072
+      },
+      "tool_count": 35,
+      "failed_tool_calls": 3,
+      "tool_seconds": 157.57499999995343,
+      "native_skill_inputs": 0,
+      "workspace_setup_seconds": 7.109000000054948,
+      "model_call_seconds": 413.030999999959,
+      "skill_setup_seconds": 0.0,
+      "grading_and_counterfactual_seconds": 60.32799999997951,
+      "cleanup_seconds": 2.469000000040978,
+      "total_seconds": 483.844000000041,
+      "supplemental_contract_and_build_passed": true
+    },
+    {
+      "task_id": "kairn-runtime-cache",
+      "arm": "direct_skills",
+      "repeat": 0,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "complete": false,
+      "instrument_valid": true,
+      "authoritative": {
+        "passed": 98,
+        "failed": 0,
+        "errors": 0,
+        "complete": false,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": false,
+        "elapsed_seconds": 22.375,
+        "candidate_execution_failed": false
+      },
+      "scope_failures": [],
+      "deleted_paths": [],
+      "changed_paths": [
+        "scripts/benchmark-semantic-runtime.ts",
+        "scripts/evaluate-semantic-model.ts",
+        "scripts/materialize-evidence-corpus.ts",
+        "src/indexer/indexRepo.ts",
+        "src/retrieval/semanticCandidates.ts",
+        "src/semantic/modelRuntime.ts",
+        "src/store/sqliteStore.ts",
+        "src/types/evidence.ts",
+        "src/types/graph.ts",
+        "tests/evidenceTraining.test.ts",
+        "tests/semanticCandidates.test.ts",
+        "tests/store.test.ts"
+      ],
+      "candidate_tests": {
+        "state": "intended_failure_not_established",
+        "test_paths": [
+          "tests/evidenceTraining.test.ts",
+          "tests/semanticCandidates.test.ts",
+          "tests/store.test.ts"
+        ],
+        "before": {
+          "passed": 96,
+          "failed": 8,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 103,
+          "failed": 1,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "elapsed_seconds": 24.32799999997951
+      },
+      "usage": {
+        "totalTokens": 2369925,
+        "inputTokens": 2353420,
+        "cachedInputTokens": 2241536,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 16505,
+        "reasoningOutputTokens": 1760
+      },
+      "tool_count": 40,
+      "failed_tool_calls": 7,
+      "tool_seconds": 152.98800000012852,
+      "native_skill_inputs": 2,
+      "workspace_setup_seconds": 8.422000000020489,
+      "model_call_seconds": 447.780999999959,
+      "skill_setup_seconds": 0.0,
+      "grading_and_counterfactual_seconds": 53.09399999992456,
+      "cleanup_seconds": 2.937000000034459,
+      "total_seconds": 512.9370000000345,
+      "supplemental_contract_and_build_passed": true
+    },
+    {
+      "task_id": "kairn-runtime-cache",
+      "arm": "direct_skills",
+      "repeat": 1,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "complete": false,
+      "instrument_valid": true,
+      "authoritative": {
+        "passed": 98,
+        "failed": 0,
+        "errors": 0,
+        "complete": false,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": false,
+        "elapsed_seconds": 22.733999999938533,
+        "candidate_execution_failed": false
+      },
+      "scope_failures": [],
+      "deleted_paths": [],
+      "changed_paths": [
+        "scripts/benchmark-semantic-runtime.ts",
+        "scripts/evaluate-semantic-model.ts",
+        "scripts/materialize-evidence-corpus.ts",
+        "src/indexer/indexRepo.ts",
+        "src/retrieval/semanticCandidates.ts",
+        "src/runtime/services/IndexService.ts",
+        "src/semantic/modelRuntime.ts",
+        "src/store/sqliteStore.ts",
+        "src/types/evidence.ts",
+        "src/types/graph.ts",
+        "tests/evidenceTraining.test.ts",
+        "tests/semanticCandidates.test.ts",
+        "tests/store.test.ts"
+      ],
+      "candidate_tests": {
+        "state": "intended_failure_not_established",
+        "test_paths": [
+          "tests/evidenceTraining.test.ts",
+          "tests/semanticCandidates.test.ts",
+          "tests/store.test.ts"
+        ],
+        "before": {
+          "passed": 93,
+          "failed": 11,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 103,
+          "failed": 1,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "elapsed_seconds": 23.781000000075437
+      },
+      "usage": {
+        "totalTokens": 1409114,
+        "inputTokens": 1395763,
+        "cachedInputTokens": 1306112,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 13351,
+        "reasoningOutputTokens": 1965
+      },
+      "tool_count": 28,
+      "failed_tool_calls": 7,
+      "tool_seconds": 114.7669999996433,
+      "native_skill_inputs": 2,
+      "workspace_setup_seconds": 7.25,
+      "model_call_seconds": 364.73499999998603,
+      "skill_setup_seconds": 0.0,
+      "grading_and_counterfactual_seconds": 52.625,
+      "cleanup_seconds": 2.312000000034459,
+      "total_seconds": 427.7029999999795,
+      "supplemental_contract_and_build_passed": true
+    },
+    {
+      "task_id": "kairn-runtime-cache",
+      "arm": "temper_selected",
+      "repeat": 0,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "complete": false,
+      "instrument_valid": true,
+      "authoritative": {
+        "passed": 98,
+        "failed": 0,
+        "errors": 0,
+        "complete": false,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": false,
+        "elapsed_seconds": 24.31400000001304,
+        "candidate_execution_failed": false
+      },
+      "scope_failures": [],
+      "deleted_paths": [],
+      "changed_paths": [
+        "scripts/benchmark-semantic-runtime.ts",
+        "scripts/evaluate-semantic-model.ts",
+        "scripts/materialize-evidence-corpus.ts",
+        "src/indexer/indexRepo.ts",
+        "src/retrieval/semanticCandidates.ts",
+        "src/runtime/services/IndexService.ts",
+        "src/semantic/modelRuntime.ts",
+        "src/store/sqliteStore.ts",
+        "src/types/evidence.ts",
+        "src/types/graph.ts",
+        "tests/evidenceTraining.test.ts",
+        "tests/semanticCandidates.test.ts",
+        "tests/store.test.ts"
+      ],
+      "candidate_tests": {
+        "state": "intended_failure_not_established",
+        "test_paths": [
+          "tests/evidenceTraining.test.ts",
+          "tests/semanticCandidates.test.ts",
+          "tests/store.test.ts"
+        ],
+        "before": {
+          "passed": 96,
+          "failed": 9,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 104,
+          "failed": 1,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "elapsed_seconds": 27.68700000003446
+      },
+      "usage": {
+        "totalTokens": 1422487,
+        "inputTokens": 1404146,
+        "cachedInputTokens": 1319296,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 18341,
+        "reasoningOutputTokens": 2838
+      },
+      "tool_count": 30,
+      "failed_tool_calls": 4,
+      "tool_seconds": 115.3549999993993,
+      "native_skill_inputs": 1,
+      "workspace_setup_seconds": 6.530999999959022,
+      "model_call_seconds": 444.875,
+      "skill_setup_seconds": 0.0,
+      "grading_and_counterfactual_seconds": 58.436999999918044,
+      "cleanup_seconds": 2.7969999999040738,
+      "total_seconds": 513.390999999945,
+      "supplemental_contract_and_build_passed": true
+    },
+    {
+      "task_id": "kairn-runtime-cache",
+      "arm": "temper_selected",
+      "repeat": 1,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "complete": false,
+      "instrument_valid": true,
+      "authoritative": {
+        "passed": 98,
+        "failed": 0,
+        "errors": 0,
+        "complete": false,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": false,
+        "elapsed_seconds": 24.75,
+        "candidate_execution_failed": false
+      },
+      "scope_failures": [],
+      "deleted_paths": [],
+      "changed_paths": [
+        "scripts/benchmark-semantic-runtime.ts",
+        "scripts/evaluate-semantic-model.ts",
+        "scripts/materialize-evidence-corpus.ts",
+        "src/indexer/indexRepo.ts",
+        "src/retrieval/semanticCandidates.ts",
+        "src/semantic/modelRuntime.ts",
+        "src/store/sqliteStore.ts",
+        "src/types/evidence.ts",
+        "src/types/graph.ts",
+        "tests/evidenceTraining.test.ts",
+        "tests/semanticCandidates.test.ts",
+        "tests/store.test.ts"
+      ],
+      "candidate_tests": {
+        "state": "intended_failure_not_established",
+        "test_paths": [
+          "tests/evidenceTraining.test.ts",
+          "tests/semanticCandidates.test.ts",
+          "tests/store.test.ts"
+        ],
+        "before": {
+          "passed": 93,
+          "failed": 10,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 102,
+          "failed": 1,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "elapsed_seconds": 24.07799999997951
+      },
+      "usage": {
+        "totalTokens": 1496652,
+        "inputTokens": 1480041,
+        "cachedInputTokens": 1347200,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 16611,
+        "reasoningOutputTokens": 2523
+      },
+      "tool_count": 30,
+      "failed_tool_calls": 3,
+      "tool_seconds": 135.06500000017695,
+      "native_skill_inputs": 1,
+      "workspace_setup_seconds": 8.40700000000652,
+      "model_call_seconds": 446.045999999973,
+      "skill_setup_seconds": 0.0,
+      "grading_and_counterfactual_seconds": 55.67099999997299,
+      "cleanup_seconds": 2.437999999965541,
+      "total_seconds": 513.5629999999655,
+      "supplemental_contract_and_build_passed": true
+    },
+    {
+      "task_id": "temper-live-policy",
+      "arm": "baseline",
+      "repeat": 0,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "complete": true,
+      "instrument_valid": true,
+      "authoritative": {
+        "passed": 55,
+        "failed": 0,
+        "errors": 0,
+        "complete": true,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": null,
+        "elapsed_seconds": 6.657000000006519,
+        "candidate_execution_failed": false
+      },
+      "scope_failures": [],
+      "deleted_paths": [],
+      "changed_paths": [
+        "src/adaptation_compiler_lab/autonomy/native_policy.py",
+        "src/adaptation_compiler_lab/desktop/engine_protocol.py",
+        "src/adaptation_compiler_lab/instruction_environment/adapters.py",
+        "tests/unit/autonomy/test_native_policy.py",
+        "tests/unit/desktop/test_engine_protocol.py",
+        "tests/unit/instruction_environment/test_adapters.py"
+      ],
+      "candidate_tests": {
+        "state": "failing_before_passing_after",
+        "test_paths": [
+          "tests/unit/autonomy/test_native_policy.py",
+          "tests/unit/desktop/test_engine_protocol.py",
+          "tests/unit/instruction_environment/test_adapters.py"
+        ],
+        "before": {
+          "passed": 52,
+          "failed": 5,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 57,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true
+        },
+        "elapsed_seconds": 11.358999999938533
+      },
+      "usage": {
+        "totalTokens": 976905,
+        "inputTokens": 969074,
+        "cachedInputTokens": 910208,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 7831,
+        "reasoningOutputTokens": 1434
+      },
+      "tool_count": 20,
+      "failed_tool_calls": 6,
+      "tool_seconds": 105.29899999964982,
+      "native_skill_inputs": 0,
+      "workspace_setup_seconds": 23.42200000002049,
+      "model_call_seconds": 243.2029999999795,
+      "skill_setup_seconds": 0.0,
+      "grading_and_counterfactual_seconds": 38.03099999995902,
+      "cleanup_seconds": 9.109000000054948,
+      "total_seconds": 316.01600000006147,
+      "supplemental_contract_and_build_passed": true
+    },
+    {
+      "task_id": "temper-live-policy",
+      "arm": "baseline",
+      "repeat": 1,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "complete": true,
+      "instrument_valid": true,
+      "authoritative": {
+        "passed": 55,
+        "failed": 0,
+        "errors": 0,
+        "complete": true,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": null,
+        "elapsed_seconds": 6.655999999959022,
+        "candidate_execution_failed": false
+      },
+      "scope_failures": [],
+      "deleted_paths": [],
+      "changed_paths": [
+        "src/adaptation_compiler_lab/autonomy/native_policy.py",
+        "src/adaptation_compiler_lab/desktop/engine_protocol.py",
+        "src/adaptation_compiler_lab/instruction_environment/adapters.py",
+        "tests/unit/autonomy/test_native_policy.py",
+        "tests/unit/desktop/test_engine_protocol.py",
+        "tests/unit/instruction_environment/test_adapters.py"
+      ],
+      "candidate_tests": {
+        "state": "failing_before_passing_after",
+        "test_paths": [
+          "tests/unit/autonomy/test_native_policy.py",
+          "tests/unit/desktop/test_engine_protocol.py",
+          "tests/unit/instruction_environment/test_adapters.py"
+        ],
+        "before": {
+          "passed": 52,
+          "failed": 5,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 57,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true
+        },
+        "elapsed_seconds": 11.218999999924563
+      },
+      "usage": {
+        "totalTokens": 772035,
+        "inputTokens": 766031,
+        "cachedInputTokens": 710144,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 6004,
+        "reasoningOutputTokens": 942
+      },
+      "tool_count": 17,
+      "failed_tool_calls": 7,
+      "tool_seconds": 122.36100000026636,
+      "native_skill_inputs": 0,
+      "workspace_setup_seconds": 29.280999999959022,
+      "model_call_seconds": 228.2029999999795,
+      "skill_setup_seconds": 0.0,
+      "grading_and_counterfactual_seconds": 41.85999999998603,
+      "cleanup_seconds": 11.172000000020489,
+      "total_seconds": 312.35899999993853,
+      "supplemental_contract_and_build_passed": true
+    },
+    {
+      "task_id": "temper-live-policy",
+      "arm": "direct_skills",
+      "repeat": 0,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "complete": true,
+      "instrument_valid": true,
+      "authoritative": {
+        "passed": 55,
+        "failed": 0,
+        "errors": 0,
+        "complete": true,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": null,
+        "elapsed_seconds": 6.657000000006519,
+        "candidate_execution_failed": false
+      },
+      "scope_failures": [],
+      "deleted_paths": [],
+      "changed_paths": [
+        "src/adaptation_compiler_lab/autonomy/native_policy.py",
+        "src/adaptation_compiler_lab/desktop/engine_protocol.py",
+        "src/adaptation_compiler_lab/instruction_environment/adapters.py",
+        "tests/unit/autonomy/test_native_policy.py",
+        "tests/unit/desktop/test_engine_protocol.py",
+        "tests/unit/instruction_environment/test_adapters.py"
+      ],
+      "candidate_tests": {
+        "state": "failing_before_passing_after",
+        "test_paths": [
+          "tests/unit/autonomy/test_native_policy.py",
+          "tests/unit/desktop/test_engine_protocol.py",
+          "tests/unit/instruction_environment/test_adapters.py"
+        ],
+        "before": {
+          "passed": 55,
+          "failed": 3,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 58,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true
+        },
+        "elapsed_seconds": 11.344000000040978
+      },
+      "usage": {
+        "totalTokens": 594304,
+        "inputTokens": 588167,
+        "cachedInputTokens": 523520,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 6137,
+        "reasoningOutputTokens": 1158
+      },
+      "tool_count": 18,
+      "failed_tool_calls": 6,
+      "tool_seconds": 89.55899999989197,
+      "native_skill_inputs": 2,
+      "workspace_setup_seconds": 24.171999999904074,
+      "model_call_seconds": 199.2970000000205,
+      "skill_setup_seconds": 0.0,
+      "grading_and_counterfactual_seconds": 38.56200000003446,
+      "cleanup_seconds": 8.937000000034459,
+      "total_seconds": 272.655999999959,
+      "supplemental_contract_and_build_passed": true
+    },
+    {
+      "task_id": "temper-live-policy",
+      "arm": "direct_skills",
+      "repeat": 1,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "complete": true,
+      "instrument_valid": true,
+      "authoritative": {
+        "passed": 55,
+        "failed": 0,
+        "errors": 0,
+        "complete": true,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": null,
+        "elapsed_seconds": 6.234000000054948,
+        "candidate_execution_failed": false
+      },
+      "scope_failures": [],
+      "deleted_paths": [],
+      "changed_paths": [
+        "src/adaptation_compiler_lab/autonomy/native_policy.py",
+        "src/adaptation_compiler_lab/desktop/engine_protocol.py",
+        "src/adaptation_compiler_lab/instruction_environment/adapters.py",
+        "tests/unit/autonomy/test_native_policy.py",
+        "tests/unit/desktop/test_engine_protocol.py",
+        "tests/unit/instruction_environment/test_adapters.py"
+      ],
+      "candidate_tests": {
+        "state": "failing_before_passing_after",
+        "test_paths": [
+          "tests/unit/autonomy/test_native_policy.py",
+          "tests/unit/desktop/test_engine_protocol.py",
+          "tests/unit/instruction_environment/test_adapters.py"
+        ],
+        "before": {
+          "passed": 54,
+          "failed": 3,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 57,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true
+        },
+        "elapsed_seconds": 11.718999999924563
+      },
+      "usage": {
+        "totalTokens": 935735,
+        "inputTokens": 929975,
+        "cachedInputTokens": 865408,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 5760,
+        "reasoningOutputTokens": 670
+      },
+      "tool_count": 19,
+      "failed_tool_calls": 5,
+      "tool_seconds": 110.21600000024773,
+      "native_skill_inputs": 2,
+      "workspace_setup_seconds": 32.76500000001397,
+      "model_call_seconds": 224.21900000004098,
+      "skill_setup_seconds": 0.0,
+      "grading_and_counterfactual_seconds": 41.85999999998603,
+      "cleanup_seconds": 9.0,
+      "total_seconds": 309.89000000001397,
+      "supplemental_contract_and_build_passed": true
+    },
+    {
+      "task_id": "temper-live-policy",
+      "arm": "temper_selected",
+      "repeat": 0,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "complete": true,
+      "instrument_valid": true,
+      "authoritative": {
+        "passed": 55,
+        "failed": 0,
+        "errors": 0,
+        "complete": true,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": null,
+        "elapsed_seconds": 6.217999999993481,
+        "candidate_execution_failed": false
+      },
+      "scope_failures": [],
+      "deleted_paths": [],
+      "changed_paths": [
+        "src/adaptation_compiler_lab/autonomy/native_policy.py",
+        "src/adaptation_compiler_lab/desktop/engine_protocol.py",
+        "src/adaptation_compiler_lab/instruction_environment/adapters.py",
+        "tests/unit/autonomy/test_native_policy.py",
+        "tests/unit/desktop/test_engine_protocol.py",
+        "tests/unit/instruction_environment/test_adapters.py"
+      ],
+      "candidate_tests": {
+        "state": "failing_before_passing_after",
+        "test_paths": [
+          "tests/unit/autonomy/test_native_policy.py",
+          "tests/unit/desktop/test_engine_protocol.py",
+          "tests/unit/instruction_environment/test_adapters.py"
+        ],
+        "before": {
+          "passed": 53,
+          "failed": 5,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 58,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true
+        },
+        "elapsed_seconds": 11.641000000061467
+      },
+      "usage": {
+        "totalTokens": 744138,
+        "inputTokens": 737148,
+        "cachedInputTokens": 675328,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 6990,
+        "reasoningOutputTokens": 1285
+      },
+      "tool_count": 17,
+      "failed_tool_calls": 6,
+      "tool_seconds": 72.24699999985751,
+      "native_skill_inputs": 1,
+      "workspace_setup_seconds": 24.70299999997951,
+      "model_call_seconds": 200.17199999990407,
+      "skill_setup_seconds": 0.0,
+      "grading_and_counterfactual_seconds": 38.953000000095926,
+      "cleanup_seconds": 9.062000000034459,
+      "total_seconds": 274.5470000000205,
+      "supplemental_contract_and_build_passed": true
+    },
+    {
+      "task_id": "temper-live-policy",
+      "arm": "temper_selected",
+      "repeat": 1,
+      "model_status": "completed",
+      "model": "gpt-6.1-sol",
+      "effort": "medium",
+      "complete": true,
+      "instrument_valid": true,
+      "authoritative": {
+        "passed": 55,
+        "failed": 0,
+        "errors": 0,
+        "complete": true,
+        "receipt_present": true,
+        "instrument_valid": true,
+        "typecheck_passed": null,
+        "elapsed_seconds": 6.094000000040978,
+        "candidate_execution_failed": false
+      },
+      "scope_failures": [],
+      "deleted_paths": [],
+      "changed_paths": [
+        "src/adaptation_compiler_lab/autonomy/native_policy.py",
+        "src/adaptation_compiler_lab/desktop/engine_protocol.py",
+        "src/adaptation_compiler_lab/instruction_environment/adapters.py",
+        "tests/unit/autonomy/test_native_policy.py",
+        "tests/unit/desktop/test_engine_protocol.py",
+        "tests/unit/instruction_environment/test_adapters.py"
+      ],
+      "candidate_tests": {
+        "state": "failing_before_passing_after",
+        "test_paths": [
+          "tests/unit/autonomy/test_native_policy.py",
+          "tests/unit/desktop/test_engine_protocol.py",
+          "tests/unit/instruction_environment/test_adapters.py"
+        ],
+        "before": {
+          "passed": 52,
+          "failed": 4,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 56,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true
+        },
+        "elapsed_seconds": 11.53200000000652
+      },
+      "usage": {
+        "totalTokens": 795026,
+        "inputTokens": 788635,
+        "cachedInputTokens": 725504,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 6391,
+        "reasoningOutputTokens": 1320
+      },
+      "tool_count": 19,
+      "failed_tool_calls": 5,
+      "tool_seconds": 76.00100000016391,
+      "native_skill_inputs": 1,
+      "workspace_setup_seconds": 27.5,
+      "model_call_seconds": 198.46900000004098,
+      "skill_setup_seconds": 0.0,
+      "grading_and_counterfactual_seconds": 39.10900000005495,
+      "cleanup_seconds": 8.828000000095926,
+      "total_seconds": 275.89100000006147,
+      "supplemental_contract_and_build_passed": true
+    }
+  ],
+  "selectors": [
+    {
+      "task_id": "kairn-runtime-cache",
+      "clause_ids": [
+        "ponytail:004",
+        "ponytail:007",
+        "ponytail:008",
+        "ponytail:009",
+        "pstack-tdd:004",
+        "pstack-tdd:009",
+        "pstack-tdd:012"
+      ],
+      "usage": {
+        "totalTokens": 40217,
+        "inputTokens": 39826,
+        "cachedInputTokens": 26880,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 391,
+        "reasoningOutputTokens": 101
+      },
+      "model_call_seconds": 16.64000000001397,
+      "total_seconds": 25.030999999959022,
+      "native_skill_inputs": 0,
+      "tool_count": 3
+    },
+    {
+      "task_id": "temper-live-policy",
+      "clause_ids": [
+        "ponytail:004",
+        "ponytail:007",
+        "ponytail:008",
+        "ponytail:009",
+        "pstack-tdd:004",
+        "pstack-tdd:009",
+        "pstack-tdd:012"
+      ],
+      "usage": {
+        "totalTokens": 40600,
+        "inputTokens": 40290,
+        "cachedInputTokens": 27648,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 310,
+        "reasoningOutputTokens": 63
+      },
+      "model_call_seconds": 15.827999999979511,
+      "total_seconds": 40.375,
+      "native_skill_inputs": 0,
+      "tool_count": 3
+    }
+  ],
+  "audits": {
+    "kairn-runtime-cache-baseline-0": {
+      "task_id": "kairn-runtime-cache",
+      "arm": "baseline",
+      "repeat": 0,
+      "frozen_complete": false,
+      "locked_runtime_checks_passed": false,
+      "actual_candidate_typecheck_passed": true,
+      "instrument_valid": true,
+      "diagnostic_complete": false,
+      "candidate_tests": {
+        "state": "failing_before_passing_after",
+        "test_paths": [
+          "tests/evidenceTraining.test.ts",
+          "tests/semanticCandidates.test.ts",
+          "tests/semanticRuntimeIsolation.test.ts",
+          "tests/store.test.ts"
+        ],
+        "before": {
+          "passed": 96,
+          "failed": 10,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 106,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true
+        }
+      },
+      "full_guidance_observed_in_tool_output": {},
+      "validation_error_tool_calls": 0,
+      "audit_seconds": 55.78099999995902,
+      "interpretation": "Diagnostic audit of the exact unchanged candidate; not a replacement frozen score or prospective promotion."
+    },
+    "kairn-runtime-cache-baseline-1": {
+      "task_id": "kairn-runtime-cache",
+      "arm": "baseline",
+      "repeat": 1,
+      "frozen_complete": false,
+      "locked_runtime_checks_passed": true,
+      "actual_candidate_typecheck_passed": true,
+      "instrument_valid": true,
+      "diagnostic_complete": true,
+      "candidate_tests": {
+        "state": "failing_before_passing_after",
+        "test_paths": [
+          "tests/evidenceTraining.test.ts",
+          "tests/runtimeProvenance.test.ts",
+          "tests/semanticCandidates.test.ts",
+          "tests/store.test.ts"
+        ],
+        "before": {
+          "passed": 93,
+          "failed": 10,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 103,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true
+        }
+      },
+      "full_guidance_observed_in_tool_output": {},
+      "validation_error_tool_calls": 0,
+      "audit_seconds": 55.96900000004098,
+      "interpretation": "Diagnostic audit of the exact unchanged candidate; not a replacement frozen score or prospective promotion."
+    },
+    "kairn-runtime-cache-direct_skills-0": {
+      "task_id": "kairn-runtime-cache",
+      "arm": "direct_skills",
+      "repeat": 0,
+      "frozen_complete": false,
+      "locked_runtime_checks_passed": true,
+      "actual_candidate_typecheck_passed": true,
+      "instrument_valid": true,
+      "diagnostic_complete": true,
+      "candidate_tests": {
+        "state": "failing_before_passing_after",
+        "test_paths": [
+          "tests/evidenceTraining.test.ts",
+          "tests/semanticCandidates.test.ts",
+          "tests/store.test.ts"
+        ],
+        "before": {
+          "passed": 96,
+          "failed": 8,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 104,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true
+        }
+      },
+      "full_guidance_observed_in_tool_output": {
+        "ponytail": true,
+        "pstack-tdd": true
+      },
+      "validation_error_tool_calls": 0,
+      "audit_seconds": 56.75,
+      "interpretation": "Diagnostic audit of the exact unchanged candidate; not a replacement frozen score or prospective promotion."
+    },
+    "kairn-runtime-cache-direct_skills-1": {
+      "task_id": "kairn-runtime-cache",
+      "arm": "direct_skills",
+      "repeat": 1,
+      "frozen_complete": false,
+      "locked_runtime_checks_passed": true,
+      "actual_candidate_typecheck_passed": true,
+      "instrument_valid": true,
+      "diagnostic_complete": true,
+      "candidate_tests": {
+        "state": "failing_before_passing_after",
+        "test_paths": [
+          "tests/evidenceTraining.test.ts",
+          "tests/semanticCandidates.test.ts",
+          "tests/store.test.ts"
+        ],
+        "before": {
+          "passed": 93,
+          "failed": 11,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 104,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true
+        }
+      },
+      "full_guidance_observed_in_tool_output": {
+        "ponytail": true,
+        "pstack-tdd": true
+      },
+      "validation_error_tool_calls": 0,
+      "audit_seconds": 49.64099999994505,
+      "interpretation": "Diagnostic audit of the exact unchanged candidate; not a replacement frozen score or prospective promotion."
+    },
+    "kairn-runtime-cache-temper_selected-0": {
+      "task_id": "kairn-runtime-cache",
+      "arm": "temper_selected",
+      "repeat": 0,
+      "frozen_complete": false,
+      "locked_runtime_checks_passed": true,
+      "actual_candidate_typecheck_passed": true,
+      "instrument_valid": true,
+      "diagnostic_complete": true,
+      "candidate_tests": {
+        "state": "failing_before_passing_after",
+        "test_paths": [
+          "tests/evidenceTraining.test.ts",
+          "tests/semanticCandidates.test.ts",
+          "tests/store.test.ts"
+        ],
+        "before": {
+          "passed": 96,
+          "failed": 9,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 105,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true
+        }
+      },
+      "full_guidance_observed_in_tool_output": {
+        "selected_material": true
+      },
+      "validation_error_tool_calls": 0,
+      "audit_seconds": 47.07799999997951,
+      "interpretation": "Diagnostic audit of the exact unchanged candidate; not a replacement frozen score or prospective promotion."
+    },
+    "kairn-runtime-cache-temper_selected-1": {
+      "task_id": "kairn-runtime-cache",
+      "arm": "temper_selected",
+      "repeat": 1,
+      "frozen_complete": false,
+      "locked_runtime_checks_passed": true,
+      "actual_candidate_typecheck_passed": true,
+      "instrument_valid": true,
+      "diagnostic_complete": true,
+      "candidate_tests": {
+        "state": "failing_before_passing_after",
+        "test_paths": [
+          "tests/evidenceTraining.test.ts",
+          "tests/semanticCandidates.test.ts",
+          "tests/store.test.ts"
+        ],
+        "before": {
+          "passed": 93,
+          "failed": 10,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 103,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true
+        }
+      },
+      "full_guidance_observed_in_tool_output": {
+        "selected_material": true
+      },
+      "validation_error_tool_calls": 0,
+      "audit_seconds": 49.35999999998603,
+      "interpretation": "Diagnostic audit of the exact unchanged candidate; not a replacement frozen score or prospective promotion."
+    },
+    "temper-live-policy-baseline-0": {
+      "task_id": "temper-live-policy",
+      "arm": "baseline",
+      "repeat": 0,
+      "frozen_complete": true,
+      "locked_runtime_checks_passed": true,
+      "actual_candidate_typecheck_passed": null,
+      "instrument_valid": true,
+      "diagnostic_complete": true,
+      "candidate_tests": {
+        "state": "failing_before_passing_after",
+        "test_paths": [
+          "tests/unit/autonomy/test_native_policy.py",
+          "tests/unit/desktop/test_engine_protocol.py",
+          "tests/unit/instruction_environment/test_adapters.py"
+        ],
+        "before": {
+          "passed": 52,
+          "failed": 5,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 57,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true
+        }
+      },
+      "full_guidance_observed_in_tool_output": {},
+      "validation_error_tool_calls": 0,
+      "audit_seconds": 36.98499999998603,
+      "interpretation": "Diagnostic audit of the exact unchanged candidate; not a replacement frozen score or prospective promotion."
+    },
+    "temper-live-policy-baseline-1": {
+      "task_id": "temper-live-policy",
+      "arm": "baseline",
+      "repeat": 1,
+      "frozen_complete": true,
+      "locked_runtime_checks_passed": true,
+      "actual_candidate_typecheck_passed": null,
+      "instrument_valid": true,
+      "diagnostic_complete": true,
+      "candidate_tests": {
+        "state": "failing_before_passing_after",
+        "test_paths": [
+          "tests/unit/autonomy/test_native_policy.py",
+          "tests/unit/desktop/test_engine_protocol.py",
+          "tests/unit/instruction_environment/test_adapters.py"
+        ],
+        "before": {
+          "passed": 52,
+          "failed": 5,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 57,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true
+        }
+      },
+      "full_guidance_observed_in_tool_output": {},
+      "validation_error_tool_calls": 0,
+      "audit_seconds": 37.10900000005495,
+      "interpretation": "Diagnostic audit of the exact unchanged candidate; not a replacement frozen score or prospective promotion."
+    },
+    "temper-live-policy-direct_skills-0": {
+      "task_id": "temper-live-policy",
+      "arm": "direct_skills",
+      "repeat": 0,
+      "frozen_complete": true,
+      "locked_runtime_checks_passed": true,
+      "actual_candidate_typecheck_passed": null,
+      "instrument_valid": true,
+      "diagnostic_complete": true,
+      "candidate_tests": {
+        "state": "failing_before_passing_after",
+        "test_paths": [
+          "tests/unit/autonomy/test_native_policy.py",
+          "tests/unit/desktop/test_engine_protocol.py",
+          "tests/unit/instruction_environment/test_adapters.py"
+        ],
+        "before": {
+          "passed": 55,
+          "failed": 3,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 58,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true
+        }
+      },
+      "full_guidance_observed_in_tool_output": {
+        "ponytail": true,
+        "pstack-tdd": true
+      },
+      "validation_error_tool_calls": 0,
+      "audit_seconds": 38.59400000004098,
+      "interpretation": "Diagnostic audit of the exact unchanged candidate; not a replacement frozen score or prospective promotion."
+    },
+    "temper-live-policy-direct_skills-1": {
+      "task_id": "temper-live-policy",
+      "arm": "direct_skills",
+      "repeat": 1,
+      "frozen_complete": true,
+      "locked_runtime_checks_passed": true,
+      "actual_candidate_typecheck_passed": null,
+      "instrument_valid": true,
+      "diagnostic_complete": true,
+      "candidate_tests": {
+        "state": "failing_before_passing_after",
+        "test_paths": [
+          "tests/unit/autonomy/test_native_policy.py",
+          "tests/unit/desktop/test_engine_protocol.py",
+          "tests/unit/instruction_environment/test_adapters.py"
+        ],
+        "before": {
+          "passed": 54,
+          "failed": 3,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 57,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true
+        }
+      },
+      "full_guidance_observed_in_tool_output": {
+        "ponytail": true,
+        "pstack-tdd": true
+      },
+      "validation_error_tool_calls": 0,
+      "audit_seconds": 39.78200000000652,
+      "interpretation": "Diagnostic audit of the exact unchanged candidate; not a replacement frozen score or prospective promotion."
+    },
+    "temper-live-policy-temper_selected-0": {
+      "task_id": "temper-live-policy",
+      "arm": "temper_selected",
+      "repeat": 0,
+      "frozen_complete": true,
+      "locked_runtime_checks_passed": true,
+      "actual_candidate_typecheck_passed": null,
+      "instrument_valid": true,
+      "diagnostic_complete": true,
+      "candidate_tests": {
+        "state": "failing_before_passing_after",
+        "test_paths": [
+          "tests/unit/autonomy/test_native_policy.py",
+          "tests/unit/desktop/test_engine_protocol.py",
+          "tests/unit/instruction_environment/test_adapters.py"
+        ],
+        "before": {
+          "passed": 53,
+          "failed": 5,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 58,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true
+        }
+      },
+      "full_guidance_observed_in_tool_output": {
+        "selected_material": true
+      },
+      "validation_error_tool_calls": 0,
+      "audit_seconds": 39.92200000002049,
+      "interpretation": "Diagnostic audit of the exact unchanged candidate; not a replacement frozen score or prospective promotion."
+    },
+    "temper-live-policy-temper_selected-1": {
+      "task_id": "temper-live-policy",
+      "arm": "temper_selected",
+      "repeat": 1,
+      "frozen_complete": true,
+      "locked_runtime_checks_passed": true,
+      "actual_candidate_typecheck_passed": null,
+      "instrument_valid": true,
+      "diagnostic_complete": true,
+      "candidate_tests": {
+        "state": "failing_before_passing_after",
+        "test_paths": [
+          "tests/unit/autonomy/test_native_policy.py",
+          "tests/unit/desktop/test_engine_protocol.py",
+          "tests/unit/instruction_environment/test_adapters.py"
+        ],
+        "before": {
+          "passed": 52,
+          "failed": 4,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true
+        },
+        "after": {
+          "passed": 56,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true
+        }
+      },
+      "full_guidance_observed_in_tool_output": {
+        "selected_material": true
+      },
+      "validation_error_tool_calls": 0,
+      "audit_seconds": 43.84299999999348,
+      "interpretation": "Diagnostic audit of the exact unchanged candidate; not a replacement frozen score or prospective promotion."
+    }
+  },
+  "contract_audits": {
+    "kairn-runtime-cache-baseline-0": {
+      "task_id": "kairn-runtime-cache",
+      "arm": "baseline",
+      "repeat": 0,
+      "score": {
+        "passed": 98,
+        "failed": 0,
+        "errors": 0,
+        "complete": true,
+        "receipt_present": true
+      },
+      "instrument_valid": true,
+      "audit_seconds": 20.156000000075437,
+      "diagnostic_only": true
+    },
+    "kairn-runtime-cache-baseline-1": {
+      "task_id": "kairn-runtime-cache",
+      "arm": "baseline",
+      "repeat": 1,
+      "score": {
+        "passed": 98,
+        "failed": 0,
+        "errors": 0,
+        "complete": true,
+        "receipt_present": true
+      },
+      "instrument_valid": true,
+      "audit_seconds": 21.93700000003446,
+      "diagnostic_only": true
+    },
+    "kairn-runtime-cache-direct_skills-0": {
+      "task_id": "kairn-runtime-cache",
+      "arm": "direct_skills",
+      "repeat": 0,
+      "score": {
+        "passed": 98,
+        "failed": 0,
+        "errors": 0,
+        "complete": true,
+        "receipt_present": true
+      },
+      "instrument_valid": true,
+      "audit_seconds": 19.530999999959022,
+      "diagnostic_only": true
+    },
+    "kairn-runtime-cache-direct_skills-1": {
+      "task_id": "kairn-runtime-cache",
+      "arm": "direct_skills",
+      "repeat": 1,
+      "score": {
+        "passed": 98,
+        "failed": 0,
+        "errors": 0,
+        "complete": true,
+        "receipt_present": true
+      },
+      "instrument_valid": true,
+      "audit_seconds": 21.31299999996554,
+      "diagnostic_only": true
+    },
+    "kairn-runtime-cache-temper_selected-0": {
+      "task_id": "kairn-runtime-cache",
+      "arm": "temper_selected",
+      "repeat": 0,
+      "score": {
+        "passed": 98,
+        "failed": 0,
+        "errors": 0,
+        "complete": true,
+        "receipt_present": true
+      },
+      "instrument_valid": true,
+      "audit_seconds": 21.594000000040978,
+      "diagnostic_only": true
+    },
+    "kairn-runtime-cache-temper_selected-1": {
+      "task_id": "kairn-runtime-cache",
+      "arm": "temper_selected",
+      "repeat": 1,
+      "score": {
+        "passed": 98,
+        "failed": 0,
+        "errors": 0,
+        "complete": true,
+        "receipt_present": true
+      },
+      "instrument_valid": true,
+      "audit_seconds": 20.780999999959022,
+      "diagnostic_only": true
+    }
+  },
+  "contract_controls": [
+    {
+      "label": "original",
+      "score": {
+        "passed": 93,
+        "failed": 5,
+        "errors": 0,
+        "complete": false,
+        "receipt_present": true
+      }
+    },
+    {
+      "label": "reference",
+      "score": {
+        "passed": 98,
+        "failed": 0,
+        "errors": 0,
+        "complete": true,
+        "receipt_present": true
+      }
+    }
+  ],
+  "contract_fixture_binding": {
+    "adapted_tests_sha256": {
+      "tests/store.test.ts": "04483499a53ec513e4f578950a48fff6df268813e531a2cd4828d3c21f129841",
+      "tests/semanticCandidates.test.ts": "0974909ca3b8eef48c5b72eccf9fdcc46d4a547db5c0a1ddb980250b9ebc8710",
+      "tests/evidenceTraining.test.ts": "e7e08e2e809de31022d29cc88346c0a906c6f857365ff10bd994160fd54e0c00"
+    },
+    "expected_tests": 98,
+    "scope": "Supply complete explicit runtime identity to four internal helpers; do not change assertions, queries, expected outputs, production code or frozen scores."
+  },
+  "supplemental_script_sha256": {
+    "scripts/audit_repo_extension_screen.py": "9b1b0c5ba99a989351f710d2eb55360b630f1a63f3296ecfdc991a8a6694ad98",
+    "scripts/audit_repo_extension_contract.py": "60d509d74201bc1a0c1566544db6cfb4a0a8286e2f72b83f4e23aac6bc3c9fbb"
+  },
+  "strict_type_diagnostic_paths": {
+    "kairn-runtime-cache-baseline-0": {
+      "tests/evidenceTraining.test.ts": 18,
+      "tests/semanticCandidates.test.ts": 1
+    },
+    "kairn-runtime-cache-baseline-1": {
+      "tests/evidenceTraining.test.ts": 18
+    },
+    "kairn-runtime-cache-direct_skills-0": {
+      "tests/evidenceTraining.test.ts": 18
+    },
+    "kairn-runtime-cache-direct_skills-1": {
+      "tests/evidenceTraining.test.ts": 18
+    },
+    "kairn-runtime-cache-temper_selected-0": {
+      "tests/evidenceTraining.test.ts": 18
+    },
+    "kairn-runtime-cache-temper_selected-1": {
+      "tests/evidenceTraining.test.ts": 18
+    }
+  },
+  "journals": [
+    {
+      "name": "kairn-runtime-cache-baseline-0.jsonl",
+      "event_counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 62,
+        "item/tool/call": 31,
+        "thread/tokenUsage/updated": 32,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 1550125,
+        "inputTokens": 1533103,
+        "cachedInputTokens": 1436928,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 17022,
+        "reasoningOutputTokens": 1895
+      }
+    },
+    {
+      "name": "kairn-runtime-cache-baseline-1.jsonl",
+      "event_counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 71,
+        "item/tool/call": 35,
+        "thread/tokenUsage/updated": 37,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 1827317,
+        "inputTokens": 1808309,
+        "cachedInputTokens": 1720960,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 19008,
+        "reasoningOutputTokens": 3072
+      }
+    },
+    {
+      "name": "kairn-runtime-cache-direct_skills-0.jsonl",
+      "event_counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 77,
+        "item/tool/call": 40,
+        "thread/tokenUsage/updated": 40,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 2369925,
+        "inputTokens": 2353420,
+        "cachedInputTokens": 2241536,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 16505,
+        "reasoningOutputTokens": 1760
+      }
+    },
+    {
+      "name": "kairn-runtime-cache-direct_skills-1.jsonl",
+      "event_counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 54,
+        "item/tool/call": 28,
+        "thread/tokenUsage/updated": 28,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 1409114,
+        "inputTokens": 1395763,
+        "cachedInputTokens": 1306112,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 13351,
+        "reasoningOutputTokens": 1965
+      }
+    },
+    {
+      "name": "kairn-runtime-cache-selector.jsonl",
+      "event_counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 7,
+        "item/tool/call": 3,
+        "thread/tokenUsage/updated": 4,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 40217,
+        "inputTokens": 39826,
+        "cachedInputTokens": 26880,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 391,
+        "reasoningOutputTokens": 101
+      }
+    },
+    {
+      "name": "kairn-runtime-cache-temper_selected-0.jsonl",
+      "event_counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 60,
+        "item/tool/call": 30,
+        "thread/tokenUsage/updated": 30,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 1422487,
+        "inputTokens": 1404146,
+        "cachedInputTokens": 1319296,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 18341,
+        "reasoningOutputTokens": 2838
+      }
+    },
+    {
+      "name": "kairn-runtime-cache-temper_selected-1.jsonl",
+      "event_counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 62,
+        "item/tool/call": 30,
+        "thread/tokenUsage/updated": 31,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 1496652,
+        "inputTokens": 1480041,
+        "cachedInputTokens": 1347200,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 16611,
+        "reasoningOutputTokens": 2523
+      }
+    },
+    {
+      "name": "temper-live-policy-baseline-0.jsonl",
+      "event_counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 44,
+        "item/tool/call": 20,
+        "thread/tokenUsage/updated": 25,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 976905,
+        "inputTokens": 969074,
+        "cachedInputTokens": 910208,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 7831,
+        "reasoningOutputTokens": 1434
+      }
+    },
+    {
+      "name": "temper-live-policy-baseline-1.jsonl",
+      "event_counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 42,
+        "item/tool/call": 17,
+        "thread/tokenUsage/updated": 28,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 772035,
+        "inputTokens": 766031,
+        "cachedInputTokens": 710144,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 6004,
+        "reasoningOutputTokens": 942
+      }
+    },
+    {
+      "name": "temper-live-policy-direct_skills-0.jsonl",
+      "event_counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 35,
+        "item/tool/call": 18,
+        "thread/tokenUsage/updated": 17,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 594304,
+        "inputTokens": 588167,
+        "cachedInputTokens": 523520,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 6137,
+        "reasoningOutputTokens": 1158
+      }
+    },
+    {
+      "name": "temper-live-policy-direct_skills-1.jsonl",
+      "event_counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 44,
+        "item/tool/call": 19,
+        "thread/tokenUsage/updated": 25,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 935735,
+        "inputTokens": 929975,
+        "cachedInputTokens": 865408,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 5760,
+        "reasoningOutputTokens": 670
+      }
+    },
+    {
+      "name": "temper-live-policy-selector.jsonl",
+      "event_counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 7,
+        "item/tool/call": 3,
+        "thread/tokenUsage/updated": 4,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 40600,
+        "inputTokens": 40290,
+        "cachedInputTokens": 27648,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 310,
+        "reasoningOutputTokens": 63
+      }
+    },
+    {
+      "name": "temper-live-policy-temper_selected-0.jsonl",
+      "event_counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 39,
+        "item/tool/call": 17,
+        "thread/tokenUsage/updated": 22,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 744138,
+        "inputTokens": 737148,
+        "cachedInputTokens": 675328,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 6990,
+        "reasoningOutputTokens": 1285
+      }
+    },
+    {
+      "name": "temper-live-policy-temper_selected-1.jsonl",
+      "event_counts": {
+        "benchmark/model-call/start": 1,
+        "turn/started": 1,
+        "item/completed": 41,
+        "item/tool/call": 19,
+        "thread/tokenUsage/updated": 24,
+        "turn/completed": 1,
+        "benchmark/model-call/finish": 1
+      },
+      "last_usage": {
+        "totalTokens": 795026,
+        "inputTokens": 788635,
+        "cachedInputTokens": 725504,
+        "cacheWriteInputTokens": 0,
+        "outputTokens": 6391,
+        "reasoningOutputTokens": 1320
+      }
+    }
+  ],
+  "all_native_usage": {
+    "totalTokens": 14974580,
+    "inputTokens": 14833928,
+    "cachedInputTokens": 13836672,
+    "cacheWriteInputTokens": 0,
+    "outputTokens": 140652,
+    "reasoningOutputTokens": 21026
+  },
+  "prior_instrument_known_reported_tokens": 920869,
+  "all_study_known_reported_tokens_excluding_coordinator": 15895449,
+  "prior_partial_solver_usage": null,
+  "coordinator_usage": null,
+  "coordinator_active_seconds": null,
+  "provider_request_count": null,
+  "mechanical_setup": {
+    "direct_skills": {
+      "seconds": [
+        0.0,
+        0.015000000013969839,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "median_seconds": 0.0,
+      "scope": "local skill file creation and removal only; placeholder selected text, no inference"
+    },
+    "temper_selected": {
+      "seconds": [
+        0.0,
+        0.0,
+        0.0,
+        0.01600000006146729,
+        0.0
+      ],
+      "median_seconds": 0.0,
+      "scope": "local skill file creation and removal only; placeholder selected text, no inference"
+    }
+  },
+  "supplemental_audit_seconds_sum": 676.1260000000475,
+  "admission": {
+    "all_controls_passed": true,
+    "native_skill_and_tool_probe_passed": true,
+    "recorded_at": "2026-10-15T04:42:44.734456+00:00",
+    "controls": [
+      {
+        "task_id": "temper-live-policy",
+        "original": {
+          "passed": 52,
+          "failed": 3,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true,
+          "instrument_valid": true,
+          "typecheck_passed": null,
+          "elapsed_seconds": 8.141000000061467,
+          "candidate_execution_failed": false
+        },
+        "reference": {
+          "passed": 55,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true,
+          "instrument_valid": true,
+          "typecheck_passed": null,
+          "elapsed_seconds": 6.172000000020489,
+          "candidate_execution_failed": false
+        }
+      },
+      {
+        "task_id": "kairn-runtime-cache",
+        "original": {
+          "passed": 93,
+          "failed": 5,
+          "errors": 0,
+          "complete": false,
+          "receipt_present": true,
+          "instrument_valid": true,
+          "typecheck_passed": false,
+          "elapsed_seconds": 24.186999999918044,
+          "candidate_execution_failed": false
+        },
+        "reference": {
+          "passed": 98,
+          "failed": 0,
+          "errors": 0,
+          "complete": true,
+          "receipt_present": true,
+          "instrument_valid": true,
+          "typecheck_passed": true,
+          "elapsed_seconds": 21.73499999998603,
+          "candidate_execution_failed": false
+        }
+      }
+    ],
+    "native_probes": [
+      {
+        "passed": false,
+        "usage": {
+          "totalTokens": 14993,
+          "inputTokens": 14844,
+          "cachedInputTokens": 7168,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 149,
+          "reasoningOutputTokens": 22
+        },
+        "elapsed_seconds": 13.327999999979511,
+        "native_skill_inputs": 1,
+        "tool_calls": 0
+      },
+      {
+        "passed": false,
+        "usage": {
+          "totalTokens": 31329,
+          "inputTokens": 30966,
+          "cachedInputTokens": 22272,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 363,
+          "reasoningOutputTokens": 59
+        },
+        "elapsed_seconds": 18.54700000002049,
+        "native_skill_inputs": 1,
+        "tool_calls": 3
+      },
+      {
+        "passed": true,
+        "usage": {
+          "totalTokens": 23040,
+          "inputTokens": 22871,
+          "cachedInputTokens": 14720,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 169,
+          "reasoningOutputTokens": 0
+        },
+        "elapsed_seconds": 18.531000000075437,
+        "native_skill_inputs": 1,
+        "tool_calls": 2
+      }
+    ],
+    "probe_failure_reasons": [
+      "Native tool host disabled in the sensor profile.",
+      "Tool host enabled; skill file not reachable through the isolated Bash filesystem."
+    ],
+    "probe_resolution": "Benchmark-only code-mode host and read-only /skills mirror. No product profile/config changes.",
+    "fresh_file_source_setup": {
+      "samples": [
+        {
+          "seconds": 0.43799999996554106,
+          "network_seconds": 0.4219999999040738,
+          "bytes": 8773,
+          "https_requests": 4,
+          "published_files": 4
+        },
+        {
+          "seconds": 0.15600000007543713,
+          "network_seconds": 0.1410000000614673,
+          "bytes": 8773,
+          "https_requests": 4,
+          "published_files": 4
+        },
+        {
+          "seconds": 0.17199999990407377,
+          "network_seconds": 0.17199999990407377,
+          "bytes": 8773,
+          "https_requests": 4,
+          "published_files": 4
+        },
+        {
+          "seconds": 0.1720000000204891,
+          "network_seconds": 0.1720000000204891,
+          "bytes": 8773,
+          "https_requests": 4,
+          "published_files": 4
+        },
+        {
+          "seconds": 0.18700000003445894,
+          "network_seconds": 0.1720000000204891,
+          "bytes": 8773,
+          "https_requests": 4,
+          "published_files": 4
+        }
+      ],
+      "scope": "Pinned file-source skill installation into five fresh local profiles; real HTTPS fetches, hash verification, license preservation and file writes. Remote caches uncontrolled; human discovery, native registration and framework/product installation not measured."
+    },
+    "initial_repository_acquisition": {
+      "repository_acquisition": [
+        {
+          "task_id": "temper-live-policy",
+          "archive_and_reference_seconds": 1.1560000000754371,
+          "archive_bytes": 41584640
+        },
+        {
+          "task_id": "kairn-runtime-cache",
+          "archive_and_reference_seconds": 3.172000000020489,
+          "archive_bytes": 67635200
+        }
+      ],
+      "extension_acquisition_seconds": 0.17199999990407377,
+      "extension_acquisition": "Ponytail reused from the previous pinned local snapshot; pstack-tdd fetched at that same pinned pstack commit. This is not a fully cold source installation.",
+      "total_automated_preparation_seconds": 4.5,
+      "human_research_and_harness_development_minutes": null
+    },
+    "coordinator_request_started_at": "2026-10-15T03:42:25+00:00",
+    "request_to_admission_wall_seconds": 3619.734456,
+    "coordinator_active_work_seconds": null,
+    "coordinator_tokens": null,
+    "preparation_scope": "Common experiment research, harness development and repairs, controls, native probes and waits; not a product onboarding measurement. Parent coordinator usage is unavailable, never counted as zero.",
+    "preserved_instrument_failures": [
+      "controls-v1: isolated Python executable alias missing",
+      "controls-v2: Windows long path extraction",
+      "controls-v3: UTF-8 reference binding",
+      "controls-kairn-v4: Vite cache needed private writes; then missing Git metadata"
+    ],
+    "harness_unit_tests_passed": 19,
+    "ruff": "pass",
+    "mypy": "pass",
+    "instrument_version": 3,
+    "read_only_full_node_repository_control": {
+      "passed": true,
+      "returncode": 0,
+      "output": "v24.18.0\nPython 3.12.13\n548b7e60b7c012b4a211757d74a9e5fb1f8b6b22\n",
+      "output_truncated": false,
+      "output_sha256": "1d7636a1c0cfa4ffad31c49ddf6e2ccf15b10128f14840c965cc2808bd2122a4",
+      "instrument_valid": true,
+      "elapsed_seconds": 0.9060000000754371
+    },
+    "source_write_isolation_control": {
+      "passed": true,
+      "precreated_empty_node_modules_mountpoint": true,
+      "result": {
+        "returncode": 0,
+        "output": "v24.18.0\nread-only source and isolated credentials: PASS\n",
+        "output_truncated": false,
+        "output_sha256": "f3adf7a6b973e0a16c08ff3a14917989f0922f66b0dfcf5fb12d00c1a031bc5b",
+        "instrument_valid": true,
+        "elapsed_seconds": 0.875
+      }
+    },
+    "aborted_first_attempt": {
+      "disposition": "aborted_instrumentation_failure",
+      "recorded_at": "2026-10-15T04:25:06.955055+00:00",
+      "reason": "Read-only Node dependency mountpoint was missing; selector infrastructure failures were not rejected. Authoritative grading also needed to exclude all candidate test edits and enforce the fixed acceptance count. No comparative conclusion is drawn.",
+      "source_commit": "282e72f1cb82f83ee21d76895374b9ff89a3a084",
+      "model_calls": 3,
+      "selectors": [
+        {
+          "task_id": "kairn-runtime-cache",
+          "usage": {
+            "totalTokens": 18296,
+            "inputTokens": 18053,
+            "cachedInputTokens": 8704,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 243,
+            "reasoningOutputTokens": 98
+          },
+          "model_call_seconds": 11.375,
+          "total_seconds": 19.96799999999348,
+          "tool_count": 1,
+          "tool_infrastructure_valid": false,
+          "infrastructure_errors": [
+            "bwrap: Can't mkdir /work/node_modules: Read-only file system\n"
+          ]
+        },
+        {
+          "task_id": "temper-live-policy",
+          "usage": {
+            "totalTokens": 9101,
+            "inputTokens": 8856,
+            "cachedInputTokens": 0,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 245,
+            "reasoningOutputTokens": 188
+          },
+          "model_call_seconds": 10.89000000001397,
+          "total_seconds": 41.04700000002049,
+          "tool_count": 0,
+          "tool_infrastructure_valid": true,
+          "infrastructure_errors": []
+        }
+      ],
+      "completed_repair_calls": [
+        {
+          "task_id": "temper-live-policy",
+          "arm": "baseline",
+          "repeat": 0,
+          "usage": {
+            "totalTokens": 755266,
+            "inputTokens": 749514,
+            "cachedInputTokens": 699136,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 5752,
+            "reasoningOutputTokens": 763
+          },
+          "tool_count": 17,
+          "total_seconds": 226.34400000004098
+        }
+      ],
+      "reported_total_tokens": 782663,
+      "stopped_after_durable_receipt": true,
+      "second_repair_model_call_started": false,
+      "remaining_comparison_not_run": true,
+      "trial_scores_not_reused_in_repaired_comparison": true
+    },
+    "repair_scope": "Node dependency mountpoint preparation, selector infrastructure admission, authoritative test independence/fixed counts, explicit UTF-8 source binding and within-run model/effort lock. Task specifications and pinned source catalog bytes are unchanged.",
+    "second_aborted_attempt": {
+      "disposition": "aborted_instrumentation_failure",
+      "source_commit": "1bf03d1a56e5775ffc294752138a3e614c3e49e6",
+      "completed_selector_turns": 2,
+      "failed_solver_turns": 1,
+      "failed_solver_usage": null,
+      "failed_solver_usage_state": "unavailable; the old handler raised before saving a receipt",
+      "known_selector_tokens": 68844,
+      "selector_receipts": [
+        {
+          "task_id": "kairn-runtime-cache",
+          "usage": {
+            "totalTokens": 41276,
+            "inputTokens": 40984,
+            "cachedInputTokens": 19328,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 292,
+            "reasoningOutputTokens": 13
+          },
+          "model_call_seconds": 13.5,
+          "total_seconds": 21.516000000061467,
+          "tool_count": 3
+        },
+        {
+          "task_id": "temper-live-policy",
+          "usage": {
+            "totalTokens": 27568,
+            "inputTokens": 27285,
+            "cachedInputTokens": 17664,
+            "cacheWriteInputTokens": 0,
+            "outputTokens": 283,
+            "reasoningOutputTokens": 72
+          },
+          "model_call_seconds": 15.983999999938533,
+          "total_seconds": 43.92099999997299,
+          "tool_count": 2
+        }
+      ],
+      "reason": "Malformed tool arguments incorrectly raised out of the agent loop instead of returning a recoverable tool error.",
+      "scores_reused": false
+    },
+    "argument_error_recovery_and_retry_test": "pass",
+    "encrypted_event_journal_before_dispatch_test": "pass",
+    "grading_and_fixture_functions_unchanged_since_v2": true,
+    "task_and_source_files_unchanged_since_first_freeze": true,
+    "provider_request_count": null,
+    "counting_note": "Counts refer to native agent turns, not individual provider requests; reported turn usage includes model/tool round trips. One old failed solver turn and coordinator usage remain unavailable, never zero."
+  }
+}
