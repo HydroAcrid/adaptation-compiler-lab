@@ -42,6 +42,7 @@ def native_autonomy_service(config_path: Path) -> AutonomyApplicationService:
         secure_store_available=secure_store_available,
     )
     from adaptation_compiler_lab.autonomy.calibration import NativeCalibrationVerifier
+    from adaptation_compiler_lab.autonomy.calibration_assets import FIXTURE, asset_path
     from adaptation_compiler_lab.autonomy.codex_source import ConfiguredCodexHabitSource
     from adaptation_compiler_lab.autonomy.codex_transport import (
         ConfiguredCodexHabitSensor,
@@ -103,7 +104,7 @@ def native_autonomy_service(config_path: Path) -> AutonomyApplicationService:
 
     service.calibration_verifier = NativeCalibrationVerifier(
         store=store,
-        fixtures=Path(__file__).resolve().parents[3] / "tests/fixtures/autonomy",
+        fixtures=asset_path(FIXTURE).parent,
         open_run=open_calibration_run,
         runtime=calibration_runtime,
     )

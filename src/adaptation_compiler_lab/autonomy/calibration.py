@@ -14,6 +14,13 @@ from pathlib import Path
 from typing import Any
 
 from adaptation_compiler_lab.autonomy.analyzer import EVALUATION_VERSION, analyzer_digest
+from adaptation_compiler_lab.autonomy.calibration_assets import (
+    DRIVER,
+    INSTRUCTION_FILES,
+    NATIVE_FILES,
+    PROTOCOL_FILES,
+    asset_path,
+)
 from adaptation_compiler_lab.autonomy.defaults import frozen_defaults
 from adaptation_compiler_lab.autonomy.evaluation import load_frozen_scenarios
 from adaptation_compiler_lab.autonomy.evaluation_run import (
@@ -140,33 +147,26 @@ def verify_native_observations(
 
 
 def protocol_digest() -> str:
-    root = Path(__file__).parent
-    names = {
-        "runner": "evaluation_run.py",
-        "host": "service.py",
-        "scorer": "evaluation.py",
-        "lifecycle_scorer": "lifecycle_evaluation.py",
-        "budget": "budget.py",
-        "retention": "retention.py",
-        "store": "store.py",
-        "analyzer_host": "analyzer.py",
-        "episode_models": "models.py",
-        "transport": "codex_transport.py",
-    }
     return str(
         canonical_digest(
-            {key: (root / name).read_text(encoding="utf-8") for key, name in names.items()}
+            {
+                key: asset_path("src/adaptation_compiler_lab/autonomy/" + name).read_text(
+                    encoding="utf-8"
+                )
+                for key, name in PROTOCOL_FILES.items()
+            }
         )
     )
 
 
 def native_binding() -> str:
-    root = Path(__file__).parent
-    names = ("calibration.py", "native.py", "publisher.py", "native_policy.py", "agent_bridge.py")
-    files = {name: sha256_file(root / name) for name in names}
-    for name in ("adapters.py", "resolver.py", "semantic.py", "codex_semantic.py"):
+    files = {
+        name: sha256_file(asset_path("src/adaptation_compiler_lab/autonomy/" + name))
+        for name in NATIVE_FILES
+    }
+    for name in INSTRUCTION_FILES:
         files["instruction_environment/" + name] = sha256_file(
-            root.parent / "instruction_environment" / name
+            asset_path("src/adaptation_compiler_lab/instruction_environment/" + name)
         )
     return str(canonical_digest(files))
 
@@ -221,10 +221,7 @@ def assess_detection(
         or execution is None
         or execution.get("execution_policy") != "owner_requested_foreground_v1"
         or execution.get("selected_case_ids")
-        or execution.get("driver_digest")
-        != sha256_file(
-            Path(__file__).resolve().parents[3] / "scripts/run_owner_habit_evaluation.py"
-        )
+        or execution.get("driver_digest") != sha256_file(asset_path(DRIVER))
     ):
         raise AutonomyIntegrityError("calibration source, protocol or runtime binding changed")
     events = store.events()
@@ -299,6 +296,10 @@ class NativeCalibrationVerifier:
     def __call__(self, release: CalibrationReleaseV1) -> bool:
         try:
             proof = self.store.latest("calibration_qualification")
+            if proof is not None and proof.get("protocol") == "native-calibration-v2":
+                from adaptation_compiler_lab.autonomy.qualification import verify_certificate
+
+                return verify_certificate(self.store, proof, release, self.runtime())
             if proof is None or proof.get("protocol") != "native-calibration-v1":
                 return False
             if proof.get("release") != release.model_dump(mode="json"):

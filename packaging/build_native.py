@@ -146,6 +146,8 @@ def build_command(
         "--assume-yes-for-downloads",
         "--include-package-data=adaptation_compiler_lab",
         "--include-package=adaptation_compiler_lab.persistence.sql",
+        f"--include-data-dir={root / 'build/calibration-assets'}="
+        "adaptation_compiler_lab/autonomy/qualification_assets",
         f"--output-dir={output_directory}",
         f"--output-filename={sidecar_filename(target_triple, platform_name=platform_name)}",
         str(entry),
@@ -499,6 +501,7 @@ def write_build_manifest(
         "binary_filename": binary.name,
         "binary_size_bytes": binary.stat().st_size,
         "binary_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
+        "calibration_inputs_digest": _calibration_info(root)["inputs_digest"],
         "minimum_system_version": (
             MACOS_MINIMUM_VERSION if platform_name.lower() == "darwin" else None
         ),
@@ -509,6 +512,63 @@ def write_build_manifest(
         newline="\n",
     )
     return manifest_path
+
+
+def _calibration_info(root: Path) -> dict[str, object]:
+    script = (
+        "import sys,json;"
+        f"sys.path.insert(0, {str(root / 'src')!r});"
+        "from adaptation_compiler_lab.autonomy.qualification import qualification_info;"
+        "print(json.dumps(qualification_info()))"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    value = json.loads(result.stdout)
+    if not isinstance(value, dict) or value.get("raw_payloads_exposed") is not False:
+        raise ValueError("source calibration inputs are unavailable")
+    return value
+
+
+def verify_calibration_bundle(repository: Path, binary: Path) -> None:
+    expected = _calibration_info(repository.resolve())
+    with tempfile.TemporaryDirectory(prefix="temper-calibration-package-") as name:
+        root = Path(name).resolve()
+        environment = {
+            key: os.environ[key]
+            for key in (
+                "SystemRoot",
+                "WINDIR",
+                "PATH",
+                "PATHEXT",
+                "TEMP",
+                "TMP",
+                "ComSpec",
+            )
+            if key in os.environ
+        }
+        environment.update(
+            HOME=str(root),
+            USERPROFILE=str(root),
+            LOCALAPPDATA=str(root / "local"),
+            APPDATA=str(root / "roaming"),
+        )
+        result = subprocess.run(
+            [str(binary.resolve()), "--calibration-info"],
+            cwd=root,
+            env=environment,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    if result.returncode or json.loads(result.stdout) != expected:
+        raise ValueError("compiled calibration inputs do not match the source candidate")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -531,6 +591,9 @@ def main(argv: list[str] | None = None) -> int:
             json.dumps({"engine": command, "hook_helper": hook_build_command(arguments.repository)})
         )
         return 0
+    from adaptation_compiler_lab.autonomy.calibration_assets import export_assets
+
+    export_assets(arguments.repository, arguments.repository / "build/calibration-assets")
     completed = subprocess.run(command, cwd=arguments.repository, check=False)
     if completed.returncode:
         return completed.returncode
@@ -539,6 +602,14 @@ def main(argv: list[str] | None = None) -> int:
             arguments.repository,
             platform_name=arguments.platform,
             machine_name=arguments.machine,
+        )
+        verify_calibration_bundle(
+            arguments.repository,
+            sidecar_path(
+                arguments.repository,
+                platform_name=arguments.platform,
+                machine_name=arguments.machine,
+            ),
         )
         manifest = write_build_manifest(
             arguments.repository,
