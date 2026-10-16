@@ -2,11 +2,59 @@ from __future__ import annotations
 
 import io
 import json
+from datetime import timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 from adaptation_compiler_lab.autonomy.agent_bridge import TemperAgentBridge, serve_bridge
+from adaptation_compiler_lab.autonomy.models import StyleCategory
+from tests.unit.autonomy.test_autonomy import app as app
+from tests.unit.autonomy.test_autonomy import trial
+
+
+def context_for(service, tmp_path):
+    config = tmp_path / "bridge-config.json"
+    config.write_text("{}", encoding="utf-8")
+    with patch(
+        "adaptation_compiler_lab.autonomy.native.native_autonomy_service", return_value=service
+    ):
+        return TemperAgentBridge(config_path=config, agent_id="test").call(
+            "temper_context", {"project_id": "project", "task_class": "progress_update"}
+        )
+
+
+def test_context_obeys_replacement_grant_categories(app, tmp_path):
+    service, clock = app
+    habit_id = trial(service, clock)
+    service.set_switch("personalization", True, key="personalize")
+    assert context_for(service, tmp_path)["habit_ids"] == (habit_id,)
+    service.revoke_grant(key="revoke")
+    preview = service.preview_grant(("project",), (StyleCategory.PRESENTATION_STYLE,))
+    service.confirm_grant(preview["preview_token"], confirmed=True, idempotency_key="narrow")
+    service.set_switch("personalization", True, key="narrow-personalize")
+    before = service.store.head_digest
+    result = context_for(service, tmp_path)
+    assert result["habit_ids"] == ()
+    assert result["profile"] == ""
+    assert service.store.head_digest == before
+
+
+def test_context_excludes_expired_trial_without_mutating_learning_state(app, tmp_path):
+    service, clock = app
+    habit_id = trial(service, clock)
+    service.set_switch("personalization", True, key="personalize")
+    assert context_for(service, tmp_path)["habit_ids"] == (habit_id,)
+    habit = service.hypotheses()[0]
+    clock.value = habit.trial_expires_at - timedelta(microseconds=1)
+    assert context_for(service, tmp_path)["habit_ids"] == (habit_id,)
+    clock.value = habit.trial_expires_at
+    before = service.store.head_digest
+    result = context_for(service, tmp_path)
+    assert result["habit_ids"] == ()
+    assert result["profile"] == ""
+    assert service.store.head_digest == before
 
 
 def test_bridge_is_connected_without_fabricating_runtime_or_personal_consent(

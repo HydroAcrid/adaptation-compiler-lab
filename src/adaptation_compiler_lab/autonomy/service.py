@@ -799,25 +799,29 @@ class AutonomyApplicationService:
     def applicability(self, project_id: str, task_class: TaskClass) -> dict[str, Any]:
         grant = self.grant()
         values = self.hypotheses()
+        now = self._now()
+        applies = {
+            habit.habit_id
+            for habit in values
+            if grant
+            and project_id in grant.project_ids
+            and habit.category in grant.categories
+            and habit.project_id == project_id
+            and habit.task_class is task_class
+            and (
+                habit.state is HabitState.ACTIVE
+                or (
+                    habit.state is HabitState.TRIAL
+                    and habit.trial_expires_at is not None
+                    and now < habit.trial_expires_at
+                )
+            )
+            and self.native_conflict_checker
+            and not self.native_conflict_checker(habit)
+        }
         return {
-            "applies": [
-                habit.habit_id
-                for habit in values
-                if grant
-                and project_id in grant.project_ids
-                and habit.project_id == project_id
-                and habit.task_class is task_class
-                and habit.state in {HabitState.TRIAL, HabitState.ACTIVE}
-                and self.native_conflict_checker
-                and not self.native_conflict_checker(habit)
-            ],
-            "excluded": [
-                habit.habit_id
-                for habit in values
-                if habit.project_id != project_id
-                or habit.task_class is not task_class
-                or habit.state not in {HabitState.TRIAL, HabitState.ACTIVE}
-            ],
+            "applies": [habit.habit_id for habit in values if habit.habit_id in applies],
+            "excluded": [habit.habit_id for habit in values if habit.habit_id not in applies],
             "raw_payloads_exposed": False,
         }
 
