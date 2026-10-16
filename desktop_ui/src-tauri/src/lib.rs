@@ -27,7 +27,7 @@ const PROTOCOL_VERSION: &str = "temper-engine-protocol/v1";
 const MAX_FRAME_BYTES: usize = 1_048_576;
 const ENGINE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(15);
 const ENGINE_ANALYSIS_TIMEOUT: Duration = Duration::from_secs(240);
-// One background tick runs at most two sequential 180s model turns. Leave a
+// One background tick runs at most two sequential 300s model turns. Leave a
 // separate bounded margin for source/quota/catalog calls and signed persistence.
 const ENGINE_AUTONOMY_TIMEOUT: Duration = Duration::from_secs(780);
 const ENGINE_RECOVERY_TIMEOUT: Duration = Duration::from_secs(60);
