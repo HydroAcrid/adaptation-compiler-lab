@@ -57,7 +57,18 @@ Scope-control metadata alone does not prove native instruction behavior.
 
 - Dataset: `sha256:2214518f43acd536027ad78dcfa30e0209e486a0b22a4b8f70e3559d2fd5ed19`.
 - Analyzer: `sha256:db47636e89130e0c5de688e55aec922e7adea4dbc2823ac7fc3c8651900557e2`.
-- No model execution yet; independent ground-truth review is pending.
+- Independently accepted before execution by Flight Bot on candidate `b8c3e47`.
+- Completed run `f3b0068aae202089071e9c4b`: all 120 sequences / 140 phases,
+  zero processing failures, 80 true positives, zero false positives and zero false
+  negatives; all 20 affected preference-change checks paused the old habit.
+- Read-only signed evidence assessment passes the detector gate with zero
+  disallowed trial eligibilities, wrong-scope hypotheses or missing wire records.
+  Source head: `sha256:844b01aa28c06cc5e03263a3421fdf079b7f1cd584799864e076ad1436b707f9`.
+
+Precision and recall are both 100% on this fictional control set. These are bounded
+engineering results, not general accuracy or proof of saved owner effort. Native
+scope/publication controls were not measured by that detector run. Its raw/wire
+evidence remains encrypted and subject to the existing thirty-day retention.
 
 Version/schema bindings were finished before execution; old v14 material was not
 changed. The semantic proposal/review instructions were not tuned against the
@@ -80,7 +91,7 @@ than accepting a green boolean checklist. Local signed receipts do not attest th
 honesty of a privileged caller that controls the signing key.
 
 The native factory connects this verifier in source. No native qualification
-producer/receipt or personal calibration was issued here. Current package
+receipt or personal calibration was issued here. Current package
 qualification is not established: unavailable source/fixture bindings fail closed.
 Repeated admission cost and raw-proof expiry also need resolution before treating
 this prototype as a production activation path. No updated app is installed and
@@ -99,9 +110,60 @@ Independent review CAL-FB-01 also found that a signed native-check record with a
 list in place of its boolean mapping could crash readiness. The verifier now
 rejects that container before use. Tests retain a complete accepting fixture and
 exercise malformed signed list/scalar containers through the public verifier.
-Independent re-review and candidate-bound sensitivity evidence remain pending.
+Independent re-review confirms both CAL-FB-01 and CAL-FB-02 fixed at `b8c3e47`.
+All three exact-candidate sensitivity triplets were independently accepted:
+malformed containers, nonpositive native notification deadlines and the duplicate
+Skills installer requirement. Each was pristine pass / intended assertion failure /
+restored pass; the isolated archive was restored exactly. The candidate-bound
+focused run passed 70 tests. Full release approval remains absent.
 The revised autonomy/hub suite passed 222 checks with one exact-macOS-CLI skip;
 Ruff and targeted Mypy checks passed. These are local Windows source controls.
+
+## Native delivery probe
+
+`scripts/validate_native_habit_delivery.py` exercises a compiled fictional style
+profile using a disposable Codex home, the configured native pin/model and saved
+ChatGPT authentication. It checks source metadata and fresh native replies, then
+actual policy comparison, post-replacement persistence failure rollback, grant
+revocation and owner-edit preservation. It records signed metadata and encrypted
+observation/byte references under the private validation directory. It never
+enables personal serving or issues a qualification receipt.
+
+The first attempt completed the native replies and conflict comparison but hit a
+probe error when referencing publisher backup bytes as JSON instead of Markdown.
+The content-addressed encrypted store correctly rejected inconsistent metadata.
+The revised probe preserves the publisher's media type; a disposable workflow test
+exercises that path without model calls.
+
+Both early native attempts returned no applicable profile for the loading probe.
+A separate one-turn diagnostic identified a Windows packaged-app AppData alias:
+the native client's working path differed from the compiler's resolved root.
+The source metadata showed the instruction file loaded; the scope mismatch was
+real in the fixture. The probe now resolves its disposable workspace before both
+compilation and native requests. Earlier failed observations are preserved; they
+are not qualification evidence. Alias handling in arbitrary real project paths
+is not established by this fixture correction.
+
+The canonical-path native run `native-delivery-20261016-015054-5226e667` passes all
+eight observation checks. This includes four fresh native chats and two separate
+semantic conflict-comparison sessions, actual publisher rollback after injected
+bookkeeping failure, grant revocation and refusal to overwrite an owner edit.
+Temporary authentication, homes and instruction files were removed. The fixture
+habit and diagnostic marker are test instrumentation, not learned owner evidence.
+The unrelated-project check observes the fixture's scoped marker response; it does
+not establish every possible behavior or demonstrate a usefulness advantage.
+
+All attempts are retained: two unsuccessful full native attempts, a separate
+one-turn scope diagnostic, and the successful full attempt. They used 19 native
+model turns in total, including the conflict comparisons. Failed attempts and
+measurement work are overhead, not owner-effort savings. No personal qualification,
+permission expansion, adaptation, installed app change or automatic serving was
+issued. Qualification import/admission, installed-package verification and the
+actual owner-work comparison remain next work; another detector run is unnecessary
+while its bound semantic source/protocol remains unchanged.
+
+After adding the probe and its six local controls, the autonomy/hub suite passes
+228 tests with one unavailable-native-macOS skip. Targeted Ruff and Mypy pass.
 
 The SkillKit dependency cleanup and its separate native lifecycle controls remain
 recorded in [the hub scope](TEMPER_SKILLKIT_BASE.md). No GitHub CI, source sync to the
