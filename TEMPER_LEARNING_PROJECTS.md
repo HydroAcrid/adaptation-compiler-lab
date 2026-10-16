@@ -19,11 +19,16 @@ checkouts and worktrees get separate scopes. Registration requires confirmation 
 current preview, verifies the paths again before signing, and retains a prospective
 cutoff. Registration alone does not grant observation or enable personalization.
 The owner then previews/confirms the expanded learning grant through existing operations.
+Preview binds filesystem identities for the repository, Git marker and source aliases;
+replacement at the same pathname invalidates confirmation. Physical directory aliases
+cannot belong to separate project IDs, even when their canonical spellings differ.
 
 An explicitly registered nested repository owns its conversations ahead of a broader
 parent root. An ungranted child cannot fall back into a granted parent's scope. Equal
 roots assigned to different projects remain an error. Cached app protocols refresh the
 signed registry before each operation; fresh context connections read it directly.
+Nested selection uses physical directory ancestors, including equivalent WSL UNC paths.
+An unavailable directory identity is excluded rather than assigned to a broader scope.
 
 New grants start a fresh prospective cursor while preserving older signed grants,
 checkpoints, revocations and research history. Existing chats created before the new

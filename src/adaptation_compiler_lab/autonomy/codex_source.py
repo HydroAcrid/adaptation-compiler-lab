@@ -376,9 +376,26 @@ class CodexHabitSource:
                 or created >= self.project_cutoffs.get(key, cutoff)
             )
         ]
-        if self.most_specific_registered_root and matches:
-            deepest = max(depth for _, depth in matches)
-            matches = [(key, depth) for key, depth in matches if depth == deepest]
+        if self.most_specific_registered_root:
+            # Physical ancestors recognize UNC/mount aliases even when a child did
+            # not list the spelling used by this chat. Never fall back to a parent
+            # grant because the child's directory has another pathname.
+            from adaptation_compiler_lab.autonomy.project_registry import _path_identity
+
+            ancestors: dict[tuple[int, int] | None, int] = {}
+            for distance, ancestor in enumerate((path, *path.parents)):
+                identity = _path_identity(ancestor)
+                if identity is None:
+                    return None
+                ancestors[identity] = max(ancestors.get(identity, 0), len(path.parts) - distance)
+            matches = []
+            for key, roots in self.projects.items():
+                depth = max((ancestors.get(_path_identity(root), 0) for root in roots), default=0)
+                if depth:
+                    matches.append((key, depth))
+            if matches:
+                deepest = max(depth for _, depth in matches)
+                matches = [(key, depth) for key, depth in matches if depth == deepest]
         if len(matches) > 1:
             raise AutonomyIntegrityError("completed chat matches overlapping registered projects")
         project = matches[0][0] if matches else None
@@ -476,8 +493,10 @@ class ConfiguredCodexHabitSource:
             if self.service.background_worker is not None
             else None
         )
+        scoped_registry = False
         if registry is not None:
             registered = registry.projects()
+            scoped_registry = set(registered) != {p.project_id for p in config.projects}
             projects = {
                 key: tuple(Path(root) for root in p.source_roots) for key, p in registered.items()
             }
@@ -495,7 +514,7 @@ class ConfiguredCodexHabitSource:
                 },
                 **(
                     {"scope_resolution": "most_specific_registered_root_v1"}
-                    if registry is not None
+                    if scoped_registry
                     else {}
                 ),
             }
@@ -509,7 +528,7 @@ class ConfiguredCodexHabitSource:
                 schemas=schemas,
                 projects=projects,
                 project_cutoffs=cutoffs,
-                most_specific_registered_root=registry is not None,
+                most_specific_registered_root=scoped_registry,
                 grant=grant,
                 evidence=evidence,
                 source_binding=binding,

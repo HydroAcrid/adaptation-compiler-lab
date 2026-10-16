@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from adaptation_compiler_lab.autonomy import project_registry as registry_module
 from adaptation_compiler_lab.autonomy.project_registry import (
     LearningProjectRegistry,
     LearningProjectV1,
@@ -89,6 +90,66 @@ def test_registration_expiry_and_duplicate_roots_are_rejected(app, tmp_path):
         registry.register(preview["preview_token"], confirmed=True, key="expired")
 
 
+@pytest.mark.parametrize("replace_git_only", [False, True])
+def test_replaced_repository_or_git_marker_invalidates_preview(app, tmp_path, replace_git_only):
+    service, clock = app
+    registry = registry_for(service, clock)
+    root = repo(tmp_path, "second")
+    preview = registry.preview([{"project_id": "second", "path": str(root)}])
+    target = root / ".git" if replace_git_only else root
+    target.rename(tmp_path / "original")
+    if replace_git_only:
+        (root / ".git").mkdir()
+    else:
+        repo(tmp_path, "second")
+    with pytest.raises(AutonomyIntegrityError, match="identity changed after preview"):
+        registry.register(preview["preview_token"], confirmed=True, key="replaced")
+    assert "second" not in registry.projects()
+
+
+@pytest.mark.parametrize("previously_registered", [False, True])
+def test_physical_alias_cannot_claim_a_second_scope(
+    app, tmp_path, monkeypatch, previously_registered
+):
+    service, clock = app
+    registry = registry_for(service, clock)
+    first, alias = repo(tmp_path, "first"), repo(tmp_path, "alias")
+    selections = [{"project_id": "first", "path": str(first)}]
+    if previously_registered:
+        preview = registry.preview(selections)
+        registry.register(preview["preview_token"], confirmed=True, key="first")
+        selections = []
+    actual_identity = registry_module._path_identity
+    monkeypatch.setattr(
+        registry_module,
+        "_path_identity",
+        lambda path: actual_identity(first) if path == alias else actual_identity(path),
+    )
+    with pytest.raises(AutonomyIntegrityError, match="two projects"):
+        registry.preview([*selections, {"project_id": "alias", "path": str(alias)}])
+
+
+def test_reading_registry_rechecks_physical_scope_collisions(app, tmp_path, monkeypatch):
+    service, clock = app
+    registry = registry_for(service, clock)
+    first, other = repo(tmp_path, "first"), repo(tmp_path, "other")
+    preview = registry.preview(
+        [
+            {"project_id": "first", "path": str(first)},
+            {"project_id": "other", "path": str(other)},
+        ]
+    )
+    registry.register(preview["preview_token"], confirmed=True, key="both")
+    actual_identity = registry_module._path_identity
+    monkeypatch.setattr(
+        registry_module,
+        "_path_identity",
+        lambda path: actual_identity(first) if path == other else actual_identity(path),
+    )
+    with pytest.raises(AutonomyIntegrityError, match="two projects"):
+        registry.projects()
+
+
 def test_unrelated_repository_cannot_be_disguised_as_a_source_alias(app, tmp_path):
     service, clock = app
     registry = registry_for(service, clock)
@@ -164,3 +225,24 @@ def test_nested_scope_still_rejects_ambiguous_equal_roots(fixture):
     source.most_specific_registered_root = True
     with pytest.raises(AutonomyIntegrityError, match="overlapping"):
         source._eligible_project(fixture["thread"], source.grant.issued_at, source.clock())
+
+
+def test_omitted_child_alias_cannot_fall_through_to_parent_grant(fixture, monkeypatch):
+    f = fixture
+    source = f["source"]
+    alias = f["project"].parent / "child-alias"
+    alias.mkdir()
+    source.projects = {"parent": (alias.parent,), "project": (f["project"],)}
+    source.most_specific_registered_root = True
+    f["thread"]["cwd"] = str(alias)
+    actual_identity = registry_module._path_identity
+    monkeypatch.setattr(
+        registry_module,
+        "_path_identity",
+        lambda path: actual_identity(f["project"]) if path == alias else actual_identity(path),
+    )
+    assert (
+        source._eligible_project(f["thread"], source.grant.issued_at, source.clock()) == "project"
+    )
+    source.grant = source.grant.model_copy(update={"project_ids": ("parent",)})
+    assert source._eligible_project(f["thread"], source.grant.issued_at, source.clock()) is None

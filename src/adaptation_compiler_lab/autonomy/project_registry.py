@@ -38,6 +38,43 @@ def _canonical_path(value: str) -> Path:
     return path.resolve()
 
 
+def _path_identity(path: Path) -> tuple[int, int] | None:
+    try:
+        metadata = path.stat()
+    except (FileNotFoundError, NotADirectoryError):
+        return None
+    return (metadata.st_dev, metadata.st_ino) if metadata.st_ino else None
+
+
+def _claim_sources(projects: Sequence[LearningProjectV1]) -> None:
+    paths: dict[Path, str] = {}
+    identities: dict[tuple[int, int], str] = {}
+    for project in projects:
+        for source in project.source_roots:
+            path = Path(source)
+            identity = _path_identity(path)
+            if paths.get(path, project.project_id) != project.project_id or (
+                identity is not None
+                and identities.get(identity, project.project_id) != project.project_id
+            ):
+                raise AutonomyIntegrityError("learning source belongs to two projects")
+            paths[path] = project.project_id
+            if identity is not None:
+                identities[identity] = project.project_id
+
+
+def _preview_identities(projects: Sequence[LearningProjectV1]) -> dict[str, tuple[int, int]]:
+    identities = {}
+    for project in projects:
+        for source in project.source_roots:
+            for path in (Path(source), Path(source) / ".git"):
+                identity = _path_identity(path)
+                if identity is None:
+                    raise AutonomyIntegrityError("learning project identity is unavailable")
+                identities[str(path)] = identity
+    return identities
+
+
 class LearningProjectRegistry:
     def __init__(
         self,
@@ -71,7 +108,6 @@ class LearningProjectRegistry:
                 if project.project_id in result:
                     raise AutonomyIntegrityError("learning project IDs cannot be replaced")
                 result[project.project_id] = project
-        claimed: dict[Path, str] = {}
         for project in result.values():
             if str(_canonical_path(project.root)) != project.root:
                 raise AutonomyIntegrityError("registered learning root was redirected")
@@ -81,9 +117,7 @@ class LearningProjectRegistry:
                 path = _canonical_path(source)
                 if str(path) != source:
                     raise AutonomyIntegrityError("registered learning source was redirected")
-                if path in claimed and claimed[path] != project.project_id:
-                    raise AutonomyIntegrityError("learning source belongs to two projects")
-                claimed[path] = project.project_id
+        _claim_sources(tuple(result.values()))
         return result
 
     def summaries(self) -> list[dict[str, Any]]:
@@ -135,18 +169,14 @@ class LearningProjectRegistry:
         ids = [p.project_id for p in records]
         if len(set(ids)) != len(ids) or set(ids) & previous.keys():
             raise AutonomyIntegrityError("learning projects already registered or duplicated")
-        owners = {Path(root): p.project_id for p in previous.values() for root in p.source_roots}
-        for project in records:
-            for source_root in project.source_roots:
-                if Path(source_root) in owners and owners[Path(source_root)] != project.project_id:
-                    raise AutonomyIntegrityError("learning source belongs to two projects")
-                owners[Path(source_root)] = project.project_id
+        _claim_sources((*previous.values(), *records))
         token = "learning-project-preview-" + secrets.token_hex(12)
         self._previews[token] = {
             "records": tuple(records),
             "head": self.store.head_digest,
             "expires": now + timedelta(minutes=15),
             "at": now,
+            "identities": _preview_identities(records),
         }
         return {
             "preview_token": token,
@@ -191,6 +221,9 @@ class LearningProjectRegistry:
                     or not Path(project.root).samefile(root)
                 ):
                     raise AutonomyIntegrityError("learning source changed after preview")
+        if _preview_identities(preview["records"]) != preview["identities"]:
+            raise AutonomyIntegrityError("learning project identity changed after preview")
+        _claim_sources((*self.projects().values(), *preview["records"]))
         record = ProjectRegistrationV1(
             subject_id=self.store.signer.subject_id,
             projects=preview["records"],
