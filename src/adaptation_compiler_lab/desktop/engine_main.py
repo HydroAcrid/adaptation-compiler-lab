@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 from adaptation_compiler_lab.desktop.engine_protocol import build_router, serve
@@ -17,6 +18,8 @@ def _parser() -> argparse.ArgumentParser:
     operation = parser.add_mutually_exclusive_group()
     operation.add_argument("--calibration-info", action="store_true")
     operation.add_argument("--qualify-calibration", action="store_true")
+    operation.add_argument("--agent-context", action="store_true")
+    parser.add_argument("--agent-id", default="codex-local")
     parser.add_argument("--detection-run")
     parser.add_argument("--native-run")
     return parser
@@ -39,6 +42,18 @@ def main(argv: list[str] | None = None) -> int:
         if preferences is not None:
             config_path = preferences.runtime_config_path
             predecessor_path = preferences.predecessor_config_path
+    if arguments.agent_context:
+        from adaptation_compiler_lab.autonomy.agent_bridge import TemperAgentBridge, serve_bridge
+
+        serve_bridge(
+            TemperAgentBridge(
+                config_path=config_path or platform_paths().state_root / "runtime/config.json",
+                agent_id=arguments.agent_id,
+            ),
+            stdin=sys.stdin,
+            stdout=sys.stdout,
+        )
+        return 0
     if arguments.qualify_calibration:
         from adaptation_compiler_lab.autonomy.qualification import qualify
         from adaptation_compiler_lab.persistence.errors import PersistenceError
