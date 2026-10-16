@@ -29,7 +29,7 @@ const ENGINE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(15);
 const ENGINE_ANALYSIS_TIMEOUT: Duration = Duration::from_secs(240);
 // One background tick runs at most two sequential 180s model turns. Leave a
 // separate bounded margin for source/quota/catalog calls and signed persistence.
-const ENGINE_AUTONOMY_TIMEOUT: Duration = Duration::from_secs(600);
+const ENGINE_AUTONOMY_TIMEOUT: Duration = Duration::from_secs(780);
 const ENGINE_RECOVERY_TIMEOUT: Duration = Duration::from_secs(60);
 const ENGINE_HOOK_TIMEOUT: Duration = Duration::from_millis(100);
 const ENGINE_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);

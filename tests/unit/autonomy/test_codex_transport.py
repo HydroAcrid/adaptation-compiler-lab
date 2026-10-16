@@ -162,7 +162,7 @@ def test_deadline_crossing_never_passes_a_nonpositive_notification_timeout(
 ) -> None:
     import adaptation_compiler_lab.autonomy.codex_transport as transport
 
-    moments = iter((0.0, 179.9, 180.1))
+    moments = iter((0.0, 299.9, 300.1))
     monkeypatch.setattr(transport, "monotonic", lambda: next(moments))
 
     class DeadlineRpc(_SemanticRpc):
@@ -174,6 +174,34 @@ def test_deadline_crossing_never_passes_a_nonpositive_notification_timeout(
     rpc = DeadlineRpc(response="{}")
     with pytest.raises(ValueError, match="sensor timed out"):
         run(tmp_path, rpc)
+    assert sum(method == "turn/start" for method, _ in rpc.calls) == 1
+
+
+def test_slow_native_turn_finishes_without_restarting_or_accepting_partial_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import adaptation_compiler_lab.autonomy.codex_transport as transport
+    from adaptation_compiler_lab.connectors.codex_app_server import CodexProtocolError
+
+    clock = [0.0]
+    monkeypatch.setattr(transport, "monotonic", lambda: clock[0])
+
+    class SlowOnce(_SemanticRpc):
+        quiet = True
+
+        def next_notification(self, *, timeout_seconds=120):
+            if self.quiet:
+                self.quiet = False
+                clock[0] = 181.0
+                raise CodexProtocolError("Codex app-server notification timed out")
+            return super().next_notification(timeout_seconds=timeout_seconds)
+
+    rpc = SlowOnce(response='{"proposals":[]}')
+    try:
+        result = run(tmp_path, rpc)
+    except ValueError as error:
+        result = str(error)
+    assert result == '{"proposals":[]}', "A valid slow turn must finish within its bounded deadline"
     assert sum(method == "turn/start" for method, _ in rpc.calls) == 1
 
 

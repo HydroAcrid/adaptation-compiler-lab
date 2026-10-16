@@ -203,7 +203,7 @@ def run_habit_turn(
     contract: str,
     prompt: str,
     output_schema: dict[str, object],
-    timeout: float = 180,
+    timeout: float = 300,
 ) -> str:
     if any(workspace.iterdir()):
         raise ValueError("habit sensor workspace is not empty")

@@ -45,6 +45,13 @@ binary and its generated schemas. This is repeat validation, not a fresh unseen
 accuracy estimate. Never relabel the original result or tune against the repeat.
 Rerun the bounded native delivery controls against the final integration source.
 
+The first two current-runtime repeats stopped at an incomplete native turn after
+180 seconds (phases 74 and 106). Preserve both failures. The unchanged cases,
+labels and thresholds must run again under the recorded 300-second child deadline;
+the desktop parent allows 780 seconds for both analysis stages and admission.
+Timeouts still fail closed. This is an operational reliability repair, not a
+detector quality retry or permission to reuse a partial result.
+
 ## Install and ordinary-work checks
 
 Before local installation, verify the committed candidate, native build hashes,
