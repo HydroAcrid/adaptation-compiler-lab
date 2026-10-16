@@ -10,6 +10,7 @@ from typing import Any
 
 import pytest
 
+from adaptation_compiler_lab.autonomy.retention import purge_expired_raw
 from adaptation_compiler_lab.autonomy.store import AutonomyIntegrityError, AutonomyStore
 from adaptation_compiler_lab.autonomy.validation_retention import (
     checked_validation_run,
@@ -103,7 +104,7 @@ def test_validation_sweep_is_bounded_and_runs_while_learning_paused(
     assert sorted(seen) == ["native-delivery-interrupted", "owner-eval-finished"]
 
 
-@pytest.mark.parametrize("entry", ["sweep", "purge", "qualification_read"])
+@pytest.mark.parametrize("entry", ["sweep", "purge", "personal_purge", "qualification_read"])
 def test_raw_root_junction_cannot_delete_or_open_unrelated_owner_data(
     app: Any, tmp_path: Path, entry: str
 ) -> None:
@@ -135,6 +136,8 @@ def test_raw_root_junction_cannot_delete_or_open_unrelated_owner_data(
         with pytest.raises(AutonomyIntegrityError, match="escaped"):
             if entry == "purge":
                 purge_validation_raw(store, now=clock())
+            elif entry == "personal_purge":
+                purge_expired_raw(store, now=clock())
             elif entry == "qualification_read":
                 checked_validation_run(base, run.name)
             else:
