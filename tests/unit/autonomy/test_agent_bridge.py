@@ -4,17 +4,19 @@ import io
 import json
 from datetime import timedelta
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
 
 from adaptation_compiler_lab.autonomy.agent_bridge import TemperAgentBridge, serve_bridge
 from adaptation_compiler_lab.autonomy.models import StyleCategory
+from adaptation_compiler_lab.autonomy.service import AutonomyApplicationService
 from tests.unit.autonomy.test_autonomy import app as app
 from tests.unit.autonomy.test_autonomy import trial
 
 
-def context_for(service, tmp_path):
+def context_for(service: AutonomyApplicationService, tmp_path: Path) -> dict[str, Any]:
     config = tmp_path / "bridge-config.json"
     config.write_text("{}", encoding="utf-8")
     with patch(
@@ -25,7 +27,9 @@ def context_for(service, tmp_path):
         )
 
 
-def test_context_obeys_replacement_grant_categories(app, tmp_path):
+def test_context_obeys_replacement_grant_categories(
+    app: tuple[AutonomyApplicationService, Any], tmp_path: Path
+) -> None:
     service, clock = app
     habit_id = trial(service, clock)
     service.set_switch("personalization", True, key="personalize")
@@ -41,12 +45,15 @@ def test_context_obeys_replacement_grant_categories(app, tmp_path):
     assert service.store.head_digest == before
 
 
-def test_context_excludes_expired_trial_without_mutating_learning_state(app, tmp_path):
+def test_context_excludes_expired_trial_without_mutating_learning_state(
+    app: tuple[AutonomyApplicationService, Any], tmp_path: Path
+) -> None:
     service, clock = app
     habit_id = trial(service, clock)
     service.set_switch("personalization", True, key="personalize")
     assert context_for(service, tmp_path)["habit_ids"] == (habit_id,)
     habit = service.hypotheses()[0]
+    assert habit.trial_expires_at is not None
     clock.value = habit.trial_expires_at - timedelta(microseconds=1)
     assert context_for(service, tmp_path)["habit_ids"] == (habit_id,)
     clock.value = habit.trial_expires_at
