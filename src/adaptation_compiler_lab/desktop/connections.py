@@ -123,7 +123,9 @@ class AgentConnectionInspector:
                 else "Learning is unavailable until the connection is ready."
             ),
             delivery_capability=(
-                "Delivers only to fresh Temper-managed Codex tasks."
+                "Approved suggestions go to fresh Temper-managed tasks. Authorized style defaults "
+                "can also reach ordinary Codex chats through native instructions "
+                "or scoped MCP context."
                 if conformant and authentication == "signed_in"
                 else "Delivery is unavailable until the connection is ready."
             ),

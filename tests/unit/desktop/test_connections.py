@@ -60,6 +60,9 @@ def test_codex_connection_reports_separate_truthful_capabilities(
     assert codex.authentication_state == "signed_in"
     assert "completed tasks" in codex.learning_capability
     assert "fresh Temper-managed" in codex.delivery_capability
+    assert "Authorized style defaults" in codex.delivery_capability
+    assert "ordinary Codex chats" in codex.delivery_capability
+    assert "native instructions or scoped MCP context" in codex.delivery_capability
     assert codex.available_actions == ("refresh", "use_for_setup")
     assert codex.integration_state == "connected"
     assert claude.installation_state == "not_installed"

@@ -2609,7 +2609,7 @@ function ConnectionDetailsDialog({
                 ? connection.status === "connected"
                   ? "The local hook delivers only signed cached context in registered Copilot CLI projects. Temper does not capture Copilot prompts in this release."
                   : "Temper understands supported Copilot instruction files. Direct delivery is available only through an explicit Copilot CLI hook; other Copilot surfaces require a reviewed file change."
-                : "Temper can learn only from prospectively registered completed work and deliver only to fresh Temper-managed tasks."}
+                : "Learning observes eligible completed work in registered projects. Approved suggestions go to fresh Temper-managed tasks. With permission, style defaults can also reach ordinary Codex chats through native instructions or scoped MCP context. Native instruction updates apply to new chats or a supported reload; publication does not confirm delivery."}
           </p>
           {nativeRuntime &&
           (connection.id === "claude" || connection.id === "copilot") ? (
