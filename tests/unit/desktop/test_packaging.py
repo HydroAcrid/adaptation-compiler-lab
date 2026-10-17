@@ -9,7 +9,7 @@ import re
 import subprocess
 import tomllib
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
@@ -100,15 +100,41 @@ def test_native_builder_produces_target_suffixed_tauri_sidecar() -> None:
 
     assert "--onefile" in command
     assert "--onefile-no-compression" in command
+    assert "--remove-output" in command
+    assert "--jobs=2" in command
+    assert "--onefile-tempdir-spec={PROGRAM_DIR}/.temper-engine-cache" in command
+    assert "--onefile-cache-mode=cached" in command
     assert "--include-package-data=adaptation_compiler_lab" in command
     assert "--include-package=adaptation_compiler_lab.persistence.sql" in command
     assert any("qualification_assets" in argument for argument in command)
-    assert "temper-engine-x86_64-pc-windows-msvc.exe" in rendered
+    assert "temper-engine-payload-x86_64-pc-windows-msvc.exe" in rendered
     assert "desktop_ui" in rendered
     assert "src-tauri" in rendered
     assert "PySide6" not in rendered
     assert "qml" not in rendered
     assert ".env" not in rendered
+
+
+def test_native_build_refuses_low_disk_before_starting_compilers(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    module = _build_module()
+    monkeypatch.setattr(module.shutil, "disk_usage", lambda _: SimpleNamespace(free=1024))
+    monkeypatch.setattr(module.subprocess, "run", lambda *a, **k: pytest.fail("compiler started"))
+    with pytest.raises(SystemExit) as error:
+        module.main(["--repository", str(ROOT)])
+    assert error.value.code == 2
+    assert "native build needs at least 8 GiB free" in capsys.readouterr().err
+
+
+def test_native_build_storage_budget_checks_actual_retained_output(tmp_path: Path) -> None:
+    module = _build_module()
+    target = tmp_path / "desktop_ui/src-tauri/target"
+    target.mkdir(parents=True)
+    (target / "fictional-object").write_bytes(b"objects")
+    with pytest.raises(ValueError, match="generated native output exceeds"):
+        module.check_build_storage(tmp_path, limit=3)
+    assert module.check_build_storage(tmp_path, limit=100) == 7
 
 
 @pytest.mark.parametrize("matches", [True, False])
@@ -201,6 +227,7 @@ def test_macos_sidecar_uses_apple_silicon_target_without_exe_suffix() -> None:
 
     assert any(item.endswith("temper-engine-aarch64-apple-darwin") for item in command)
     assert "--macos-target-arch=arm64" in command
+    assert not any("onefile-tempdir-spec" in item for item in command)
 
 
 def test_macos_architecture_check_requires_arm64_only(
@@ -253,6 +280,8 @@ def test_sidecar_manifest_binds_binary_version_schema_and_target(
     binary_root.mkdir(parents=True)
     binary = binary_root / "temper-engine-x86_64-pc-windows-msvc.exe"
     binary.write_bytes(b"synthetic sidecar")
+    engine_payload = binary_root / "temper-engine-payload-x86_64-pc-windows-msvc.exe"
+    engine_payload.write_bytes(b"synthetic payload")
     monkeypatch.setattr(
         module,
         "_snapshot_schema_digest",
@@ -271,6 +300,8 @@ def test_sidecar_manifest_binds_binary_version_schema_and_target(
     assert manifest["binary_filename"] == binary.name
     assert manifest["binary_size_bytes"] == len(b"synthetic sidecar")
     assert len(manifest["binary_sha256"]) == 64
+    assert manifest["payload_filename"] == engine_payload.name
+    assert manifest["payload_sha256"] == hashlib.sha256(engine_payload.read_bytes()).hexdigest()
     assert ".env" not in manifest_path.read_text(encoding="utf-8")
 
 
@@ -533,7 +564,9 @@ def test_windows_smoke_defaults_to_trusted_signature_and_safe_temp_cleanup() -> 
     hooks = (ROOT / "desktop_ui" / "src-tauri" / "windows" / "installer-hooks.nsh").read_text(
         encoding="utf-8"
     )
-    assert "NSIS_HOOK_PREINSTALL" not in hooks
+    assert 'RMDir /r "$INSTDIR\\.temper-engine-cache"' in hooks
+    assert "Close Temper and Codex chats" in hooks
+    assert 'RMDir /r "$LOCALAPPDATA' not in hooks
     assert "NSIS_HOOK_POSTUNINSTALL" in hooks
     assert 'DeleteRegKey SHCTX "${MANUPRODUCTKEY}"' in hooks
     assert 'DeleteRegKey /ifempty SHCTX "${MANUPRODUCTKEY}"' not in hooks

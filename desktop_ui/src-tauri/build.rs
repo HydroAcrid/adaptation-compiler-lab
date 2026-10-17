@@ -13,6 +13,8 @@ struct EngineBuildManifest {
     target_triple: String,
     binary_filename: String,
     binary_sha256: String,
+    payload_filename: Option<String>,
+    payload_sha256: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -85,6 +87,20 @@ fn bind_release_engine() {
         &manifest.binary_sha256,
         "release engine sidecar",
     );
+    if target == "x86_64-pc-windows-msvc" {
+        let filename = manifest
+            .payload_filename
+            .as_ref()
+            .expect("release engine payload is unavailable");
+        assert_eq!(filename, &format!("temper-engine-payload-{target}.exe"));
+        let path = manifest_dir.join("binaries").join(filename);
+        println!("cargo:rerun-if-changed={}", path.display());
+        require_exact_digest(
+            &path,
+            manifest.payload_sha256.as_deref().unwrap_or(""),
+            "release engine payload",
+        );
+    }
 
     let hook_manifest_path = manifest_dir
         .join("binaries")

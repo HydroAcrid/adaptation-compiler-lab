@@ -1,0 +1,5 @@
+{
+  "bundle": {
+    "externalBin": ["binaries/temper-engine", "binaries/temper-engine-payload", "binaries/temper-hook"]
+  }
+}

@@ -1,0 +1,3 @@
+[build]
+# Keep native verification from exhausting memory and expanding the pagefile.
+jobs = 2

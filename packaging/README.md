@@ -6,6 +6,8 @@ private alpha.
 ## Windows x64 development candidate
 
 1. Start from a clean native Windows checkout.
+   Reuse the current checkout rather than cloning a copy for every candidate. Keep at least
+   8 GiB free before a native build; the builder refuses to start below that reserve.
 2. Run `uv sync --locked --dev --group release`.
 3. Run `uv run python packaging/build_native.py`. This compiles the governed Python engine and the
    no-console Rust hook helper as target-suffixed sidecars required by Tauri, then writes separate
@@ -33,6 +35,35 @@ packaged uninstaller to remove the application, engine, and hook helper before i
 cleanup runs. A current-user install uses `%LOCALAPPDATA%\Programs\Temper`; the separate
 `%LOCALAPPDATA%\Temper` governed-data root is never an executable install destination and is not
 removed by uninstall.
+
+### Windows storage bounds
+
+Windows sidecars reuse one `.temper-engine-cache` beside their executable. Desktop and MCP
+launches use the same slot; starts, crashes, and restarts must not create a new full runtime
+in `%TEMP%`. Nuitka validates the cached files against the embedded payload on every launch.
+The native Windows launcher verifies the payload's SHA-256, serializes cache initialization,
+then permits concurrent sessions. A Windows job owns the launcher and its descendants so
+forced termination cannot leave an inner worker running. The launcher rejects redirected
+cache paths and cache contents above 256 MiB. The Tauri Windows bundle includes the launcher,
+compiled payload, and hook helper; macOS retains its existing engine path.
+The install directory must remain writable by its owner. Close clients using the old engine
+before upgrading: Windows cannot replace a loaded DLL. The installer removes the old slot
+before replacement and stops the upgrade if it is still in use.
+
+Desktop transport failures are limited to three automatic restart attempts per hour, with
+at least a minute between attempts. A valid response resets the failure count. Windows
+refuses a new engine start below 1 GiB of available disk space. These checks do not change
+learning permissions, evidence retention, or qualification.
+
+Before any native build or Cargo tests, run `python packaging/build_native.py --check-storage`
+with the repository's venv interpreter. Admission rejects more than 4 GiB in the known generated
+roots, and preserves an 8 GiB free-space reserve. Native Rust development builds disable debug symbols and incremental object retention. Nuitka
+uses two compiler jobs and removes its compilation output after a successful build. Windows
+build admission runs concurrent cold starts, repeated starts, damaged-cache repair, and forced
+bootstrap interruptions in a fictional profile and rejects storage growth. After a candidate's checks and install,
+use `cargo clean --manifest-path desktop_ui/src-tauri/Cargo.toml` and the equivalent hook-helper
+command when generated targets are no longer needed. Preserve source edits, manifests, installed
+binaries and private evidence; do not delete whole checkouts or recovery directories as cache cleanup.
 
 The development smoke refuses to run when the current Windows account already has a Temper
 installation. It installs silently into one bounded temporary root, performs the same two-frame

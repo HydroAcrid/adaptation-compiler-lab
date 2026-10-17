@@ -22,6 +22,7 @@ use tauri_plugin_notification::NotificationExt;
 use uuid::Uuid;
 
 use temper_hook_transport as hook_ipc;
+mod engine_restart;
 
 const PROTOCOL_VERSION: &str = "temper-engine-protocol/v1";
 const MAX_FRAME_BYTES: usize = 1_048_576;
@@ -384,7 +385,10 @@ fn cancelled() -> PublicError {
     }
 }
 
-struct EngineState(Mutex<Option<EngineProcess>>);
+struct EngineState(
+    Mutex<Option<EngineProcess>>,
+    Mutex<engine_restart::RestartGuard>,
+);
 
 struct PollScheduler(Mutex<Option<mpsc::Sender<()>>>);
 
@@ -409,7 +413,20 @@ fn call_engine(
 ) -> Result<EngineResponse, PublicError> {
     let mut guard = state.0.lock().map_err(|_| unavailable())?;
     if guard.is_none() {
-        *guard = Some(EngineProcess::spawn()?);
+        let mut restart = state.1.lock().map_err(|_| unavailable())?;
+        restart
+            .may_start(Instant::now(), engine_restart::available_space())
+            .map_err(|message| PublicError {
+                code: "engine_start_paused",
+                message,
+            })?;
+        match EngineProcess::spawn() {
+            Ok(process) => *guard = Some(process),
+            Err(error) => {
+                restart.failed(Instant::now());
+                return Err(error);
+            }
+        }
     }
     let response = guard.as_mut().ok_or_else(unavailable)?.request(
         method,
@@ -418,7 +435,14 @@ fn call_engine(
         idempotency_key,
     );
     if response.is_err() {
+        state
+            .1
+            .lock()
+            .map_err(|_| unavailable())?
+            .failed(Instant::now());
         *guard = None;
+    } else {
+        state.1.lock().map_err(|_| unavailable())?.responded();
     }
     response
 }
@@ -437,7 +461,14 @@ fn call_running_engine(
     };
     let response = engine.request(method, params, None, None);
     if response.is_err() {
+        state
+            .1
+            .lock()
+            .map_err(|_| unavailable())?
+            .failed(Instant::now());
         *guard = None;
+    } else {
+        state.1.lock().map_err(|_| unavailable())?.responded();
     }
     response
 }
@@ -1934,7 +1965,10 @@ pub fn run() {
             None,
         ))
         .plugin(tauri_plugin_notification::init())
-        .manage(EngineState(Mutex::new(None)))
+        .manage(EngineState(
+            Mutex::new(None),
+            Mutex::new(engine_restart::RestartGuard::default()),
+        ))
         .manage(HookIpcState(Mutex::new(None)))
         .setup(install_tray_and_scheduler)
         .on_window_event(|window, event| {

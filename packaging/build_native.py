@@ -23,6 +23,37 @@ TARGET_TRIPLES: Final = {
 }
 MACOS_MINIMUM_VERSION: Final = "13.0"
 HOOK_PROTOCOL_VERSION: Final = "temper-hook-ipc/v1"
+MAX_GENERATED_BYTES: Final = 4 * 1024**3
+
+
+def check_build_storage(repository: Path, *, limit: int = MAX_GENERATED_BYTES) -> int:
+    """Read only known generated roots, refusing redirects and excessive retention."""
+    root = repository.resolve()
+    size = 0
+    for relative in (
+        "desktop_ui/src-tauri/target",
+        "desktop_ui/hook-helper/target",
+        "desktop_ui/src-tauri/binaries",
+    ):
+        pending = [root / relative]
+        while pending:
+            path = pending.pop()
+            if not path.exists():
+                continue
+            if path.is_symlink() or path.is_junction():
+                raise ValueError("native build output is redirected; inspect it before building")
+            if path.is_dir():
+                pending.extend(path.iterdir())
+            else:
+                size += path.stat().st_size
+                if size > limit:
+                    raise ValueError(
+                        "generated native output exceeds 4 GiB; "
+                        "cargo clean old targets before building"
+                    )
+    if shutil.disk_usage(root).free < 8 * 1024**3:
+        raise ValueError("native build needs at least 8 GiB free; clean generated targets first")
+    return size
 
 
 def resolve_target_triple(*, platform_name: str, machine_name: str) -> str:
@@ -137,24 +168,65 @@ def build_command(
         machine_name=machine_name or platform.machine(),
     )
     output_directory = tauri_root / "binaries"
+    filename = sidecar_filename(target_triple, platform_name=platform_name)
+    if platform_name == "win32":
+        filename = filename.replace("temper-engine-", "temper-engine-payload-")
     command = [
         sys.executable,
         "-m",
         "nuitka",
         "--onefile",
         "--onefile-no-compression",
+        "--remove-output",
+        "--jobs=2",
         "--assume-yes-for-downloads",
         "--include-package-data=adaptation_compiler_lab",
         "--include-package=adaptation_compiler_lab.persistence.sql",
         f"--include-data-dir={root / 'build/calibration-assets'}="
         "adaptation_compiler_lab/autonomy/qualification_assets",
         f"--output-dir={output_directory}",
-        f"--output-filename={sidecar_filename(target_triple, platform_name=platform_name)}",
+        f"--output-filename={filename}",
         str(entry),
     ]
     if platform_name.lower() == "darwin":
         command.insert(-1, "--macos-target-arch=arm64")
+    else:
+        # One installed payload, shared by desktop and MCP launches. Unique
+        # PID/time extraction paths can leak a full Python runtime on a crash.
+        # Nuitka checks each cached file against its embedded payload on start.
+        # The slot is deliberately fixed across upgrades: no cache per run/build.
+        command[-1:-1] = [
+            "--onefile-tempdir-spec={PROGRAM_DIR}/.temper-engine-cache",
+            "--onefile-cache-mode=cached",
+        ]
     return command
+
+
+def build_windows_launcher(repository: Path) -> None:
+    binary = sidecar_path(repository, platform_name="win32", machine_name="AMD64")
+    payload = binary.with_name(binary.name.replace("temper-engine-", "temper-engine-payload-"))
+    environment = os.environ.copy()
+    environment["TEMPER_ENGINE_PAYLOAD_SHA256"] = hashlib.sha256(payload.read_bytes()).hexdigest()
+    subprocess.run(
+        [
+            "cargo",
+            "build",
+            "--locked",
+            "--release",
+            "--jobs",
+            "2",
+            "--manifest-path",
+            str(repository / "desktop_ui/hook-helper/Cargo.toml"),
+            "--bin",
+            "temper-engine-launcher",
+        ],
+        cwd=repository,
+        env=environment,
+        check=True,
+    )
+    shutil.copy2(
+        repository / "desktop_ui/hook-helper/target/release/temper-engine-launcher.exe", binary
+    )
 
 
 def verify_macos_arm64(binary: Path) -> None:
@@ -506,6 +578,12 @@ def write_build_manifest(
             MACOS_MINIMUM_VERSION if platform_name.lower() == "darwin" else None
         ),
     }
+    if platform_name == "win32":
+        engine_payload = binary.with_name(
+            binary.name.replace("temper-engine-", "temper-engine-payload-")
+        )
+        payload["payload_filename"] = engine_payload.name
+        payload["payload_sha256"] = hashlib.sha256(engine_payload.read_bytes()).hexdigest()
     manifest_path.write_text(
         json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n",
         encoding="utf-8",
@@ -571,12 +649,29 @@ def verify_calibration_bundle(repository: Path, binary: Path) -> None:
         raise ValueError("compiled calibration inputs do not match the source candidate")
 
 
+def verify_engine_storage(repository: Path, binary: Path) -> None:
+    """Crash/storage admission is required by the ordinary Windows build path."""
+    subprocess.run(
+        [
+            sys.executable,
+            str(repository / "packaging/windows/check_engine_storage.py"),
+            str(binary),
+            "--scratch-parent",
+            str(repository / "build"),
+        ],
+        cwd=repository,
+        check=True,
+        timeout=150,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repository", type=Path, default=Path.cwd())
     parser.add_argument("--platform", choices=("win32", "darwin"), default=sys.platform)
     parser.add_argument("--machine", default=platform.machine())
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--check-storage", action="store_true")
     arguments = parser.parse_args(argv)
     try:
         command = build_command(
@@ -591,12 +686,21 @@ def main(argv: list[str] | None = None) -> int:
             json.dumps({"engine": command, "hook_helper": hook_build_command(arguments.repository)})
         )
         return 0
+    try:
+        size = check_build_storage(arguments.repository)
+    except ValueError as error:
+        parser.error(str(error))
+    if arguments.check_storage:
+        print(json.dumps({"generated_bytes": size, "limit_bytes": MAX_GENERATED_BYTES}))
+        return 0
     from adaptation_compiler_lab.autonomy.calibration_assets import export_assets
 
     export_assets(arguments.repository, arguments.repository / "build/calibration-assets")
     completed = subprocess.run(command, cwd=arguments.repository, check=False)
     if completed.returncode:
         return completed.returncode
+    if arguments.platform == "win32":
+        build_windows_launcher(arguments.repository)
     try:
         verify_native_sidecar(
             arguments.repository,
@@ -611,6 +715,13 @@ def main(argv: list[str] | None = None) -> int:
                 machine_name=arguments.machine,
             ),
         )
+        if arguments.platform == "win32":
+            verify_engine_storage(
+                arguments.repository,
+                sidecar_path(
+                    arguments.repository, platform_name="win32", machine_name=arguments.machine
+                ),
+            )
         manifest = write_build_manifest(
             arguments.repository,
             platform_name=arguments.platform,
