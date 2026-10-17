@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import { AutonomousLearningPanel } from "./AutonomousLearningPanel";
@@ -37,6 +37,7 @@ const project = {
 afterEach(() => {
   cleanup();
   vi.resetAllMocks();
+  vi.restoreAllMocks();
 });
 
 it("makes conversation trust explicit and labels unknown authorship", async () => {
@@ -45,6 +46,9 @@ it("makes conversation trust explicit and labels unknown authorship", async () =
     value: {
       preview_token: "trust-preview",
       native_destination: "/synthetic/AGENTS.md",
+      project_ids: [project.project_id],
+      categories: ["communication_detail"],
+      trust_authorized_chats: true,
       input_authority: "Owner-trusted conversations; authorship unknown.",
       raw_payloads_exposed: false,
     },
@@ -52,16 +56,18 @@ it("makes conversation trust explicit and labels unknown authorship", async () =
   });
   const user = userEvent.setup();
   render(<AutonomousLearningPanel projects={[project]} />);
-  await screen.findByText(/Capture needs permission/);
+  await screen.findByRole("heading", { name: "Learning" });
   const trust = screen.getByRole("checkbox", {
-    name: /Trust inputs in these project/,
+    name: /Include conversations relayed by agents I authorize/,
   });
   expect(trust).not.toBeChecked();
   await user.click(screen.getByRole("checkbox", { name: "Synthetic project" }));
   await user.click(screen.getByRole("checkbox", { name: "Amount of detail" }));
   await user.click(trust);
-  await user.click(screen.getByRole("button", { name: "Preview permission" }));
-  await screen.findByText(/Owner-trusted conversations; authorship unknown/);
+  await user.click(
+    screen.getByRole("button", { name: "Review learning access" }),
+  );
+  await screen.findByText(/Agent-relayed conversations are included/);
   expect(api.previewLearningGrant).toHaveBeenCalledWith(
     ["synthetic-project"],
     ["communication_detail"],
@@ -91,13 +97,15 @@ it("requires selected scope and confirmation before granting permission", async 
   });
   const user = userEvent.setup();
   render(<AutonomousLearningPanel projects={[project]} />);
-  await screen.findByText(/Capture needs permission/);
+  await screen.findByRole("button", { name: "Review learning access" });
   expect(
-    screen.getByRole("button", { name: "Preview permission" }),
+    screen.getByRole("button", { name: "Review learning access" }),
   ).toBeDisabled();
   await user.click(screen.getByRole("checkbox", { name: "Synthetic project" }));
   await user.click(screen.getByRole("checkbox", { name: "Amount of detail" }));
-  await user.click(screen.getByRole("button", { name: "Preview permission" }));
+  await user.click(
+    screen.getByRole("button", { name: "Review learning access" }),
+  );
   await screen.findByText(/synthetic\/AGENTS.md/);
   expect(api.enableLearningGrant).not.toHaveBeenCalled();
   expect(api.previewLearningGrant).toHaveBeenCalledWith(
@@ -105,13 +113,12 @@ it("requires selected scope and confirmation before granting permission", async 
     ["communication_detail"],
     false,
   );
-  await user.click(
-    screen.getByRole("button", { name: "Confirm scoped permission" }),
-  );
+  await user.click(screen.getByRole("button", { name: "Allow learning" }));
   await screen.findByRole("button", { name: "Pause learning" });
   expect(api.enableLearningGrant).toHaveBeenCalledOnce();
+  await user.click(screen.getByText("Learning settings"));
   expect(
-    screen.getByRole("button", { name: "Enable personalization" }),
+    screen.getByRole("switch", { name: "Personalization" }),
   ).toBeDisabled();
 });
 
@@ -135,8 +142,94 @@ it("binds pause to the current autonomy digest and keeps blocked capture visible
     digest,
     undefined,
   );
-  expect(screen.getByText(/Capture needs permission/)).toBeInTheDocument();
   expect(
-    screen.getByText(/Delivery and usefulness have not been established/),
+    screen.getByText(/Conversation access needs attention/),
   ).toBeInTheDocument();
+  expect(
+    screen.getByText(/No habits added to agent instructions/),
+  ).toBeInTheDocument();
+});
+
+it("keeps an empty learning profile distinct from applied personalization", async () => {
+  api.loadAutonomy.mockResolvedValue({
+    value: {
+      ...status,
+      grant_enabled: true,
+      learning_enabled: true,
+      personalization_enabled: true,
+      automatic_serving_ready: true,
+      provenance_state: "owner_authorized",
+      capture_state: "ready",
+    },
+    digest,
+  });
+  render(<AutonomousLearningPanel projects={[project]} />);
+  expect(
+    await screen.findByRole("heading", { name: "No habits yet" }),
+  ).toBeVisible();
+  expect(
+    screen.getByText("No habits added to agent instructions"),
+  ).toBeVisible();
+  expect(screen.queryByText("Personalizing")).not.toBeInTheDocument();
+  expect(screen.queryByText("Recent changes")).not.toBeInTheDocument();
+});
+
+it("cannot replace a successful pause with an older status poll", async () => {
+  const intervals = vi.spyOn(window, "setInterval");
+  const ready = {
+    ...status,
+    grant_enabled: true,
+    learning_enabled: true,
+    provenance_state: "owner_authorized" as const,
+    capture_state: "ready",
+  };
+  let resolveOld!: (value: { value: AutonomyState; digest: string }) => void;
+  api.loadAutonomy
+    .mockResolvedValueOnce({ value: ready, digest })
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveOld = resolve;
+        }),
+    );
+  api.controlAutonomy.mockResolvedValue({
+    value: { ...ready, learning_enabled: false },
+    digest,
+  });
+  const user = userEvent.setup();
+  render(<AutonomousLearningPanel projects={[project]} />);
+  await screen.findByRole("button", { name: "Pause learning" });
+  const refresh = intervals.mock.calls.find(
+    ([, delay]) => delay === 30_000,
+  )?.[0];
+  if (typeof refresh !== "function")
+    throw new Error("Learning polling was not scheduled");
+  act(() => refresh());
+  await user.click(screen.getByRole("button", { name: "Pause learning" }));
+  await screen.findByRole("button", { name: "Resume learning" });
+  await act(async () => resolveOld({ value: ready, digest }));
+  expect(screen.getByRole("button", { name: "Resume learning" })).toBeEnabled();
+  expect(api.controlAutonomy).toHaveBeenCalledWith(
+    "pause_learning",
+    digest,
+    undefined,
+  );
+});
+
+it("shows a status failure and allows a read-only retry", async () => {
+  api.loadAutonomy
+    .mockRejectedValueOnce(new Error("Status unavailable"))
+    .mockResolvedValueOnce({ value: status, digest });
+  const user = userEvent.setup();
+  render(<AutonomousLearningPanel projects={[project]} />);
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Learning status is unavailable",
+  );
+  expect(
+    screen.queryByRole("button", { name: "Allow learning" }),
+  ).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Try again" }));
+  await screen.findByRole("button", { name: "Review learning access" });
+  expect(api.enableLearningGrant).not.toHaveBeenCalled();
+  expect(api.controlAutonomy).not.toHaveBeenCalled();
 });

@@ -41,7 +41,7 @@ describe("Temper prototype", () => {
     expect(
       screen.getByRole("dialog", { name: /when notes and the repository/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Your review stays required/i)).toBeInTheDocument();
+    expect(screen.getByText("Your review is required")).toBeInTheDocument();
   });
 
   it("keeps navigation state aligned with the visible folio", async () => {
@@ -93,7 +93,9 @@ describe("Temper prototype", () => {
     expect(screen.getByText("Systematic Debugger")).toBeInTheDocument();
     expect(screen.getByText("Personalized")).toBeInTheDocument();
     expect(screen.getAllByText(/evaluation pending/i)).toHaveLength(3);
-    expect(screen.getByText(/Core stays unchanged/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Core preferences stay unchanged/i),
+    ).toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: "View Mode" })[0]!);
     expect(
       screen.getByRole("dialog", { name: "Frontend Studio" }),
@@ -406,7 +408,9 @@ describe("Temper prototype", () => {
     await user.click(screen.getByRole("button", { name: "Settings" }));
     await user.click(screen.getByRole("button", { name: "View consent" }));
     expect(
-      screen.getByRole("dialog", { name: "Local consent" }),
+      screen.getByRole("dialog", {
+        name: "Permission for reviewed suggestions",
+      }),
     ).toBeInTheDocument();
     expect(screen.getByText("Sample only")).toBeInTheDocument();
     expect(screen.queryByText(/sha256/i)).not.toBeInTheDocument();
@@ -429,10 +433,10 @@ describe("Temper prototype", () => {
     window.history.replaceState({}, "", "/?screen=onboarding");
     render(<App />);
     expect(
-      screen.getByRole("heading", { name: /your way of working/i }),
+      screen.getByRole("heading", { name: /Set up Temper/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Nothing becomes durable until you approve it/i),
+      screen.getByText(/Choose the projects Temper can learn from/i),
     ).toBeInTheDocument();
     expect(screen.queryByText(/create account/i)).not.toBeInTheDocument();
   });
@@ -442,7 +446,7 @@ describe("Temper prototype", () => {
     window.history.replaceState({}, "", "/?screen=onboarding");
     render(<App />);
     for (const heading of [
-      "Local by design.",
+      "Data and privacy",
       "Check your coding agents.",
       "Register your first project.",
       "Ready to set up Temper.",
@@ -454,7 +458,7 @@ describe("Temper prototype", () => {
     }
     expect(
       screen.getByRole("switch", {
-        name: "Allow Temper to learn in this project",
+        name: "Allow reviewed suggestions in this project",
       }),
     ).not.toBeChecked();
     expect(screen.getByText(/telemetry.*stay off/i)).toBeInTheDocument();

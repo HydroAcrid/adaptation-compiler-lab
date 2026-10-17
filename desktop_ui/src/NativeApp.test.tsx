@@ -267,7 +267,7 @@ describe("installed Temper state boundaries", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Your way of working, wherever you work.",
+        name: "Set up Temper",
       }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Kairn")).not.toBeInTheDocument();
@@ -299,7 +299,7 @@ describe("installed Temper state boundaries", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Nothing needs your attention.",
+        name: "Learning",
       }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Temper is active/i)).not.toBeInTheDocument();
@@ -310,7 +310,7 @@ describe("installed Temper state boundaries", () => {
     );
     await user.click(screen.getByRole("menuitem", { name: /Beta/i }));
     expect(
-      screen.getByRole("heading", { name: "Nothing needs review in Beta." }),
+      screen.getByRole("button", { name: "Workspace: Beta" }),
     ).toBeInTheDocument();
   });
 
@@ -582,7 +582,7 @@ describe("installed Temper state boundaries", () => {
 
     render(<App />);
     await screen.findByRole("heading", {
-      name: "Nothing needs your attention.",
+      name: "Learning",
     });
     await user.click(screen.getByRole("button", { name: "Connections" }));
 
@@ -747,7 +747,7 @@ describe("installed Temper state boundaries", () => {
 
     render(<App />);
     await screen.findByRole("heading", {
-      name: "Nothing needs your attention.",
+      name: "Learning",
     });
     await user.click(screen.getByRole("button", { name: "Connections" }));
     await user.click(
@@ -847,7 +847,7 @@ describe("installed Temper state boundaries", () => {
 
     render(<App />);
     await screen.findByRole("heading", {
-      name: "Nothing needs your attention.",
+      name: "Learning",
     });
     await user.click(screen.getByRole("button", { name: "Core" }));
     await user.click(
@@ -1037,7 +1037,7 @@ describe("installed Temper state boundaries", () => {
 
     render(<App />);
     await screen.findByRole("heading", {
-      name: "Nothing needs your attention.",
+      name: "Learning",
     });
     await user.click(screen.getByRole("button", { name: "Settings" }));
     const reporting = screen.getByRole("switch", {
@@ -1082,11 +1082,11 @@ describe("installed Temper state boundaries", () => {
 
     render(<App />);
     await screen.findByRole("heading", {
-      name: "Nothing needs your attention.",
+      name: "Learning",
     });
     await user.click(screen.getByRole("button", { name: "Settings" }));
     await user.click(
-      screen.getByRole("switch", { name: "Decision notifications" }),
+      screen.getByRole("switch", { name: "Review notifications" }),
     );
 
     expect(
@@ -1151,7 +1151,7 @@ describe("installed Temper state boundaries", () => {
       await screen.findByRole("button", { name: "Pause learning" }),
     ).toBeEnabled();
     expect(
-      screen.getByRole("heading", { name: "Reviewed suggestions are paused." }),
+      screen.getByText("Reviewed suggestions", { selector: "summary" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByText("No new learning is running."),
@@ -1159,7 +1159,7 @@ describe("installed Temper state boundaries", () => {
     expect(screen.queryByText("Learning is paused.")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Settings" }));
     expect(
-      screen.getByRole("switch", { name: "Capture for reviewed suggestions" }),
+      screen.getByRole("switch", { name: "Reviewed suggestions" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("switch", { name: "Background learning" }),

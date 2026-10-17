@@ -191,14 +191,14 @@ export function Onboarding({
       <main className="onboarding-content">
         {step === 0 ? (
           <OnboardingPanel
-            description="Temper learns how you work, turns approved feedback into small scoped adaptations, and keeps that guidance portable between supported agents."
+            description="Learn communication habits from Codex chats and manage guidance for your coding agents."
             icon={<Radio size={28} strokeWidth={1.6} />}
-            title="Your way of working, wherever you work."
+            title="Set up Temper"
           >
             <div className="onboarding-principles">
-              <Principle text="Nothing becomes durable until you approve it." />
-              <Principle text="Learning stays scoped, inspectable, and reversible." />
-              <Principle text="Your raw evidence remains encrypted on this device." />
+              <Principle text="Choose the projects Temper can learn from." />
+              <Principle text="Pause learning or undo a change." />
+              <Principle text="Raw evidence is encrypted on this device." />
             </div>
             {nativeRuntime ? (
               <div className="existing-installation-card">
@@ -251,18 +251,18 @@ export function Onboarding({
         ) : null}
         {step === 1 ? (
           <OnboardingPanel
-            description="Temper creates a dedicated local identity and encrypts captured evidence. Keys are stored in this device's secure credential store."
+            description="Chat excerpts used for analysis are sent to your connected model. Temper encrypts raw evidence on this device and keeps its keys in system secure storage."
             icon={<LockKeyhole size={28} strokeWidth={1.6} />}
-            title="Local by design."
+            title="Data and privacy"
           >
             <div className="privacy-card">
               <div>
                 <strong>30 days</strong>
-                <span>maximum raw retention</span>
+                <span>raw evidence retention</span>
               </div>
               <div>
-                <strong>Never</strong>
-                <span>remote raw storage</span>
+                <strong>Your model</strong>
+                <span>chat analysis</span>
               </div>
               <div>
                 <strong>Your choice</strong>
@@ -380,8 +380,8 @@ export function Onboarding({
             </div>
             <Toggle
               checked={consent}
-              description="For 30 days, Temper can notice new feedback here, suggest adaptations, and deliver only what you approve. You can revoke access anytime."
-              label="Allow Temper to learn in this project"
+              description="Allow new feedback to become suggestions for your review for 30 days. Revoke access at any time. Habit learning is enabled separately on Today."
+              label="Allow reviewed suggestions in this project"
               onCheckedChange={setConsent}
             />
             <p className="onboarding-footnote">
@@ -471,10 +471,10 @@ function SetupProgress({ phase }: { phase: Exclude<SetupPhase, "idle"> }) {
         </h1>
         <p>
           {opening
-            ? "Starting the governed local engine and loading your project."
+            ? "Loading your project and preferences."
             : adopting
-              ? "Verifying the existing identity and reconnecting its governed local state."
-              : "Creating your local identity, secure store, and prospective project registration."}
+              ? "Reconnecting your existing Temper data."
+              : "Setting up secure storage and registering your project."}
         </p>
         <div className="setup-progress__stages" aria-label="Setup stages">
           <div className={opening ? "setup-progress__stage-complete" : ""}>

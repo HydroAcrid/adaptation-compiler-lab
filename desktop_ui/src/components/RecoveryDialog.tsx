@@ -121,8 +121,8 @@ export function RecoveryExportDialog({
           </div>
           <Dialog.Title>Create a recovery file</Dialog.Title>
           <Dialog.Description>
-            Restore this same Temper identity and its governed history on
-            another supported device.
+            Restore your Temper identity and history on another supported
+            device.
           </Dialog.Description>
           {busy && !preview ? (
             <div className="recovery-dialog__loading" role="status">
@@ -138,7 +138,7 @@ export function RecoveryExportDialog({
                   value={String(preview.projects.length)}
                 />
                 <SummaryRow
-                  label="Governed files"
+                  label="Settings and history files"
                   value={String(preview.governed_file_count)}
                 />
                 <SummaryRow
@@ -325,7 +325,7 @@ export function RecoveryImportDialog({
           </Dialog.Title>
           <Dialog.Description>
             {restoring
-              ? "Verifying the identity, restoring governed history, and binding projects on this device."
+              ? "Restoring your Temper data and reconnecting projects on this device."
               : "Nothing is replaced. Restore is available only before a new Temper identity is created."}
           </Dialog.Description>
           {!preview && !restoring ? (

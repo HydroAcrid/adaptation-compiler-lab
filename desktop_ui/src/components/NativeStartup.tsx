@@ -35,9 +35,7 @@ export function NativeStartup({
             : "Opening Temper"}
         </h1>
         <p>
-          {failure
-            ? failure.message
-            : "Loading your local state. Nothing is changed while Temper opens."}
+          {failure ? failure.message : "Loading your projects and preferences."}
         </p>
         {failure ? (
           <button
@@ -65,10 +63,7 @@ export function DesktopHostRequired() {
           <AlertTriangle size={25} strokeWidth={1.6} />
         </div>
         <h1>Open the Temper desktop app.</h1>
-        <p>
-          This production interface requires Temper's local desktop bridge. No
-          sample or local state has been loaded.
-        </p>
+        <p>This page needs the desktop app to access your local Temper data.</p>
       </main>
     </div>
   );

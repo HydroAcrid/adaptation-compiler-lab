@@ -60,9 +60,9 @@ export function ReviewDialog({
     : null;
   const automationSummary =
     suggestion.automationDisposition === "eligible"
-      ? "Eligible for automatic keeping when you enable it. Temper would notify you and preserve a 24-hour undo window."
+      ? "Can be saved automatically when you enable this option, with a notification and 24 hours to undo."
       : suggestion.automationDisposition === "review-required"
-        ? "Your review stays required because this adaptation could materially guide how an agent works."
+        ? "Your review is required because this change affects how an agent works."
         : "Temper will keep gathering support unless you choose to keep this now.";
   const alreadyProjectScoped =
     Boolean(suggestion.projectNames?.length) ||
@@ -128,9 +128,7 @@ export function ReviewDialog({
             {suggestion.sourceCount ? (
               <div>
                 <span>Based on</span>
-                <strong>
-                  {suggestion.sourceCount} approved source moments
-                </strong>
+                <strong>{suggestion.sourceCount} saved observations</strong>
               </div>
             ) : null}
             {evidenceLabel ? (
@@ -253,7 +251,7 @@ export function ReviewDialog({
                 {suggestion.sourceCount ? (
                   <div>
                     <dt>Support</dt>
-                    <dd>{suggestion.sourceCount} approved source moments</dd>
+                    <dd>{suggestion.sourceCount} saved observations</dd>
                   </div>
                 ) : null}
                 <div>

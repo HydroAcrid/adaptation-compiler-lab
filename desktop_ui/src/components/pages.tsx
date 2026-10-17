@@ -237,6 +237,50 @@ export function TodayPage({
           : "Consent expired",
       }[liveSummary.health]
     : "Preview";
+  if (
+    nativeAutonomy &&
+    liveSummary &&
+    !nativeConflict &&
+    applicableSuggestions.length === 0 &&
+    liveSummary.pendingReviewCount === 0 &&
+    !liveSummary.pendingFeedbackCount &&
+    liveSummary.secureStoreReady &&
+    liveSummary.health !== "needs_attention"
+  ) {
+    return (
+      <div className="page folio-page folio-page--today">
+        <header className="today-learning-heading">
+          <h1>Today</h1>
+          <time>
+            {new Intl.DateTimeFormat(undefined, { dateStyle: "full" }).format(
+              new Date(),
+            )}
+          </time>
+        </header>
+        <AutonomousLearningPanel projects={liveProjects} />
+        {liveSummary.health !== "ready" && (
+          <details className="today-review-summary">
+            <summary>
+              Reviewed suggestions{" "}
+              <span>
+                {liveSummary.health === "consent_expired"
+                  ? "Permission expired"
+                  : "Paused"}
+              </span>
+            </summary>
+            <p>
+              {liveSummary.health === "consent_expired"
+                ? "Permission for reviewed suggestions has expired. Renew it in Settings to use this workflow. Habit learning has separate controls above."
+                : "Reviewed suggestions are paused. Habit learning has separate controls above."}
+            </p>
+            <Button tone="quiet" onClick={onOpenCore}>
+              View Core
+            </Button>
+          </details>
+        )}
+      </div>
+    );
+  }
   return (
     <div className="page folio-page folio-page--today">
       {nativeAutonomy && <AutonomousLearningPanel projects={liveProjects} />}
@@ -256,11 +300,10 @@ export function TodayPage({
       <div className="folio-divider" aria-hidden="true">
         <span />
       </div>
-      <section className="folio-workbench" aria-label="Current thought">
+      <section className="folio-workbench" aria-label="Suggestions">
         <article className="folio-proposal">
           {nativeConflict ? (
             <>
-              <span className="folio-kicker">Existing agent setup</span>
               <h2>{nativeConflict.source_display_path}</h2>
               <p>{nativeConflict.rationale}</p>
               <button
@@ -279,7 +322,6 @@ export function TodayPage({
                   : ""}
                 Suggestion {selectedIndex + 1} of {suggestionCount}
               </span>
-              <h2>Temper noticed a pattern worth considering.</h2>
               <blockquote>“{selectedSuggestion?.behavior}”</blockquote>
               <p>{selectedSuggestion?.explanation}</p>
               <button
@@ -294,7 +336,6 @@ export function TodayPage({
             </>
           ) : (
             <>
-              <span className="folio-kicker">Current view</span>
               <h2>
                 {liveSummary
                   ? liveSummary.pendingFeedbackCount
@@ -604,12 +645,8 @@ export function CorePage({
       <div aria-hidden="true" className="core-tree" />
       <header className="core-heading">
         <div>
-          <span className="folio-kicker">Your working character</span>
           <h1>Core</h1>
-          <p>
-            What Temper has learned about how you work, and where each part
-            belongs.
-          </p>
+          <p>Your saved preferences and instructions, organized by project.</p>
         </div>
         <div className="core-heading__aside">
           <div className="core-portability-actions">
@@ -651,8 +688,6 @@ export function CorePage({
           {activeWorkspace === "all" ? (
             <>
               <strong>{items.length} approved items</strong> across your work.
-              Shared guidance forms the trunk; project knowledge branches only
-              where it applies.
             </>
           ) : (
             <>
@@ -664,8 +699,7 @@ export function CorePage({
                 }{" "}
                 approved items
               </strong>{" "}
-              apply in {activeWorkspace}. Shared guidance is combined with this
-              project's branch.
+              apply in {activeWorkspace}.
             </>
           )}
         </p>
@@ -762,7 +796,9 @@ export function CorePage({
         })}
         {visibleItems.length === 0 ? (
           <div className="core-empty">
-            Nothing in Core matches these filters.
+            {items.length === 0
+              ? "No saved guidance yet. Approved suggestions will appear here."
+              : "No items match these filters."}
           </div>
         ) : null}
       </div>
@@ -1287,9 +1323,8 @@ function CoreRevocationDialog({
         <Dialog.Content className="core-dialog">
           <Dialog.Title>Remove “{item.title}” from Core?</Dialog.Title>
           <Dialog.Description>
-            Temper will record a governed revocation and rebuild future
-            projections without this behavior. Its lineage stays available in
-            Advanced.
+            Future tasks won’t receive this guidance. Its history remains
+            available in Advanced.
           </Dialog.Description>
           <div className="core-dialog__actions">
             <Button disabled={busy} onClick={onClose} tone="quiet">
@@ -1372,11 +1407,10 @@ export function ModesPage({
     <div className="page folio-page modes-page">
       <header className="modes-heading">
         <div>
-          <span className="folio-kicker">Curated capability library</span>
           <h1>Modes Hub</h1>
           <p>
-            Reviewed workflows from respected open-source sources, compiled into
-            bounded one-task capabilities. Core stays unchanged.
+            Choose a workflow for one task. Your saved Core preferences stay
+            unchanged.
           </p>
         </div>
         <div className="modes-heading__actions">
@@ -1390,15 +1424,6 @@ export function ModesPage({
           <Compass aria-hidden="true" size={30} strokeWidth={1.25} />
         </div>
       </header>
-      <section className="modes-principle">
-        <span>Core</span>
-        <strong>+</strong>
-        <span>Current project</span>
-        <strong>+</strong>
-        <span>One Mode</span>
-        <strong>→</strong>
-        <span>Small task projection</span>
-      </section>
       {nativeRuntime ? (
         <PackageReviewQueue
           busyReviewId={busyPackageReview}
@@ -1444,7 +1469,6 @@ export function ModesPage({
               <div className="mode-card__facts">
                 <span>One task</span>
                 {mode.personalized ? <span>Personalized</span> : null}
-                <span>{mode.projection_utf8_bytes} bytes</span>
                 <span>
                   {mode.source_count} reviewed source
                   {mode.source_count === 1 ? "" : "s"}
@@ -1471,8 +1495,8 @@ export function ModesPage({
       ) : null}
       <footer className="mode-footer">
         <p>
-          Modes are temporary capabilities. Preferences, memories, procedures,
-          and personal skills belong in Core.
+          A Mode ends with its task. Keep lasting preferences and instructions
+          in Core.
         </p>
         <button onClick={onOpenCore} type="button">
           View Core <ArrowRight aria-hidden="true" size={14} />
@@ -1644,7 +1668,7 @@ function ModeDetailsDialog({
               </dd>
             </div>
             <div>
-              <dt>Source lineage</dt>
+              <dt>Based on</dt>
               <dd>
                 {detail
                   ? detail.sources
@@ -1661,7 +1685,7 @@ function ModeDetailsDialog({
               </dd>
             </div>
             <div>
-              <dt>Compatible projection formats</dt>
+              <dt>Instruction formats</dt>
               <dd>{mode.compatible_target_families.join(" and ")}</dd>
             </div>
             <div>
@@ -1970,6 +1994,7 @@ export function ConnectionsPage({
   const [projectBusy, setProjectBusy] = useState(false);
   const [projectMessage, setProjectMessage] = useState<string | null>(null);
   const [refreshBusy, setRefreshBusy] = useState(false);
+  const [projectQuery, setProjectQuery] = useState("");
   const shownConnections: AgentConnection[] = liveConnections
     ? liveConnections.map((connection) => ({
         authDescription: connection.status_summary,
@@ -2004,9 +2029,15 @@ export function ConnectionsPage({
         connectedAgents: project.task_runner_enabled ? ["Managed tasks"] : [],
         id: project.project_id,
         name: project.display_name,
-        pathLabel: "Prospectively registered",
+        pathLabel: "New work only",
       }))
     : previewProjects;
+
+  const filteredProjects = shownProjects.filter((project) =>
+    (project.name + " " + project.pathLabel)
+      .toLocaleLowerCase()
+      .includes(projectQuery.trim().toLocaleLowerCase()),
+  );
 
   function environmentStatus(projectId: string) {
     const environments = instructionEnvironments.filter(
@@ -2068,10 +2099,7 @@ export function ConnectionsPage({
       <header className="page-topline">
         <div />
       </header>
-      <SectionHeading
-        title="Connections"
-        description="Review where Temper can learn and where it can deliver adaptations."
-      />
+      <SectionHeading title="Connections" />
       {nativeRuntime ? (
         <div className="connections-toolbar">
           <Button
@@ -2158,7 +2186,10 @@ export function ConnectionsPage({
         <div className="subsection-heading">
           <div>
             <h2>Registered projects</h2>
-            <p>Only new work after registration is eligible.</p>
+            <p>
+              Registration makes future chats eligible. Learning permission is
+              managed on Today.
+            </p>
           </div>
           <Button
             disabled={
@@ -2179,8 +2210,20 @@ export function ConnectionsPage({
         registrationUnavailableReason ? (
           <p className="setup-state-message">{registrationUnavailableReason}</p>
         ) : null}
+        {shownProjects.length > 0 && (
+          <div className="project-search">
+            <label htmlFor="project-search">Find a project</label>
+            <input
+              id="project-search"
+              type="search"
+              value={projectQuery}
+              onChange={(event) => setProjectQuery(event.target.value)}
+              placeholder="Search projects"
+            />
+          </div>
+        )}
         <div className="project-list">
-          {shownProjects.map((project) => {
+          {filteredProjects.map((project) => {
             const environment = environmentStatus(project.id);
             return (
               <div className="project-row" key={project.id}>
@@ -2223,6 +2266,13 @@ export function ConnectionsPage({
             );
           })}
         </div>
+        {filteredProjects.length === 0 && (
+          <p className="project-empty">
+            {shownProjects.length === 0
+              ? "No projects registered. Add a project to get started."
+              : "No projects match your search."}
+          </p>
+        )}
       </section>
       {selectedConnection ? (
         <ConnectionDetailsDialog
@@ -3117,23 +3167,18 @@ export function SettingsPage({
       <header className="page-topline">
         <div />
       </header>
-      <SectionHeading
-        title="Settings"
-        description="Temper stays quiet by default. You decide what it can observe and share."
-      />
-      <SettingsGroup title="Learning">
+      <SectionHeading title="Settings" />
+      <SettingsGroup
+        title={nativeRuntime ? "Reviewed suggestions" : "Learning"}
+      >
         <Toggle
           checked={nativeRuntime ? backgroundLearning : learning}
           description={
             nativeRuntime
-              ? "Capture explicit feedback for suggestions you review. Everyday habit learning is controlled on Today."
+              ? "Use new feedback to propose changes for your review. Habit learning is controlled on Today."
               : "Notice possible preferences in completed work from registered projects."
           }
-          label={
-            nativeRuntime
-              ? "Capture for reviewed suggestions"
-              : "Background learning"
-          }
+          label={nativeRuntime ? "Reviewed suggestions" : "Background learning"}
           disabled={preferenceBusy}
           onCheckedChange={(enabled) => {
             setLearning(enabled);
@@ -3149,8 +3194,8 @@ export function SettingsPage({
         />
         <Toggle
           checked={nativeRuntime ? decisionNotificationsEnabled : notifications}
-          description="Show a quiet notification when a decision is ready."
-          label="Decision notifications"
+          description="Notify me when a suggestion needs review."
+          label="Review notifications"
           disabled={preferenceBusy}
           onCheckedChange={(enabled) => {
             void saveNotificationPreference(enabled);
@@ -3225,7 +3270,7 @@ export function SettingsPage({
             <span>
               {nativeRuntime && !secureStoreReady
                 ? "Secure storage needs attention before Temper can learn or deliver."
-                : "Evidence stays encrypted on this device for at most 30 days."}
+                : "Raw evidence is encrypted on this device for up to 30 days. Chat excerpts used for analysis are processed by your connected model."}
             </span>
           </div>
           <Button onClick={() => setConsentOpen(true)} tone="quiet">
@@ -3256,7 +3301,7 @@ export function SettingsPage({
         ) : (
           <Toggle
             checked={telemetry}
-            description="Send signed, raw-free product health counts. Off by default."
+            description="Share product health counts without chat content. Off by default."
             label="Help improve Temper"
             onCheckedChange={setTelemetry}
           />
@@ -3273,7 +3318,7 @@ export function SettingsPage({
       <SettingsGroup title="Advanced">
         <Toggle
           checked={advancedMode}
-          description="Show diagnostics, provenance metadata, and the governed task lab."
+          description="Show diagnostics, source details and the task workspace."
           label="Advanced mode"
           onCheckedChange={onAdvancedModeChange}
         />
@@ -3284,8 +3329,8 @@ export function SettingsPage({
             <div>
               <strong>Offline recovery file</strong>
               <span>
-                Protect your Temper identity, approved learning, and governed
-                history with a separate passphrase.
+                Back up your Temper identity, saved guidance and history with a
+                separate passphrase.
               </span>
             </div>
             <Button
@@ -3355,10 +3400,10 @@ function ConsentDialog({
           <div className="dialog-heading-icon">
             <ShieldCheck size={20} />
           </div>
-          <Dialog.Title>Local consent</Dialog.Title>
+          <Dialog.Title>Permission for reviewed suggestions</Dialog.Title>
           <Dialog.Description>
             {nativeRuntime
-              ? "This is the current governed consent state reported by your local Temper engine."
+              ? "This permission covers reviewed suggestions. Habit learning has separate controls on Today."
               : "This browser preview uses sample consent details and cannot change your local Temper installation."}
           </Dialog.Description>
           <div className="report-preview">
@@ -3588,7 +3633,7 @@ export function AdvancedPage({
       setError(
         caught instanceof Error
           ? caught.message
-          : "Temper could not run that governed task.",
+          : "Temper could not run that task.",
       );
     } finally {
       setRunning(false);
@@ -3602,7 +3647,7 @@ export function AdvancedPage({
       <SectionHeading
         eyebrow="Advanced"
         title="Run with Temper"
-        description="Start one fresh isolated Codex task with the smallest relevant projection. Your project is unchanged until you approve the diff."
+        description="Run a Codex task in a temporary workspace. Review the diff before changing your project."
       />
       <section className="lab-card">
         {nativeRuntime && !runnerReady ? (
@@ -3634,10 +3679,7 @@ export function AdvancedPage({
         />
         <div className="lab-contract">
           <ShieldCheck size={16} />
-          <span>
-            Fresh Codex session · scoped projection · bounded tools · network
-            denied
-          </span>
+          <span>Separate workspace · project-scoped guidance · no network</span>
         </div>
         <Button
           icon={running ? <Pause size={16} /> : <Play size={16} />}
@@ -3663,8 +3705,7 @@ export function AdvancedPage({
         <section className="settings-group">
           <h2>Agent report</h2>
           <p>
-            This is untrusted agent output. Review the diff and independent
-            checks before applying anything.
+            Review the proposed changes and test results before applying them.
           </p>
           <p>{taskResult.final_message}</p>
         </section>
@@ -3783,7 +3824,7 @@ export function AdvancedPage({
             {diagnostics.secure_store_ready ? "ready" : "needs attention"}
           </p>
         ) : (
-          <p>Load a raw-free local instrument summary when you need it.</p>
+          <p>Load local diagnostics.</p>
         )}
         {diagnosticsError ? <p role="alert">{diagnosticsError}</p> : null}
         <Button

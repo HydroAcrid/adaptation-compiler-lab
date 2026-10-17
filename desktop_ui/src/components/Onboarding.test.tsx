@@ -125,7 +125,7 @@ describe("native onboarding progress", () => {
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await user.click(
       screen.getByRole("switch", {
-        name: "Allow Temper to learn in this project",
+        name: "Allow reviewed suggestions in this project",
       }),
     );
     await user.click(screen.getByRole("button", { name: "Open Temper" }));
