@@ -29,7 +29,7 @@ def test_compiled_engine_does_not_accumulate_extractions(tmp_path: Path) -> None
     sys.platform != "win32" or not os.environ.get("TEMPER_NSIS_COMPILER"),
     reason="requires a native NSIS compiler",
 )
-@pytest.mark.parametrize("redirect", ["none", "child", "root"])
+@pytest.mark.parametrize("redirect", ["none", "missing", "child", "root"])
 def test_installer_cache_cleanup_preserves_other_data(tmp_path: Path, redirect: str) -> None:
     repository = Path(__file__).parents[3]
     install = tmp_path / "install"
@@ -47,7 +47,7 @@ def test_installer_cache_cleanup_preserves_other_data(tmp_path: Path, redirect: 
             check=True,
             capture_output=True,
         )
-    else:
+    elif redirect != "missing":
         cache.mkdir()
         (cache / "fake.dll").write_bytes(b"generated")
         if redirect == "child":
@@ -70,6 +70,9 @@ SilentInstall silent
 Section
   StrCpy $INSTDIR "{install}"
   Call TemperCleanEngineCache
+  IfErrors 0 +3
+    SetErrorLevel 1
+    Abort
 SectionEnd
 ''',
         encoding="utf-8",
@@ -82,7 +85,7 @@ SectionEnd
     assert sentinel.read_text() == "must survive", (
         "installer cleanup must never traverse a junction"
     )
-    if redirect == "none":
+    if redirect in ("none", "missing"):
         assert completed.returncode == 0 and not cache.exists()
     else:
         assert completed.returncode != 0, "redirected cache cleanup must fail closed"

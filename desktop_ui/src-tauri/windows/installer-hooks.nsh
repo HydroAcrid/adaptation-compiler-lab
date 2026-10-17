@@ -69,11 +69,13 @@ Function ${PREFIX}TemperCleanEngineCache
   Call ${PREFIX}TemperValidateCacheTree
   ClearErrors
   RMDir /r "$INSTDIR\.temper-engine-cache"
-  ${If} ${FileExists} "$INSTDIR\.temper-engine-cache\*.*"
+  System::Call 'kernel32::GetFileAttributesW(w "$INSTDIR\.temper-engine-cache") i.r0'
+  ${If} $0 != -1
     SetErrorLevel 1
     MessageBox MB_OK|MB_ICONSTOP "Close Temper and Codex chats using Temper before upgrading." /SD IDOK
     Abort
   ${EndIf}
+  ClearErrors
   Pop $1
   Pop $0
 FunctionEnd
