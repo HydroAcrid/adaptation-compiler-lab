@@ -22,7 +22,7 @@ from adaptation_compiler_lab.connectors.pins import (
 
 
 @pytest.mark.parametrize(
-    "platform_name,version", [("win32", "0.163.0-alpha.10.2"), ("darwin", "0.157.0")]
+    "platform_name,version", [("win32", "0.163.0-alpha.11.1"), ("darwin", "0.157.0")]
 )
 def test_native_product_pin_uses_its_exact_schema_version(platform_name: str, version: str) -> None:
     pin = load_dogfood_runtime_pins(product_codex_runtime_locks(platform_name)[0]).codex

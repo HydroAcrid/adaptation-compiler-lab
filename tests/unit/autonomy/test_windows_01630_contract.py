@@ -19,16 +19,14 @@ from adaptation_compiler_lab.connectors.pins import (
 )
 
 ROOT = Path(__file__).resolve().parents[3]
-PIN = (
-    ROOT
-    / "src/adaptation_compiler_lab/connectors/runtime_pins"
-    / "desktop_codex_windows_0_163_0_alpha_10_2.json"
-)
+PIN_ROOT = ROOT / "src/adaptation_compiler_lab/connectors/runtime_pins"
 
 
+@pytest.mark.parametrize("build", ["10_2", "11_1"])
 def test_current_windows_metadata_matches_generated_product_pin(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, build: str
 ) -> None:
+    PIN = PIN_ROOT / f"desktop_codex_windows_0_163_0_alpha_{build}.json"
     pin = load_dogfood_runtime_pins(PIN).codex
     codex_dogfood_schemas(pin)
     assert PIN in product_codex_runtime_locks("win32")
@@ -58,8 +56,13 @@ def test_current_windows_metadata_matches_generated_product_pin(
         CodexAnalysisContract(runtime)
 
 
-def test_native_windows_client_regenerates_exact_current_contract() -> None:
-    executable = Path(r"C:\Users\flame\AppData\Local\OpenAI\Codex\bin\e78bad9887fa50cf\codex.exe")
+@pytest.mark.parametrize(
+    "build,bundle",
+    [("10_2", "e78bad9887fa50cf"), ("11_1", "a96ca4c1eee0cf35")],
+)
+def test_native_windows_client_regenerates_exact_current_contract(build: str, bundle: str) -> None:
+    PIN = PIN_ROOT / f"desktop_codex_windows_0_163_0_alpha_{build}.json"
+    executable = Path(r"C:\Users\flame\AppData\Local\OpenAI\Codex\bin") / bundle / "codex.exe"
     if sys.platform != "win32" or not executable.is_file():
         pytest.skip("exact native Windows client is unavailable")
     pin = load_dogfood_runtime_pins(PIN).codex
