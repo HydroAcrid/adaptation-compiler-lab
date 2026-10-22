@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import App from "./App";
@@ -11,6 +11,53 @@ afterEach(() => {
 });
 
 describe("Temper prototype", () => {
+  it.each([
+    [
+      "Settings",
+      "View consent",
+      "Permission for reviewed suggestions",
+      "Close consent details",
+    ],
+    ["Modes", "View Mode", "Frontend Studio", "Close"],
+  ])(
+    "returns keyboard focus after closing a %s dialog",
+    async (page, label, title, closeLabel) => {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.click(screen.getByRole("button", { name: page }));
+      const trigger = screen.getAllByRole("button", { name: label })[0]!;
+      trigger.focus();
+      await user.keyboard("{Enter}");
+      const dialog = screen.getByRole("dialog", { name: title });
+      await user.tab();
+      expect(dialog).toContainElement(document.activeElement as HTMLElement);
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(trigger).toHaveFocus());
+      await user.keyboard("{Enter}");
+      await user.click(
+        within(screen.getByRole("dialog", { name: title })).getAllByRole(
+          "button",
+          { name: closeLabel },
+        )[0]!,
+      );
+      await waitFor(() => expect(trigger).toHaveFocus());
+    },
+  );
+
+  it("starts a new page at the top without resetting in-page updates", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const host = screen.getByRole("main");
+    host.scrollTop = 144;
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+    expect(host.scrollTop).toBe(0);
+    host.scrollTop = 80;
+    await user.click(screen.getByRole("button", { name: "Dark" }));
+    expect(host.scrollTop).toBe(80);
+    await user.click(screen.getByRole("button", { name: "Today" }));
+    expect(host.scrollTop).toBe(0);
+  });
+
   it("keeps the everyday Today surface calm and raw-free", () => {
     render(<App />);
     expect(

@@ -1,6 +1,6 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronDown, FolderGit2, Layers3 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 
 import type { Screen, WorkspaceScope } from "../types";
 import { BotanicalFlourish } from "./BotanicalFlourish";
@@ -33,6 +33,13 @@ export function Shell({
   previewMode?: boolean;
   children: ReactNode;
 }) {
+  const scrollHost = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    if (scrollHost.current) {
+      scrollHost.current.scrollTop = 0;
+      scrollHost.current.scrollLeft = 0;
+    }
+  }, [screen]);
   return (
     <div className="window-shell">
       {previewMode ? (
@@ -82,7 +89,7 @@ export function Shell({
             workspaces={workspaces}
           />
         </header>
-        <main className="main-content">
+        <main className="main-content" ref={scrollHost}>
           {screen === "core" ? null : (
             <BotanicalFlourish placement="workspace" />
           )}

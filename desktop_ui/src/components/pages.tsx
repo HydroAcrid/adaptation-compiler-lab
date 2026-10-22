@@ -1396,6 +1396,7 @@ export function ModesPage({
   ) => Promise<void>;
 }) {
   const [selected, setSelected] = useState<CapabilityModeSummary | null>(null);
+  const modeTrigger = useRef<HTMLButtonElement | null>(null);
   const [packageAction, setPackageAction] = useState<{
     intent: "export-mode" | "import";
     mode?: CapabilityModeSummary;
@@ -1482,7 +1483,10 @@ export function ModesPage({
             </div>
             <button
               className="folio-primary-action mode-card__action"
-              onClick={() => setSelected(mode)}
+              onClick={(event) => {
+                modeTrigger.current = event.currentTarget;
+                setSelected(mode);
+              }}
               type="button"
             >
               View Mode <ArrowRight aria-hidden="true" size={15} />
@@ -1507,6 +1511,7 @@ export function ModesPage({
           mode={selected}
           nativeRuntime={nativeRuntime}
           onClose={() => setSelected(null)}
+          onReturnFocus={() => modeTrigger.current?.focus()}
           onComplete={onTaskComplete}
           onExport={() => {
             setPackageAction({ intent: "export-mode", mode: selected });
@@ -1540,6 +1545,7 @@ function ModeDetailsDialog({
   mode,
   nativeRuntime,
   onClose,
+  onReturnFocus,
   onComplete,
   onExport,
   projects: modeProjects,
@@ -1551,6 +1557,7 @@ function ModeDetailsDialog({
   mode: CapabilityModeSummary;
   nativeRuntime: boolean;
   onClose: () => void;
+  onReturnFocus: () => void;
   onComplete: (
     message: string,
     result: EngineTaskResult | null,
@@ -1563,6 +1570,7 @@ function ModeDetailsDialog({
   instructionEnvironments: EngineInstructionEnvironmentSummary[];
 }) {
   const [projectId, setProjectId] = useState(modeProjects[0]?.id ?? "");
+  const restoreFocus = useRef(true);
   const [task, setTask] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1649,7 +1657,13 @@ function ModeDetailsDialog({
     <Dialog.Root onOpenChange={(open) => (open ? undefined : onClose())} open>
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
-        <Dialog.Content className="core-dialog mode-dialog">
+        <Dialog.Content
+          className="core-dialog mode-dialog"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            if (restoreFocus.current) onReturnFocus();
+          }}
+        >
           <Dialog.Close aria-label="Close" className="dialog-close">
             <X size={18} />
           </Dialog.Close>
@@ -1841,7 +1855,14 @@ function ModeDetailsDialog({
             <Button onClick={onClose} tone="quiet">
               Close
             </Button>
-            <Button disabled={!nativeRuntime} onClick={onExport} tone="quiet">
+            <Button
+              disabled={!nativeRuntime}
+              onClick={() => {
+                restoreFocus.current = false;
+                onExport();
+              }}
+              tone="quiet"
+            >
               <Share2 aria-hidden="true" size={14} /> Export package
             </Button>
             <Button
@@ -3099,6 +3120,7 @@ export function SettingsPage({
   );
   const [previewOpen, setPreviewOpen] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
+  const consentTrigger = useRef<HTMLButtonElement | null>(null);
   const [preferenceBusy, setPreferenceBusy] = useState(false);
   const [preferenceError, setPreferenceError] = useState<string | null>(null);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
@@ -3273,7 +3295,13 @@ export function SettingsPage({
                 : "Raw evidence is encrypted on this device for up to 30 days. Chat excerpts used for analysis are processed by your connected model."}
             </span>
           </div>
-          <Button onClick={() => setConsentOpen(true)} tone="quiet">
+          <Button
+            onClick={(event) => {
+              consentTrigger.current = event.currentTarget;
+              setConsentOpen(true);
+            }}
+            tone="quiet"
+          >
             View consent
           </Button>
         </div>
@@ -3349,6 +3377,7 @@ export function SettingsPage({
         nativeRuntime={nativeRuntime}
         onRenewConsent={onRenewConsent}
         onOpenChange={setConsentOpen}
+        onReturnFocus={() => consentTrigger.current?.focus()}
         open={consentOpen}
         renewalAvailable={secureStoreReady}
       />
@@ -3369,6 +3398,7 @@ function ConsentDialog({
   nativeRuntime,
   open,
   onOpenChange,
+  onReturnFocus,
   onRenewConsent,
   renewalAvailable,
 }: {
@@ -3376,6 +3406,7 @@ function ConsentDialog({
   nativeRuntime: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onReturnFocus: () => void;
   onRenewConsent?: () => Promise<void>;
   renewalAvailable: boolean;
 }) {
@@ -3390,7 +3421,13 @@ function ConsentDialog({
     <Dialog.Root onOpenChange={onOpenChange} open={open}>
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
-        <Dialog.Content className="telemetry-dialog">
+        <Dialog.Content
+          className="telemetry-dialog"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            onReturnFocus();
+          }}
+        >
           <Dialog.Close
             aria-label="Close consent details"
             className="icon-button dialog-close"
