@@ -29,6 +29,7 @@ temper-hook-transport = { path = "../hook-helper", package = "temper-hook-helper
 
 [dev-dependencies]
 tempfile = "3.21"
+tauri = { version = "=2.11.1", features = ["test"] }
 
 # Native debug symbols and incremental objects previously occupied >12 GiB.
 # One ordinary development/test target must remain affordable on a user machine.

@@ -390,6 +390,11 @@ struct EngineState(
     Mutex<engine_restart::RestartGuard>,
 );
 
+// Native preference side effects and their rollback must share one transaction,
+// even when separate renderer requests run on different blocking workers.
+#[derive(Default)]
+struct NativePreferencesLock(Mutex<()>);
+
 struct PollScheduler(Mutex<Option<mpsc::Sender<()>>>);
 
 struct HookIpcState(Mutex<Option<hook_ipc::HookIpcServer>>);
@@ -821,35 +826,52 @@ fn install_tray_and_scheduler(app: &mut tauri::App) -> Result<(), Box<dyn std::e
     Ok(())
 }
 
+// Engine IPC can wait behind a background analysis. Keep both the window thread
+// and async executor free while the serialized engine request is in progress.
 #[tauri::command]
-fn engine_handshake(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
-    call_engine(&state, "system.handshake", json!({}), None, None)
+async fn engine_handshake(app: tauri::AppHandle) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(&state, "system.handshake", json!({}), None, None)
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn snapshot_get(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
-    call_engine(&state, "snapshot.get", json!({}), None, None)
+async fn snapshot_get(app: tauri::AppHandle) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(&state, "snapshot.get", json!({}), None, None)
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn learning_poll(
-    state: tauri::State<'_, EngineState>,
+async fn learning_poll(
+    app: tauri::AppHandle,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "learning.poll",
-        json!({}),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "learning.poll",
+            json!({}),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
-fn review_decide(
-    state: tauri::State<'_, EngineState>,
+async fn review_decide(
+    app: tauri::AppHandle,
     queue_id: String,
     proposal_digest: String,
     decision: String,
@@ -858,163 +880,209 @@ fn review_decide(
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    let mut params = serde_json::Map::from_iter([
-        ("queue_id".to_owned(), json!(queue_id)),
-        ("proposal_digest".to_owned(), json!(proposal_digest)),
-        ("decision".to_owned(), json!(decision)),
-    ]);
-    if let Some(project) = project_id {
-        params.insert("project_id".to_owned(), json!(project));
-    }
-    if let Some(scope) = refined_scope {
-        params.insert("refined_scope".to_owned(), scope);
-    }
-    call_engine(
-        &state,
-        "review.decide",
-        Value::Object(params),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let mut params = serde_json::Map::from_iter([
+            ("queue_id".to_owned(), json!(queue_id)),
+            ("proposal_digest".to_owned(), json!(proposal_digest)),
+            ("decision".to_owned(), json!(decision)),
+        ]);
+        if let Some(project) = project_id {
+            params.insert("project_id".to_owned(), json!(project));
+        }
+        if let Some(scope) = refined_scope {
+            params.insert("refined_scope".to_owned(), scope);
+        }
+        call_engine(
+            &state,
+            "review.decide",
+            Value::Object(params),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn adaptation_revoke(
-    state: tauri::State<'_, EngineState>,
+async fn adaptation_revoke(
+    app: tauri::AppHandle,
     artifact_id: String,
     artifact_digest: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "adaptation.revoke",
-        json!({"artifact_id": artifact_id, "artifact_digest": artifact_digest}),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "adaptation.revoke",
+            json!({"artifact_id": artifact_id, "artifact_digest": artifact_digest}),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn adaptation_undo(
-    state: tauri::State<'_, EngineState>,
+async fn adaptation_undo(
+    app: tauri::AppHandle,
     notice_id: String,
     notice_digest: String,
     artifact_id: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "adaptation.undo",
-        json!({
-            "notice_id": notice_id,
-            "notice_digest": notice_digest,
-            "artifact_id": artifact_id,
-        }),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "adaptation.undo",
+            json!({
+                "notice_id": notice_id,
+                "notice_digest": notice_digest,
+                "artifact_id": artifact_id,
+            }),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn feedback_record(
-    state: tauri::State<'_, EngineState>,
+async fn feedback_record(
+    app: tauri::AppHandle,
     activation_id: String,
     delivery_receipt_digest: String,
     outcome: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "feedback.record",
-        json!({
-            "activation_id": activation_id,
-            "delivery_receipt_digest": delivery_receipt_digest,
-            "outcome": outcome,
-        }),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "feedback.record",
+            json!({
+                "activation_id": activation_id,
+                "delivery_receipt_digest": delivery_receipt_digest,
+                "outcome": outcome,
+            }),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn consent_renew(
-    state: tauri::State<'_, EngineState>,
+async fn consent_renew(
+    app: tauri::AppHandle,
     current_expires_at: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "consent.renew",
-        json!({"current_expires_at": current_expires_at}),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "consent.renew",
+            json!({"current_expires_at": current_expires_at}),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn preferences_update(
+async fn preferences_update(
     app: tauri::AppHandle,
-    state: tauri::State<'_, EngineState>,
     preferences: PreferencesUpdateRequest,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    let autostart = app.autolaunch();
-    let was_enabled = autostart.is_enabled().map_err(|_| unavailable())?;
-    let native_result = if preferences.launch_at_login_enabled {
-        autostart.enable()
-    } else {
-        autostart.disable()
-    };
-    native_result.map_err(|_| unavailable())?;
-    let response = call_engine(
-        &state,
-        "preferences.update",
-        json!({
-            "background_enabled": preferences.background_enabled,
-            "aggregate_reporting_enabled": preferences.aggregate_reporting_enabled,
-            "decision_notifications_enabled": preferences.decision_notifications_enabled,
-            "launch_at_login_enabled": preferences.launch_at_login_enabled,
-        }),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    );
-    if !matches!(&response, Ok(value) if value.ok) {
-        let _ = if was_enabled {
+    tauri::async_runtime::spawn_blocking(move || {
+        let transaction = app.state::<NativePreferencesLock>();
+        let _guard = transaction.0.lock().map_err(|_| unavailable())?;
+        let state = app.state::<EngineState>();
+        let autostart = app.autolaunch();
+        let was_enabled = autostart.is_enabled().map_err(|_| unavailable())?;
+        let native_result = if preferences.launch_at_login_enabled {
             autostart.enable()
         } else {
             autostart.disable()
         };
-    }
-    response
+        native_result.map_err(|_| unavailable())?;
+        let response = call_engine(
+            &state,
+            "preferences.update",
+            json!({
+                "background_enabled": preferences.background_enabled,
+                "aggregate_reporting_enabled": preferences.aggregate_reporting_enabled,
+                "decision_notifications_enabled": preferences.decision_notifications_enabled,
+                "launch_at_login_enabled": preferences.launch_at_login_enabled,
+            }),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        );
+        if !matches!(&response, Ok(value) if value.ok) {
+            let _ = if was_enabled {
+                autostart.enable()
+            } else {
+                autostart.disable()
+            };
+        }
+        response
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn setup_status(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
-    call_engine(&state, "setup.status", json!({}), None, None)
+async fn setup_status(app: tauri::AppHandle) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(&state, "setup.status", json!({}), None, None)
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn connection_inspect(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
-    call_engine(&state, "connection.inspect", json!({}), None, None)
+async fn connection_inspect(app: tauri::AppHandle) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(&state, "connection.inspect", json!({}), None, None)
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn claude_connection_preview(
-    state: tauri::State<'_, EngineState>,
+async fn claude_connection_preview(
+    app: tauri::AppHandle,
     operation: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "connection.claude.preview",
-        json!({"operation": operation}),
-        None,
-        None,
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "connection.claude.preview",
+            json!({"operation": operation}),
+            None,
+            None,
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
@@ -1050,17 +1118,22 @@ async fn claude_connection_apply(
 }
 
 #[tauri::command]
-fn copilot_connection_preview(
-    state: tauri::State<'_, EngineState>,
+async fn copilot_connection_preview(
+    app: tauri::AppHandle,
     operation: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "connection.copilot.preview",
-        json!({"operation": operation}),
-        None,
-        None,
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "connection.copilot.preview",
+            json!({"operation": operation}),
+            None,
+            None,
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
@@ -1096,18 +1169,23 @@ async fn copilot_connection_apply(
 }
 
 #[tauri::command]
-fn target_authorization_preview(
-    state: tauri::State<'_, EngineState>,
+async fn target_authorization_preview(
+    app: tauri::AppHandle,
     project_id: String,
     target_family: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "target.authorization.preview",
-        json!({"project_id": project_id, "target_family": target_family}),
-        None,
-        None,
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "target.authorization.preview",
+            json!({"project_id": project_id, "target_family": target_family}),
+            None,
+            None,
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
@@ -1143,20 +1221,23 @@ async fn target_authorization_apply(
 }
 
 #[tauri::command]
-fn setup_existing_preview(
-    state: tauri::State<'_, EngineState>,
-) -> Result<EngineResponse, PublicError> {
-    let config = rfd::FileDialog::new()
-        .add_filter("Temper configuration", &["json"])
-        .pick_file()
-        .ok_or_else(cancelled)?;
-    call_engine(
-        &state,
-        "setup.existing.preview",
-        json!({"path": config}),
-        None,
-        None,
-    )
+async fn setup_existing_preview(app: tauri::AppHandle) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let config = rfd::FileDialog::new()
+            .add_filter("Temper configuration", &["json"])
+            .pick_file()
+            .ok_or_else(cancelled)?;
+        call_engine(
+            &state,
+            "setup.existing.preview",
+            json!({"path": config}),
+            None,
+            None,
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
@@ -1186,17 +1267,20 @@ async fn setup_existing_adopt(
 }
 
 #[tauri::command]
-fn setup_project_preview(
-    state: tauri::State<'_, EngineState>,
-) -> Result<EngineResponse, PublicError> {
-    let project = rfd::FileDialog::new().pick_folder().ok_or_else(cancelled)?;
-    call_engine(
-        &state,
-        "setup.project.preview",
-        json!({"path": project}),
-        None,
-        None,
-    )
+async fn setup_project_preview(app: tauri::AppHandle) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let project = rfd::FileDialog::new().pick_folder().ok_or_else(cancelled)?;
+        call_engine(
+            &state,
+            "setup.project.preview",
+            json!({"path": project}),
+            None,
+            None,
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
@@ -1230,126 +1314,164 @@ async fn setup_initialize(
 }
 
 #[tauri::command]
-fn project_registration_preview(
-    state: tauri::State<'_, EngineState>,
+async fn project_registration_preview(
+    app: tauri::AppHandle,
 ) -> Result<EngineResponse, PublicError> {
-    let project = rfd::FileDialog::new().pick_folder().ok_or_else(cancelled)?;
-    call_engine(
-        &state,
-        "project.registration.preview",
-        json!({"path": project}),
-        None,
-        None,
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let project = rfd::FileDialog::new().pick_folder().ok_or_else(cancelled)?;
+        call_engine(
+            &state,
+            "project.registration.preview",
+            json!({"path": project}),
+            None,
+            None,
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn project_register(
-    state: tauri::State<'_, EngineState>,
+async fn project_register(
+    app: tauri::AppHandle,
     preview_token: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "project.register",
-        json!({"preview_token": preview_token}),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "project.register",
+            json!({"preview_token": preview_token}),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn instruction_environment_get(
-    state: tauri::State<'_, EngineState>,
-) -> Result<EngineResponse, PublicError> {
-    call_engine(&state, "instruction_environment.get", json!({}), None, None)
+async fn instruction_environment_get(app: tauri::AppHandle) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(&state, "instruction_environment.get", json!({}), None, None)
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn instruction_environment_refresh(
-    state: tauri::State<'_, EngineState>,
+async fn instruction_environment_refresh(
+    app: tauri::AppHandle,
     project_id: String,
     target: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "instruction_environment.refresh",
-        json!({"project_id": project_id, "target": target}),
-        None,
-        None,
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "instruction_environment.refresh",
+            json!({"project_id": project_id, "target": target}),
+            None,
+            None,
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn instruction_environment_analyze(
-    state: tauri::State<'_, EngineState>,
+async fn instruction_environment_analyze(
+    app: tauri::AppHandle,
     project_id: String,
     target: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "instruction_environment.analyze",
-        json!({"project_id": project_id, "target": target}),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "instruction_environment.analyze",
+            json!({"project_id": project_id, "target": target}),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn instruction_environment_global_preview(
-    state: tauri::State<'_, EngineState>,
+async fn instruction_environment_global_preview(
+    app: tauri::AppHandle,
     target: String,
 ) -> Result<EngineResponse, PublicError> {
-    let root = rfd::FileDialog::new().pick_folder().ok_or_else(cancelled)?;
-    call_engine(
-        &state,
-        "instruction_environment.global.preview",
-        json!({"path": root, "target": target}),
-        None,
-        None,
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let root = rfd::FileDialog::new().pick_folder().ok_or_else(cancelled)?;
+        call_engine(
+            &state,
+            "instruction_environment.global.preview",
+            json!({"path": root, "target": target}),
+            None,
+            None,
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn instruction_environment_global_enable(
-    state: tauri::State<'_, EngineState>,
+async fn instruction_environment_global_enable(
+    app: tauri::AppHandle,
     preview_token: String,
     target: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "instruction_environment.global.enable",
-        json!({"preview_token": preview_token, "target": target}),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "instruction_environment.global.enable",
+            json!({"preview_token": preview_token, "target": target}),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn instruction_environment_global_disable(
-    state: tauri::State<'_, EngineState>,
+async fn instruction_environment_global_disable(
+    app: tauri::AppHandle,
     target: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "instruction_environment.global.disable",
-        json!({"target": target}),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "instruction_environment.global.disable",
+            json!({"target": target}),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
-fn instruction_environment_change_preview(
-    state: tauri::State<'_, EngineState>,
+async fn instruction_environment_change_preview(
+    app: tauri::AppHandle,
     project_id: String,
     target: String,
     source_id: String,
@@ -1357,146 +1479,182 @@ fn instruction_environment_change_preview(
     instruction_text: Option<String>,
     expected_snapshot_digest: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "instruction_environment.change.preview",
-        json!({
-            "project_id": project_id,
-            "target": target,
-            "source_id": source_id,
-            "expected_environment_digest": expected_environment_digest,
-            "instruction_text": instruction_text,
-        }),
-        Some(&expected_snapshot_digest),
-        None,
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "instruction_environment.change.preview",
+            json!({
+                "project_id": project_id,
+                "target": target,
+                "source_id": source_id,
+                "expected_environment_digest": expected_environment_digest,
+                "instruction_text": instruction_text,
+            }),
+            Some(&expected_snapshot_digest),
+            None,
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn instruction_environment_change_apply(
-    state: tauri::State<'_, EngineState>,
+async fn instruction_environment_change_apply(
+    app: tauri::AppHandle,
     preview_token: String,
     target: String,
     expected_environment_digest: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "instruction_environment.change.apply",
-        json!({
-            "preview_token": preview_token,
-            "target": target,
-            "expected_environment_digest": expected_environment_digest,
-        }),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "instruction_environment.change.apply",
+            json!({
+                "preview_token": preview_token,
+                "target": target,
+                "expected_environment_digest": expected_environment_digest,
+            }),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn instruction_environment_change_rollback(
-    state: tauri::State<'_, EngineState>,
+async fn instruction_environment_change_rollback(
+    app: tauri::AppHandle,
     receipt_id: String,
     target: String,
     expected_environment_digest: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "instruction_environment.change.rollback",
-        json!({
-            "receipt_id": receipt_id,
-            "target": target,
-            "expected_environment_digest": expected_environment_digest,
-        }),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "instruction_environment.change.rollback",
+            json!({
+                "receipt_id": receipt_id,
+                "target": target,
+                "expected_environment_digest": expected_environment_digest,
+            }),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn profile_export_preview(
-    state: tauri::State<'_, EngineState>,
-) -> Result<EngineResponse, PublicError> {
-    call_engine(&state, "portability.export.preview", json!({}), None, None)
+async fn profile_export_preview(app: tauri::AppHandle) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(&state, "portability.export.preview", json!({}), None, None)
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn recovery_export_preview(
-    state: tauri::State<'_, EngineState>,
-) -> Result<EngineResponse, PublicError> {
-    call_engine(&state, "recovery.export.preview", json!({}), None, None)
+async fn recovery_export_preview(app: tauri::AppHandle) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(&state, "recovery.export.preview", json!({}), None, None)
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn recovery_export(
-    state: tauri::State<'_, EngineState>,
+async fn recovery_export(
+    app: tauri::AppHandle,
     preview_token: String,
     bundle_digest: String,
     passphrase: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    let mut destination = rfd::FileDialog::new()
-        .set_file_name("temper-recovery.temper-recovery")
-        .add_filter("Temper recovery", &["temper-recovery"])
-        .save_file()
-        .ok_or_else(cancelled)?;
-    if destination.extension().and_then(|value| value.to_str()) != Some("temper-recovery") {
-        destination.set_extension("temper-recovery");
-    }
-    call_engine(
-        &state,
-        "recovery.export.create",
-        json!({
-            "preview_token": preview_token,
-            "bundle_digest": bundle_digest,
-            "passphrase": passphrase,
-            "destination": destination,
-        }),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let mut destination = rfd::FileDialog::new()
+            .set_file_name("temper-recovery.temper-recovery")
+            .add_filter("Temper recovery", &["temper-recovery"])
+            .save_file()
+            .ok_or_else(cancelled)?;
+        if destination.extension().and_then(|value| value.to_str()) != Some("temper-recovery") {
+            destination.set_extension("temper-recovery");
+        }
+        call_engine(
+            &state,
+            "recovery.export.create",
+            json!({
+                "preview_token": preview_token,
+                "bundle_digest": bundle_digest,
+                "passphrase": passphrase,
+                "destination": destination,
+            }),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn recovery_import_preview(
-    state: tauri::State<'_, EngineState>,
+async fn recovery_import_preview(
+    app: tauri::AppHandle,
     passphrase: String,
 ) -> Result<EngineResponse, PublicError> {
-    let source = rfd::FileDialog::new()
-        .add_filter("Temper recovery", &["temper-recovery"])
-        .pick_file()
-        .ok_or_else(cancelled)?;
-    call_engine(
-        &state,
-        "recovery.import.preview",
-        json!({"source": source, "passphrase": passphrase}),
-        None,
-        None,
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let source = rfd::FileDialog::new()
+            .add_filter("Temper recovery", &["temper-recovery"])
+            .pick_file()
+            .ok_or_else(cancelled)?;
+        call_engine(
+            &state,
+            "recovery.import.preview",
+            json!({"source": source, "passphrase": passphrase}),
+            None,
+            None,
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn recovery_project_select(
-    state: tauri::State<'_, EngineState>,
+async fn recovery_project_select(
+    app: tauri::AppHandle,
     preview_token: String,
     project_id: String,
 ) -> Result<EngineResponse, PublicError> {
-    let root = rfd::FileDialog::new().pick_folder().ok_or_else(cancelled)?;
-    call_engine(
-        &state,
-        "recovery.project.select",
-        json!({
-            "preview_token": preview_token,
-            "project_id": project_id,
-            "root": root,
-        }),
-        None,
-        None,
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let root = rfd::FileDialog::new().pick_folder().ok_or_else(cancelled)?;
+        call_engine(
+            &state,
+            "recovery.project.select",
+            json!({
+                "preview_token": preview_token,
+                "project_id": project_id,
+                "root": root,
+            }),
+            None,
+            None,
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
@@ -1533,166 +1691,202 @@ async fn recovery_restore(
 }
 
 #[tauri::command]
-fn profile_export(
-    state: tauri::State<'_, EngineState>,
+async fn profile_export(
+    app: tauri::AppHandle,
     export_token: String,
     passphrase: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    let mut destination = rfd::FileDialog::new()
-        .set_file_name("temper-core.temper-profile")
-        .add_filter("Temper profile", &["temper-profile"])
-        .save_file()
-        .ok_or_else(cancelled)?;
-    if destination.extension().and_then(|value| value.to_str()) != Some("temper-profile") {
-        destination.set_extension("temper-profile");
-    }
-    call_engine(
-        &state,
-        "portability.export.create",
-        json!({
-            "destination": destination,
-            "export_token": export_token,
-            "passphrase": passphrase,
-        }),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let mut destination = rfd::FileDialog::new()
+            .set_file_name("temper-core.temper-profile")
+            .add_filter("Temper profile", &["temper-profile"])
+            .save_file()
+            .ok_or_else(cancelled)?;
+        if destination.extension().and_then(|value| value.to_str()) != Some("temper-profile") {
+            destination.set_extension("temper-profile");
+        }
+        call_engine(
+            &state,
+            "portability.export.create",
+            json!({
+                "destination": destination,
+                "export_token": export_token,
+                "passphrase": passphrase,
+            }),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn profile_import_preview(
-    state: tauri::State<'_, EngineState>,
+async fn profile_import_preview(
+    app: tauri::AppHandle,
     passphrase: String,
 ) -> Result<EngineResponse, PublicError> {
-    let source = rfd::FileDialog::new()
-        .add_filter("Temper profile", &["temper-profile"])
-        .pick_file()
-        .ok_or_else(cancelled)?;
-    call_engine(
-        &state,
-        "portability.import.preview",
-        json!({"passphrase": passphrase, "source": source}),
-        None,
-        None,
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let source = rfd::FileDialog::new()
+            .add_filter("Temper profile", &["temper-profile"])
+            .pick_file()
+            .ok_or_else(cancelled)?;
+        call_engine(
+            &state,
+            "portability.import.preview",
+            json!({"passphrase": passphrase, "source": source}),
+            None,
+            None,
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn profile_import_stage(
-    state: tauri::State<'_, EngineState>,
+async fn profile_import_stage(
+    app: tauri::AppHandle,
     import_token: String,
     package_digest: String,
     passphrase: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "portability.import.stage",
-        json!({
-            "import_token": import_token,
-            "package_digest": package_digest,
-            "passphrase": passphrase,
-        }),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "portability.import.stage",
+            json!({
+                "import_token": import_token,
+                "package_digest": package_digest,
+                "passphrase": passphrase,
+            }),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn package_export_preview(
-    state: tauri::State<'_, EngineState>,
+async fn package_export_preview(
+    app: tauri::AppHandle,
     package_type: String,
     mode_id: Option<String>,
 ) -> Result<EngineResponse, PublicError> {
-    let params = match mode_id {
-        Some(value) => json!({"package_type": package_type, "mode_id": value}),
-        None => json!({"package_type": package_type}),
-    };
-    call_engine(&state, "package.export.preview", params, None, None)
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let params = match mode_id {
+            Some(value) => json!({"package_type": package_type, "mode_id": value}),
+            None => json!({"package_type": package_type}),
+        };
+        call_engine(&state, "package.export.preview", params, None, None)
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn package_export(
-    state: tauri::State<'_, EngineState>,
+async fn package_export(
+    app: tauri::AppHandle,
     export_token: String,
     suggested_name: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    let safe_name = if suggested_name
-        .chars()
-        .all(|character| character.is_ascii_alphanumeric() || "-_.".contains(character))
-        && !suggested_name.starts_with('.')
-        && suggested_name.len() <= 96
-    {
-        suggested_name
-    } else {
-        "temper-package.temper-pack".to_owned()
-    };
-    let mut destination = rfd::FileDialog::new()
-        .set_file_name(safe_name)
-        .add_filter("Temper package", &["temper-pack"])
-        .save_file()
-        .ok_or_else(cancelled)?;
-    if destination.extension().and_then(|value| value.to_str()) != Some("temper-pack") {
-        destination.set_extension("temper-pack");
-    }
-    call_engine(
-        &state,
-        "package.export.create",
-        json!({"destination": destination, "export_token": export_token}),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let safe_name = if suggested_name
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || "-_.".contains(character))
+            && !suggested_name.starts_with('.')
+            && suggested_name.len() <= 96
+        {
+            suggested_name
+        } else {
+            "temper-package.temper-pack".to_owned()
+        };
+        let mut destination = rfd::FileDialog::new()
+            .set_file_name(safe_name)
+            .add_filter("Temper package", &["temper-pack"])
+            .save_file()
+            .ok_or_else(cancelled)?;
+        if destination.extension().and_then(|value| value.to_str()) != Some("temper-pack") {
+            destination.set_extension("temper-pack");
+        }
+        call_engine(
+            &state,
+            "package.export.create",
+            json!({"destination": destination, "export_token": export_token}),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn package_import_preview(
-    state: tauri::State<'_, EngineState>,
-) -> Result<EngineResponse, PublicError> {
-    let source = rfd::FileDialog::new()
-        .add_filter("Temper package", &["temper-pack"])
-        .pick_file()
-        .ok_or_else(cancelled)?;
-    call_engine(
-        &state,
-        "package.import.preview",
-        json!({"source": source}),
-        None,
-        None,
-    )
+async fn package_import_preview(app: tauri::AppHandle) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let source = rfd::FileDialog::new()
+            .add_filter("Temper package", &["temper-pack"])
+            .pick_file()
+            .ok_or_else(cancelled)?;
+        call_engine(
+            &state,
+            "package.import.preview",
+            json!({"source": source}),
+            None,
+            None,
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn package_import_stage(
-    state: tauri::State<'_, EngineState>,
+async fn package_import_stage(
+    app: tauri::AppHandle,
     import_token: String,
     package_digest: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "package.import.stage",
-        json!({"import_token": import_token, "package_digest": package_digest}),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "package.import.stage",
+            json!({"import_token": import_token, "package_digest": package_digest}),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn package_review_list(
-    state: tauri::State<'_, EngineState>,
-) -> Result<EngineResponse, PublicError> {
-    call_engine(&state, "package.review.list", json!({}), None, None)
+async fn package_review_list(app: tauri::AppHandle) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(&state, "package.review.list", json!({}), None, None)
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn package_review_decide(
-    state: tauri::State<'_, EngineState>,
+async fn package_review_decide(
+    app: tauri::AppHandle,
     review_id: String,
     review_digest: String,
     decision: String,
@@ -1700,131 +1894,181 @@ fn package_review_decide(
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "package.review.decide",
-        json!({
-            "review_id": review_id,
-            "review_digest": review_digest,
-            "decision": decision,
-            "mapped_project_ids": mapped_project_ids,
-        }),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "package.review.decide",
+            json!({
+                "review_id": review_id,
+                "review_digest": review_digest,
+                "decision": decision,
+                "mapped_project_ids": mapped_project_ids,
+            }),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn modes_list(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
-    call_engine(&state, "mode.list", json!({}), None, None)
+async fn modes_list(app: tauri::AppHandle) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(&state, "mode.list", json!({}), None, None)
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn hub_catalog_get(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
-    call_engine(&state, "hub.catalog.get", json!({}), None, None)
+async fn hub_catalog_get(app: tauri::AppHandle) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(&state, "hub.catalog.get", json!({}), None, None)
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn hub_mode_get(
-    state: tauri::State<'_, EngineState>,
+async fn hub_mode_get(
+    app: tauri::AppHandle,
     mode_id: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "hub.mode.get",
-        json!({"mode_id": mode_id}),
-        None,
-        None,
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "hub.mode.get",
+            json!({"mode_id": mode_id}),
+            None,
+            None,
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn mode_activation_preview(
-    state: tauri::State<'_, EngineState>,
+async fn mode_activation_preview(
+    app: tauri::AppHandle,
     mode_id: String,
     project_id: String,
     task: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "mode.activation.preview",
-        json!({"mode_id": mode_id, "project_id": project_id, "task": task}),
-        None,
-        None,
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "mode.activation.preview",
+            json!({"mode_id": mode_id, "project_id": project_id, "task": task}),
+            None,
+            None,
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn mode_run_task(
-    state: tauri::State<'_, EngineState>,
+async fn mode_run_task(
+    app: tauri::AppHandle,
     mode_id: String,
     project_id: String,
     task: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "mode.task.run",
-        json!({"mode_id": mode_id, "project_id": project_id, "task": task}),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "mode.task.run",
+            json!({"mode_id": mode_id, "project_id": project_id, "task": task}),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn task_run(
-    state: tauri::State<'_, EngineState>,
+async fn task_run(
+    app: tauri::AppHandle,
     project_id: String,
     task: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "task.run",
-        json!({"project_id": project_id, "task": task}),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "task.run",
+            json!({"project_id": project_id, "task": task}),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn task_apply(
-    state: tauri::State<'_, EngineState>,
+async fn task_apply(
+    app: tauri::AppHandle,
     session_id: String,
     expected_head: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "task.apply",
-        json!({"session_id": session_id, "expected_head": expected_head}),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "task.apply",
+            json!({"session_id": session_id, "expected_head": expected_head}),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn task_discard(
-    state: tauri::State<'_, EngineState>,
+async fn task_discard(
+    app: tauri::AppHandle,
     session_id: String,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "task.discard",
-        json!({"session_id": session_id}),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "task.discard",
+            json!({"session_id": session_id}),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn diagnostics_get(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
-    call_engine(&state, "diagnostics.get", json!({}), None, None)
+async fn diagnostics_get(app: tauri::AppHandle) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(&state, "diagnostics.get", json!({}), None, None)
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[derive(Deserialize)]
@@ -1839,99 +2083,133 @@ enum AutonomyAction {
 }
 
 #[tauri::command]
-fn autonomy_status(state: tauri::State<'_, EngineState>) -> Result<EngineResponse, PublicError> {
-    call_engine(&state, "autonomy.status", json!({}), None, None)
+async fn autonomy_status<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(&state, "autonomy.status", json!({}), None, None)
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn autonomy_grant_preview(
-    state: tauri::State<'_, EngineState>,
+async fn autonomy_grant_preview(
+    app: tauri::AppHandle,
     project_ids: Vec<String>,
     categories: Vec<String>,
     trust_authorized_chats: Option<bool>,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "autonomy.grant.preview",
-        json!({"project_ids": project_ids, "categories": categories,
-            "trust_authorized_chats": trust_authorized_chats.unwrap_or(false)}),
-        None,
-        None,
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "autonomy.grant.preview",
+            json!({"project_ids": project_ids, "categories": categories,
+                "trust_authorized_chats": trust_authorized_chats.unwrap_or(false)}),
+            None,
+            None,
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn autonomy_grant_enable(
-    state: tauri::State<'_, EngineState>,
+async fn autonomy_grant_enable(
+    app: tauri::AppHandle,
     preview_token: String,
     confirmed: bool,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "autonomy.grant.enable",
-        json!({"preview_token": preview_token, "confirmed": confirmed}),
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "autonomy.grant.enable",
+            json!({"preview_token": preview_token, "confirmed": confirmed}),
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn autonomy_control(
-    state: tauri::State<'_, EngineState>,
+async fn autonomy_control(
+    app: tauri::AppHandle,
     action: AutonomyAction,
     habit_id: Option<String>,
     expected_snapshot_digest: String,
     idempotency_key: String,
 ) -> Result<EngineResponse, PublicError> {
-    let (method, params) = match action {
-        AutonomyAction::PauseLearning => ("autonomy.learning.pause", json!({})),
-        AutonomyAction::ResumeLearning => ("autonomy.learning.resume", json!({})),
-        AutonomyAction::EnablePersonalization => ("autonomy.personalization.enable", json!({})),
-        AutonomyAction::DisablePersonalization => ("autonomy.personalization.disable", json!({})),
-        AutonomyAction::RevokeGrant => ("autonomy.grant.revoke", json!({})),
-        AutonomyAction::RevokeHabit => (
-            "autonomy.habit.revoke",
-            json!({"habit_id": habit_id.ok_or_else(unavailable)?}),
-        ),
-    };
-    call_engine(
-        &state,
-        method,
-        params,
-        Some(&expected_snapshot_digest),
-        Some(&idempotency_key),
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        let (method, params) = match action {
+            AutonomyAction::PauseLearning => ("autonomy.learning.pause", json!({})),
+            AutonomyAction::ResumeLearning => ("autonomy.learning.resume", json!({})),
+            AutonomyAction::EnablePersonalization => ("autonomy.personalization.enable", json!({})),
+            AutonomyAction::DisablePersonalization => {
+                ("autonomy.personalization.disable", json!({}))
+            }
+            AutonomyAction::RevokeGrant => ("autonomy.grant.revoke", json!({})),
+            AutonomyAction::RevokeHabit => (
+                "autonomy.habit.revoke",
+                json!({"habit_id": habit_id.ok_or_else(unavailable)?}),
+            ),
+        };
+        call_engine(
+            &state,
+            method,
+            params,
+            Some(&expected_snapshot_digest),
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn autonomy_habit_explain(
-    state: tauri::State<'_, EngineState>,
+async fn autonomy_habit_explain(
+    app: tauri::AppHandle,
     habit_id: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "autonomy.habit.explain",
-        json!({"habit_id": habit_id}),
-        None,
-        None,
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "autonomy.habit.explain",
+            json!({"habit_id": habit_id}),
+            None,
+            None,
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 #[tauri::command]
-fn autonomy_applicability_preview(
-    state: tauri::State<'_, EngineState>,
+async fn autonomy_applicability_preview(
+    app: tauri::AppHandle,
     project_id: String,
     task_class: String,
 ) -> Result<EngineResponse, PublicError> {
-    call_engine(
-        &state,
-        "autonomy.applicability.preview",
-        json!({"project_id": project_id, "task_class": task_class}),
-        None,
-        None,
-    )
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "autonomy.applicability.preview",
+            json!({"project_id": project_id, "task_class": task_class}),
+            None,
+            None,
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
 }
 
 fn notification_permission_label(state: PermissionState) -> &'static str {
@@ -1970,6 +2248,7 @@ pub fn run() {
             Mutex::new(engine_restart::RestartGuard::default()),
         ))
         .manage(HookIpcState(Mutex::new(None)))
+        .manage(NativePreferencesLock::default())
         .setup(install_tray_and_scheduler)
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
@@ -2051,6 +2330,90 @@ mod tests {
     use super::*;
     use std::fs;
     use std::time::Instant;
+
+    #[test]
+    fn today_status_dispatch_returns_while_the_engine_is_busy() {
+        use std::sync::Arc;
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use tauri::test::{mock_builder, mock_context, noop_assets};
+
+        let mut restart = engine_restart::RestartGuard::default();
+        for _ in 0..3 {
+            restart.failed(Instant::now()); // Never launch a real engine from this fixture.
+        }
+        let app = mock_builder()
+            .manage(EngineState(Mutex::new(None), Mutex::new(restart)))
+            .invoke_handler(tauri::generate_handler![autonomy_status])
+            .build(mock_context(noop_assets()))
+            .unwrap();
+        let window = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .unwrap();
+        let handle = app.handle().clone();
+        let (held_tx, held_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let released = Arc::new(AtomicBool::new(false));
+        let released_worker = Arc::clone(&released);
+        let holder = thread::spawn(move || {
+            let state = handle.state::<EngineState>();
+            let _guard = state.0.lock().unwrap();
+            held_tx.send(()).unwrap();
+            // The timeout also releases a deliberately regressed synchronous handler.
+            let _ = release_rx.recv_timeout(Duration::from_secs(3));
+            released_worker.store(true, Ordering::SeqCst);
+        });
+        held_rx.recv_timeout(Duration::from_secs(3)).unwrap();
+        let (response_tx, response_rx) = mpsc::channel();
+        window.as_ref().clone().on_message(
+            tauri::webview::InvokeRequest {
+                cmd: "autonomy_status".into(),
+                callback: tauri::ipc::CallbackFn(0),
+                error: tauri::ipc::CallbackFn(1),
+                url: "http://tauri.localhost".parse().unwrap(),
+                body: tauri::ipc::InvokeBody::default(),
+                headers: Default::default(),
+                invoke_key: tauri::test::INVOKE_KEY.to_owned(),
+            },
+            Box::new(move |_, _, response, _, _| {
+                response_tx.send(response).unwrap();
+            }),
+        );
+        let returned_while_busy = !released.load(Ordering::SeqCst);
+        let pending_while_busy = response_rx.try_recv().is_err();
+        let _ = release_tx.send(());
+        holder.join().unwrap();
+        assert!(
+            returned_while_busy,
+            "Today IPC must return to the window while the engine is busy"
+        );
+        assert!(
+            pending_while_busy,
+            "The engine response must still be pending"
+        );
+        let response = response_rx.recv_timeout(Duration::from_secs(3)).unwrap();
+        let tauri::ipc::InvokeResponse::Err(tauri::ipc::InvokeError(error)) = response else {
+            panic!("The fixture must refuse to start an engine");
+        };
+        assert_eq!(error["code"], "engine_start_paused");
+    }
+
+    #[test]
+    fn engine_backed_commands_cannot_block_the_window_thread() {
+        let source = include_str!("lib.rs");
+        for command in source.split("#[tauri::command]").skip(1) {
+            let body = command.split("\n}\n").next().unwrap();
+            if body.contains("call_engine(") {
+                assert!(
+                    body.contains("async fn "),
+                    "Engine IPC must be asynchronous"
+                );
+                assert!(
+                    body.contains("tauri::async_runtime::spawn_blocking("),
+                    "Engine IPC must use a blocking worker, not the async executor"
+                );
+            }
+        }
+    }
 
     #[test]
     fn tray_pause_routes_to_the_active_grant_and_refuses_unknown_state() {
