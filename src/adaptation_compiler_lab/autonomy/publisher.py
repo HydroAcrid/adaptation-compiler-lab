@@ -122,6 +122,14 @@ class NativeStylePublisher:
         before.decode("utf-8")
         region = managed_region(before)
         previous = self.store.latest("publication")
+        # An empty shadow profile has nothing to write or claim ownership over.
+        # Unknown markers and owned-section edits still follow the guards below.
+        if previous is None and region is None and not profile:
+            return {
+                "status": "unchanged",
+                "profile_digest": _digest(b""),
+                "raw_payloads_exposed": False,
+            }
         if previous is None:
             if initial_digest is None or _digest(before) != initial_digest:
                 raise AutonomyIntegrityError("native destination changed after consent preview")

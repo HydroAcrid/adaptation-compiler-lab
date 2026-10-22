@@ -75,6 +75,7 @@ class AutonomyApplicationService:
         self.outcome_verifier = outcome_verifier
         self.secure_store_available = secure_store_available or (lambda: True)
         self._previews: dict[str, dict[str, Any]] = {}
+        self._publication_previews: dict[str, dict[str, Any]] = {}
         self.background_worker: BackgroundHabitWorker | None = None
 
     def _now(self) -> datetime:
@@ -188,6 +189,78 @@ class AutonomyApplicationService:
         self.set_switch("personalization", False, key="shadow-default-" + grant.grant_id)
         self.ensure_lease()
         return self.status()
+
+    def preview_publication_destination(self) -> dict[str, Any]:
+        grant = self.grant()
+        if grant is None or self.store.latest("publication") is not None:
+            raise AutonomyIntegrityError("destination confirmation requires an unpublished grant")
+        native = self.publisher.preview()
+        if native["destination"] != grant.destination:
+            raise AutonomyIntegrityError("the granted native destination is no longer active")
+        token = "publication-preview-" + secrets.token_hex(12)
+        self._publication_previews[token] = {
+            "grant_digest": grant.content_digest,
+            "native": native,
+            "head": self.store.head_digest,
+            "expires": self._now() + timedelta(minutes=15),
+        }
+        return {
+            "preview_token": token,
+            "native_destination": native["destination"],
+            "before_digest": native["before_digest"],
+            "permissions_changed": False,
+            "learning_cutoff_changed": False,
+            "effect": "Confirm the current file before Temper's first style publication.",
+            "raw_payloads_exposed": False,
+        }
+
+    def confirm_publication_destination(
+        self, token: str, *, confirmed: bool, idempotency_key: str
+    ) -> None:
+        if not self.secure_store_available():
+            raise AutonomyIntegrityError("secure store is unavailable for destination confirmation")
+        prior = next(
+            (event for event in self.store.events() if event["key"] == idempotency_key), None
+        )
+        if prior:
+            if prior["type"] != "publication_authorization" or prior["payload"]["token"] != token:
+                raise AutonomyIntegrityError("destination confirmation idempotency changed")
+            return
+        grant = self.grant()
+        preview = self._publication_previews.get(token)
+        if (
+            not confirmed
+            or grant is None
+            or preview is None
+            or preview["expires"] <= self._now()
+            or preview["grant_digest"] != grant.content_digest
+            or preview["head"] != self.store.head_digest
+            or self.store.latest("publication") is not None
+            or self.publisher.preview() != preview["native"]
+            or preview["native"]["destination"] != grant.destination
+        ):
+            raise AutonomyIntegrityError("a current unchanged destination preview is required")
+        failure = next(
+            (
+                event
+                for event in reversed(self.store.events())
+                if event["type"] == "publication_failure"
+            ),
+            None,
+        )
+        self.store.append(
+            idempotency_key,
+            "publication_authorization",
+            {
+                "token": token,
+                "grant_id": grant.grant_id,
+                "grant_digest": grant.content_digest,
+                "destination": grant.destination,
+                "native_before_digest": preview["native"]["before_digest"],
+                "resolved_failure_digest": failure["digest"] if failure else None,
+            },
+            at=self._now(),
+        )
 
     def switch(self, name: str) -> bool:
         record = self.store.latest("switch_" + name)
@@ -760,6 +833,13 @@ class AutonomyApplicationService:
             )
             profile, ids = compile_profile(safe, self.projects)
         initial = self.store.latest("grant_confirmation")
+        authorization = self.store.latest("publication_authorization")
+        if (
+            authorization is not None
+            and authorization["grant_digest"] == grant.content_digest
+            and authorization["destination"] == grant.destination
+        ):
+            initial = authorization
         try:
             return self.publisher.publish(
                 grant,
@@ -829,6 +909,23 @@ class AutonomyApplicationService:
         grant = self.grant()
         publication = self.store.latest("publication")
         failure = self.store.latest("publication_failure")
+        failure_event = next(
+            (
+                event
+                for event in reversed(self.store.events())
+                if event["type"] == "publication_failure"
+            ),
+            None,
+        )
+        authorization = self.store.latest("publication_authorization")
+        failure_resolved = bool(
+            grant
+            and failure_event
+            and authorization
+            and authorization["grant_digest"] == grant.content_digest
+            and authorization["destination"] == grant.destination
+            and authorization["resolved_failure_digest"] == failure_event["digest"]
+        )
         return {
             "autonomy_version": "1.0.0",
             "grant_enabled": grant is not None,
@@ -864,6 +961,7 @@ class AutonomyApplicationService:
             "delivery_confirmed": any(value.delivered is True for value in self.outcomes()),
             "publication_needs_attention": bool(
                 failure
+                and not failure_resolved
                 and (publication is None or failure["occurred_at"] >= publication["published_at"])
             ),
             "recent_changes": [

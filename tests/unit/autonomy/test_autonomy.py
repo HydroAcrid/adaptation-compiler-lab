@@ -423,6 +423,164 @@ def test_revoke_completes_even_when_external_edit_prevents_cleanup(app: Any) -> 
     assert service.status()["publication_needs_attention"]
 
 
+def test_empty_shadow_publication_preserves_manual_changes_without_claiming_ownership(
+    app: Any,
+) -> None:
+    service, _ = app
+    path = service.publisher.home / "AGENTS.md"
+    changed = path.read_bytes() + b"\r\nNew owner instructions.\r\n"
+    path.write_bytes(changed)
+    head = service.store.head_digest
+    assert service.publish()["status"] == "unchanged"
+    assert service.store.head_digest == head
+    assert path.read_bytes() == changed
+    assert service.store.latest("publication") is None
+    assert not service.status()["publication_needs_attention"]
+
+
+def test_destination_reconfirmation_preserves_grant_cutoff_history_and_manual_text(
+    app: Any,
+) -> None:
+    service, clock = app
+    trial(service, clock)
+    service.set_switch("personalization", True, key="serve-destination-test")
+    path = service.publisher.home / "AGENTS.md"
+    changed = path.read_bytes() + b"\r\nNew manual instructions.\r\n"
+    path.write_bytes(changed)
+    with pytest.raises(AutonomyIntegrityError, match="changed after consent"):
+        service.publish()
+    assert service.status()["publication_needs_attention"]
+    grant = service.grant()
+    events = service.store.events()
+    preview = service.preview_publication_destination()
+    assert preview["permissions_changed"] is False
+    assert preview["learning_cutoff_changed"] is False
+    service.confirm_publication_destination(
+        preview["preview_token"], confirmed=True, idempotency_key="destination-accepted"
+    )
+    assert service.grant() == grant
+    assert service.store.events()[: len(events)] == events
+    assert service.store.latest("publication") is None
+    assert not service.status()["published"]
+    assert not service.status()["publication_needs_attention"]
+    assert path.read_bytes() == changed
+    assert service.publish()["status"] == "published"
+    assert path.read_bytes().startswith(changed)
+    assert service.grant() == grant
+    # Resolving one known failure cannot mask a later edited managed section.
+    path.write_bytes(path.read_bytes().replace(b"Prefer concise", b"Owner edited"))
+    with pytest.raises(AutonomyIntegrityError, match="edited or removed"):
+        service.publish()
+    assert service.status()["publication_needs_attention"]
+
+
+@pytest.mark.parametrize("change", ["file", "override", "expiry", "revocation", "locked", "head"])
+def test_destination_confirmation_rejects_changed_preview(app: Any, change: str) -> None:
+    service, clock = app
+    preview = service.preview_publication_destination()
+    if change == "file":
+        (service.publisher.home / "AGENTS.md").write_text("Owner edited again.")
+    elif change == "override":
+        (service.publisher.home / "AGENTS.override.md").write_text("New destination.")
+    elif change == "expiry":
+        clock.value += timedelta(minutes=16)
+    elif change == "revocation":
+        service.revoke_grant(key="revoke-before-destination-confirm")
+    elif change == "locked":
+        service.secure_store_available = lambda: False
+    else:
+        service.set_switch("learning", False, key="changed-state")
+    with pytest.raises(AutonomyIntegrityError):
+        service.confirm_publication_destination(
+            preview["preview_token"], confirmed=True, idempotency_key="reject-destination"
+        )
+    assert service.store.latest("publication_authorization") is None
+
+
+def test_reconfirmation_never_adopts_unknown_or_removed_managed_sections(app: Any) -> None:
+    from adaptation_compiler_lab.autonomy.publisher import END, START
+
+    service, clock = app
+    path = service.publisher.home / "AGENTS.md"
+    original = path.read_bytes()
+    path.write_text(START + "\nUnknown instructions.\n" + END)
+    with pytest.raises(AutonomyIntegrityError, match="owner review"):
+        service.preview_publication_destination()
+    with pytest.raises(AutonomyIntegrityError, match=r"changed after consent|not owned"):
+        service.publish()
+    path.write_bytes(original)
+    trial(service, clock)
+    service.set_switch("personalization", True, key="serve-owned-section")
+    service.publish()
+    path.write_bytes(original)
+    with pytest.raises(AutonomyIntegrityError, match="unpublished grant"):
+        service.preview_publication_destination()
+    with pytest.raises(AutonomyIntegrityError, match="edited or removed"):
+        service.publish()
+    assert path.read_bytes() == original
+
+
+def test_reconfirmed_destination_still_rejects_later_first_write_changes(app: Any) -> None:
+    service, clock = app
+    trial(service, clock)
+    preview = service.preview_publication_destination()
+    service.confirm_publication_destination(
+        preview["preview_token"], confirmed=True, idempotency_key="destination-before-later-edit"
+    )
+    service.set_switch("personalization", True, key="serve-later-edit")
+    path = service.publisher.home / "AGENTS.md"
+    changed = path.read_bytes() + b"Later edit.\r\n"
+    path.write_bytes(changed)
+    with pytest.raises(AutonomyIntegrityError, match="changed after consent"):
+        service.publish()
+    assert path.read_bytes() == changed
+    assert service.status()["publication_needs_attention"]
+
+
+def test_publication_protocol_requires_digest_confirmation_and_idempotency(app: Any) -> None:
+    service, _ = app
+    protocol = AutonomyProtocol(service)
+    preview = protocol.dispatch(
+        "autonomy.publication.preview", {}, expected_digest=None, idempotency_key=None
+    )
+    params = {"preview_token": preview["preview_token"], "confirmed": True}
+    for digest, key in [(None, "confirm"), (service.snapshot_digest, None)]:
+        with pytest.raises(AutonomyIntegrityError):
+            protocol.dispatch(
+                "autonomy.publication.confirm", params, expected_digest=digest, idempotency_key=key
+            )
+    before = service.grant()
+    result = protocol.dispatch(
+        "autonomy.publication.confirm",
+        params,
+        expected_digest=service.snapshot_digest,
+        idempotency_key="confirm",
+    )
+    assert (
+        protocol.dispatch(
+            "autonomy.publication.confirm", params, expected_digest=None, idempotency_key="confirm"
+        )
+        == result
+    )
+    assert service.grant() == before
+    assert not service.switch("personalization")
+    assert service.store.latest("publication") is None
+    with pytest.raises(AutonomyIntegrityError, match="idempotency"):
+        protocol.dispatch(
+            "autonomy.publication.confirm",
+            {**params, "confirmed": False},
+            expected_digest=service.snapshot_digest,
+            idempotency_key="confirm",
+        )
+    with pytest.raises(AutonomyIntegrityError, match="no parameters"):
+        protocol.dispatch(
+            "autonomy.publication.preview",
+            {"destination": "elsewhere"},
+            expected_digest=None,
+            idempotency_key=None,
+        )
+
+
 def test_retention_deletes_only_expired_ciphertext_and_preserves_metadata(app: Any) -> None:
     service, clock = app
     service.ingest_episode(episode(0, clock))

@@ -82,6 +82,10 @@ class AutonomyProtocol:
                 tuple(StyleCategory(value) for value in categories),
                 trust_authorized_chats=trust,
             )
+        if method == "autonomy.publication.preview":
+            if params:
+                raise AutonomyIntegrityError("publication preview takes no parameters")
+            return self.service.preview_publication_destination()
         if method == "autonomy.applicability.preview":
             if set(params) != {"project_id", "task_class"}:
                 raise AutonomyIntegrityError("invalid applicability preview")
@@ -116,6 +120,7 @@ class AutonomyProtocol:
         allowed = {
             "autonomy.projects.register": {"preview_token", "confirmed"},
             "autonomy.grant.enable": {"preview_token", "confirmed"},
+            "autonomy.publication.confirm": {"preview_token", "confirmed"},
             "autonomy.grant.revoke": set(),
             "autonomy.learning.pause": set(),
             "autonomy.learning.resume": set(),
@@ -163,6 +168,12 @@ class AutonomyProtocol:
             )
         elif method == "autonomy.grant.revoke":
             self.service.revoke_grant(key=idempotency_key)
+        elif method == "autonomy.publication.confirm":
+            if not isinstance(params["preview_token"], str) or params["confirmed"] is not True:
+                raise AutonomyIntegrityError("publication destination requires confirmation")
+            self.service.confirm_publication_destination(
+                params["preview_token"], confirmed=True, idempotency_key=idempotency_key
+            )
         elif method in {"autonomy.learning.pause", "autonomy.learning.resume"}:
             self.service.set_switch("learning", method.endswith("resume"), key=idempotency_key)
         elif method in {"autonomy.personalization.enable", "autonomy.personalization.disable"}:
