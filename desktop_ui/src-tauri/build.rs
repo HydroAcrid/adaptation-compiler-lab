@@ -148,6 +148,9 @@ fn main() {
         println!(
             "cargo:rustc-link-arg=/MANIFESTDEPENDENCY:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'"
         );
+        // The app already carries Tauri's manifest in resource.lib. Preserve it
+        // rather than generating a duplicate RT_MANIFEST resource at link time.
+        println!("cargo:rustc-link-arg-bin=temper-desktop=/MANIFEST:NO");
     }
     bind_release_engine();
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(
