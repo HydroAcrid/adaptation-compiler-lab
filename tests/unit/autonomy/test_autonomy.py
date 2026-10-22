@@ -30,6 +30,8 @@ from adaptation_compiler_lab.autonomy.service import AutonomyApplicationService
 from adaptation_compiler_lab.autonomy.store import AutonomyIntegrityError, AutonomyStore
 from adaptation_compiler_lab.autonomy.styles import StyleKey
 from adaptation_compiler_lab.autonomy.worker import BackgroundHabitWorker, CapturePage
+from adaptation_compiler_lab.connectors.codex_app_server import CodexProtocolError
+from adaptation_compiler_lab.connectors.pins import RuntimeConformanceError
 from adaptation_compiler_lab.governance.signing import GovernanceSigner
 from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore, RawEncryptionKey
 from tests.unit.autonomy.wire_fixture import wire_result
@@ -579,6 +581,70 @@ def test_publication_protocol_requires_digest_confirmation_and_idempotency(app: 
             expected_digest=None,
             idempotency_key=None,
         )
+
+
+@pytest.mark.parametrize("error_type", [CodexProtocolError, RuntimeConformanceError])
+def test_source_connection_failure_keeps_stdio_engine_and_permissions(
+    app: Any, error_type: Any
+) -> None:
+    from io import StringIO
+
+    from adaptation_compiler_lab.desktop.engine_protocol import (
+        PROTOCOL_VERSION,
+        EngineProtocolRouter,
+        EngineRequest,
+        serve,
+    )
+
+    service, _ = app
+
+    def fail_capture(*args: Any) -> Any:
+        raise error_type("fictional-private-auth-diagnostic")
+
+    service.background_worker = BackgroundHabitWorker(service, read_completed=fail_capture)
+    router = EngineProtocolRouter(None, autonomy_factory=lambda: service)
+    grant = service.grant()
+    head = service.store.head_digest
+    poll = EngineRequest(
+        protocol_version=PROTOCOL_VERSION,
+        request_id="capture",
+        method="autonomy.background.poll",
+        expected_snapshot_digest=service.snapshot_digest,
+        idempotency_key="retryable-capture",
+    )
+    status = EngineRequest(
+        protocol_version=PROTOCOL_VERSION, request_id="status", method="autonomy.status"
+    )
+    output = StringIO()
+    try:
+        code = serve(
+            router,
+            source=StringIO(poll.model_dump_json() + "\n" + status.model_dump_json() + "\n"),
+            sink=output,
+        )
+    except RuntimeConformanceError as error:
+        raise AssertionError(
+            "A Codex connection failure must not escape the stdio engine"
+        ) from error
+    assert code == 0
+    failed, healthy = [json.loads(line) for line in output.getvalue().splitlines()]
+    assert failed["ok"] is False
+    assert failed["error"]["code"] == "autonomy_connection_unavailable"
+    assert failed["error"]["retryable"] is True
+    assert "fictional-private-auth-diagnostic" not in output.getvalue()
+    assert healthy["ok"] is True, "The same engine must still answer status after capture fails"
+    assert service.grant() == grant
+    assert service.store.head_digest == head
+    assert service.store.latest("cursor") is None
+    assert service.store.latest("protocol_receipt") is None
+    assert not service.switch("personalization")
+
+    # A retry under the same grant and failed operation key can succeed in place.
+    service.background_worker.read_completed = lambda *args: CapturePage("recovered", ())
+    result = router.handle(poll)
+    assert result.ok is True
+    assert result.result["status"] == "idle"
+    assert service.grant() == grant
 
 
 def test_retention_deletes_only_expired_ciphertext_and_preserves_metadata(app: Any) -> None:

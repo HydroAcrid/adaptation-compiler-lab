@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any, Final, Literal, TextIO
 from pydantic import Field
 
 from adaptation_compiler_lab.automatic_runtime.models import RuntimeFeedbackOutcome
+from adaptation_compiler_lab.connectors.pins import RuntimeConformanceError
 from adaptation_compiler_lab.desktop.models import (
     ActionResult,
     ActivationFeedbackSummaryV1,
@@ -2645,6 +2646,13 @@ class EngineProtocolRouter:
                 ok=True,
                 result=result,
                 snapshot_digest=self._autonomy_protocol.service.snapshot_digest,
+            )
+        except RuntimeConformanceError:
+            return self._error(
+                request,
+                "autonomy_connection_unavailable",
+                "Temper could not read Codex chats. Check your Codex connection and try again.",
+                retryable=True,
             )
         except (OSError, ValueError):
             return self._error(
