@@ -114,8 +114,8 @@ function WorkspacePicker({
       id: "all",
       label: "All projects",
       description: workspaces.length
-        ? `${workspaces.length} registered project${workspaces.length === 1 ? "" : "s"}`
-        : "No registered projects",
+        ? `${workspaces.length} Core and review project${workspaces.length === 1 ? "" : "s"}`
+        : "No Core or review projects",
     },
     ...workspaces,
   ];
@@ -135,7 +135,7 @@ function WorkspacePicker({
           )}
         </span>
         <span className="workspace-picker-copy">
-          <small>Workspace</small>
+          <small>Core &amp; review</small>
           <strong>{current.label}</strong>
         </span>
         <ChevronDown aria-hidden="true" size={14} strokeWidth={1.7} />
@@ -146,7 +146,9 @@ function WorkspacePicker({
         collisionPadding={12}
         sideOffset={8}
       >
-        <DropdownMenu.Label>Workspace view</DropdownMenu.Label>
+        <DropdownMenu.Label>
+          Core and review view · learning covers all approved repositories
+        </DropdownMenu.Label>
         {options.map((option) => (
           <DropdownMenu.Item
             className="workspace-picker-item"

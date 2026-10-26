@@ -28,6 +28,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { AgentBrandMark } from "./AgentBrandMark";
 import { AutonomousLearningPanel } from "./AutonomousLearningPanel";
+import { LearningRepositories } from "./LearningRepositories";
 import {
   analyzeInstructionEnvironment,
   applyClaudeConnection,
@@ -2074,7 +2075,13 @@ export function ConnectionsPage({
     );
     const status = worstInstructionEnvironmentStatus(environments);
     const semanticStatus = worstSemanticAnalysisStatus(environments);
-    return { semanticStatus, skillCount, sourceCount, status };
+    return {
+      semanticStatus,
+      skillCount,
+      sourceCount,
+      status,
+      checked: environments.length > 0,
+    };
   }
 
   async function chooseProject() {
@@ -2203,13 +2210,16 @@ export function ConnectionsPage({
           </article>
         ))}
       </section>
-      <section className="projects-section">
+      {nativeRuntime && <LearningRepositories />}
+      <section className="projects-section" aria-label="Managed-task projects">
         <div className="subsection-heading">
           <div>
-            <h2>Registered projects</h2>
+            <h2>
+              {nativeRuntime ? "Managed-task projects" : "Registered projects"}
+            </h2>
             <p>
-              Registration makes future chats eligible. Learning permission is
-              managed on Today.
+              Managed tasks use a separate project registration. Chat learning
+              does not require a task runner.
             </p>
           </div>
           <Button
@@ -2223,7 +2233,7 @@ export function ConnectionsPage({
             onClick={chooseProject}
             title={registrationUnavailableReason ?? undefined}
           >
-            Add project
+            {nativeRuntime ? "Add task project" : "Add project"}
           </Button>
         </div>
         {nativeRuntime &&
@@ -2254,9 +2264,11 @@ export function ConnectionsPage({
                   <span>{project.pathLabel}</span>
                   {nativeRuntime ? (
                     <span className="project-row__environment">
-                      {environment.sourceCount
-                        ? `${environment.sourceCount} instruction source${environment.sourceCount === 1 ? "" : "s"} · ${environment.skillCount} skill${environment.skillCount === 1 ? "" : "s"}`
-                        : "No supported agent instructions detected"}
+                      {!environment.checked
+                        ? "Agent instructions not checked"
+                        : environment.sourceCount
+                          ? `${environment.sourceCount} instruction source${environment.sourceCount === 1 ? "" : "s"} · ${environment.skillCount} skill${environment.skillCount === 1 ? "" : "s"}`
+                          : "No supported agent instructions detected"}
                     </span>
                   ) : null}
                 </div>
@@ -2269,18 +2281,22 @@ export function ConnectionsPage({
                           : "neutral"
                       }
                     >
-                      {environment.status === "understood" &&
-                      environment.semanticStatus !== "current"
-                        ? semanticAnalysisStatusLabel(
-                            environment.semanticStatus,
-                          )
-                        : instructionEnvironmentStatusLabel(environment.status)}
+                      {!environment.checked
+                        ? "Not checked"
+                        : environment.status === "understood" &&
+                            environment.semanticStatus !== "current"
+                          ? semanticAnalysisStatusLabel(
+                              environment.semanticStatus,
+                            )
+                          : instructionEnvironmentStatusLabel(
+                              environment.status,
+                            )}
                     </StatusPill>
                   ) : null}
                   <span className="agent-chip">
                     {project.connectedAgents.length
                       ? project.connectedAgents.join(", ")
-                      : "Registered · managed tasks unavailable"}
+                      : "Task runner off"}
                   </span>
                 </div>
               </div>

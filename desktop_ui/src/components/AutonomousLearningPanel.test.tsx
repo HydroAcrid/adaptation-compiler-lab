@@ -233,3 +233,40 @@ it("shows a status failure and allows a read-only retry", async () => {
   expect(api.enableLearningGrant).not.toHaveBeenCalled();
   expect(api.controlAutonomy).not.toHaveBeenCalled();
 });
+
+it("shows signed repository coverage and the prospective cutoff without claiming capture or delivery", async () => {
+  api.loadAutonomy.mockResolvedValue({
+    value: {
+      ...status,
+      grant_enabled: true,
+      learning_enabled: true,
+      personalization_enabled: true,
+      automatic_serving_ready: true,
+      provenance_state: "owner_authorized",
+      capture_state: "ready",
+      project_access: Array.from({ length: 57 }, (_, i) => ({
+        project_id: `new-${i}`,
+        display_name: `New ${i}`,
+        learning_authorized: true,
+        learning_state: "on",
+        personalization_enabled: true,
+      })),
+      capture_summary: {
+        eligible_since: "2026-10-22T14:58:19Z",
+        captured_conversations: 0,
+        read_at: "2026-10-26T15:00:00Z",
+      },
+    },
+    digest,
+  });
+  render(<AutonomousLearningPanel projects={[project]} />);
+  await screen.findByLabelText("Learning coverage");
+  expect(screen.getByText("57")).toBeInTheDocument();
+  expect(
+    screen.getByText("Conversations captured").nextElementSibling,
+  ).toHaveTextContent("0");
+  expect(
+    screen.getByText(/chats already open at that time stay excluded/),
+  ).toBeInTheDocument();
+  expect(screen.getByText("No habits yet")).toBeInTheDocument();
+});

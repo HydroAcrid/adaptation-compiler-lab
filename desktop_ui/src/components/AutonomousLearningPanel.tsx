@@ -101,6 +101,11 @@ export function AutonomousLearningPanel({
       }
     });
   const status = state?.value;
+  const learningProjects = status?.project_access;
+  const grantProjects = learningProjects ?? projects;
+  const approvedCount = learningProjects?.filter(
+    (project) => project.learning_authorized,
+  ).length;
   const blocked = Boolean(loadError) || status?.secure_store_ready === false;
   const learningLabel = loadError
     ? "Unavailable"
@@ -207,7 +212,7 @@ export function AutonomousLearningPanel({
             <fieldset disabled={busy || Boolean(preview)}>
               <legend>Projects</legend>
               <div className="learning-projects">
-                {projects.map((project) => (
+                {grantProjects.map((project) => (
                   <label key={project.project_id}>
                     <input
                       type="checkbox"
@@ -389,6 +394,31 @@ export function AutonomousLearningPanel({
                   ? "Temper learns communication habits from new Codex chats in your approved projects."
                   : "New chats aren’t being checked. Your saved habits are still here."}
           </p>
+          <dl className="learning-facts" aria-label="Learning coverage">
+            <div>
+              <dt>Repositories approved</dt>
+              <dd>
+                {loadError ? "Unavailable" : (approvedCount ?? "Checking…")}
+              </dd>
+            </div>
+            <div>
+              <dt>Conversations captured</dt>
+              <dd>
+                {loadError
+                  ? "Unavailable"
+                  : (status.capture_summary?.captured_conversations ??
+                    "Checking…")}
+              </dd>
+            </div>
+          </dl>
+          {status.capture_summary?.eligible_since && (
+            <p>
+              New chats started after{" "}
+              {new Date(status.capture_summary.eligible_since).toLocaleString()}{" "}
+              are eligible. Continue working in an approved repository; chats
+              already open at that time stay excluded.
+            </p>
+          )}
           {status.habits.length === 0 ? (
             <div className="learning-empty">
               <h3>No habits yet</h3>
@@ -409,7 +439,7 @@ export function AutonomousLearningPanel({
                     </StatusPill>
                   </div>
                   <p className="habit-row__scope">
-                    {projects.find(
+                    {grantProjects.find(
                       (project) => project.project_id === habit.project_id,
                     )?.display_name ?? "Project unavailable"}{" "}
                     · {habit.task_class.replaceAll("_", " ")} ·{" "}

@@ -28,7 +28,30 @@ export interface AutonomyState {
   publication_needs_attention: boolean;
   habits: Habit[];
   recent_changes: { type: string; digest: string }[];
+  project_access?: LearningProjectAccess[];
+  capture_summary?: {
+    eligible_since: string | null;
+    captured_conversations: number;
+    read_at: string;
+  };
   raw_payloads_exposed: false;
+}
+
+export interface LearningProjectAccess {
+  project_id: string;
+  display_name: string;
+  learning_authorized: boolean;
+  learning_state: "on" | "paused" | "waiting" | "off";
+  personalization_enabled: boolean;
+}
+
+export function learningAccessLabel(project: LearningProjectAccess): string {
+  return {
+    on: "Learning on",
+    paused: "Learning paused",
+    waiting: "Learning needs attention",
+    off: "Learning not approved",
+  }[project.learning_state];
 }
 
 export interface HabitOutcomeSummary {

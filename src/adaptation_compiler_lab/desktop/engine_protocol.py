@@ -8,7 +8,7 @@ import platform
 import sys
 import uuid
 from collections.abc import Callable, Mapping, Sequence
-from datetime import datetime
+from datetime import UTC, datetime
 from importlib.metadata import version
 from pathlib import Path
 from time import monotonic
@@ -2641,6 +2641,8 @@ class EngineProtocolRouter:
                 expected_digest=request.expected_snapshot_digest,
                 idempotency_key=request.idempotency_key,
             )
+            if "autonomy_version" in result:
+                result = self._learning_desktop_status(result)
             return EngineResponse(
                 request_id=request.request_id,
                 ok=True,
@@ -2661,6 +2663,54 @@ class EngineProtocolRouter:
                 "Temper could not complete this learning action. "
                 "Refresh its status before retrying.",
             )
+
+    def _learning_desktop_status(self, status: dict[str, Any]) -> dict[str, Any]:
+        """Read signed learning coverage without changing managed-task permissions.
+
+        The legacy desktop snapshot describes the reviewed-task workflow. It is
+        not the authority for the separate persistent conversation-learning grant.
+        Keep this presentation join outside the inference/publication protocol.
+        """
+        service = self._autonomy_protocol.service
+        registry = self._autonomy_protocol.worker.project_registry
+        if registry is None:
+            return status
+        grant = service.grant()
+        coverage = set(grant.project_ids) if grant else set()
+        projects = []
+        for project in registry.summaries():
+            authorized = project["project_id"] in coverage
+            state = (
+                "off"
+                if not authorized
+                else "paused"
+                if not status["learning_enabled"]
+                else "on"
+                if status["secure_store_ready"] and status["capture_state"] == "ready"
+                else "waiting"
+            )
+            projects.append(
+                {
+                    "project_id": project["project_id"],
+                    "display_name": project["display_name"],
+                    "learning_authorized": authorized,
+                    "learning_state": state,
+                    "personalization_enabled": authorized and status["personalization_enabled"],
+                }
+            )
+        return {
+            **status,
+            "project_access": projects,
+            "capture_summary": {
+                "eligible_since": grant.issued_at.isoformat() if grant else None,
+                "captured_conversations": sum(
+                    episode["grant_id"] == grant.grant_id for episode in service.episodes().values()
+                )
+                if grant
+                else 0,
+                "read_at": service.clock().astimezone(UTC).isoformat(),
+            },
+        }
 
     def _mutation_request(
         self, request: EngineRequest
