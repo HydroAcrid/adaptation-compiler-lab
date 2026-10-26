@@ -10,13 +10,20 @@ The current hub direction is to reuse SkillKit's manager capabilities and focus
 Temper on appropriate per-repository setup, maintenance and personal collaboration
 defaults. The controller-only comparison has not established an owner-effort
 advantage. See [the SkillKit-based scope and personalization blockers](TEMPER_SKILLKIT_BASE.md).
+The next integration connects that existing persistent controller to the desktop
+and ordinary Codex workflow with separate tool permission, context checks,
+authenticated updates and recovery. It adds no Modes catalog. See
+[the repository setup integration](TEMPER_TOOLS_HUB_INTEGRATION.md).
 
 The current focus is separating personal choices from task requirements, recognizing changing
 preferences, and validating safe instruction delivery. The first complete fictional evaluation
 failed the fixed detection gates: 76.39% precision, 68.75% recall, and 14/20 contradiction pauses.
 Iteration uses these cases for development regression and requires fresh prospective evidence
-before release claims. Automatic serving remains disabled. The owner has authorized
-shadow learning through the existing Codex composer, including trusted conversation
+before release claims. A later owner-only Windows candidate completed bounded
+qualification and enabled personalization under its existing scoped grant; this
+does not establish unseen accuracy or real-work usefulness. Public automatic
+serving and distribution remain gated. The owner has authorized
+learning through the existing Codex composer, including trusted conversation
 relays with uncertain human authorship. This requires the explicit new grant; old grants
 remain strict. See [`TEMPER_AUTHORIZED_CHAT_INPUT.md`](TEMPER_AUTHORIZED_CHAT_INPUT.md) for
 the current policy, bounded development checks and installation boundary. See

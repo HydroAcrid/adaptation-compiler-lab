@@ -24,7 +24,14 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { AgentBrandMark } from "./AgentBrandMark";
 import { AutonomousLearningPanel } from "./AutonomousLearningPanel";
@@ -95,6 +102,12 @@ import {
   TemperSelect,
   Toggle,
 } from "./ui";
+
+const ToolsHubPanel = lazy(() =>
+  import("./ToolsHubPanel").then((module) => ({
+    default: module.ToolsHubPanel,
+  })),
+);
 
 export function TodayPage({
   onReview,
@@ -1426,6 +1439,10 @@ export function ModesPage({
           <Compass aria-hidden="true" size={30} strokeWidth={1.25} />
         </div>
       </header>
+      <Suspense fallback={<p role="status">Loading repository setup…</p>}>
+        <ToolsHubPanel nativeRuntime={nativeRuntime} />
+      </Suspense>
+      <h2 className="modes-section-title">Saved workflows</h2>
       {nativeRuntime ? (
         <PackageReviewQueue
           busyReviewId={busyPackageReview}

@@ -1,5 +1,11 @@
 # Temper over SkillKit
 
+October 26 integration: the persistent controller is being connected to the
+desktop app and ordinary Codex workflow under a separate tool-management grant.
+See [the integration contract and evidence boundaries](TEMPER_TOOLS_HUB_INTEGRATION.md).
+The historical comparison below remains unchanged; it does not establish an
+owner-effort advantage for the new integration.
+
 October 15, 2026 owner direction: reuse SkillKit, remove duplicated manager work,
 and make Temper choose and maintain an appropriate setup for each repository and
 work goal. Personalization is part of that product, not an optional feature to

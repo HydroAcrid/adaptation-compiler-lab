@@ -3,6 +3,7 @@ identifier = "engine-product"
 description = "Allows only typed setup, product reads, user-mediated profile actions, and exact managed Mode tasks."
 commands.allow = [
   "engine_handshake",
+    "tools_hub_request",
   "snapshot_get",
   "learning_poll",
   "review_decide",

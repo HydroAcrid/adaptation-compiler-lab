@@ -537,6 +537,15 @@ fn show_review_notification(app: &tauri::AppHandle) {
 
 fn run_background_poll(app: &tauri::AppHandle) {
     let state = app.state::<EngineState>();
+    // A short scheduler tick queues Hub maintenance; network/npm work never holds
+    // the desktop IPC mutex. This lane has its own installation permission.
+    let _ = call_engine(
+        state.inner(),
+        "tools_hub.maintenance",
+        json!({}),
+        None,
+        None,
+    );
     // A persistent habit grant has its own lease and cursor. Never double-capture through
     // the legacy explicit-feedback lane, whose research consent remains unchanged.
     let Ok(autonomy) = call_engine(state.inner(), "autonomy.status", json!({}), None, None) else {
@@ -2082,6 +2091,53 @@ enum AutonomyAction {
     RevokeHabit,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum ToolsHubOperation {
+    Status,
+    Inventory,
+    PermissionPreview,
+    PermissionEnable,
+    Control,
+    ConnectionPreview,
+    ConnectionApply,
+    Refresh,
+    Repair,
+}
+
+#[tauri::command]
+async fn tools_hub_request(
+    app: tauri::AppHandle,
+    operation: ToolsHubOperation,
+    params: Value,
+    expected_digest: Option<String>,
+    idempotency_key: Option<String>,
+) -> Result<EngineResponse, PublicError> {
+    let method = match operation {
+        ToolsHubOperation::Status => "tools_hub.status",
+        ToolsHubOperation::Inventory => "tools_hub.inventory",
+        ToolsHubOperation::PermissionPreview => "tools_hub.permission.preview",
+        ToolsHubOperation::PermissionEnable => "tools_hub.permission.enable",
+        ToolsHubOperation::Control => "tools_hub.control",
+        ToolsHubOperation::ConnectionPreview => "tools_hub.connection.preview",
+        ToolsHubOperation::ConnectionApply => "tools_hub.connection.apply",
+        ToolsHubOperation::Refresh => "tools_hub.refresh",
+        ToolsHubOperation::Repair => "tools_hub.repair",
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            method,
+            params,
+            expected_digest.as_deref(),
+            idempotency_key.as_deref(),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
+}
+
 #[tauri::command]
 async fn autonomy_status<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
@@ -2258,6 +2314,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             engine_handshake,
+            tools_hub_request,
             snapshot_get,
             learning_poll,
             review_decide,

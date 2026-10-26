@@ -15,7 +15,7 @@ dependencies = [
 [project.scripts]
 adaptation-compiler-lab = "adaptation_compiler_lab.cli:app"
 temper = "adaptation_compiler_lab.temper_cli:app"
-temper-engine = "adaptation_compiler_lab.desktop.engine_main:main"
+temper-engine = "adaptation_compiler_lab.desktop.entry:main"
 
 [build-system]
 requires = ["hatchling"]

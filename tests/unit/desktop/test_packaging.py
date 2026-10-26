@@ -37,7 +37,7 @@ def test_packaged_acl_matches_typed_product_commands_and_renderer_routes() -> No
     assert declared == registered, "Tauri must generate metadata for every product handler"
     # Catch both direct invoke and typed helper/request command strings, including bootstrap.
     renderer_commands = set()
-    for filename in ("engine.ts", "autonomy.ts"):
+    for filename in ("engine.ts", "autonomy.ts", "toolsHub.ts"):
         renderer = (ROOT / "desktop_ui/src" / filename).read_text()
         renderer_commands.update(
             re.findall(
@@ -48,6 +48,7 @@ def test_packaged_acl_matches_typed_product_commands_and_renderer_routes() -> No
         "instruction_environment_get",
         "package_review_list",
         "autonomy_status",
+        "tools_hub_request",
     } <= renderer_commands
     assert renderer_commands <= allowed, "Every renderer route must be allowed by packaged ACL"
     assert {"instruction_environment_get", "package_review_list", "autonomy_status"} <= allowed

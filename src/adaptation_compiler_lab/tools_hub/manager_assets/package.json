@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "skillkit": "1.24.0"
+  },
+  "private": true
+}

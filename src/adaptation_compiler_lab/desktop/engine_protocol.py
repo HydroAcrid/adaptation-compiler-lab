@@ -171,6 +171,7 @@ class EngineProtocolRouter:
         recovery_factory: Callable[[], LocalRecoveryService] | None = None,
         runtime_config_path: Path | None = None,
         autonomy_factory: Callable[[], AutonomyApplicationService] | None = None,
+        tools_hub_factory: Callable[[], Any] | None = None,
     ) -> None:
         self._service = service
         self._portability = portability
@@ -187,6 +188,8 @@ class EngineProtocolRouter:
         self._recovery_factory = recovery_factory
         self._runtime_config_path = runtime_config_path
         self._autonomy_factory = autonomy_factory
+        self._tools_hub_factory = tools_hub_factory
+        self._tools_hub_protocol: Any = None
         self._autonomy_protocol: Any = None
         self._setup: DesktopSetupApplicationService | None = None
         self._instruction_environment: InstructionEnvironmentService | None = None
@@ -217,6 +220,44 @@ class EngineProtocolRouter:
             )
         if request.method.startswith("autonomy."):
             return self._handle_autonomy(request)
+        if request.method.startswith("tools_hub."):
+            import sqlite3
+
+            if self._tools_hub_factory is None:
+                return self._error(
+                    request,
+                    "not_configured",
+                    "Configure Temper before setting up repository tools.",
+                )
+            try:
+                if self._tools_hub_protocol is None:
+                    from adaptation_compiler_lab.tools_hub.protocol import HubProtocol
+
+                    self._tools_hub_protocol = HubProtocol(
+                        self._tools_hub_factory(), config_path=self._runtime_config_path
+                    )
+                result = self._tools_hub_protocol.dispatch(
+                    request.method,
+                    dict(request.params),
+                    expected_digest=request.expected_snapshot_digest,
+                    idempotency_key=request.idempotency_key,
+                )
+                return EngineResponse(
+                    request_id=request.request_id,
+                    ok=True,
+                    result=result,
+                    snapshot_digest=result.get("digest") or canonical_digest(result),
+                )
+            except (OSError, ValueError, KeyError, TypeError, sqlite3.Error):
+                return self._error(
+                    request,
+                    "tools_hub_unavailable",
+                    (
+                        "Repository setup could not complete this request. Refresh its "
+                        "status and try again."
+                    ),
+                    retryable=True,
+                )
         if request.method == "claude.hook.handle":
             return self._handle_claude_hook(request)
         if request.method == "claude.runtime.refresh":
@@ -3278,6 +3319,7 @@ def build_router(
         recovery_factory=_native_recovery_service,
         runtime_config_path=config_path.expanduser().resolve(),
         autonomy_factory=lambda: _native_autonomy_factory(config_path),
+        tools_hub_factory=lambda: _native_tools_hub_factory(config_path),
     )
 
 
@@ -3285,6 +3327,12 @@ def _native_autonomy_factory(config_path: Path) -> AutonomyApplicationService:
     from adaptation_compiler_lab.autonomy.native import native_autonomy_service
 
     return native_autonomy_service(config_path)
+
+
+def _native_tools_hub_factory(config_path: Path) -> Any:
+    from adaptation_compiler_lab.tools_hub.native import native_hub_service
+
+    return native_hub_service(config_path)
 
 
 def _native_recovery_service() -> LocalRecoveryService:
