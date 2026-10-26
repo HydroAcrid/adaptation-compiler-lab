@@ -17,7 +17,11 @@ const projects = Array.from({ length: 57 }, (_, index) => ({
   personalization_enabled: index !== 56,
 }));
 const response = {
-  value: { project_access: projects },
+  value: {
+    project_access: projects,
+    automatic_serving_ready: true,
+    secure_store_ready: true,
+  },
   digest: `sha256:${"a".repeat(64)}`,
 };
 afterEach(() => {
@@ -109,4 +113,28 @@ it("does not let an older refresh overwrite newer repository permissions", async
     screen.getByText("0 of 0 repositories approved for learning."),
   ).toBeInTheDocument();
   expect(screen.queryByText("Same repository name")).not.toBeInTheDocument();
+});
+
+it("shows enabled personalization waiting when compatibility or storage is unavailable", async () => {
+  api.loadAutonomy
+    .mockResolvedValueOnce({
+      ...response,
+      value: { ...response.value, automatic_serving_ready: false },
+    })
+    .mockResolvedValueOnce({
+      ...response,
+      value: { ...response.value, secure_store_ready: false },
+    });
+  const user = userEvent.setup();
+  render(<LearningRepositories />);
+  await screen.findByText("56 of 57 repositories approved for learning.");
+  expect(screen.queryByText("Personalization on")).not.toBeInTheDocument();
+  expect(
+    screen.getAllByText("Personalization waiting for checks"),
+  ).toHaveLength(56);
+  await user.click(
+    screen.getByRole("button", { name: "Refresh learning access" }),
+  );
+  await screen.findByText("56 of 57 repositories approved for learning.");
+  expect(screen.queryByText("Personalization on")).not.toBeInTheDocument();
 });

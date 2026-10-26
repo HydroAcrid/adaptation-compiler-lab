@@ -113,8 +113,13 @@ export function LearningRepositories() {
                   </StatusPill>
                   {project.learning_authorized && (
                     <span className="agent-chip">
-                      {error ? "Last known: " : ""}Personalization{" "}
-                      {project.personalization_enabled ? "on" : "off"}
+                      {error ? "Last known: " : ""}
+                      {project.personalization_enabled
+                        ? status?.automatic_serving_ready &&
+                          status.secure_store_ready
+                          ? "Personalization on"
+                          : "Personalization waiting for checks"
+                        : "Personalization off"}
                     </span>
                   )}
                 </div>
