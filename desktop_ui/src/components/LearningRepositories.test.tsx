@@ -36,7 +36,25 @@ it("shows signed learning coverage independently of one task project and absent 
   render(
     <ConnectionsPage
       nativeRuntime
-      liveConnections={[]}
+      liveConnections={[
+        {
+          connection_version: "1.1.0",
+          agent_id: "codex",
+          display_name: "Codex",
+          installation_state: "installed",
+          authentication_state: "signed_in",
+          conformance_state: "update_required",
+          integration_state: "available",
+          version_label: "fictional-version",
+          status_summary: "The task connection needs an update.",
+          learning_capability:
+            "Learning is unavailable until the connection is ready.",
+          delivery_capability: "Task delivery is unavailable.",
+          cost_posture: "No provider call",
+          available_actions: ["refresh"],
+          raw_payloads_exposed: false,
+        },
+      ]}
       liveProjects={[
         {
           project_id: "legacy-only",
@@ -57,6 +75,28 @@ it("shows signed learning coverage independently of one task project and absent 
   expect(within(list).getAllByText("Learning on")).toHaveLength(55);
   expect(within(list).getByText("Learning paused")).toBeInTheDocument();
   expect(within(list).getByText("Learning not approved")).toBeInTheDocument();
+  expect(
+    screen.getByText("Core & managed-task connections"),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByText(
+      "Learning is unavailable until the connection is ready.",
+    ),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByText(
+      "Reviewed-suggestion capture is unavailable until the connection is ready.",
+    ),
+  ).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "View details" }));
+  const details = screen.getByRole("dialog");
+  expect(within(details).getByText("Reviewed suggestions")).toBeInTheDocument();
+  expect(
+    within(details).getByText(
+      /Ordinary Codex chat learning has separate permissions/,
+    ),
+  ).toBeInTheDocument();
+  await user.keyboard("{Escape}");
   const tasks = screen.getByRole("region", { name: "Managed-task projects" });
   expect(within(tasks).getByText("Task runner off")).toBeInTheDocument();
   expect(

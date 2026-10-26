@@ -2024,7 +2024,13 @@ export function ConnectionsPage({
         id: connection.agent_id,
         name: connection.display_name,
         availableActions: connection.available_actions,
-        sourceCapability: connection.learning_capability,
+        sourceCapability:
+          connection.agent_id === "codex"
+            ? connection.learning_capability.replace(
+                /^Learning\b/,
+                "Reviewed-suggestion capture",
+              )
+            : connection.learning_capability,
         status:
           connection.installation_state === "not_installed"
             ? "not_installed"
@@ -2162,7 +2168,21 @@ export function ConnectionsPage({
           </span>
         </div>
       ) : null}
-      <section className="connection-list">
+      {nativeRuntime && (
+        <div className="subsection-heading">
+          <div>
+            <h2>Core &amp; managed-task connections</h2>
+            <p>
+              These connections serve reviewed suggestions and managed tasks.
+              Ordinary Codex chat learning has separate access below.
+            </p>
+          </div>
+        </div>
+      )}
+      <section
+        className="connection-list"
+        aria-label="Core and managed-task connections"
+      >
         {shownConnections.map((connection) => (
           <article className="connection-card" key={connection.id}>
             <div className={`agent-logo agent-logo--${connection.id}`}>
@@ -2176,6 +2196,7 @@ export function ConnectionsPage({
                     connection.status === "connected" ? "positive" : "neutral"
                   }
                 >
+                  {nativeRuntime ? "Task connection: " : ""}
                   {connectionStatusLabel(connection.status)}
                 </StatusPill>
               </div>
@@ -2656,11 +2677,11 @@ function ConnectionDetailsDialog({
           </Dialog.Description>
           <dl className="connection-detail-list">
             <div>
-              <dt>Learning</dt>
+              <dt>{nativeRuntime ? "Reviewed suggestions" : "Learning"}</dt>
               <dd>{connection.sourceCapability}</dd>
             </div>
             <div>
-              <dt>Delivery</dt>
+              <dt>{nativeRuntime ? "Core and task delivery" : "Delivery"}</dt>
               <dd>{connection.targetCapability}</dd>
             </div>
             {nativeRuntime ? (
@@ -2696,7 +2717,7 @@ function ConnectionDetailsDialog({
                 ? connection.status === "connected"
                   ? "The local hook delivers only signed cached context in registered Copilot CLI projects. Temper does not capture Copilot prompts in this release."
                   : "Temper understands supported Copilot instruction files. Direct delivery is available only through an explicit Copilot CLI hook; other Copilot surfaces require a reviewed file change."
-                : "Learning observes eligible completed work in registered projects. Approved suggestions go to fresh Temper-managed tasks. With permission, style defaults can also reach ordinary Codex chats through native instructions or scoped MCP context. Native instruction updates apply to new chats or a supported reload; publication does not confirm delivery."}
+                : "This connection serves reviewed suggestions and managed tasks. Ordinary Codex chat learning has separate permissions and compatibility checks, shown under Chat learning in Connections."}
           </p>
           {nativeRuntime &&
           (connection.id === "claude" || connection.id === "copilot") ? (
