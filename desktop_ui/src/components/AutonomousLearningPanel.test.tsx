@@ -61,7 +61,11 @@ it("makes conversation trust explicit and labels unknown authorship", async () =
     name: /Include conversations relayed by agents I authorize/,
   });
   expect(trust).not.toBeChecked();
-  await user.click(screen.getByRole("checkbox", { name: "Synthetic project" }));
+  await user.click(
+    screen.getByRole("checkbox", {
+      name: "Synthetic project · synthetic-project",
+    }),
+  );
   await user.click(screen.getByRole("checkbox", { name: "Amount of detail" }));
   await user.click(trust);
   await user.click(
@@ -101,7 +105,11 @@ it("requires selected scope and confirmation before granting permission", async 
   expect(
     screen.getByRole("button", { name: "Review learning access" }),
   ).toBeDisabled();
-  await user.click(screen.getByRole("checkbox", { name: "Synthetic project" }));
+  await user.click(
+    screen.getByRole("checkbox", {
+      name: "Synthetic project · synthetic-project",
+    }),
+  );
   await user.click(screen.getByRole("checkbox", { name: "Amount of detail" }));
   await user.click(
     screen.getByRole("button", { name: "Review learning access" }),
@@ -269,4 +277,49 @@ it("shows signed repository coverage and the prospective cutoff without claiming
     screen.getByText(/chats already open at that time stay excluded/),
   ).toBeInTheDocument();
   expect(screen.getByText("No habits yet")).toBeInTheDocument();
+});
+
+it("disambiguates same-name learning repositories when granting permission", async () => {
+  api.loadAutonomy.mockResolvedValue({
+    value: {
+      ...status,
+      project_access: ["first", "second"].map((id) => ({
+        project_id: id,
+        display_name: "Same name",
+        learning_authorized: false,
+        learning_state: "off",
+        personalization_enabled: false,
+      })),
+    },
+    digest,
+  });
+  api.previewLearningGrant.mockResolvedValue({
+    value: {
+      preview_token: "duplicate-preview",
+      native_destination: "/fictional/AGENTS.md",
+      project_ids: ["second"],
+      categories: ["communication_detail"],
+      raw_payloads_exposed: false,
+    },
+    digest,
+  });
+  const user = userEvent.setup();
+  render(<AutonomousLearningPanel projects={[]} />);
+  await screen.findByRole("checkbox", { name: "Same name · second" });
+  expect(
+    screen.queryByText("Add a project in Connections first."),
+  ).not.toBeInTheDocument();
+  await user.click(
+    screen.getByRole("checkbox", { name: "Same name · second" }),
+  );
+  await user.click(screen.getByRole("checkbox", { name: "Amount of detail" }));
+  await user.click(
+    screen.getByRole("button", { name: "Review learning access" }),
+  );
+  expect(api.previewLearningGrant).toHaveBeenCalledWith(
+    ["second"],
+    ["communication_detail"],
+    false,
+  );
+  expect(api.enableLearningGrant).not.toHaveBeenCalled();
 });

@@ -225,10 +225,12 @@ export function AutonomousLearningPanel({
                         )
                       }
                     />
-                    <span>{project.display_name}</span>
+                    <span>
+                      {project.display_name} · {project.project_id}
+                    </span>
                   </label>
                 ))}
-                {projects.length === 0 && (
+                {grantProjects.length === 0 && (
                   <p>Add a project in Connections first.</p>
                 )}
               </div>

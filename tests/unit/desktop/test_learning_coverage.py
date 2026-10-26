@@ -68,6 +68,12 @@ def test_signed_learning_coverage_is_independent_of_legacy_task_access(app, tmp_
     legacy.load.assert_not_called()
     assert legacy.load.return_value.projects == ["legacy-only"]
 
+    monkeypatch.setattr(service, "secure_store_available", lambda: False)
+    assert read()["project_access"][-1]["learning_state"] == "waiting"
+    monkeypatch.setattr(service, "secure_store_available", lambda: True)
+    monkeypatch.setattr(service, "provenance_ready", lambda: False)
+    assert read()["project_access"][-1]["learning_state"] == "waiting"
+    monkeypatch.setattr(service, "provenance_ready", lambda: True)
     service.set_switch("learning", False, key="pause")
     assert read()["project_access"][-1]["learning_state"] == "paused"
     service.revoke_grant(key="revoke")
