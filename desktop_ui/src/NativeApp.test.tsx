@@ -586,7 +586,7 @@ describe("installed Temper state boundaries", () => {
     });
     await user.click(screen.getByRole("button", { name: "Connections" }));
 
-    expect(screen.getByText("Sign-in required")).toBeInTheDocument();
+    expect(screen.getByText("Task connection: Sign-in required")).toBeInTheDocument();
     expect(screen.queryByText("Ready to connect")).not.toBeInTheDocument();
   });
 
