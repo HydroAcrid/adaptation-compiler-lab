@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import base64
 import json
+import os
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -50,10 +52,21 @@ class Seals:
         return dict(value["payload"])
 
     def read(self, path: Path, kind: str) -> dict[str, Any]:
-        check_root(path)
-        if path.stat().st_size > 2_000_000:
+        # Windows replacement can briefly deny opening the newly named file.
+        # Retry only byte acquisition, never parsing/signatures or other errors.
+        for attempt in range(6):
+            try:
+                check_root(path)
+                with path.open("rb") as stream:
+                    data = stream.read(2_000_001)
+                break
+            except PermissionError:
+                if os.name != "nt" or attempt == 5:
+                    raise
+                time.sleep(0.01 * (attempt + 1))
+        if len(data) > 2_000_000:
             raise ValueError("Hub receipt exceeds its bound")
-        return self.open(json.loads(path.read_text(encoding="utf-8")), kind)
+        return self.open(json.loads(data.decode("utf-8")), kind)
 
     def write(self, path: Path, payload: dict[str, Any], kind: str) -> None:
         save(path, self.seal(payload, kind))
