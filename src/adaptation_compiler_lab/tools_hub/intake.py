@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import io
 import json
@@ -12,11 +13,26 @@ import tempfile
 import time
 import urllib.request
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, BinaryIO, cast
 
 from adaptation_compiler_lab.tools_hub.paths import check_root, files, safe
 
 MARKER = ".temper-discovery-sandbox"
+
+
+class BoundedArchiveReader:
+    """Bound decompressed headers/padding too, before tarfile processes them."""
+
+    def __init__(self, reader: BinaryIO, maximum: int = 144_000_000) -> None:
+        self.reader, self.maximum, self.consumed = reader, maximum, 0
+
+    def read(self, size: int = -1) -> bytes:
+        limit = self.maximum - self.consumed + 1
+        value = self.reader.read(limit if size < 0 else min(size, limit))
+        self.consumed += len(value)
+        if self.consumed > self.maximum:
+            raise ValueError("Archive exceeds its total decompressed stream bound")
+        return value
 
 
 def sha(data: bytes) -> str:
@@ -183,11 +199,16 @@ def refresh(catalog: Path, cache: Path) -> dict[str, Any]:
             stage = Path(tempfile.mkdtemp(prefix="intake-", dir=cache))
             total = 0
             try:
-                with tarfile.open(fileobj=io.BytesIO(payload), mode="r:gz") as archive:
-                    members = archive.getmembers()
-                    if len(members) > 12_000:
-                        raise ValueError("Archive exceeds prototype entry bound")
-                    for member in members:
+                with (
+                    gzip.GzipFile(fileobj=io.BytesIO(payload)) as uncompressed,
+                    tarfile.open(
+                        fileobj=cast(Any, BoundedArchiveReader(cast(BinaryIO, uncompressed))),
+                        mode="r|",
+                    ) as archive,
+                ):
+                    for number, member in enumerate(archive, 1):
+                        if number > 12_000:
+                            raise ValueError("Archive exceeds its entry bound")
                         archive_name = PurePosixPath(member.name)
                         if archive_name.is_absolute() or ".." in archive_name.parts:
                             raise ValueError("Archive contains a noncanonical member path")

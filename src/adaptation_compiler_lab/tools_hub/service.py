@@ -274,6 +274,7 @@ class HubService:
                     {
                         "catalog": str(self.home / "catalog.json"),
                         "manager": "skillkit",
+                        "grant_id": grant["grant_id"],
                         "source_scope": [
                             specification(row)
                             for row in SOURCES
@@ -356,6 +357,11 @@ class HubService:
         owned = {
             name: intake.sha(raw(value) or b"") for name, value in active.get("files", {}).items()
         }
+        for name, value in hub.publishing_files.items():
+            path = safe(root, name)
+            expected = intake.sha(raw(value) or b"")
+            if path.is_file() and intake.sha(path.read_bytes()) == expected:
+                owned[name] = expected
         cwd = root if relative_directory == "." else safe(root, relative_directory)
         if not cwd.is_dir():
             raise ValueError("The task working directory is unavailable")
@@ -365,6 +371,24 @@ class HubService:
         current = self.grant(active=True)
         if current is None or current["grant_id"] != grant["grant_id"]:
             raise ValueError("Repository setup permission changed during this operation")
+
+    def bind_publication_context(
+        self, hub: Hub, grant: dict[str, Any], root: Path, goal: str, task_class: str
+    ) -> None:
+        hub.manager_identity()
+        expected = hub.context(root, goal, task_class, 2, "any_revision")
+        manager_checked = False
+
+        def check() -> None:
+            nonlocal manager_checked
+            self.require_same_grant(grant)
+            if not manager_checked:
+                self.verify_manager()
+                manager_checked = True
+            if hub.context(root, goal, task_class, 2, "any_revision") != expected:
+                raise ValueError("Project instructions or task context changed during preparation")
+
+        hub.publication_guard = check
 
     @contextmanager
     def controller(self, grant: dict[str, Any], relative_directory: str = ".") -> Iterator[Hub]:
@@ -380,12 +404,9 @@ class HubService:
             journal_unpack=lambda value: self.seals.open(value, "journal"),
         ).transaction() as hub:
             self.verify_controller(hub)
+            if hub.get("config")["grant_id"] != grant["grant_id"]:
+                raise ValueError("The cached controller belongs to another Hub grant")
             hub.policy_digest = lambda root: self.policy(hub, root, grant, relative_directory)
-            index = hub.get("index")
-            if index is not None:
-                signed = self.seals.read(self.home / "index-seal.json", "index")
-                if signed != {"grant_id": grant["grant_id"], "digest": fingerprint(index)}:
-                    raise ValueError("The Hub index needs a verified refresh")
             yield hub
             self.seal_controller(hub)
 
@@ -404,8 +425,17 @@ class HubService:
     def maintain(self, *, force: bool = False) -> dict[str, Any]:
         grant = self.grant(active=True)
         assert grant is not None
-        if not force and time.time() - (grant["last_checked"] or 0) < 21_600:
+        if (
+            not force
+            and time.time() - (grant.get("last_attempt") or grant["last_checked"] or 0) < 21_600
+        ):
             return {"status": "up_to_date"}
+        with writer_lock(self.home, name="permission.lock"):
+            self.require_same_grant(grant)
+            grant = self.grant(active=True)
+            assert grant is not None
+            grant["last_attempt"] = time.time()
+            self.seals.write(self.home / "permission.json", grant, "permission")
         self.budget(240_000_000)
         if (
             not (self.home / "manager-seal.json").is_file()
@@ -433,13 +463,9 @@ class HubService:
             manager_digest=self.verify_manager,
         ).transaction() as hub:
             self.verify_controller(hub)
+            if hub.get("config")["grant_id"] != grant["grant_id"]:
+                raise ValueError("The cached controller belongs to another Hub grant")
             result = hub.refresh()
-            index = hub.get("index")
-            self.seals.write(
-                self.home / "index-seal.json",
-                {"grant_id": grant["grant_id"], "digest": fingerprint(index)},
-                "index",
-            )
             self.seal_controller(hub)
         with writer_lock(self.home, name="permission.lock"):
             latest = self.grant()
@@ -515,6 +541,27 @@ class HubService:
                 },
                 "agent_state",
             )
+            job_path = safe(self.home, "job.json")
+            if result.get("index_recovered") and job_path.is_file():
+                job = self.seals.read(job_path, "job")
+                if job["state"] in {"failed", "interrupted"} and job["operation"] in {
+                    "setup",
+                    "maintenance",
+                }:
+                    self.seals.write(
+                        job_path,
+                        {
+                            **job,
+                            "state": "complete",
+                            "original_failure": {
+                                "state": job["state"],
+                                "message": job.get("message"),
+                            },
+                            "result": {"status": "index_recovered"},
+                            "recovered_at": time.time(),
+                        },
+                        "job",
+                    )
             return result
 
     def prepare(
@@ -523,11 +570,20 @@ class HubService:
         grant, project = self.require_project(project_id)
         self.budget()
         with self.controller(grant, relative_directory) as hub:
-            index = hub.get("index")
-            if index is None:
-                raise ValueError("Finish repository setup in Temper first")
+            hub.recover(project_key(project_id))
+            self.bind_publication_context(hub, grant, Path(project["root"]), goal, task_class)
+            before_index = hub.get("index")
             result = hub.sync(project_key(project_id), goal, task_class)
+            after_index = hub.get("index")
+            result["index_recovered"] = bool(
+                after_index
+                and (
+                    not before_index
+                    or before_index["catalog_digest"] != after_index["catalog_digest"]
+                )
+            )
             if result["status"] == "needs_agent_selection":
+                index = hub.get("index")
                 token = {
                     "grant_digest": fingerprint(grant),
                     "project_id": project_id,
@@ -632,6 +688,7 @@ class HubService:
                 for row in selection
             ):
                 raise ValueError("Inspect every selected skill and dependency before publication")
+            self.bind_publication_context(hub, grant, Path(project["root"]), goal, task_class)
             result = hub.sync(project_key(project_id), goal, task_class, choices=choices)
             return {**result, "project_id": project_id, "personal_evidence_created": False}
 
@@ -776,7 +833,7 @@ class HubService:
             not grant
             or not grant["enabled"]
             or grant["paused"]
-            or time.time() - (grant["last_checked"] or 0) < 21_600
+            or time.time() - (grant.get("last_attempt") or grant["last_checked"] or 0) < 21_600
         ):
             return {"status": "idle"}
         return self.start("maintenance", self.maintain)

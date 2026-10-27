@@ -486,3 +486,77 @@ def test_agent_failure_is_visible_without_storing_the_goal(
     assert state["last_task"]["state"] == "failed"
     assert state["last_task"]["message"] == "Private manager needs repair"
     assert goal not in (service.home / "agent-state.json").read_text()
+
+
+def test_policy_change_during_native_staging_prevents_publication(
+    service: HubService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    select(service, prepare(service))
+    target = service.home.parent / "repo/.agents/skills/debugging/SKILL.md"
+    previous = target.read_bytes()
+    public = service.home.parent / "public-fixture/skills/debugging/SKILL.md"
+    public.write_bytes(public.read_bytes() + b"\nNew public revision.\n")
+    (service.home.parent / "revision").write_text("b" * 40)
+    with writer_lock(service.home):
+        service.maintain(force=True)
+    proposal = prepare(service)
+    original = service.manager.run
+
+    def change_policy(argv: list[str], cwd: Path, home: Path) -> dict[str, Any]:
+        result = original(argv, cwd, home)
+        if argv[:2] == ["skillkit", "install"]:
+            (service.home.parent / "repo/AGENTS.md").write_text("Do not use debugging guidance")
+        return result
+
+    monkeypatch.setattr(service.manager, "run", change_policy)
+    with pytest.raises(ValueError, match="context changed during"):
+        select(service, proposal)
+    assert target.read_bytes() == previous
+
+
+@pytest.mark.parametrize("initial", [False, True])
+def test_interrupted_index_construction_recovers_on_next_task(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, initial: bool
+) -> None:
+    service = make_service(tmp_path)
+    original = service.manager.run
+
+    def fail_index(argv: list[str], cwd: Path, home: Path) -> dict[str, Any]:
+        if argv[0] == "node":
+            raise ValueError("Fictional interrupted index construction")
+        return original(argv, cwd, home)
+
+    preview = service.preview(["repo"], ["superpowers"])
+    if initial:
+        monkeypatch.setattr(service.manager, "run", fail_index)
+        service.enable(preview["preview_id"])
+        assert wait_job(service)["state"] == "failed"
+    else:
+        service.enable(preview["preview_id"])
+        assert wait_job(service)["state"] == "complete"
+        select(service, prepare(service))
+        public = tmp_path / "public-fixture/skills/debugging/SKILL.md"
+        public.write_bytes(public.read_bytes() + b"\nNew public revision.\n")
+        (tmp_path / "revision").write_text("b" * 40)
+        monkeypatch.setattr(service.manager, "run", fail_index)
+        with writer_lock(service.home), pytest.raises(ValueError, match="interrupted index"):
+            service.maintain(force=True)
+    monkeypatch.setattr(service.manager, "run", original)
+    assert select(service, prepare(service))["status"] == "ready"
+
+
+def test_failed_first_setup_does_not_retry_sources_every_scheduler_tick(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service = make_service(tmp_path)
+
+    def fail(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
+        raise ValueError("Fictional offline source")
+
+    monkeypatch.setattr(service.manager, "run", fail)
+    preview = service.preview(["repo"], ["superpowers"])
+    service.enable(preview["preview_id"])
+    assert wait_job(service)["state"] == "failed"
+    grant = service.grant()
+    assert grant is not None and grant["last_attempt"] > 0
+    assert service.tick()["status"] == "idle"

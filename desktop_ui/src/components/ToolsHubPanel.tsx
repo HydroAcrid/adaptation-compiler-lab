@@ -500,6 +500,7 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                     ? "Reinstall the pinned private SkillKit copy, discard its downloaded source cache, and fetch approved sources again. Repository profiles and permissions are preserved."
                     : "Stop updates and remove unchanged Temper-managed skill files. Files you edited are preserved and may need your attention."}
             </Dialog.Description>
+            {actionError && <p role="alert">{actionError}</p>}
             {review?.type === "permission" && (
               <>
                 <ul>

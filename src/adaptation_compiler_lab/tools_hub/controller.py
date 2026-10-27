@@ -84,6 +84,7 @@ class Hub:
         self.publication_guard = publication_guard
         self.journal_pack = journal_pack or (lambda value: value)
         self.journal_unpack = journal_unpack or (lambda value: value)
+        self.publishing_files: dict[str, str] = {}
         if not (self.home / MARKER).is_file():
             raise ValueError("Initialize an explicit private hub directory first")
         self.run = run
@@ -464,6 +465,8 @@ class Hub:
 
     def recover(self, name: str) -> None:
         path = self.home / (identifier(name) + ".pending.json")
+        if path in self.finished_journals:
+            return
         if not path.exists():
             return
         if path.stat().st_size > 24_000_000:
@@ -535,6 +538,7 @@ class Hub:
             "previous": previous,
             "changes": changes,
         }
+        self.publishing_files = dict(after_files)
         core.save(journal, self.journal_pack(journal_payload))
         for index, change in enumerate(changes, 1):
             if self.publication_guard:

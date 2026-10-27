@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import { ToolsHubPanel } from "./ToolsHubPanel";
@@ -183,4 +183,29 @@ it("shows unknown status instead of claiming approved repos are ready", async ()
   expect(await screen.findByText("Status unavailable")).toBeVisible();
   expect(screen.getByRole("alert")).toHaveTextContent("Secure store is locked");
   expect(screen.queryByText("Ready for tasks")).toBeNull();
+});
+
+it("keeps a rejected action visible after a successful status refresh", async () => {
+  const user = userEvent.setup();
+  api.hubRequest.mockImplementation(async (operation: string) => {
+    if (operation === "status")
+      return { ...initial, enabled: true, indexed: true };
+    if (operation === "control")
+      throw new Error(
+        "Permission changed in another window. Refresh before retrying.",
+      );
+    return {};
+  });
+  render(<ToolsHubPanel nativeRuntime />);
+  await user.click(
+    await screen.findByRole("button", { name: "Pause updates" }),
+  );
+  await waitFor(() =>
+    expect(
+      api.hubRequest.mock.calls.filter((call) => call[0] === "status").length,
+    ).toBeGreaterThanOrEqual(3),
+  );
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "Permission changed in another window",
+  );
 });
