@@ -231,7 +231,7 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                     })
                   }
                 >
-                  {working ? "Cleaning up�" : "Retry safe cleanup"}
+                  {working ? "Cleaning up…" : "Retry safe cleanup"}
                 </Button>
               </div>
             )}
