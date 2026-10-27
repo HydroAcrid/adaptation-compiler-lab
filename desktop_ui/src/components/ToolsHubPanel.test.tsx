@@ -123,6 +123,48 @@ it.each([
   expect(screen.queryByRole("dialog")).toBeNull();
 });
 
+it("makes every connection preview block reachable before keyboard consent", async () => {
+  const user = userEvent.setup();
+  api.hubRequest.mockImplementation(async (operation: string) => {
+    if (operation === "status")
+      return { ...initial, enabled: true, indexed: true };
+    return {
+      preview_id: "fictional-connection",
+      files: [
+        {
+          path: "C:\\fixture\\config.toml",
+          block: "Fictional endpoint settings",
+        },
+        {
+          path: "C:\\fixture\\AGENTS.md",
+          block: "Fictional instructions\n".repeat(60),
+        },
+      ],
+    };
+  });
+  render(<ToolsHubPanel nativeRuntime />);
+  await user.click(
+    await screen.findByRole("button", { name: "Connect Codex" }),
+  );
+  const settings = await screen.findByRole("region", {
+    name: "Proposed config.toml section",
+  });
+  const instructions = screen.getByRole("region", {
+    name: "Proposed AGENTS.md section",
+  });
+  await waitFor(() => expect(settings).toHaveFocus());
+  await user.tab();
+  expect(instructions).toHaveFocus();
+  await user.tab();
+  expect(
+    screen.getByRole("button", { name: "Allow and continue" }),
+  ).toHaveFocus();
+  await user.tab();
+  expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
+  await user.tab();
+  expect(settings).toHaveFocus();
+});
+
 it("keeps retained guidance and blocked cleanup visible after permission stops", async () => {
   api.hubRequest.mockResolvedValue({
     ...initial,

@@ -576,7 +576,13 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                 {review.value.files.map((file) => (
                   <li key={file.path}>
                     <code>{file.path}</code>
-                    <pre>{file.block}</pre>
+                    <pre
+                      role="region"
+                      aria-label={`Proposed ${file.path.replaceAll("\\", "/").split("/").at(-1)} section`}
+                      tabIndex={0}
+                    >
+                      {file.block}
+                    </pre>
                   </li>
                 ))}
               </ul>

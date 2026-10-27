@@ -5935,6 +5935,11 @@ strong {
   background: var(--surface-subtle);
   font-size: 11px;
 }
+
+.tools-hub-review pre:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
 .tools-hub-review ul {
   padding-left: 20px;
 }
