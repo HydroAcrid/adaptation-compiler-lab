@@ -27,9 +27,11 @@ def dependencies(row: dict[str, Any], corpus: list[dict[str, Any]]) -> list[dict
     body = row["body"].split("---", 2)[-1]
     pattern = (
         r"\b(?:apply|load|invoke|use|run)\s+(?:the\s+)?(?:\*\*|`)?"
-        r"([a-z][a-z0-9_-]+)(?:\*\*|`)?\s+skill\b"
+        r"(?:([a-z][a-z0-9_-]*):)?([a-z][a-z0-9_-]+)(?:\*\*|`)?\s+skill\b"
     )
-    for name in re.findall(pattern, body, flags=re.IGNORECASE):
+    for namespace, name in re.findall(pattern, body, flags=re.IGNORECASE):
+        if namespace and (namespace != row["source"] or name not in available):
+            raise ValueError("Unresolved named skill dependency: " + namespace + ":" + name)
         if name in available and name != row["name"]:
             names.add(name)
     return [available[name] for name in sorted(names)]

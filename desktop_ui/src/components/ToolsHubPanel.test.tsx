@@ -115,7 +115,6 @@ it.each([
   render(<ToolsHubPanel nativeRuntime />);
   const trigger = await screen.findByRole("button", {
     name: opener,
-    exact: true,
   });
   await user.click(trigger);
   await screen.findByRole("dialog", { name: title });
