@@ -579,6 +579,8 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                     <pre
                       role="region"
                       aria-label={`Proposed ${file.path.replaceAll("\\", "/").split("/").at(-1)} section`}
+                      // A scroll region needs focus for native keyboard scrolling.
+                      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
                       tabIndex={0}
                     >
                       {file.block}
