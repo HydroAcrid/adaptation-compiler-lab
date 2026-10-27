@@ -30,6 +30,13 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
   const [sources, setSources] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [review, setReview] = useState<Review | null>(null);
+  const reviewTrigger = useRef<HTMLButtonElement | null>(null);
+  const panelHeading = useRef<HTMLHeadingElement | null>(null);
+
+  function openReview(value: Review, trigger: HTMLButtonElement) {
+    reviewTrigger.current = trigger;
+    setReview(value);
+  }
 
   useEffect(() => {
     if (!nativeRuntime) return;
@@ -101,6 +108,8 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
       await mutate("connection_apply", { preview_id: review.value.preview_id });
     } else if (review.type === "repair") await mutate("repair");
     else await mutate("control", { operation: "stop" });
+    // Confirmation can remove the opener on the next status refresh.
+    reviewTrigger.current = null;
     setReview(null);
   }
   const failed =
@@ -118,7 +127,9 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
     >
       <div className="tools-hub-panel__heading">
         <div>
-          <h2 id="tools-hub-title">Repository setup</h2>
+          <h2 id="tools-hub-title" ref={panelHeading} tabIndex={-1}>
+            Repository setup
+          </h2>
           <p>
             A small set of tools for the task at hand, maintained through
             SkillKit.
@@ -289,17 +300,21 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                 <div className="tools-hub-actions">
                   <Button
                     disabled={busy || !chosen.length || !sources.length}
-                    onClick={() =>
+                    onClick={(event) => {
+                      const trigger = event.currentTarget;
                       void action(async () => {
-                        setReview({
-                          type: "permission",
-                          value: await mutate<HubPreview>(
-                            "permission_preview",
-                            { project_ids: chosen, source_ids: sources },
-                          ),
-                        });
-                      })
-                    }
+                        openReview(
+                          {
+                            type: "permission",
+                            value: await mutate<HubPreview>(
+                              "permission_preview",
+                              { project_ids: chosen, source_ids: sources },
+                            ),
+                          },
+                          trigger,
+                        );
+                      });
+                    }}
                   >
                     Review setup
                   </Button>
@@ -348,17 +363,21 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                       disabled={
                         busy || working || !state.indexed || !!loadError
                       }
-                      onClick={() =>
+                      onClick={(event) => {
+                        const trigger = event.currentTarget;
                         void action(async () =>
-                          setReview({
-                            type: "connection",
-                            value:
-                              await mutate<ConnectionPreview>(
-                                "connection_preview",
-                              ),
-                          }),
-                        )
-                      }
+                          openReview(
+                            {
+                              type: "connection",
+                              value:
+                                await mutate<ConnectionPreview>(
+                                  "connection_preview",
+                                ),
+                            },
+                            trigger,
+                          ),
+                        );
+                      }}
                     >
                       Connect Codex
                     </Button>
@@ -391,7 +410,9 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                     <button
                       type="button"
                       disabled={busy || working || state.paused || !!loadError}
-                      onClick={() => setReview({ type: "repair" })}
+                      onClick={(event) =>
+                        openReview({ type: "repair" }, event.currentTarget)
+                      }
                     >
                       Repair setup
                     </button>
@@ -399,7 +420,9 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                   <button
                     type="button"
                     disabled={busy || !!loadError}
-                    onClick={() => setReview({ type: "stop" })}
+                    onClick={(event) =>
+                      openReview({ type: "stop" }, event.currentTarget)
+                    }
                   >
                     Stop managing tools
                   </button>
@@ -481,7 +504,15 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
       >
         <Dialog.Portal>
           <Dialog.Overlay className="dialog-overlay" />
-          <Dialog.Content className="review-dialog tools-hub-review">
+          <Dialog.Content
+            className="review-dialog tools-hub-review"
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              const trigger = reviewTrigger.current;
+              if (trigger?.isConnected && !trigger.disabled) trigger.focus();
+              else panelHeading.current?.focus();
+            }}
+          >
             <Dialog.Title>
               {review?.type === "permission"
                 ? "Allow repository tool setup"

@@ -75,12 +75,53 @@ it("does not treat learning repositories as tool permission and previews exact d
   expect(
     screen.getByText(/This does not authorize chat learning/),
   ).toBeVisible();
+  await user.keyboard("{Escape}");
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "Review setup" })).toHaveFocus(),
+  );
+  await user.keyboard("{Enter}");
+  await screen.findByRole("dialog", { name: "Allow repository tool setup" });
   await user.click(screen.getByRole("button", { name: "Allow and continue" }));
   expect(api.hubRequest).toHaveBeenCalledWith(
     "permission_enable",
     { preview_id: "fixture-preview" },
     initial.digest,
   );
+  await waitFor(() =>
+    expect(
+      screen.getByRole("heading", { name: "Repository setup" }),
+    ).toHaveFocus(),
+  );
+});
+
+it.each([
+  ["Connect Codex", "Connect Codex to repository setup"],
+  ["Repair setup", "Repair the private manager"],
+  ["Stop managing tools", "Stop managing repository tools"],
+])("returns keyboard focus after closing %s", async (opener, title) => {
+  const user = userEvent.setup();
+  api.hubRequest.mockImplementation(async (operation: string) => {
+    if (operation === "status")
+      return {
+        ...initial,
+        enabled: true,
+        indexed: true,
+        job: { job_id: "fixture", operation: "maintenance", state: "failed" },
+      };
+    if (operation === "connection_preview")
+      return { preview_id: "fictional-connection", files: [] };
+    return {};
+  });
+  render(<ToolsHubPanel nativeRuntime />);
+  const trigger = await screen.findByRole("button", {
+    name: opener,
+    exact: true,
+  });
+  await user.click(trigger);
+  await screen.findByRole("dialog", { name: title });
+  await user.keyboard("{Escape}");
+  await waitFor(() => expect(trigger).toHaveFocus());
+  expect(screen.queryByRole("dialog")).toBeNull();
 });
 
 it("keeps retained guidance and blocked cleanup visible after permission stops", async () => {
