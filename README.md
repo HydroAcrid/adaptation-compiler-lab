@@ -27,6 +27,10 @@ learning through the existing Codex composer, including trusted conversation
 relays with uncertain human authorship. This requires the explicit new grant; old grants
 remain strict. See [`TEMPER_AUTHORIZED_CHAT_INPUT.md`](TEMPER_AUTHORIZED_CHAT_INPUT.md) for
 the current policy, bounded development checks and installation boundary. See
+[`TEMPER_COMPLETED_WORK_CAPTURE.md`](TEMPER_COMPLETED_WORK_CAPTURE.md) for the separately
+confirmed intake policy that includes new completed work in ongoing chats while retaining the
+existing message cutoff and one supporting episode per conversation. Setup/readiness checks
+alone do not demonstrate that any real conversation was captured or analyzed. See
 [`TEMPER_AUTONOMY_IMPLEMENTATION.md`](TEMPER_AUTONOMY_IMPLEMENTATION.md) and
 [`TEMPER_LOCAL_VALIDATION_OCTOBER_12.md`](TEMPER_LOCAL_VALIDATION_OCTOBER_12.md).
 The subsequent learner fixes, complete failed runs, selected model candidates and current

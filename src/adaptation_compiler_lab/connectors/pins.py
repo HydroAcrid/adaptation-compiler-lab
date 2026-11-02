@@ -51,7 +51,10 @@ def product_codex_runtime_locks(platform_name: str) -> tuple[Path, ...]:
             DEFAULT_DOGFOOD_WINDOWS_RUNTIME_LOCK,
         )
     if platform_name == "darwin":
-        return (root / "desktop_codex_macos_0_157_0.json",)
+        return (
+            root / "desktop_codex_macos_0_166_0_alpha_5_1.json",
+            root / "desktop_codex_macos_0_157_0.json",
+        )
     return (DEFAULT_DOGFOOD_RUNTIME_LOCK,)
 
 

@@ -22,6 +22,10 @@ from adaptation_compiler_lab.automatic_runtime.codex_dogfood import (
     _resolved_runtime_path,
     _text_user_message,
 )
+from adaptation_compiler_lab.autonomy.capture_policy import (
+    CompletedWorkAuthorization,
+    completed_work_authorization,
+)
 from adaptation_compiler_lab.autonomy.models import InputOrigin, LearningGrantV1, StyleEpisodeV1
 from adaptation_compiler_lab.autonomy.origin_receipts import (
     AdmittedOriginProducerV1,
@@ -36,6 +40,36 @@ from adaptation_compiler_lab.domain import FrozenModel, Sha256Digest
 from adaptation_compiler_lab.serialization import canonical_digest, canonical_json
 
 SOURCE_CLIENT = "codex-interactive"
+
+
+def _completed_work_request(text: str) -> str | None:
+    """Native transport context is not an owner's conversational request."""
+    stripped = text.strip()
+    if stripped.startswith(
+        ("<heartbeat>", "<environment_context>", "<external_codex_apps_open_page>")
+    ):
+        return None
+    start, end = "<send_user_message_question_reply>", "</send_user_message_question_reply>"
+    if stripped.startswith(start):
+        if not stripped.endswith(end):
+            return None
+        try:
+            replies = json.loads(stripped[len(start) : -len(end)])
+        except ValueError:
+            return None
+        if (
+            not isinstance(replies, list)
+            or not replies
+            or not all(
+                isinstance(reply, dict) and isinstance(reply.get("answer"), str)
+                for reply in replies
+            )
+        ):
+            return None
+        # Generated questions are context, never supporting owner statements.
+        return "\n\n".join(reply["answer"] for reply in replies).strip() or None
+    return text
+
 
 if TYPE_CHECKING:
     from adaptation_compiler_lab.autonomy.service import AutonomyApplicationService
@@ -130,6 +164,33 @@ class StoredOriginEvidence:
         ):
             return False
         if proof.get("input_policy") == "owner_authorized_conversations":
+            if "capture_policy_digest" in proof:
+                authorization = next(
+                    (
+                        event["payload"]
+                        for event in self.store.events()
+                        if event["type"] == "source_work_authorization"
+                        and event["payload"].get("disabled") is not True
+                        and canonical_digest(event["payload"]) == proof["capture_policy_digest"]
+                    ),
+                    None,
+                )
+                if authorization is None:
+                    return False
+                if not any(
+                    event["type"] == "source_work_confirmation"
+                    and event["payload"].get("policy_digest") == proof["capture_policy_digest"]
+                    for event in self.store.events()
+                ):
+                    return False
+                policy = CompletedWorkAuthorization.model_validate_json(
+                    json.dumps(authorization), strict=True
+                )
+                if (
+                    policy.grant_digest != grant.content_digest
+                    or policy.capture_after != grant.issued_at
+                ):
+                    return False
             return (
                 grant.input_policy == "owner_authorized_conversations"
                 and episode.origin is InputOrigin.AUTHORIZED_CHAT
@@ -156,6 +217,7 @@ class CodexHabitSource:
         clock: Callable[[], datetime],
         project_cutoffs: Mapping[str, datetime] | None = None,
         most_specific_registered_root: bool = False,
+        completed_work: CompletedWorkAuthorization | None = None,
     ) -> None:
         self.rpc = rpc
         self.schemas = schemas
@@ -168,6 +230,13 @@ class CodexHabitSource:
         self.evidence = evidence
         self.binding = source_binding
         self.clock = clock
+        if completed_work is not None and (
+            completed_work.grant_digest != grant.content_digest
+            or completed_work.capture_after != grant.issued_at
+            or grant.input_policy != "owner_authorized_conversations"
+        ):
+            raise AutonomyIntegrityError("completed work is outside the source grant")
+        self.completed_work = completed_work
 
     def poll(self, cutoff: datetime, previous: str | None) -> CapturePage:
         now = self.clock()
@@ -225,18 +294,49 @@ class CodexHabitSource:
                 raise AutonomyIntegrityError("source returned another completed chat")
             if self._eligible_project(thread, cutoff, now) != project:
                 continue
-            items = CodexDogfoodInteractionSource._flatten_terminal_items(thread)
             turns = cast(list[dict[str, Any]], thread["turns"])
-            if not turns or turns[-1]["status"] != "completed":
-                continue
-            # A rename or other thread-metadata update is not a completion date.
-            completed_value = turns[-1].get("completedAt")
-            if not isinstance(completed_value, int) or isinstance(completed_value, bool):
-                continue
-            completed = datetime.fromtimestamp(completed_value, UTC)
-            created = datetime.fromtimestamp(cast(int, thread["createdAt"]), UTC)
-            if not cutoff <= created <= completed <= now - timedelta(minutes=15):
-                continue
+            persisted_thread = thread
+            if self.completed_work is not None:
+                persisted_thread = {
+                    **thread,
+                    "turns": [
+                        t for t in turns if t["status"] in {"completed", "failed", "interrupted"}
+                    ],
+                }
+            items = CodexDogfoodInteractionSource._flatten_terminal_items(persisted_thread)
+            if self.completed_work is not None:
+                after = max(cutoff, self.project_cutoffs.get(project, cutoff))
+                eligible_turns = [
+                    turn
+                    for turn in turns
+                    if turn["status"] == "completed"
+                    and isinstance(turn.get("startedAt"), int)
+                    and not isinstance(turn["startedAt"], bool)
+                    and isinstance(turn.get("completedAt"), int)
+                    and not isinstance(turn["completedAt"], bool)
+                    and max(after.timestamp(), (now - timedelta(days=30)).timestamp())
+                    <= turn["startedAt"]
+                    <= turn["completedAt"]
+                    <= (now - timedelta(minutes=15)).timestamp()
+                ]
+                if not eligible_turns:
+                    continue
+                created = datetime.fromtimestamp(min(t["startedAt"] for t in eligible_turns), UTC)
+                completed = datetime.fromtimestamp(
+                    max(t["completedAt"] for t in eligible_turns), UTC
+                )
+            else:
+                if not turns or turns[-1]["status"] != "completed":
+                    continue
+                # Metadata updates never supply a missing completion date.
+                completed_value = turns[-1].get("completedAt")
+                if not isinstance(completed_value, int) or isinstance(completed_value, bool):
+                    continue
+                completed = datetime.fromtimestamp(completed_value, UTC)
+                created = datetime.fromtimestamp(cast(int, thread["createdAt"]), UTC)
+                if not cutoff <= created <= completed <= now - timedelta(minutes=15):
+                    continue
+                eligible_turns = [turn for turn in turns if turn["status"] == "completed"]
             if completed <= now - timedelta(days=30):
                 continue
             prior = heads.get(task_digest)
@@ -250,7 +350,7 @@ class CodexHabitSource:
             receipts: list[OriginReceiptV1] = []
             text_parts: list[str] = []
             message_ids: list[str] = []
-            successful_turns = {turn["id"] for turn in turns if turn["status"] == "completed"}
+            successful_turns = {turn["id"] for turn in eligible_turns}
             for turn_id, item in items:
                 text = _text_user_message(item)
                 if text is None or turn_id not in successful_turns:
@@ -259,6 +359,10 @@ class CodexHabitSource:
                 if owner_trusted:
                     # This is a request in an opted-in conversation, not human proof.
                     # Assistant outputs, tool results and native memory are not read here.
+                    if self.completed_work is not None:
+                        text = _completed_work_request(text)
+                        if text is None:
+                            continue
                     text_parts.append(text)
                     message_ids.append(message_id)
                     continue
@@ -316,6 +420,8 @@ class CodexHabitSource:
             if owner_trusted:
                 proof["input_policy"] = "owner_authorized_conversations"
                 proof["source_snapshot_digest"] = canonical_digest(thread)
+                if self.completed_work is not None:
+                    proof["capture_policy_digest"] = self.completed_work.content_digest
             digest = canonical_digest(proof)
             self.evidence.store.append(
                 "source-proof-" + str(digest)[7:], "source_episode_proof", proof, at=now
@@ -342,8 +448,13 @@ class CodexHabitSource:
     ) -> str | None:
         if (
             thread["ephemeral"] is not False
-            or thread["status"]["type"] not in {"idle", "notLoaded"}
-            or thread["cliVersion"] != self.evidence.client_version
+            or thread["status"]["type"]
+            not in (
+                {"idle", "notLoaded", "active"} if self.completed_work else {"idle", "notLoaded"}
+            )
+            or (
+                self.completed_work is None and thread["cliVersion"] != self.evidence.client_version
+            )
             or thread.get("forkedFromId") is not None
             or thread.get("parentThreadId") is not None
             or thread["source"] not in ("cli", "vscode", "appServer")
@@ -351,7 +462,10 @@ class CodexHabitSource:
             return None
         created = datetime.fromtimestamp(thread["createdAt"], UTC)
         completed = datetime.fromtimestamp(thread["updatedAt"], UTC)
-        if not cutoff <= created <= completed <= now - timedelta(minutes=15):
+        if self.completed_work is None:
+            if not cutoff <= created <= completed <= now - timedelta(minutes=15):
+                return None
+        elif not created <= completed <= now or completed < cutoff:
             return None
         if completed <= now - timedelta(days=30):
             return None
@@ -372,10 +486,29 @@ class CodexHabitSource:
             if (self.most_specific_registered_root or key in self.grant.project_ids)
             and any(path == root or path.is_relative_to(root) for root in roots)
             and (
-                self.most_specific_registered_root
+                self.completed_work is not None
+                or self.most_specific_registered_root
                 or created >= self.project_cutoffs.get(key, cutoff)
             )
         ]
+        if self.completed_work is not None:
+            task_digest = canonical_digest({"task": str(thread["id"])})
+            binding = next(
+                (b for b in self.completed_work.bindings if b.task_digest == task_digest), None
+            )
+            if binding is not None:
+                if path != Path(binding.expected_cwd) or any(
+                    key != binding.project_id for key, _ in matches
+                ):
+                    raise AutonomyIntegrityError("bound conversation moved or changed project")
+                roots = self.projects.get(binding.project_id, ())
+                if (
+                    binding.project_id not in self.grant.project_ids
+                    or not roots
+                    or not any(root.is_dir() and (root / ".git").exists() for root in roots)
+                ):
+                    raise AutonomyIntegrityError("bound learning repository is unavailable")
+                return binding.project_id
         if self.most_specific_registered_root:
             # Physical ancestors recognize UNC/mount aliases even when a child did
             # not list the spelling used by this chat. Never fall back to a parent
@@ -401,7 +534,7 @@ class CodexHabitSource:
         project = matches[0][0] if matches else None
         if project is not None and (
             project not in self.grant.project_ids
-            or created < self.project_cutoffs.get(project, cutoff)
+            or (self.completed_work is None and created < self.project_cutoffs.get(project, cutoff))
         ):
             return None
         return project
@@ -477,6 +610,7 @@ class ConfiguredCodexHabitSource:
         if not evidence.producers(grant) and grant.input_policy != "owner_authorized_conversations":
             raise AutonomyIntegrityError("native human input producer is not admitted")
         config = _load_config(self.config_path)
+        work_policy = completed_work_authorization(self.service.store, grant)
         pin = load_dogfood_runtime_pins(config.runtime_pin_path).codex
         runtime = verify_codex_runtime(config.codex_executable, pin)
         schemas = codex_dogfood_schemas(pin)
@@ -533,10 +667,13 @@ class ConfiguredCodexHabitSource:
                 evidence=evidence,
                 source_binding=binding,
                 clock=self.service.clock,
+                completed_work=work_policy,
             )
             page = source.poll(cutoff, cursor)
             if registry is not None and registry.projects() != registered:
                 raise AutonomyIntegrityError("learning repository registry changed during pickup")
             if _load_config(self.config_path) != config or self.service.grant() != grant:
                 raise AutonomyIntegrityError("learning scope changed during completed-chat pickup")
+            if completed_work_authorization(self.service.store, grant) != work_policy:
+                raise AutonomyIntegrityError("completed-work permission changed during pickup")
             return page

@@ -21,6 +21,7 @@ export interface AutonomyState {
   secure_store_ready: boolean;
   provenance_state: "verified" | "unverified" | "owner_authorized";
   input_policy?: "owner_authorized_conversations" | null;
+  capture_window?: "new_conversations" | "completed_work";
   capture_state: string;
   mode: "shadow" | "automatic";
   published: boolean;

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, cast
 
+from adaptation_compiler_lab.autonomy.capture_policy import CapturePolicyController
 from adaptation_compiler_lab.autonomy.models import StyleCategory, TaskClass
 from adaptation_compiler_lab.autonomy.service import AutonomyApplicationService
 from adaptation_compiler_lab.autonomy.store import AutonomyIntegrityError
@@ -18,6 +19,7 @@ class AutonomyProtocol:
     ) -> None:
         self.service = service
         self.worker = worker or service.background_worker or BackgroundHabitWorker(service)
+        self.capture = CapturePolicyController(service)
 
     def _refresh_projects(self) -> None:
         if self.worker.project_registry is not None:
@@ -57,7 +59,15 @@ class AutonomyProtocol:
         if method in readers:
             if params:
                 raise AutonomyIntegrityError("autonomy reader takes no parameters")
-            return self.service.status()
+            return {**self.service.status(), **self.capture.status()}
+        if method == "autonomy.capture.preview":
+            if (
+                set(params) != {"bindings"}
+                or not isinstance(params["bindings"], list)
+                or not all(isinstance(binding, dict) for binding in params["bindings"])
+            ):
+                raise AutonomyIntegrityError("invalid completed-work preview")
+            return self.capture.preview(params["bindings"])
         if method == "autonomy.grant.preview":
             if set(params) not in (
                 {"project_ids", "categories"},
@@ -118,6 +128,8 @@ class AutonomyProtocol:
                 "raw_payloads_exposed": False,
             }
         allowed = {
+            "autonomy.capture.enable": {"preview_token", "confirmed"},
+            "autonomy.capture.disable": set(),
             "autonomy.projects.register": {"preview_token", "confirmed"},
             "autonomy.grant.enable": {"preview_token", "confirmed"},
             "autonomy.publication.confirm": {"preview_token", "confirmed"},
@@ -148,7 +160,13 @@ class AutonomyProtocol:
             return cast(dict[str, Any], replay["payload"]["result"])
         if expected_digest != self.service.snapshot_digest:
             raise AutonomyIntegrityError("autonomy state changed; refresh before continuing")
-        if method == "autonomy.projects.register":
+        if method == "autonomy.capture.enable":
+            if not isinstance(params["preview_token"], str) or params["confirmed"] is not True:
+                raise AutonomyIntegrityError("completed work requires explicit confirmation")
+            self.capture.enable(params["preview_token"], confirmed=True, key=idempotency_key)
+        elif method == "autonomy.capture.disable":
+            self.capture.disable(key=idempotency_key)
+        elif method == "autonomy.projects.register":
             if (
                 self.worker.project_registry is None
                 or not self.service.secure_store_available()
@@ -190,7 +208,7 @@ class AutonomyProtocol:
         else:
             result = self.service.status()
         if method != "autonomy.background.poll":
-            result = self.service.status()
+            result = {**self.service.status(), **self.capture.status()}
         self.service.store.append(
             "protocol-" + idempotency_key,
             "protocol_receipt",

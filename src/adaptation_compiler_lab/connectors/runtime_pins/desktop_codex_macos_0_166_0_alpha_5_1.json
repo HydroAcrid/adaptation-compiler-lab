@@ -1,0 +1,42 @@
+{
+  "lock_version": "1.0.0",
+  "codex": {
+    "executable": {
+      "package": "Codex CLI bundled in installed ChatGPT.app macOS arm64",
+      "package_version": "0.166.0-alpha.5.1",
+      "package_integrity": "Installed ChatGPT.app 26.1027.61615; exact code-signed arm64 binary SHA-256 58a91f6ea19bea477ae3a2ec48d619f0039afe75d3476260747e11d201fa7cea; no archive or npm integrity asserted",
+      "executable_sha256": "sha256:58a91f6ea19bea477ae3a2ec48d619f0039afe75d3476260747e11d201fa7cea",
+      "version_args": [
+        "--version"
+      ],
+      "version_stdout": "codex-cli 0.166.0-alpha.5.1",
+      "required_help_flags": [
+        "app-server"
+      ]
+    },
+    "schema_generation_args": [
+      "app-server",
+      "generate-json-schema",
+      "--out",
+      "{output}",
+      "--experimental"
+    ],
+    "schema_bundle_sha256": "sha256:12798dba7e351f72a3e0a7579f54495b3ced0d55b9228bf3e32e806653615bfd",
+    "schema_file_sha256": {
+      "v1/InitializeResponse.json": "sha256:62ad689c2cb6379913c1d72749cfd8de5089d35760214123518eb92eef11acc9",
+      "v1/InitializeParams.json": "sha256:b55124e7c0f36a1789396daa5578217a92be67f053903696236686e59f6f212e",
+      "v2/ThreadStartResponse.json": "sha256:d82d7322a000e715eeac6ae4f7398fc78fc29b4e9a7e8d17aba034ec8d51e348",
+      "v2/TurnStartParams.json": "sha256:c7483aee79757d260c4fc1bb5c68b1a8d6f72846388e9f1e88d6f76f423287c8",
+      "v2/ThreadStartParams.json": "sha256:80a40a7fac15b4bf70efb7f893fb353acc0a0d30c68f54aee4f01923deca85de",
+      "v2/TurnCompletedNotification.json": "sha256:e9a5e3bcddaeee04afc60abafbbdcb5b0a531b5578db573fcacdd1477565bd0a",
+      "v2/ItemCompletedNotification.json": "sha256:f12a69b4f26a7fd2accadd87db4edd5e96e67ff78a1cac203dd12b91462031d7",
+      "v2/GetAccountParams.json": "sha256:30b545275f60975b55bd6fbaafd70f15505801d14168ee82d3931b6e93c78aab",
+      "v2/ThreadReadParams.json": "sha256:dfe040c6ac71d30795b8be3f3ff232e66f362a37f883b491e5d1ea367f470db4",
+      "v2/ThreadReadResponse.json": "sha256:25f3eb2888f592c7810420b054aba8ffb5fa134dd2a2d1cce5a90c2f038be7f6",
+      "v2/TurnStartResponse.json": "sha256:85da8d16c86432da14440504ae1e76d13527058920d4ed81632dd50c3fbd054d",
+      "v2/GetAccountResponse.json": "sha256:7abd8b4da37ad1ea748df40adb47d30529afb16eba71d190f8fff5322e9520ab",
+      "v2/ThreadListParams.json": "sha256:1781b1778cb08619f0bf12528b128e55648b86569114196b1b5ec565b9b7935d",
+      "v2/ThreadListResponse.json": "sha256:0a4820f94729dd2799d141e1ac8d375ac54bb6ab2d75a4684f5c73623df536ba"
+    }
+  }
+}

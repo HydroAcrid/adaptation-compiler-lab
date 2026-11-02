@@ -415,10 +415,13 @@ export function AutonomousLearningPanel({
           </dl>
           {status.capture_summary?.eligible_since && (
             <p>
-              New chats started after{" "}
+              {status.capture_window === "completed_work"
+                ? "Completed work since"
+                : "New chats started after"}{" "}
               {new Date(status.capture_summary.eligible_since).toLocaleString()}{" "}
-              are eligible. Continue working in an approved repository; chats
-              already open at that time stay excluded.
+              {status.capture_window === "completed_work"
+                ? "is eligible, including work in ongoing chats. Earlier messages stay excluded."
+                : "are eligible. Continue working in an approved repository; chats already open at that time stay excluded."}
             </p>
           )}
           {status.habits.length === 0 ? (

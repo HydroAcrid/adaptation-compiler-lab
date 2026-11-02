@@ -26,6 +26,7 @@ class CodexAnalysisContract:
                 ("win32", "0.162.0-alpha.17.2"): "windows_0_162_0_alpha_17_2",
                 ("win32", "0.160.1"): "windows_0_160_1",
                 ("win32", "0.162.0-alpha.2"): "windows_0_162_0_alpha_2",
+                ("darwin", "0.166.0-alpha.5.1"): "macos_0_166_0_alpha_5_1",
                 ("darwin", "0.157.0"): "macos_0_157_0",
             }
             directory = supported.get((sys.platform, runtime.version))

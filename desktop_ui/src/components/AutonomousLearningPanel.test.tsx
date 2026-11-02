@@ -279,6 +279,30 @@ it("shows signed repository coverage and the prospective cutoff without claiming
   expect(screen.getByText("No habits yet")).toBeInTheDocument();
 });
 
+it("describes completed work in ongoing chats only when that capture policy is enabled", async () => {
+  api.loadAutonomy.mockResolvedValue({
+    value: {
+      ...status,
+      grant_enabled: true,
+      learning_enabled: true,
+      capture_window: "completed_work",
+      capture_summary: {
+        eligible_since: "2026-10-22T14:58:19Z",
+        captured_conversations: 1,
+        read_at: "2026-11-02T15:00:00Z",
+      },
+    },
+    digest,
+  });
+  render(<AutonomousLearningPanel projects={[project]} />);
+  expect(
+    await screen.findByText(/including work in ongoing chats/),
+  ).toHaveTextContent("Earlier messages stay excluded");
+  expect(
+    screen.queryByText(/chats already open at that time stay excluded/),
+  ).not.toBeInTheDocument();
+});
+
 it("disambiguates same-name learning repositories when granting permission", async () => {
   api.loadAutonomy.mockResolvedValue({
     value: {
