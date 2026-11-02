@@ -46,7 +46,15 @@ def _completed_work_request(text: str) -> str | None:
     """Native transport context is not an owner's conversational request."""
     stripped = text.strip()
     if stripped.startswith(
-        ("<heartbeat>", "<environment_context>", "<external_codex_apps_open_page>")
+        (
+            "<heartbeat>",
+            "<environment_context>",
+            "<external_codex_apps_open_page>",
+            "# AGENTS.md instructions",
+            "<INSTRUCTIONS>",
+            "<turn_aborted>",
+            "<codex_delegation>",
+        )
     ):
         return None
     start, end = "<send_user_message_question_reply>", "</send_user_message_question_reply>"
@@ -259,6 +267,16 @@ class CodexHabitSource:
             for value in cursor.checkpoints
             if value.completed_at > now - timedelta(days=30)
         }
+        captured_tasks = (
+            {
+                event["payload"]["source_task_id"]
+                for event in self.evidence.store.events()
+                if event["type"] == "episode"
+                and event["payload"].get("source_client") == SOURCE_CLIENT
+            }
+            if self.completed_work is not None
+            else set()
+        )
         producers = self.evidence.producers(self.grant)
         owner_trusted = self.grant.input_policy == "owner_authorized_conversations"
         if not producers and not owner_trusted:
@@ -283,6 +301,10 @@ class CodexHabitSource:
                 continue
             task_id = str(summary["id"])
             task_digest = canonical_digest({"task": task_id})
+            if task_id in captured_tasks and task_digest not in heads:
+                # Raw/checkpoint expiry must not turn resumed work into a second
+                # episode or a changed replay. Signed task metadata remains.
+                continue
             read_params: JsonObject = {"threadId": task_id, "includeTurns": True}
             self.schemas.validate("thread_read_params", read_params)
             response = self.rpc.request("thread/read", read_params)

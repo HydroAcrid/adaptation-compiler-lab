@@ -185,6 +185,29 @@ def test_recent_completion_cannot_import_turns_older_than_retention(
     assert page.episodes[0].observation_ids == ("fresh-message",)
 
 
+def test_resumed_captured_chat_stays_one_episode_after_checkpoint_expiry(
+    fixture: dict[str, Any],
+) -> None:
+    f = fixture
+    enable_work(f)
+    first = f["source"].poll(f["grant"].issued_at, None)
+    assert f["service"].ingest_episode(first.episodes[0])
+    later = NOW + timedelta(days=31)
+    f["source"].clock = lambda: later
+    f["thread"]["updatedAt"] = int((later - timedelta(minutes=60)).timestamp())
+    resumed = deepcopy(f["thread"]["turns"][0])
+    resumed.update(
+        id="resumed-turn",
+        startedAt=int((later - timedelta(minutes=90)).timestamp()),
+        completedAt=int((later - timedelta(minutes=60)).timestamp()),
+    )
+    resumed["items"][0]["id"] = "resumed-message"
+    f["thread"]["turns"].append(resumed)
+    second = f["source"].poll(f["grant"].issued_at, first.cursor)
+    assert not second.episodes, "checkpoint expiry manufactured a second conversation episode"
+    assert len(f["service"].episodes()) == 1
+
+
 def test_exact_conversation_binding_does_not_authorize_its_parent_folder(
     fixture: dict[str, Any],
 ) -> None:
@@ -258,6 +281,11 @@ def test_completed_work_keeps_non_owner_source_exclusions(
     [
         "<heartbeat>Generated periodic instructions</heartbeat>",
         "<environment_context>Generated context</environment_context>",
+        "# AGENTS.md instructions\n\n<INSTRUCTIONS>Generated policy</INSTRUCTIONS>"
+        "<environment_context>Generated context</environment_context>",
+        "<INSTRUCTIONS>Generated policy</INSTRUCTIONS>",
+        "<turn_aborted>Generated interruption context</turn_aborted>",
+        "<codex_delegation>Generated coordinator request</codex_delegation>",
         '<external_codex_apps_open_page>{"page_id":null}</external_codex_apps_open_page>',
     ],
 )

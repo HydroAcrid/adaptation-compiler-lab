@@ -393,8 +393,10 @@ export function AutonomousLearningPanel({
                   (status.learning_enabled && status.capture_state !== "ready")
                 ? "Learning is waiting. Your saved habits are still here."
                 : status.learning_enabled
-                  ? "Temper learns communication habits from new Codex chats in your approved projects."
-                  : "New chats aren’t being checked. Your saved habits are still here."}
+                  ? status.capture_window === "completed_work"
+                    ? "Temper learns communication habits from completed work in your approved projects."
+                    : "Temper learns communication habits from new Codex chats in your approved projects."
+                  : "Chat learning is paused. Your saved habits are still here."}
           </p>
           <dl className="learning-facts" aria-label="Learning coverage">
             <div>

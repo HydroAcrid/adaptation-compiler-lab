@@ -286,6 +286,8 @@ it("describes completed work in ongoing chats only when that capture policy is e
       grant_enabled: true,
       learning_enabled: true,
       capture_window: "completed_work",
+      capture_state: "ready",
+      provenance_state: "owner_authorized",
       capture_summary: {
         eligible_since: "2026-10-22T14:58:19Z",
         captured_conversations: 1,
@@ -301,6 +303,9 @@ it("describes completed work in ongoing chats only when that capture policy is e
   expect(
     screen.queryByText(/chats already open at that time stay excluded/),
   ).not.toBeInTheDocument();
+  expect(
+    screen.getByText(/from completed work in your approved projects/),
+  ).toBeInTheDocument();
 });
 
 it("disambiguates same-name learning repositories when granting permission", async () => {
