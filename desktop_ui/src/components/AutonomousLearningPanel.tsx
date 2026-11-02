@@ -588,8 +588,9 @@ export function AutonomousLearningPanel({
                 <div>
                   <dt>Source</dt>
                   <dd>
-                    New eligible Codex chats in approved projects. Older chats
-                    are excluded.
+                    {status.capture_window === "completed_work"
+                      ? "Completed work in approved projects, including ongoing Codex chats. Messages before your learning cutoff are excluded."
+                      : "New eligible Codex chats in approved projects. Older chats are excluded."}
                   </dd>
                 </div>
                 <div>

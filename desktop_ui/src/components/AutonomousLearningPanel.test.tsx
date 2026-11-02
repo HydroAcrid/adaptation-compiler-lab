@@ -277,6 +277,10 @@ it("shows signed repository coverage and the prospective cutoff without claiming
     screen.getByText(/chats already open at that time stay excluded/),
   ).toBeInTheDocument();
   expect(screen.getByText("No habits yet")).toBeInTheDocument();
+  await userEvent.setup().click(screen.getByText("Learning settings"));
+  expect(screen.getByText("Source").nextElementSibling).toHaveTextContent(
+    "Older chats are excluded.",
+  );
 });
 
 it("describes completed work in ongoing chats only when that capture policy is enabled", async () => {
@@ -306,6 +310,13 @@ it("describes completed work in ongoing chats only when that capture policy is e
   expect(
     screen.getByText(/from completed work in your approved projects/),
   ).toBeInTheDocument();
+  await userEvent.setup().click(screen.getByText("Learning settings"));
+  expect(screen.getByText("Source").nextElementSibling).toHaveTextContent(
+    "Completed work in approved projects, including ongoing Codex chats. Messages before your learning cutoff are excluded.",
+  );
+  expect(
+    screen.queryByText(/Older chats are excluded/),
+  ).not.toBeInTheDocument();
 });
 
 it("disambiguates same-name learning repositories when granting permission", async () => {
