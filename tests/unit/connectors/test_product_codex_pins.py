@@ -22,10 +22,17 @@ from adaptation_compiler_lab.connectors.pins import (
 
 
 @pytest.mark.parametrize(
-    "platform_name,version", [("win32", "0.163.0-alpha.11.1"), ("darwin", "0.157.0")]
+    "platform_name,index,version",
+    [
+        ("win32", 0, "0.163.0-alpha.11.1"),
+        ("darwin", 0, "0.166.0-alpha.5.1"),
+        ("darwin", 1, "0.157.0"),
+    ],
 )
-def test_native_product_pin_uses_its_exact_schema_version(platform_name: str, version: str) -> None:
-    pin = load_dogfood_runtime_pins(product_codex_runtime_locks(platform_name)[0]).codex
+def test_native_product_pin_uses_its_exact_schema_version(
+    platform_name: str, index: int, version: str
+) -> None:
+    pin = load_dogfood_runtime_pins(product_codex_runtime_locks(platform_name)[index]).codex
     assert pin.executable.package_version == version
     schemas = codex_dogfood_schemas(pin)
     schemas.validate("initialize_params", {"clientInfo": {"name": "test", "version": "1"}})
@@ -94,11 +101,14 @@ def test_existing_tampered_persisted_pin_is_not_overwritten(tmp_path: Path) -> N
     assert persisted.read_text() == "{}"
 
 
-def test_staged_recovery_pin_names_final_runtime_path(tmp_path: Path) -> None:
-    source = product_codex_runtime_locks("darwin")[0]
+@pytest.mark.parametrize("index,version", [(0, "0.166.0-alpha.5.1"), (1, "0.157.0")])
+def test_staged_recovery_pin_names_final_runtime_path(
+    tmp_path: Path, index: int, version: str
+) -> None:
+    source = product_codex_runtime_locks("darwin")[index]
     destination, stage = tmp_path / "runtime", tmp_path / "stage"
     final = persist_codex_runtime_lock(source, destination, staging_root=stage)
     assert final == persistent_codex_runtime_lock_path(source, destination)
     assert not destination.exists()
     stage.rename(destination)
-    assert load_dogfood_runtime_pins(final).codex.executable.package_version == "0.157.0"
+    assert load_dogfood_runtime_pins(final).codex.executable.package_version == version
