@@ -1,4 +1,10 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import { AutonomousLearningPanel } from "./AutonomousLearningPanel";
@@ -38,6 +44,97 @@ afterEach(() => {
   cleanup();
   vi.resetAllMocks();
   vi.restoreAllMocks();
+});
+
+it("refreshes externally enabled personalization when Today regains focus", async () => {
+  const off = {
+    ...status,
+    grant_enabled: true,
+    learning_enabled: true,
+    automatic_serving_ready: true,
+    provenance_state: "owner_authorized" as const,
+    capture_state: "ready",
+  };
+  api.loadAutonomy
+    .mockResolvedValueOnce({ value: off, digest })
+    .mockResolvedValue({
+      value: { ...off, personalization_enabled: true },
+      digest,
+    });
+  render(<AutonomousLearningPanel projects={[project]} />);
+  await screen.findByText("Off", {
+    selector: ".personalization-status strong",
+  });
+  await act(async () => fireEvent.focus(window));
+  expect(api.loadAutonomy).toHaveBeenCalledTimes(2);
+  expect(
+    screen.getByText("On", { selector: ".personalization-status strong" }),
+  ).toBeVisible();
+});
+
+it("does not replace a slow status read with overlapping focus or timer reads", async () => {
+  const intervals = vi.spyOn(window, "setInterval");
+  let finish!: (value: { value: AutonomyState; digest: string }) => void;
+  api.loadAutonomy.mockImplementationOnce(
+    () => new Promise((resolve) => (finish = resolve)),
+  );
+  const view = render(<AutonomousLearningPanel projects={[project]} />);
+  const tick = intervals.mock.calls[0][0] as () => void;
+  await act(async () => {
+    fireEvent.focus(window);
+    fireEvent(document, new Event("visibilitychange"));
+    tick();
+  });
+  expect(api.loadAutonomy).toHaveBeenCalledTimes(1);
+  await act(async () => finish({ value: status, digest }));
+  expect(
+    screen.getByRole("button", { name: "Review learning access" }),
+  ).toBeVisible();
+  view.unmount();
+  fireEvent.focus(window);
+  expect(api.loadAutonomy).toHaveBeenCalledTimes(1);
+});
+
+it("refreshes on visibility return and ignores hidden-page events", async () => {
+  const visibility = vi.spyOn(document, "visibilityState", "get");
+  api.loadAutonomy.mockResolvedValue({ value: status, digest });
+  render(<AutonomousLearningPanel projects={[project]} />);
+  await screen.findByRole("button", { name: "Review learning access" });
+  visibility.mockReturnValue("hidden");
+  await act(async () => fireEvent(document, new Event("visibilitychange")));
+  expect(api.loadAutonomy).toHaveBeenCalledTimes(1);
+  visibility.mockReturnValue("visible");
+  await act(async () => fireEvent(document, new Event("visibilitychange")));
+  expect(api.loadAutonomy).toHaveBeenCalledTimes(2);
+});
+
+it("does not label stale personalization as off when a refresh fails", async () => {
+  api.loadAutonomy
+    .mockResolvedValueOnce({
+      value: {
+        ...status,
+        grant_enabled: true,
+        learning_enabled: true,
+        automatic_serving_ready: true,
+        provenance_state: "owner_authorized",
+        capture_state: "ready",
+      },
+      digest,
+    })
+    .mockRejectedValueOnce(new Error("The local engine is unavailable."));
+  render(<AutonomousLearningPanel projects={[project]} />);
+  await screen.findByText("Off", {
+    selector: ".personalization-status strong",
+  });
+  await act(async () => fireEvent.focus(window));
+  expect(
+    screen.getByText("Status unavailable", {
+      selector: ".personalization-status strong",
+    }),
+  ).toBeVisible();
+  expect(
+    screen.queryByText("Off", { selector: ".personalization-status strong" }),
+  ).not.toBeInTheDocument();
 });
 
 it("makes conversation trust explicit and labels unknown authorship", async () => {

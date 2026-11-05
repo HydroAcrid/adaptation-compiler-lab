@@ -55,8 +55,10 @@ export function AutonomousLearningPanel({
   const [refreshKey, setRefreshKey] = useState(0);
   useEffect(() => {
     let live = true;
+    let refreshing = false;
     const refresh = async () => {
-      if (busyRef.current) return;
+      if (busyRef.current || refreshing) return;
+      refreshing = true;
       const version = ++requestVersion.current;
       try {
         const value = await loadAutonomy();
@@ -68,13 +70,22 @@ export function AutonomousLearningPanel({
         if (live && version === requestVersion.current && !busyRef.current) {
           setLoadError(engineFailureMessage(value));
         }
+      } finally {
+        refreshing = false;
       }
+    };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
     };
     void refresh();
     const interval = window.setInterval(() => void refresh(), 30_000);
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
       live = false;
       window.clearInterval(interval);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [refreshKey]);
 
@@ -539,18 +550,22 @@ export function AutonomousLearningPanel({
           <div className="personalization-status">
             <span>Personalization</span>
             <strong>
-              {!status.personalization_enabled
-                ? "Off"
-                : !status.automatic_serving_ready
-                  ? "Waiting for checks"
-                  : "On"}
+              {loadError
+                ? "Status unavailable"
+                : !status.personalization_enabled
+                  ? "Off"
+                  : !status.automatic_serving_ready
+                    ? "Waiting for checks"
+                    : "On"}
             </strong>
             <span>
-              {!status.published
-                ? "No habits added to agent instructions"
-                : status.delivery_confirmed
-                  ? "Agent loading confirmed"
-                  : "Instructions updated · agent loading unconfirmed"}
+              {loadError
+                ? "The last status could not be refreshed."
+                : !status.published
+                  ? "No habits added to agent instructions"
+                  : status.delivery_confirmed
+                    ? "Agent loading confirmed"
+                    : "Instructions updated · agent loading unconfirmed"}
             </span>
           </div>
           <details className="learning-details">

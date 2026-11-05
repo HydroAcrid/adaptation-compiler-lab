@@ -2676,6 +2676,8 @@ class EngineProtocolRouter:
         try:
             if self._autonomy_protocol is None:
                 self._autonomy_protocol = AutonomyProtocol(self._autonomy_factory())
+            if request.method == "autonomy.status":
+                return self._read_learning_status(request)
             result = self._autonomy_protocol.dispatch(
                 request.method,
                 request.params,
@@ -2704,6 +2706,39 @@ class EngineProtocolRouter:
                 "Temper could not complete this learning action. "
                 "Refresh its status before retrying.",
             )
+
+    def _read_learning_status(self, request: EngineRequest) -> EngineResponse:
+        """Bind the displayed state without calculating the same status twice.
+
+        The regular snapshot property recomputes status for mutation admission.
+        Reusing this read's result avoids repeating qualification and full signed
+        history verification. A changed history gets one fresh read, never a
+        digest for a different status. Mutating operations keep their normal path.
+        """
+        from adaptation_compiler_lab.autonomy.store import AutonomyIntegrityError
+
+        if request.params:
+            raise AutonomyIntegrityError("autonomy reader takes no parameters")
+        protocol = self._autonomy_protocol
+        service = protocol.service
+        for _ in range(2):
+            head = service.store.head_digest
+            protocol._refresh_projects()
+            status = service.status()
+            result = self._learning_desktop_status({**status, **protocol.capture.status()})
+            if service.store.head_digest == head:
+                return EngineResponse(
+                    request_id=request.request_id,
+                    ok=True,
+                    result=result,
+                    snapshot_digest=canonical_digest({"head": head, "status": status}),
+                )
+        return self._error(
+            request,
+            "autonomy_state_changed",
+            "Learning changed while its status was loading. Try again.",
+            retryable=True,
+        )
 
     def _learning_desktop_status(self, status: dict[str, Any]) -> dict[str, Any]:
         """Read signed learning coverage without changing managed-task permissions.

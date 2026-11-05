@@ -27,6 +27,9 @@ mod engine_restart;
 const PROTOCOL_VERSION: &str = "temper-engine-protocol/v1";
 const MAX_FRAME_BYTES: usize = 1_048_576;
 const ENGINE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(15);
+// A status read verifies signed history and qualification; leave room for a
+// bounded retry if another process changes that history during the read.
+const ENGINE_STATUS_TIMEOUT: Duration = Duration::from_secs(30);
 const ENGINE_ANALYSIS_TIMEOUT: Duration = Duration::from_secs(240);
 // One background tick runs at most two sequential 300s model turns. Leave a
 // separate bounded margin for source/quota/catalog calls and signed persistence.
@@ -135,6 +138,7 @@ impl EngineProcess {
         stdin.flush().map_err(|_| unavailable())?;
 
         let timeout = match method {
+            "autonomy.status" => ENGINE_STATUS_TIMEOUT,
             "instruction_environment.analyze" => ENGINE_ANALYSIS_TIMEOUT,
             "autonomy.background.poll" => ENGINE_AUTONOMY_TIMEOUT,
             "recovery.export.preview" | "recovery.export.create" | "recovery.restore" => {
