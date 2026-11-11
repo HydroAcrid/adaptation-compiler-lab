@@ -33,9 +33,10 @@ The Windows x64 adapter requires separate admission for the installed Node 24
 executable, exact Remotion 4.0.542 package tree, and Chrome Headless Shell. Skill
 publisher permission alone grants no renderer access. Rendering reads the
 admitted installation and uses a private directory for the bundle, browser
-profile, and intermediates. It does not install packages or start a provider
-model. Runtime admission and execution do not expand the repositories already
-authorized for Hub work.
+profile, diagnostic log, and intermediates. The browser pin covers the
+installation tree except the generated top-level regular `debug.log` file.
+Rendering does not install packages or start a provider model. Runtime admission
+and execution do not expand the repositories already authorized for Hub work.
 
 The first implementation covers this bounded Remotion composition and the
 existing SkillKit profile flow. General framework discovery, installation,

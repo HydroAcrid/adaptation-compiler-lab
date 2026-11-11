@@ -27,6 +27,7 @@ MAX_RUN_ENTRIES = 8_000
 MAX_ARTIFACT_BYTES = 4_000_000
 COMPOSITOR = "@remotion/compositor-win32-x64-msvc"
 PACKAGES = ("remotion", "@remotion/bundler", "@remotion/renderer", COMPOSITOR)
+CHROME_DEBUG_LOG = "debug.log"
 
 
 class MotionVideo(BaseModel):
@@ -45,13 +46,20 @@ def file_hash(path: Path) -> str:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def tree_hash(root: Path, *, skip: frozenset[str] = frozenset()) -> str:
+def tree_hash(
+    root: Path,
+    *,
+    skip: frozenset[str] = frozenset(),
+    ignore_chrome_log: bool = False,
+) -> str:
     digest = hashlib.sha256()
     total = entries = 0
     for directory, subdirs, filenames in os.walk(check_root(root), followlinks=False):
         parent = Path(directory)
         if parent == root:
             subdirs[:] = [name for name in subdirs if name not in skip]
+            if ignore_chrome_log and CHROME_DEBUG_LOG in subdirs:
+                raise ValueError("Chrome debug log must be a regular file")
         subdirs.sort()
         entries += len(subdirs) + len(filenames)
         if entries > 25_000:
@@ -62,9 +70,23 @@ def tree_hash(root: Path, *, skip: frozenset[str] = frozenset()) -> str:
                 raise ValueError("Remotion toolchain paths must not be redirected")
         for name in sorted(filenames):
             path = parent / name
-            if path.is_symlink() or path.is_junction() or not path.is_file():
+            is_browser_log = ignore_chrome_log and parent == root and name == CHROME_DEBUG_LOG
+            try:
+                info = path.lstat()
+            except FileNotFoundError:
+                if not is_browser_log:
+                    raise
+                # A separate browser launch may rotate its generated log.
+                continue
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+            ):
                 raise ValueError("Remotion toolchain contains a redirected or special file")
-            total += path.stat().st_size
+            if is_browser_log:
+                # Windows Chromium appends to this generated log by default.
+                continue
+            total += info.st_size
             if total > MAX_TOOLCHAIN_BYTES:
                 raise ValueError("Remotion toolchain exceeds its storage bound")
             item = [path.relative_to(root).as_posix(), file_hash(path)]
@@ -152,7 +174,7 @@ class RemotionRuntime:
             "node_modules": str(node_modules),
             "module_tree_digest": tree_hash(node_modules, skip=frozenset({".cache", ".remotion"})),
             "browser": str(browser),
-            "browser_tree_digest": tree_hash(browser.parent),
+            "browser_tree_digest": tree_hash(browser.parent, ignore_chrome_log=True),
         }
 
     def verify(self) -> tuple[Path, Path, Path]:
@@ -209,7 +231,10 @@ class RemotionRuntime:
                 work / "private-home",
                 timeout=75,
                 guard=guard,
-                extra={"REMOTION_DISABLE_TELEMETRY": "1"},
+                extra={
+                    "REMOTION_DISABLE_TELEMETRY": "1",
+                    "CHROME_LOG_FILE": str(work / CHROME_DEBUG_LOG),
+                },
             )
             if output["returncode"]:
                 raise ValueError("The admitted Remotion render failed")

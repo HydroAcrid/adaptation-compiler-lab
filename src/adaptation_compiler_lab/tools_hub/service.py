@@ -805,11 +805,11 @@ class HubService:
     @staticmethod
     def require_selection_owner(hub: Hub, claim: dict[str, Any], owner: TaskOwner | None) -> None:
         token = claim.get("task_token")
-        if (owner is None) != (token is None):
-            raise ValueError("Prepare the current task through this connection")
         key = project_key(claim["project_id"])
-        if owner is not None:
+        if owner is not None and isinstance(token, str):
             hub.require_task(key, owner, token)
+        elif owner is not None or token is not None:
+            raise ValueError("Prepare the current task through this connection")
         elif hub.get("task:" + key):
             raise ValueError("This repository already has an active connected task")
 
@@ -862,7 +862,7 @@ class HubService:
 
     def task_cleanup_identity(self, hub: Hub, row: dict[str, Any], key: str) -> bool:
         try:
-            same = path_identity(Path(row["root"])) == row["identity"]
+            same = bool(path_identity(Path(row["root"])) == row["identity"])
         except (OSError, ValueError):
             same = False
         if not same:

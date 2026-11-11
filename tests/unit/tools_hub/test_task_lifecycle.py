@@ -17,6 +17,7 @@ from adaptation_compiler_lab.tools_hub.workflow_runtime import (
     MotionVideo,
     RemotionRuntime,
     runtime_directory,
+    tree_hash,
 )
 
 
@@ -219,8 +220,15 @@ def test_running_renderer_checks_scratch_growth_before_publication(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     def run(
-        argv: list[str], cwd: Path, home: Path, *, guard: Callable[[], None], **_: Any
+        argv: list[str],
+        cwd: Path,
+        home: Path,
+        *,
+        guard: Callable[[], None],
+        extra: dict[str, str],
+        **_: Any,
     ) -> dict[str, Any]:
+        assert Path(extra["CHROME_LOG_FILE"]) == cwd / "debug.log"
         guard()
         with (cwd / "growth.tmp").open("wb") as stream:
             stream.truncate(MAX_RUN_BYTES + 1)
@@ -236,6 +244,52 @@ def test_running_renderer_checks_scratch_growth_before_publication(
         )
     assert not runtime_directory(tmp_path, token).exists()
     assert not (tmp_path / "artifacts").exists()
+
+
+def test_only_the_regular_top_level_chrome_log_is_excluded(tmp_path: Path) -> None:
+    browser = tmp_path / "browser"
+    dependency = browser / "locales" / "debug.log"
+    dependency.parent.mkdir(parents=True)
+    dependency.write_bytes(b"fictional browser dependency")
+    executable = browser / "chrome-headless-shell.exe"
+    executable.write_bytes(b"fictional executable")
+    baseline = tree_hash(browser, ignore_chrome_log=True)
+    log = browser / "debug.log"
+    log.write_bytes(b"first generated log")
+    assert tree_hash(browser, ignore_chrome_log=True) == baseline
+    log.write_bytes(b"changed generated log")
+    assert tree_hash(browser, ignore_chrome_log=True) == baseline
+    dependency.write_bytes(b"substituted dependency")
+    assert tree_hash(browser, ignore_chrome_log=True) != baseline
+    dependency.write_bytes(b"fictional browser dependency")
+    executable.write_bytes(b"substituted executable")
+    assert tree_hash(browser, ignore_chrome_log=True) != baseline
+    log.unlink()
+    log.mkdir()
+    with pytest.raises(ValueError, match="debug log must be a regular file"):
+        tree_hash(browser, ignore_chrome_log=True)
+
+
+def test_log_rotation_does_not_hide_missing_toolchain_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    log, dependency = tmp_path / "debug.log", tmp_path / "dependency.dll"
+    log.touch()
+    dependency.write_bytes(b"pinned dependency")
+    baseline = tree_hash(tmp_path, ignore_chrome_log=True)
+    original = Path.lstat
+
+    def missing(path: Path) -> os.stat_result:
+        if path == missing_path:
+            raise FileNotFoundError(path)
+        return original(path)
+
+    missing_path = log
+    monkeypatch.setattr(Path, "lstat", missing)
+    assert tree_hash(tmp_path, ignore_chrome_log=True) == baseline
+    missing_path = dependency
+    with pytest.raises(FileNotFoundError):
+        tree_hash(tmp_path, ignore_chrome_log=True)
 
 
 def test_reap_does_not_enter_redirected_children(tmp_path: Path) -> None:

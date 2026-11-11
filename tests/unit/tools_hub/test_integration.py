@@ -11,7 +11,7 @@ import threading
 import time
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, TextIO, cast
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -592,10 +592,10 @@ def test_busy_native_stop_is_durable_and_generation_scoped(
         )
 
     def response() -> dict[str, Any]:
-        return json.loads(output.getvalue().splitlines()[-1])["result"]
+        return cast(dict[str, Any], json.loads(output.getvalue().splitlines()[-1])["result"])
 
     def packet() -> dict[str, Any]:
-        return json.loads(response()["content"][0]["text"])
+        return cast(dict[str, Any], json.loads(response()["content"][0]["text"]))
 
     def journey() -> Iterator[str]:
         yield call("prepare", task)
@@ -627,12 +627,12 @@ def test_busy_native_stop_is_durable_and_generation_scoped(
             assert len(list((service.home / "task-finishes").glob("*.json"))) == 1
             assert Path(installed).is_file()
 
-    class ScriptedInput(io.StringIO):
-        def readline(self, size: int = -1) -> str:
+    class ScriptedInput:
+        def readline(self, size: int | None = -1) -> str:
             return next(frames, "")
 
     frames = journey()
-    serve_hub(protocol, stdin=ScriptedInput(), stdout=output)
+    serve_hub(protocol, stdin=cast(TextIO, ScriptedInput()), stdout=output)
     if after_stop == "successor":
         assert protocol.task_owner is not None
         with writer_lock(service.home):
@@ -664,7 +664,7 @@ def test_busy_native_stop_is_durable_and_generation_scoped(
 
 def packet_from_prepare(output: io.StringIO) -> dict[str, Any]:
     messages = [json.loads(line) for line in output.getvalue().splitlines()]
-    return json.loads(messages[0]["result"]["content"][0]["text"])
+    return cast(dict[str, Any], json.loads(messages[0]["result"]["content"][0]["text"]))
 
 
 def test_missing_project_does_not_block_healthy_task_recovery(
@@ -756,12 +756,12 @@ def test_native_stop_defers_moved_project_and_finishes_other_bound_project(
         yield call("end_turn", {**turn, "outcome": "completed"})
         assert json.loads(output.getvalue().splitlines()[-1]).get("error") is None
 
-    class ScriptedInput(io.StringIO):
-        def readline(self, size: int = -1) -> str:
+    class ScriptedInput:
+        def readline(self, size: int | None = -1) -> str:
             return next(frames, "")
 
     frames = journey()
-    serve_hub(protocol, stdin=ScriptedInput(), stdout=output)
+    serve_hub(protocol, stdin=cast(TextIO, ScriptedInput()), stdout=output)
     grant = service.grant()
     assert grant is not None
     with writer_lock(service.home), service.controller(grant) as hub:

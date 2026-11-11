@@ -138,6 +138,7 @@ def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
                 if name not in DESCRIPTIONS:
                     raise ValueError("Unsupported Hub tool")
                 args = params.get("arguments", {})
+                packet: dict[str, Any]
                 if name == "temper_hub_bind_turn":
                     value = BindTurn.model_validate(args)
                     packet = {}
@@ -183,9 +184,9 @@ def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
                     candidates[project] = candidate
                     result["structuredContent"] = {"lifecycle_nonce": nonce}
                 if name == "temper_hub_finish":
-                    project = packet.get("project_id")
-                    if project in candidates:
-                        candidates.pop(project)
+                    finished_project = packet.get("project_id")
+                    if isinstance(finished_project, str):
+                        candidates.pop(finished_project, None)
             else:
                 raise ValueError("Unsupported MCP operation")
             response = {"jsonrpc": "2.0", "id": request_id, "result": result}
