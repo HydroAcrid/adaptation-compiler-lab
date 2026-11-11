@@ -71,19 +71,33 @@ class BackgroundHabitWorker:
         if not service.provenance_ready() or self.read_completed is None:
             return {**result, "status": "source_verification_required"}
         service.ensure_lease()
-        cursor = service.store.latest("cursor")
+        cursor_event = next(
+            (event for event in reversed(service.store.events()) if event["type"] == "cursor"),
+            None,
+        )
+        cursor = cursor_event["payload"] if cursor_event is not None else None
         previous_cursor = (
             str(cursor["cursor"]) if cursor and cursor["grant_id"] == grant.grant_id else None
         )
         page = self.read_completed(grant.issued_at, previous_cursor)
         for episode in page.episodes:
             result["captured"] += int(service.ingest_episode(episode))
-        service.store.append(
-            "cursor-" + str(canonical_digest({"grant": grant.grant_id, "cursor": page.cursor}))[7:],
-            "cursor",
-            {"grant_id": grant.grant_id, "cursor": page.cursor},
-            at=now,
-        )
+        if page.cursor != previous_cursor:
+            # A scan can return to an earlier cursor, so deduplicate this
+            # transition rather than every visit to the same destination.
+            transition = canonical_digest(
+                {
+                    "grant": grant.grant_id,
+                    "cursor": page.cursor,
+                    "previous_event": cursor_event["digest"] if cursor_event is not None else None,
+                }
+            )
+            service.store.append(
+                "cursor-" + str(transition)[7:],
+                "cursor",
+                {"grant_id": grant.grant_id, "cursor": page.cursor},
+                at=now,
+            )
         done = {
             episode_id
             for event in service.store.events()

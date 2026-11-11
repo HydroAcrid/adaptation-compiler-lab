@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 from copy import deepcopy
 from datetime import timedelta
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -222,6 +224,27 @@ def test_exact_conversation_binding_does_not_authorize_its_parent_folder(
     f["thread"].update(id="fictional-chat", cwd=str(f["project"]))
     with pytest.raises(AutonomyIntegrityError, match="moved"):
         f["source"].poll(f["grant"].issued_at, None)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows extended path spelling")
+def test_bound_chat_accepts_another_spelling_of_its_directory(
+    fixture: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    f = fixture
+    (f["project"] / ".git").mkdir()
+    collection = f["project"].parent
+    enable_work(
+        f, [{"thread_id": "fictional-chat", "project_id": "project", "cwd": str(collection)}]
+    )
+    alias = Path("\\\\?\\" + str(collection))
+    assert alias != collection and alias.samefile(collection)
+    f["thread"]["cwd"] = str(alias)
+    # WSL can retain the extended path spelling after the native resolver.
+    monkeypatch.setattr(
+        "adaptation_compiler_lab.autonomy.codex_source._resolved_runtime_path", Path
+    )
+    page = f["source"].poll(f["grant"].issued_at, None)
+    assert [episode.project_id for episode in page.episodes] == ["project"]
 
 
 def test_disabled_or_other_grant_cannot_reuse_source_permission(fixture: dict[str, Any]) -> None:

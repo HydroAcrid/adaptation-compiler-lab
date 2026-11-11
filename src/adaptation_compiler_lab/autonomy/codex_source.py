@@ -32,6 +32,7 @@ from adaptation_compiler_lab.autonomy.origin_receipts import (
     OriginReceiptV1,
     attribute_verified_input,
 )
+from adaptation_compiler_lab.autonomy.project_registry import _path_identity
 from adaptation_compiler_lab.autonomy.store import AutonomyIntegrityError, AutonomyStore
 from adaptation_compiler_lab.autonomy.worker import CapturePage
 from adaptation_compiler_lab.connectors.codex_app_server import CodexAppServerProcess, RpcClient
@@ -492,6 +493,20 @@ class CodexHabitSource:
         if completed <= now - timedelta(days=30):
             return None
         path = _resolved_runtime_path(thread["cwd"])
+        binding = None
+        if self.completed_work is not None:
+            task_digest = canonical_digest({"task": str(thread["id"])})
+            binding = next(
+                (b for b in self.completed_work.bindings if b.task_digest == task_digest), None
+            )
+            if binding is not None:
+                expected_path = Path(binding.expected_cwd)
+                if path != expected_path:
+                    expected_identity = _path_identity(expected_path)
+                    if expected_identity is None or _path_identity(path) != expected_identity:
+                        raise AutonomyIntegrityError("bound conversation moved or changed project")
+                    # Use the signed spelling for the existing registered-root checks.
+                    path = expected_path
         matches = [
             (
                 key,
@@ -513,30 +528,21 @@ class CodexHabitSource:
                 or created >= self.project_cutoffs.get(key, cutoff)
             )
         ]
-        if self.completed_work is not None:
-            task_digest = canonical_digest({"task": str(thread["id"])})
-            binding = next(
-                (b for b in self.completed_work.bindings if b.task_digest == task_digest), None
-            )
-            if binding is not None:
-                if path != Path(binding.expected_cwd) or any(
-                    key != binding.project_id for key, _ in matches
-                ):
-                    raise AutonomyIntegrityError("bound conversation moved or changed project")
-                roots = self.projects.get(binding.project_id, ())
-                if (
-                    binding.project_id not in self.grant.project_ids
-                    or not roots
-                    or not any(root.is_dir() and (root / ".git").exists() for root in roots)
-                ):
-                    raise AutonomyIntegrityError("bound learning repository is unavailable")
-                return binding.project_id
+        if binding is not None:
+            if any(key != binding.project_id for key, _ in matches):
+                raise AutonomyIntegrityError("bound conversation moved or changed project")
+            roots = self.projects.get(binding.project_id, ())
+            if (
+                binding.project_id not in self.grant.project_ids
+                or not roots
+                or not any(root.is_dir() and (root / ".git").exists() for root in roots)
+            ):
+                raise AutonomyIntegrityError("bound learning repository is unavailable")
+            return binding.project_id
         if self.most_specific_registered_root:
             # Physical ancestors recognize UNC/mount aliases even when a child did
             # not list the spelling used by this chat. Never fall back to a parent
             # grant because the child's directory has another pathname.
-            from adaptation_compiler_lab.autonomy.project_registry import _path_identity
-
             ancestors: dict[tuple[int, int] | None, int] = {}
             for distance, ancestor in enumerate((path, *path.parents)):
                 identity = _path_identity(ancestor)

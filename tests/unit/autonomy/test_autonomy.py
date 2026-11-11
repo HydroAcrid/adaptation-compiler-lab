@@ -34,6 +34,7 @@ from adaptation_compiler_lab.connectors.codex_app_server import CodexProtocolErr
 from adaptation_compiler_lab.connectors.pins import RuntimeConformanceError
 from adaptation_compiler_lab.governance.signing import GovernanceSigner
 from adaptation_compiler_lab.persistence.raw import LocalRawPayloadStore, RawEncryptionKey
+from adaptation_compiler_lab.serialization import canonical_digest
 from tests.unit.autonomy.wire_fixture import wire_result
 
 DIGEST = "sha256:" + "a" * 64
@@ -736,6 +737,41 @@ def test_background_worker_is_shadow_budgeted_and_restart_idempotent(app: Any) -
     assert len(calls) == 2
     service.provenance_verifier = None
     assert worker.poll()["status"] == "source_verification_required"
+
+
+def test_background_worker_can_revisit_signed_cursor_states(
+    app: tuple[AutonomyApplicationService, Clock],
+) -> None:
+    service, clock = app
+    clock.value += timedelta(days=1)
+    grant = service.grant()
+    assert grant is not None
+    # Reproduce a ledger written by the old worker, already stuck on an older page.
+    for cursor in ("newest", "older"):
+        payload = {"grant_id": grant.grant_id, "cursor": cursor}
+        digest = canonical_digest({"grant": grant.grant_id, "cursor": cursor})
+        service.store.append(f"cursor-{digest[7:]}", "cursor", payload, at=clock())
+
+    pages = iter(
+        (
+            ("older", CapturePage("newest", ())),
+            ("newest", CapturePage("older", (episode(0, clock),))),
+            ("older", CapturePage("newest", ())),
+            ("newest", CapturePage("newest", ())),
+        )
+    )
+
+    def read_completed(_cutoff: datetime, cursor: str | None) -> CapturePage:
+        expected, page = next(pages)
+        assert cursor == expected
+        return page
+
+    worker = BackgroundHabitWorker(service, read_completed=read_completed)
+    assert [worker.poll()["captured"] for _ in range(4)] == [0, 1, 0, 0]
+    cursors = [
+        event["payload"]["cursor"] for event in service.store.events() if event["type"] == "cursor"
+    ]
+    assert cursors == ["newest", "older", "newest", "older", "newest"]
 
 
 def test_model_cannot_add_unknown_styles_or_invent_evidence(app: Any) -> None:
