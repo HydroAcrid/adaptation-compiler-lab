@@ -712,3 +712,64 @@ def test_missing_project_does_not_block_healthy_task_recovery(
     assert by_id["other"]["active"] == []
     assert (repo / ".agents/skills/debugging/SKILL.md").is_file()
     assert not (other / ".agents/skills/debugging/SKILL.md").exists()
+
+
+def test_native_stop_defers_moved_project_and_finishes_other_bound_project(
+    tmp_path: Path,
+) -> None:
+    service = make_service(tmp_path)
+    repo, other = tmp_path / "repo", tmp_path / "other"
+    other.mkdir()
+    (other / ".git").mkdir()
+    service.project_inventory = lambda: {"repo": repo, "other": other}
+    preview = service.preview(["repo", "other"], ["superpowers"])
+    service.enable(preview["preview_id"])
+    assert wait_job(service)["state"] == "complete"
+
+    output = io.StringIO()
+    protocol = HubProtocol(service)
+    turn = {"session_id": "fixture-session", "turn_id": "fixture-turn"}
+
+    def call(name: str, arguments: dict[str, Any]) -> str:
+        return (
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/call",
+                    "params": {"name": "temper_hub_" + name, "arguments": arguments},
+                }
+            )
+            + "\n"
+        )
+
+    def journey() -> Iterator[str]:
+        for project in ("repo", "other"):
+            yield call(
+                "prepare",
+                {"project_id": project, "goal": "Debug fixture tests", "task_class": "debugging"},
+            )
+            response = json.loads(output.getvalue().splitlines()[-1])["result"]
+            nonce = response["structuredContent"]["lifecycle_nonce"]
+            yield call("bind_turn", {**turn, "lifecycle_nonce": nonce})
+        (repo / ".git").rename(repo / "fictional-detached-git")
+        yield call("end_turn", {**turn, "outcome": "completed"})
+        assert json.loads(output.getvalue().splitlines()[-1]).get("error") is None
+
+    class ScriptedInput(io.StringIO):
+        def readline(self, size: int = -1) -> str:
+            return next(frames, "")
+
+    frames = journey()
+    serve_hub(protocol, stdin=ScriptedInput(), stdout=output)
+    grant = service.grant()
+    assert grant is not None
+    with writer_lock(service.home), service.controller(grant) as hub:
+        assert hub.get("task:" + project_key("repo")) is not None
+        assert hub.get("task:" + project_key("other")) is None
+    assert len(list((service.home / "task-finishes").glob("*.json"))) == 1
+    (repo / "fictional-detached-git").rename(repo / ".git")
+    service.tick()
+    assert not list((service.home / "task-finishes").glob("*.json"))
+    with writer_lock(service.home), service.controller(grant) as hub:
+        assert hub.get("task:" + project_key("repo")) is None

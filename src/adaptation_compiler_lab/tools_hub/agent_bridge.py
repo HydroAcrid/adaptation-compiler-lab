@@ -149,14 +149,22 @@ def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
                 elif name == "temper_hub_end_turn":
                     ending = EndTurn.model_validate(args)
                     packet = {}
+                    failure: Exception | None = None
                     for project, candidate in list(candidates.items()):
-                        if candidate.turn == (ending.session_id, ending.turn_id):
+                        if candidate.turn != (ending.session_id, ending.turn_id):
+                            continue
+                        try:
                             protocol.dispatch(
                                 "tools_hub.finish",
                                 {"task_receipt": candidate.receipt, "outcome": ending.outcome},
                                 agent=True,
                             )
+                        except (ValueError, TypeError, KeyError, OSError, sqlite3.Error) as error:
+                            failure = failure or error
+                        else:
                             candidates.pop(project)
+                    if failure is not None:
+                        raise failure
                 else:
                     packet = protocol.dispatch(
                         "tools_hub." + name.removeprefix("temper_hub_"), args, agent=True

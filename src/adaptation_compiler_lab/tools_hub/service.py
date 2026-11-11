@@ -823,33 +823,42 @@ class HubService:
         if claim["owner"] != asdict(owner):
             raise ValueError("Task belongs to a different connected agent")
         row = next((item for item in grant["projects"] if item["id"] == claim["project_id"]), None)
-        if row is None or path_identity(Path(row["root"])) != row["identity"]:
-            raise ValueError("Repository identity changed; cleanup is paused")
+        if row is None:
+            raise ValueError("Task repository is outside the current permission")
+        key = project_key(row["id"])
         try:
             with writer_lock(self.home):
                 self.drain_finishes()
                 with self.controller(grant, cleanup_only=True) as hub:
-                    key = project_key(row["id"])
-                    result = hub.end_task(key, owner, claim["task_token"], outcome)
-                    hub.put("task_cleanup_attention:" + key, None)
+                    if self.task_cleanup_identity(hub, row, key):
+                        result = hub.end_task(key, owner, claim["task_token"], outcome)
+                        hub.put("task_cleanup_attention:" + key, None)
+                        return {**result, "project_id": row["id"]}
+                    active = hub.get("task:" + key)
+                    if not active or active["task_token"] != claim["task_token"]:
+                        raise ValueError("This Hub task token is stale")
         except ValueError as error:
             if str(error) != "Hub maintenance is already running; retry shortly":
                 raise
-            directory = safe(self.home, "task-finishes")
-            directory.mkdir(exist_ok=True)
-            marker = safe(directory, intake.sha(claim["task_token"].encode()) + ".json")
-            pending = {**claim, "outcome": outcome}
-            if marker.is_file():
-                if self.seals.read(marker, "task_finish") != pending:
-                    raise ValueError(
-                        "This Hub task already has a different terminal request"
-                    ) from None
-            else:
-                if sum(1 for _ in directory.glob("*.json")) >= 400:
-                    raise ValueError("Too many deferred task finishes; retry shortly") from None
-                self.seals.write(marker, pending, "task_finish")
-            result = {"status": "task_finish_pending", "outcome": outcome}
-        return {**result, "project_id": row["id"]}
+        self.queue_finish(claim, outcome)
+        return {
+            "status": "task_finish_pending",
+            "outcome": outcome,
+            "project_id": row["id"],
+        }
+
+    def queue_finish(self, claim: dict[str, Any], outcome: TaskOutcome) -> None:
+        directory = safe(self.home, "task-finishes")
+        directory.mkdir(exist_ok=True)
+        marker = safe(directory, intake.sha(claim["task_token"].encode()) + ".json")
+        pending = {**claim, "outcome": outcome}
+        if marker.is_file():
+            if self.seals.read(marker, "task_finish") != pending:
+                raise ValueError("This Hub task already has a different terminal request")
+        else:
+            if sum(1 for _ in directory.glob("*.json")) >= 400:
+                raise ValueError("Too many deferred task finishes; retry shortly")
+            self.seals.write(marker, pending, "task_finish")
 
     def task_cleanup_identity(self, hub: Hub, row: dict[str, Any], key: str) -> bool:
         try:
