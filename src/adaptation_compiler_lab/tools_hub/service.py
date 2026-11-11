@@ -14,7 +14,7 @@ from collections.abc import Callable, Iterator
 from contextlib import closing, contextmanager, suppress
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from . import intake
 from .controller import MARKER, PROJECT_MARKER, Hub, fingerprint, raw
@@ -27,6 +27,8 @@ from .sealed import Seals
 from .sources import SOURCES, SourceSnapshots, specification
 from .task_lifecycle import MAX_LEASE_SECONDS, TaskOutcome, TaskOwner
 
+if TYPE_CHECKING:
+    from .workflow_runtime import RenderCancellation
 HUB_BUDGET = 1_000_000_000
 
 
@@ -1036,7 +1038,12 @@ class HubService:
             RemotionRuntime.reap(root, token)
 
     def render(
-        self, receipt: dict[str, Any], owner: TaskOwner, spec: dict[str, Any]
+        self,
+        receipt: dict[str, Any],
+        owner: TaskOwner,
+        spec: dict[str, Any],
+        *,
+        cancellation: RenderCancellation | None = None,
     ) -> dict[str, Any]:
         from .workflow_runtime import (
             MAX_ARTIFACT_BYTES,
@@ -1078,7 +1085,11 @@ class HubService:
 
             allowed()
             return RemotionRuntime(permission["admission"]).render(
-                safe(self.home, "remotion"), token, video, allowed=allowed
+                safe(self.home, "remotion"),
+                token,
+                video,
+                allowed=allowed,
+                cancellation=cancellation,
             )
 
     def control(self, operation: str, project_id: str | None = None) -> dict[str, Any]:

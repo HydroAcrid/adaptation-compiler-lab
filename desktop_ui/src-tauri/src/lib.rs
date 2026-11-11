@@ -35,6 +35,8 @@ const ENGINE_ANALYSIS_TIMEOUT: Duration = Duration::from_secs(240);
 // separate bounded margin for source/quota/catalog calls and signed persistence.
 const ENGINE_AUTONOMY_TIMEOUT: Duration = Duration::from_secs(780);
 const ENGINE_RECOVERY_TIMEOUT: Duration = Duration::from_secs(60);
+// Both Remotion setup requests hash the installed package and browser trees.
+const ENGINE_HUB_RUNTIME_SETUP_TIMEOUT: Duration = Duration::from_secs(120);
 const ENGINE_HOOK_TIMEOUT: Duration = Duration::from_millis(100);
 const ENGINE_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
 #[cfg(target_os = "windows")]
@@ -95,6 +97,22 @@ struct EngineProcess {
     reader: Option<JoinHandle<()>>,
 }
 
+fn engine_response_timeout(method: &str) -> Duration {
+    match method {
+        "autonomy.status" => ENGINE_STATUS_TIMEOUT,
+        "instruction_environment.analyze" => ENGINE_ANALYSIS_TIMEOUT,
+        "autonomy.background.poll" => ENGINE_AUTONOMY_TIMEOUT,
+        "recovery.export.preview" | "recovery.export.create" | "recovery.restore" => {
+            ENGINE_RECOVERY_TIMEOUT
+        }
+        "tools_hub.runtime.preview" | "tools_hub.runtime.enable" => {
+            ENGINE_HUB_RUNTIME_SETUP_TIMEOUT
+        }
+        "claude.hook.handle" | "copilot.hook.handle" => ENGINE_HOOK_TIMEOUT,
+        _ => ENGINE_RESPONSE_TIMEOUT,
+    }
+}
+
 impl EngineProcess {
     fn spawn() -> Result<Self, PublicError> {
         let mut command = engine_command()?;
@@ -137,17 +155,7 @@ impl EngineProcess {
         stdin.write_all(b"\n").map_err(|_| unavailable())?;
         stdin.flush().map_err(|_| unavailable())?;
 
-        let timeout = match method {
-            "autonomy.status" => ENGINE_STATUS_TIMEOUT,
-            "instruction_environment.analyze" => ENGINE_ANALYSIS_TIMEOUT,
-            "autonomy.background.poll" => ENGINE_AUTONOMY_TIMEOUT,
-            "recovery.export.preview" | "recovery.export.create" | "recovery.restore" => {
-                ENGINE_RECOVERY_TIMEOUT
-            }
-            "claude.hook.handle" | "copilot.hook.handle" => ENGINE_HOOK_TIMEOUT,
-            _ => ENGINE_RESPONSE_TIMEOUT,
-        };
-        let line = receive_engine_frame(&self.responses, timeout)?;
+        let line = receive_engine_frame(&self.responses, engine_response_timeout(method))?;
         if line.is_empty() || line.len() > MAX_FRAME_BYTES {
             return Err(unavailable());
         }
@@ -2677,6 +2685,21 @@ mod tests {
 
         assert!(receive_engine_frame(&responses, timeout).is_err());
         assert!(started.elapsed() < Duration::from_secs(1));
+    }
+
+    #[test]
+    fn only_hub_runtime_admission_waits_for_full_toolchain_hashing() {
+        for method in ["tools_hub.runtime.preview", "tools_hub.runtime.enable"] {
+            assert_eq!(engine_response_timeout(method), Duration::from_secs(120));
+        }
+        for method in [
+            "tools_hub.runtime.revoke",
+            "tools_hub.status",
+            "tools_hub.connection.apply",
+            "system.handshake",
+        ] {
+            assert_eq!(engine_response_timeout(method), ENGINE_RESPONSE_TIMEOUT);
+        }
     }
 
     #[test]

@@ -235,7 +235,7 @@ def test_running_renderer_checks_scratch_growth_before_publication(
         guard()
         pytest.fail("render guard accepted oversized scratch")
 
-    monkeypatch.setattr(RemotionRuntime, "verify", lambda self: (tmp_path,) * 3)
+    monkeypatch.setattr(RemotionRuntime, "verify", lambda self, **_: (tmp_path,) * 3)
     monkeypatch.setattr("adaptation_compiler_lab.tools_hub.workflow_runtime.bounded_run", run)
     token = "a" * 64
     with pytest.raises(ValueError, match="scratch exceeded its storage bound"):

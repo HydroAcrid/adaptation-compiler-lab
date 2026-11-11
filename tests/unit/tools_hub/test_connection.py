@@ -125,3 +125,20 @@ def test_connection_adds_lifecycle_hooks_without_changing_other_hooks(tmp_path: 
     assert hooks["Stop"][1]["hooks"][0]["input"]["outcome"] == "completed"
     assert hooks["Interrupt"][0]["hooks"][0]["input"]["outcome"] == "cancelled"
     assert preview["native_hook_trust_required"] is True
+
+
+def test_connection_reviews_only_the_current_routine_hub_writes(tmp_path: Path) -> None:
+    service = connection(tmp_path)
+    preview = service.preview()
+    reviewed = tomllib.loads(preview["files"][0]["block"])["mcp_servers"]["temper_hub"]
+    assert "default_tools_approval_mode" not in reviewed
+    assert reviewed["tools"] == {
+        "temper_hub_prepare": {"approval_mode": "approve"},
+        "temper_hub_select": {"approval_mode": "approve"},
+        "temper_hub_render": {"approval_mode": "approve"},
+        "temper_hub_finish": {"approval_mode": "approve"},
+    }
+    service.apply(preview)
+    config = tomllib.loads((service.home / "config.toml").read_text())
+    assert config["mcp_servers"]["temper_hub"] == reviewed
+    assert "approval_policy" not in config and "sandbox_mode" not in config

@@ -21,9 +21,14 @@ type Review =
 export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
   const [state, setState] = useState<HubState | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const error = loadError ?? actionError;
-  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<{
+    message: string;
+    scope: "panel" | "runtime";
+  } | null>(null);
+  const error =
+    loadError ?? (actionError?.scope === "panel" ? actionError.message : null);
+  const [busyScope, setBusyScope] = useState<"panel" | "runtime" | null>(null);
+  const busy = busyScope !== null;
   const busyRef = useRef(false);
   const version = useRef(0);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -39,6 +44,7 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
   const [review, setReview] = useState<Review | null>(null);
   const reviewTrigger = useRef<HTMLButtonElement | null>(null);
   const panelHeading = useRef<HTMLHeadingElement | null>(null);
+  const remotionSummary = useRef<HTMLElement | null>(null);
 
   function openReview(value: Review, trigger: HTMLButtonElement) {
     reviewTrigger.current = trigger;
@@ -70,19 +76,22 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
     };
   }, [nativeRuntime, refreshKey]);
 
-  async function action(work: () => Promise<void>) {
+  async function action(work: () => Promise<void>, recovery?: string) {
     if (busyRef.current) return;
     busyRef.current = true;
     ++version.current;
-    setBusy(true);
+    setBusyScope(recovery ? "runtime" : "panel");
     setActionError(null);
     try {
       await work();
     } catch (value) {
-      setActionError(engineFailureMessage(value));
+      setActionError({
+        message: recovery ?? engineFailureMessage(value),
+        scope: recovery ? "runtime" : "panel",
+      });
     } finally {
       busyRef.current = false;
-      setBusy(false);
+      setBusyScope(null);
       setRefreshKey((key) => key + 1);
     }
   }
@@ -501,7 +510,9 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                 </div>
                 {state.remotion_available && (
                   <details>
-                    <summary>Remotion video rendering</summary>
+                    <summary ref={remotionSummary}>
+                      Remotion video rendering
+                    </summary>
                     <p>
                       Allow the agent to render short videos with an installed
                       Remotion toolchain on Windows x64. This requires a
@@ -514,6 +525,7 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                         onClick={() =>
                           void action(async () => {
                             await mutate("runtime_revoke");
+                            remotionSummary.current?.focus();
                           })
                         }
                       >
@@ -521,6 +533,11 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                       </button>
                     ) : (
                       <div className="tools-hub-setup">
+                        <p>
+                          Enter the full Windows paths to Node.js 24, the
+                          Remotion 4.0.542 node_modules directory, and Chrome
+                          Headless Shell.
+                        </p>
                         {(
                           [
                             ["node", "Node executable"],
@@ -532,12 +549,14 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                             {label}
                             <input
                               value={runtimePaths[key]}
-                              onChange={(event) =>
+                              onChange={(event) => {
+                                if (actionError?.scope === "runtime")
+                                  setActionError(null);
                                 setRuntimePaths({
                                   ...runtimePaths,
                                   [key]: event.currentTarget.value,
-                                })
-                              }
+                                });
+                              }}
                             />
                           </label>
                         ))}
@@ -553,22 +572,30 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                           }
                           onClick={(event) => {
                             const trigger = event.currentTarget;
-                            void action(async () =>
-                              openReview(
-                                {
-                                  type: "runtime",
-                                  value: await mutate<RuntimePreview>(
-                                    "runtime_preview",
-                                    runtimePaths,
-                                  ),
-                                },
-                                trigger,
-                              ),
+                            void action(
+                              async () =>
+                                openReview(
+                                  {
+                                    type: "runtime",
+                                    value: await mutate<RuntimePreview>(
+                                      "runtime_preview",
+                                      runtimePaths,
+                                    ),
+                                  },
+                                  trigger,
+                                ),
+                              "Remotion setup could not be checked. Verify all three paths and versions, then review setup again.",
                             );
                           }}
                         >
                           Review Remotion setup
                         </Button>
+                        {!review && busyScope === "runtime" && (
+                          <p role="status">Checking the installed toolchain…</p>
+                        )}
+                        {!review && actionError?.scope === "runtime" && (
+                          <p role="alert">{actionError.message}</p>
+                        )}
                       </div>
                     )}
                   </details>
@@ -615,14 +642,14 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
               {review?.type === "permission"
                 ? "Temper may maintain up to two applicable skills per task in these repositories until you stop it. SkillKit handles installation; your agent chooses what applies."
                 : review?.type === "connection"
-                  ? "Add the Hub endpoint, task instructions, and lifecycle hooks. Review and trust the hooks in Codex before starting a new chat."
+                  ? "Allow Codex to automatically prepare tasks, select tools, render with a separately approved runtime, and finish tasks in approved repositories. Review and trust the lifecycle hooks in Codex before starting a new chat."
                   : review?.type === "runtime"
                     ? "Allow short MP4 renders with this exact local toolchain during active tasks in these repositories."
                     : review?.type === "repair"
                       ? "Reinstall the pinned private SkillKit copy, discard its downloaded source cache, and fetch approved sources again. Repository profiles and permissions are preserved."
                       : "Stop updates and remove unchanged Temper-managed skill files. Files you edited are preserved and may need your attention."}
             </Dialog.Description>
-            {actionError && <p role="alert">{actionError}</p>}
+            {actionError && <p role="alert">{actionError.message}</p>}
             {review?.type === "permission" && (
               <>
                 <ul>
@@ -703,9 +730,21 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
               </>
             )}
             <div className="tools-hub-actions">
-              <Button disabled={busy} onClick={() => void action(confirm)}>
+              <Button
+                disabled={busy}
+                onClick={() =>
+                  void action(
+                    confirm,
+                    review?.type === "runtime"
+                      ? "Remotion setup could not be approved. Close this review and check the installed paths and versions again."
+                      : undefined,
+                  )
+                }
+              >
                 {busy
-                  ? "Saving…"
+                  ? review?.type === "runtime"
+                    ? "Checking and saving…"
+                    : "Saving…"
                   : review?.type === "stop"
                     ? "Stop and clean up"
                     : review?.type === "repair"

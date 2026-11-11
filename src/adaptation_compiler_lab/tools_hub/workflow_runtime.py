@@ -12,6 +12,7 @@ import shutil
 import stat
 from collections.abc import Callable
 from pathlib import Path
+from threading import Event, Lock
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -28,6 +29,35 @@ MAX_ARTIFACT_BYTES = 4_000_000
 COMPOSITOR = "@remotion/compositor-win32-x64-msvc"
 PACKAGES = ("remotion", "@remotion/bundler", "@remotion/renderer", COMPOSITOR)
 CHROME_DEBUG_LOG = "debug.log"
+
+
+class RenderCancellation:
+    """A single wire request, with publication as its completion boundary."""
+
+    def __init__(self) -> None:
+        self._cancelled = Event()
+        self._lock = Lock()
+        self._completed = False
+
+    def cancel(self) -> None:
+        with self._lock:
+            if not self._completed:
+                self._cancelled.set()
+
+    def check(self) -> None:
+        if self._cancelled.is_set():
+            raise ValueError("Remotion request was cancelled")
+
+    def complete(self) -> bool:
+        with self._lock:
+            self._completed = True
+            return not self._cancelled.is_set()
+
+    def publish(self, write: Callable[[], object]) -> None:
+        with self._lock:
+            self.check()
+            write()
+            self._completed = True
 
 
 class MotionVideo(BaseModel):
@@ -51,6 +81,7 @@ def tree_hash(
     *,
     skip: frozenset[str] = frozenset(),
     ignore_chrome_log: bool = False,
+    check: Callable[[], None] | None = None,
 ) -> str:
     digest = hashlib.sha256()
     total = entries = 0
@@ -69,6 +100,8 @@ def tree_hash(
             if child.is_symlink() or child.is_junction():
                 raise ValueError("Remotion toolchain paths must not be redirected")
         for name in sorted(filenames):
+            if check is not None:
+                check()
             path = parent / name
             is_browser_log = ignore_chrome_log and parent == root and name == CHROME_DEBUG_LOG
             try:
@@ -145,7 +178,13 @@ class RemotionRuntime:
         self.admission = dict(admission)
 
     @staticmethod
-    def pin(node: Path, node_modules: Path, browser: Path) -> dict[str, Any]:
+    def pin(
+        node: Path,
+        node_modules: Path,
+        browser: Path,
+        *,
+        check: Callable[[], None] | None = None,
+    ) -> dict[str, Any]:
         if os.name != "nt" or platform.machine().lower() not in {"amd64", "x86_64"}:
             raise ValueError("This Remotion toolchain requires native Windows x64")
         node, node_modules, browser = map(check_root, (node, node_modules, browser))
@@ -172,19 +211,21 @@ class RemotionRuntime:
             "node": str(node),
             "node_digest": file_hash(node),
             "node_modules": str(node_modules),
-            "module_tree_digest": tree_hash(node_modules, skip=frozenset({".cache", ".remotion"})),
+            "module_tree_digest": tree_hash(
+                node_modules, skip=frozenset({".cache", ".remotion"}), check=check
+            ),
             "browser": str(browser),
-            "browser_tree_digest": tree_hash(browser.parent, ignore_chrome_log=True),
+            "browser_tree_digest": tree_hash(browser.parent, ignore_chrome_log=True, check=check),
         }
 
-    def verify(self) -> tuple[Path, Path, Path]:
+    def verify(self, *, check: Callable[[], None] | None = None) -> tuple[Path, Path, Path]:
         try:
             node = Path(self.admission["node"])
             modules = Path(self.admission["node_modules"])
             browser = Path(self.admission["browser"])
         except (KeyError, TypeError):
             raise ValueError("Remotion has no valid runtime admission") from None
-        if self.admission != self.pin(node, modules, browser):
+        if self.admission != self.pin(node, modules, browser, check=check):
             raise ValueError("Remotion runtime differs from its owner admission")
         return node, modules, browser
 
@@ -208,10 +249,18 @@ class RemotionRuntime:
         spec: MotionVideo,
         *,
         allowed: Callable[[], None],
+        cancellation: RenderCancellation | None = None,
     ) -> dict[str, Any]:
-        allowed()
+        def guard() -> None:
+            if cancellation is not None:
+                cancellation.check()
+            allowed()
+
+        guard()
         work_root = check_root(work_root)
-        node, modules, browser = self.verify()
+        node, modules, browser = self.verify(
+            check=cancellation.check if cancellation is not None else None
+        )
         work = runtime_directory(work_root, task_token)
         self.reap(work_root, task_token)
         work.mkdir(parents=True, mode=0o700)
@@ -221,8 +270,8 @@ class RemotionRuntime:
             (work / "input.json").write_text(spec.model_dump_json(), encoding="utf-8")
             (work / "package.json").write_text('{"private":true}', encoding="utf-8")
 
-            def guard() -> None:
-                allowed()
+            def run_guard() -> None:
+                guard()
                 check_run_budget(work)
 
             output = bounded_run(
@@ -230,7 +279,7 @@ class RemotionRuntime:
                 work,
                 work / "private-home",
                 timeout=75,
-                guard=guard,
+                guard=run_guard,
                 extra={
                     "REMOTION_DISABLE_TELEMETRY": "1",
                     "CHROME_LOG_FILE": str(work / CHROME_DEBUG_LOG),
@@ -246,12 +295,15 @@ class RemotionRuntime:
                 raise ValueError("Remotion returned an invalid or oversized MP4")
             check_run_budget(work)
             digest = file_hash(rendered)
-            allowed()
+            guard()
             artifacts = safe(work_root, "artifacts")
             artifacts.mkdir(exist_ok=True, mode=0o700)
             artifact = safe(artifacts, "title-card-" + secrets.token_hex(12) + ".mp4")
             # Windows rename refuses to overwrite an existing destination.
-            rendered.rename(artifact)
+            if cancellation is None:
+                rendered.rename(artifact)
+            else:
+                cancellation.publish(lambda: rendered.rename(artifact))
             return {
                 "workflow": REMOTION_WORKFLOW,
                 "version": REMOTION_VERSION,

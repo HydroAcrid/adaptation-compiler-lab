@@ -1,10 +1,16 @@
 """Native Hub factory. Reuses identity, never the personal-learning grant."""
 
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .sealed import Seals
 from .service import HubService
 from .task_lifecycle import TaskOwner
+
+if TYPE_CHECKING:
+    from .workflow_runtime import RenderCancellation
 
 
 class NativeHubAgentProtocol:
@@ -14,14 +20,21 @@ class NativeHubAgentProtocol:
         self.config_path = config_path
         self.task_owner = TaskOwner.current()
 
-    def dispatch(self, method: str, params: dict[str, object], *, agent: bool) -> dict[str, object]:
+    def dispatch(
+        self,
+        method: str,
+        params: dict[str, object],
+        *,
+        agent: bool,
+        cancellation: RenderCancellation | None = None,
+    ) -> dict[str, object]:
         from .protocol import HubProtocol
 
         return HubProtocol(
             native_hub_service(self.config_path),
             config_path=self.config_path,
             task_owner=self.task_owner,
-        ).dispatch(method, params, agent=agent)
+        ).dispatch(method, params, agent=agent, cancellation=cancellation)
 
     def disconnect(self) -> None:
         from .paths import writer_lock

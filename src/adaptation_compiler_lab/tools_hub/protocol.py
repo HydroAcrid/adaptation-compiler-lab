@@ -10,7 +10,7 @@ from .connection import CodexHubConnection
 from .controller import fingerprint
 from .service import HubService
 from .task_lifecycle import TaskOutcome, TaskOwner
-from .workflow_runtime import MotionVideo
+from .workflow_runtime import MotionVideo, RenderCancellation
 
 
 class Parameters(BaseModel):
@@ -129,6 +129,7 @@ class HubProtocol:
         expected_digest: str | None = None,
         idempotency_key: str | None = None,
         agent: bool = False,
+        cancellation: RenderCancellation | None = None,
     ) -> dict[str, Any]:
         if method not in SCHEMAS or (agent and method not in AGENT_METHODS):
             raise ValueError("Unsupported repository setup operation")
@@ -211,7 +212,9 @@ class HubProtocol:
         elif isinstance(value, Finish) and owner is not None:
             result = self.service.finish(value.task_receipt, owner, value.outcome)
         elif isinstance(value, Render) and owner is not None:
-            result = self.service.render(value.task_receipt, owner, value.spec.model_dump())
+            result = self.service.render(
+                value.task_receipt, owner, value.spec.model_dump(), cancellation=cancellation
+            )
         elif isinstance(value, RuntimePreview):
             result = self.service.preview_runtime(value.node, value.node_modules, value.browser)
         elif method == "tools_hub.runtime.enable" and isinstance(value, PreviewId):

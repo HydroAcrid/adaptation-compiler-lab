@@ -149,6 +149,9 @@ it("makes every connection preview block reachable before keyboard consent", asy
   const settings = await screen.findByRole("region", {
     name: "Proposed config.toml section",
   });
+  expect(
+    screen.getByText(/automatically prepare tasks, select tools, render/),
+  ).toHaveTextContent(/separately approved runtime/);
   const instructions = screen.getByRole("region", {
     name: "Proposed AGENTS.md section",
   });
@@ -295,6 +298,7 @@ it("keeps a rejected action visible after a successful status refresh", async ()
 it("requires separate approval for the exact Windows Remotion toolchain", async () => {
   const user = userEvent.setup();
   let enabled = false;
+  let previewFailed = false;
   const paths = {
     node: "C:/fixture/node.exe",
     node_modules: "C:/fixture/node_modules",
@@ -309,7 +313,11 @@ it("requires separate approval for the exact Windows Remotion toolchain", async 
         remotion_available: true,
         remotion_enabled: enabled,
       };
-    if (operation === "runtime_preview")
+    if (operation === "runtime_preview") {
+      if (!previewFailed) {
+        previewFailed = true;
+        throw new Error("Private fixture path details");
+      }
       return {
         preview_id: "fictional-remotion",
         paths: Object.values(paths),
@@ -321,12 +329,16 @@ it("requires separate approval for the exact Windows Remotion toolchain", async 
           browser_tree_digest: "fixture-browser-digest",
         },
       };
+    }
     if (operation === "runtime_enable") enabled = true;
     if (operation === "runtime_revoke") enabled = false;
     return {};
   });
   render(<ToolsHubPanel nativeRuntime />);
   await user.click(await screen.findByText("Remotion video rendering"));
+  expect(
+    screen.getByText(/full Windows paths to Node.js 24/),
+  ).toHaveTextContent(/Remotion 4\.0\.542/);
   const review = screen.getByRole("button", { name: "Review Remotion setup" });
   expect(review).toBeDisabled();
   await user.type(
@@ -340,6 +352,14 @@ it("requires separate approval for the exact Windows Remotion toolchain", async 
   await user.type(
     screen.getByRole("textbox", { name: "Chrome Headless Shell executable" }),
     paths.browser,
+  );
+  await user.click(review);
+  const error = await screen.findByRole("alert");
+  expect(error).toHaveTextContent(/Verify all three paths and versions/);
+  expect(error.parentElement).toBe(review.parentElement);
+  expect(error).not.toHaveTextContent("Private fixture path details");
+  expect(screen.getByRole("textbox", { name: "Node executable" })).toHaveValue(
+    paths.node,
   );
   await user.click(review);
   await screen.findByRole("dialog", { name: "Allow Remotion video rendering" });
@@ -364,8 +384,14 @@ it("requires separate approval for the exact Windows Remotion toolchain", async 
     { preview_id: "fictional-remotion" },
     initial.digest,
   );
-  await user.click(disable);
+  disable.focus();
+  await user.keyboard("{Enter}");
   await screen.findByRole("button", { name: "Review Remotion setup" });
+  expect(screen.getByText("Remotion video rendering")).toHaveFocus();
+  await user.tab();
+  expect(
+    screen.getByRole("textbox", { name: "Node executable" }),
+  ).toHaveFocus();
   expect(api.hubRequest).toHaveBeenCalledWith(
     "runtime_revoke",
     {},

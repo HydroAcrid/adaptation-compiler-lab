@@ -2,14 +2,22 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import secrets
 import sqlite3
+from collections.abc import Iterator
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import Any, TextIO
+from queue import Empty, Full, Queue
+from threading import Event, Lock, Thread
+from typing import Any, TextIO, cast
 
 from .protocol import BindTurn, EndTurn, Finish, Inspection, Parameters, Render, Selection, Task
+from .workflow_runtime import RenderCancellation
+
+FRAME_LIMIT = 262_144
+RENDER_ID_LIMIT = 65_536
 
 DESCRIPTIONS = {
     "temper_hub_status": (
@@ -61,6 +69,125 @@ class PendingTask:
         return str(self.receipt["payload"]["task_token"])
 
 
+@dataclass
+class InputFrame:
+    message: dict[str, Any]
+    error: str | None = None
+    overflow: bool = False
+    cancellation: RenderCancellation | None = None
+
+    def render_id(self) -> str | int | None:
+        params = self.message.get("params")
+        request_id = self.message.get("id")
+        if (
+            self.message.get("method") == "tools/call"
+            and isinstance(params, dict)
+            and params.get("name") == "temper_hub_render"
+            and type(request_id) in (str, int)
+        ):
+            return request_id
+        return None
+
+
+def read_frame(stdin: TextIO) -> InputFrame | None:
+    line = stdin.readline(FRAME_LIMIT + 1)
+    if not line:
+        return None
+    if len(line.encode()) > FRAME_LIMIT:
+        return InputFrame({}, error="Hub frame exceeds its limit", overflow=True)
+    try:
+        message = json.loads(line)
+        if not isinstance(message, dict) or message.get("jsonrpc") != "2.0":
+            raise ValueError("Invalid Hub request")
+        return InputFrame(message)
+    except ValueError as error:
+        return InputFrame({}, error=str(error))
+
+
+def input_frames(stdin: TextIO) -> Iterator[InputFrame]:
+    while (frame := read_frame(stdin)) is not None:
+        if frame.render_id() is not None:
+            yield from cancellable_frames(stdin, frame)
+            return
+        yield frame
+        if frame.overflow:
+            return
+
+
+def cancellable_frames(stdin: TextIO, first: InputFrame) -> Iterator[InputFrame]:
+    """Read cancellation during render while dispatch keeps all mutations serial."""
+    pending: dict[str | int, RenderCancellation] = {}
+    used_ids: set[bytes] = set()
+    lock = Lock()
+    queued: Queue[InputFrame] = Queue(maxsize=16)
+    closed = Event()
+
+    def register(frame: InputFrame) -> None:
+        if (request_id := frame.render_id()) is not None:
+            # Keep exact typed request identities without retaining client text.
+            key = hashlib.sha256(json.dumps(request_id).encode()).digest()
+            with lock:
+                if key in used_ids:
+                    frame.error = "MCP render request ID was reused"
+                    return
+                if len(used_ids) >= RENDER_ID_LIMIT:
+                    frame.error = "MCP render request history is full; reconnect to render"
+                    return
+                used_ids.add(key)
+                frame.cancellation = pending[request_id] = RenderCancellation()
+
+    def cancel_pending() -> None:
+        with lock:
+            for cancellation in pending.values():
+                cancellation.cancel()
+
+    def read() -> None:
+        try:
+            while not closed.is_set() and (frame := read_frame(stdin)) is not None:
+                message = frame.message
+                if message.get("method") == "notifications/cancelled" and "id" not in message:
+                    params = message.get("params")
+                    request_id = params.get("requestId") if isinstance(params, dict) else None
+                    if type(request_id) in (str, int):
+                        with lock:
+                            if (
+                                cancellation := pending.get(cast(str | int, request_id))
+                            ) is not None:
+                                cancellation.cancel()
+                    continue
+                register(frame)
+                queued.put_nowait(frame)
+                if frame.overflow:
+                    return
+        except (OSError, Full):
+            # Treat a broken or overwhelmed client as a disconnected transport.
+            pass
+        finally:
+            cancel_pending()
+            closed.set()
+
+    register(first)
+    Thread(target=read, name="temper-hub-mcp-input", daemon=True).start()
+    frame = first
+    try:
+        while True:
+            yield frame
+            if frame.cancellation is not None and (request_id := frame.render_id()) is not None:
+                with lock:
+                    pending.pop(request_id, None)
+            while True:
+                if closed.is_set() and queued.empty():
+                    return
+                try:
+                    frame = queued.get(timeout=0.1)
+                    break
+                except Empty:
+                    continue
+    finally:
+        closed.set()
+        cancel_pending()
+
+
 def serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
     try:
         _serve_hub(protocol, stdin=stdin, stdout=stdout)
@@ -102,17 +229,16 @@ def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
     # One candidate per repository and no host identifiers persisted. A delayed
     # callback can release only the nonce actually returned to its native turn.
     candidates: dict[str, PendingTask] = {}
-    while line := stdin.readline(262_145):
-        request_id = None
+    for frame in input_frames(stdin):
+        request = frame.message
+        request_id = request.get("id")
         try:
-            if len(line.encode()) > 262_144:
-                raise ValueError("Hub frame exceeds its limit")
-            request = json.loads(line)
-            if not isinstance(request, dict) or request.get("jsonrpc") != "2.0":
-                raise ValueError("Invalid Hub request")
-            request_id = request.get("id")
+            if frame.error is not None:
+                raise ValueError(frame.error)
             if request_id is None:
                 continue
+            if type(request_id) not in (str, int):
+                raise ValueError("Invalid Hub request ID")
             method, params = request.get("method"), request.get("params", {})
             if not isinstance(params, dict):
                 raise ValueError("Hub parameters must be an object")
@@ -167,9 +293,15 @@ def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
                     if failure is not None:
                         raise failure
                 else:
-                    packet = protocol.dispatch(
-                        "tools_hub." + name.removeprefix("temper_hub_"), args, agent=True
-                    )
+                    if frame.cancellation is not None:
+                        frame.cancellation.check()
+                        packet = protocol.dispatch(
+                            "tools_hub.render", args, agent=True, cancellation=frame.cancellation
+                        )
+                    else:
+                        packet = protocol.dispatch(
+                            "tools_hub." + name.removeprefix("temper_hub_"), args, agent=True
+                        )
                 result = {
                     "content": [{"type": "text", "text": json.dumps(packet)}],
                     "isError": False,
@@ -196,7 +328,8 @@ def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
                 "id": request_id,
                 "error": {"code": -32602, "message": str(error)[:240]},
             }
-        stdout.write(json.dumps(response) + "\n")
-        stdout.flush()
-        if len(line.encode()) > 262_144:
+        if frame.cancellation is None or frame.cancellation.complete():
+            stdout.write(json.dumps(response) + "\n")
+            stdout.flush()
+        if frame.overflow:
             break

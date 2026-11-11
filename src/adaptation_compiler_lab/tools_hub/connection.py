@@ -14,6 +14,16 @@ from .paths import check_root, safe
 
 CONFIG_START, CONFIG_END = "# temper-tools-hub:start", "# temper-tools-hub:end"
 AGENT_START, AGENT_END = "<!-- temper-tools-hub:start -->", "<!-- temper-tools-hub:end -->"
+ROUTINE_TOOL_APPROVALS = """
+[mcp_servers.temper_hub.tools.temper_hub_prepare]
+approval_mode = "approve"
+[mcp_servers.temper_hub.tools.temper_hub_select]
+approval_mode = "approve"
+[mcp_servers.temper_hub.tools.temper_hub_render]
+approval_mode = "approve"
+[mcp_servers.temper_hub.tools.temper_hub_finish]
+approval_mode = "approve"
+"""
 HOOKS = """
 [[hooks.PostToolUse]]
 matcher = "^mcp__temper_hub__temper_hub_prepare$"
@@ -139,6 +149,7 @@ class CodexHubConnection:
             + "\nargs = "
             + json.dumps(["--config", str(self.config_path), "--tools-hub"])
             + "\nenabled = true\n"
+            + ROUTINE_TOOL_APPROVALS
             + HOOKS
             + CONFIG_END
         )
