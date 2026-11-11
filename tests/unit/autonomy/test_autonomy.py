@@ -774,6 +774,36 @@ def test_background_worker_can_revisit_signed_cursor_states(
     assert cursors == ["newest", "older", "newest", "older", "newest"]
 
 
+def test_background_worker_keeps_unchanged_page_navigation_out_of_signed_history(
+    app: tuple[AutonomyApplicationService, Clock],
+) -> None:
+    service, clock = app
+    grant = service.grant()
+    assert grant is not None
+    service.store.append(
+        "old-signed-cursor", "cursor", {"grant_id": grant.grant_id, "cursor": "older"}, at=clock()
+    )
+    visited: list[str | None] = []
+
+    def read_completed(_cutoff: datetime, cursor: str | None) -> CapturePage:
+        visited.append(cursor)
+        next_page = "newest" if cursor == "older" else "older"
+        return CapturePage(next_page, (), checkpoint_cursor="newest")
+
+    worker = BackgroundHabitWorker(service, read_completed=read_completed)
+    for _ in range(6):
+        assert worker.poll()["captured"] == 0
+    assert visited == ["older", "newest", "older", "newest", "older", "newest"]
+
+    restarted = BackgroundHabitWorker(service, read_completed=read_completed)
+    restarted.poll()
+    assert visited[-1] == "newest"
+    cursors = [
+        event["payload"]["cursor"] for event in service.store.events() if event["type"] == "cursor"
+    ]
+    assert cursors == ["older", "newest"], "unchanged pages must not grow signed history"
+
+
 def test_model_cannot_add_unknown_styles_or_invent_evidence(app: Any) -> None:
     _service, clock = app
     invalid = {

@@ -243,7 +243,11 @@ def test_bound_chat_accepts_another_spelling_of_its_directory(
     monkeypatch.setattr(
         "adaptation_compiler_lab.autonomy.codex_source._resolved_runtime_path", Path
     )
-    page = f["source"].poll(f["grant"].issued_at, None)
+    try:
+        page = f["source"].poll(f["grant"].issued_at, None)
+    except AutonomyIntegrityError:
+        page = None
+    assert page is not None, "same physical directory must be accepted"
     assert [episode.project_id for episode in page.episodes] == ["project"]
 
 

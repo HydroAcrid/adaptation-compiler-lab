@@ -464,7 +464,12 @@ class CodexHabitSource:
         )
         if cursor.next_page is not None and next_cursor.next_page == cursor.next_page:
             raise AutonomyIntegrityError("native completed-chat cursor did not advance")
-        return CapturePage(cursor=canonical_json(next_cursor), episodes=tuple(episodes))
+        checkpoint = next_cursor.model_copy(update={"next_page": None})
+        return CapturePage(
+            cursor=canonical_json(next_cursor),
+            episodes=tuple(episodes),
+            checkpoint_cursor=canonical_json(checkpoint),
+        )
 
     def _eligible_project(
         self, thread: Mapping[str, Any], cutoff: datetime, now: datetime

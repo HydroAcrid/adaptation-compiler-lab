@@ -26,6 +26,8 @@ from adaptation_compiler_lab.serialization import canonical_digest
 class CapturePage:
     cursor: str
     episodes: tuple[StyleEpisodeV1, ...]
+    # Native readers can persist checkpoints independently of transient page navigation.
+    checkpoint_cursor: str | None = None
 
 
 class BackgroundHabitWorker:
@@ -51,6 +53,7 @@ class BackgroundHabitWorker:
         self.relation_analyzer = relation_analyzer
         self.maintenance = maintenance
         self.project_registry = project_registry
+        self._scan_cursor: tuple[str, str | None, str] | None = None
 
     def poll(self) -> dict[str, Any]:
         service = self.service
@@ -76,28 +79,33 @@ class BackgroundHabitWorker:
             None,
         )
         cursor = cursor_event["payload"] if cursor_event is not None else None
-        previous_cursor = (
+        saved_cursor = (
             str(cursor["cursor"]) if cursor and cursor["grant_id"] == grant.grant_id else None
         )
+        cursor_key = cursor_event["key"] if cursor_event is not None else None
+        scope = (grant.grant_id, cursor_key)
+        previous_cursor = saved_cursor
+        if self._scan_cursor is not None and self._scan_cursor[:2] == scope:
+            previous_cursor = self._scan_cursor[2]
         page = self.read_completed(grant.issued_at, previous_cursor)
         for episode in page.episodes:
             result["captured"] += int(service.ingest_episode(episode))
-        if page.cursor != previous_cursor:
-            # A scan can return to an earlier cursor, so deduplicate this
-            # transition rather than every visit to the same destination.
+        checkpoint = page.checkpoint_cursor if page.checkpoint_cursor is not None else page.cursor
+        if checkpoint != saved_cursor:
+            # Reusing a checkpoint after a different one is a new signed transition.
             transition = canonical_digest(
-                {
-                    "grant": grant.grant_id,
-                    "cursor": page.cursor,
-                    "previous_event": cursor_event["digest"] if cursor_event is not None else None,
-                }
+                {"grant": grant.grant_id, "cursor": checkpoint, "previous_event": cursor_key}
             )
+            cursor_key = "cursor-" + str(transition)[7:]
             service.store.append(
-                "cursor-" + str(transition)[7:],
+                cursor_key,
                 "cursor",
-                {"grant_id": grant.grant_id, "cursor": page.cursor},
+                {"grant_id": grant.grant_id, "cursor": checkpoint},
                 at=now,
             )
+        # A restart uses the signed checkpoint. Page progress survives ordinary
+        # ticks in this process and is invalidated by a different signed cursor.
+        self._scan_cursor = (grant.grant_id, cursor_key, page.cursor)
         done = {
             episode_id
             for event in service.store.events()
