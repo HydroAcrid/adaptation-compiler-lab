@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from adaptation_compiler_lab.autonomy import codex_source as source_module
 from adaptation_compiler_lab.autonomy import project_registry as registry_module
 from adaptation_compiler_lab.autonomy.project_registry import (
     LearningProjectRegistry,
@@ -294,9 +295,9 @@ def test_omitted_child_alias_cannot_fall_through_to_parent_grant(fixture, monkey
     source.projects = {"parent": (alias.parent,), "project": (f["project"],)}
     source.most_specific_registered_root = True
     f["thread"]["cwd"] = str(alias)
-    actual_identity = registry_module._path_identity
+    actual_identity = source_module._path_identity
     monkeypatch.setattr(
-        registry_module,
+        source_module,
         "_path_identity",
         lambda path: actual_identity(f["project"]) if path == alias else actual_identity(path),
     )
