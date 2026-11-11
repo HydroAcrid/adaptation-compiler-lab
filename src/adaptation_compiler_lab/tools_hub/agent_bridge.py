@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import secrets
 import sqlite3
+from contextlib import suppress
+from dataclasses import dataclass
 from typing import Any, TextIO
 
-from .protocol import Inspection, Parameters, Selection, Task
+from .protocol import BindTurn, EndTurn, Finish, Inspection, Parameters, Render, Selection, Task
 
 DESCRIPTIONS = {
     "temper_hub_status": (
@@ -27,16 +30,57 @@ DESCRIPTIONS = {
         "Publish at most two applicable inspected skills for the current "
         "task through pinned SkillKit. An empty choice safely clears the "
         "owned profile. Does not change personal learning or install "
-        "framework services."
+        "unapproved framework services."
+    ),
+    "temper_hub_finish": (
+        "Release the exact task receipt after completion, failure, cancellation or a repository "
+        "switch. Preserves owner edits and completed artifacts."
+    ),
+    "temper_hub_render": (
+        "Render a short MP4 through the separately owner-approved Remotion runtime for the current "
+        "task. Supply spec title, optional subtitle, colors (background, foreground, accent as "
+        "hex), and seconds (1 to 3). Returns a private 15 fps MP4 path and digest."
+    ),
+    "temper_hub_bind_turn": (
+        "Codex PostToolUse callback. Bind a prepare result's opaque nonce to the native turn."
+    ),
+    "temper_hub_end_turn": (
+        "Codex Stop or Interrupt callback. Release only the exact task bound to this native turn."
     ),
 }
 
 
+@dataclass
+class PendingTask:
+    receipt: dict[str, Any]
+    nonce: str
+    turn: tuple[str, str] | None = None
+
+    @property
+    def token(self) -> str:
+        return str(self.receipt["payload"]["task_token"])
+
+
 def serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
+    try:
+        _serve_hub(protocol, stdin=stdin, stdout=stdout)
+    finally:
+        disconnect = getattr(protocol, "disconnect", None)
+        if disconnect is not None:
+            # A busy or unavailable store is recovered by the maintenance tick.
+            with suppress(ValueError, TypeError, KeyError, OSError, sqlite3.Error):
+                disconnect()
+
+
+def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
     schemas: dict[str, type[Parameters]] = {
         "temper_hub_prepare": Task,
         "temper_hub_inspect": Inspection,
         "temper_hub_select": Selection,
+        "temper_hub_finish": Finish,
+        "temper_hub_render": Render,
+        "temper_hub_bind_turn": BindTurn,
+        "temper_hub_end_turn": EndTurn,
     }
     tools: list[dict[str, Any]] = [
         {
@@ -47,12 +91,17 @@ def serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
             else schemas[name].model_json_schema(),
             "annotations": {
                 "readOnlyHint": name.endswith(("status", "inspect")),
-                "destructiveHint": name.endswith(("prepare", "select")),
+                "destructiveHint": name.endswith(
+                    ("prepare", "select", "finish", "end_turn", "render")
+                ),
                 "openWorldHint": False,
             },
         }
         for name, description in DESCRIPTIONS.items()
     ]
+    # One candidate per repository and no host identifiers persisted. A delayed
+    # callback can release only the nonce actually returned to its native turn.
+    candidates: dict[str, PendingTask] = {}
     while line := stdin.readline(262_145):
         request_id = None
         try:
@@ -88,15 +137,47 @@ def serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
                 name = params.get("name")
                 if name not in DESCRIPTIONS:
                     raise ValueError("Unsupported Hub tool")
-                packet = protocol.dispatch(
-                    "tools_hub." + name.removeprefix("temper_hub_"),
-                    params.get("arguments", {}),
-                    agent=True,
-                )
+                args = params.get("arguments", {})
+                if name == "temper_hub_bind_turn":
+                    value = BindTurn.model_validate(args)
+                    packet = {}
+                    for candidate in candidates.values():
+                        if candidate.nonce == value.lifecycle_nonce:
+                            candidate.turn = (value.session_id, value.turn_id)
+                            candidate.nonce = ""
+                            break
+                elif name == "temper_hub_end_turn":
+                    ending = EndTurn.model_validate(args)
+                    packet = {}
+                    for project, candidate in list(candidates.items()):
+                        if candidate.turn == (ending.session_id, ending.turn_id):
+                            protocol.dispatch(
+                                "tools_hub.finish",
+                                {"task_receipt": candidate.receipt, "outcome": ending.outcome},
+                                agent=True,
+                            )
+                            candidates.pop(project)
+                else:
+                    packet = protocol.dispatch(
+                        "tools_hub." + name.removeprefix("temper_hub_"), args, agent=True
+                    )
                 result = {
                     "content": [{"type": "text", "text": json.dumps(packet)}],
                     "isError": False,
                 }
+                if name == "temper_hub_prepare" and "task_receipt" in packet:
+                    nonce = secrets.token_hex(16)
+                    project = packet["project_id"]
+                    candidate = PendingTask(packet["task_receipt"], nonce)
+                    previous = candidates.get(project)
+                    if previous is not None and previous.token == candidate.token:
+                        candidate.turn = previous.turn
+                    candidates[project] = candidate
+                    result["structuredContent"] = {"lifecycle_nonce": nonce}
+                if name == "temper_hub_finish":
+                    project = packet.get("project_id")
+                    if project in candidates:
+                        candidates.pop(project)
             else:
                 raise ValueError("Unsupported MCP operation")
             response = {"jsonrpc": "2.0", "id": request_id, "result": result}

@@ -9,6 +9,7 @@ import shutil
 import sqlite3
 import threading
 import time
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +36,7 @@ from adaptation_compiler_lab.tools_hub.sources import (
     specification,
     tree_digest,
 )
+from adaptation_compiler_lab.tools_hub.task_lifecycle import TaskOwner
 
 
 class FixtureManager(SkillKitManager):
@@ -374,6 +376,10 @@ def test_mcp_exposes_only_task_tools_and_never_grants(service: HubService) -> No
         "temper_hub_prepare",
         "temper_hub_inspect",
         "temper_hub_select",
+        "temper_hub_finish",
+        "temper_hub_render",
+        "temper_hub_bind_turn",
+        "temper_hub_end_turn",
     }
     assert "error" in rows[1]
 
@@ -560,3 +566,149 @@ def test_failed_first_setup_does_not_retry_sources_every_scheduler_tick(
     grant = service.grant()
     assert grant is not None and grant["last_attempt"] > 0
     assert service.tick()["status"] == "idle"
+
+
+@pytest.mark.parametrize("after_stop", ["scheduler", "successor", "contradictory_finish"])
+def test_busy_native_stop_is_durable_and_generation_scoped(
+    service: HubService, after_stop: str
+) -> None:
+    output = io.StringIO()
+    protocol = HubProtocol(service)
+    task = {"project_id": "repo", "goal": "Debug fixture tests", "task_class": "debugging"}
+    skill_id = "superpowers/skills/debugging"
+    installed = service.inventory()[0]["root"] + "/.agents/skills/debugging/SKILL.md"
+
+    def call(name: str, arguments: dict[str, Any]) -> str:
+        return (
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/call",
+                    "params": {"name": "temper_hub_" + name, "arguments": arguments},
+                }
+            )
+            + "\n"
+        )
+
+    def response() -> dict[str, Any]:
+        return json.loads(output.getvalue().splitlines()[-1])["result"]
+
+    def packet() -> dict[str, Any]:
+        return json.loads(response()["content"][0]["text"])
+
+    def journey() -> Iterator[str]:
+        yield call("prepare", task)
+        proposal = packet()
+        receipt = proposal["task_receipt"]
+        ticket = proposal["selection_ticket"]
+        nonce = response()["structuredContent"]["lifecycle_nonce"]
+        turn = {"session_id": "fictional-session", "turn_id": "fictional-turn"}
+        yield call("bind_turn", {**turn, "lifecycle_nonce": nonce})
+        yield call("inspect", {"selection_ticket": ticket, "skill_id": skill_id})
+        inspection = packet()["inspection_receipt"]
+        yield call(
+            "select",
+            {
+                **task,
+                "selection_ticket": ticket,
+                "choices": [skill_id],
+                "inspections": [inspection],
+            },
+        )
+        assert Path(installed).is_file()
+        # A redundant prepare can fail to deliver PostToolUse. Keep its already-bound turn.
+        yield call("prepare", {**task, "prior_task_receipt": receipt})
+        assert packet()["task_receipt"]["payload"]["task_token"] == receipt["payload"]["task_token"]
+
+        with writer_lock(service.home):
+            yield call("end_turn", {**turn, "outcome": "completed"})
+            assert packet() == {}
+            assert len(list((service.home / "task-finishes").glob("*.json"))) == 1
+            assert Path(installed).is_file()
+
+    class ScriptedInput(io.StringIO):
+        def readline(self, size: int = -1) -> str:
+            return next(frames, "")
+
+    frames = journey()
+    serve_hub(protocol, stdin=ScriptedInput(), stdout=output)
+    if after_stop == "successor":
+        assert protocol.task_owner is not None
+        with writer_lock(service.home):
+            result = service.prepare(
+                "repo",
+                "Plan release notes",
+                "planning",
+                owner=protocol.task_owner,
+                prior_task_receipt=packet_from_prepare(output)["task_receipt"],
+            )
+        token = result["task_receipt"]["payload"]["task_token"]
+    else:
+        token = None
+        if after_stop == "contradictory_finish":
+            assert protocol.task_owner is not None
+            with pytest.raises(ValueError, match="already ended with a different outcome"):
+                service.finish(
+                    packet_from_prepare(output)["task_receipt"], protocol.task_owner, "cancelled"
+                )
+    service.tick()
+    assert not list((service.home / "task-finishes").glob("*.json"))
+    assert not Path(installed).exists()
+    grant = service.grant()
+    assert grant is not None
+    with writer_lock(service.home), service.controller(grant) as hub:
+        lease = hub.get("task:" + project_key("repo"))
+        assert (lease["task_token"] if lease else None) == token
+
+
+def packet_from_prepare(output: io.StringIO) -> dict[str, Any]:
+    messages = [json.loads(line) for line in output.getvalue().splitlines()]
+    return json.loads(messages[0]["result"]["content"][0]["text"])
+
+
+def test_missing_project_does_not_block_healthy_task_recovery(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service = make_service(tmp_path)
+    repo, other = tmp_path / "repo", tmp_path / "other"
+    other.mkdir()
+    (other / ".git").mkdir()
+    service.project_inventory = lambda: {"repo": repo, "other": other}
+    preview = service.preview(["repo", "other"], ["superpowers"])
+    service.enable(preview["preview_id"])
+    assert wait_job(service)["state"] == "complete"
+
+    def activate(project: str) -> TaskOwner:
+        protocol = HubProtocol(service)
+        task = {"project_id": project, "goal": "Debug fixture tests", "task_class": "debugging"}
+        proposal = protocol.dispatch("tools_hub.prepare", task, agent=True)
+        ticket = proposal["selection_ticket"]
+        skill_id = "superpowers/skills/debugging"
+        inspection = protocol.dispatch(
+            "tools_hub.inspect", {"selection_ticket": ticket, "skill_id": skill_id}, agent=True
+        )
+        protocol.dispatch(
+            "tools_hub.select",
+            {
+                **task,
+                "selection_ticket": ticket,
+                "choices": [skill_id],
+                "inspections": [inspection["inspection_receipt"]],
+            },
+            agent=True,
+        )
+        assert protocol.task_owner is not None
+        return protocol.task_owner
+
+    activate("repo")
+    owner = activate("other")
+    (repo / ".git").rename(repo / "fictional-detached-git")
+    monkeypatch.setattr(TaskOwner, "alive", lambda self: self != owner)
+    service.tick()
+    by_id = {row["id"]: row for row in service.state()["projects"]}
+    assert by_id["repo"]["attention"]["status"] == "task_cleanup_blocked"
+    assert by_id["repo"]["active"] == ["debugging"]
+    assert by_id["other"]["active"] == []
+    assert (repo / ".agents/skills/debugging/SKILL.md").is_file()
+    assert not (other / ".agents/skills/debugging/SKILL.md").exists()

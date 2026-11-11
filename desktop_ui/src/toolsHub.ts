@@ -23,6 +23,9 @@ export interface HubState {
   manager_ready: boolean;
   indexed: boolean;
   bridge_configured: boolean;
+  native_hooks_configured?: boolean;
+  remotion_available?: boolean;
+  remotion_enabled?: boolean;
   cleanup_pending: boolean;
   secure_store_ready?: boolean;
   last_checked: number | null;
@@ -56,6 +59,17 @@ export interface ConnectionPreview {
   files: { path: string; block: string }[];
   new_chat_required: true;
 }
+export interface RuntimePreview {
+  preview_id: string;
+  paths: string[];
+  projects: string[];
+  admission: {
+    version: string;
+    node_digest: string;
+    module_tree_digest: string;
+    browser_tree_digest: string;
+  };
+}
 export type HubOperation =
   | "status"
   | "inventory"
@@ -65,7 +79,10 @@ export type HubOperation =
   | "connection_preview"
   | "connection_apply"
   | "refresh"
-  | "repair";
+  | "repair"
+  | "runtime_preview"
+  | "runtime_enable"
+  | "runtime_revoke";
 
 export async function hubRequest<T>(
   operation: HubOperation,

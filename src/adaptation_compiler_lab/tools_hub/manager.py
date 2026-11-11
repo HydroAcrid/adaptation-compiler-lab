@@ -9,6 +9,7 @@ import signal
 import subprocess
 import threading
 import time
+from collections.abc import Callable
 from contextlib import suppress
 from pathlib import Path
 from typing import Any, cast
@@ -139,7 +140,10 @@ def bounded_run(
     *,
     timeout: float = 90,
     extra: dict[str, str] | None = None,
+    guard: Callable[[], None] | None = None,
 ) -> dict[str, Any]:
+    if guard:
+        guard()
     environment = clean_environment(home)
     environment.update(extra or {})
     began = time.monotonic()
@@ -171,11 +175,16 @@ def bounded_run(
     for reader in readers:
         reader.start()
     timed_out = False
+    next_check = began
     try:
         while process.poll() is None:
-            if overflow.is_set() or time.monotonic() - began > timeout:
+            now = time.monotonic()
+            if overflow.is_set() or now - began > timeout:
                 timed_out = True
                 break
+            if guard and now >= next_check:
+                guard()
+                next_check = now + 0.25
             time.sleep(0.02)
     finally:
         if job:
@@ -191,6 +200,8 @@ def bounded_run(
                 stream.close()
     if timed_out or overflow.is_set() or any(reader.is_alive() for reader in readers):
         raise ValueError("Native manager exceeded its time or output bound")
+    if guard:
+        guard()
     return {
         "returncode": process.returncode,
         "stdout": output[0].decode("utf-8", errors="replace"),

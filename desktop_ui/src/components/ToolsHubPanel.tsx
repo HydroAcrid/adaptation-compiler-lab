@@ -7,6 +7,7 @@ import {
   type HubOperation,
   type HubPreview,
   type HubState,
+  type RuntimePreview,
 } from "../toolsHub";
 import { Button, StatusPill } from "./ui";
 
@@ -14,6 +15,7 @@ type Repository = { id: string; label: string; root: string };
 type Review =
   | { type: "permission"; value: HubPreview }
   | { type: "connection"; value: ConnectionPreview }
+  | { type: "runtime"; value: RuntimePreview }
   | { type: "stop" | "repair" };
 
 export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
@@ -29,6 +31,11 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
   const [chosen, setChosen] = useState<string[]>([]);
   const [sources, setSources] = useState<string[]>([]);
   const [query, setQuery] = useState("");
+  const [runtimePaths, setRuntimePaths] = useState({
+    node: "",
+    node_modules: "",
+    browser: "",
+  });
   const [review, setReview] = useState<Review | null>(null);
   const reviewTrigger = useRef<HTMLButtonElement | null>(null);
   const panelHeading = useRef<HTMLHeadingElement | null>(null);
@@ -106,6 +113,8 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
       setRepositories(null);
     } else if (review.type === "connection") {
       await mutate("connection_apply", { preview_id: review.value.preview_id });
+    } else if (review.type === "runtime") {
+      await mutate("runtime_enable", { preview_id: review.value.preview_id });
     } else if (review.type === "repair") await mutate("repair");
     else await mutate("control", { operation: "stop" });
     // Confirmation can remove the opener on the next status refresh.
@@ -332,9 +341,11 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                     ? "repository approved"
                     : "repositories approved"}
                   .{" "}
-                  {state.bridge_configured
-                    ? "Codex connection saved. Start a new chat to load it."
-                    : "Connect Codex after setup to let it choose tools during ordinary work."}
+                  {state.native_hooks_configured
+                    ? "Review and trust Temper�s lifecycle hooks with /hooks in Codex. Start a new chat to load the connection."
+                    : state.bridge_configured
+                      ? "Update the Codex connection to add automatic task cleanup."
+                      : "Connect Codex after setup to let it choose tools during ordinary work."}
                 </p>
                 {state.last_task?.status === "deferred_incompatible_update" && (
                   <p role="status">
@@ -358,7 +369,7 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                   </p>
                 )}
                 <div className="tools-hub-actions">
-                  {!state.bridge_configured && (
+                  {!state.native_hooks_configured && (
                     <Button
                       disabled={
                         busy || working || !state.indexed || !!loadError
@@ -379,7 +390,9 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                         );
                       }}
                     >
-                      Connect Codex
+                      {state.bridge_configured
+                        ? "Update Codex connection"
+                        : "Connect Codex"}
                     </Button>
                   )}
                   <button
@@ -486,6 +499,80 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                     </div>
                   ))}
                 </div>
+                {state.remotion_available && (
+                  <details>
+                    <summary>Remotion video rendering</summary>
+                    <p>
+                      Allow the agent to render short videos with an installed
+                      Remotion toolchain on Windows x64. This requires a
+                      separate approval for these repositories.
+                    </p>
+                    {state.remotion_enabled ? (
+                      <button
+                        type="button"
+                        disabled={busy || !!loadError}
+                        onClick={() =>
+                          void action(async () => {
+                            await mutate("runtime_revoke");
+                          })
+                        }
+                      >
+                        Disable Remotion
+                      </button>
+                    ) : (
+                      <div className="tools-hub-setup">
+                        {(
+                          [
+                            ["node", "Node executable"],
+                            ["node_modules", "Remotion node_modules directory"],
+                            ["browser", "Chrome Headless Shell executable"],
+                          ] as const
+                        ).map(([key, label]) => (
+                          <label key={key}>
+                            {label}
+                            <input
+                              value={runtimePaths[key]}
+                              onChange={(event) =>
+                                setRuntimePaths({
+                                  ...runtimePaths,
+                                  [key]: event.currentTarget.value,
+                                })
+                              }
+                            />
+                          </label>
+                        ))}
+                        <Button
+                          disabled={
+                            busy ||
+                            working ||
+                            state.paused ||
+                            !!loadError ||
+                            Object.values(runtimePaths).some(
+                              (path) => !path.trim(),
+                            )
+                          }
+                          onClick={(event) => {
+                            const trigger = event.currentTarget;
+                            void action(async () =>
+                              openReview(
+                                {
+                                  type: "runtime",
+                                  value: await mutate<RuntimePreview>(
+                                    "runtime_preview",
+                                    runtimePaths,
+                                  ),
+                                },
+                                trigger,
+                              ),
+                            );
+                          }}
+                        >
+                          Review Remotion setup
+                        </Button>
+                      </div>
+                    )}
+                  </details>
+                )}
                 <p className="subtle">
                   Checks approved sources every six hours. Changed guidance
                   needs the agent’s task check before it replaces a working
@@ -518,18 +605,22 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                 ? "Allow repository tool setup"
                 : review?.type === "connection"
                   ? "Connect Codex to repository setup"
-                  : review?.type === "repair"
-                    ? "Repair the private manager"
-                    : "Stop managing repository tools"}
+                  : review?.type === "runtime"
+                    ? "Allow Remotion video rendering"
+                    : review?.type === "repair"
+                      ? "Repair the private manager"
+                      : "Stop managing repository tools"}
             </Dialog.Title>
             <Dialog.Description>
               {review?.type === "permission"
                 ? "Temper may maintain up to two applicable skills per task in these repositories until you stop it. SkillKit handles installation; your agent chooses what applies."
                 : review?.type === "connection"
-                  ? "Add a dedicated Hub endpoint and a short instruction section. Your other Codex settings and instructions are preserved. New chats load the connection."
-                  : review?.type === "repair"
-                    ? "Reinstall the pinned private SkillKit copy, discard its downloaded source cache, and fetch approved sources again. Repository profiles and permissions are preserved."
-                    : "Stop updates and remove unchanged Temper-managed skill files. Files you edited are preserved and may need your attention."}
+                  ? "Add the Hub endpoint, task instructions, and lifecycle hooks. Review and trust the hooks in Codex before starting a new chat."
+                  : review?.type === "runtime"
+                    ? "Allow short MP4 renders with this exact local toolchain during active tasks in these repositories."
+                    : review?.type === "repair"
+                      ? "Reinstall the pinned private SkillKit copy, discard its downloaded source cache, and fetch approved sources again. Repository profiles and permissions are preserved."
+                      : "Stop updates and remove unchanged Temper-managed skill files. Files you edited are preserved and may need your attention."}
             </Dialog.Description>
             {actionError && <p role="alert">{actionError}</p>}
             {review?.type === "permission" && (
@@ -588,6 +679,28 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                   </li>
                 ))}
               </ul>
+            )}
+            {review?.type === "runtime" && (
+              <>
+                <p>Remotion {review.value.admission.version}</p>
+                <ul>
+                  {review.value.paths.map((path, index) => (
+                    <li key={path}>
+                      <code>{path}</code>
+                      <code>
+                        {
+                          [
+                            review.value.admission.node_digest,
+                            review.value.admission.module_tree_digest,
+                            review.value.admission.browser_tree_digest,
+                          ][index]
+                        }
+                      </code>
+                    </li>
+                  ))}
+                </ul>
+                <p>Repositories {review.value.projects.join(", ")}</p>
+              </>
             )}
             <div className="tools-hub-actions">
               <Button disabled={busy} onClick={() => void action(confirm)}>

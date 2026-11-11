@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -102,3 +103,25 @@ def test_partial_connection_never_overwrites_new_manual_content(tmp_path: Path) 
     with pytest.raises(ValueError, match="concurrent Codex edit"):
         service.recover(preview)
     assert path.read_bytes() == edited
+
+
+def test_connection_adds_lifecycle_hooks_without_changing_other_hooks(tmp_path: Path) -> None:
+    service = connection(tmp_path)
+    config = service.home / "config.toml"
+    existing = (
+        b"\n[[hooks.Stop]]\n[[hooks.Stop.hooks]]\n"
+        b'type = "command"\ncommand = "fictional owner hook"\n'
+    )
+    original = config.read_bytes() + existing
+    config.write_bytes(original)
+
+    preview = service.preview()
+    service.apply(preview)
+    after = config.read_bytes()
+    assert after.startswith(original)
+    hooks = tomllib.loads(after.decode())["hooks"]
+    assert hooks["Stop"][0]["hooks"] == [{"type": "command", "command": "fictional owner hook"}]
+    assert hooks["PostToolUse"][0]["hooks"][0]["tool"] == "temper_hub_bind_turn"
+    assert hooks["Stop"][1]["hooks"][0]["input"]["outcome"] == "completed"
+    assert hooks["Interrupt"][0]["hooks"][0]["input"]["outcome"] == "cancelled"
+    assert preview["native_hook_trust_required"] is True

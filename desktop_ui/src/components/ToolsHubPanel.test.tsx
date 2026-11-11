@@ -291,3 +291,96 @@ it("keeps a rejected action visible after a successful status refresh", async ()
     "Permission changed in another window",
   );
 });
+
+it("requires separate approval for the exact Windows Remotion toolchain", async () => {
+  const user = userEvent.setup();
+  let enabled = false;
+  const paths = {
+    node: "C:/fixture/node.exe",
+    node_modules: "C:/fixture/node_modules",
+    browser: "C:/fixture/chrome-headless-shell.exe",
+  };
+  api.hubRequest.mockImplementation(async (operation: string) => {
+    if (operation === "status")
+      return {
+        ...initial,
+        enabled: true,
+        indexed: true,
+        remotion_available: true,
+        remotion_enabled: enabled,
+      };
+    if (operation === "runtime_preview")
+      return {
+        preview_id: "fictional-remotion",
+        paths: Object.values(paths),
+        projects: ["fixture-repo"],
+        admission: {
+          version: "4.0.542",
+          node_digest: "fixture-node-digest",
+          module_tree_digest: "fixture-modules-digest",
+          browser_tree_digest: "fixture-browser-digest",
+        },
+      };
+    if (operation === "runtime_enable") enabled = true;
+    if (operation === "runtime_revoke") enabled = false;
+    return {};
+  });
+  render(<ToolsHubPanel nativeRuntime />);
+  await user.click(await screen.findByText("Remotion video rendering"));
+  const review = screen.getByRole("button", { name: "Review Remotion setup" });
+  expect(review).toBeDisabled();
+  await user.type(
+    screen.getByRole("textbox", { name: "Node executable" }),
+    paths.node,
+  );
+  await user.type(
+    screen.getByRole("textbox", { name: "Remotion node_modules directory" }),
+    paths.node_modules,
+  );
+  await user.type(
+    screen.getByRole("textbox", { name: "Chrome Headless Shell executable" }),
+    paths.browser,
+  );
+  await user.click(review);
+  await screen.findByRole("dialog", { name: "Allow Remotion video rendering" });
+  expect(screen.getByText(paths.browser)).toBeVisible();
+  expect(screen.getByText("fixture-browser-digest")).toBeVisible();
+  expect(api.hubRequest).toHaveBeenCalledWith(
+    "runtime_preview",
+    paths,
+    initial.digest,
+  );
+  expect(
+    api.hubRequest.mock.calls.some(
+      ([operation]) => operation === "runtime_enable",
+    ),
+  ).toBe(false);
+  await user.click(screen.getByRole("button", { name: "Allow and continue" }));
+  const disable = await screen.findByRole("button", {
+    name: "Disable Remotion",
+  });
+  expect(api.hubRequest).toHaveBeenCalledWith(
+    "runtime_enable",
+    { preview_id: "fictional-remotion" },
+    initial.digest,
+  );
+  await user.click(disable);
+  await screen.findByRole("button", { name: "Review Remotion setup" });
+  expect(api.hubRequest).toHaveBeenCalledWith(
+    "runtime_revoke",
+    {},
+    initial.digest,
+  );
+});
+
+it("hides Remotion admission on unsupported native platforms", async () => {
+  api.hubRequest.mockResolvedValue({
+    ...initial,
+    enabled: true,
+    indexed: true,
+    remotion_available: false,
+  });
+  render(<ToolsHubPanel nativeRuntime />);
+  await screen.findByRole("button", { name: "Pause updates" });
+  expect(screen.queryByText("Remotion video rendering")).toBeNull();
+});

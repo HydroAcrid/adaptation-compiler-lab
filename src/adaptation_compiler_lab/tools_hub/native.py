@@ -4,6 +4,7 @@ from pathlib import Path
 
 from .sealed import Seals
 from .service import HubService
+from .task_lifecycle import TaskOwner
 
 
 class NativeHubAgentProtocol:
@@ -11,13 +12,24 @@ class NativeHubAgentProtocol:
 
     def __init__(self, config_path: Path) -> None:
         self.config_path = config_path
+        self.task_owner = TaskOwner.current()
 
     def dispatch(self, method: str, params: dict[str, object], *, agent: bool) -> dict[str, object]:
         from .protocol import HubProtocol
 
         return HubProtocol(
-            native_hub_service(self.config_path), config_path=self.config_path
+            native_hub_service(self.config_path),
+            config_path=self.config_path,
+            task_owner=self.task_owner,
         ).dispatch(method, params, agent=agent)
+
+    def disconnect(self) -> None:
+        from .paths import writer_lock
+
+        service = native_hub_service(self.config_path)
+        with writer_lock(service.home):
+            service.drain_finishes()
+            service.reap_tasks(owner=self.task_owner)
 
 
 def native_hub_service(config_path: Path) -> HubService:

@@ -2107,6 +2107,9 @@ enum ToolsHubOperation {
     ConnectionApply,
     Refresh,
     Repair,
+    RuntimePreview,
+    RuntimeEnable,
+    RuntimeRevoke,
 }
 
 #[tauri::command]
@@ -2127,6 +2130,9 @@ async fn tools_hub_request(
         ToolsHubOperation::ConnectionApply => "tools_hub.connection.apply",
         ToolsHubOperation::Refresh => "tools_hub.refresh",
         ToolsHubOperation::Repair => "tools_hub.repair",
+        ToolsHubOperation::RuntimePreview => "tools_hub.runtime.preview",
+        ToolsHubOperation::RuntimeEnable => "tools_hub.runtime.enable",
+        ToolsHubOperation::RuntimeRevoke => "tools_hub.runtime.revoke",
     };
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<EngineState>();

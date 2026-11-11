@@ -9,6 +9,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from .connection import CodexHubConnection
 from .controller import fingerprint
 from .service import HubService
+from .task_lifecycle import TaskOutcome, TaskOwner
+from .workflow_runtime import MotionVideo
 
 
 class Parameters(BaseModel):
@@ -38,6 +40,7 @@ class Task(Parameters):
     goal: str = Field(min_length=1, max_length=2000)
     task_class: Literal["implementation", "debugging", "review", "documentation", "planning"]
     relative_directory: str = Field(default=".", min_length=1, max_length=512)
+    prior_task_receipt: dict[str, Any] | None = None
 
 
 class Selection(Task):
@@ -51,6 +54,35 @@ class Inspection(Parameters):
     skill_id: str = Field(min_length=1, max_length=240)
 
 
+class RuntimePreview(Parameters):
+    node: str = Field(min_length=1, max_length=1024)
+    node_modules: str = Field(min_length=1, max_length=1024)
+    browser: str = Field(min_length=1, max_length=1024)
+
+
+class Render(Parameters):
+    task_receipt: dict[str, Any]
+    spec: MotionVideo
+
+
+class Finish(Parameters):
+    task_receipt: dict[str, Any]
+    outcome: TaskOutcome
+
+
+class Turn(Parameters):
+    session_id: str = Field(min_length=1, max_length=160)
+    turn_id: str = Field(min_length=1, max_length=160)
+
+
+class BindTurn(Turn):
+    lifecycle_nonce: str = Field(min_length=32, max_length=32)
+
+
+class EndTurn(Turn):
+    outcome: Literal["completed", "cancelled"]
+
+
 SCHEMAS: dict[str, type[Parameters]] = {
     "tools_hub.status": Empty,
     "tools_hub.inventory": Empty,
@@ -61,17 +93,32 @@ SCHEMAS: dict[str, type[Parameters]] = {
     "tools_hub.prepare": Task,
     "tools_hub.inspect": Inspection,
     "tools_hub.select": Selection,
+    "tools_hub.finish": Finish,
+    "tools_hub.render": Render,
+    "tools_hub.runtime.preview": RuntimePreview,
+    "tools_hub.runtime.enable": PreviewId,
+    "tools_hub.runtime.revoke": Empty,
     "tools_hub.connection.preview": Empty,
     "tools_hub.connection.apply": PreviewId,
     "tools_hub.refresh": Empty,
     "tools_hub.repair": Empty,
 }
-AGENT_METHODS = {"tools_hub.status", "tools_hub.prepare", "tools_hub.inspect", "tools_hub.select"}
+AGENT_METHODS = {
+    "tools_hub.status",
+    "tools_hub.prepare",
+    "tools_hub.inspect",
+    "tools_hub.select",
+    "tools_hub.finish",
+    "tools_hub.render",
+}
 
 
 class HubProtocol:
-    def __init__(self, service: HubService, *, config_path: Any = None) -> None:
+    def __init__(
+        self, service: HubService, *, config_path: Any = None, task_owner: TaskOwner | None = None
+    ) -> None:
         self.service, self.config_path = service, config_path
+        self.task_owner = task_owner
         self.replays: dict[str, tuple[str, dict[str, Any]]] = {}
 
     def dispatch(
@@ -86,6 +133,9 @@ class HubProtocol:
         if method not in SCHEMAS or (agent and method not in AGENT_METHODS):
             raise ValueError("Unsupported repository setup operation")
         value = SCHEMAS[method].model_validate(params)
+        if agent and self.task_owner is None:
+            self.task_owner = TaskOwner.current()
+        owner = self.task_owner if agent else None
         request_digest = fingerprint({"method": method, "params": params})
         if idempotency_key in self.replays:
             before, result = self.replays[idempotency_key]
@@ -125,6 +175,7 @@ class HubProtocol:
                     value.choices,
                     value.inspections,
                     value.relative_directory,
+                    owner=owner,
                 )
 
             if agent:
@@ -138,20 +189,35 @@ class HubProtocol:
             from .paths import writer_lock
 
             with writer_lock(self.service.home):
-                result = self.service.inspect(value.selection_ticket, value.skill_id)
+                result = self.service.inspect(value.selection_ticket, value.skill_id, owner=owner)
         elif isinstance(value, Task):
             # Do not run a manager or persist a goal when the repository is unapproved.
             self.service.require_project(value.project_id)
 
             def prepare_task() -> dict[str, Any]:
                 return self.service.prepare(
-                    value.project_id, value.goal, value.task_class, value.relative_directory
+                    value.project_id,
+                    value.goal,
+                    value.task_class,
+                    value.relative_directory,
+                    owner=owner,
+                    prior_task_receipt=value.prior_task_receipt,
                 )
 
             if agent:
                 result = self.service.agent_work(value.project_id, "prepare", prepare_task)
             else:
                 result = self.service.start("prepare", prepare_task)
+        elif isinstance(value, Finish) and owner is not None:
+            result = self.service.finish(value.task_receipt, owner, value.outcome)
+        elif isinstance(value, Render) and owner is not None:
+            result = self.service.render(value.task_receipt, owner, value.spec.model_dump())
+        elif isinstance(value, RuntimePreview):
+            result = self.service.preview_runtime(value.node, value.node_modules, value.browser)
+        elif method == "tools_hub.runtime.enable" and isinstance(value, PreviewId):
+            result = self.service.enable_runtime(value.preview_id)
+        elif method == "tools_hub.runtime.revoke":
+            result = self.service.revoke_runtime()
         elif method == "tools_hub.connection.preview":
             self.service.grant(active=True)
             connection = CodexHubConnection(self.service.codex_home, self.config_path)
@@ -200,12 +266,13 @@ class HubProtocol:
                     self.service.home / "connection-state.json", preview, "connection_state"
                 )
                 assert grant is not None
-                grant["bridge_configured"] = True
+                grant.update(bridge_configured=True, native_hooks_configured=True)
                 self.service.seals.write(self.service.home / "permission.json", grant, "permission")
                 (self.service.home / "connection-pending.json").unlink()
             result = {
                 "status": "connected",
                 "new_chat_required": True,
+                "native_hook_trust_required": True,
                 "learning_permission_changed": False,
             }
         else:

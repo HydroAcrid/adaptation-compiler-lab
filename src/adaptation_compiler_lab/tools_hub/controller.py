@@ -8,20 +8,28 @@ from __future__ import annotations
 
 import base64
 import json
+import math
 import os
 import re
+import secrets
 import sqlite3
 import subprocess
 import tempfile
 import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
 from adaptation_compiler_lab.tools_hub import intake as core
 from adaptation_compiler_lab.tools_hub.dependencies import dependencies
 from adaptation_compiler_lab.tools_hub.paths import check_root, safe
+from adaptation_compiler_lab.tools_hub.task_lifecycle import (
+    MAX_LEASE_SECONDS,
+    TaskOutcome,
+    TaskOwner,
+)
 
 MARKER = ".temper-persistent-hub"
 PROJECT_MARKER = ".temper-hub-project"
@@ -76,6 +84,7 @@ class Hub:
         publication_guard: Callable[[], None] | None = None,
         journal_pack: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
         journal_unpack: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+        task_cleanup: Callable[[str], None] | None = None,
     ) -> None:
         self.home = check_root(home)
         self.source_validator = source_validator
@@ -84,6 +93,7 @@ class Hub:
         self.publication_guard = publication_guard
         self.journal_pack = journal_pack or (lambda value: value)
         self.journal_unpack = journal_unpack or (lambda value: value)
+        self.task_cleanup = task_cleanup
         self.publishing_files: dict[str, str] = {}
         if not (self.home / MARKER).is_file():
             raise ValueError("Initialize an explicit private hub directory first")
@@ -99,6 +109,7 @@ class Hub:
         self.db.commit()
         self.calls: list[dict[str, Any]] = []
         self.finished_journals: list[Path] = []
+        self.published_projects: set[str] = set()
 
     @contextmanager
     def transaction(self) -> Iterator[Hub]:
@@ -463,12 +474,12 @@ class Hub:
         for (key,) in keys[limit:]:
             self.db.execute("DELETE FROM state WHERE key=?", (key,))
 
-    def recover(self, name: str) -> None:
+    def recover(self, name: str, *, release_task: bool = False) -> list[str]:
         path = self.home / (identifier(name) + ".pending.json")
         if path in self.finished_journals:
-            return
+            return []
         if not path.exists():
-            return
+            return []
         if path.stat().st_size > 24_000_000:
             raise ValueError("Publication journal exceeds its resource bound")
         journal = self.journal_unpack(json.loads(path.read_text(encoding="utf-8")))
@@ -477,17 +488,28 @@ class Hub:
             raise ValueError("Publication recovery belongs to a different project")
         if self.get("journal_commit:" + name) == fingerprint(journal):
             self.finished_journals.append(path)
-            return
+            return []
+        retained: set[str] = set(journal.get("retained_owner_files", [])) if release_task else set()
         for change in reversed(journal["changes"]):
-            if not change["path"].startswith(".agents/skills/"):
+            relative = change["path"]
+            if not relative.startswith(".agents/skills/"):
                 raise ValueError("Recovery path is outside owned project skills")
-            target = safe(root, change["path"])
-            current = target.read_bytes() if target.is_file() else None
             before, after = raw(change["before"]), raw(change["after"])
+            try:
+                target = safe(root, relative)
+                current = self.read_version(target, before, after)
+            except ValueError:
+                if not release_task:
+                    raise
+                retained.add(relative)
+                continue
             if current == before:
                 continue
             if current != after:
-                raise ValueError("Recovery paused for a concurrent owner edit")
+                if not release_task:
+                    raise ValueError("Recovery paused for a concurrent owner edit")
+                retained.add(relative)
+                continue
             if before is None:
                 target.unlink(missing_ok=True)
             else:
@@ -495,6 +517,17 @@ class Hub:
         self.active(name, journal["previous"])
         self.finished_journals.append(path)
         self.event({"kind": "interrupted_publication_recovered", "project": name})
+        return sorted(retained)
+
+    @staticmethod
+    def read_version(path: Path, *known: bytes | None) -> bytes | None:
+        if not path.exists():
+            return None
+        if not path.is_file():
+            raise ValueError("A managed path was replaced with a non-file")
+        maximum = max(len(value or b"") for value in known)
+        with path.open("rb") as stream:
+            return stream.read(maximum + 1)
 
     @staticmethod
     def write(path: Path, value: bytes) -> None:
@@ -510,23 +543,43 @@ class Hub:
             temporary.unlink(missing_ok=True)
 
     def publish(
-        self, name: str, desired: dict[str, Any], *, fault_after: int | None = None
+        self,
+        name: str,
+        desired: dict[str, Any],
+        *,
+        fault_after: int | None = None,
+        release_task: bool = False,
+        recovery_conflicts: list[str] | None = None,
     ) -> dict[str, Any]:
+        if name in self.published_projects:
+            raise ValueError("Commit the previous project publication before publishing again")
         if self.publication_guard:
             self.publication_guard()
         root = Path(self.project(name)["root"])
         previous = self.get("active:" + name) or {"files": {}, "selected": []}
         before_files, after_files = previous["files"], desired["files"]
         changes = []
+        retained = set(recovery_conflicts or [])
         for relative in sorted(set(before_files) | set(after_files)):
             if not relative.startswith(".agents/skills/"):
                 raise ValueError("Managed path is outside the project skill destination")
-            path = safe(root, relative)
-            current = path.read_bytes() if path.is_file() else None
+            if relative in retained:
+                continue
             before, after = raw(before_files.get(relative)), raw(after_files.get(relative))
+            try:
+                path = safe(root, relative)
+                current = self.read_version(path, before, after)
+            except ValueError:
+                if not release_task:
+                    raise
+                retained.add(relative)
+                continue
             if (relative in before_files and current not in (before, after)) or (
                 relative not in before_files and current is not None
             ):
+                if release_task:
+                    retained.add(relative)
+                    continue
                 self.put("attention:" + name, {"status": "owner_edit", "conflicts": [relative]})
                 return {"status": "paused_owner_edit", "changed": False, "conflicts": [relative]}
             if current != after:
@@ -537,15 +590,17 @@ class Hub:
             "root": str(root),
             "previous": previous,
             "changes": changes,
+            **({"retained_owner_files": sorted(retained)} if retained else {}),
         }
         self.publishing_files = dict(after_files)
         core.save(journal, self.journal_pack(journal_payload))
+        self.published_projects.add(name)
         for index, change in enumerate(changes, 1):
             if self.publication_guard:
                 self.publication_guard()
             target = safe(root, change["path"])
-            current = target.read_bytes() if target.is_file() else None
-            if current != raw(change["before"]):
+            before = raw(change["before"])
+            if self.read_version(target, before) != before:
                 raise ValueError("Owner file changed after preview; recover before retry")
             after = raw(change["after"])
             if after is None:
@@ -555,9 +610,17 @@ class Hub:
             if index == fault_after:
                 os._exit(86)
         self.active(name, desired)
-        self.put("attention:" + name, None)
+        self.put(
+            "attention:" + name,
+            {"status": "owner_edit", "conflicts": sorted(retained)} if retained else None,
+        )
         self.put("journal_commit:" + name, fingerprint(journal_payload))
-        if previous.get("files") and previous.get("files") != desired.get("files"):
+        if release_task:
+            self.db.execute(
+                "DELETE FROM state WHERE key IN (?, ?)",
+                ("previous:" + name, "previous_summary:" + name),
+            )
+        elif previous.get("files") and previous.get("files") != desired.get("files"):
             self.put("previous:" + name, previous)
             self.put("previous_summary:" + name, {"available": True})
         self.finished_journals.append(journal)
@@ -567,7 +630,178 @@ class Hub:
             "files_changed": len(changes),
             "selected": [r["name"] for r in desired["selected"]],
             "instruction_delivery_verified": False,
+            **({"retained_owner_files": sorted(retained)} if release_task else {}),
         }
+
+    def release_task_profile(self, name: str) -> dict[str, Any]:
+        conflicts = self.recover(name, release_task=True)
+        return self.publish(
+            name,
+            {"files": {}, "selected": [], "epoch": "none"},
+            release_task=True,
+            recovery_conflicts=conflicts,
+        )
+
+    def begin_task(
+        self,
+        name: str,
+        owner: TaskOwner,
+        task_digest: str,
+        *,
+        expires_at: float,
+        prior_token: str | None = None,
+        now: float | None = None,
+    ) -> dict[str, Any]:
+        """Claim a project, committing any switch before a successor publishes."""
+        now = time.time() if now is None else now
+        if not math.isfinite(expires_at) or not now < expires_at <= now + MAX_LEASE_SECONDS:
+            raise ValueError("Hub task expiry is outside its supported window")
+        if not re.fullmatch(r"[0-9a-f]{64}", task_digest):
+            raise ValueError("Hub requires a digested task context")
+        project = self.project(name)
+        if project["paused"]:
+            raise ValueError("Repository setup is paused for this project")
+        key = "task:" + name
+        active = self.get(key)
+        owner_data = asdict(owner)
+        retained_owner_files: list[str] = []
+        if active:
+            current_owner = TaskOwner(**active["owner"])
+            live = active["expires_at"] > now and current_owner.alive()
+            if prior_token is not None and (
+                current_owner != owner
+                or not secrets.compare_digest(active["task_token"], prior_token)
+            ):
+                raise ValueError("This Hub task token is stale")
+            if live:
+                if current_owner != owner:
+                    raise ValueError("Another active task owns this repository setup")
+                if active["task_digest"] == task_digest:
+                    if prior_token is not None and expires_at > active["expires_at"]:
+                        active["expires_at"] = expires_at
+                        self.put(key, active)
+                    return {"status": "task_reused", **active}
+                if prior_token is None:
+                    raise ValueError("Supply the current task token to switch its context")
+            cleanup = self.end_task(
+                name,
+                current_owner,
+                active["task_token"],
+                "switched" if live else "cancelled",
+                now=now,
+            )
+            retained_owner_files = cleanup["retained_owner_files"]
+        elif prior_token is not None:
+            raise ValueError("This Hub task token is stale")
+        elif (self.get("active:" + name) or {}).get("files"):
+            # A persistent pre-lease profile has no live task owner.
+            retained_owner_files = self.release_task_profile(name)["retained_owner_files"]
+        lease = {
+            "task_token": secrets.token_hex(32),
+            "owner": owner_data,
+            "task_digest": task_digest,
+            "expires_at": expires_at,
+        }
+        self.put(key, lease)
+        self.event({"kind": "task_started", "project": name, "task_digest": task_digest})
+        return {"status": "task_started", "retained_owner_files": retained_owner_files, **lease}
+
+    def require_task(
+        self, name: str, owner: TaskOwner, token: str, *, now: float | None = None
+    ) -> dict[str, Any]:
+        self.project(name)
+        active = self.get("task:" + name)
+        if (
+            not active
+            or active["owner"] != asdict(owner)
+            or not secrets.compare_digest(active["task_token"], token)
+        ):
+            raise ValueError("This Hub task token is stale")
+        if active["expires_at"] <= (time.time() if now is None else now):
+            raise ValueError("The Hub task expired; prepare the current work again")
+        return dict(active)
+
+    def end_task(
+        self,
+        name: str,
+        owner: TaskOwner,
+        token: str,
+        outcome: TaskOutcome,
+        *,
+        now: float | None = None,
+    ) -> dict[str, Any]:
+        # A terminal request can clear its own lease even after the deadline.
+        self.project(name)
+        if outcome not in {"completed", "failed", "cancelled", "switched"}:
+            raise ValueError("Unsupported Hub task outcome")
+        key = "task:" + name
+        terminal_key = "task_terminal:" + name
+        active = self.get(key)
+        if active is None:
+            terminal = self.get(terminal_key)
+            if (
+                terminal
+                and terminal["owner"] == asdict(owner)
+                and terminal["token_digest"] == core.sha(token.encode())
+            ):
+                if terminal["result"]["outcome"] != outcome:
+                    raise ValueError("This Hub task already ended with a different outcome")
+                return dict(terminal["result"])
+        if (
+            active is None
+            or active["owner"] != asdict(owner)
+            or not secrets.compare_digest(active["task_token"], token)
+        ):
+            raise ValueError("This Hub task token is stale")
+        if self.task_cleanup is not None:
+            self.task_cleanup(token)
+        cleanup = self.release_task_profile(name)
+        result = {
+            "status": "task_finished",
+            "outcome": outcome,
+            "files_changed": cleanup["files_changed"],
+            "retained_owner_files": cleanup["retained_owner_files"],
+        }
+        self.put(key, None)
+        self.put(
+            terminal_key,
+            {"owner": asdict(owner), "token_digest": core.sha(token.encode()), "result": result},
+        )
+        self.event(
+            {
+                "kind": "task_finished",
+                "project": name,
+                "outcome": outcome,
+                "at": time.time() if now is None else now,
+            }
+        )
+        return result
+
+    def reap_tasks(
+        self,
+        names: list[str],
+        *,
+        owner: TaskOwner | None = None,
+        now: float | None = None,
+    ) -> list[dict[str, Any]]:
+        now = time.time() if now is None else now
+        results = []
+        for name in names:
+            active = self.get("task:" + identifier(name))
+            if not active:
+                continue
+            current_owner = TaskOwner(**active["owner"])
+            should_reap = (
+                owner == current_owner
+                if owner is not None
+                else active["expires_at"] <= now or not current_owner.alive()
+            )
+            if should_reap:
+                result = self.end_task(
+                    name, current_owner, active["task_token"], "cancelled", now=now
+                )
+                results.append({"project": name, **result})
+        return results
 
     def sync(
         self,

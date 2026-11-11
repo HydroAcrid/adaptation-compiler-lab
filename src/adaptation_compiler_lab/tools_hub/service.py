@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 import secrets
 import shutil
 import sqlite3
 import threading
 import time
 from collections.abc import Callable, Iterator
-from contextlib import closing, contextmanager
+from contextlib import closing, contextmanager, suppress
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +25,7 @@ from .paths import check_root, files, remove_owned_tree, safe, writer_lock
 from .policy import native_policy_digest
 from .sealed import Seals
 from .sources import SOURCES, SourceSnapshots, specification
+from .task_lifecycle import MAX_LEASE_SECONDS, TaskOutcome, TaskOwner
 
 HUB_BUDGET = 1_000_000_000
 
@@ -102,7 +105,7 @@ class HubService:
                     for key, value in connection.execute(
                         "SELECT key,value FROM state WHERE key LIKE 'project:%' OR key "
                         "LIKE 'active_summary:%' OR key LIKE 'attention:%' "
-                        "OR key LIKE 'previous_summary:%'"
+                        "OR key LIKE 'previous_summary:%' OR key LIKE 'task_cleanup_attention:%'"
                     )
                 }
             for selected in (grant or {}).get("projects", []):
@@ -115,7 +118,8 @@ class HubService:
                     "root": selected["root"],
                     "paused": project.get("paused", False),
                     "active": [row["name"] for row in active.get("selected", [])],
-                    "attention": rows.get("attention:" + key),
+                    "attention": rows.get("task_cleanup_attention:" + key)
+                    or rows.get("attention:" + key),
                     "can_rollback": bool(rows.get("previous_summary:" + key)),
                     "pending_recovery": (self.home / (key + ".pending.json")).exists(),
                 }
@@ -138,6 +142,7 @@ class HubService:
         )
         if not grant or (last_task and last_task.get("grant_id") != grant["grant_id"]):
             last_task = None
+        runtime = self.runtime_permission(grant)
         result = {
             "version": 1,
             "enabled": bool(grant and grant["enabled"]),
@@ -159,6 +164,10 @@ class HubService:
             "job": job,
             "last_checked": (grant or {}).get("last_checked"),
             "bridge_configured": bool(grant and grant.get("bridge_configured")),
+            "native_hooks_configured": bool(grant and grant.get("native_hooks_configured")),
+            "remotion_available": os.name == "nt"
+            and platform.machine().lower() in {"amd64", "x86_64"},
+            "remotion_enabled": bool(grant and grant["enabled"] and runtime and runtime["enabled"]),
             "cleanup_pending": bool(grant and grant.get("cleanup_pending")),
             "secure_store_ready": self.secure_store_available(),
             "last_task": last_task,
@@ -373,7 +382,14 @@ class HubService:
             raise ValueError("Repository setup permission changed during this operation")
 
     def bind_publication_context(
-        self, hub: Hub, grant: dict[str, Any], root: Path, goal: str, task_class: str
+        self,
+        hub: Hub,
+        grant: dict[str, Any],
+        root: Path,
+        goal: str,
+        task_class: str,
+        *,
+        task: tuple[str, TaskOwner, str] | None = None,
     ) -> None:
         hub.manager_identity()
         expected = hub.context(root, goal, task_class, 2, "any_revision")
@@ -382,6 +398,8 @@ class HubService:
         def check() -> None:
             nonlocal manager_checked
             self.require_same_grant(grant)
+            if task is not None:
+                hub.require_task(*task)
             if not manager_checked:
                 self.verify_manager()
                 manager_checked = True
@@ -391,7 +409,9 @@ class HubService:
         hub.publication_guard = check
 
     @contextmanager
-    def controller(self, grant: dict[str, Any], relative_directory: str = ".") -> Iterator[Hub]:
+    def controller(
+        self, grant: dict[str, Any], relative_directory: str = ".", *, cleanup_only: bool = False
+    ) -> Iterator[Hub]:
         snapshots = self.source_factory(self.home, self.seals, grant)
         # Authenticate the index before serving its public guidance or staging files.
         with Hub(
@@ -399,9 +419,10 @@ class HubService:
             run=self.manager.run,
             source_validator=snapshots.validate,
             manager_digest=self.verify_manager,
-            publication_guard=lambda: self.require_same_grant(grant),
+            publication_guard=None if cleanup_only else lambda: self.require_same_grant(grant),
             journal_pack=lambda value: self.seals.seal(value, "journal"),
             journal_unpack=lambda value: self.seals.open(value, "journal"),
+            task_cleanup=self.reap_runtime_work,
         ).transaction() as hub:
             self.verify_controller(hub)
             if hub.get("config")["grant_id"] != grant["grant_id"]:
@@ -513,6 +534,7 @@ class HubService:
         grant, _ = self.require_project(project_id)
         with writer_lock(self.home):
             try:
+                self.drain_finishes()
                 result = work()
             except (ValueError, OSError, KeyError, TypeError, sqlite3.Error) as error:
                 self.seals.write(
@@ -564,51 +586,131 @@ class HubService:
                     )
             return result
 
+    def task_claim(self, receipt: dict[str, Any], grant: dict[str, Any]) -> dict[str, Any]:
+        claim = self.seals.open(receipt, "task")
+        if claim["grant_id"] != grant["grant_id"]:
+            raise ValueError("Task belongs to a previous repository setup permission")
+        return claim
+
     def prepare(
-        self, project_id: str, goal: str, task_class: str, relative_directory: str = "."
+        self,
+        project_id: str,
+        goal: str,
+        task_class: str,
+        relative_directory: str = ".",
+        *,
+        owner: TaskOwner | None = None,
+        prior_task_receipt: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         grant, project = self.require_project(project_id)
         self.budget()
-        with self.controller(grant, relative_directory) as hub:
-            hub.recover(project_key(project_id))
-            self.bind_publication_context(hub, grant, Path(project["root"]), goal, task_class)
-            before_index = hub.get("index")
-            result = hub.sync(project_key(project_id), goal, task_class)
-            after_index = hub.get("index")
-            result["index_recovered"] = bool(
-                after_index
-                and (
-                    not before_index
-                    or before_index["catalog_digest"] != after_index["catalog_digest"]
+        key = project_key(project_id)
+        task_token = None
+        task_receipt = None
+        lease: dict[str, Any] = {}
+        if owner is not None:
+            prior = None
+            if prior_task_receipt is not None:
+                prior = self.task_claim(prior_task_receipt, grant)
+                if prior["owner"] != asdict(owner):
+                    raise ValueError("Task belongs to a different connected agent")
+                if prior["project_id"] != project_id:
+                    raise ValueError(
+                        "Finish the previous repository task before switching repositories"
+                    )
+            with self.controller(grant, relative_directory) as hub:
+                if not hub.get("task:" + key):
+                    hub.recover(key)
+                task_digest = fingerprint(
+                    hub.context(Path(project["root"]), goal, task_class, 2, "task_lease")
                 )
-            )
-            if result["status"] == "needs_agent_selection":
-                index = hub.get("index")
-                token = {
-                    "grant_digest": fingerprint(grant),
-                    "project_id": project_id,
-                    "context": hub.context(
-                        Path(project["root"]), goal, task_class, 2, index["epoch"]
-                    ),
-                    "expires": time.time() + 900,
-                    "goal_digest": intake.sha(goal.encode()),
-                    "task_class": task_class,
-                    "relative_directory": relative_directory,
-                    "active_profile": fingerprint(hub.get("active:" + project_key(project_id))),
-                }
-                result["selection_ticket"] = self.seals.seal(token, "selection")
-                result["authorized_catalog"] = [
-                    {key: row[key] for key in ("id", "name", "description", "automatic_eligible")}
-                    for row in result["authorized_catalog"]
-                ]
-            return {**result, "project_id": project_id, "personal_evidence_created": False}
+                lease = hub.begin_task(
+                    key,
+                    owner,
+                    task_digest,
+                    expires_at=time.time() + MAX_LEASE_SECONDS,
+                    prior_token=prior["task_token"] if prior else None,
+                )
+                task_token = lease["task_token"]
+                task_receipt = self.seals.seal(
+                    {
+                        "grant_id": grant["grant_id"],
+                        "project_id": project_id,
+                        "task_token": task_token,
+                        "owner": asdict(owner),
+                    },
+                    "task",
+                )
+        try:
+            with self.controller(grant, relative_directory) as hub:
+                hub.recover(key)
+                task = (key, owner, task_token) if owner is not None and task_token else None
+                if task is not None:
+                    hub.require_task(*task)
+                elif hub.get("task:" + key):
+                    raise ValueError("This repository already has an active connected task")
+                self.bind_publication_context(
+                    hub, grant, Path(project["root"]), goal, task_class, task=task
+                )
+                before_index = hub.get("index")
+                result = hub.sync(project_key(project_id), goal, task_class)
+                after_index = hub.get("index")
+                result["index_recovered"] = bool(
+                    after_index
+                    and (
+                        not before_index
+                        or before_index["catalog_digest"] != after_index["catalog_digest"]
+                    )
+                )
+                if result["status"] == "needs_agent_selection":
+                    index = hub.get("index")
+                    token = {
+                        "grant_digest": fingerprint(grant),
+                        "project_id": project_id,
+                        "context": hub.context(
+                            Path(project["root"]), goal, task_class, 2, index["epoch"]
+                        ),
+                        "expires": time.time() + 900,
+                        "goal_digest": intake.sha(goal.encode()),
+                        "task_class": task_class,
+                        "relative_directory": relative_directory,
+                        "active_profile": fingerprint(hub.get("active:" + project_key(project_id))),
+                    }
+                    if task_token is not None:
+                        token["task_token"] = task_token
+                    result["selection_ticket"] = self.seals.seal(token, "selection")
+                    result["authorized_catalog"] = [
+                        {
+                            key: row[key]
+                            for key in ("id", "name", "description", "automatic_eligible")
+                        }
+                        for row in result["authorized_catalog"]
+                    ]
+                if task_receipt is not None:
+                    result["task_receipt"] = task_receipt
+                if lease.get("retained_owner_files"):
+                    result["retained_owner_files"] = lease["retained_owner_files"]
+                return {**result, "project_id": project_id, "personal_evidence_created": False}
+        except (ValueError, OSError, KeyError, TypeError, sqlite3.Error):
+            if lease.get("status") == "task_started" and owner is not None and task_token:
+                # No receipt was returned. Release this generation while we
+                # still own the writer; the scheduler covers interrupted rollback.
+                with (
+                    suppress(ValueError, OSError, KeyError, TypeError, sqlite3.Error),
+                    self.controller(grant, cleanup_only=True) as hub,
+                ):
+                    hub.end_task(key, owner, task_token, "failed")
+            raise
 
-    def inspect(self, ticket: dict[str, Any], skill_id: str) -> dict[str, Any]:
+    def inspect(
+        self, ticket: dict[str, Any], skill_id: str, *, owner: TaskOwner | None = None
+    ) -> dict[str, Any]:
         claim = self.seals.open(ticket, "selection")
         grant, _ = self.require_project(claim["project_id"])
         if claim["expires"] < time.time() or claim["grant_digest"] != fingerprint(grant):
             raise ValueError("Selection expired; prepare the current task again")
         with self.controller(grant, claim["relative_directory"]) as hub:
+            self.require_selection_owner(hub, claim, owner)
             row = next((row for row in hub.get("index")["corpus"] if row["id"] == skill_id), None)
             if row is None or len(row["body"].encode()) > 64_000:
                 raise ValueError("Skill is unavailable or exceeds the supported inspection size")
@@ -653,11 +755,14 @@ class HubService:
         choices: list[str],
         inspections: list[dict[str, Any]],
         relative_directory: str = ".",
+        *,
+        owner: TaskOwner | None = None,
     ) -> dict[str, Any]:
         grant, project = self.require_project(project_id)
         claim = self.seals.open(ticket, "selection")
         self.budget()
         with self.controller(grant, relative_directory) as hub:
+            self.require_selection_owner(hub, claim, owner)
             context = hub.context(
                 Path(project["root"]), goal, task_class, 2, hub.get("index")["epoch"]
             )
@@ -672,6 +777,7 @@ class HubService:
                     "task_class": task_class,
                     "relative_directory": relative_directory,
                     "active_profile": fingerprint(hub.get("active:" + project_key(project_id))),
+                    **({"task_token": claim["task_token"]} if owner is not None else {}),
                 }
                 or claim["expires"] < time.time()
             ):
@@ -688,9 +794,283 @@ class HubService:
                 for row in selection
             ):
                 raise ValueError("Inspect every selected skill and dependency before publication")
-            self.bind_publication_context(hub, grant, Path(project["root"]), goal, task_class)
-            result = hub.sync(project_key(project_id), goal, task_class, choices=choices)
+            key = project_key(project_id)
+            task = (key, owner, claim["task_token"]) if owner is not None else None
+            self.bind_publication_context(
+                hub, grant, Path(project["root"]), goal, task_class, task=task
+            )
+            result = hub.sync(key, goal, task_class, choices=choices)
             return {**result, "project_id": project_id, "personal_evidence_created": False}
+
+    @staticmethod
+    def require_selection_owner(hub: Hub, claim: dict[str, Any], owner: TaskOwner | None) -> None:
+        token = claim.get("task_token")
+        if (owner is None) != (token is None):
+            raise ValueError("Prepare the current task through this connection")
+        key = project_key(claim["project_id"])
+        if owner is not None:
+            hub.require_task(key, owner, token)
+        elif hub.get("task:" + key):
+            raise ValueError("This repository already has an active connected task")
+
+    def finish(
+        self, receipt: dict[str, Any], owner: TaskOwner, outcome: TaskOutcome
+    ) -> dict[str, Any]:
+        grant = self.grant()
+        if grant is None:
+            raise ValueError("Repository setup is unavailable")
+        claim = self.task_claim(receipt, grant)
+        if claim["owner"] != asdict(owner):
+            raise ValueError("Task belongs to a different connected agent")
+        row = next((item for item in grant["projects"] if item["id"] == claim["project_id"]), None)
+        if row is None or path_identity(Path(row["root"])) != row["identity"]:
+            raise ValueError("Repository identity changed; cleanup is paused")
+        try:
+            with writer_lock(self.home):
+                self.drain_finishes()
+                with self.controller(grant, cleanup_only=True) as hub:
+                    key = project_key(row["id"])
+                    result = hub.end_task(key, owner, claim["task_token"], outcome)
+                    hub.put("task_cleanup_attention:" + key, None)
+        except ValueError as error:
+            if str(error) != "Hub maintenance is already running; retry shortly":
+                raise
+            directory = safe(self.home, "task-finishes")
+            directory.mkdir(exist_ok=True)
+            marker = safe(directory, intake.sha(claim["task_token"].encode()) + ".json")
+            pending = {**claim, "outcome": outcome}
+            if marker.is_file():
+                if self.seals.read(marker, "task_finish") != pending:
+                    raise ValueError(
+                        "This Hub task already has a different terminal request"
+                    ) from None
+            else:
+                if sum(1 for _ in directory.glob("*.json")) >= 400:
+                    raise ValueError("Too many deferred task finishes; retry shortly") from None
+                self.seals.write(marker, pending, "task_finish")
+            result = {"status": "task_finish_pending", "outcome": outcome}
+        return {**result, "project_id": row["id"]}
+
+    def task_cleanup_identity(self, hub: Hub, row: dict[str, Any], key: str) -> bool:
+        try:
+            same = path_identity(Path(row["root"])) == row["identity"]
+        except (OSError, ValueError):
+            same = False
+        if not same:
+            hub.put(
+                "task_cleanup_attention:" + key,
+                {
+                    "status": "task_cleanup_blocked",
+                    "conflicts": ["Restore this repository's original location for safe cleanup."],
+                },
+            )
+        return same
+
+    def record_task_cleanup_failure(self, grant: dict[str, Any], key: str) -> None:
+        with self.controller(grant, cleanup_only=True) as hub:
+            hub.put(
+                "task_cleanup_attention:" + key,
+                {
+                    "status": "task_cleanup_blocked",
+                    "conflicts": [
+                        "Temper could not safely remove this task's files. Retry cleanup."
+                    ],
+                },
+            )
+
+    def drain_finishes(self) -> None:
+        """Apply signed terminal requests after acquiring the shared Hub writer."""
+        directory = safe(self.home, "task-finishes")
+        if not directory.is_dir():
+            return
+        grant = self.grant()
+        if not grant:
+            return
+        projects = {row["id"]: row for row in grant["projects"]}
+        for path in directory.glob("*.json"):
+            try:
+                claim = self.seals.read(path, "task_finish")
+                token = claim["task_token"]
+                if path.name != intake.sha(token.encode()) + ".json":
+                    continue
+            except (OSError, ValueError, TypeError, KeyError):
+                # No authority over an unauthenticated file.
+                continue
+            row = projects.get(claim["project_id"])
+            if row is not None and claim["grant_id"] == grant["grant_id"]:
+                key = project_key(row["id"])
+                try:
+                    with self.controller(grant, cleanup_only=True) as hub:
+                        active = hub.get("task:" + key)
+                        if active and active["task_token"] == token:
+                            if not self.task_cleanup_identity(hub, row, key):
+                                continue
+                            hub.end_task(key, TaskOwner(**claim["owner"]), token, claim["outcome"])
+                            hub.put("task_cleanup_attention:" + key, None)
+                except (OSError, ValueError):
+                    self.record_task_cleanup_failure(grant, key)
+                    continue
+            # An old terminal signal must not affect a newer generation.
+            path.unlink(missing_ok=True)
+
+    def reap_tasks(self, *, owner: TaskOwner | None = None) -> list[dict[str, Any]]:
+        grant = self.grant()
+        path = safe(self.home, "hub.sqlite3")
+        if not grant or not path.is_file():
+            return []
+        with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=0.2)) as db:
+            active_keys = {
+                key
+                for (key,) in db.execute(
+                    "SELECT key FROM state WHERE key LIKE 'task:%' AND value != 'null'"
+                )
+            }
+        results = []
+        for row in grant["projects"]:
+            key = project_key(row["id"])
+            if "task:" + key not in active_keys:
+                continue
+            try:
+                with self.controller(grant, cleanup_only=True) as hub:
+                    lease = hub.get("task:" + key)
+                    if not lease or not self.task_cleanup_identity(hub, row, key):
+                        continue
+                    lease_owner = TaskOwner(**lease["owner"])
+                    paused = grant["paused"] or not grant["enabled"] or hub.project(key)["paused"]
+                    if paused and (owner is None or owner == lease_owner):
+                        result = hub.end_task(key, lease_owner, lease["task_token"], "cancelled")
+                        ended = [{"project": key, **result}]
+                    else:
+                        ended = hub.reap_tasks([key], owner=owner)
+                    if ended or hub.get("task_cleanup_attention:" + key):
+                        hub.put("task_cleanup_attention:" + key, None)
+                results.extend(ended)
+            except (OSError, ValueError):
+                self.record_task_cleanup_failure(grant, key)
+        return results
+
+    def runtime_permission(self, grant: dict[str, Any] | None) -> dict[str, Any] | None:
+        path = safe(self.home, "remotion-permission.json")
+        if not grant or not path.is_file():
+            return None
+        permission = self.seals.read(path, "remotion_permission")
+        return permission if permission["grant_id"] == grant["grant_id"] else None
+
+    def preview_runtime(self, node: str, node_modules: str, browser: str) -> dict[str, Any]:
+        from .workflow_runtime import RemotionRuntime
+
+        with writer_lock(self.home):
+            grant = self.grant(active=True)
+            assert grant is not None
+            paths = [Path(value) for value in (node, node_modules, browser)]
+            if not all(path.is_absolute() for path in paths):
+                raise ValueError("Use absolute paths to the installed Remotion tools")
+            preview = {
+                "preview_id": secrets.token_hex(16),
+                "expires": time.time() + 900,
+                "grant_id": grant["grant_id"],
+                "previous": fingerprint(self.runtime_permission(grant)),
+                "projects": [row["id"] for row in grant["projects"]],
+                "paths": [str(path) for path in paths],
+                "admission": RemotionRuntime.pin(*paths),
+            }
+            self.seals.write(self.home / "remotion-preview.json", preview, "remotion_preview")
+            return preview
+
+    def enable_runtime(self, preview_id: str) -> dict[str, Any]:
+        from .workflow_runtime import RemotionRuntime
+
+        with writer_lock(self.home), writer_lock(self.home, name="permission.lock"):
+            grant = self.grant(active=True)
+            assert grant is not None
+            preview = self.seals.read(self.home / "remotion-preview.json", "remotion_preview")
+            if (
+                preview["preview_id"] != preview_id
+                or preview["expires"] <= time.time()
+                or preview["grant_id"] != grant["grant_id"]
+                or preview["previous"] != fingerprint(self.runtime_permission(grant))
+            ):
+                raise ValueError("Remotion permission changed or expired; preview it again")
+            paths = [Path(value) for value in preview["paths"]]
+            if RemotionRuntime.pin(*paths) != preview["admission"]:
+                raise ValueError("Remotion tools changed after preview; review their new versions")
+            self.seals.write(
+                self.home / "remotion-permission.json",
+                {
+                    "enabled": True,
+                    "grant_id": grant["grant_id"],
+                    "permission_id": preview_id,
+                    "projects": preview["projects"],
+                    "admission": preview["admission"],
+                },
+                "remotion_permission",
+            )
+        return {"status": "enabled"}
+
+    def revoke_runtime(self) -> dict[str, Any]:
+        with writer_lock(self.home, name="permission.lock"):
+            grant = self.grant()
+            permission = self.runtime_permission(grant)
+            if permission and permission["enabled"]:
+                self.seals.write(
+                    self.home / "remotion-permission.json",
+                    {**permission, "enabled": False},
+                    "remotion_permission",
+                )
+        return {"status": "disabled"}
+
+    def reap_runtime_work(self, token: str) -> None:
+        root = safe(self.home, "remotion")
+        if root.is_dir():
+            from .workflow_runtime import RemotionRuntime
+
+            RemotionRuntime.reap(root, token)
+
+    def render(
+        self, receipt: dict[str, Any], owner: TaskOwner, spec: dict[str, Any]
+    ) -> dict[str, Any]:
+        from .workflow_runtime import (
+            MAX_ARTIFACT_BYTES,
+            MAX_RUN_BYTES,
+            MotionVideo,
+            RemotionRuntime,
+        )
+
+        video = MotionVideo.model_validate(spec)
+        with writer_lock(self.home):
+            self.drain_finishes()
+            grant = self.grant(active=True)
+            assert grant is not None
+            claim = self.task_claim(receipt, grant)
+            if claim["owner"] != asdict(owner):
+                raise ValueError("Task belongs to a different connected agent")
+            project_id, token = claim["project_id"], claim["task_token"]
+            _, project = self.require_project(project_id)
+            permission = self.runtime_permission(grant)
+            if (
+                not permission
+                or not permission["enabled"]
+                or project_id not in permission["projects"]
+            ):
+                raise ValueError("Remotion is not approved for this repository")
+            with self.controller(grant) as hub:
+                lease = hub.require_task(project_key(project_id), owner, token)
+            self.budget(reserve=MAX_RUN_BYTES + MAX_ARTIFACT_BYTES)
+
+            def allowed() -> None:
+                self.require_same_grant(grant)
+                current = self.runtime_permission(grant)
+                if (
+                    current != permission
+                    or time.time() >= lease["expires_at"]
+                    or path_identity(Path(project["root"])) != project["identity"]
+                ):
+                    raise ValueError("Remotion permission or task changed during rendering")
+
+            allowed()
+            return RemotionRuntime(permission["admission"]).render(
+                safe(self.home, "remotion"), token, video, allowed=allowed
+            )
 
     def control(self, operation: str, project_id: str | None = None) -> dict[str, Any]:
         if operation in {"pause", "resume", "stop"} and project_id is None:
@@ -711,6 +1091,8 @@ class HubService:
         return self.project_control(operation, project_id)
 
     def cleanup(self) -> dict[str, Any]:
+        self.drain_finishes()
+        self.reap_tasks()
         result = self.project_control("stop", None)
         with writer_lock(self.home, name="permission.lock"):
             grant = self.grant()
@@ -750,12 +1132,18 @@ class HubService:
             self.home,
             journal_pack=lambda value: self.seals.seal(value, "journal"),
             journal_unpack=lambda value: self.seals.open(value, "journal"),
+            task_cleanup=self.reap_runtime_work,
         ).transaction() as hub:
             self.verify_controller(hub)
             for row in rows:
                 if path_identity(Path(row["root"])) != row["identity"]:
                     raise ValueError("Repository identity changed; cleanup is paused")
                 key = project_key(row["id"])
+                lease = hub.get("task:" + key)
+                if lease and operation in {"stop", "pause"}:
+                    hub.end_task(key, TaskOwner(**lease["owner"]), lease["task_token"], "cancelled")
+                if lease and operation == "rollback":
+                    raise ValueError("Finish the connected task before rolling back its profile")
                 if operation == "stop":
                     results.append(
                         {"project_id": row["id"], **hub.sync(key, "", "cleanup", count=0)}
@@ -827,6 +1215,15 @@ class HubService:
 
     def tick(self) -> dict[str, Any]:
         grant = self.grant()
+        if grant and self.secure_store_available():
+            try:
+                with writer_lock(self.home):
+                    self.drain_finishes()
+                    self.reap_tasks()
+            except ValueError as error:
+                if str(error) != "Hub maintenance is already running; retry shortly":
+                    raise
+                return {"status": "busy"}
         if grant and not grant["enabled"] and grant.get("cleanup_pending"):
             return self.start("cleanup", self.cleanup)
         if (
