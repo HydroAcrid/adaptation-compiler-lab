@@ -85,8 +85,8 @@ function PublisherCheck({ timestamp }: { timestamp: number | null }) {
 function StartWorkflows() {
   return (
     <p className="tools-hub-guidance">
-      To start, review Temper with <code>/hooks</code> in Codex, then open a new
-      chat.
+      To start, review and trust Temper with <code>/hooks</code> in Codex, then
+      open a new chat.
     </p>
   );
 }

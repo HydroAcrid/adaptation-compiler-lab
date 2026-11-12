@@ -167,8 +167,10 @@ it("reports empty task history and publisher checks and shows the first-use acti
   expect(screen.getByText("No successful check recorded")).toBeVisible();
   expect(screen.getByText("No guidance installed")).toBeVisible();
   expect(container.querySelector("time")).toBeNull();
-  expect(screen.getByText(/To start, review Temper/)).toHaveTextContent(
-    "To start, review Temper with /hooks in Codex, then open a new chat.",
+  expect(
+    screen.getByText(/To start, review and trust Temper/),
+  ).toHaveTextContent(
+    "To start, review and trust Temper with /hooks in Codex, then open a new chat.",
   );
 });
 
@@ -179,7 +181,9 @@ it("shows the first-use action on the configured Overview before the first task"
     projects: [{ ...populated.projects[0], active: [] }],
   });
   render(<ToolsHubPanel nativeRuntime onOpenTools={() => {}} />);
-  expect(await screen.findByText(/To start, review Temper/)).toBeVisible();
+  expect(
+    await screen.findByText(/To start, review and trust Temper/),
+  ).toBeVisible();
 });
 
 it("does not treat learning repositories as tool permission and previews exact destinations", async () => {
