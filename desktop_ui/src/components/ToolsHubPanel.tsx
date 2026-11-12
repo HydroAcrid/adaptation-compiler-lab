@@ -236,16 +236,19 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
           <p>
             {state
               ? "Showing the last known status. Refresh status to make changes."
-              : "Temper couldn’t check tool status."}{" "}
-            {loadError}
+              : "Temper couldn’t check tool status."}
           </p>
-          <button
+          <details className="learning-details">
+            <summary>Technical details</summary>
+            <p>{loadError}</p>
+          </details>
+          <Button
             type="button"
             disabled={statusPending || busy}
             onClick={() => setRefreshKey((key) => key + 1)}
           >
             {statusPending ? "Refreshing…" : "Refresh status"}
-          </button>
+          </Button>
         </div>
       )}
       {!review && actionError?.scope === "panel" && (
@@ -398,9 +401,9 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                   >
                     Review setup
                   </Button>
-                  <button type="button" onClick={() => setRepositories(null)}>
+                  <Button type="button" onClick={() => setRepositories(null)}>
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -554,7 +557,7 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                   </p>
                   <div className="tools-hub-actions">
                     {!state.paused && (
-                      <button
+                      <Button
                         type="button"
                         disabled={actionsUnavailable}
                         onClick={() =>
@@ -564,14 +567,14 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                         }
                       >
                         Pause updates
-                      </button>
+                      </Button>
                     )}
                     {(state.indexed ||
                       working ||
                       state.paused ||
                       failed ||
                       taskFailed) && (
-                      <button
+                      <Button
                         type="button"
                         disabled={actionsUnavailable || working || state.paused}
                         onClick={() =>
@@ -581,13 +584,13 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                         }
                       >
                         Check for updates
-                      </button>
+                      </Button>
                     )}
                     {(failed || taskFailed) &&
                       !state.paused &&
                       ((state.indexed && !state.native_hooks_configured) ||
                         working) && (
-                        <button
+                        <Button
                           type="button"
                           disabled={
                             actionsUnavailable || working || state.paused
@@ -597,9 +600,9 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                           }
                         >
                           Repair setup
-                        </button>
+                        </Button>
                       )}
-                    <button
+                    <Button
                       type="button"
                       disabled={actionsUnavailable}
                       onClick={(event) =>
@@ -607,7 +610,7 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                       }
                     >
                       Stop managing tools
-                    </button>
+                    </Button>
                   </div>
                   <div
                     className="tools-hub-repositories"
@@ -623,7 +626,7 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                           )}
                         </div>
                         <div className="tools-hub-actions">
-                          <button
+                          <Button
                             type="button"
                             disabled={actionsUnavailable || working}
                             onClick={() =>
@@ -636,8 +639,8 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                             }
                           >
                             {row.paused ? "Resume" : "Pause"}
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             type="button"
                             disabled={
                               actionsUnavailable || working || !row.can_rollback
@@ -652,7 +655,7 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                             }
                           >
                             Undo last change
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     ))}
@@ -668,7 +671,7 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                         separate approval for these repositories.
                       </p>
                       {state.remotion_enabled ? (
-                        <button
+                        <Button
                           type="button"
                           disabled={actionsUnavailable}
                           onClick={() =>
@@ -679,7 +682,7 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                           }
                         >
                           Disable Remotion
-                        </button>
+                        </Button>
                       ) : (
                         <div className="tools-hub-setup">
                           <p>
@@ -813,13 +816,13 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
             {loadError && (
               <div className="tools-hub-notice" role="alert">
                 <p>Tool status is out of date. Refresh status to continue.</p>
-                <button
+                <Button
                   type="button"
                   disabled={statusPending || busy}
                   onClick={() => setRefreshKey((key) => key + 1)}
                 >
                   {statusPending ? "Refreshing…" : "Refresh status"}
-                </button>
+                </Button>
               </div>
             )}
             {review?.type === "permission" && (
@@ -931,13 +934,13 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                       ? "Repair setup"
                       : "Allow and continue"}
               </Button>
-              <button
+              <Button
                 type="button"
                 disabled={busy}
                 onClick={() => setReview(null)}
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           </Dialog.Content>
         </Dialog.Portal>

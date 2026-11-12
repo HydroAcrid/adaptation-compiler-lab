@@ -295,6 +295,9 @@ it("retains visible repositories on refresh failure and disables changes until r
 
   await act(async () => vi.advanceTimersByTimeAsync(3000));
   expect(screen.getByText("Status out of date")).toBeVisible();
+  expect(screen.getByText("Connection lost")).not.toBeVisible();
+  fireEvent.click(screen.getByText("Technical details"));
+  expect(screen.getByText("Connection lost")).toBeVisible();
   expect(screen.getByText(/Available guidance.*debugging/)).toBeVisible();
   fireEvent.click(screen.getByText("Tool settings"));
   expect(screen.getByRole("button", { name: "Pause updates" })).toBeDisabled();
