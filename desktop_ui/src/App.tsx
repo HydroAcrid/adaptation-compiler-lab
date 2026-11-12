@@ -1,5 +1,5 @@
 import * as Tooltip from "@radix-ui/react-tooltip";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 import { Onboarding } from "./components/Onboarding";
 import { DesktopHostRequired, NativeStartup } from "./components/NativeStartup";
@@ -13,7 +13,8 @@ import {
   TrayPreview,
 } from "./components/pages";
 import { ReviewDialog } from "./components/ReviewDialog";
-import { Shell } from "./components/Shell";
+import { Shell, WorkspacePicker } from "./components/Shell";
+import { usePageNavigation } from "./usePageNavigation";
 import {
   connections as demoConnections,
   coreItems as demoCoreItems,
@@ -77,23 +78,6 @@ const supportedScreens = new Set<Screen>([
   "tray",
 ]);
 
-type NavigationDirection = "backward" | "forward" | "neutral";
-
-const navigationPositions: Partial<Record<Screen, number>> = {
-  today: 0,
-  suggestion: 0,
-  tray: 0,
-  core: 1,
-  modes: 2,
-  connections: 3,
-  settings: 4,
-  advanced: 5,
-};
-
-function navigationPosition(screen: Screen): number | null {
-  return navigationPositions[screen] ?? null;
-}
-
 function initialScreen(): Screen {
   const rawValue = new URLSearchParams(window.location.search).get("screen");
   if (rawValue === "adaptations") return "core";
@@ -124,9 +108,7 @@ export default function App() {
   const [firstScreen] = useState<Screen>(() =>
     nativeRuntime ? "today" : initialScreen(),
   );
-  const [screen, setScreen] = useState<Screen>(firstScreen);
-  const [navigationDirection, setNavigationDirection] =
-    useState<NavigationDirection>("neutral");
+  const { screen, setScreen, scrollHost } = usePageNavigation(firstScreen);
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [advancedMode, setAdvancedMode] = useState(
     firstScreen === "advanced" ||
@@ -170,16 +152,20 @@ export default function App() {
   const [instructionEnvironments, setInstructionEnvironments] = useState<
     EngineInstructionEnvironmentSummary[]
   >([]);
-  const displayedSuggestions = engineSnapshot
-    ? engineSnapshot.suggestions.map((item) =>
-        suggestionFromEngine(item, engineSnapshot),
-      )
-    : suggestionQueue;
+  const displayedSuggestions = useMemo(
+    () =>
+      engineSnapshot
+        ? engineSnapshot.suggestions.map((item) =>
+            suggestionFromEngine(item, engineSnapshot),
+          )
+        : suggestionQueue,
+    [engineSnapshot, suggestionQueue],
+  );
   const selectedSuggestion =
     displayedSuggestions.find((item) => item.id === selectedSuggestionId) ??
     displayedSuggestions[0];
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
 
     function applyTheme() {
@@ -255,7 +241,7 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [bootstrapAttempt, nativeRuntime]);
+  }, [bootstrapAttempt, nativeRuntime, setScreen]);
 
   async function finishOnboarding() {
     if (browserPreviewRuntime) {
@@ -287,40 +273,21 @@ export default function App() {
     setScreen("today");
   }
 
-  const workspaces = engineSnapshot?.projects.map((project) => ({
-    id: project.display_name,
-    label: project.display_name,
-    description: project.registered_prospectively
-      ? "Registered for new work"
-      : "Needs review",
-  }));
-  const liveCoreItems = engineSnapshot
-    ? engineSnapshot.adaptations.map((item) =>
+  const workspaces = useMemo(
+    () =>
+      engineSnapshot?.projects.map((project) => ({
+        id: project.display_name,
+        label: project.display_name,
+      })) ?? (browserPreviewRuntime ? browserWorkspaceOptions : []),
+    [browserPreviewRuntime, engineSnapshot],
+  );
+  const liveCoreItems = useMemo(
+    () =>
+      engineSnapshot?.adaptations.map((item) =>
         coreItemFromEngine(item, engineSnapshot),
-      )
-    : undefined;
-  const selectedProjectId =
-    activeWorkspace === "all"
-      ? null
-      : (engineSnapshot?.projects.find(
-          (project) => project.display_name === activeWorkspace,
-        )?.project_id ?? null);
-  const scopedAdaptationCount = liveCoreItems
-    ? liveCoreItems.filter(
-        (item) =>
-          activeWorkspace === "all" ||
-          item.isGlobal === true ||
-          item.projectNames?.includes(activeWorkspace),
-      ).length
-    : 0;
-  const scopedSuggestionCount = displayedSuggestions.filter(
-    (item) =>
-      activeWorkspace === "all" ||
-      item.isGlobal === true ||
-      item.projectNames?.includes(activeWorkspace) ||
-      item.suggestedScope === "All projects" ||
-      item.suggestedScope === "All registered projects",
-  ).length;
+      ),
+    [engineSnapshot],
+  );
   const secureStoreReady = setupSnapshot?.secure_store.status === "ready";
   const governedActionsAvailable = Boolean(
     engineSnapshot &&
@@ -353,24 +320,8 @@ export default function App() {
           ? "Register a project that allows managed tasks before running this Mode."
           : null;
 
-  function transitionTo(destination: Screen) {
-    if (destination === screen) return;
-    const currentPosition = navigationPosition(screen);
-    const destinationPosition = navigationPosition(destination);
-    setNavigationDirection(
-      currentPosition === null ||
-        destinationPosition === null ||
-        currentPosition === destinationPosition
-        ? "neutral"
-        : destinationPosition > currentPosition
-          ? "forward"
-          : "backward",
-    );
-    setScreen(destination);
-  }
-
   function navigate(destination: Screen) {
-    transitionTo(destination);
+    setScreen(destination);
     if (destination === "suggestion") setReviewOpen(true);
   }
 
@@ -440,7 +391,7 @@ export default function App() {
               : {},
         );
         setReviewOpen(false);
-        transitionTo(decision === "ignore" ? "today" : "core");
+        setScreen(decision === "ignore" ? "today" : "core");
         await refreshAfterNativeAction(receipt.message);
       } catch (error: unknown) {
         const failure = normalizeEngineFailure(
@@ -458,7 +409,7 @@ export default function App() {
     setSuggestionQueue(remaining);
     setSelectedSuggestionId(remaining[0]?.id ?? "");
     setReviewOpen(false);
-    transitionTo(decision === "ignore" ? "today" : "core");
+    setScreen(decision === "ignore" ? "today" : "core");
     const suggestedScope = selectedSuggestion.suggestedScope;
     setToast(
       decision === "suggested"
@@ -591,7 +542,7 @@ export default function App() {
     await refreshAfterNativeAction(message);
     if (result?.change_review) {
       setAdvancedMode(true);
-      transitionTo("advanced");
+      setScreen("advanced");
     }
   }
 
@@ -610,7 +561,7 @@ export default function App() {
     );
     await refreshAfterNativeAction(
       receipt.status === "approved_for_core"
-        ? "The approved behavior is now part of Core."
+        ? "The approved behavior was added to Personalization."
         : receipt.status === "approved_inactive_mode"
           ? "The imported Mode is available for an explicit task."
           : receipt.status === "approved_inactive_overlay"
@@ -742,29 +693,13 @@ export default function App() {
   return (
     <Tooltip.Provider delayDuration={500}>
       <Shell
-        activeWorkspace={activeWorkspace}
         advancedMode={advancedMode}
         onNavigate={navigate}
-        onWorkspaceChange={setActiveWorkspace}
         previewMode={browserPreviewRuntime}
         screen={screen}
-        workspaces={
-          nativeRuntime
-            ? (workspaces ?? [])
-            : browserPreviewRuntime
-              ? browserWorkspaceOptions
-              : []
-        }
-      >
-        <div
-          className="screen-transition"
-          data-direction={navigationDirection}
-          data-screen={screen}
-          key={screen}
-        >
-          {screen === "today" ||
-          screen === "suggestion" ||
-          screen === "tray" ? (
+        scrollHost={scrollHost}
+        pages={{
+          today: (
             <TodayPage
               nativeAutonomy={nativeRuntime}
               automaticLearning={automaticLearning}
@@ -773,25 +708,27 @@ export default function App() {
               onOpenCore={() => navigate("core")}
               onReview={reviewSuggestion}
               workspace={activeWorkspace}
+              workspaceControl={
+                workspaces.length ? (
+                  <WorkspacePicker
+                    activeWorkspace={activeWorkspace}
+                    onWorkspaceChange={setActiveWorkspace}
+                    workspaces={workspaces}
+                  />
+                ) : null
+              }
               selectedSuggestionId={selectedSuggestion?.id ?? null}
               suggestions={displayedSuggestions}
               liveSummary={
                 engineSnapshot
                   ? {
-                      activeAdaptationCount: scopedAdaptationCount,
+                      activeAdaptationCount: liveCoreItems?.length ?? 0,
                       health: engineSnapshot.health,
                       pendingFeedbackCount:
-                        activeWorkspace === "all"
-                          ? engineSnapshot.activation_feedback.length
-                          : 0,
+                        engineSnapshot.activation_feedback.length,
                       feedbackAvailable: governedActionsAvailable,
-                      pendingReviewCount: scopedSuggestionCount,
-                      projectCount:
-                        activeWorkspace === "all"
-                          ? engineSnapshot.projects.length
-                          : selectedProjectId
-                            ? 1
-                            : 0,
+                      pendingReviewCount: displayedSuggestions.length,
+                      projectCount: engineSnapshot.projects.length,
                       secureStoreReady,
                     }
                   : undefined
@@ -799,10 +736,10 @@ export default function App() {
               instructionEnvironments={instructionEnvironments}
               liveProjects={engineSnapshot?.projects ?? []}
             />
-          ) : null}
-          {screen === "core" ? (
+          ),
+          core: (
             <CorePage
-              activeWorkspace={activeWorkspace}
+              nativeAutonomy={nativeRuntime}
               initialItems={
                 nativeRuntime
                   ? (liveCoreItems ?? [])
@@ -821,7 +758,6 @@ export default function App() {
                     ? demoProjects.map((project) => project.name)
                     : []
               }
-              key={`${activeWorkspace}-${snapshotDigest ?? "browser"}`}
               governedMutationUnavailableReason={
                 governedMutationUnavailableReason
               }
@@ -839,8 +775,8 @@ export default function App() {
               recentUndo={engineSnapshot?.recent_undos[0]}
               snapshotDigest={snapshotDigest}
             />
-          ) : null}
-          {screen === "modes" ? (
+          ),
+          modes: (
             <ModesPage
               error={null}
               loading={false}
@@ -875,8 +811,8 @@ export default function App() {
               packageReviews={packageReviews}
               onPackageDecision={reviewImportedPackage}
             />
-          ) : null}
-          {screen === "connections" ? (
+          ),
+          connections: (
             <ConnectionsPage
               liveConnections={
                 nativeRuntime ? (setupSnapshot?.connections ?? []) : undefined
@@ -895,8 +831,8 @@ export default function App() {
               registrationUnavailableReason={governedMutationUnavailableReason}
               snapshotDigest={snapshotDigest}
             />
-          ) : null}
-          {screen === "settings" ? (
+          ),
+          settings: (
             <SettingsPage
               advancedMode={advancedMode}
               automaticLearning={automaticLearning}
@@ -922,8 +858,8 @@ export default function App() {
               snapshotDigest={snapshotDigest}
               onRecoveryCreated={setToast}
             />
-          ) : null}
-          {screen === "advanced" ? (
+          ),
+          advanced: (
             <AdvancedPage
               diagnostics={diagnostics}
               longitudinalGate={
@@ -943,9 +879,9 @@ export default function App() {
               runnerUnavailableReason={managedTaskUnavailableReason}
               taskResult={taskResult}
             />
-          ) : null}
-        </div>
-      </Shell>
+          ),
+        }}
+      />
       {selectedSuggestion && (!nativeRuntime || governedActionsAvailable) ? (
         <ReviewDialog
           availableProjects={engineSnapshot?.projects.map(

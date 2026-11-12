@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -299,19 +299,105 @@ describe("installed Temper state boundaries", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Learning",
+        name: "Overview",
       }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Temper is active/i)).not.toBeInTheDocument();
     expect(screen.queryByText("Kairn")).not.toBeInTheDocument();
     expect(screen.queryByText("Green Meadow")).not.toBeInTheDocument();
     await user.click(
-      screen.getByRole("button", { name: "Workspace: All projects" }),
+      screen.getByText("Reviewed suggestions", { selector: "summary" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Review project: All projects" }),
     );
     await user.click(screen.getByRole("menuitem", { name: /Beta/i }));
     expect(
-      screen.getByRole("button", { name: "Workspace: Beta" }),
+      screen.getByRole("button", { name: "Review project: Beta" }),
     ).toBeInTheDocument();
+
+    const startupCommands = [
+      "engine_handshake",
+      "snapshot_get",
+      "modes_list",
+      "setup_status",
+    ];
+    const readCount = (command: string) =>
+      invoke.mock.calls.filter(([name]) => name === command).length;
+    const startupReads = startupCommands.map(readCount);
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+    await user.click(screen.getByRole("button", { name: "Overview" }));
+    expect(
+      screen.getByRole("button", { name: "Review project: Beta" }),
+    ).toBeVisible();
+    expect(startupCommands.map(readCount)).toEqual(startupReads);
+  });
+
+  it("keeps a deferred project preview from opening over another page", async () => {
+    const user = userEvent.setup();
+    window.__TAURI_INTERNALS__ = {};
+    let finishPreview!: (value: ReturnType<typeof response>) => void;
+    const pendingPreview = new Promise<ReturnType<typeof response>>(
+      (resolve) => {
+        finishPreview = resolve;
+      },
+    );
+    invoke.mockImplementation(async (command: string) => {
+      if (command === "engine_handshake") return handshake(true);
+      if (command === "snapshot_get") return response(snapshot, digest);
+      if (command === "setup_status") return response(configuredSetup, digest);
+      if (command === "modes_list")
+        return response({ modes: [], raw_payloads_exposed: false });
+      if (command === "instruction_environment_get")
+        return response({ environments: [], raw_payloads_exposed: false });
+      if (command === "package_review_list")
+        return response({
+          items: [],
+          pending_count: 0,
+          raw_payloads_exposed: false,
+        });
+      if (command === "project_registration_preview") return pendingPreview;
+      throw new Error(`Unexpected command: ${command}`);
+    });
+
+    render(<App />);
+    await user.click(
+      await screen.findByRole("button", { name: "Connections" }),
+    );
+    const addProject = screen.getByRole("button", { name: "Add task project" });
+    await user.click(addProject);
+    expect(invoke).toHaveBeenCalledWith("project_registration_preview");
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+    const main = screen.getByRole("main", { name: "Settings" });
+
+    await act(async () => {
+      finishPreview(
+        response({
+          preview_version: "1.0.0",
+          preview_token: "project-preview-token",
+          project_id: "project-gamma",
+          display_name: "Gamma",
+          capture_after_epoch_seconds: 1787832000,
+          historical_tasks_eligible: false,
+          modifies_existing_tasks: false,
+          modifies_repository: false,
+          expires_at: "2026-11-12T12:00:00Z",
+        }),
+      );
+    });
+
+    expect(screen.queryByRole("dialog", { name: "Gamma" })).toBeNull();
+    expect(main).toHaveFocus();
+    await user.click(screen.getByRole("button", { name: "Connections" }));
+    expect(screen.getByRole("dialog", { name: "Gamma" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Register new work" }),
+    ).toBeEnabled();
+    expect(
+      invoke.mock.calls.some(([name]) => name === "project_register"),
+    ).toBe(false);
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(addProject).toHaveFocus());
   });
 
   it("surfaces a blocking native conflict without exposing the full source", async () => {
@@ -391,11 +477,13 @@ describe("installed Temper state boundaries", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "An instruction conflict needs review.",
+        name: "Instruction conflict",
       }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/C:\\Users|\/home\//)).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Review conflict" }));
+    await user.click(
+      screen.getByRole("button", { name: "Review agent setup" }),
+    );
     expect(
       screen.getByText("Always run the full test suite."),
     ).toBeInTheDocument();
@@ -430,20 +518,14 @@ describe("installed Temper state boundaries", () => {
     });
 
     render(<App />);
-    expect(
-      await screen.findByRole("heading", { name: "2 suggestions to review." }),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("2 to review")).toBeInTheDocument();
     await user.click(
-      screen.getByRole("button", { name: "Workspace: All projects" }),
+      screen.getByRole("button", { name: "Review project: All projects" }),
     );
     await user.click(screen.getByRole("menuitem", { name: /Alpha/i }));
 
-    expect(
-      screen.getByRole("heading", { name: "1 suggestion to review." }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText("2 suggestions are waiting for review."),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText("1 to review")).toBeInTheDocument();
+    expect(screen.queryByText("2 to review")).not.toBeInTheDocument();
   });
 
   it("gates pending review and managed tasks when consent is expired", async () => {
@@ -494,7 +576,7 @@ describe("installed Temper state boundaries", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Reviewed suggestions need renewed permission.",
+        name: "Permission expired",
       }),
     ).toBeInTheDocument();
     expect(
@@ -538,7 +620,7 @@ describe("installed Temper state boundaries", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Secure storage needs attention.",
+        name: "Secure storage unavailable",
       }),
     ).toBeInTheDocument();
     expect(
@@ -582,11 +664,13 @@ describe("installed Temper state boundaries", () => {
 
     render(<App />);
     await screen.findByRole("heading", {
-      name: "Learning",
+      name: "Overview",
     });
     await user.click(screen.getByRole("button", { name: "Connections" }));
 
-    expect(screen.getByText("Task connection: Sign-in required")).toBeInTheDocument();
+    expect(
+      screen.getByText("Sign-in required", { exact: true }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Ready to connect")).not.toBeInTheDocument();
   });
 
@@ -747,7 +831,7 @@ describe("installed Temper state boundaries", () => {
 
     render(<App />);
     await screen.findByRole("heading", {
-      name: "Learning",
+      name: "Overview",
     });
     await user.click(screen.getByRole("button", { name: "Connections" }));
     await user.click(
@@ -773,7 +857,7 @@ describe("installed Temper state boundaries", () => {
       screen.getAllByRole("button", { name: "View details" })[1],
     );
     await user.click(
-      screen.getAllByRole("button", { name: "Review behaviors" })[0],
+      screen.getAllByRole("button", { name: "Review guidance" })[0],
     );
     await user.click(
       screen.getByRole("checkbox", {
@@ -786,13 +870,13 @@ describe("installed Temper state boundaries", () => {
     expect(applySelection).toBeDisabled();
     await user.click(
       screen.getByRole("checkbox", {
-        name: /Apply this exact Claude-specific selection/i,
+        name: /Allow Claude Code to use only the selected guidance in this project for 30 days/i,
       }),
     );
     await user.click(applySelection);
 
     expect(
-      await screen.findByText(/1 Core behavior is now approved for Claude/),
+      await screen.findByText(/1 saved item is now approved for Claude/),
     ).toBeInTheDocument();
   });
 
@@ -847,15 +931,13 @@ describe("installed Temper state boundaries", () => {
 
     render(<App />);
     await screen.findByRole("heading", {
-      name: "Learning",
+      name: "Overview",
     });
-    await user.click(screen.getByRole("button", { name: "Core" }));
-    await user.click(
-      screen.getByRole("button", { name: "Workspace: All projects" }),
-    );
-    await user.click(screen.getByRole("menuitem", { name: /Beta/i }));
+    await user.click(screen.getByRole("button", { name: "Personalization" }));
+    await user.click(screen.getByRole("combobox", { name: "Show for" }));
+    await user.click(screen.getByRole("option", { name: /Beta/i }));
 
-    expect(screen.getByText(/2 approved items/)).toBeInTheDocument();
+    expect(screen.getByText("2 saved")).toBeInTheDocument();
     expect(screen.getAllByText("Shared guidance")).toHaveLength(2);
     expect(screen.getAllByText("Beta guidance")).toHaveLength(2);
     expect(
@@ -903,9 +985,7 @@ describe("installed Temper state boundaries", () => {
     });
 
     render(<App />);
-    expect(
-      await screen.findByRole("heading", { name: "1 suggestion to review." }),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("1 to review")).toBeInTheDocument();
     await user.click(
       await screen.findByRole("button", { name: /review suggestion/i }),
     );
@@ -1037,7 +1117,7 @@ describe("installed Temper state boundaries", () => {
 
     render(<App />);
     await screen.findByRole("heading", {
-      name: "Learning",
+      name: "Overview",
     });
     await user.click(screen.getByRole("button", { name: "Settings" }));
     const reporting = screen.getByRole("switch", {
@@ -1082,7 +1162,7 @@ describe("installed Temper state boundaries", () => {
 
     render(<App />);
     await screen.findByRole("heading", {
-      name: "Learning",
+      name: "Overview",
     });
     await user.click(screen.getByRole("button", { name: "Settings" }));
     await user.click(
@@ -1147,9 +1227,13 @@ describe("installed Temper state boundaries", () => {
       throw new Error(`Unexpected command: ${command}`);
     });
     render(<App />);
+    await user.click(
+      await screen.findByRole("button", { name: "Manage learning" }),
+    );
     expect(
       await screen.findByRole("button", { name: "Pause learning" }),
     ).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Overview" }));
     expect(
       screen.getByText("Reviewed suggestions", { selector: "summary" }),
     ).toBeInTheDocument();

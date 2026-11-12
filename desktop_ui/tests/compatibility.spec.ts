@@ -6,6 +6,7 @@ const everydayScreens = [
   "today",
   "suggestion",
   "core",
+  "modes",
   "connections",
   "settings",
 ] as const;
@@ -14,7 +15,12 @@ async function openMinimumWindow(page: Page, screen: string) {
   await page.setViewportSize({ width: 720, height: 540 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto(`/?screen=${screen}&theme=dark`);
-  await page.locator("body").waitFor({ state: "visible" });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page
+    .locator(
+      screen === "onboarding" ? ".onboarding-shell" : ".page-view--active",
+    )
+    .waitFor();
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -48,6 +54,25 @@ for (const screen of everydayScreens) {
     expect(unexpectedRequests).toEqual([]);
   });
 }
+
+test("the first onboarding frame uses the requested theme", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const observer = new MutationObserver(() => {
+      if (!document.querySelector(".onboarding-shell")) return;
+      const root = document.documentElement;
+      root.dataset.firstOnboardingTheme = root.dataset.theme ?? "unset";
+      observer.disconnect();
+    });
+    observer.observe(document, { childList: true, subtree: true });
+  });
+  await openMinimumWindow(page, "onboarding");
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-first-onboarding-theme",
+    "dark",
+  );
+});
 
 test("review decisions preserve or narrow scope", async ({ page }) => {
   await openMinimumWindow(page, "today");
@@ -83,16 +108,17 @@ test("project-only Core knowledge cannot be widened", async ({ page }) => {
   await page.keyboard.press("Escape");
 });
 
-test("workspace menu changes the minimum-window view", async ({ page }) => {
+test("review filter scopes suggestions at the minimum window size", async ({
+  page,
+}) => {
   await openMinimumWindow(page, "today");
-  await page.getByRole("button", { name: "Workspace: All projects" }).click();
+  await page
+    .getByRole("button", { name: "Review project: All projects" })
+    .click();
   await expect(page.getByRole("menu")).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.getByRole("menuitem", { name: /Green Meadow/i }).click();
-  await expect(
-    page.getByRole("heading", { name: "1 suggestion to review." }),
-  ).toBeVisible();
-  await expect(page.getByText("Suggestion 1 of 1")).toBeVisible();
+  await expect(page.getByText("1 to review", { exact: true })).toBeVisible();
   await expect(
     page.getByText(/Prefer names that represent real things/i),
   ).toBeVisible();

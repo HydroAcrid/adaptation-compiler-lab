@@ -145,9 +145,9 @@ export const connections: AgentConnection[] = [
     id: "codex",
     name: "Codex",
     status: "connected",
-    sourceCapability: "Learns from completed tasks",
-    targetCapability:
-      "Approved suggestions go to fresh Temper-managed tasks. Authorized style defaults can also reach ordinary Codex chats through native instructions or scoped MCP context.",
+    sourceCapability:
+      "Learns from eligible completed work in approved projects",
+    targetCapability: "Uses approved guidance in supported chats and workflows",
     authDescription: "Signed in with ChatGPT",
     costDescription: "Uses your Codex subscription",
   },
@@ -155,10 +155,10 @@ export const connections: AgentConnection[] = [
     id: "claude",
     name: "Claude Code",
     status: "not_installed",
-    sourceCapability: "Not integrated in this Temper build",
-    targetCapability: "Not integrated in this Temper build",
-    authDescription: "Not installed in this example",
-    costDescription: "Future Claude use would be provider-billed",
+    sourceCapability: "No learning from Claude Code",
+    targetCapability: "Claude Code support is not available yet",
+    authDescription: "Not connected",
+    costDescription: "Claude usage is billed separately",
   },
 ];
 

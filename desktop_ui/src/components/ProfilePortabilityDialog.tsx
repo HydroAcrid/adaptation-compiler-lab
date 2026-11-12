@@ -1,4 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
+import { usePageVisibility } from "../pageVisibility";
+import { useDialogFocusReturn } from "./dialogFocus";
 import { Check, Download, FileKey2, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -30,6 +32,8 @@ export function ProfilePortabilityDialog({
   onClose: () => void;
   onComplete: (message: string) => void;
 }) {
+  const pageVisible = usePageVisibility();
+  const dialogFocus = useDialogFocusReturn(pageVisible);
   const initialExportPreview =
     mode === "export" && !nativeRuntime && import.meta.env.DEV
       ? browserExportPreview
@@ -101,7 +105,7 @@ export function ProfilePortabilityDialog({
           crypto.randomUUID(),
         );
         onComplete(
-          `${result.item_count} Core item${result.item_count === 1 ? "" : "s"} saved in an encrypted profile.`,
+          `${result.item_count} preference${result.item_count === 1 ? "" : "s"} saved in an encrypted profile.`,
         );
       } else if (importPreview) {
         const result = await stageProfileImport(
@@ -122,10 +126,14 @@ export function ProfilePortabilityDialog({
   }
 
   return (
-    <Dialog.Root onOpenChange={(open) => (open ? undefined : onClose())} open>
+    <Dialog.Root
+      onOpenChange={(open) => (open ? undefined : onClose())}
+      open={pageVisible}
+    >
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
         <Dialog.Content
+          {...dialogFocus}
           className="core-dialog portability-dialog"
           onPointerDownOutside={(event) => event.preventDefault()}
         >
@@ -135,9 +143,9 @@ export function ProfilePortabilityDialog({
           <span className="portability-symbol" aria-hidden="true">
             {isExport ? <Download size={21} /> : <Upload size={21} />}
           </span>
-          <span className="folio-kicker">Offline portability</span>
+          <span className="folio-kicker">Your preferences</span>
           <Dialog.Title>
-            {isExport ? "Take your Core with you" : "Review a Temper profile"}
+            {isExport ? "Export your preferences" : "Review a Temper profile"}
           </Dialog.Title>
           <Dialog.Description>
             {isExport
@@ -146,7 +154,9 @@ export function ProfilePortabilityDialog({
           </Dialog.Description>
 
           {busy && !preview ? (
-            <div className="portability-loading">Preparing a safe preview…</div>
+            <div className="portability-loading" role="status">
+              Preparing your preview…
+            </div>
           ) : null}
           {error ? (
             <div className="portability-error" role="alert">
@@ -201,15 +211,18 @@ export function ProfilePortabilityDialog({
                 onClick={finish}
                 tone="primary"
               >
-                {isExport ? "Save encrypted profile" : "Stage for review"}
+                {busy
+                  ? "Saving…"
+                  : isExport
+                    ? "Save encrypted profile"
+                    : "Add to review"}
               </Button>
             </div>
           ) : null}
           {!nativeRuntime && preview ? (
             <p className="portability-browser-note">
-              This is the visual browser preview. The installed desktop app
-              opens the native file chooser and performs the signed local
-              action.
+              Sample preview. Open the desktop app to import or export a
+              profile.
             </p>
           ) : null}
         </Dialog.Content>

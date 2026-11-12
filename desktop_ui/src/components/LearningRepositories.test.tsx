@@ -1,6 +1,7 @@
 import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
+import { PageVisibility } from "../pageVisibility";
 import { ConnectionsPage } from "./pages";
 import { LearningRepositories } from "./LearningRepositories";
 
@@ -76,7 +77,7 @@ it("shows signed learning coverage independently of one task project and absent 
   expect(within(list).getByText("Learning paused")).toBeInTheDocument();
   expect(within(list).getByText("Learning not approved")).toBeInTheDocument();
   expect(
-    screen.getByText("Core & managed-task connections"),
+    screen.getByRole("heading", { name: "Agent accounts" }),
   ).toBeInTheDocument();
   expect(
     screen.queryByText(
@@ -97,7 +98,7 @@ it("shows signed learning coverage independently of one task project and absent 
     ),
   ).toBeInTheDocument();
   await user.keyboard("{Escape}");
-  const tasks = screen.getByRole("region", { name: "Managed-task projects" });
+  const tasks = screen.getByRole("region", { name: "Task projects" });
   expect(within(tasks).getByText("Task runner off")).toBeInTheDocument();
   expect(
     within(tasks).getByText("Agent instructions not checked"),
@@ -133,26 +134,39 @@ it("marks previous access stale after a failed refresh rather than reporting rep
   ).not.toBeInTheDocument();
 });
 
-it("does not let an older refresh overwrite newer repository permissions", async () => {
-  let finish!: (value: typeof response) => void;
+it("queues a manual refresh behind a pending read and ignores superseded permissions", async () => {
+  let finishOld!: (value: typeof response) => void;
+  let finishFresh!: (value: typeof response) => void;
   api.loadAutonomy
     .mockReturnValueOnce(
       new Promise((resolve) => {
-        finish = resolve;
+        finishOld = resolve;
       }),
     )
-    .mockResolvedValueOnce({ ...response, value: { project_access: [] } });
+    .mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishFresh = resolve;
+      }),
+    );
   const user = userEvent.setup();
   render(<LearningRepositories />);
   await user.click(
     screen.getByRole("button", { name: "Refresh learning access" }),
   );
-  await screen.findByText("0 of 0 repositories approved for learning.");
-  await act(async () => finish(response));
+  expect(api.loadAutonomy).toHaveBeenCalledTimes(1);
+  await act(async () => finishOld(response));
+  expect(api.loadAutonomy).toHaveBeenCalledTimes(2);
+  expect(screen.queryByText("Same repository name")).not.toBeInTheDocument();
+
+  await act(async () =>
+    finishFresh({
+      ...response,
+      value: { ...response.value, project_access: [] },
+    }),
+  );
   expect(
     screen.getByText("0 of 0 repositories approved for learning."),
-  ).toBeInTheDocument();
-  expect(screen.queryByText("Same repository name")).not.toBeInTheDocument();
+  ).toBeVisible();
 });
 
 it("shows enabled personalization waiting when compatibility or storage is unavailable", async () => {
@@ -177,4 +191,78 @@ it("shows enabled personalization waiting when compatibility or storage is unava
   );
   await screen.findByText("56 of 57 repositories approved for learning.");
   expect(screen.queryByText("Personalization on")).not.toBeInTheDocument();
+});
+
+it("keeps existing rows while refreshing changed permissions on return", async () => {
+  let finishRefresh!: (value: typeof response) => void;
+  api.loadAutonomy.mockResolvedValueOnce(response).mockReturnValueOnce(
+    new Promise((resolve) => {
+      finishRefresh = resolve;
+    }),
+  );
+  const repositories = (visible: boolean) => (
+    <PageVisibility.Provider value={visible}>
+      <LearningRepositories />
+    </PageVisibility.Provider>
+  );
+  const user = userEvent.setup();
+  const { rerender } = render(repositories(true));
+  await screen.findByText("56 of 57 repositories approved for learning.");
+  const query = screen.getByRole("searchbox", {
+    name: "Find a learning repository",
+  });
+  await user.type(query, "learning-0");
+
+  rerender(repositories(false));
+  expect(api.loadAutonomy).toHaveBeenCalledTimes(1);
+  rerender(repositories(true));
+  expect(api.loadAutonomy).toHaveBeenCalledTimes(2);
+  expect(query).toHaveValue("learning-0");
+  expect(screen.getByText("Learning on")).toBeVisible();
+
+  await act(async () => {
+    finishRefresh({
+      ...response,
+      value: {
+        ...response.value,
+        project_access: projects.map((project, index) =>
+          index === 0 ? { ...project, learning_state: "paused" } : project,
+        ),
+      },
+    });
+  });
+  expect(screen.getByText("Learning paused")).toBeVisible();
+  expect(screen.queryByText("Learning on")).toBeNull();
+});
+
+it("queues one fresh read when returning before the previous read finishes", async () => {
+  let finishOld!: (value: typeof response) => void;
+  api.loadAutonomy
+    .mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishOld = resolve;
+      }),
+    )
+    .mockResolvedValueOnce({
+      ...response,
+      value: { ...response.value, project_access: [] },
+    });
+  const repositories = (visible: boolean) => (
+    <PageVisibility.Provider value={visible}>
+      <LearningRepositories />
+    </PageVisibility.Provider>
+  );
+  const { rerender } = render(repositories(true));
+  rerender(repositories(false));
+  rerender(repositories(true));
+  rerender(repositories(false));
+  rerender(repositories(true));
+  expect(api.loadAutonomy).toHaveBeenCalledTimes(1);
+  await act(async () => finishOld(response));
+
+  expect(api.loadAutonomy).toHaveBeenCalledTimes(2);
+  expect(
+    screen.getByText("0 of 0 repositories approved for learning."),
+  ).toBeVisible();
+  expect(screen.queryByText("Same repository name")).not.toBeInTheDocument();
 });

@@ -6,6 +6,7 @@ import "@fontsource-variable/newsreader";
 
 import App from "./App";
 import "./styles.css";
+import "./workspace.css";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Temper root element is unavailable");

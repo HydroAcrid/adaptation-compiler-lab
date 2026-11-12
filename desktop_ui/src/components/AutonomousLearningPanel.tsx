@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   controlAutonomy,
   enableLearningGrant,
@@ -12,6 +12,7 @@ import {
   type StyleCategory,
 } from "../autonomy";
 import { engineFailureMessage, type EngineProject } from "../engine";
+import { usePageVisibility } from "../pageVisibility";
 import { Button, StatusPill, Toggle } from "./ui";
 
 const categories: { id: StyleCategory; label: string }[] = [
@@ -36,9 +37,13 @@ type HabitEvidence = Awaited<ReturnType<typeof explainHabit>>["value"];
 
 export function AutonomousLearningPanel({
   projects,
+  onOpenPersonalization,
 }: {
   projects: EngineProject[];
+  onOpenPersonalization?: () => void;
 }) {
+  const headingId = useId();
+  const visible = usePageVisibility();
   const [state, setState] = useState<Bound<AutonomyState> | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<StyleCategory[]>(
@@ -52,16 +57,25 @@ export function AutonomousLearningPanel({
   const [evidence, setEvidence] = useState<HabitEvidence | null>(null);
   const busyRef = useRef(false);
   const requestVersion = useRef(0);
+  const pendingRead = useRef<Promise<Bound<AutonomyState>> | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   useEffect(() => {
+    if (!visible) return;
     let live = true;
     let refreshing = false;
     const refresh = async () => {
       if (busyRef.current || refreshing) return;
       refreshing = true;
-      const version = ++requestVersion.current;
+      let version = requestVersion.current;
+      let read: Promise<Bound<AutonomyState>> | null = null;
       try {
-        const value = await loadAutonomy();
+        if (pendingRead.current)
+          await pendingRead.current.catch(() => undefined);
+        if (!live || busyRef.current) return;
+        version = ++requestVersion.current;
+        read = loadAutonomy();
+        pendingRead.current = read;
+        const value = await read;
         if (live && version === requestVersion.current && !busyRef.current) {
           setState(value);
           setLoadError(null);
@@ -71,6 +85,7 @@ export function AutonomousLearningPanel({
           setLoadError(engineFailureMessage(value));
         }
       } finally {
+        if (pendingRead.current === read) pendingRead.current = null;
         refreshing = false;
       }
     };
@@ -78,7 +93,7 @@ export function AutonomousLearningPanel({
       if (document.visibilityState === "visible") void refresh();
     };
     void refresh();
-    const interval = window.setInterval(() => void refresh(), 30_000);
+    const interval = window.setInterval(refreshWhenVisible, 30_000);
     window.addEventListener("focus", refreshWhenVisible);
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
@@ -87,7 +102,7 @@ export function AutonomousLearningPanel({
       window.removeEventListener("focus", refreshWhenVisible);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [refreshKey]);
+  }, [refreshKey, visible]);
 
   async function run(operation: () => Promise<void>) {
     if (busyRef.current) return;
@@ -129,28 +144,109 @@ export function AutonomousLearningPanel({
           : !status.learning_enabled
             ? "Paused"
             : status.capture_state === "ready"
-              ? "On"
+              ? "Enabled"
               : "Waiting";
+  const loading = !status && !loadError;
+  const statusNotice = loadError ? (
+    <div className="autonomy-notice" role="alert">
+      <strong>Learning status is unavailable.</strong>
+      <p>
+        {status
+          ? "The last status could not be refreshed."
+          : "Temper couldn’t read your learning settings."}
+      </p>
+      <div className="autonomy-panel__actions">
+        <Button
+          tone="quiet"
+          onClick={() => setRefreshKey((value) => value + 1)}
+        >
+          Try again
+        </Button>
+        <details className="learning-details">
+          <summary>Technical details</summary>
+          <p>{loadError}</p>
+        </details>
+      </div>
+    </div>
+  ) : null;
+  const statusTone =
+    learningLabel === "Enabled"
+      ? "positive"
+      : learningLabel === "Needs attention" || loadError
+        ? "attention"
+        : "neutral";
+
+  if (onOpenPersonalization) {
+    const habitCount = status?.habits.filter(
+      (habit) => habit.state !== "retired",
+    ).length;
+    const capturedCount = status?.capture_summary?.captured_conversations;
+    return (
+      <section
+        className="autonomy-panel autonomy-panel--overview"
+        aria-labelledby={headingId}
+      >
+        <header className="autonomy-panel__heading">
+          <div className="autonomy-panel__title">
+            <h2 id={headingId}>Chat learning</h2>
+            <StatusPill tone={statusTone}>{learningLabel}</StatusPill>
+          </div>
+          <Button tone="quiet" onClick={onOpenPersonalization}>
+            Manage learning
+          </Button>
+        </header>
+        {statusNotice}
+        {loading && (
+          <div className="page-loading-card" role="status">
+            <span>Checking learning status…</span>
+            <span className="page-loading-card__line" aria-hidden="true" />
+          </div>
+        )}
+        {status && !loadError && (
+          <>
+            <p className="autonomy-panel__intro">
+              {learningLabel === "Enabled"
+                ? status.capture_window === "completed_work"
+                  ? "Completed work in approved Codex projects is eligible for learning."
+                  : "New chats in approved Codex projects are eligible for learning."
+                : learningLabel === "Paused"
+                  ? "Learning is paused. You can resume it in Personalization."
+                  : learningLabel === "Off"
+                    ? "Choose which Codex projects Temper can learn from in Personalization."
+                    : "Check Personalization for what learning needs before it can continue."}
+            </p>
+            {status.grant_enabled && (
+              <dl className="learning-facts" aria-label="Learning coverage">
+                <div>
+                  <dt>Approved projects</dt>
+                  <dd>{approvedCount ?? "Unavailable"}</dd>
+                </div>
+                <div>
+                  <dt>Conversations captured</dt>
+                  <dd>{capturedCount ?? "Unavailable"}</dd>
+                </div>
+                <div>
+                  <dt>Habits found</dt>
+                  <dd>{habitCount}</dd>
+                </div>
+              </dl>
+            )}
+          </>
+        )}
+      </section>
+    );
+  }
+
   return (
     <section
       className="autonomy-panel"
-      aria-labelledby="autonomy-heading"
-      aria-busy={busy}
+      aria-labelledby={headingId}
+      aria-busy={busy || loading}
     >
       <header className="autonomy-panel__heading">
         <div className="autonomy-panel__title">
-          <h2 id="autonomy-heading">Learning</h2>
-          <StatusPill
-            tone={
-              learningLabel === "On"
-                ? "positive"
-                : learningLabel === "Needs attention" || loadError
-                  ? "attention"
-                  : "neutral"
-            }
-          >
-            {learningLabel}
-          </StatusPill>
+          <h2 id={headingId}>Learning</h2>
+          <StatusPill tone={statusTone}>{learningLabel}</StatusPill>
         </div>
         {status?.grant_enabled && (
           <Button
@@ -165,28 +261,28 @@ export function AutonomousLearningPanel({
           </Button>
         )}
       </header>
-      {loadError ? (
-        <div className="autonomy-notice" role="alert">
-          <strong>Learning status is unavailable.</strong>
-          <p>{loadError}</p>
-          <Button
-            tone="quiet"
-            onClick={() => setRefreshKey((value) => value + 1)}
-          >
-            Try again
-          </Button>
+      {statusNotice}
+      {loading && (
+        <div className="page-loading-card" role="status">
+          <span>Checking learning status…</span>
+          <span className="page-loading-card__line" aria-hidden="true" />
         </div>
-      ) : !status ? (
-        <p className="autonomy-panel__intro" role="status">
-          Checking learning status…
-        </p>
-      ) : null}
-      {actionError && (
-        <p className="autonomy-notice" role="alert">
-          {actionError}
+      )}
+      {busy && (
+        <p className="learning-secondary" role="status">
+          Updating learning…
         </p>
       )}
-      {status && !status.secure_store_ready && (
+      {actionError && (
+        <div className="autonomy-notice" role="alert">
+          <strong>Temper couldn’t complete that action.</strong>
+          <details className="learning-details">
+            <summary>Technical details</summary>
+            <p>{actionError}</p>
+          </details>
+        </div>
+      )}
+      {!loadError && status && !status.secure_store_ready && (
         <div className="autonomy-notice" role="alert">
           <strong>Secure storage is unavailable.</strong>
           <p>
@@ -195,16 +291,18 @@ export function AutonomousLearningPanel({
           </p>
         </div>
       )}
-      {status?.grant_enabled && status.provenance_state === "unverified" && (
-        <div className="autonomy-notice" role="status">
-          <strong>Conversation access needs attention.</strong>
-          <p>
-            Learning is waiting for verified input or permission to trust the
-            selected conversations.
-          </p>
-        </div>
-      )}
-      {status?.publication_needs_attention && (
+      {!loadError &&
+        status?.grant_enabled &&
+        status.provenance_state === "unverified" && (
+          <div className="autonomy-notice" role="status">
+            <strong>Conversation access needs attention.</strong>
+            <p>
+              Temper needs verified conversation access or your permission to
+              use the selected conversations.
+            </p>
+          </div>
+        )}
+      {!loadError && status?.publication_needs_attention && (
         <div className="autonomy-notice" role="alert">
           <strong>Your agent instructions need review.</strong>
           <p>
@@ -237,12 +335,17 @@ export function AutonomousLearningPanel({
                       }
                     />
                     <span>
-                      {project.display_name} · {project.project_id}
+                      {project.display_name}
+                      {grantProjects.some(
+                        (other) =>
+                          other.display_name === project.display_name &&
+                          other.project_id !== project.project_id,
+                      ) && ` · ${project.project_id}`}
                     </span>
                   </label>
                 ))}
                 {grantProjects.length === 0 && (
-                  <p>Add a project in Connections first.</p>
+                  <p>Add a learning project in Connections first.</p>
                 )}
               </div>
             </fieldset>
@@ -405,8 +508,8 @@ export function AutonomousLearningPanel({
                 ? "Learning is waiting. Your saved habits are still here."
                 : status.learning_enabled
                   ? status.capture_window === "completed_work"
-                    ? "Temper learns communication habits from completed work in your approved projects."
-                    : "Temper learns communication habits from new Codex chats in your approved projects."
+                    ? "Temper can learn communication habits from completed work in your approved projects."
+                    : "Temper can learn communication habits from new Codex chats in your approved projects."
                   : "Chat learning is paused. Your saved habits are still here."}
           </p>
           <dl className="learning-facts" aria-label="Learning coverage">
@@ -439,113 +542,120 @@ export function AutonomousLearningPanel({
           )}
           {status.habits.length === 0 ? (
             <div className="learning-empty">
-              <h3>No habits yet</h3>
+              <h3>{loadError ? "Habits unavailable" : "No habits yet"}</h3>
               <p>
-                Habits appear here when a pattern repeats across separate tasks.
+                {loadError
+                  ? "Refresh to check your learned habits."
+                  : "Habits appear here when a pattern repeats across separate tasks."}
               </p>
             </div>
           ) : (
-            <ul className="habit-list" aria-label="Learned habits">
-              {status.habits.map((habit) => (
-                <li className="habit-row" key={habit.habit_id}>
-                  <div className="habit-row__heading">
-                    <h3>{habit.behavior}</h3>
-                    <StatusPill
-                      tone={habit.state === "active" ? "positive" : "neutral"}
-                    >
-                      {habitStates[habit.state]}
-                    </StatusPill>
-                  </div>
-                  <p className="habit-row__scope">
-                    {grantProjects.find(
-                      (project) => project.project_id === habit.project_id,
-                    )?.display_name ?? "Project unavailable"}{" "}
-                    · {habit.task_class.replaceAll("_", " ")} ·{" "}
-                    {habit.origin === "inferred"
-                      ? "Learned from chats"
-                      : "Stated preference"}
-                  </p>
-                  <div className="autonomy-panel__actions">
-                    <Button
-                      tone="quiet"
-                      disabled={busy}
-                      aria-expanded={
-                        evidence?.habit.habit_id === habit.habit_id
-                      }
-                      onClick={() => {
-                        if (evidence?.habit.habit_id === habit.habit_id) {
-                          setEvidence(null);
-                          return;
-                        }
-                        void run(async () =>
-                          setEvidence(
-                            (await explainHabit(habit.habit_id)).value,
-                          ),
-                        );
-                      }}
-                    >
-                      Why this habit?
-                    </Button>
-                    <Button
-                      tone="quiet"
-                      disabled={busy || blocked || habit.state === "retired"}
-                      onClick={() =>
-                        void control("revoke_habit", habit.habit_id)
-                      }
-                    >
-                      Undo habit
-                    </Button>
-                  </div>
-                  {evidence?.habit.habit_id === habit.habit_id && (
-                    <div className="habit-evidence">
-                      <p>
-                        {evidence.support_count} supporting{" "}
-                        {evidence.support_count === 1 ? "task" : "tasks"} ·{" "}
-                        {evidence.contradiction_count} conflicting{" "}
-                        {evidence.contradiction_count === 1 ? "task" : "tasks"}
-                      </p>
-                      <dl className="learning-facts">
-                        {(
-                          [
-                            [
-                              "Instructions updated",
-                              evidence.outcome_summary.published,
-                            ],
-                            [
-                              "Loaded by an agent",
-                              evidence.outcome_summary.delivered,
-                            ],
-                            [
-                              "Behavior followed",
-                              evidence.outcome_summary.followed,
-                            ],
-                            ["Helpful", evidence.outcome_summary.helpful],
-                            ["Harmful", evidence.outcome_summary.harmful],
-                          ] as const
-                        ).map(([label, value]) => (
-                          <div key={label}>
-                            <dt>{label}</dt>
-                            <dd>
-                              {value === null
-                                ? "Not measured"
-                                : value
-                                  ? "Yes"
-                                  : "No"}
-                            </dd>
-                          </div>
-                        ))}
-                      </dl>
-                      <p className="learning-secondary">
-                        Results for version{" "}
-                        {evidence.outcome_summary.habit_revision}. A file update
-                        alone does not confirm that an agent loaded it or that
-                        it helped.
-                      </p>
+            <div>
+              <h3>{loadError ? "Last known habits" : "Learned habits"}</h3>
+              <ul className="habit-list" aria-label="Learned habits">
+                {status.habits.map((habit) => (
+                  <li className="habit-row" key={habit.habit_id}>
+                    <div className="habit-row__heading">
+                      <h3>{habit.behavior}</h3>
+                      <StatusPill
+                        tone={habit.state === "active" ? "positive" : "neutral"}
+                      >
+                        {habitStates[habit.state]}
+                      </StatusPill>
                     </div>
-                  )}
-                </li>
-              ))}
-            </ul>
+                    <p className="habit-row__scope">
+                      {grantProjects.find(
+                        (project) => project.project_id === habit.project_id,
+                      )?.display_name ?? "Project unavailable"}{" "}
+                      · {habit.task_class.replaceAll("_", " ")} ·{" "}
+                      {habit.origin === "inferred"
+                        ? "Learned from chats"
+                        : "Stated preference"}
+                    </p>
+                    <div className="autonomy-panel__actions">
+                      <Button
+                        tone="quiet"
+                        disabled={busy || Boolean(loadError)}
+                        aria-expanded={
+                          evidence?.habit.habit_id === habit.habit_id
+                        }
+                        onClick={() => {
+                          if (evidence?.habit.habit_id === habit.habit_id) {
+                            setEvidence(null);
+                            return;
+                          }
+                          void run(async () =>
+                            setEvidence(
+                              (await explainHabit(habit.habit_id)).value,
+                            ),
+                          );
+                        }}
+                      >
+                        Why this habit?
+                      </Button>
+                      <Button
+                        tone="quiet"
+                        disabled={busy || blocked || habit.state === "retired"}
+                        onClick={() =>
+                          void control("revoke_habit", habit.habit_id)
+                        }
+                      >
+                        Undo habit
+                      </Button>
+                    </div>
+                    {evidence?.habit.habit_id === habit.habit_id && (
+                      <div className="habit-evidence">
+                        <p>
+                          {evidence.support_count} supporting{" "}
+                          {evidence.support_count === 1 ? "task" : "tasks"} ·{" "}
+                          {evidence.contradiction_count} conflicting{" "}
+                          {evidence.contradiction_count === 1
+                            ? "task"
+                            : "tasks"}
+                        </p>
+                        <dl className="learning-facts">
+                          {(
+                            [
+                              [
+                                "Instructions updated",
+                                evidence.outcome_summary.published,
+                              ],
+                              [
+                                "Loaded by an agent",
+                                evidence.outcome_summary.delivered,
+                              ],
+                              [
+                                "Behavior followed",
+                                evidence.outcome_summary.followed,
+                              ],
+                              ["Helpful", evidence.outcome_summary.helpful],
+                              ["Harmful", evidence.outcome_summary.harmful],
+                            ] as const
+                          ).map(([label, value]) => (
+                            <div key={label}>
+                              <dt>{label}</dt>
+                              <dd>
+                                {value === null
+                                  ? "Not measured"
+                                  : value
+                                    ? "Yes"
+                                    : "No"}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+                        <p className="learning-secondary">
+                          Results for version{" "}
+                          {evidence.outcome_summary.habit_revision}. A file
+                          update alone does not confirm that an agent loaded it
+                          or that it helped.
+                        </p>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           <div className="personalization-status">
             <span>Personalization</span>

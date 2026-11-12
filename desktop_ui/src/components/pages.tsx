@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   CircleHelp,
   Cloud,
-  Compass,
   Download,
   ExternalLink,
   FileDiff,
@@ -74,6 +73,7 @@ import {
   type EngineLongitudinalGate,
   type EngineNativeTarget,
 } from "../engine";
+import { usePageVisibility } from "../pageVisibility";
 import type {
   CapabilityModeSummary,
   CuratedModeDetail,
@@ -103,6 +103,21 @@ import {
   Toggle,
 } from "./ui";
 
+function PageDialogPortal({ children }: { children: ReactNode }) {
+  const pageVisible = usePageVisibility();
+  return pageVisible ? <Dialog.Portal>{children}</Dialog.Portal> : null;
+}
+
+function restorePageDialogFocus(
+  event: Event,
+  opener: HTMLButtonElement | null,
+) {
+  event.preventDefault();
+  if (opener?.isConnected && !opener.closest("[hidden], [inert]")) {
+    opener.focus();
+  }
+}
+
 const ToolsHubPanel = lazy(() =>
   import("./ToolsHubPanel").then((module) => ({
     default: module.ToolsHubPanel,
@@ -122,6 +137,7 @@ export function TodayPage({
   instructionEnvironments = [],
   liveProjects = [],
   nativeAutonomy = false,
+  workspaceControl,
 }: {
   onReview: (suggestionId: string) => void;
   onOpenCore: () => void;
@@ -144,6 +160,7 @@ export function TodayPage({
   instructionEnvironments?: EngineInstructionEnvironmentSummary[];
   liveProjects?: EngineProject[];
   nativeAutonomy?: boolean;
+  workspaceControl?: ReactNode;
 }) {
   const applicableEnvironments = instructionEnvironments.filter(
     (environment) =>
@@ -173,320 +190,190 @@ export function TodayPage({
   const selectedSuggestion =
     applicableSuggestions.find((item) => item.id === selectedSuggestionId) ??
     applicableSuggestions[0];
-  const governedReviewBlocked =
-    liveSummary?.health === "consent_expired" ||
-    liveSummary?.secureStoreReady === false;
-  const hasSuggestion =
-    Boolean(selectedSuggestion) && !governedReviewBlocked && !nativeConflict;
-  const isAllProjects = workspace === "all";
-  const selectedIndex = selectedSuggestion
-    ? applicableSuggestions.findIndex(
-        (item) => item.id === selectedSuggestion.id,
-      )
-    : -1;
+  const permissionExpired = liveSummary?.health === "consent_expired";
+  const storageUnavailable = liveSummary?.secureStoreReady === false;
   const suggestionCount = applicableSuggestions.length;
-  const automationStatus = selectedSuggestion
-    ? selectedSuggestion.automationDisposition === "eligible"
-      ? automaticLearning
-        ? "Automatic with 24-hour undo"
-        : "Automatic option available"
-      : selectedSuggestion.automationDisposition === "review-required"
-        ? "Your review is required"
-        : "Waiting for more evidence"
-    : "";
-  const headline = nativeConflict
-    ? "An instruction conflict needs review."
-    : liveSummary?.health === "consent_expired"
-      ? nativeAutonomy
-        ? "Reviewed suggestions need renewed permission."
-        : "Consent needs renewal."
-      : liveSummary?.secureStoreReady === false
-        ? "Secure storage needs attention."
-        : hasSuggestion
-          ? `${suggestionCount} suggestion${suggestionCount === 1 ? "" : "s"} to review.`
-          : liveSummary?.pendingFeedbackCount
-            ? `${liveSummary.pendingFeedbackCount} rating${liveSummary.pendingFeedbackCount === 1 ? "" : "s"} waiting.`
-            : liveSummary?.health === "paused"
-              ? nativeAutonomy
-                ? "Reviewed suggestions are paused."
-                : "Learning is paused."
-              : liveSummary?.projectCount === 0
-                ? "No projects registered."
-                : liveSummary?.health === "needs_attention"
-                  ? "Temper needs attention."
-                  : liveSummary
-                    ? isAllProjects
-                      ? "Nothing needs your attention."
-                      : `Nothing needs review in ${workspace}.`
-                    : `${suggestionCount} suggestion${suggestionCount === 1 ? "" : "s"} to review.`;
-  const summary = nativeConflict
-    ? "Temper withheld the affected adaptation instead of sending contradictory guidance."
-    : liveSummary?.health === "consent_expired"
-      ? nativeAutonomy
-        ? "Reviewed suggestions and their delivery remain stopped until you renew this permission. Everyday habit learning uses the controls above."
-        : `${liveSummary.pendingReviewCount} suggestion${liveSummary.pendingReviewCount === 1 ? " remains" : "s remain"} waiting. Learning, review, and delivery stay stopped until you renew consent.`
-      : liveSummary?.secureStoreReady === false
-        ? "Temper cannot approve, deliver, or change adaptations until its local keys are available."
-        : hasSuggestion
-          ? "Review the first suggestion below. Nothing changes until you decide."
-          : nativeAutonomy && liveSummary?.health === "paused"
-            ? "Capture for reviewed suggestions is paused. Everyday habit learning uses the controls above."
-            : (liveSummary?.message ??
-              (liveSummary?.health === "paused"
-                ? "Temper will not inspect new completed work until you turn background learning on."
-                : liveSummary?.projectCount === 0
-                  ? "Register a project in Connections to make new work eligible."
-                  : liveSummary?.health === "needs_attention"
-                    ? "Open Advanced for the exact local requirement."
-                    : liveSummary
-                      ? `${liveSummary.activeAdaptationCount} approved adaptation${liveSummary.activeAdaptationCount === 1 ? "" : "s"} available for this view.`
-                      : "This browser preview uses example product data."));
-  const healthLabel = liveSummary
-    ? {
-        ready: "Ready",
-        needs_attention: "Needs attention",
-        paused: nativeAutonomy ? "Suggestions paused" : "Learning paused",
-        consent_expired: nativeAutonomy
-          ? "Suggestion permission expired"
-          : "Consent expired",
-      }[liveSummary.health]
-    : "Preview";
-  if (
-    nativeAutonomy &&
-    liveSummary &&
-    !nativeConflict &&
-    applicableSuggestions.length === 0 &&
-    liveSummary.pendingReviewCount === 0 &&
-    !liveSummary.pendingFeedbackCount &&
-    liveSummary.secureStoreReady &&
-    liveSummary.health !== "needs_attention"
-  ) {
-    return (
-      <div className="page folio-page folio-page--today">
-        <header className="today-learning-heading">
-          <h1>Today</h1>
-          <time>
-            {new Intl.DateTimeFormat(undefined, { dateStyle: "full" }).format(
-              new Date(),
-            )}
-          </time>
-        </header>
-        <AutonomousLearningPanel projects={liveProjects} />
-        {liveSummary.health !== "ready" && (
-          <details className="today-review-summary">
-            <summary>
-              Reviewed suggestions{" "}
-              <span>
-                {liveSummary.health === "consent_expired"
-                  ? "Permission expired"
-                  : "Paused"}
-              </span>
-            </summary>
-            <p>
-              {liveSummary.health === "consent_expired"
-                ? "Permission for reviewed suggestions has expired. Renew it in Settings to use this workflow. Habit learning has separate controls above."
-                : "Reviewed suggestions are paused. Habit learning has separate controls above."}
-            </p>
-            <Button tone="quiet" onClick={onOpenCore}>
-              View Core
-            </Button>
-          </details>
-        )}
-      </div>
-    );
-  }
+  const feedbackCount = liveSummary?.pendingFeedbackCount ?? 0;
+  const reviewUnavailable = nativeAutonomy && !liveSummary;
+  const canRate = liveSummary ? feedbackCount > 0 : !nativeAutonomy;
+  const pendingReviewCount =
+    workspace === "all"
+      ? (liveSummary?.pendingReviewCount ?? suggestionCount)
+      : suggestionCount;
+  const reviewStatus = reviewUnavailable
+    ? "Status unavailable"
+    : pendingReviewCount
+      ? `${pendingReviewCount} to review`
+      : feedbackCount
+        ? `${feedbackCount} to rate`
+        : "No pending reviews";
+
   return (
     <div className="page folio-page folio-page--today">
-      {nativeAutonomy && <AutonomousLearningPanel projects={liveProjects} />}
-      <header className="folio-page-meta">
-        <span>
-          {new Intl.DateTimeFormat(undefined, {
-            dateStyle: "full",
-          }).format(new Date())}
-        </span>
-      </header>
-      <section className="folio-statement" aria-labelledby="today-heading">
-        <div className="folio-statement__line">
-          <h1 id="today-heading">{headline}</h1>
+      <header className="today-learning-heading">
+        <div>
+          <h1>Overview</h1>
+          <p>See what Temper has learned and what’s ready for review.</p>
         </div>
-        <p>{summary}</p>
-      </section>
-      <div className="folio-divider" aria-hidden="true">
-        <span />
-      </div>
-      <section className="folio-workbench" aria-label="Suggestions">
-        <article className="folio-proposal">
-          {nativeConflict ? (
-            <>
-              <h2>{nativeConflict.source_display_path}</h2>
-              <p>{nativeConflict.rationale}</p>
-              <button
-                className="folio-primary-action"
-                onClick={onOpenCore}
-                type="button"
-              >
-                Review conflict <ArrowRight aria-hidden="true" size={16} />
-              </button>
-            </>
-          ) : hasSuggestion ? (
-            <>
-              <span className="folio-kicker">
-                {isAllProjects && selectedSuggestion?.sourceProject
-                  ? `${selectedSuggestion.sourceProject} · `
-                  : ""}
-                Suggestion {selectedIndex + 1} of {suggestionCount}
-              </span>
-              <blockquote>“{selectedSuggestion?.behavior}”</blockquote>
-              <p>{selectedSuggestion?.explanation}</p>
-              <button
-                className="folio-primary-action"
-                onClick={() =>
-                  selectedSuggestion ? onReview(selectedSuggestion.id) : null
-                }
-                type="button"
-              >
-                Review suggestion <ArrowRight aria-hidden="true" size={16} />
-              </button>
-            </>
-          ) : (
-            <>
-              <h2>
-                {liveSummary
-                  ? liveSummary.pendingFeedbackCount
-                    ? "A recent adaptation is ready to rate."
-                    : liveSummary.health === "ready"
-                      ? "No suggestions to review."
-                      : liveSummary.health === "paused"
-                        ? nativeAutonomy
-                          ? "Capture for reviewed suggestions is paused."
-                          : "No new learning is running."
-                        : liveSummary.health === "consent_expired"
-                          ? nativeAutonomy
-                            ? "Reviewed suggestions and their delivery are stopped."
-                            : "Learning and delivery are stopped."
-                          : "A local requirement is unresolved."
-                  : "No suggestion is selected."}
-              </h2>
-              {liveSummary ? (
-                <p>
-                  {liveSummary.pendingFeedbackCount
-                    ? "Use Helped, Hurt, or Irrelevant to record the outcome."
-                    : liveSummary.pendingReviewCount
-                      ? `${liveSummary.pendingReviewCount} suggestion${liveSummary.pendingReviewCount === 1 ? " is" : "s are"} waiting for review.`
-                      : "No suggestion is waiting in this view."}
-                </p>
-              ) : (
-                <>
-                  <p>This browser preview uses example product data.</p>
-                </>
-              )}
-              <button
-                className="folio-primary-action"
-                onClick={onOpenCore}
-                type="button"
-              >
-                View Core <ArrowRight aria-hidden="true" size={16} />
-              </button>
-            </>
+      </header>
+      {nativeAutonomy && (
+        <AutonomousLearningPanel
+          projects={liveProjects}
+          onOpenPersonalization={onOpenCore}
+        />
+      )}
+      <details
+        className="today-review-summary"
+        open={
+          !nativeAutonomy ||
+          suggestions.length > 0 ||
+          feedbackCount > 0 ||
+          instructionEnvironments.some(
+            (environment) => environment.blocking_conflict_count > 0,
+          )
+        }
+      >
+        <summary>
+          Reviewed suggestions <span>{reviewStatus}</span>
+        </summary>
+        <div className="overview-review__body">
+          {workspaceControl && (
+            <div className="overview-review__heading">{workspaceControl}</div>
           )}
-        </article>
-        <aside className="folio-margin" aria-label="Current workspace notes">
-          <dl className="margin-register">
-            {hasSuggestion ? (
-              <>
-                <div>
-                  <dt>Evidence</dt>
-                  <dd>
-                    {selectedSuggestion?.evidenceStrength
-                      ? evidenceStrengthLabels[
-                          selectedSuggestion.evidenceStrength
-                        ]
-                      : "Review required"}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Suggested scope</dt>
-                  <dd>{selectedSuggestion?.suggestedScope}</dd>
-                </div>
-                <div>
-                  <dt>Next step</dt>
-                  <dd>{automationStatus}</dd>
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <dt>Project</dt>
-                  <dd>{isAllProjects ? "All projects" : workspace}</dd>
-                </div>
-                <div>
-                  <dt>Available here</dt>
-                  <dd>
-                    {liveSummary
-                      ? `${liveSummary.activeAdaptationCount} approved item${liveSummary.activeAdaptationCount === 1 ? "" : "s"}`
-                      : "Example items"}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Status</dt>
-                  <dd>{healthLabel}</dd>
-                </div>
-              </>
-            )}
-          </dl>
-          {hasSuggestion && suggestionCount > 1 ? (
-            <div className="margin-queue">
-              <div className="margin-queue__heading">
-                <span className="folio-kicker">Suggestion queue</span>
-                <span>{suggestionCount} ready</span>
-              </div>
-              <ol>
-                {applicableSuggestions.map((item, index) => (
-                  <li key={item.id}>
-                    <button
-                      aria-current={
-                        item.id === selectedSuggestion?.id ? "true" : undefined
-                      }
-                      onClick={() => onReview(item.id)}
-                      type="button"
-                    >
-                      <span className="queue-number">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <span className="queue-copy">
-                        <strong>{item.behavior}</strong>
-                        <small>
-                          {item.evidenceStrength
-                            ? evidenceStrengthLabels[item.evidenceStrength]
-                            : "Review required"}
-                        </small>
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ol>
+          {nativeConflict ? (
+            <div className="folio-proposal">
+              <h2>Instruction conflict</h2>
+              <p>{nativeConflict.source_display_path}</p>
+              <p>{nativeConflict.rationale}</p>
+              <Button onClick={onOpenCore}>Review agent setup</Button>
             </div>
-          ) : liveSummary?.pendingFeedbackCount || !liveSummary ? (
-            <div className="margin-feedback">
-              <span className="folio-kicker">Last task</span>
+          ) : permissionExpired || storageUnavailable ? (
+            <div className="folio-proposal">
               <h2>
-                {liveSummary?.pendingFeedbackCount
-                  ? "Was Temper useful?"
-                  : "No rating is waiting."}
+                {permissionExpired
+                  ? "Permission expired"
+                  : "Secure storage unavailable"}
               </h2>
               <p>
-                {liveSummary?.pendingFeedbackCount
-                  ? "A completed activation is ready for your feedback."
-                  : "Temper will ask after it delivers an approved adaptation."}
+                {permissionExpired
+                  ? "Renew permission in Settings to review suggestions and use approved guidance."
+                  : "Access to this device’s saved keys is needed to review and apply suggestions."}
+              </p>
+            </div>
+          ) : reviewUnavailable ? (
+            <div className="folio-proposal">
+              <h2>Suggestions unavailable</h2>
+              <p>Refresh status in Connections to check for suggestions.</p>
+            </div>
+          ) : selectedSuggestion ? (
+            <section className="folio-workbench" aria-label="Suggestions">
+              <article className="folio-proposal">
+                <h2>{selectedSuggestion.behavior}</h2>
+                <p>{selectedSuggestion.explanation}</p>
+                <button
+                  className="folio-primary-action"
+                  onClick={() => onReview(selectedSuggestion.id)}
+                  type="button"
+                >
+                  Review suggestion <ArrowRight aria-hidden="true" size={16} />
+                </button>
+              </article>
+              <aside className="folio-margin" aria-label="Suggestion details">
+                <dl className="margin-register">
+                  <div>
+                    <dt>Evidence</dt>
+                    <dd>
+                      {selectedSuggestion.evidenceStrength
+                        ? evidenceStrengthLabels[
+                            selectedSuggestion.evidenceStrength
+                          ]
+                        : "Review required"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Suggested scope</dt>
+                    <dd>{selectedSuggestion.suggestedScope}</dd>
+                  </div>
+                  <div>
+                    <dt>Next step</dt>
+                    <dd>
+                      {selectedSuggestion.automationDisposition === "eligible"
+                        ? automaticLearning
+                          ? "Automatic with 24-hour undo"
+                          : "Automatic option available"
+                        : selectedSuggestion.automationDisposition ===
+                            "review-required"
+                          ? "Your review is required"
+                          : "Waiting for more evidence"}
+                    </dd>
+                  </div>
+                </dl>
+                {suggestionCount > 1 && (
+                  <div className="margin-queue">
+                    <div className="margin-queue__heading">
+                      <span>Other suggestions</span>
+                    </div>
+                    <ol>
+                      {applicableSuggestions
+                        .filter((item) => item.id !== selectedSuggestion.id)
+                        .map((item) => (
+                          <li key={item.id}>
+                            <button
+                              onClick={() => onReview(item.id)}
+                              type="button"
+                            >
+                              <span className="queue-copy">
+                                <strong>{item.behavior}</strong>
+                                {item.evidenceStrength && (
+                                  <small>
+                                    {
+                                      evidenceStrengthLabels[
+                                        item.evidenceStrength
+                                      ]
+                                    }
+                                  </small>
+                                )}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                    </ol>
+                  </div>
+                )}
+              </aside>
+            </section>
+          ) : (
+            <div className="folio-proposal">
+              <h2>No suggestions to review</h2>
+              <p>
+                {liveSummary?.health === "paused"
+                  ? "New suggestions are paused. You can resume them in Settings."
+                  : liveSummary?.health === "needs_attention"
+                    ? "Check Connections for your agent and project status."
+                    : liveSummary?.projectCount === 0
+                      ? "Add a task project in Connections to get suggestions for your work."
+                      : workspace === "all"
+                        ? "Suggestions will appear here when Temper has a change for you to review."
+                        : `There are no suggestions for ${workspace}.`}
+              </p>
+            </div>
+          )}
+          {(feedback || canRate) && (
+            <div className="margin-feedback">
+              <h2>Was Temper useful?</h2>
+              <p>
+                {liveSummary
+                  ? "Rate the guidance used in a recent task."
+                  : "Try a sample rating."}
               </p>
               {feedback ? (
-                <div className="feedback-thanks">
-                  <Check aria-hidden="true" size={15} /> Recorded as {feedback}
+                <div className="feedback-thanks" role="status">
+                  <Check aria-hidden="true" size={15} /> Rating saved
                 </div>
-              ) : !liveSummary || liveSummary.pendingFeedbackCount ? (
+              ) : (
                 <div
                   className="feedback-row feedback-row--folio"
-                  aria-label="Rate the recent adaptation"
+                  aria-label="Rate recent guidance"
                 >
                   <button
                     disabled={liveSummary?.feedbackAvailable === false}
@@ -510,11 +397,11 @@ export function TodayPage({
                     Irrelevant
                   </button>
                 </div>
-              ) : null}
+              )}
             </div>
-          ) : null}
-        </aside>
-      </section>
+          )}
+        </div>
+      </details>
     </div>
   );
 }
@@ -568,7 +455,6 @@ const coreKinds: Array<{
 ];
 
 export function CorePage({
-  activeWorkspace,
   availableWorkspaces,
   initialItems = [],
   nativeRuntime = false,
@@ -581,8 +467,8 @@ export function CorePage({
   onUndo,
   instructionEnvironments = [],
   liveProjects = [],
+  nativeAutonomy = false,
 }: {
-  activeWorkspace: WorkspaceScope;
   availableWorkspaces?: ProjectName[];
   initialItems?: CoreItem[];
   nativeRuntime?: boolean;
@@ -595,10 +481,12 @@ export function CorePage({
   onUndo?: () => Promise<void>;
   instructionEnvironments?: EngineInstructionEnvironmentSummary[];
   liveProjects?: EngineProject[];
+  nativeAutonomy?: boolean;
 }) {
-  const [items, setItems] = useState(initialItems);
+  const [previewItems, setItems] = useState(initialItems);
+  const items = nativeRuntime ? initialItems : previewItems;
   const [kind, setKind] = useState<CoreKind | "all">("all");
-  const [scope, setScope] = useState<ProjectName | "all">(activeWorkspace);
+  const [scope, setScope] = useState<ProjectName | "all">("all");
   const [selected, setSelected] = useState<CoreItem | null>(null);
   const [revokeSelected, setRevokeSelected] = useState<CoreItem | null>(null);
   const [removed, setRemoved] = useState<{
@@ -621,11 +509,11 @@ export function CorePage({
       (scope === "all" || appliesToProject(item, scope)),
   );
   const visibleEnvironments = instructionEnvironments.filter((environment) => {
-    if (activeWorkspace === "all") return true;
+    if (scope === "all") return true;
     return liveProjects.some(
       (project) =>
         project.project_id === environment.project_id &&
-        project.display_name === activeWorkspace,
+        project.display_name === scope,
     );
   });
 
@@ -656,11 +544,13 @@ export function CorePage({
 
   return (
     <div className="page folio-page core-page">
-      <div aria-hidden="true" className="core-tree" />
       <header className="core-heading">
         <div>
-          <h1>Core</h1>
-          <p>Your saved preferences and instructions, organized by project.</p>
+          <h1>Personalization</h1>
+          <p>
+            Manage what Temper learns and the guidance you’ve saved for your
+            agents.
+          </p>
         </div>
         <div className="core-heading__aside">
           <div className="core-portability-actions">
@@ -689,133 +579,134 @@ export function CorePage({
               <Share2 aria-hidden="true" size={14} /> Share pack
             </button>
           </div>
-          <div className="core-current-project">
-            <span>Workspace view</span>
-            <strong>
-              {activeWorkspace === "all" ? "All projects" : activeWorkspace}
-            </strong>
-          </div>
         </div>
       </header>
-      <section className="core-overview" aria-label="Core summary">
-        <p>
-          {activeWorkspace === "all" ? (
-            <>
-              <strong>{items.length} approved items</strong> across your work.
-            </>
-          ) : (
-            <>
-              <strong>
-                {
-                  items.filter((item) =>
-                    appliesToProject(item, activeWorkspace),
-                  ).length
-                }{" "}
-                approved items
-              </strong>{" "}
-              apply in {activeWorkspace}.
-            </>
+      {nativeAutonomy && <AutonomousLearningPanel projects={liveProjects} />}
+      <section
+        className="personalization-library"
+        aria-labelledby="saved-guidance-heading"
+      >
+        <div className="subsection-heading">
+          <div>
+            <h2 id="saved-guidance-heading">Saved guidance</h2>
+            <p>Preferences and instructions you approved or imported.</p>
+          </div>
+          {(!nativeRuntime || snapshotDigest) && (
+            <StatusPill tone="neutral">{visibleItems.length} saved</StatusPill>
           )}
-        </p>
-      </section>
-      {nativeRuntime ? (
-        <InstructionEnvironmentPanel
-          environments={visibleEnvironments}
-          governedMutationsAvailable={governedMutationsAvailable}
-          onComplete={(message) => onNotice?.(message)}
-          projectLabel={(projectId) =>
-            liveProjects.find((project) => project.project_id === projectId)
-              ?.display_name ?? projectId
-          }
-          snapshotDigest={snapshotDigest}
-        />
-      ) : null}
-      <div className="core-toolbar">
-        <div aria-label="Filter by knowledge type" className="core-kind-filter">
-          <button
-            aria-pressed={kind === "all"}
-            onClick={() => setKind("all")}
-            type="button"
+        </div>
+        {nativeRuntime && visibleEnvironments.length > 0 ? (
+          <details
+            className="learning-details"
+            open={visibleEnvironments.some(
+              (environment) => environment.blocking_conflict_count > 0,
+            )}
           >
-            All
-          </button>
-          {coreKinds.map((entry) => (
+            <summary>Existing agent setup</summary>
+            <InstructionEnvironmentPanel
+              environments={visibleEnvironments}
+              governedMutationsAvailable={governedMutationsAvailable}
+              onComplete={(message) => onNotice?.(message)}
+              projectLabel={(projectId) =>
+                liveProjects.find((project) => project.project_id === projectId)
+                  ?.display_name ?? projectId
+              }
+              snapshotDigest={snapshotDigest}
+            />
+          </details>
+        ) : null}
+        <div className="core-toolbar">
+          <div
+            aria-label="Filter by knowledge type"
+            className="core-kind-filter"
+          >
             <button
-              aria-pressed={kind === entry.id}
-              key={entry.id}
-              onClick={() => setKind(entry.id)}
+              aria-pressed={kind === "all"}
+              onClick={() => setKind("all")}
               type="button"
             >
-              {entry.label}
+              All
             </button>
-          ))}
-        </div>
-        <div className="core-scope-filter">
-          <span>Show for</span>
-          <TemperSelect
-            ariaLabel="Show for"
-            className="core-scope-select"
-            onValueChange={setScope}
-            options={[
-              { label: "All projects", value: "all" as const },
-              ...workspaceChoices.map((workspace) => ({
-                label: workspace,
-                value: workspace,
-              })),
-            ]}
-            value={scope}
-          />
-        </div>
-      </div>
-      {nativeRuntime && recentUndo ? (
-        <div className="undo-banner">
-          <span>{recentUndo.summary}</span>
-          <button
-            disabled={!governedMutationsAvailable}
-            onClick={() => void onUndo?.()}
-            title={governedMutationUnavailableReason ?? undefined}
-            type="button"
-          >
-            <RotateCcw size={14} /> Undo
-          </button>
-        </div>
-      ) : removed ? (
-        <div className="undo-banner">
-          <span>“{removed.item.title}” was removed from Core.</span>
-          <button onClick={restoreItem} type="button">
-            <RotateCcw size={14} /> Undo
-          </button>
-        </div>
-      ) : null}
-      <div className="core-catalog">
-        {coreKinds.map((entry) => {
-          const groupItems = visibleItems.filter(
-            (item) => item.kind === entry.id,
-          );
-          if (!groupItems.length) return null;
-          return (
-            <CoreGroup
-              description={entry.description}
-              items={groupItems}
-              key={entry.id}
-              label={entry.label}
-              onEdit={setSelected}
-              onRemove={removeItem}
-              onRevoke={setRevokeSelected}
-              readOnly={nativeRuntime}
-              revokeAvailable={governedMutationsAvailable}
-              revokeUnavailableReason={governedMutationUnavailableReason}
+            {coreKinds.map((entry) => (
+              <button
+                aria-pressed={kind === entry.id}
+                key={entry.id}
+                onClick={() => setKind(entry.id)}
+                type="button"
+              >
+                {entry.label}
+              </button>
+            ))}
+          </div>
+          <div className="core-scope-filter">
+            <span>Show for</span>
+            <TemperSelect
+              ariaLabel="Show for"
+              className="core-scope-select"
+              onValueChange={setScope}
+              options={[
+                { label: "All projects", value: "all" as const },
+                ...workspaceChoices.map((workspace) => ({
+                  label: workspace,
+                  value: workspace,
+                })),
+              ]}
+              value={scope}
             />
-          );
-        })}
-        {visibleItems.length === 0 ? (
-          <div className="core-empty">
-            {items.length === 0
-              ? "No saved guidance yet. Approved suggestions will appear here."
-              : "No items match these filters."}
+          </div>
+        </div>
+        {nativeRuntime && recentUndo ? (
+          <div className="undo-banner">
+            <span>{recentUndo.summary}</span>
+            <button
+              disabled={!governedMutationsAvailable}
+              onClick={() => void onUndo?.()}
+              title={governedMutationUnavailableReason ?? undefined}
+              type="button"
+            >
+              <RotateCcw size={14} /> Undo
+            </button>
+          </div>
+        ) : removed ? (
+          <div className="undo-banner">
+            <span>“{removed.item.title}” was removed from saved guidance.</span>
+            <button onClick={restoreItem} type="button">
+              <RotateCcw size={14} /> Undo
+            </button>
           </div>
         ) : null}
-      </div>
+        <div className="core-catalog">
+          {coreKinds.map((entry) => {
+            const groupItems = visibleItems.filter(
+              (item) => item.kind === entry.id,
+            );
+            if (!groupItems.length) return null;
+            return (
+              <CoreGroup
+                description={entry.description}
+                items={groupItems}
+                key={entry.id}
+                label={entry.label}
+                onEdit={setSelected}
+                onRemove={removeItem}
+                onRevoke={setRevokeSelected}
+                readOnly={nativeRuntime}
+                revokeAvailable={governedMutationsAvailable}
+                revokeUnavailableReason={governedMutationUnavailableReason}
+              />
+            );
+          })}
+          {visibleItems.length === 0 ? (
+            <div className="core-empty">
+              {nativeRuntime && !snapshotDigest
+                ? "Saved guidance is unavailable. Refresh status in Connections to try again."
+                : items.length === 0
+                  ? "No saved guidance yet. Approve a suggestion or import guidance to add it here."
+                  : "No items match these filters."}
+            </div>
+          ) : null}
+        </div>
+      </section>
       {selected ? (
         <CoreItemDialog
           availableScopes={workspaceChoices}
@@ -901,12 +792,8 @@ function InstructionEnvironmentPanel({
     <section className="native-context" aria-labelledby="native-context-title">
       <header className="native-context__heading">
         <div>
-          <span className="folio-kicker">Also considered</span>
-          <h2 id="native-context-title">Existing agent setup</h2>
-          <p>
-            Temper accounts for these project instructions and skills without
-            adding them to your Core.
-          </p>
+          <h3 id="native-context-title">Project instructions and skills</h3>
+          <p>Temper checks this setup before applying your saved guidance.</p>
         </div>
         <StatusPill tone={conflictCount ? "neutral" : "positive"}>
           {conflictCount
@@ -952,7 +839,7 @@ function InstructionEnvironmentPanel({
                 </div>
                 <dl>
                   <div>
-                    <dt>Temper Core</dt>
+                    <dt>Saved guidance</dt>
                     <dd>{conflict.temper_behavior}</dd>
                   </div>
                   <div>
@@ -1120,7 +1007,7 @@ function NativeInstructionDialog({
 
   return (
     <Dialog.Root onOpenChange={(open) => (open ? undefined : onClose())} open>
-      <Dialog.Portal>
+      <PageDialogPortal>
         <Dialog.Overlay className="dialog-overlay" />
         <Dialog.Content
           className="core-dialog native-instruction-dialog"
@@ -1217,7 +1104,7 @@ function NativeInstructionDialog({
             )}
           </div>
         </Dialog.Content>
-      </Dialog.Portal>
+      </PageDialogPortal>
     </Dialog.Root>
   );
 }
@@ -1332,10 +1219,12 @@ function CoreRevocationDialog({
   const [error, setError] = useState<string | null>(null);
   return (
     <Dialog.Root onOpenChange={(open) => (open ? null : onClose())} open>
-      <Dialog.Portal>
+      <PageDialogPortal>
         <Dialog.Overlay className="dialog-overlay" />
         <Dialog.Content className="core-dialog">
-          <Dialog.Title>Remove “{item.title}” from Core?</Dialog.Title>
+          <Dialog.Title>
+            Remove “{item.title}” from saved guidance?
+          </Dialog.Title>
           <Dialog.Description>
             Future tasks won’t receive this guidance. Its history remains
             available in Advanced.
@@ -1366,7 +1255,7 @@ function CoreRevocationDialog({
           </div>
           {error ? <p role="alert">{error}</p> : null}
         </Dialog.Content>
-      </Dialog.Portal>
+      </PageDialogPortal>
     </Dialog.Root>
   );
 }
@@ -1422,10 +1311,10 @@ export function ModesPage({
     <div className="page folio-page modes-page">
       <header className="modes-heading">
         <div>
-          <h1>Modes Hub</h1>
+          <h1>Tools &amp; workflows</h1>
           <p>
-            Choose a workflow for one task. Your saved Core preferences stay
-            unchanged.
+            Set up automatic tools or choose a saved workflow for a specific
+            task.
           </p>
         </div>
         <div className="modes-heading__actions">
@@ -1436,10 +1325,17 @@ export function ModesPage({
           >
             <Upload aria-hidden="true" size={14} /> Import package
           </button>
-          <Compass aria-hidden="true" size={30} strokeWidth={1.25} />
         </div>
       </header>
-      <Suspense fallback={<p role="status">Loading repository setup…</p>}>
+      <Suspense
+        fallback={
+          <div className="page-loading-card" role="status">
+            <span>Loading automatic tools…</span>
+            <span className="page-loading-card__line" aria-hidden="true" />
+            <span className="page-loading-card__line" aria-hidden="true" />
+          </div>
+        }
+      >
         <ToolsHubPanel nativeRuntime={nativeRuntime} />
       </Suspense>
       <h2 className="modes-section-title">Saved workflows</h2>
@@ -1459,7 +1355,11 @@ export function ModesPage({
           projects={reviewProjects}
         />
       ) : null}
-      {loading ? <div className="modes-empty">Loading local Modes…</div> : null}
+      {loading ? (
+        <div className="modes-empty" role="status">
+          Loading saved workflows…
+        </div>
+      ) : null}
       {error ? (
         <div className="modes-empty" role="alert">
           {error}
@@ -1483,7 +1383,7 @@ export function ModesPage({
                       ? "Unavailable"
                       : "Evaluation pending"}
               </span>
-              <h2>{mode.name}</h2>
+              <h3>{mode.name}</h3>
               <p>{mode.summary}</p>
               <div className="mode-card__facts">
                 <span>One task</span>
@@ -1507,21 +1407,20 @@ export function ModesPage({
               }}
               type="button"
             >
-              View Mode <ArrowRight aria-hidden="true" size={15} />
+              View workflow <ArrowRight aria-hidden="true" size={15} />
             </button>
           </article>
         ))}
       </div>
       {!loading && !error && modes.length === 0 ? (
-        <div className="modes-empty">No Modes are available in this build.</div>
+        <div className="modes-empty">
+          No saved workflows yet. Import a package to add a workflow.
+        </div>
       ) : null}
       <footer className="mode-footer">
-        <p>
-          A Mode ends with its task. Keep lasting preferences and instructions
-          in Core.
-        </p>
+        <p>Saved workflows apply to one task at a time.</p>
         <button onClick={onOpenCore} type="button">
-          View Core <ArrowRight aria-hidden="true" size={14} />
+          View personalization <ArrowRight aria-hidden="true" size={14} />
         </button>
       </footer>
       {selected ? (
@@ -1634,7 +1533,7 @@ function ModeDetailsDialog({
       setError(
         reason instanceof Error
           ? reason.message
-          : "Temper could not create a safe Mode preview.",
+          : "Temper could not create a workflow preview.",
       );
     } finally {
       setBusy(false);
@@ -1664,7 +1563,7 @@ function ModeDetailsDialog({
       setError(
         reason instanceof Error
           ? reason.message
-          : "Temper could not start the managed Mode task.",
+          : "Temper could not start the workflow.",
       );
     } finally {
       setBusy(false);
@@ -1673,7 +1572,7 @@ function ModeDetailsDialog({
 
   return (
     <Dialog.Root onOpenChange={(open) => (open ? undefined : onClose())} open>
-      <Dialog.Portal>
+      <PageDialogPortal>
         <Dialog.Overlay className="dialog-overlay" />
         <Dialog.Content
           className="core-dialog mode-dialog"
@@ -1686,17 +1585,17 @@ function ModeDetailsDialog({
             <X size={18} />
           </Dialog.Close>
           <span className="folio-kicker">
-            Temporary Mode · v{mode.mode_version}
+            Saved workflow · v{mode.mode_version}
           </span>
           <Dialog.Title>{mode.name}</Dialog.Title>
           <Dialog.Description>{mode.summary}</Dialog.Description>
           <dl className="mode-detail-list">
             <div>
-              <dt>Catalog status</dt>
+              <dt>Evaluation status</dt>
               <dd>
                 {mode.evaluation_status === "product_evaluated"
-                  ? "Product evaluated"
-                  : "Curated and reviewed; comparative testing pending"}
+                  ? "Passed effectiveness testing"
+                  : "Reviewed. Comparative testing pending."}
               </dd>
             </div>
             <div>
@@ -1710,11 +1609,8 @@ function ModeDetailsDialog({
               </dd>
             </div>
             <div>
-              <dt>Life span</dt>
-              <dd>
-                One exact managed task, up to {mode.task_lease_hours} hours,
-                then clean removal
-              </dd>
+              <dt>Duration</dt>
+              <dd>One task, up to {mode.task_lease_hours} hours</dd>
             </div>
             <div>
               <dt>Instruction formats</dt>
@@ -1722,7 +1618,7 @@ function ModeDetailsDialog({
             </div>
             <div>
               <dt>Available now</dt>
-              <dd>Fresh Temper-managed Codex tasks</dd>
+              <dd>New Codex tasks started by Temper</dd>
             </div>
             <div>
               <dt>Added tools</dt>
@@ -1733,10 +1629,10 @@ function ModeDetailsDialog({
               </dd>
             </div>
             <div>
-              <dt>Static conformance</dt>
+              <dt>Safety and format checks</dt>
               <dd>
                 {mode.evaluation_valid
-                  ? `${mode.evaluation_case_count} conformance checks passed`
+                  ? `${mode.evaluation_case_count} checks passed`
                   : "Needs attention"}
               </dd>
             </div>
@@ -1744,21 +1640,21 @@ function ModeDetailsDialog({
               <dt>Effectiveness</dt>
               <dd>
                 {mode.effectiveness_evaluated
-                  ? "Passed the frozen product comparison"
-                  : "Not established — comparative evaluation pending"}
+                  ? "Passed comparative testing"
+                  : "Comparative evaluation pending"}
               </dd>
             </div>
             <div>
-              <dt>Personal overlay</dt>
+              <dt>Personalization</dt>
               <dd>
                 {mode.personalized
-                  ? "Your approved overlay is applied for this task only"
-                  : "None — this Mode uses its generic defaults"}
+                  ? "Uses your approved guidance for this task"
+                  : "Uses the workflow’s default guidance"}
               </dd>
             </div>
           </dl>
           {detail ? (
-            <section className="mode-source-list" aria-label="Mode sources">
+            <section className="mode-source-list" aria-label="Workflow sources">
               <h3>Reviewed sources</h3>
               {detail.sources.map((source) => (
                 <div key={`${source.repository_url}:${source.source_path}`}>
@@ -1775,39 +1671,36 @@ function ModeDetailsDialog({
             </section>
           ) : null}
           <div className="mode-authority-note">
-            Your request, project rules, security constraints, and Core always
-            outrank Mode defaults.
+            Your request, project rules, security settings and saved guidance
+            take precedence over workflow defaults.
           </div>
           {projectId ? (
-            <dl
-              className="mode-detail-list"
-              aria-label="Native instruction coverage"
-            >
-              <div>
-                <dt>Existing setup considered</dt>
-                <dd>
-                  {selectedEnvironment
-                    ? `${selectedEnvironment.source_count} source${selectedEnvironment.source_count === 1 ? "" : "s"}`
-                    : "Not analyzed yet"}
-                </dd>
-              </div>
-              <div>
-                <dt>Candidate Mode material</dt>
-                <dd>
-                  {mode.projection_utf8_bytes} bytes before native deduplication
-                </dd>
-              </div>
-              <div>
-                <dt>Blocking conflicts</dt>
-                <dd>
-                  {selectedEnvironment?.blocking_conflict_count ?? "Unknown"}
-                </dd>
-              </div>
-              <div>
-                <dt>Final delta</dt>
-                <dd>Rehashed and minimized immediately before launch</dd>
-              </div>
-            </dl>
+            <details className="learning-details">
+              <summary>Instruction checks</summary>
+              <dl className="mode-detail-list" aria-label="Instruction checks">
+                <div>
+                  <dt>Existing setup considered</dt>
+                  <dd>
+                    {selectedEnvironment
+                      ? `${selectedEnvironment.source_count} source${selectedEnvironment.source_count === 1 ? "" : "s"}`
+                      : "Not analyzed yet"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Workflow instructions</dt>
+                  <dd>
+                    {mode.projection_utf8_bytes} bytes before duplicate
+                    instructions are removed
+                  </dd>
+                </div>
+                <div>
+                  <dt>Blocking conflicts</dt>
+                  <dd>
+                    {selectedEnvironment?.blocking_conflict_count ?? "Unknown"}
+                  </dd>
+                </div>
+              </dl>
+            </details>
           ) : null}
           <div className="mode-task-form">
             <div className="core-field">
@@ -1835,18 +1728,18 @@ function ModeDetailsDialog({
                   setTask(event.target.value);
                   setPreview(null);
                 }}
-                placeholder={`Describe the ${mode.name.toLowerCase()} work for this one managed task`}
+                placeholder="Describe the task you want Codex to run"
                 rows={3}
                 value={task}
               />
             </label>
             <p>
               {runnerReady
-                ? "Uses a fresh isolated Codex session with your saved ChatGPT authentication."
+                ? "Runs in a separate Codex session using your connected account."
                 : (runnerUnavailableReason ??
-                  "Managed Mode delivery is unavailable in the current state.")}{" "}
-              Changes return for review; the Mode is removed whether the task
-              succeeds or fails.
+                  "This workflow is unavailable right now.")}{" "}
+              Review any changes before applying them. The workflow ends when
+              the task finishes or fails.
             </p>
             {error ? (
               <div className="portability-error" role="alert">
@@ -1864,7 +1757,7 @@ function ModeDetailsDialog({
                 <span>
                   {preview.requested_tools.length === 0
                     ? "No tools or permissions are added."
-                    : "This Mode requests additional capabilities."}
+                    : "This workflow requests additional tools."}
                 </span>
               </div>
             ) : null}
@@ -1889,7 +1782,7 @@ function ModeDetailsDialog({
               tone="primary"
             >
               {busy
-                ? "Running isolated task…"
+                ? "Running task…"
                 : nativeRuntime
                   ? runnerReady
                     ? preview
@@ -1900,7 +1793,7 @@ function ModeDetailsDialog({
             </Button>
           </div>
         </Dialog.Content>
-      </Dialog.Portal>
+      </PageDialogPortal>
     </Dialog.Root>
   );
 }
@@ -1926,7 +1819,7 @@ function CoreItemDialog({
   const canSave = Boolean(title.trim() && description.trim());
   return (
     <Dialog.Root onOpenChange={(open) => (open ? undefined : onClose())} open>
-      <Dialog.Portal>
+      <PageDialogPortal>
         <Dialog.Overlay className="dialog-overlay" />
         <Dialog.Content className="core-dialog">
           <Dialog.Close aria-label="Close" className="dialog-close">
@@ -1994,7 +1887,7 @@ function CoreItemDialog({
             </Button>
           </div>
         </Dialog.Content>
-      </Dialog.Portal>
+      </PageDialogPortal>
     </Dialog.Root>
   );
 }
@@ -2026,6 +1919,8 @@ export function ConnectionsPage({
   onInstructionChanged?: (message: string) => void | Promise<void>;
   onRefresh?: () => Promise<void>;
 }) {
+  const connectionTrigger = useRef<HTMLButtonElement | null>(null);
+  const projectTrigger = useRef<HTMLButtonElement | null>(null);
   const [selectedConnection, setSelectedConnection] =
     useState<AgentConnection | null>(null);
   const [projectPreview, setProjectPreview] =
@@ -2147,10 +2042,12 @@ export function ConnectionsPage({
   }
   return (
     <div className="page">
-      <header className="page-topline">
-        <div />
+      <header className="today-learning-heading">
+        <div>
+          <h1>Connections</h1>
+          <p>Manage the agents and projects that Temper can access.</p>
+        </div>
       </header>
-      <SectionHeading title="Connections" />
       {nativeRuntime ? (
         <div className="connections-toolbar">
           <Button
@@ -2179,27 +2076,22 @@ export function ConnectionsPage({
         <div className="native-action-note" role="note">
           <Laptop aria-hidden="true" size={16} />
           <span>
-            This browser preview cannot change agent accounts or project
-            folders. Those controls become available in the installed desktop
-            app.
+            Use the desktop app to connect agents and add project folders.
           </span>
         </div>
       ) : null}
-      {nativeRuntime && (
-        <div className="subsection-heading">
-          <div>
-            <h2>Core &amp; managed-task connections</h2>
+      <div className="subsection-heading">
+        <div>
+          <h2>Agent accounts</h2>
+          {nativeRuntime ? (
             <p>
-              These connections serve reviewed suggestions and managed tasks.
-              Ordinary Codex chat learning has separate access below.
+              Connect an agent to run workflows and use guidance you’ve
+              approved.
             </p>
-          </div>
+          ) : null}
         </div>
-      )}
-      <section
-        className="connection-list"
-        aria-label="Core and managed-task connections"
-      >
+      </div>
+      <section className="connection-list" aria-label="Agent accounts">
         {shownConnections.map((connection) => (
           <article className="connection-card" key={connection.id}>
             <div className={`agent-logo agent-logo--${connection.id}`}>
@@ -2207,13 +2099,12 @@ export function ConnectionsPage({
             </div>
             <div className="connection-main">
               <div className="connection-title">
-                <h2>{connection.name}</h2>
+                <h3>{connection.name}</h3>
                 <StatusPill
                   tone={
                     connection.status === "connected" ? "positive" : "neutral"
                   }
                 >
-                  {nativeRuntime ? "Task connection: " : ""}
                   {connectionStatusLabel(connection.status)}
                 </StatusPill>
               </div>
@@ -2240,7 +2131,10 @@ export function ConnectionsPage({
               </div>
             </div>
             <Button
-              onClick={() => setSelectedConnection(connection)}
+              onClick={(event) => {
+                connectionTrigger.current = event.currentTarget;
+                setSelectedConnection(connection);
+              }}
               tone="quiet"
             >
               View details
@@ -2249,16 +2143,11 @@ export function ConnectionsPage({
         ))}
       </section>
       {nativeRuntime && <LearningRepositories />}
-      <section className="projects-section" aria-label="Managed-task projects">
+      <section className="projects-section" aria-label="Task projects">
         <div className="subsection-heading">
           <div>
-            <h2>
-              {nativeRuntime ? "Managed-task projects" : "Registered projects"}
-            </h2>
-            <p>
-              Managed tasks use a separate project registration. Chat learning
-              does not require a task runner.
-            </p>
+            <h2>{nativeRuntime ? "Task projects" : "Registered projects"}</h2>
+            <p>Choose the folders where Temper can run saved workflows.</p>
           </div>
           <Button
             disabled={
@@ -2268,7 +2157,10 @@ export function ConnectionsPage({
               !registrationAvailable
             }
             icon={<Plus size={16} />}
-            onClick={chooseProject}
+            onClick={(event) => {
+              projectTrigger.current = event.currentTarget;
+              void chooseProject();
+            }}
             title={registrationUnavailableReason ?? undefined}
           >
             {nativeRuntime ? "Add task project" : "Add project"}
@@ -2344,7 +2236,7 @@ export function ConnectionsPage({
         {filteredProjects.length === 0 && (
           <p className="project-empty">
             {shownProjects.length === 0
-              ? "No projects registered. Add a project to get started."
+              ? "No task projects yet. Add a folder to run a saved workflow."
               : "No projects match your search."}
           </p>
         )}
@@ -2359,6 +2251,9 @@ export function ConnectionsPage({
           projects={liveProjects ?? []}
           onClose={() => setSelectedConnection(null)}
           onInstructionChanged={onInstructionChanged}
+          onCloseAutoFocus={(event) =>
+            restorePageDialogFocus(event, connectionTrigger.current)
+          }
           snapshotDigest={snapshotDigest}
         />
       ) : null}
@@ -2367,9 +2262,14 @@ export function ConnectionsPage({
           onOpenChange={(open) => (open ? undefined : setProjectPreview(null))}
           open
         >
-          <Dialog.Portal>
+          <PageDialogPortal>
             <Dialog.Overlay className="dialog-overlay" />
-            <Dialog.Content className="core-dialog connection-dialog">
+            <Dialog.Content
+              className="core-dialog connection-dialog"
+              onCloseAutoFocus={(event) =>
+                restorePageDialogFocus(event, projectTrigger.current)
+              }
+            >
               <Dialog.Close aria-label="Close" className="dialog-close">
                 <X size={18} />
               </Dialog.Close>
@@ -2398,7 +2298,7 @@ export function ConnectionsPage({
                 </Button>
               </div>
             </Dialog.Content>
-          </Dialog.Portal>
+          </PageDialogPortal>
         </Dialog.Root>
       ) : null}
       {projectMessage && !projectPreview ? (
@@ -2416,6 +2316,7 @@ function ConnectionDetailsDialog({
   nativeRuntime,
   projects,
   onClose,
+  onCloseAutoFocus,
   onInstructionChanged,
   snapshotDigest,
 }: {
@@ -2424,6 +2325,7 @@ function ConnectionDetailsDialog({
   nativeRuntime: boolean;
   projects: EngineProject[];
   onClose: () => void;
+  onCloseAutoFocus: (event: Event) => void;
   onInstructionChanged?: (message: string) => void | Promise<void>;
   snapshotDigest: string | null;
 }) {
@@ -2477,9 +2379,7 @@ function ConnectionDetailsDialog({
           crypto.randomUUID(),
         );
       }
-      await onInstructionChanged?.(
-        `${connection.name} existing instructions were analyzed without promoting them into Core.`,
-      );
+      await onInstructionChanged?.(`${connection.name} instructions checked.`);
     } catch (reason: unknown) {
       setError(
         reason instanceof Error
@@ -2634,7 +2534,7 @@ function ConnectionDetailsDialog({
       setError(
         reason instanceof Error
           ? reason.message
-          : `Temper could not preview portable Core for ${connection.name}.`,
+          : `Temper could not preview saved guidance for ${connection.name}.`,
       );
     } finally {
       setBusy(false);
@@ -2662,15 +2562,15 @@ function ConnectionDetailsDialog({
       setTargetPreview(null);
       await onInstructionChanged?.(
         receipt.decision === "authorize"
-          ? `${receipt.authorized_artifact_count} Core behavior${receipt.authorized_artifact_count === 1 ? " is" : "s are"} now approved for ${connection.name} in this project.`
-          : `${connection.name}-specific Core authority was removed for this project.`,
+          ? `${receipt.authorized_artifact_count} saved item${receipt.authorized_artifact_count === 1 ? " is" : "s are"} now approved for ${connection.name} in this project.`
+          : `${connection.name} can no longer use that guidance in this project.`,
       );
       onClose();
     } catch (reason: unknown) {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Temper could not change portable Core authority.",
+          : "Temper could not update guidance permissions.",
       );
     } finally {
       setBusy(false);
@@ -2679,9 +2579,12 @@ function ConnectionDetailsDialog({
 
   return (
     <Dialog.Root onOpenChange={(open) => (open ? undefined : onClose())} open>
-      <Dialog.Portal>
+      <PageDialogPortal>
         <Dialog.Overlay className="dialog-overlay" />
-        <Dialog.Content className="core-dialog connection-dialog">
+        <Dialog.Content
+          className="core-dialog connection-dialog"
+          onCloseAutoFocus={onCloseAutoFocus}
+        >
           <Dialog.Close aria-label="Close" className="dialog-close">
             <X size={18} />
           </Dialog.Close>
@@ -2698,7 +2601,7 @@ function ConnectionDetailsDialog({
               <dd>{connection.sourceCapability}</dd>
             </div>
             <div>
-              <dt>{nativeRuntime ? "Core and task delivery" : "Delivery"}</dt>
+              <dt>{nativeRuntime ? "Guidance and workflows" : "Delivery"}</dt>
               <dd>{connection.targetCapability}</dd>
             </div>
             {nativeRuntime ? (
@@ -2839,7 +2742,7 @@ function ConnectionDetailsDialog({
               className="claude-connection portable-core"
             >
               <div>
-                <h3 id="portable-core-title">Portable Core</h3>
+                <h3 id="portable-core-title">Share approved guidance</h3>
                 <p>
                   Choose which already approved behaviors may also guide{" "}
                   {connection.name}. New learning stays unavailable there until
@@ -2893,9 +2796,7 @@ function ConnectionDetailsDialog({
                       })}
                     </div>
                   ) : (
-                    <span>
-                      No approved Core behaviors apply to this project.
-                    </span>
+                    <span>No approved guidance applies to this project.</span>
                   )}
                   <label className="connection-confirmation">
                     <input
@@ -2906,10 +2807,8 @@ function ConnectionDetailsDialog({
                       type="checkbox"
                     />
                     <span>
-                      Apply this exact{" "}
-                      {connection.id === "claude" ? "Claude" : connection.name}
-                      -specific selection for 30 days. This does not alter Core
-                      or affect other agents.
+                      Allow {connection.name} to use only the selected guidance
+                      in this project for 30 days.
                     </span>
                   </label>
                   <div className="personal-setup__actions">
@@ -2941,7 +2840,7 @@ function ConnectionDetailsDialog({
                         }
                         tone="quiet"
                       >
-                        Review behaviors
+                        Review guidance
                       </Button>
                     </div>
                   ))}
@@ -3030,7 +2929,7 @@ function ConnectionDetailsDialog({
             </Button>
           </div>
         </Dialog.Content>
-      </Dialog.Portal>
+      </PageDialogPortal>
     </Dialog.Root>
   );
 }
@@ -3240,10 +3139,12 @@ export function SettingsPage({
   }
   return (
     <div className="page settings-page">
-      <header className="page-topline">
-        <div />
+      <header className="today-learning-heading">
+        <div>
+          <h1>Settings</h1>
+          <p>Manage app preferences, privacy and recovery.</p>
+        </div>
       </header>
-      <SectionHeading title="Settings" />
       <SettingsGroup
         title={nativeRuntime ? "Reviewed suggestions" : "Learning"}
       >
@@ -3251,7 +3152,7 @@ export function SettingsPage({
           checked={nativeRuntime ? backgroundLearning : learning}
           description={
             nativeRuntime
-              ? "Use new feedback to propose changes for your review. Habit learning is controlled on Today."
+              ? "Use new feedback to propose guidance for your review. Manage chat learning in Personalization."
               : "Notice possible preferences in completed work from registered projects."
           }
           label={nativeRuntime ? "Reviewed suggestions" : "Background learning"}
@@ -3337,7 +3238,7 @@ export function SettingsPage({
         </p>
       ) : null}
       <SettingsGroup
-        title={nativeRuntime ? "Privacy" : "Privacy and telemetry"}
+        title={nativeRuntime ? "Privacy" : "Privacy and reporting"}
       >
         <div className="privacy-summary">
           <ShieldCheck size={20} />
@@ -3356,7 +3257,7 @@ export function SettingsPage({
             }}
             tone="quiet"
           >
-            View consent
+            View permissions
           </Button>
         </div>
         {nativeRuntime ? (
@@ -3364,8 +3265,8 @@ export function SettingsPage({
             checked={telemetryEnabled}
             description={
               telemetryEnabled
-                ? "Reporting was previously allowed. You can turn it off; this build cannot upload new reports."
-                : "Aggregate reporting is unavailable in this build. Nothing is uploaded."
+                ? "Report uploads are unavailable. Nothing new is uploaded."
+                : "Report uploads are unavailable. Nothing is uploaded."
             }
             disabled={preferenceBusy || !telemetryEnabled}
             label="Help improve Temper"
@@ -3397,10 +3298,10 @@ export function SettingsPage({
           </div>
         ) : null}
       </SettingsGroup>
-      <SettingsGroup title="Advanced">
+      <SettingsGroup title="Diagnostics">
         <Toggle
           checked={advancedMode}
-          description="Show diagnostics, source details and the task workspace."
+          description="Show diagnostics and tools for running tasks."
           label="Advanced mode"
           onCheckedChange={onAdvancedModeChange}
         />
@@ -3473,7 +3374,7 @@ function ConsentDialog({
     : null;
   return (
     <Dialog.Root onOpenChange={onOpenChange} open={open}>
-      <Dialog.Portal>
+      <PageDialogPortal>
         <Dialog.Overlay className="dialog-overlay" />
         <Dialog.Content
           className="telemetry-dialog"
@@ -3494,8 +3395,8 @@ function ConsentDialog({
           <Dialog.Title>Permission for reviewed suggestions</Dialog.Title>
           <Dialog.Description>
             {nativeRuntime
-              ? "This permission covers reviewed suggestions. Habit learning has separate controls on Today."
-              : "This browser preview uses sample consent details and cannot change your local Temper installation."}
+              ? "This permission covers reviewed suggestions. Manage chat learning in Personalization."
+              : "These sample permissions are for the browser preview."}
           </Dialog.Description>
           <div className="report-preview">
             <ReportRow
@@ -3511,7 +3412,7 @@ function ConsentDialog({
               }
             />
             <ReportRow
-              label="Raw retention"
+              label="Evidence retention"
               value={
                 consent
                   ? `${consent.retention_days} days`
@@ -3528,10 +3429,7 @@ function ConsentDialog({
           </div>
           <div className="report-retention">
             <Info size={15} />
-            <span>
-              Evidence content stays encrypted locally. This screen never
-              reveals raw prompts, repository paths, or signing material.
-            </span>
+            <span>Temper encrypts stored evidence on this device.</span>
           </div>
           <div className="dialog-footer">
             {nativeRuntime && consent?.renewal_required ? (
@@ -3567,7 +3465,7 @@ function ConsentDialog({
           </div>
           {renewalError ? <p role="alert">{renewalError}</p> : null}
         </Dialog.Content>
-      </Dialog.Portal>
+      </PageDialogPortal>
     </Dialog.Root>
   );
 }
@@ -3619,7 +3517,7 @@ function TelemetryDialog({
 }) {
   return (
     <Dialog.Root onOpenChange={onOpenChange} open={open}>
-      <Dialog.Portal>
+      <PageDialogPortal>
         <Dialog.Overlay className="dialog-overlay" />
         <Dialog.Content className="telemetry-dialog">
           <Dialog.Close
@@ -3657,7 +3555,7 @@ function TelemetryDialog({
             </Button>
           </div>
         </Dialog.Content>
-      </Dialog.Portal>
+      </PageDialogPortal>
     </Dialog.Root>
   );
 }

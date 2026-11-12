@@ -1,4 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
+import { usePageVisibility } from "../pageVisibility";
+import { useDialogFocusReturn } from "./dialogFocus";
 import { Check, PackageOpen, Share2, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -31,6 +33,8 @@ export function ShareablePackageDialog({
   onComplete: (message: string) => void;
   snapshotDigest: string | null;
 }) {
+  const pageVisible = usePageVisibility();
+  const dialogFocus = useDialogFocusReturn(pageVisible);
   const [preview, setPreview] = useState<
     PackageExportPreview | PackageImportPreview | null
   >(null);
@@ -105,7 +109,7 @@ export function ShareablePackageDialog({
           crypto.randomUUID(),
         );
         onComplete(
-          `${importPreview.display_name} is inactive and ready for governed review.`,
+          `${importPreview.display_name} is ready for your review. It has not been enabled.`,
         );
       }
       onClose();
@@ -128,10 +132,16 @@ export function ShareablePackageDialog({
     : "Review a Temper package";
 
   return (
-    <Dialog.Root onOpenChange={(open) => (open ? undefined : onClose())} open>
+    <Dialog.Root
+      onOpenChange={(open) => (open ? undefined : onClose())}
+      open={pageVisible}
+    >
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
-        <Dialog.Content className="core-dialog portability-dialog">
+        <Dialog.Content
+          {...dialogFocus}
+          className="core-dialog portability-dialog"
+        >
           <Dialog.Close aria-label="Close" className="dialog-close">
             <X size={18} />
           </Dialog.Close>

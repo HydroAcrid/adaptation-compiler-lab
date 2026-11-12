@@ -27,54 +27,53 @@ test("the product surface fills the real window at every supported size", async 
     await expect(
       page.getByText(/browser preview · sample data/i),
     ).toBeVisible();
-    await expect(page.getByRole("button", { name: "Today" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    await expect(
+      page.getByRole("button", { name: "Overview" }),
+    ).toHaveAttribute("aria-current", "page");
   }
 });
 
-test("primary navigation follows tab order without transient vertical overflow", async ({
+test("navigation keeps one page visible and restores scroll without transient overflow", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.setViewportSize({ width: 880, height: 540 });
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/?screen=today&theme=dark");
 
-  async function sampleVerticalOverflow() {
-    return page.locator(".main-content").evaluate(async (element) => {
-      const samples: boolean[] = [];
-      for (let frame = 0; frame < 18; frame += 1) {
-        await new Promise<void>((resolve) =>
-          requestAnimationFrame(() => resolve()),
-        );
-        samples.push(element.scrollHeight > element.clientHeight);
-      }
-      return samples;
-    });
-  }
+  const main = page.getByRole("main");
+  const settings = page.getByRole("button", { name: "Settings" });
+  await settings.click();
+  await expect(main).toHaveAccessibleName("Settings");
+  await expect(main).toBeFocused();
+  const savedScroll = await main.evaluate((element) => {
+    element.scrollTop = 140;
+    return element.scrollTop;
+  });
+  expect(savedScroll).toBeGreaterThan(0);
 
   await page.getByRole("button", { name: "Connections" }).click();
-  const forwardPage = page.locator(
-    '.screen-transition[data-screen="connections"]',
-  );
-  await expect(forwardPage).toHaveAttribute("data-direction", "forward");
-  expect(
-    await forwardPage.evaluate(
-      (element) => getComputedStyle(element).animationName,
-    ),
-  ).toBe("screen-enter-forward");
-  expect(new Set(await sampleVerticalOverflow()).size).toBe(1);
+  await page.getByRole("button", { name: "Overview" }).click();
+  await expect(main).toHaveAccessibleName("Overview");
+  await expect(page.locator(".page-view:visible")).toHaveCount(1);
+  await expect(
+    page.locator('.page-view[data-screen="settings"]'),
+  ).toHaveAttribute("inert", "");
 
-  await page.getByRole("button", { name: "Today" }).click();
-  const backwardPage = page.locator('.screen-transition[data-screen="today"]');
-  await expect(backwardPage).toHaveAttribute("data-direction", "backward");
-  expect(
-    await backwardPage.evaluate(
-      (element) => getComputedStyle(element).animationName,
-    ),
-  ).toBe("screen-enter-backward");
-  expect(new Set(await sampleVerticalOverflow()).size).toBe(1);
+  const scrollSamples = await main.evaluate(async (element) => {
+    const samples: boolean[] = [];
+    for (let frame = 0; frame < 12; frame += 1) {
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => resolve()),
+      );
+      samples.push(element.scrollHeight > element.clientHeight);
+    }
+    return samples;
+  });
+  expect(new Set(scrollSamples).size).toBe(1);
+  await settings.click();
+  await expect(settings).toHaveAttribute("aria-current", "page");
+  await expect(main).toBeFocused();
+  expect(await main.evaluate((element) => element.scrollTop)).toBe(savedScroll);
 });
 
 test("onboarding fills the real window instead of rendering a mock window", async ({
@@ -109,7 +108,7 @@ test("profile import preview remains visible and inactive", async ({
     dialog.getByText(/does not become your instruction authority/i),
   ).toBeVisible();
   await expect(
-    dialog.getByRole("button", { name: "Stage for review" }),
+    dialog.getByRole("button", { name: "Add to review" }),
   ).toBeDisabled();
 });
 
@@ -120,12 +119,12 @@ test("Frontend Studio is visibly temporary and browser-safe", async ({
   await page
     .getByRole("article")
     .filter({ hasText: "Frontend Studio" })
-    .getByRole("button", { name: "View Mode" })
+    .getByRole("button", { name: "View workflow" })
     .click();
 
   const dialog = page.getByRole("dialog", { name: "Frontend Studio" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText(/one exact managed task/i)).toBeVisible();
+  await expect(dialog.getByText(/one task, up to/i)).toBeVisible();
   await expect(dialog.getByText(/added tools/i)).toBeVisible();
   await expect(
     dialog.getByRole("button", { name: "Available in desktop app" }),
@@ -176,7 +175,9 @@ test("browser-only scenes do not expose inert native actions", async ({
 
   await page.goto("/?screen=tray&theme=dark");
   for (const name of ["Pause Temper", "Open Temper", "Help", "Quit"]) {
-    await expect(page.getByRole("button", { name })).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name, exact: true }),
+    ).toBeDisabled();
   }
   await expect(page.getByText("Sample state")).toBeVisible();
 });

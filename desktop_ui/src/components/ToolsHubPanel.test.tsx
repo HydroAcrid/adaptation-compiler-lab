@@ -1,7 +1,15 @@
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import { ToolsHubPanel } from "./ToolsHubPanel";
+import { PageVisibility } from "../pageVisibility";
 import type { HubState } from "../toolsHub";
 
 const api = vi.hoisted(() => ({ hubRequest: vi.fn() }));
@@ -33,6 +41,7 @@ afterEach(() => {
   cleanup();
   vi.resetAllMocks();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 it("does not treat learning repositories as tool permission and previews exact destinations", async () => {
@@ -89,7 +98,7 @@ it("does not treat learning repositories as tool permission and previews exact d
   );
   await waitFor(() =>
     expect(
-      screen.getByRole("heading", { name: "Repository setup" }),
+      screen.getByRole("heading", { name: "Automatic tools" }),
     ).toHaveFocus(),
   );
 });
@@ -113,6 +122,9 @@ it.each([
     return {};
   });
   render(<ToolsHubPanel nativeRuntime />);
+  if (opener !== "Connect Codex") {
+    await user.click(await screen.findByText("Tool settings"));
+  }
   const trigger = await screen.findByRole("button", {
     name: opener,
   });
@@ -215,51 +227,214 @@ it("keeps retained guidance and blocked cleanup visible after permission stops",
   ).toBeNull();
 });
 
-it("rejects a stale poll after a user action and stays navigable during manager work", async () => {
-  const user = userEvent.setup();
-  const active = { ...initial, enabled: true, indexed: true, project_count: 1 };
+it("serializes status reads and discards a poll superseded by a user action", async () => {
+  vi.useFakeTimers();
+  const enabled = { ...initial, enabled: true, indexed: true };
   let release: ((value: HubState) => void) | undefined;
-  let poll: (() => void) | undefined;
-  const originalInterval = window.setInterval.bind(window);
-  vi.spyOn(window, "setInterval").mockImplementation(((
-    callback: TimerHandler,
-    delay?: number,
-  ) => {
-    if (delay === 3000) {
-      poll = callback as () => void;
-      return 1;
-    }
-    return originalInterval(callback, delay);
-  }) as typeof window.setInterval);
-  let state = active;
-  let hold = false;
-  api.hubRequest.mockImplementation(async (operation: string) => {
-    if (operation === "status") {
-      if (hold) {
-        hold = false;
-        return new Promise<HubState>((resolve) => {
+  api.hubRequest
+    .mockResolvedValueOnce(enabled)
+    .mockImplementationOnce(
+      () =>
+        new Promise<HubState>((resolve) => {
           release = resolve;
-        });
-      }
-      return state;
-    }
-    if (operation === "control") {
-      state = { ...active, paused: true };
-      return { status: "paused" };
-    }
+        }),
+    )
+    .mockResolvedValueOnce({ ...enabled, digest: "fresh-digest" })
+    .mockResolvedValueOnce({ status: "paused" })
+    .mockResolvedValue({ ...enabled, paused: true });
+  render(<ToolsHubPanel nativeRuntime />);
+  await act(async () => {});
+  fireEvent.click(screen.getByText("Tool settings"));
+
+  await act(async () => vi.advanceTimersByTimeAsync(12000));
+  expect(api.hubRequest).toHaveBeenCalledTimes(2);
+  expect(screen.getByRole("button", { name: "Connect Codex" })).toBeVisible();
+
+  fireEvent.click(screen.getByRole("button", { name: "Pause updates" }));
+  expect(api.hubRequest).toHaveBeenCalledTimes(2);
+  await act(async () => release?.(initial));
+
+  expect(api.hubRequest).toHaveBeenCalledWith(
+    "control",
+    { operation: "pause" },
+    "fresh-digest",
+  );
+  expect(screen.getByRole("button", { name: "Resume updates" })).toBeVisible();
+  expect(screen.queryByText("Setup available")).toBeNull();
+});
+
+it("retains visible repositories on refresh failure and disables changes until recovery", async () => {
+  vi.useFakeTimers();
+  const enabled = {
+    ...initial,
+    enabled: true,
+    indexed: true,
+    native_hooks_configured: true,
+    projects: [
+      {
+        id: "repo",
+        label: "Example",
+        root: "/example",
+        paused: false,
+        active: ["debugging"],
+        pending_recovery: false,
+      },
+    ],
+  };
+  api.hubRequest
+    .mockResolvedValueOnce(enabled)
+    .mockRejectedValueOnce(new Error("Connection lost"))
+    .mockResolvedValue({
+      ...enabled,
+      projects: [{ ...enabled.projects[0], active: [] }],
+    });
+  render(<ToolsHubPanel nativeRuntime />);
+  expect(screen.getByText("Checking status")).toBeVisible();
+  await act(async () => {});
+  expect(screen.getByText(/Available guidance.*debugging/)).toBeVisible();
+
+  await act(async () => vi.advanceTimersByTimeAsync(3000));
+  expect(screen.getByText("Status out of date")).toBeVisible();
+  expect(screen.getByText(/Available guidance.*debugging/)).toBeVisible();
+  fireEvent.click(screen.getByText("Tool settings"));
+  expect(screen.getByRole("button", { name: "Pause updates" })).toBeDisabled();
+
+  fireEvent.click(screen.getByRole("button", { name: "Refresh status" }));
+  await act(async () => {});
+  expect(screen.getByText("Waiting for a task")).toBeVisible();
+  expect(screen.queryByText(/Available guidance.*debugging/)).toBeNull();
+  expect(screen.getByRole("button", { name: "Pause updates" })).toBeEnabled();
+});
+
+it("pauses refresh while the document is hidden and checks status on return", async () => {
+  vi.useFakeTimers();
+  const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+  api.hubRequest.mockResolvedValue(initial);
+  render(<ToolsHubPanel nativeRuntime />);
+  await act(async () => {});
+  expect(api.hubRequest).toHaveBeenCalledTimes(1);
+
+  hidden.mockReturnValue(true);
+  fireEvent(document, new Event("visibilitychange"));
+  await act(async () => vi.advanceTimersByTimeAsync(12000));
+  expect(api.hubRequest).toHaveBeenCalledTimes(1);
+  expect(
+    screen.getByRole("button", { name: "Set up repository tools" }),
+  ).toBeVisible();
+
+  hidden.mockReturnValue(false);
+  fireEvent(document, new Event("visibilitychange"));
+  await act(async () => {});
+  expect(api.hubRequest).toHaveBeenCalledTimes(2);
+});
+
+it("keeps the loaded panel across navigation and refreshes when reopened", async () => {
+  vi.useFakeTimers();
+  api.hubRequest.mockResolvedValue(initial);
+  const panel = (visible: boolean) => (
+    <PageVisibility.Provider value={visible}>
+      <ToolsHubPanel nativeRuntime />
+    </PageVisibility.Provider>
+  );
+  const { rerender } = render(panel(true));
+  await act(async () => {});
+  expect(
+    screen.getByRole("button", { name: "Set up repository tools" }),
+  ).toBeVisible();
+
+  rerender(panel(false));
+  await act(async () => vi.advanceTimersByTimeAsync(6000));
+  expect(api.hubRequest).toHaveBeenCalledTimes(1);
+
+  rerender(panel(true));
+  expect(
+    screen.getByRole("button", { name: "Set up repository tools" }),
+  ).toBeVisible();
+  expect(screen.queryByText("Checking status")).toBeNull();
+  await act(async () => {});
+  expect(api.hubRequest).toHaveBeenCalledTimes(2);
+});
+
+it("keeps a deferred connection review on Tools and restores it on return", async () => {
+  const user = userEvent.setup();
+  let resolvePreview: ((value: object) => void) | undefined;
+  api.hubRequest.mockImplementation(async (operation: string) => {
+    if (operation === "status")
+      return { ...initial, enabled: true, indexed: true };
+    if (operation === "connection_preview")
+      return new Promise((resolve) => {
+        resolvePreview = resolve;
+      });
     return {};
   });
-  render(<ToolsHubPanel nativeRuntime />);
-  await screen.findByRole("button", { name: "Pause updates" });
-  hold = true;
+  const pages = (visible: boolean) => (
+    <>
+      <button type="button">Next page action</button>
+      <div hidden={!visible} inert={!visible}>
+        <PageVisibility.Provider value={visible}>
+          <ToolsHubPanel nativeRuntime />
+        </PageVisibility.Provider>
+      </div>
+    </>
+  );
+  const { rerender } = render(pages(true));
+  const heading = screen.getByRole("heading", { name: "Automatic tools" });
+  const trigger = await screen.findByRole("button", { name: "Connect Codex" });
+  await user.click(trigger);
+  await waitFor(() => expect(resolvePreview).toBeDefined());
+  rerender(pages(false));
+  const nextAction = screen.getByRole("button", { name: "Next page action" });
+  nextAction.focus();
   await act(async () => {
-    poll?.();
+    resolvePreview?.({
+      preview_id: "fixture-connection",
+      files: [{ path: "/fixture/config.toml", block: "Fictional settings" }],
+    });
   });
-  await user.click(screen.getByRole("button", { name: "Pause updates" }));
-  await screen.findByRole("button", { name: "Resume updates" });
-  await act(async () => release?.(active));
-  expect(screen.getByRole("button", { name: "Resume updates" })).toBeVisible();
-  expect(screen.queryByRole("button", { name: "Pause updates" })).toBeNull();
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(nextAction).toHaveFocus();
+
+  rerender(pages(true));
+  await screen.findByRole("dialog", {
+    name: "Connect Codex to repository setup",
+  });
+  const settings = screen.getByRole("region", {
+    name: "Proposed config.toml section",
+  });
+  await waitFor(() => expect(settings).toHaveFocus());
+  expect(settings).toHaveTextContent("Fictional settings");
+
+  const triggerFocus = vi.spyOn(trigger, "focus");
+  const headingFocus = vi.spyOn(heading, "focus");
+  rerender(pages(false));
+  await act(async () => {
+    nextAction.focus();
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+  });
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(nextAction).toHaveFocus();
+  expect(triggerFocus).not.toHaveBeenCalled();
+  expect(headingFocus).not.toHaveBeenCalled();
+  expect(
+    api.hubRequest.mock.calls.filter(
+      ([operation]) => operation === "connection_preview",
+    ),
+  ).toHaveLength(1);
+});
+
+it("explains what to do when the repository picker is empty", async () => {
+  const user = userEvent.setup();
+  api.hubRequest.mockImplementation(async (operation: string) =>
+    operation === "inventory" ? { projects: [] } : initial,
+  );
+  render(<ToolsHubPanel nativeRuntime />);
+  await user.click(
+    await screen.findByRole("button", { name: "Set up repository tools" }),
+  );
+  expect(
+    screen.getByText("Add a repository in Temper to continue."),
+  ).toBeVisible();
+  expect(screen.getByRole("button", { name: "Review setup" })).toBeDisabled();
 });
 
 it("shows unknown status instead of claiming approved repos are ready", async () => {
@@ -282,9 +457,8 @@ it("keeps a rejected action visible after a successful status refresh", async ()
     return {};
   });
   render(<ToolsHubPanel nativeRuntime />);
-  await user.click(
-    await screen.findByRole("button", { name: "Pause updates" }),
-  );
+  await user.click(await screen.findByText("Tool settings"));
+  await user.click(screen.getByRole("button", { name: "Pause updates" }));
   await waitFor(() =>
     expect(
       api.hubRequest.mock.calls.filter((call) => call[0] === "status").length,
@@ -335,7 +509,8 @@ it("requires separate approval for the exact Windows Remotion toolchain", async 
     return {};
   });
   render(<ToolsHubPanel nativeRuntime />);
-  await user.click(await screen.findByText("Remotion video rendering"));
+  await user.click(await screen.findByText("Tool settings"));
+  await user.click(screen.getByText("Remotion video rendering"));
   expect(
     screen.getByText(/full Windows paths to Node.js 24/),
   ).toHaveTextContent(/Remotion 4\.0\.542/);
@@ -407,6 +582,6 @@ it("hides Remotion admission on unsupported native platforms", async () => {
     remotion_available: false,
   });
   render(<ToolsHubPanel nativeRuntime />);
-  await screen.findByRole("button", { name: "Pause updates" });
+  await screen.findByText("Tool settings");
   expect(screen.queryByText("Remotion video rendering")).toBeNull();
 });

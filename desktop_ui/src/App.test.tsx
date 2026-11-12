@@ -14,11 +14,12 @@ describe("Temper prototype", () => {
   it.each([
     [
       "Settings",
-      "View consent",
+      "View permissions",
       "Permission for reviewed suggestions",
       "Close consent details",
     ],
-    ["Modes", "View Mode", "Frontend Studio", "Close"],
+    ["Tools & workflows", "View workflow", "Frontend Studio", "Close"],
+    ["Connections", "View details", "Codex", "Done"],
   ])(
     "returns keyboard focus after closing a %s dialog",
     async (page, label, title, closeLabel) => {
@@ -44,7 +45,7 @@ describe("Temper prototype", () => {
     },
   );
 
-  it("starts a new page at the top without resetting in-page updates", async () => {
+  it("starts new pages at the top and restores each page’s scroll on return", async () => {
     const user = userEvent.setup();
     render(<App />);
     const host = screen.getByRole("main");
@@ -54,20 +55,20 @@ describe("Temper prototype", () => {
     host.scrollTop = 80;
     await user.click(screen.getByRole("button", { name: "Dark" }));
     expect(host.scrollTop).toBe(80);
-    await user.click(screen.getByRole("button", { name: "Today" }));
-    expect(host.scrollTop).toBe(0);
+    await user.click(screen.getByRole("button", { name: "Overview" }));
+    expect(host.scrollTop).toBe(144);
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+    expect(host.scrollTop).toBe(80);
   });
 
   it("keeps the everyday Today surface calm and raw-free", () => {
     render(<App />);
     expect(
       screen.getByRole("heading", {
-        name: "3 suggestions to review.",
+        name: "Overview",
       }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/nothing changes until you decide/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/3 to review/i)).toBeInTheDocument();
     expect(screen.getByText("Automatic option available")).toBeInTheDocument();
     expect(screen.queryByText(/sha256/i)).not.toBeInTheDocument();
   });
@@ -75,7 +76,7 @@ describe("Temper prototype", () => {
   it("ranks several suggestions without turning Today into a bulk-review dashboard", async () => {
     const user = userEvent.setup();
     render(<App />);
-    expect(screen.getByText("3 ready")).toBeInTheDocument();
+    expect(screen.getByText("3 to review")).toBeInTheDocument();
     expect(
       screen.getAllByText("Strong evidence").length,
     ).toBeGreaterThanOrEqual(2);
@@ -91,49 +92,43 @@ describe("Temper prototype", () => {
     expect(screen.getByText("Your review is required")).toBeInTheDocument();
   });
 
-  it("keeps navigation state aligned with the visible folio", async () => {
+  it("keeps navigation and focus aligned with the visible page", async () => {
     const user = userEvent.setup();
-    render(<App />);
+    const { container } = render(<App />);
+    const main = screen.getByRole("main", { name: "Overview" });
     await user.click(screen.getByRole("button", { name: "Settings" }));
     expect(screen.getByRole("button", { name: "Settings" })).toHaveAttribute(
       "aria-current",
       "page",
     );
-    expect(document.querySelector(".screen-transition")).toHaveAttribute(
-      "data-screen",
-      "settings",
+    expect(main).toHaveAccessibleName("Settings");
+    expect(main).toHaveFocus();
+    expect(container.querySelector('[data-screen="today"]')).toHaveAttribute(
+      "inert",
     );
-    expect(document.querySelector(".screen-transition")).toHaveAttribute(
-      "data-direction",
-      "forward",
-    );
-    await user.click(screen.getByRole("button", { name: "Today" }));
-    expect(screen.getByRole("button", { name: "Today" })).toHaveAttribute(
+    expect(
+      screen.queryByRole("button", { name: "Review project: All projects" }),
+    ).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Overview" }));
+    expect(screen.getByRole("button", { name: "Overview" })).toHaveAttribute(
       "aria-current",
       "page",
     );
-    expect(
-      screen.getByRole("heading", {
-        name: "3 suggestions to review.",
-      }),
-    ).toBeInTheDocument();
-    expect(document.querySelector(".screen-transition")).toHaveAttribute(
-      "data-screen",
-      "today",
-    );
-    expect(document.querySelector(".screen-transition")).toHaveAttribute(
-      "data-direction",
-      "backward",
+    expect(main).toHaveAccessibleName("Overview");
+    expect(main).toHaveFocus();
+    expect(container.querySelector('[data-screen="settings"]')).toHaveAttribute(
+      "hidden",
     );
   });
 
   it("shows temporary capability Modes as separate from Core", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", { name: "Modes" }));
+    await user.click(screen.getByRole("button", { name: "Tools & workflows" }));
 
     expect(
-      screen.getByRole("heading", { name: "Modes Hub" }),
+      screen.getByRole("heading", { name: "Tools & workflows" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Frontend Studio")).toBeInTheDocument();
     expect(screen.getByText("Read-only Security Review")).toBeInTheDocument();
@@ -141,21 +136,21 @@ describe("Temper prototype", () => {
     expect(screen.getByText("Personalized")).toBeInTheDocument();
     expect(screen.getAllByText(/evaluation pending/i)).toHaveLength(3);
     expect(
-      screen.getByText(/Core preferences stay unchanged/i),
+      screen.getByText(/choose a saved workflow for a specific task/i),
     ).toBeInTheDocument();
-    await user.click(screen.getAllByRole("button", { name: "View Mode" })[0]!);
+    await user.click(
+      screen.getAllByRole("button", { name: "View workflow" })[0]!,
+    );
     expect(
       screen.getByRole("dialog", { name: "Frontend Studio" }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/One exact managed task/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/6 conformance checks passed/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/One task, up to/i)).toBeInTheDocument();
+    expect(screen.getByText(/6 checks passed/i)).toBeInTheDocument();
     expect(
       screen.getByText(/comparative evaluation pending/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/approved overlay is applied for this task only/i),
+      screen.getByText(/Uses your approved guidance for this task/i),
     ).toBeInTheDocument();
   });
 
@@ -166,15 +161,17 @@ describe("Temper prototype", () => {
 
     await user.click(screen.getByRole("button", { name: "Export" }));
     expect(
-      screen.getByRole("dialog", { name: "Take your Core with you" }),
+      screen.getByRole("dialog", { name: "Export your preferences" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/private paths are not included/i),
+      screen.getByText(/without conversations, private paths, or keys/i),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Save encrypted profile" }),
     ).toBeDisabled();
-    expect(screen.getByText(/visual browser preview/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Sample preview. Open the desktop app/i),
+    ).toBeInTheDocument();
   });
 
   it("shows that imported profiles remain inactive until review", async () => {
@@ -194,7 +191,7 @@ describe("Temper prototype", () => {
       screen.getByText(/remains inactive until you review/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Stage for review" }),
+      screen.getByRole("button", { name: "Add to review" }),
     ).toBeDisabled();
   });
 
@@ -223,7 +220,9 @@ describe("Temper prototype", () => {
       screen.getByRole("button", { name: /review suggestion/i }),
     );
     await user.click(screen.getByRole("button", { name: "Keep as suggested" }));
-    expect(screen.getByRole("heading", { name: "Core" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Personalization" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(
       "Adaptation kept for Kairn",
     );
@@ -248,11 +247,11 @@ describe("Temper prototype", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(
-      screen.getByRole("button", { name: "Workspace: All projects" }),
+      screen.getByRole("button", { name: "Review project: All projects" }),
     );
     await user.click(screen.getByRole("menuitem", { name: /Green Meadow/i }));
     await user.click(screen.getByRole("button", { name: "Helped" }));
-    expect(screen.getByText(/Recorded as helped/i)).toBeInTheDocument();
+    expect(screen.getByText(/Rating saved/i)).toBeInTheDocument();
   });
 
   it("removes and restores an approved Core item", async () => {
@@ -270,22 +269,17 @@ describe("Temper prototype", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(
-      screen.getByRole("button", { name: "Workspace: All projects" }),
+      screen.getByRole("button", { name: "Review project: All projects" }),
     );
     await user.click(screen.getByRole("menuitem", { name: /Green Meadow/i }));
-    expect(
-      screen.getByRole("heading", {
-        name: "1 suggestion to review.",
-      }),
-    ).toBeInTheDocument();
+    expect(screen.getByText("1 to review")).toBeVisible();
     expect(
       screen.getByText(/Prefer names that represent real things/i),
     ).toBeInTheDocument();
-    expect(screen.getByText("Suggestion 1 of 1")).toBeInTheDocument();
     expect(
       screen.queryByText(/Lead with the purpose before setup steps/i),
     ).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Core" }));
+    await user.click(screen.getByRole("button", { name: "Personalization" }));
     const scope = screen.getByRole("combobox", { name: "Show for" });
     expect(scope.tagName).toBe("BUTTON");
     expect(document.querySelector("select")).not.toBeInTheDocument();
@@ -301,10 +295,8 @@ describe("Temper prototype", () => {
     render(<App />);
     expect(screen.getByText("Kairn notes can lag")).toBeInTheDocument();
     expect(screen.getByText("Green Meadow release shell")).toBeInTheDocument();
-    await user.click(
-      screen.getByRole("button", { name: "Workspace: All projects" }),
-    );
-    await user.click(screen.getByRole("menuitem", { name: /^Kairn/i }));
+    await user.click(screen.getByRole("combobox", { name: "Show for" }));
+    await user.click(screen.getByRole("option", { name: /^Kairn/i }));
     expect(screen.getByText("Kairn notes can lag")).toBeInTheDocument();
     expect(
       screen.queryByText("Green Meadow release shell"),
@@ -322,7 +314,9 @@ describe("Temper prototype", () => {
       document.querySelectorAll('[data-agent-brand="claude"]'),
     ).toHaveLength(1);
     expect(
-      screen.getByText(/browser preview cannot change agent accounts/i),
+      screen.getByText(
+        /Use the desktop app to connect agents and add project folders/i,
+      ),
     ).toBeInTheDocument();
     const detailButtons = screen.getAllByRole("button", {
       name: "View details",
@@ -410,7 +404,7 @@ describe("Temper prototype", () => {
     ).toBeInTheDocument();
     await user.click(automaticLearning);
     expect(automaticLearning).toBeChecked();
-    await user.click(screen.getByRole("button", { name: "Today" }));
+    await user.click(screen.getByRole("button", { name: "Overview" }));
     expect(screen.getByText("Automatic with 24-hour undo")).toBeInTheDocument();
   });
 
@@ -453,7 +447,7 @@ describe("Temper prototype", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole("button", { name: "Settings" }));
-    await user.click(screen.getByRole("button", { name: "View consent" }));
+    await user.click(screen.getByRole("button", { name: "View permissions" }));
     expect(
       screen.getByRole("dialog", {
         name: "Permission for reviewed suggestions",
@@ -512,7 +506,7 @@ describe("Temper prototype", () => {
     await user.click(screen.getByRole("button", { name: "Open Temper" }));
     expect(
       screen.getByRole("heading", {
-        name: "3 suggestions to review.",
+        name: "Overview",
       }),
     ).toBeInTheDocument();
   });

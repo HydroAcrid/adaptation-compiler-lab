@@ -1,4 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
+import { usePageVisibility } from "../pageVisibility";
+import { useDialogFocusReturn } from "./dialogFocus";
 import {
   Check,
   Download,
@@ -32,6 +34,8 @@ export function RecoveryExportDialog({
   snapshotDigest: string;
   onComplete: (message: string) => void;
 }) {
+  const pageVisible = usePageVisibility();
+  const dialogFocus = useDialogFocusReturn(pageVisible);
   const [preview, setPreview] = useState<EngineRecoveryPreview | null>(null);
   const [passphrase, setPassphrase] = useState("");
   const [confirmation, setConfirmation] = useState("");
@@ -109,10 +113,10 @@ export function RecoveryExportDialog({
   }
 
   return (
-    <Dialog.Root onOpenChange={changeOpen} open={open}>
+    <Dialog.Root onOpenChange={changeOpen} open={open && pageVisible}>
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
-        <Dialog.Content className="recovery-dialog">
+        <Dialog.Content {...dialogFocus} className="recovery-dialog">
           <Dialog.Close aria-label="Close" className="dialog-close">
             <X size={18} />
           </Dialog.Close>
@@ -209,6 +213,8 @@ export function RecoveryImportDialog({
   onRestored: () => void | Promise<void>;
 }) {
   const [passphrase, setPassphrase] = useState("");
+  const pageVisible = usePageVisibility();
+  const dialogFocus = useDialogFocusReturn(pageVisible);
   const [preview, setPreview] = useState<EngineRecoveryPreview | null>(null);
   const [selections, setSelections] = useState<
     Record<string, EngineRecoveryProjectSelection>
@@ -302,10 +308,10 @@ export function RecoveryImportDialog({
   }
 
   return (
-    <Dialog.Root onOpenChange={changeOpen} open={open}>
+    <Dialog.Root onOpenChange={changeOpen} open={open && pageVisible}>
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
-        <Dialog.Content className="recovery-dialog">
+        <Dialog.Content {...dialogFocus} className="recovery-dialog">
           {!restoring ? (
             <Dialog.Close aria-label="Close" className="dialog-close">
               <X size={18} />

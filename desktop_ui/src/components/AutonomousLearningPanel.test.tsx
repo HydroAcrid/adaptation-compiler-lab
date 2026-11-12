@@ -10,6 +10,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { AutonomousLearningPanel } from "./AutonomousLearningPanel";
 import type { AutonomyState } from "../autonomy";
 import type { EngineProject } from "../engine";
+import { PageVisibility } from "../pageVisibility";
 
 const api = vi.hoisted(() => ({
   loadAutonomy: vi.fn(),
@@ -46,7 +47,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-it("refreshes externally enabled personalization when Today regains focus", async () => {
+it("refreshes externally enabled personalization when the app regains focus", async () => {
   const off = {
     ...status,
     grant_enabled: true,
@@ -160,7 +161,7 @@ it("makes conversation trust explicit and labels unknown authorship", async () =
   expect(trust).not.toBeChecked();
   await user.click(
     screen.getByRole("checkbox", {
-      name: "Synthetic project · synthetic-project",
+      name: "Synthetic project",
     }),
   );
   await user.click(screen.getByRole("checkbox", { name: "Amount of detail" }));
@@ -204,7 +205,7 @@ it("requires selected scope and confirmation before granting permission", async 
   ).toBeDisabled();
   await user.click(
     screen.getByRole("checkbox", {
-      name: "Synthetic project · synthetic-project",
+      name: "Synthetic project",
     }),
   );
   await user.click(screen.getByRole("checkbox", { name: "Amount of detail" }));
@@ -444,7 +445,7 @@ it("disambiguates same-name learning repositories when granting permission", asy
   render(<AutonomousLearningPanel projects={[]} />);
   await screen.findByRole("checkbox", { name: "Same name · second" });
   expect(
-    screen.queryByText("Add a project in Connections first."),
+    screen.queryByText("Add a learning project in Connections first."),
   ).not.toBeInTheDocument();
   await user.click(
     screen.getByRole("checkbox", { name: "Same name · second" }),
@@ -459,4 +460,98 @@ it("disambiguates same-name learning repositories when granting permission", asy
     false,
   );
   expect(api.enableLearningGrant).not.toHaveBeenCalled();
+});
+
+it("shows eligibility and measured coverage on Overview without claiming the observer is running", async () => {
+  const open = vi.fn();
+  api.loadAutonomy.mockResolvedValue({
+    value: {
+      ...status,
+      grant_enabled: true,
+      learning_enabled: true,
+      provenance_state: "owner_authorized",
+      capture_state: "ready",
+      project_access: [
+        {
+          project_id: project.project_id,
+          display_name: project.display_name,
+          learning_authorized: true,
+          learning_state: "on",
+          personalization_enabled: false,
+        },
+      ],
+    },
+    digest,
+  });
+  render(
+    <AutonomousLearningPanel
+      projects={[project]}
+      onOpenPersonalization={open}
+    />,
+  );
+  expect(await screen.findByText("Enabled")).toBeVisible();
+  expect(screen.getByText(/are eligible for learning/)).toBeVisible();
+  expect(
+    screen.getByText("Conversations captured").nextElementSibling,
+  ).toHaveTextContent("Unavailable");
+  expect(
+    screen.getByText("Approved projects").nextElementSibling,
+  ).toHaveTextContent("1");
+  expect(
+    screen.queryByRole("button", { name: "Pause learning" }),
+  ).not.toBeInTheDocument();
+  await userEvent
+    .setup()
+    .click(screen.getByRole("button", { name: "Manage learning" }));
+  expect(open).toHaveBeenCalledOnce();
+});
+
+it("suspends page status reads while another page is selected", async () => {
+  api.loadAutonomy.mockResolvedValue({ value: status, digest });
+  const panel = (visible: boolean) => (
+    <PageVisibility.Provider value={visible}>
+      <AutonomousLearningPanel projects={[project]} />
+    </PageVisibility.Provider>
+  );
+  const view = render(panel(false));
+  fireEvent.focus(window);
+  expect(api.loadAutonomy).not.toHaveBeenCalled();
+  view.rerender(panel(true));
+  await screen.findByRole("button", { name: "Review learning access" });
+  view.rerender(panel(false));
+  fireEvent.focus(window);
+  expect(api.loadAutonomy).toHaveBeenCalledOnce();
+});
+
+it("serializes a pending read across rapid page switches", async () => {
+  let finish!: (value: { value: AutonomyState; digest: string }) => void;
+  api.loadAutonomy
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    )
+    .mockResolvedValue({ value: status, digest });
+  const view = render(
+    <PageVisibility value={true}>
+      <AutonomousLearningPanel projects={[project]} />
+    </PageVisibility>,
+  );
+  view.rerender(
+    <PageVisibility value={false}>
+      <AutonomousLearningPanel projects={[project]} />
+    </PageVisibility>,
+  );
+  view.rerender(
+    <PageVisibility value={true}>
+      <AutonomousLearningPanel projects={[project]} />
+    </PageVisibility>,
+  );
+  expect(api.loadAutonomy).toHaveBeenCalledTimes(1);
+  await act(async () => finish({ value: status, digest }));
+  expect(api.loadAutonomy).toHaveBeenCalledTimes(2);
+  expect(
+    screen.getByRole("button", { name: "Review learning access" }),
+  ).toBeVisible();
 });

@@ -21,11 +21,18 @@ const screens = [
 async function openScene(page: Page, screen: string, theme: "light" | "dark") {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto(`/?screen=${screen}&theme=${theme}`);
-  await page.locator("body").waitFor({ state: "visible" });
-  await page.evaluate(() => document.fonts.ready);
+  await page
+    .locator(
+      screen === "onboarding" ? ".onboarding-shell" : ".page-view--active",
+    )
+    .waitFor();
   if (screen === "suggestion") {
     await page.getByRole("dialog").waitFor({ state: "visible" });
   }
+  if (screen === "modes") {
+    await page.getByRole("heading", { name: "Automatic tools" }).waitFor();
+  }
+  await page.evaluate(() => document.fonts.ready);
   await page.evaluate(() => window.scrollTo(0, 0));
 }
 
@@ -38,10 +45,14 @@ for (const theme of ["light", "dark"] as const) {
     );
   });
 
-  test(`workspace menu ${theme} visual`, async ({ page }) => {
+  test(`review project menu ${theme} visual`, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await openScene(page, "today", theme);
-    await page.getByRole("button", { name: "Workspace: All projects" }).click();
+    const review = page.locator("details.today-review-summary[open]");
+    await expect(review).toBeVisible();
+    await review
+      .getByRole("button", { name: "Review project: All projects" })
+      .click();
     await expect(page.getByRole("menu")).toBeVisible();
     await expect(page).toHaveScreenshot(`workspace-menu-${theme}.png`, {
       fullPage: true,
@@ -49,11 +60,15 @@ for (const theme of ["light", "dark"] as const) {
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   });
 
-  test(`today with Green Meadow ${theme} visual`, async ({ page }) => {
+  test(`Overview review scoped to Green Meadow ${theme} visual`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto(`/?screen=today&theme=${theme}&project=green-meadow`);
-    await page.locator("body").waitFor({ state: "visible" });
+    await expect(
+      page.getByRole("button", { name: "Review project: Green Meadow" }),
+    ).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
     await expect(page).toHaveScreenshot(
       `today-green-meadow-1280x800-${theme}.png`,

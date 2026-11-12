@@ -1,10 +1,17 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   learningAccessLabel,
   loadAutonomy,
   type AutonomyState,
 } from "../autonomy";
 import { engineFailureMessage } from "../engine";
+import { usePageVisibility } from "../pageVisibility";
 import { Button, StatusPill } from "./ui";
 
 /** A read-only view of the signed learning registry, separate from task runners. */
@@ -13,31 +20,53 @@ export function LearningRepositories() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    let live = true;
-    let pending = false;
-    const refresh = async () => {
-      if (pending) return;
-      pending = true;
-      try {
-        const response = await loadAutonomy();
-        if (live) {
-          setStatus(response.value);
-          setError(null);
-        }
-      } catch (value) {
-        if (live) setError(engineFailureMessage(value));
-      } finally {
-        pending = false;
-      }
-    };
-    void refresh();
-    const timer = window.setInterval(() => void refresh(), 30_000);
+  const visible = usePageVisibility();
+  const visibleRef = useRef(false);
+  const pending = useRef(false);
+  const queued = useRef(false);
+
+  useLayoutEffect(() => {
+    visibleRef.current = visible;
     return () => {
-      live = false;
-      window.clearInterval(timer);
+      visibleRef.current = false;
+      queued.current = false;
     };
-  }, [attempt]);
+  }, [visible]);
+
+  const refresh = useEffectEvent(async (queueIfPending = false) => {
+    if (!visibleRef.current) return;
+    if (pending.current) {
+      if (queueIfPending) queued.current = true;
+      return;
+    }
+
+    pending.current = true;
+    try {
+      do {
+        queued.current = false;
+        try {
+          const response = await loadAutonomy();
+          if (visibleRef.current && !queued.current) {
+            setStatus(response.value);
+            setError(null);
+          }
+        } catch (value) {
+          if (visibleRef.current && !queued.current) {
+            setError(engineFailureMessage(value));
+          }
+        }
+      } while (visibleRef.current && queued.current);
+    } finally {
+      pending.current = false;
+    }
+  });
+
+  useEffect(() => {
+    if (!visible) return;
+    void refresh(true);
+    const timer = window.setInterval(() => void refresh(), 30_000);
+    return () => window.clearInterval(timer);
+  }, [attempt, visible]);
   const projects = status?.project_access;
   const authorized = projects?.filter(
     (project) => project.learning_authorized,
@@ -72,8 +101,8 @@ export function LearningRepositories() {
         <p>Repository access is unavailable in this engine version.</p>
       )}
       <p>
-        These permissions cover ordinary Codex chats. Pause learning or
-        personalization on Today.
+        These permissions cover ordinary Codex chats. Open Personalization to
+        change them.
       </p>
       {projects && (
         <>
