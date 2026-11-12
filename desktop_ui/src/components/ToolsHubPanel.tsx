@@ -51,11 +51,9 @@ function WorkflowLifecycle() {
 
 function RepositoryGuidance({
   rows,
-  ready,
   stale,
 }: {
   rows: HubProject[];
-  ready: boolean;
   stale: boolean;
 }) {
   return (
@@ -82,12 +80,7 @@ function RepositoryGuidance({
               <span>
                 {stale
                   ? "No guidance at the last check"
-                  : ready &&
-                      !row.paused &&
-                      !row.pending_recovery &&
-                      !row.attention
-                    ? "Waiting for a task"
-                    : "No guidance installed"}
+                  : "No guidance installed"}
               </span>
             )}
           </div>
@@ -281,7 +274,7 @@ export function ToolsHubPanel({
                 : state.paused
                   ? "Paused"
                   : ready
-                    ? "Set up for tasks"
+                    ? "Codex connection configured"
                     : "Setup needed";
 
   const checking = nativeRuntime && !state && !loadError;
@@ -294,13 +287,6 @@ export function ToolsHubPanel({
       : state?.enabled && ready && !state.paused && !working
         ? "positive"
         : "neutral";
-  const readyForTask = !!(
-    ready &&
-    !state?.paused &&
-    !working &&
-    !attention &&
-    !loadError
-  );
   if (onOpenTools) {
     return (
       <section
@@ -339,6 +325,15 @@ export function ToolsHubPanel({
             )}
           </div>
         )}
+        {state?.enabled &&
+          state.native_hooks_configured &&
+          !state.paused &&
+          !loadError && (
+            <p className="tools-hub-guidance">
+              To use automatic workflows, review and trust Temper in Codex with{" "}
+              <code>/hooks</code>, then open a new chat.
+            </p>
+          )}
         {state && (state.enabled || state.cleanup_pending) && (
           <div className="tools-hub-scope">
             {publishers.length > 0 && (
@@ -349,7 +344,6 @@ export function ToolsHubPanel({
             )}
             <RepositoryGuidance
               rows={state.projects.slice(0, 3)}
-              ready={readyForTask}
               stale={!!loadError}
             />
             {state.projects.length > 3 && (
@@ -667,7 +661,6 @@ export function ToolsHubPanel({
                   <h3>Approved repositories</h3>
                   <RepositoryGuidance
                     rows={state.projects}
-                    ready={readyForTask}
                     stale={!!loadError}
                   />
                 </div>

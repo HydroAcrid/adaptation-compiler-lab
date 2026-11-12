@@ -758,6 +758,32 @@ details > summary {
     font-size: 28px;
   }
 }
+@media (min-width: 640px) and (max-width: 800px) {
+  .folio-page--today .today-learning-heading {
+    padding-bottom: 18px;
+  }
+  .tools-hub-panel--overview {
+    padding-top: 18px;
+  }
+  .tools-hub-panel--overview .tools-hub-panel__heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+  }
+  .tools-hub-panel--overview .tools-hub-lifecycle {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 22px;
+    margin-block: 10px 12px;
+  }
+  .tools-hub-panel--overview .tools-hub-lifecycle li {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-block: 7px;
+  }
+}
+
 @media (max-width: 600px) {
   .mode-row {
     grid-template-columns: minmax(0, 1fr);

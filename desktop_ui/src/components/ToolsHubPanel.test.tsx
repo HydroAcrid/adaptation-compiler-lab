@@ -76,7 +76,10 @@ it("shows the automatic lifecycle and the current approved scope on the Overview
   expect(lifecycle).toHaveTextContent(
     /removes its unchanged copies when a task ends/,
   );
-  expect(await screen.findByText("Set up for tasks")).toBeVisible();
+  expect(await screen.findByText("Codex connection configured")).toBeVisible();
+  expect(
+    screen.getByText(/review and trust Temper in Codex/, { selector: "p" }),
+  ).toHaveTextContent("/hooks, then open a new chat.");
   expect(
     screen.getByText(
       "1 approved repository · 1 approved publisher · 1 guide available",
@@ -353,7 +356,7 @@ it("retains visible repositories on refresh failure and disables changes until r
 
   fireEvent.click(screen.getByRole("button", { name: "Refresh status" }));
   await act(async () => {});
-  expect(screen.getByText("Waiting for a task")).toBeVisible();
+  expect(screen.getByText("No guidance installed")).toBeVisible();
   expect(screen.queryByText(/Available guidance.*debugging/)).toBeNull();
   expect(screen.getByRole("button", { name: "Pause updates" })).toBeEnabled();
 });

@@ -106,6 +106,18 @@ test("Overview makes automatic workflows visible before learning details", async
     .getByRole("heading", { name: "Automatic workflows", exact: true })
     .boundingBox();
   expect(heading?.y).toBeLessThan(300);
+  await page.setViewportSize({ width: 720, height: 540 });
+  const lifecycle = await workflows
+    .getByRole("list", { name: "How automatic workflows work" })
+    .boundingBox();
+  expect(
+    lifecycle,
+    "Workflow lifecycle remains visible at the minimum desktop window",
+  ).not.toBeNull();
+  expect(
+    lifecycle!.y + lifecycle!.height,
+    "All four workflow stages fit in the first viewport",
+  ).toBeLessThanOrEqual(540);
   await workflows.getByRole("button", { name: /automatic workflows/i }).click();
   await expect(page.getByRole("main")).toHaveAccessibleName(
     "Tools & workflows",
