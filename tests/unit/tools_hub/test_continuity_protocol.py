@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import io
 import json
+from collections.abc import Callable, Iterator
+from pathlib import Path
+from typing import Any, TextIO, cast
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -11,22 +14,26 @@ import pytest
 
 from adaptation_compiler_lab.tools_hub.agent_bridge import serve_hub
 from adaptation_compiler_lab.tools_hub.protocol import HubProtocol
-from adaptation_compiler_lab.tools_hub.service import project_key
+from adaptation_compiler_lab.tools_hub.service import HubService, project_key
 from adaptation_compiler_lab.tools_hub.task_lifecycle import TaskOwner
 
 from .test_integration import make_service, wait_job
 
+Packet = dict[str, Any]
+ReadResponse = Callable[[], Packet]
+RequestProducer = Callable[[ReadResponse], Iterator[Packet]]
 
-def tool(name: str, **arguments):
+
+def tool(name: str, **arguments: Any) -> Packet:
     return {"name": f"temper_hub_{name}", "arguments": arguments}
 
 
-def call_stream(protocol, producer):
+def call_stream(protocol: HubProtocol, producer: RequestProducer) -> list[Packet]:
     output = io.StringIO()
-    replies = []
+    replies: list[Packet] = []
 
-    class Requests(io.StringIO):
-        def readline(self, size=-1):
+    class Requests:
+        def readline(self, size: int | None = -1) -> str:
             if output.tell():
                 output.seek(0)
                 replies.extend(json.loads(line) for line in output)
@@ -47,20 +54,22 @@ def call_stream(protocol, producer):
                 + "\n"
             )
 
-    def response():
+    def response() -> Packet:
         return replies[-1]
 
     requests = iter(producer(response))
-    serve_hub(protocol, stdin=Requests(), stdout=output)
+    serve_hub(protocol, stdin=cast(TextIO, Requests()), stdout=output)
     return replies
 
 
-def packet(response):
+def packet(response: Packet) -> Packet:
     assert "error" not in response, response.get("error")
-    return json.loads(response["result"]["content"][0]["text"])
+    decoded = json.loads(response["result"]["content"][0]["text"])
+    assert isinstance(decoded, dict)
+    return decoded
 
 
-def bind(response, session, turn, nonce=None):
+def bind(response: ReadResponse, session: str, turn: str, nonce: str | None = None) -> Packet:
     result = response()["result"]
     return tool(
         "bind_turn",
@@ -70,7 +79,7 @@ def bind(response, session, turn, nonce=None):
     )
 
 
-def desktop(service, operation, **arguments):
+def desktop(service: HubService, operation: str, **arguments: Any) -> Packet:
     return HubProtocol(service).dispatch(
         f"tools_hub.continuity.{operation}",
         arguments,
@@ -80,7 +89,7 @@ def desktop(service, operation, **arguments):
 
 
 @pytest.fixture
-def continuity_service(tmp_path, monkeypatch):
+def continuity_service(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> HubService:
     service = make_service(tmp_path)
     other = tmp_path / "lantern"
     other.mkdir()
@@ -94,6 +103,7 @@ def continuity_service(tmp_path, monkeypatch):
     service.enable(preview["preview_id"])
     assert wait_job(service)["state"] == "complete"
     grant = service.grant(active=True)
+    assert grant is not None
     service.seals.write(
         service.home / "permission.json",
         {**grant, "bridge_configured": True, "native_hooks_configured": True},
@@ -105,7 +115,9 @@ def continuity_service(tmp_path, monkeypatch):
     return service
 
 
-def prep(goal="Investigate the fictional check.", project="repo", **extra):
+def prep(
+    goal: str = "Investigate the fictional check.", project: str = "repo", **extra: Any
+) -> Packet:
     return tool(
         "prepare",
         project_id=project,
@@ -116,7 +128,7 @@ def prep(goal="Investigate the fictional check.", project="repo", **extra):
     )
 
 
-def checkpoint(prepared, step, expected=None):
+def checkpoint(prepared: Packet, step: str, expected: str | None = None) -> Packet:
     return tool(
         "checkpoint",
         task_receipt=prepared["task_receipt"],
@@ -130,21 +142,23 @@ def checkpoint(prepared, step, expected=None):
     )
 
 
-def finish(session, turn, outcome="completed"):
+def finish(session: str, turn: str, outcome: str = "completed") -> Packet:
     return tool("end_turn", session_id=session, turn_id=turn, outcome=outcome)
 
 
-def project(service, project_id="repo"):
+def project(service: HubService, project_id: str = "repo") -> Packet:
     return next(row for row in service.state()["projects"] if row["id"] == project_id)
 
 
-def test_wire_continuity_recovers_opaque_checkpoint_after_restarting_hub(continuity_service):
+def test_wire_continuity_recovers_opaque_checkpoint_after_restarting_hub(
+    continuity_service: HubService,
+) -> None:
     service = continuity_service
     secret = f"fictional decision {uuid4().hex}{uuid4().hex}"
     a, b = HubProtocol(service), HubProtocol(service)
-    initial = {}
+    initial: Packet = {}
 
-    def write(response):
+    def write(response: ReadResponse) -> Iterator[Packet]:
         yield prep()
         prepared = packet(response())
         yield bind(response, "actor-a", "first-turn")
@@ -156,9 +170,9 @@ def test_wire_continuity_recovers_opaque_checkpoint_after_restarting_hub(continu
     assert project(service)["continuity"]["status"] == "saved"
     stored = service.continuity.path(project_key("repo")).read_bytes()
     assert secret.encode() not in stored
-    resumed = {}
+    resumed: Packet = {}
 
-    def read(response):
+    def read(response: ReadResponse) -> Iterator[Packet]:
         # Neither the continuation goal nor the unrelated repo contains the opaque value.
         yield prep("Continue the prior task.", project="other", continue_previous=True)
         assert "error" in response()
@@ -180,13 +194,13 @@ def test_wire_continuity_recovers_opaque_checkpoint_after_restarting_hub(continu
 
 
 def test_wire_continuity_rejects_competing_writes_stale_receipts_and_forged_provenance(
-    continuity_service,
-):
+    continuity_service: HubService,
+) -> None:
     service = continuity_service
     a, b = HubProtocol(service), HubProtocol(service)
-    previous = {}
+    previous: Packet = {}
 
-    def write(response):
+    def write(response: ReadResponse) -> Iterator[Packet]:
         yield prep()
         prepared = packet(response())
         previous.update(prepared)
@@ -208,7 +222,7 @@ def test_wire_continuity_rejects_competing_writes_stale_receipts_and_forged_prov
 
     call_stream(a, write)
 
-    def stale(response):
+    def stale(response: ReadResponse) -> Iterator[Packet]:
         yield checkpoint(previous, "Overwrite from the old connection.")
         assert "error" in response()
         yield tool(
@@ -231,12 +245,12 @@ def test_wire_continuity_rejects_competing_writes_stale_receipts_and_forged_prov
 
 
 def test_wire_continuity_cancellation_preserves_checkpoint_and_revocation_blocks_resume(
-    continuity_service,
-):
+    continuity_service: HubService,
+) -> None:
     service = continuity_service
-    before = {}
+    before: Packet = {}
 
-    def cancel(response):
+    def cancel(response: ReadResponse) -> Iterator[Packet]:
         yield prep()
         prepared = packet(response())
         before.update(prepared)
@@ -252,7 +266,7 @@ def test_wire_continuity_cancellation_preserves_checkpoint_and_revocation_blocks
     preview = desktop(service, "preview", project_id="repo", enabled=False)
     desktop(service, "apply", preview_id=preview["preview_id"])
 
-    def revoked(response):
+    def revoked(response: ReadResponse) -> Iterator[Packet]:
         yield prep("Continue the prior task.", continue_previous=True)
         assert "error" in response() or packet(response())["continuity"]["handoff"] is None
 
@@ -260,13 +274,15 @@ def test_wire_continuity_cancellation_preserves_checkpoint_and_revocation_blocks
     assert project(service)["continuity"] is None
 
 
-def test_wire_continuity_ignores_wrong_hook_nonce_and_recovers_dead_task_owner(continuity_service):
+def test_wire_continuity_ignores_wrong_hook_nonce_and_recovers_dead_task_owner(
+    continuity_service: HubService,
+) -> None:
     service = continuity_service
     # Simulate process death after a real save by replacing the scoped liveness probe.
     a = HubProtocol(service)
-    prepared = {}
+    prepared: Packet = {}
 
-    def write(response):
+    def write(response: ReadResponse) -> Iterator[Packet]:
         yield prep()
         prepared.update(packet(response()))
         yield bind(response, "actor-a", "first-turn")
@@ -277,7 +293,7 @@ def test_wire_continuity_ignores_wrong_hook_nonce_and_recovers_dead_task_owner(c
     with patch.object(TaskOwner, "alive", lambda self: self != a.task_owner):
         service.tick()
 
-    def read(response):
+    def read(response: ReadResponse) -> Iterator[Packet]:
         yield prep("Continue the prior task.", continue_previous=True)
         context = packet(response())["continuity"]
         assert context["handoff"]["next_step"] == "Verify saved work after a process restart."
@@ -289,11 +305,13 @@ def test_wire_continuity_ignores_wrong_hook_nonce_and_recovers_dead_task_owner(c
     assert project(service)["continuity"]["status"] == "resumed"
 
 
-def test_wire_fabricated_hook_session_cannot_claim_cross_connection_retrieval(continuity_service):
+def test_wire_fabricated_hook_session_cannot_claim_cross_connection_retrieval(
+    continuity_service: HubService,
+) -> None:
     service = continuity_service
     connection = HubProtocol(service)
 
-    def use_same_connection(response):
+    def use_same_connection(response: ReadResponse) -> Iterator[Packet]:
         yield prep()
         prepared = packet(response())
         yield bind(response, "original-id", "first-turn")
@@ -310,10 +328,12 @@ def test_wire_fabricated_hook_session_cannot_claim_cross_connection_retrieval(co
     assert project(service)["continuity"]["status"] == "saved"
 
 
-def test_wire_does_not_record_retrieval_when_response_flush_fails(continuity_service):
+def test_wire_does_not_record_retrieval_when_response_flush_fails(
+    continuity_service: HubService,
+) -> None:
     service = continuity_service
 
-    def save_first(response):
+    def save_first(response: ReadResponse) -> Iterator[Packet]:
         yield prep()
         prepared = packet(response())
         yield bind(response, "origin", "first-turn")
@@ -325,7 +345,7 @@ def test_wire_does_not_record_retrieval_when_response_flush_fails(continuity_ser
     call_stream(HubProtocol(service), save_first)
 
     class BrokenTransport(io.StringIO):
-        def flush(self):
+        def flush(self) -> None:
             raise BrokenPipeError("Fictional disconnected output")
 
     request = {
