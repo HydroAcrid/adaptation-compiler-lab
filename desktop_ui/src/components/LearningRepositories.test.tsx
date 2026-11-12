@@ -77,7 +77,7 @@ it("shows signed learning coverage independently of one task project and absent 
   expect(within(list).getByText("Learning paused")).toBeInTheDocument();
   expect(within(list).getByText("Learning not approved")).toBeInTheDocument();
   expect(
-    screen.getByRole("heading", { name: "Agent accounts" }),
+    screen.getByRole("heading", { name: "Task connections" }),
   ).toBeInTheDocument();
   expect(
     screen.queryByText(

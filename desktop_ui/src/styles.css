@@ -5459,7 +5459,7 @@ strong {
   justify-content: space-between;
   gap: 16px;
 }
-.habit-row__heading h3 {
+.habit-row__heading h4 {
   font-size: 17px;
   font-weight: 550;
   line-height: 1.5;

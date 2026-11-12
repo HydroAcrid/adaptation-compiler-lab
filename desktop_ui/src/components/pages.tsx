@@ -191,20 +191,25 @@ export function TodayPage({
     workspace === "all"
       ? (liveSummary?.pendingReviewCount ?? suggestionCount)
       : suggestionCount;
-  const reviewStatus = reviewUnavailable
-    ? "Status unavailable"
-    : pendingReviewCount
-      ? `${pendingReviewCount} to review`
-      : feedbackCount
-        ? `${feedbackCount} to rate`
-        : "No pending reviews";
+  const reviewCounts = [
+    pendingReviewCount > 0 && `${pendingReviewCount} to review`,
+    feedbackCount > 0 && `${feedbackCount} to rate`,
+  ].filter(Boolean);
+  const reviewStatus = nativeConflict
+    ? "Instruction conflict"
+    : permissionExpired
+      ? "Permission expired"
+      : storageUnavailable
+        ? "Secure storage unavailable"
+        : reviewUnavailable
+          ? "Status unavailable"
+          : reviewCounts.join(" · ") || "No pending reviews";
 
   return (
     <div className="page folio-page folio-page--today">
       <header className="today-learning-heading">
         <div>
           <h1>Overview</h1>
-          <p>See which workflows Temper can use and what’s ready for review.</p>
         </div>
       </header>
       <ToolsHubPanel nativeRuntime={nativeAutonomy} onOpenTools={onOpenTools} />
@@ -218,11 +223,12 @@ export function TodayPage({
         className="today-review-summary"
         open={
           !nativeAutonomy ||
-          suggestions.length > 0 ||
+          pendingReviewCount > 0 ||
+          suggestionCount > 0 ||
           feedbackCount > 0 ||
-          instructionEnvironments.some(
-            (environment) => environment.blocking_conflict_count > 0,
-          )
+          Boolean(nativeConflict) ||
+          permissionExpired ||
+          storageUnavailable
         }
       >
         <summary>
@@ -337,17 +343,13 @@ export function TodayPage({
           ) : (
             <div className="folio-proposal">
               <h2>No suggestions to review</h2>
-              <p>
-                {liveSummary?.health === "paused"
-                  ? "New suggestions are paused. You can resume them in Settings."
-                  : liveSummary?.health === "needs_attention"
-                    ? "Check Connections for your agent and project status."
-                    : liveSummary?.projectCount === 0
-                      ? "Add a task project in Connections to get suggestions for your work."
-                      : workspace === "all"
-                        ? "Suggestions will appear here when Temper has a change for you to review."
-                        : `There are no suggestions for ${workspace}.`}
-              </p>
+              {liveSummary?.health === "paused" ? (
+                <p>New suggestions are paused. Resume them in Settings.</p>
+              ) : liveSummary?.health === "needs_attention" ? (
+                <p>Check Connections for your agent and project status.</p>
+              ) : liveSummary?.projectCount === 0 ? (
+                <p>Add a task project in Connections to get suggestions.</p>
+              ) : null}
             </div>
           )}
           {(feedback || canRate) && (
@@ -404,46 +406,14 @@ const evidenceStrengthLabels: Record<EvidenceStrength, string> = {
   developing: "Developing evidence",
 };
 
-const coreKinds: Array<{
-  id: CoreKind;
-  label: string;
-  description: string;
-}> = [
-  {
-    id: "preference",
-    label: "Preferences",
-    description: "Choices you tend to favor.",
-  },
-  {
-    id: "memory",
-    label: "Memories",
-    description: "Stable context worth carrying forward.",
-  },
-  {
-    id: "procedure",
-    label: "Procedures",
-    description: "Sequences and safeguards you approved.",
-  },
-  {
-    id: "prompt_rule",
-    label: "Rules",
-    description: "Direct instructions that govern agent behavior.",
-  },
-  {
-    id: "example",
-    label: "Examples",
-    description: "Approved examples of what good work looks like.",
-  },
-  {
-    id: "skill",
-    label: "Skills",
-    description: "Reusable guidance for a kind of work.",
-  },
-  {
-    id: "tool_recommendation",
-    label: "Tools",
-    description: "Approved recommendations for when a tool is useful.",
-  },
+const coreKinds: Array<{ id: CoreKind; label: string }> = [
+  { id: "preference", label: "Preferences" },
+  { id: "memory", label: "Memories" },
+  { id: "procedure", label: "Procedures" },
+  { id: "prompt_rule", label: "Rules" },
+  { id: "example", label: "Examples" },
+  { id: "skill", label: "Skills" },
+  { id: "tool_recommendation", label: "Tools" },
 ];
 
 export function CorePage({
@@ -539,10 +509,6 @@ export function CorePage({
       <header className="core-heading">
         <div>
           <h1>Personalization</h1>
-          <p>
-            Manage what Temper learns and the guidance you’ve saved for your
-            agents.
-          </p>
         </div>
         <div className="core-heading__aside">
           <div className="core-portability-actions">
@@ -581,7 +547,6 @@ export function CorePage({
         <div className="subsection-heading">
           <div>
             <h2 id="saved-guidance-heading">Saved guidance</h2>
-            <p>Preferences and instructions you approved or imported.</p>
           </div>
           {(!nativeRuntime || snapshotDigest) && (
             <StatusPill tone="neutral">{visibleItems.length} saved</StatusPill>
@@ -675,7 +640,6 @@ export function CorePage({
             if (!groupItems.length) return null;
             return (
               <CoreGroup
-                description={entry.description}
                 items={groupItems}
                 key={entry.id}
                 label={entry.label}
@@ -785,7 +749,6 @@ function InstructionEnvironmentPanel({
       <header className="native-context__heading">
         <div>
           <h3 id="native-context-title">Project instructions and skills</h3>
-          <p>Temper checks this setup before applying your saved guidance.</p>
         </div>
         <StatusPill tone={conflictCount ? "neutral" : "positive"}>
           {conflictCount
@@ -1132,7 +1095,6 @@ function nativeSkillStatusLabel(
 
 function CoreGroup({
   label,
-  description,
   items,
   onEdit,
   onRemove,
@@ -1142,7 +1104,6 @@ function CoreGroup({
   revokeUnavailableReason,
 }: {
   label: string;
-  description: string;
   items: CoreItem[];
   onEdit: (item: CoreItem) => void;
   onRemove: (item: CoreItem) => void;
@@ -1155,7 +1116,9 @@ function CoreGroup({
     <section className="core-group">
       <header className="core-group__heading">
         <h2>{label}</h2>
-        <p>{description}</p>
+        <p>
+          {items.length} {items.length === 1 ? "item" : "items"}
+        </p>
       </header>
       <ul className="core-list">
         {items.map((item) => (
@@ -1308,7 +1271,12 @@ export function ModesPage({
       </header>
       <ToolsHubPanel nativeRuntime={nativeRuntime} />
       <div className="modes-section-heading">
-        <h2 className="modes-section-title">Saved workflows</h2>
+        <div>
+          <h2 className="modes-section-title">Saved workflows</h2>
+          {modes.length > 0 && (
+            <StatusPill tone="neutral">{modes.length} saved</StatusPill>
+          )}
+        </div>
         <Button
           type="button"
           tone="quiet"
@@ -1378,12 +1346,13 @@ export function ModesPage({
         ))}
       </div>
       {!loading && !error && modes.length === 0 ? (
-        <div className="modes-empty">
-          No saved workflows yet. Import a package to add a workflow.
-        </div>
+        <div className="modes-empty">No saved workflows yet.</div>
       ) : null}
       <footer className="mode-footer">
-        <p>Saved workflows apply to one task at a time.</p>
+        <details>
+          <summary>How saved workflows run</summary>
+          <p>Saved workflows apply to one task at a time.</p>
+        </details>
         <button onClick={onOpenCore} type="button">
           View personalization <ArrowRight aria-hidden="true" size={14} />
         </button>
@@ -1928,7 +1897,9 @@ export function ConnectionsPage({
                         : "attention",
         targetCapability: connection.delivery_capability,
       }))
-    : previewConnections;
+    : nativeRuntime
+      ? []
+      : previewConnections;
   const shownProjects = liveProjects
     ? liveProjects.map((project) => ({
         connectedAgents: project.task_runner_enabled ? ["Managed tasks"] : [],
@@ -1936,8 +1907,13 @@ export function ConnectionsPage({
         name: project.display_name,
         pathLabel: "New work only",
       }))
-    : previewProjects;
+    : nativeRuntime
+      ? []
+      : previewProjects;
 
+  const connectionsHeading = nativeRuntime
+    ? "Task connections"
+    : "Agent accounts";
   const filteredProjects = shownProjects.filter((project) =>
     (project.name + " " + project.pathLabel)
       .toLocaleLowerCase()
@@ -2010,7 +1986,6 @@ export function ConnectionsPage({
       <header className="today-learning-heading">
         <div>
           <h1>Connections</h1>
-          <p>Manage the agents and projects that Temper can access.</p>
         </div>
       </header>
       {nativeRuntime ? (
@@ -2047,16 +2022,23 @@ export function ConnectionsPage({
       ) : null}
       <div className="subsection-heading">
         <div>
-          <h2>Agent accounts</h2>
-          {nativeRuntime ? (
+          <h2>{connectionsHeading}</h2>
+          {shownConnections.length > 0 && (
             <p>
-              Connect an agent to run workflows and use guidance you’ve
-              approved.
+              {
+                shownConnections.filter(
+                  (connection) => connection.status === "connected",
+                ).length
+              }{" "}
+              of {shownConnections.length} connected
             </p>
-          ) : null}
+          )}
         </div>
       </div>
-      <section className="connection-list" aria-label="Agent accounts">
+      <section className="connection-list" aria-label={connectionsHeading}>
+        {nativeRuntime && shownConnections.length === 0 && (
+          <p className="project-empty">Task agent status unavailable.</p>
+        )}
         {shownConnections.map((connection) => (
           <article className="connection-card" key={connection.id}>
             <div className={`agent-logo agent-logo--${connection.id}`}>
@@ -2112,7 +2094,9 @@ export function ConnectionsPage({
         <div className="subsection-heading">
           <div>
             <h2>{nativeRuntime ? "Task projects" : "Registered projects"}</h2>
-            <p>Choose the folders where Temper can run saved workflows.</p>
+            {shownProjects.length > 0 && (
+              <p>{shownProjects.length} registered</p>
+            )}
           </div>
           <Button
             disabled={
@@ -2201,7 +2185,9 @@ export function ConnectionsPage({
         {filteredProjects.length === 0 && (
           <p className="project-empty">
             {shownProjects.length === 0
-              ? "No task projects yet. Add a folder to run a saved workflow."
+              ? nativeRuntime && !snapshotDigest
+                ? "Task project status unavailable."
+                : "No task projects yet."
               : "No projects match your search."}
           </p>
         )}
@@ -3107,7 +3093,6 @@ export function SettingsPage({
       <header className="today-learning-heading">
         <div>
           <h1>Settings</h1>
-          <p>Manage app preferences, privacy and recovery.</p>
         </div>
       </header>
       <SettingsGroup
@@ -3136,7 +3121,6 @@ export function SettingsPage({
         />
         <Toggle
           checked={nativeRuntime ? decisionNotificationsEnabled : notifications}
-          description="Notify me when a suggestion needs review."
           label="Review notifications"
           disabled={preferenceBusy}
           onCheckedChange={(enabled) => {
@@ -3156,7 +3140,6 @@ export function SettingsPage({
         <div className="setting-inline">
           <div>
             <strong>Theme</strong>
-            <span>Choose how Temper looks on this device.</span>
           </div>
           <div className="theme-picker" role="group" aria-label="Theme">
             <ThemeButton
@@ -3181,7 +3164,6 @@ export function SettingsPage({
         </div>
         <Toggle
           checked={nativeRuntime ? launchAtLoginEnabled : launch}
-          description="Keep Temper available in the tray after you sign in."
           label="Launch at sign-in"
           disabled={preferenceBusy}
           onCheckedChange={(enabled) => {

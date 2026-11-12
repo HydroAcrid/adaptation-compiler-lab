@@ -12,6 +12,7 @@ import {
   type RuntimePreview,
 } from "../toolsHub";
 import { Button, LoadingStatus } from "./ui";
+import "./ToolsHubPanel.css";
 
 type Repository = { id: string; label: string; root: string };
 type Review =
@@ -20,32 +21,96 @@ type Review =
   | { type: "runtime"; value: RuntimePreview }
   | { type: "stop" | "repair" };
 
-const workflowSummary =
-  "Once set up, Codex chooses guidance for each task. Temper manages the files in your approved repositories.";
+const taskOutcomes: Record<string, string> = {
+  ready: "Guidance prepared",
+  needs_agent_selection: "Selection requested",
+  paused: "Repository updates paused",
+  paused_owner_edit: "Edited files need attention",
+  rejected_update: "Previously undone guidance skipped",
+  deferred_incompatible_update: "Incompatible update deferred",
+};
+
+const jobLabels: Record<string, string> = {
+  setup: "Publisher setup",
+  maintenance: "Publisher check",
+  repair: "Setup repair",
+  cleanup: "File cleanup",
+  prepare: "Task preparation",
+  selection: "Guide selection",
+};
+
+const jobStates = {
+  running: "In progress",
+  complete: "Complete",
+  failed: "Failed",
+  interrupted: "Interrupted",
+};
+
+function TaskActivity({
+  task,
+  projects,
+}: {
+  task: NonNullable<HubState["last_task"]>;
+  projects: HubProject[];
+}) {
+  const repository =
+    projects.find((row) => row.id === task.project_id)?.label ??
+    task.project_id;
+  const outcome =
+    task.state === "failed"
+      ? "Failed"
+      : (taskOutcomes[task.status ?? ""] ?? "Checked");
+  return (
+    <>
+      {repository} · {outcome}
+    </>
+  );
+}
+
+function PublisherCheck({ timestamp }: { timestamp: number | null }) {
+  const checked = timestamp === null ? null : new Date(timestamp * 1000);
+  if (!checked || !Number.isFinite(checked.getTime())) {
+    return <>No successful check recorded</>;
+  }
+  return (
+    <time dateTime={checked.toISOString()}>
+      {checked.toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })}
+    </time>
+  );
+}
 
 function WorkflowLifecycle() {
   return (
-    <ol
-      className="tools-hub-lifecycle"
-      aria-label="How automatic workflows work"
-    >
-      <li>
-        <strong>Choose</strong>
-        <span>Codex picks up to two guides for the task.</span>
-      </li>
-      <li>
-        <strong>Keep current</strong>
-        <span>Temper checks approved publishers for updates.</span>
-      </li>
-      <li>
-        <strong>Switch</strong>
-        <span>Temper switches guidance as tasks change.</span>
-      </li>
-      <li>
-        <strong>Clean up</strong>
-        <span>Temper removes its unchanged copies when a task ends.</span>
-      </li>
-    </ol>
+    <details className="tools-hub-details">
+      <summary>How automatic workflows work</summary>
+      <p>
+        In Codex, review and trust Temper with <code>/hooks</code>, then open a
+        new chat.
+      </p>
+      <ul className="tools-hub-lifecycle">
+        <li>
+          <strong>Choose</strong>
+          <span>Codex picks up to two guides for the task.</span>
+        </li>
+        <li>
+          <strong>Keep current</strong>
+          <span>
+            Temper checks approved publishers for updates every six hours.
+          </span>
+        </li>
+        <li>
+          <strong>Switch</strong>
+          <span>Temper switches guidance as tasks change.</span>
+        </li>
+        <li>
+          <strong>Clean up</strong>
+          <span>Temper removes its unchanged copies when a task ends.</span>
+        </li>
+      </ul>
+    </details>
   );
 }
 
@@ -279,8 +344,6 @@ export function ToolsHubPanel({
 
   const checking = nativeRuntime && !state && !loadError;
   const publishers = state?.sources.filter((source) => source.approved) ?? [];
-  const guideCount =
-    state?.projects.reduce((count, row) => count + row.active.length, 0) ?? 0;
   const stateTone =
     loadError || attention || state?.cleanup_pending
       ? "attention"
@@ -288,23 +351,31 @@ export function ToolsHubPanel({
         ? "positive"
         : "neutral";
   if (onOpenTools) {
+    const relevantRepositories = (
+      state?.enabled || state?.cleanup_pending ? state.projects : []
+    ).filter(
+      (row) =>
+        row.active.length ||
+        row.attention ||
+        row.pending_recovery ||
+        row.paused,
+    );
+    const shownRepositories = relevantRepositories.slice(0, 2);
+    const remaining = (state?.project_count ?? 0) - shownRepositories.length;
+    const setupAvailable = state && !state.enabled && !state.cleanup_pending;
     return (
       <section
         className="tools-hub-panel tools-hub-panel--overview"
         aria-labelledby={headingId}
       >
         <div className="tools-hub-panel__heading">
-          <div>
-            <h2 id={headingId}>Automatic workflows</h2>
-            <p>{workflowSummary}</p>
-          </div>
+          <h2 id={headingId}>Automatic workflows</h2>
           <Button onClick={onOpenTools}>
-            {state && !state.enabled && !state.cleanup_pending && !loadError
+            {setupAvailable && !loadError
               ? "Set up automatic workflows"
               : "View automatic workflows"}
           </Button>
         </div>
-        <WorkflowLifecycle />
         {checking ? (
           <LoadingStatus>{status}</LoadingStatus>
         ) : (
@@ -312,48 +383,30 @@ export function ToolsHubPanel({
             <strong className="tools-hub-state" data-tone={stateTone}>
               {status}
             </strong>
-            {state && (state.enabled || state.cleanup_pending) && (
+            {state && !setupAvailable && remaining > 0 && (
               <span>
-                {state.project_count} approved{" "}
-                {state.project_count === 1 ? "repository" : "repositories"}
-                {" · "}
-                {publishers.length} approved{" "}
-                {publishers.length === 1 ? "publisher" : "publishers"}
-                {" · "}
-                {guideCount} {guideCount === 1 ? "guide" : "guides"} available
+                {remaining} {shownRepositories.length ? "more " : ""}
+                {remaining === 1 ? "repository" : "repositories"}
               </span>
             )}
           </div>
         )}
-        {state?.enabled &&
-          state.native_hooks_configured &&
-          !state.paused &&
-          !loadError && (
-            <p className="tools-hub-guidance">
-              To use automatic workflows, review and trust Temper in Codex with{" "}
-              <code>/hooks</code>, then open a new chat.
-            </p>
-          )}
-        {state && (state.enabled || state.cleanup_pending) && (
-          <div className="tools-hub-scope">
-            {publishers.length > 0 && (
-              <p>
-                {loadError ? "Last known publishers" : "Approved publishers"} ·{" "}
-                {publishers.map((source) => source.label).join(", ")}
-              </p>
-            )}
-            <RepositoryGuidance
-              rows={state.projects.slice(0, 3)}
-              stale={!!loadError}
-            />
-            {state.projects.length > 3 && (
-              <p>
-                View automatic workflows to see all {state.projects.length}{" "}
-                repositories.
-              </p>
-            )}
-          </div>
+        {shownRepositories.length > 0 && (
+          <RepositoryGuidance rows={shownRepositories} stale={!!loadError} />
         )}
+        {state?.enabled && state.last_task && (
+          <p className="tools-hub-guidance">
+            {loadError ? "Last known task check" : "Latest task check"} ·{" "}
+            <TaskActivity task={state.last_task} projects={state.projects} />
+          </p>
+        )}
+        {state?.enabled &&
+          ready &&
+          !state.last_task &&
+          !shownRepositories.length &&
+          !loadError && (
+            <p className="tools-hub-guidance">No task activity recorded.</p>
+          )}
       </section>
     );
   }
@@ -361,14 +414,10 @@ export function ToolsHubPanel({
   return (
     <section className="tools-hub-panel" aria-labelledby={headingId}>
       <div className="tools-hub-panel__heading">
-        <div>
-          <h2 id={headingId} ref={panelHeading} tabIndex={-1}>
-            Automatic workflows
-          </h2>
-          <p>{workflowSummary}</p>
-        </div>
+        <h2 id={headingId} ref={panelHeading} tabIndex={-1}>
+          Automatic workflows
+        </h2>
       </div>
-      <WorkflowLifecycle />
       {checking ? (
         <LoadingStatus>{status}</LoadingStatus>
       ) : (
@@ -376,12 +425,6 @@ export function ToolsHubPanel({
           <strong className="tools-hub-state" data-tone={stateTone}>
             {status}
           </strong>
-          {state?.enabled && publishers.length > 0 && (
-            <span>
-              {loadError ? "Last known publishers" : "Approved publishers"} ·{" "}
-              {publishers.map((source) => source.label).join(", ")}
-            </span>
-          )}
         </div>
       )}
       {loadError && !review && (
@@ -562,22 +605,53 @@ export function ToolsHubPanel({
             )}
             {state.enabled && (
               <>
-                <div className="tools-hub-primary">
-                  <p>
-                    {state.paused ? (
-                      "Automatic tool updates are paused."
-                    ) : state.native_hooks_configured ? (
+                <div className="tools-hub-activity">
+                  <h3>
+                    {loadError ? "Last known activity" : "Workflow activity"}
+                  </h3>
+                  <dl>
+                    <dt>Latest task check</dt>
+                    <dd>
+                      {state.last_task ? (
+                        <TaskActivity
+                          task={state.last_task}
+                          projects={state.projects}
+                        />
+                      ) : (
+                        "No task activity recorded"
+                      )}
+                    </dd>
+                    <dt>Approved publishers</dt>
+                    <dd>
+                      {publishers.map((source) => source.label).join(", ") ||
+                        "None"}
+                    </dd>
+                    <dt>Last successful publisher check</dt>
+                    <dd>
+                      <PublisherCheck timestamp={state.last_checked} />
+                    </dd>
+                    {state.job && (
                       <>
-                        To start using automatic workflows, review and trust
-                        Temper in Codex with <code>/hooks</code>, then open a
-                        new chat. Any guide files you edit are kept.
+                        <dt>
+                          {jobLabels[state.job.operation] ?? "Tool operation"}
+                        </dt>
+                        <dd>{jobStates[state.job.state]}</dd>
                       </>
-                    ) : state.indexed ? (
-                      "Connect Codex so it can prepare tools when you start a task."
-                    ) : (
-                      "Temper is preparing guidance from your approved publishers."
                     )}
-                  </p>
+                  </dl>
+                </div>
+                <div className="tools-hub-overview">
+                  <h3>
+                    {loadError
+                      ? "Last known repositories"
+                      : "Approved repositories"}
+                  </h3>
+                  <RepositoryGuidance
+                    rows={state.projects}
+                    stale={!!loadError}
+                  />
+                </div>
+                <div className="tools-hub-actions">
                   {state.paused ? (
                     <Button
                       disabled={actionsUnavailable}
@@ -623,52 +697,38 @@ export function ToolsHubPanel({
                     >
                       Repair setup
                     </Button>
-                  ) : !state.indexed && !working ? (
-                    <Button
-                      disabled={actionsUnavailable}
-                      onClick={() =>
-                        void action(async () => {
-                          await mutate("refresh");
-                        })
-                      }
-                    >
-                      Check for updates
-                    </Button>
                   ) : null}
+                  <Button
+                    type="button"
+                    disabled={actionsUnavailable || working || state.paused}
+                    onClick={() =>
+                      void action(async () => {
+                        await mutate("refresh");
+                      })
+                    }
+                  >
+                    Check for updates
+                  </Button>
                 </div>
-                {state.last_task?.status === "deferred_incompatible_update" && (
-                  <p role="status">
-                    The upstream update has unsupported requirements. Your
-                    previous working tools are still available.
-                  </p>
-                )}
-                {working && (
-                  <p role="status">
+
+                {working && !loadError && (
+                  <LoadingStatus>
                     {state.job?.operation === "cleanup"
                       ? "Removing unchanged Temper-managed files…"
-                      : "Preparing approved tools in the background. You can keep using the app."}
-                  </p>
+                      : `${jobLabels[state.job?.operation ?? ""] ?? "Tool operation"} in progress…`}
+                  </LoadingStatus>
                 )}
                 {(failed || taskFailed) && (
                   <p role="alert">
                     {state.last_task?.state === "failed"
-                      ? state.last_task.message
+                      ? (state.last_task.message ??
+                        "The latest task check failed.")
                       : (state.job?.message ??
-                        "Setup needs attention. Your existing profile was preserved.")}
+                        "The latest tool operation needs attention.")}
                   </p>
                 )}
-                <div className="tools-hub-overview">
-                  <h3>Approved repositories</h3>
-                  <RepositoryGuidance
-                    rows={state.projects}
-                    stale={!!loadError}
-                  />
-                </div>
                 <details className="tools-hub-settings">
                   <summary>Tool settings</summary>
-                  <p className="subtle">
-                    Temper checks approved publishers every six hours.
-                  </p>
                   <div className="tools-hub-actions">
                     {!state.paused && (
                       <Button
@@ -681,23 +741,6 @@ export function ToolsHubPanel({
                         }
                       >
                         Pause updates
-                      </Button>
-                    )}
-                    {(state.indexed ||
-                      working ||
-                      state.paused ||
-                      failed ||
-                      taskFailed) && (
-                      <Button
-                        type="button"
-                        disabled={actionsUnavailable || working || state.paused}
-                        onClick={() =>
-                          void action(async () => {
-                            await mutate("refresh");
-                          })
-                        }
-                      >
-                        Check for updates
                       </Button>
                     )}
                     {(failed || taskFailed) &&
@@ -876,6 +919,7 @@ export function ToolsHubPanel({
           </>
         )
       )}
+      {nativeRuntime && <WorkflowLifecycle />}
       <Dialog.Root
         open={pageVisible && review !== null}
         onOpenChange={(open) => {

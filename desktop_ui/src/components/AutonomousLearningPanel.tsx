@@ -9,6 +9,7 @@ import {
   type AutonomyState,
   type Bound,
   type GrantPreview,
+  type LearningProjectAccess,
   type StyleCategory,
 } from "../autonomy";
 import { engineFailureMessage, type EngineProject } from "../engine";
@@ -33,7 +34,41 @@ const changeLabels: Record<string, string> = {
   habit_revoked: "Habit removed",
   grant_revoked: "Learning permission revoked",
 };
+const controlProgress: Record<AutonomyControl, string> = {
+  pause_learning: "Pausing learning…",
+  resume_learning: "Resuming learning…",
+  enable_personalization: "Turning personalization on…",
+  disable_personalization: "Turning personalization off…",
+  revoke_grant: "Revoking learning access…",
+  revoke_habit: "Removing habit…",
+};
 type HabitEvidence = Awaited<ReturnType<typeof explainHabit>>["value"];
+
+function ApprovedLearningProjects({
+  projects,
+}: {
+  projects: LearningProjectAccess[];
+}) {
+  return (
+    <details className="learning-details">
+      <summary>Approved repositories ({projects.length})</summary>
+      <div className="learning-details__body">
+        <ul className="learning-history">
+          {projects.map((project) => (
+            <li key={project.project_id}>
+              {project.display_name}
+              {projects.some(
+                (other) =>
+                  other.display_name === project.display_name &&
+                  other.project_id !== project.project_id,
+              ) && ` · ${project.project_id}`}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </details>
+  );
+}
 
 export function AutonomousLearningPanel({
   projects,
@@ -50,11 +85,13 @@ export function AutonomousLearningPanel({
     [],
   );
   const [preview, setPreview] = useState<Bound<GrantPreview> | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
+  const busy = progress !== null;
   const [trustAuthorizedChats, setTrustAuthorizedChats] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [evidence, setEvidence] = useState<HabitEvidence | null>(null);
+  const habitsHeading = useRef<HTMLHeadingElement>(null);
   const busyRef = useRef(false);
   const requestVersion = useRef(0);
   const pendingRead = useRef<Promise<Bound<AutonomyState>> | null>(null);
@@ -104,11 +141,11 @@ export function AutonomousLearningPanel({
     };
   }, [refreshKey, visible]);
 
-  async function run(operation: () => Promise<void>) {
+  async function run(message: string, operation: () => Promise<void>) {
     if (busyRef.current) return;
     busyRef.current = true;
     requestVersion.current += 1;
-    setBusy(true);
+    setProgress(message);
     setActionError(null);
     try {
       await operation();
@@ -116,22 +153,27 @@ export function AutonomousLearningPanel({
       setActionError(engineFailureMessage(value));
     } finally {
       busyRef.current = false;
-      setBusy(false);
+      setProgress(null);
     }
   }
   const control = (action: AutonomyControl, habitId?: string) =>
-    run(async () => {
+    run(controlProgress[action], async () => {
       if (state) {
         setState(await controlAutonomy(action, state.digest, habitId));
         setEvidence(null);
+        if (action === "revoke_habit") habitsHeading.current?.focus();
       }
     });
   const status = state?.value;
   const learningProjects = status?.project_access;
   const grantProjects = learningProjects ?? projects;
-  const approvedCount = learningProjects?.filter(
+  const approvedProjects = learningProjects?.filter(
     (project) => project.learning_authorized,
-  ).length;
+  );
+  const approvedCount = approvedProjects?.length;
+  const currentHabits = status?.habits.filter(
+    (habit) => habit.state !== "retired",
+  );
   const blocked = Boolean(loadError) || status?.secure_store_ready === false;
   const learningLabel = loadError
     ? "Unavailable"
@@ -177,9 +219,7 @@ export function AutonomousLearningPanel({
         : "neutral";
 
   if (onOpenPersonalization) {
-    const habitCount = status?.habits.filter(
-      (habit) => habit.state !== "retired",
-    ).length;
+    const habitCount = currentHabits?.length;
     const capturedCount = status?.capture_summary?.captured_conversations;
     return (
       <section
@@ -197,19 +237,13 @@ export function AutonomousLearningPanel({
         </header>
         {statusNotice}
         {loading && <LoadingStatus>Checking learning status…</LoadingStatus>}
-        {status && !loadError && (
+        {status && (
           <>
-            <p className="autonomy-panel__intro">
-              {learningLabel === "Enabled"
-                ? status.capture_window === "completed_work"
-                  ? "Completed work in approved Codex projects is eligible for learning."
-                  : "New chats in approved Codex projects are eligible for learning."
-                : learningLabel === "Paused"
-                  ? "Learning is paused. You can resume it in Personalization."
-                  : learningLabel === "Off"
-                    ? "Choose which Codex projects Temper can learn from in Personalization."
-                    : "Check Personalization for what learning needs before it can continue."}
-            </p>
+            {!status.grant_enabled && !loadError && (
+              <p className="autonomy-panel__intro">
+                No projects approved for chat learning.
+              </p>
+            )}
             {status.grant_enabled && (
               <dl className="learning-facts" aria-label="Learning coverage">
                 <div>
@@ -258,9 +292,9 @@ export function AutonomousLearningPanel({
       </header>
       {statusNotice}
       {loading && <LoadingStatus>Checking learning status…</LoadingStatus>}
-      {busy && (
+      {progress && (
         <p className="learning-secondary" role="status">
-          Updating learning…
+          {progress}
         </p>
       )}
       {actionError && (
@@ -386,7 +420,7 @@ export function AutonomousLearningPanel({
                   blocked
                 }
                 onClick={() =>
-                  void run(async () =>
+                  void run("Preparing learning access for review…", async () =>
                     setPreview(
                       await previewLearningGrant(
                         selected,
@@ -471,7 +505,7 @@ export function AutonomousLearningPanel({
                   tone="primary"
                   disabled={busy || blocked}
                   onClick={() =>
-                    void run(async () => {
+                    void run("Enabling chat learning…", async () => {
                       setState(await enableLearningGrant(preview));
                       setPreview(null);
                     })
@@ -489,66 +523,22 @@ export function AutonomousLearningPanel({
       )}
       {status?.grant_enabled && (
         <>
-          <p className="autonomy-panel__intro">
-            {loadError
-              ? "Last known learning state. Refresh to check for changes."
-              : !status.secure_store_ready ||
-                  status.provenance_state === "unverified" ||
-                  (status.learning_enabled && status.capture_state !== "ready")
-                ? "Learning is waiting. Your saved habits are still here."
-                : status.learning_enabled
-                  ? status.capture_window === "completed_work"
-                    ? "Temper can learn communication habits from completed work in your approved projects."
-                    : "Temper can learn communication habits from new Codex chats in your approved projects."
-                  : "Chat learning is paused. Your saved habits are still here."}
-          </p>
-          <dl className="learning-facts" aria-label="Learning coverage">
-            <div>
-              <dt>Repositories approved</dt>
-              <dd>
-                {loadError ? "Unavailable" : (approvedCount ?? "Checking…")}
-              </dd>
-            </div>
-            <div>
-              <dt>Conversations captured</dt>
-              <dd>
-                {loadError
-                  ? "Unavailable"
-                  : (status.capture_summary?.captured_conversations ??
-                    "Checking…")}
-              </dd>
-            </div>
-          </dl>
-          {status.capture_summary?.eligible_since && (
-            <p>
-              {status.capture_window === "completed_work"
-                ? "Completed work since"
-                : "New chats started after"}{" "}
-              {new Date(status.capture_summary.eligible_since).toLocaleString()}{" "}
-              {status.capture_window === "completed_work"
-                ? "is eligible, including work in ongoing chats. Earlier messages stay excluded."
-                : "are eligible. Continue working in an approved repository; chats already open at that time stay excluded."}
-            </p>
-          )}
-          {status.habits.length === 0 ? (
-            <div className="learning-empty">
-              <h3>{loadError ? "Habits unavailable" : "No habits yet"}</h3>
-              <p>
-                {loadError
-                  ? "Refresh to check your learned habits."
-                  : "Habits appear here when a pattern repeats across separate tasks."}
-              </p>
-            </div>
-          ) : (
-            <div>
-              <h3>{loadError ? "Last known habits" : "Learned habits"}</h3>
-              <ul className="habit-list" aria-label="Learned habits">
-                {status.habits.map((habit) => (
+          <div className="learning-empty">
+            <h3 ref={habitsHeading} tabIndex={-1}>
+              {loadError ? "Last known habits" : "Learned habits"}
+            </h3>
+            {currentHabits?.length ? (
+              <ul className="habit-list">
+                {currentHabits.map((habit) => (
                   <li className="habit-row" key={habit.habit_id}>
                     <div className="habit-row__heading">
-                      <h3>{habit.behavior}</h3>
+                      <h4>{habit.behavior}</h4>
                       <StatusPill
-                        tone={habit.state === "active" ? "positive" : "neutral"}
+                        tone={
+                          !loadError && habit.state === "active"
+                            ? "positive"
+                            : "neutral"
+                        }
                       >
                         {habitStates[habit.state]}
                       </StatusPill>
@@ -574,7 +564,7 @@ export function AutonomousLearningPanel({
                             setEvidence(null);
                             return;
                           }
-                          void run(async () =>
+                          void run("Loading habit evidence…", async () =>
                             setEvidence(
                               (await explainHabit(habit.habit_id)).value,
                             ),
@@ -585,7 +575,7 @@ export function AutonomousLearningPanel({
                       </Button>
                       <Button
                         tone="quiet"
-                        disabled={busy || blocked || habit.state === "retired"}
+                        disabled={busy || blocked}
                         onClick={() =>
                           void control("revoke_habit", habit.habit_id)
                         }
@@ -636,17 +626,18 @@ export function AutonomousLearningPanel({
                         </dl>
                         <p className="learning-secondary">
                           Results for version{" "}
-                          {evidence.outcome_summary.habit_revision}. A file
-                          update alone does not confirm that an agent loaded it
-                          or that it helped.
+                          {evidence.outcome_summary.habit_revision}. Agent
+                          loading and usefulness are measured separately.
                         </p>
                       </div>
                     )}
                   </li>
                 ))}
               </ul>
-            </div>
-          )}
+            ) : (
+              <p>No habits yet.</p>
+            )}
+          </div>
           <div className="personalization-status">
             <span>Personalization</span>
             <strong>
@@ -664,10 +655,54 @@ export function AutonomousLearningPanel({
                 : !status.published
                   ? "No habits added to agent instructions"
                   : status.delivery_confirmed
-                    ? "Agent loading confirmed"
+                    ? "Agent loading recorded"
                     : "Instructions updated · agent loading unconfirmed"}
             </span>
           </div>
+          <div className="learning-details learning-details__body">
+            <dl
+              className="learning-facts"
+              aria-label={
+                loadError ? "Last known activity" : "Learning activity"
+              }
+            >
+              <div>
+                <dt>Conversations captured</dt>
+                <dd>
+                  {status.capture_summary?.captured_conversations ??
+                    "Unavailable"}
+                </dd>
+              </div>
+              {status.recent_changes.length > 0 && (
+                <div>
+                  <dt>Recent changes</dt>
+                  <dd>
+                    <ul className="learning-history">
+                      {status.recent_changes
+                        .slice()
+                        .reverse()
+                        .map((change) => (
+                          <li key={change.digest}>
+                            {changeLabels[change.type] ?? "Learning updated"}
+                          </li>
+                        ))}
+                    </ul>
+                  </dd>
+                </div>
+              )}
+            </dl>
+          </div>
+          {approvedProjects?.length ? (
+            <ApprovedLearningProjects projects={approvedProjects} />
+          ) : (
+            <div className="learning-details">
+              <p className="learning-secondary">
+                {approvedProjects
+                  ? "No approved repositories."
+                  : "Approved repository list unavailable."}
+              </p>
+            </div>
+          )}
           <details className="learning-details">
             <summary>Learning settings</summary>
             <div className="learning-details__body">
@@ -695,9 +730,28 @@ export function AutonomousLearningPanel({
                   compatibility, behavior and instruction checks to pass first.
                 </p>
               )}
+              <div className="learning-revoke">
+                <p>
+                  Revoke access to stop learning and personalization. Local
+                  evidence is kept for up to 30 days.
+                </p>
+                <Button
+                  tone="danger"
+                  disabled={busy || blocked}
+                  onClick={() => void control("revoke_grant")}
+                >
+                  Stop and revoke permission
+                </Button>
+              </div>
+            </div>
+          </details>
+          <details className="learning-details">
+            <summary>How chat learning works</summary>
+            <div className="learning-details__body">
               <p>
-                Pausing learning stops new observation and updates. It does not
-                turn off existing personalization.
+                Repeated patterns across tasks can become habits. Pausing
+                learning stops new observation and updates. Existing
+                personalization can stay on.
               </p>
               <dl className="learning-facts">
                 <div>
@@ -706,6 +760,16 @@ export function AutonomousLearningPanel({
                     {status.capture_window === "completed_work"
                       ? "Completed work in approved projects, including ongoing Codex chats. Messages before your learning cutoff are excluded."
                       : "New eligible Codex chats in approved projects. Older chats are excluded."}
+                    {status.capture_summary?.eligible_since && (
+                      <p>
+                        Learning cutoff{" "}
+                        <time dateTime={status.capture_summary.eligible_since}>
+                          {new Date(
+                            status.capture_summary.eligible_since,
+                          ).toLocaleString()}
+                        </time>
+                      </p>
+                    )}
                   </dd>
                 </div>
                 <div>
@@ -734,36 +798,8 @@ export function AutonomousLearningPanel({
                   </dd>
                 </div>
               </dl>
-              <div className="learning-revoke">
-                <p>
-                  Revoke access to stop learning and personalization. Existing
-                  evidence follows the same retention limit.
-                </p>
-                <Button
-                  tone="danger"
-                  disabled={busy || blocked}
-                  onClick={() => void control("revoke_grant")}
-                >
-                  Stop and revoke permission
-                </Button>
-              </div>
             </div>
           </details>
-          {status.recent_changes.length > 0 && (
-            <details className="learning-details">
-              <summary>Recent changes</summary>
-              <ul className="learning-history">
-                {status.recent_changes
-                  .slice()
-                  .reverse()
-                  .map((change) => (
-                    <li key={change.digest}>
-                      {changeLabels[change.type] ?? "Learning updated"}
-                    </li>
-                  ))}
-              </ul>
-            </details>
-          )}
         </>
       )}
     </section>

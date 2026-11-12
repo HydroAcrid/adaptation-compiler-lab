@@ -44,55 +44,129 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-it("shows the automatic lifecycle and the current approved scope on the Overview", async () => {
+const populated: HubState = {
+  ...initial,
+  enabled: true,
+  indexed: true,
+  native_hooks_configured: true,
+  project_count: 1,
+  sources: [{ ...initial.sources[0], approved: true }],
+  projects: [
+    {
+      id: "fictional-repo",
+      label: "Example",
+      root: "/fictional-repo",
+      paused: false,
+      active: ["debugging"],
+      pending_recovery: false,
+    },
+  ],
+  last_task: {
+    project_id: "fictional-repo",
+    state: "complete",
+    status: "ready",
+  },
+  last_checked: 1_793_625_600,
+  job: {
+    job_id: "fictional-maintenance",
+    operation: "maintenance",
+    state: "complete",
+    result: { status: "indexed", skills: 8 },
+  },
+};
+
+it("shows repository guidance and the latest task check on the compact Overview", async () => {
   const user = userEvent.setup();
   const openTools = vi.fn();
-  api.hubRequest.mockResolvedValue({
-    ...initial,
-    enabled: true,
-    indexed: true,
-    native_hooks_configured: true,
-    project_count: 1,
-    sources: [{ ...initial.sources[0], approved: true }],
-    projects: [
-      {
-        id: "repo",
-        label: "Example",
-        root: "/example",
-        paused: false,
-        active: ["debugging"],
-        pending_recovery: false,
-      },
-    ],
-  });
+  api.hubRequest.mockResolvedValue(populated);
   render(<ToolsHubPanel nativeRuntime onOpenTools={openTools} />);
+
   expect(screen.getByRole("status")).toHaveTextContent(
     "Checking workflow status",
   );
-  const lifecycle = screen.getByRole("list", {
-    name: "How automatic workflows work",
-  });
-  expect(lifecycle).toHaveTextContent(/switches guidance as tasks change/);
-  expect(lifecycle).toHaveTextContent(
-    /removes its unchanged copies when a task ends/,
-  );
   expect(await screen.findByText("Codex connection configured")).toBeVisible();
+  expect(screen.getByText("Example")).toBeVisible();
+  expect(screen.getByText(/Available guidance.*debugging/)).toBeVisible();
   expect(
-    screen.getByText(/review and trust Temper in Codex/, { selector: "p" }),
-  ).toHaveTextContent("/hooks, then open a new chat.");
-  expect(
-    screen.getByText(
-      "1 approved repository · 1 approved publisher · 1 guide available",
-    ),
+    screen.getByText(/Latest task check.*Example.*Guidance prepared/),
   ).toBeVisible();
+  expect(screen.queryByText("How automatic workflows work")).toBeNull();
+
   await user.click(
     screen.getByRole("button", { name: "View automatic workflows" }),
   );
   expect(openTools).toHaveBeenCalledOnce();
-  expect(screen.getByText(/Approved publishers.*Superpowers/)).toBeVisible();
-  expect(screen.getByText("Example")).toBeVisible();
+});
+
+it("shows recorded activity and keeps workflow help collapsed on Tools", async () => {
+  const user = userEvent.setup();
+  api.hubRequest.mockResolvedValue(populated);
+  const { container } = render(<ToolsHubPanel nativeRuntime />);
+
+  expect(await screen.findByText("Example · Guidance prepared")).toBeVisible();
   expect(screen.getByText(/Available guidance.*debugging/)).toBeVisible();
-  expect(screen.queryByRole("button", { name: "Pause updates" })).toBeNull();
+  expect(screen.getByText("Superpowers")).toBeVisible();
+  expect(screen.getByText("Complete")).toBeVisible();
+  expect(container.querySelector("time")).toHaveAttribute(
+    "datetime",
+    new Date(populated.last_checked! * 1000).toISOString(),
+  );
+  expect(
+    screen.getByRole("button", { name: "Check for updates" }),
+  ).toBeEnabled();
+  const help = screen.getByText("How automatic workflows work");
+  const cleanup = screen.getByText(
+    /removes its unchanged copies when a task ends/,
+  );
+  expect(cleanup).not.toBeVisible();
+  await user.click(help);
+  expect(cleanup).toBeVisible();
+  expect(screen.getByText("/hooks")).toBeVisible();
+});
+
+it("keeps guidance visible during maintenance and reports paused updates after refresh", async () => {
+  vi.useFakeTimers();
+  api.hubRequest
+    .mockResolvedValueOnce({
+      ...populated,
+      job: {
+        job_id: "fictional-maintenance",
+        operation: "maintenance",
+        state: "running",
+      },
+    })
+    .mockResolvedValue({
+      ...populated,
+      paused: true,
+    });
+  render(<ToolsHubPanel nativeRuntime />);
+  await act(async () => {});
+  expect(screen.getByText("Publisher check in progress…")).toBeVisible();
+  expect(screen.getByText(/Available guidance.*debugging/)).toBeVisible();
+  expect(
+    screen.getByRole("button", { name: "Check for updates" }),
+  ).toBeDisabled();
+
+  await act(async () => vi.advanceTimersByTimeAsync(3000));
+  expect(screen.getByText("Paused")).toBeVisible();
+  expect(screen.getByRole("button", { name: "Resume updates" })).toBeEnabled();
+  expect(screen.getByText(/Available guidance.*debugging/)).toBeVisible();
+  expect(screen.queryByText("Publisher check in progress…")).toBeNull();
+});
+
+it("reports empty task history and publisher checks without inventing activity", async () => {
+  api.hubRequest.mockResolvedValue({
+    ...populated,
+    last_task: null,
+    last_checked: null,
+    job: null,
+    projects: [{ ...populated.projects[0], active: [] }],
+  });
+  const { container } = render(<ToolsHubPanel nativeRuntime />);
+  expect(await screen.findByText("No task activity recorded")).toBeVisible();
+  expect(screen.getByText("No successful check recorded")).toBeVisible();
+  expect(screen.getByText("No guidance installed")).toBeVisible();
+  expect(container.querySelector("time")).toBeNull();
 });
 
 it("does not treat learning repositories as tool permission and previews exact destinations", async () => {

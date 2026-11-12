@@ -4,11 +4,12 @@ import {
   fireEvent,
   render,
   screen,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import { AutonomousLearningPanel } from "./AutonomousLearningPanel";
-import type { AutonomyState } from "../autonomy";
+import type { AutonomyState, Habit } from "../autonomy";
 import type { EngineProject } from "../engine";
 import { PageVisibility } from "../pageVisibility";
 
@@ -80,6 +81,10 @@ it("does not replace a slow status read with overlapping focus or timer reads", 
     () => new Promise((resolve) => (finish = resolve)),
   );
   const view = render(<AutonomousLearningPanel projects={[project]} />);
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "Checking learning status",
+  );
+  expect(screen.queryByText("No habits yet.")).not.toBeInTheDocument();
   const tick = intervals.mock.calls[0][0] as () => void;
   await act(async () => {
     fireEvent.focus(window);
@@ -270,14 +275,138 @@ it("keeps an empty learning profile distinct from applied personalization", asyn
     digest,
   });
   render(<AutonomousLearningPanel projects={[project]} />);
-  expect(
-    await screen.findByRole("heading", { name: "No habits yet" }),
-  ).toBeVisible();
+  expect(await screen.findByText("No habits yet.")).toBeVisible();
   expect(
     screen.getByText("No habits added to agent instructions"),
   ).toBeVisible();
   expect(screen.queryByText("Personalizing")).not.toBeInTheDocument();
   expect(screen.queryByText("Recent changes")).not.toBeInTheDocument();
+});
+
+it("leads with scoped habits and shows actual activity while keeping help folded", async () => {
+  const habit: Habit = {
+    habit_id: "concise-updates",
+    behavior: "Give concise progress updates.",
+    project_id: project.project_id,
+    task_class: "progress_update",
+    origin: "inferred",
+    state: "active",
+    support_episode_ids: ["task-one", "task-two"],
+    contradiction_episode_ids: [],
+  };
+  const current: AutonomyState = {
+    ...status,
+    grant_enabled: true,
+    learning_enabled: true,
+    personalization_enabled: true,
+    automatic_serving_ready: true,
+    provenance_state: "owner_authorized",
+    capture_state: "ready",
+    published: true,
+    habits: [
+      habit,
+      {
+        ...habit,
+        habit_id: "removed-habit",
+        behavior: "Write a detailed narrative.",
+        state: "retired",
+      },
+    ],
+    project_access: [
+      {
+        project_id: project.project_id,
+        display_name: "Approved project",
+        learning_authorized: true,
+        learning_state: "on",
+        personalization_enabled: true,
+      },
+    ],
+    capture_summary: {
+      eligible_since: "2026-10-22T14:58:19Z",
+      captured_conversations: 8,
+      read_at: "2026-11-02T15:00:00Z",
+    },
+    recent_changes: [
+      { type: "habit", digest: "habit-change" },
+      { type: "publication", digest: "publication-change" },
+    ],
+  };
+  api.loadAutonomy
+    .mockResolvedValueOnce({ value: current, digest })
+    .mockRejectedValueOnce(new Error("Read failed"))
+    .mockResolvedValue({ value: current, digest });
+  api.explainHabit.mockResolvedValue({
+    value: {
+      habit,
+      support_count: 2,
+      contradiction_count: 0,
+      outcome_summary: {
+        habit_revision: 1,
+        published: true,
+        delivered: null,
+        followed: null,
+        helpful: null,
+        harmful: null,
+        checked_opportunities: 0,
+      },
+    },
+    digest,
+  });
+  api.controlAutonomy.mockResolvedValue({
+    value: {
+      ...current,
+      published: false,
+      habits: [{ ...habit, state: "retired" }],
+    },
+    digest,
+  });
+  const user = userEvent.setup();
+  render(<AutonomousLearningPanel projects={[project]} />);
+  const heading = await screen.findByRole("heading", { name: habit.behavior });
+  const row = heading.closest("li")!;
+  expect(within(row).getByText("Active")).toBeVisible();
+  expect(
+    within(row).getByText(
+      /Approved project · progress update · Learned from chats/,
+    ),
+  ).toBeVisible();
+  expect(
+    screen.queryByText("Write a detailed narrative."),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByText("Conversations captured").nextElementSibling,
+  ).toHaveTextContent("8");
+  expect(screen.getByText("Agent instructions updated")).toBeVisible();
+  expect(screen.getByText(/agent loading unconfirmed/)).toBeVisible();
+  expect(screen.getByText("Analysis and storage")).not.toBeVisible();
+  await act(async () => fireEvent.focus(window));
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "last status could not be refreshed",
+  );
+  expect(heading).toBeVisible();
+  expect(screen.getByLabelText("Last known activity")).toBeVisible();
+  expect(
+    within(row).getByRole("button", { name: "Undo habit" }),
+  ).toBeDisabled();
+  await user.click(screen.getByRole("button", { name: "Try again" }));
+  const explain = await within(row).findByRole("button", {
+    name: "Why this habit?",
+  });
+  expect(explain).toBeEnabled();
+  await user.click(explain);
+  expect(await screen.findByText(/2 supporting tasks/)).toBeVisible();
+  expect(
+    screen.getByText("Loaded by an agent").nextElementSibling,
+  ).toHaveTextContent("Not measured");
+  expect(api.explainHabit).toHaveBeenCalledWith(habit.habit_id);
+  await user.click(within(row).getByRole("button", { name: "Undo habit" }));
+  expect(await screen.findByText("No habits yet.")).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Learned habits" })).toHaveFocus();
+  expect(api.controlAutonomy).toHaveBeenCalledWith(
+    "revoke_habit",
+    digest,
+    habit.habit_id,
+  );
 });
 
 it("cannot replace a successful pause with an older status poll", async () => {
@@ -340,7 +469,7 @@ it("shows a status failure and allows a read-only retry", async () => {
   expect(api.controlAutonomy).not.toHaveBeenCalled();
 });
 
-it("shows signed repository coverage and the prospective cutoff without claiming capture or delivery", async () => {
+it("shows signed repository coverage and keeps the cutoff in help", async () => {
   api.loadAutonomy.mockResolvedValue({
     value: {
       ...status,
@@ -366,16 +495,19 @@ it("shows signed repository coverage and the prospective cutoff without claiming
     digest,
   });
   render(<AutonomousLearningPanel projects={[project]} />);
-  await screen.findByLabelText("Learning coverage");
-  expect(screen.getByText("57")).toBeInTheDocument();
+  await screen.findByLabelText("Learning activity");
+  expect(screen.getByText("Approved repositories (57)")).toBeVisible();
   expect(
     screen.getByText("Conversations captured").nextElementSibling,
   ).toHaveTextContent("0");
-  expect(
-    screen.getByText(/chats already open at that time stay excluded/),
-  ).toBeInTheDocument();
-  expect(screen.getByText("No habits yet")).toBeInTheDocument();
-  await userEvent.setup().click(screen.getByText("Learning settings"));
+  expect(screen.getByText(/Older chats are excluded/)).not.toBeVisible();
+  expect(screen.getByText("No habits yet.")).toBeVisible();
+  const user = userEvent.setup();
+  await user.click(screen.getByText("Approved repositories (57)"));
+  expect(screen.getByText("New 56")).toBeVisible();
+  expect(screen.queryByText("Synthetic project")).not.toBeInTheDocument();
+  await user.click(screen.getByText("How chat learning works"));
+  expect(screen.getByText(/Learning cutoff/)).toBeVisible();
   expect(screen.getByText("Source").nextElementSibling).toHaveTextContent(
     "Older chats are excluded.",
   );
@@ -400,15 +532,9 @@ it("describes completed work in ongoing chats only when that capture policy is e
   });
   render(<AutonomousLearningPanel projects={[project]} />);
   expect(
-    await screen.findByText(/including work in ongoing chats/),
-  ).toHaveTextContent("Earlier messages stay excluded");
-  expect(
-    screen.queryByText(/chats already open at that time stay excluded/),
-  ).not.toBeInTheDocument();
-  expect(
-    screen.getByText(/from completed work in your approved projects/),
-  ).toBeInTheDocument();
-  await userEvent.setup().click(screen.getByText("Learning settings"));
+    await screen.findByText(/including ongoing Codex chats/),
+  ).not.toBeVisible();
+  await userEvent.setup().click(screen.getByText("How chat learning works"));
   expect(screen.getByText("Source").nextElementSibling).toHaveTextContent(
     "Completed work in approved projects, including ongoing Codex chats. Messages before your learning cutoff are excluded.",
   );
@@ -462,7 +588,7 @@ it("disambiguates same-name learning repositories when granting permission", asy
   expect(api.enableLearningGrant).not.toHaveBeenCalled();
 });
 
-it("shows eligibility and measured coverage on Overview without claiming the observer is running", async () => {
+it("shows measured coverage on Overview without claiming the observer is running", async () => {
   const open = vi.fn();
   api.loadAutonomy.mockResolvedValue({
     value: {
@@ -490,7 +616,9 @@ it("shows eligibility and measured coverage on Overview without claiming the obs
     />,
   );
   expect(await screen.findByText("Enabled")).toBeVisible();
-  expect(screen.getByText(/are eligible for learning/)).toBeVisible();
+  expect(
+    screen.queryByText(/are eligible for learning/),
+  ).not.toBeInTheDocument();
   expect(
     screen.getByText("Conversations captured").nextElementSibling,
   ).toHaveTextContent("Unavailable");

@@ -100,23 +100,24 @@ test("Overview makes automatic workflows visible before learning details", async
     exact: true,
   });
   await expect(workflows).toBeVisible();
-  await expect(workflows).toContainText("switches guidance as tasks change");
-  await expect(workflows).toContainText("when a task ends");
+  await expect(
+    workflows.getByText("Codex picks up to two guides for the task."),
+  ).not.toBeVisible();
   const heading = await workflows
     .getByRole("heading", { name: "Automatic workflows", exact: true })
     .boundingBox();
   expect(heading?.y).toBeLessThan(300);
   await page.setViewportSize({ width: 720, height: 540 });
   const lifecycle = await workflows
-    .getByRole("list", { name: "How automatic workflows work" })
+    .getByRole("button", { name: /automatic workflows/i })
     .boundingBox();
   expect(
     lifecycle,
-    "Workflow lifecycle remains visible at the minimum desktop window",
+    "Workflow action remains visible at the minimum desktop window",
   ).not.toBeNull();
   expect(
     lifecycle!.y + lifecycle!.height,
-    "All four workflow stages fit in the first viewport",
+    "The workflow action fits in the first viewport",
   ).toBeLessThanOrEqual(540);
   await workflows.getByRole("button", { name: /automatic workflows/i }).click();
   await expect(page.getByRole("main")).toHaveAccessibleName(
