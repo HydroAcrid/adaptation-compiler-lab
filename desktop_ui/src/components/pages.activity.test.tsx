@@ -128,3 +128,68 @@ it("distinguishes unavailable task project data from an empty registry", () => {
     projects.getByRole("button", { name: "Add task project" }),
   ).toBeEnabled();
 });
+
+it("keeps connection rows short and preserves capability and cost details in the dialog", async () => {
+  const user = userEvent.setup();
+  render(
+    <ConnectionsPage
+      nativeRuntime
+      liveConnections={[
+        {
+          connection_version: "1.1.0",
+          agent_id: "codex",
+          display_name: "Codex",
+          installation_state: "installed",
+          authentication_state: "signed_in",
+          conformance_state: "compatible",
+          integration_state: "connected",
+          version_label: "fixture",
+          status_summary: "Ready to use with Temper.",
+          learning_capability: "Can capture approved completed tasks.",
+          delivery_capability: "Delivers guidance to managed tasks.",
+          cost_posture: "Uses the connected subscription.",
+          available_actions: ["refresh"],
+          raw_payloads_exposed: false,
+        },
+        {
+          connection_version: "1.1.0",
+          agent_id: "claude",
+          display_name: "Claude Code",
+          installation_state: "installed",
+          authentication_state: "signed_in",
+          conformance_state: "compatible",
+          integration_state: "attention",
+          version_label: "fixture",
+          status_summary: "Review the local hook configuration.",
+          learning_capability: "Capture is unavailable.",
+          delivery_capability: "Delivery is unavailable.",
+          cost_posture: "Agent usage is billed separately.",
+          available_actions: ["refresh"],
+          raw_payloads_exposed: false,
+        },
+      ]}
+    />,
+  );
+  const rows = within(screen.getByRole("region", { name: "Task connections" }));
+  expect(rows.getByText("Ready", { exact: true })).toBeVisible();
+  expect(rows.getByText("Needs attention", { exact: true })).toBeVisible();
+  expect(rows.getByText("Review the local hook configuration.")).toBeVisible();
+  expect(rows.queryByText("Ready to use with Temper.")).not.toBeInTheDocument();
+  expect(
+    rows.queryByText("Can capture approved completed tasks."),
+  ).not.toBeInTheDocument();
+  expect(
+    rows.queryByText("Delivers guidance to managed tasks."),
+  ).not.toBeInTheDocument();
+  expect(
+    rows.queryByText(/Uses the connected subscription/),
+  ).not.toBeInTheDocument();
+
+  await user.click(rows.getAllByRole("button", { name: "View details" })[0]!);
+  const dialog = within(screen.getByRole("dialog", { name: "Codex" }));
+  expect(
+    dialog.getByText("Can capture approved completed tasks."),
+  ).toBeVisible();
+  expect(dialog.getByText("Delivers guidance to managed tasks.")).toBeVisible();
+  expect(dialog.getByText(/Uses the connected subscription/)).toBeVisible();
+});

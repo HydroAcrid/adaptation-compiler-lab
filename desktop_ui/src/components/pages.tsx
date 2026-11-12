@@ -2055,27 +2055,9 @@ export function ConnectionsPage({
                   {connectionStatusLabel(connection.status)}
                 </StatusPill>
               </div>
-              <p>
-                {connection.authDescription} · {connection.costDescription}
-              </p>
-              <div className="capability-list">
-                <div>
-                  {connection.status === "connected" ? (
-                    <CheckCircle2 size={15} />
-                  ) : (
-                    <Info size={15} />
-                  )}
-                  <span>{connection.sourceCapability}</span>
-                </div>
-                <div>
-                  {connection.status === "connected" ? (
-                    <CheckCircle2 size={15} />
-                  ) : (
-                    <Info size={15} />
-                  )}
-                  <span>{connection.targetCapability}</span>
-                </div>
-              </div>
+              {connection.status === "attention" && (
+                <p>{connection.authDescription}</p>
+              )}
             </div>
             <Button
               onClick={(event) => {

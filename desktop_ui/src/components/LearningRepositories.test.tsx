@@ -85,12 +85,17 @@ it("shows signed learning coverage independently of one task project and absent 
     ),
   ).not.toBeInTheDocument();
   expect(
-    screen.getByText(
+    screen.queryByText(
+      "Reviewed-suggestion capture is unavailable until the connection is ready.",
+    ),
+  ).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "View details" }));
+  const details = screen.getByRole("dialog");
+  expect(
+    within(details).getByText(
       "Reviewed-suggestion capture is unavailable until the connection is ready.",
     ),
   ).toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: "View details" }));
-  const details = screen.getByRole("dialog");
   expect(within(details).getByText("Reviewed suggestions")).toBeInTheDocument();
   expect(
     within(details).getByText(

@@ -849,13 +849,12 @@ describe("installed Temper state boundaries", () => {
     await user.click(screen.getByRole("checkbox"));
     await user.click(connectButton);
 
-    expect(
-      await screen.findByText(/Connected for registered projects\./),
-    ).toBeInTheDocument();
-
     await user.click(
       screen.getAllByRole("button", { name: "View details" })[1],
     );
+    expect(
+      await screen.findByText(/Connected for registered projects\./),
+    ).toBeInTheDocument();
     await user.click(
       screen.getAllByRole("button", { name: "Review guidance" })[0],
     );
