@@ -323,9 +323,11 @@ export function ToolsHubPanel({
     } else if (review.type === "continuity") {
       await mutate("continuity_apply", { preview_id: review.value.preview_id });
       setContinuityNotice(
-        review.value.enabled
-          ? "Continuing work is on."
-          : "Continuing work is off.",
+        review.value.reset
+          ? "Saved work was reset. Continuing work is off."
+          : review.value.enabled
+            ? "Continuing work is on."
+            : "Continuing work is off.",
       );
     } else if (review.type === "clear_checkpoint") {
       await mutate("continuity_clear", {
@@ -362,10 +364,15 @@ export function ToolsHubPanel({
     void action(async () => {
       setPreparingContinuityReview(true);
       try {
+        const reset = intent.type === "reset";
         const value = await mutate<ContinuityPreview>("continuity_preview", {
           project_id: project.id,
-          enabled: !project.continuity_enabled,
+          enabled: !reset && !project.continuity_enabled,
+          ...(reset ? { reset: true } : {}),
         });
+        if (Boolean(value.reset) !== reset) {
+          throw new Error("Saved work status changed. Review it again.");
+        }
         openReview(
           { type: "continuity", value, label: project.label },
           trigger,
@@ -1063,7 +1070,9 @@ export function ToolsHubPanel({
                     : review?.type === "repair"
                       ? "Repair the private manager"
                       : review?.type === "continuity"
-                        ? `${review.value.enabled ? "Turn on" : "Turn off"} continuing work`
+                        ? review.value.reset
+                          ? "Reset saved work"
+                          : `${review.value.enabled ? "Turn on" : "Turn off"} continuing work`
                         : review?.type === "clear_checkpoint"
                           ? "Remove saved checkpoint"
                           : "Stop managing repository tools"}
@@ -1078,11 +1087,13 @@ export function ToolsHubPanel({
                     : review?.type === "repair"
                       ? "Reinstall the pinned private SkillKit copy, discard its downloaded source cache, and fetch approved sources again. Repository profiles and permissions are preserved."
                       : review?.type === "continuity"
-                        ? review.value.enabled
-                          ? `Allow Codex to save a brief checkpoint for ${review.label} on this device and retrieve it in a later chat in the same repository.`
-                          : review.value.removes_checkpoint
-                            ? `Stop saving checkpoints for ${review.label} and remove the saved checkpoint.`
-                            : `Stop saving checkpoints for ${review.label}.`
+                        ? review.value.reset
+                          ? `Remove the unreadable saved work for ${review.label} and turn off continuing work. You can turn it on again to save a new checkpoint.`
+                          : review.value.enabled
+                            ? `Allow Codex to save a brief checkpoint for ${review.label} on this device and retrieve it in a later chat in the same repository.`
+                            : review.value.removes_checkpoint
+                              ? `Stop saving checkpoints for ${review.label} and remove the saved checkpoint.`
+                              : `Stop saving checkpoints for ${review.label}.`
                         : review?.type === "clear_checkpoint"
                           ? `Remove the saved checkpoint for ${review.label}. Codex can save a new checkpoint when you work in this repository again.`
                           : "Stop updates and remove unchanged Temper-managed skill files. Files you edited are preserved and may need your attention."}
@@ -1218,9 +1229,11 @@ export function ToolsHubPanel({
                     : review?.type === "repair"
                       ? "Repair setup"
                       : review?.type === "continuity"
-                        ? review.value.enabled
-                          ? "Turn on"
-                          : "Turn off"
+                        ? review.value.reset
+                          ? "Reset saved work"
+                          : review.value.enabled
+                            ? "Turn on"
+                            : "Turn off"
                         : review?.type === "clear_checkpoint"
                           ? "Remove checkpoint"
                           : "Allow and continue"}

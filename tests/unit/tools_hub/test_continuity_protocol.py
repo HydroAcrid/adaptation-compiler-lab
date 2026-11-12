@@ -286,5 +286,58 @@ def test_wire_continuity_ignores_wrong_hook_nonce_and_recovers_dead_task_owner(c
         packet(response())
 
     call_stream(HubProtocol(service), read)
-    # Delivery acknowledgement requires the native hook binding as well as a prepare result.
+    assert project(service)["continuity"]["status"] == "resumed"
+
+
+def test_wire_fabricated_hook_session_cannot_claim_cross_connection_retrieval(continuity_service):
+    service = continuity_service
+    connection = HubProtocol(service)
+
+    def use_same_connection(response):
+        yield prep()
+        prepared = packet(response())
+        yield bind(response, "original-id", "first-turn")
+        yield checkpoint(prepared, "Verify same-connection behavior.")
+        packet(response())
+        yield finish("original-id", "first-turn")
+        yield prep(continue_previous=True)
+        assert packet(response())["continuity"]["handoff"]
+        yield bind(response, "invented-different-id", "second-turn")
+        yield finish("invented-different-id", "second-turn")
+        packet(response())
+
+    call_stream(connection, use_same_connection)
+    assert project(service)["continuity"]["status"] == "saved"
+
+
+def test_wire_does_not_record_retrieval_when_response_flush_fails(continuity_service):
+    service = continuity_service
+
+    def save_first(response):
+        yield prep()
+        prepared = packet(response())
+        yield bind(response, "origin", "first-turn")
+        yield checkpoint(prepared, "Verify a later connection.")
+        packet(response())
+        yield finish("origin", "first-turn")
+        packet(response())
+
+    call_stream(HubProtocol(service), save_first)
+
+    class BrokenTransport(io.StringIO):
+        def flush(self):
+            raise BrokenPipeError("Fictional disconnected output")
+
+    request = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": prep(continue_previous=True),
+    }
+    with pytest.raises(BrokenPipeError, match="disconnected"):
+        serve_hub(
+            HubProtocol(service),
+            stdin=io.StringIO(json.dumps(request) + "\n"),
+            stdout=BrokenTransport(),
+        )
     assert project(service)["continuity"]["status"] == "saved"

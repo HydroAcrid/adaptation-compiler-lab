@@ -24,6 +24,7 @@ export interface ContinuityPreview {
   project_id: string;
   enabled: boolean;
   removes_checkpoint: boolean;
+  reset?: boolean;
 }
 
 export interface HubProject {

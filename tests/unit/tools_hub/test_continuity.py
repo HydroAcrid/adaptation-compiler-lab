@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import secrets
 import time
+from contextlib import contextmanager
+from pathlib import Path
 from typing import Any
 
 import pytest
 
+from adaptation_compiler_lab.tools_hub import service as service_module
+from adaptation_compiler_lab.tools_hub.paths import writer_lock
 from adaptation_compiler_lab.tools_hub.protocol import HubProtocol
 from adaptation_compiler_lab.tools_hub.service import HubService, project_key
 
@@ -50,7 +54,6 @@ def prepare(agent: HubProtocol, **extra: Any) -> dict[str, Any]:
 def save(
     agent: HubProtocol,
     prepared: dict[str, Any],
-    native_session: str = "fixture-origin",
     **extra: Any,
 ) -> dict[str, Any]:
     return agent.dispatch(
@@ -63,7 +66,6 @@ def save(
             **extra,
         },
         agent=True,
-        native_session=native_session,
     )
 
 
@@ -119,7 +121,8 @@ def test_two_connections_preserve_checkpoint_and_clean_approved_skill(service: H
     state_file = service.continuity.path(project_key("repo"))
     stored = state_file.read_text()
     assert GOAL not in stored and HANDOFF["next_step"] not in stored
-    assert "fixture-origin" not in stored
+    assert first.task_owner is not None
+    assert first.task_owner.connection_id not in stored
     assert HANDOFF["next_step"] not in str(service.state())
 
     other = HubProtocol(service)
@@ -135,18 +138,8 @@ def test_two_connections_preserve_checkpoint_and_clean_approved_skill(service: H
     assert new_task["continuity"]["handoff"] == HANDOFF
     assert new_task["continuity"]["independent_human_evidence"] is False
     assert new_task["continuity"]["checks_verified_by_temper"] is False
-    acknowledge = {
-        "task_receipt": new_task["task_receipt"],
-        "checkpoint_id": checkpoint_id,
-        "session_id": "fixture-origin",
-    }
-    other.dispatch("tools_hub.continuity.acknowledge", acknowledge, agent=True)
     assert service.state()["projects"][0]["continuity"]["status"] == "saved"
-    other.dispatch(
-        "tools_hub.continuity.acknowledge",
-        {**acknowledge, "session_id": "fixture-fresh-session"},
-        agent=True,
-    )
+    other.record_checkpoint_retrieval(new_task["task_receipt"], checkpoint_id)
     assert service.state()["projects"][0]["continuity"]["status"] == "resumed"
     assert desktop(service, "read", project_id="repo", checkpoint_id=checkpoint_id) == {
         "checkpoint_id": checkpoint_id,
@@ -312,3 +305,129 @@ def test_checkpoint_is_bound_to_repository_and_permission(service: HubService) -
         desktop(service, "read", project_id="repo", checkpoint_id=checkpoint["checkpoint_id"])
     service.tick()
     assert not service.continuity.path(project_key("repo")).exists()
+
+
+@pytest.mark.parametrize("explicit", [False, True])
+def test_prepare_rechecks_repository_after_decrypt(
+    service: HubService, monkeypatch: pytest.MonkeyPatch, explicit: bool
+) -> None:
+    set_continuity(service, True)
+    agent = HubProtocol(service)
+    task = prepare(agent)
+    save(agent, task)
+    finish(agent, task)
+    repository = service.project_inventory()["repo"]
+    decrypt = service.continuity.decrypt
+
+    def decrypt_then_replace(state: dict[str, Any], checkpoint: dict[str, Any]) -> dict[str, Any]:
+        content = decrypt(state, checkpoint)
+        (repository / ".git").rename(repository / ".git-old")
+        (repository / ".git").mkdir()
+        return content
+
+    monkeypatch.setattr(service.continuity, "decrypt", decrypt_then_replace)
+    with pytest.raises(ValueError, match="not authorized"):
+        prepare(HubProtocol(service), continue_previous=explicit)
+
+
+def test_save_rechecks_repository_at_ciphertext_commit(
+    service: HubService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    set_continuity(service, True)
+    agent = HubProtocol(service)
+    task = prepare(agent)
+    repository = service.project_inventory()["repo"]
+    encrypt = service.continuity.encrypt
+
+    def encrypt_then_replace(
+        state: dict[str, Any], checkpoint: dict[str, Any], content: dict[str, Any]
+    ) -> str:
+        encrypted = encrypt(state, checkpoint, content)
+        (repository / ".git").rename(repository / ".git-old")
+        (repository / ".git").mkdir()
+        return encrypted
+
+    monkeypatch.setattr(service.continuity, "encrypt", encrypt_then_replace)
+    with pytest.raises(ValueError, match="not authorized"):
+        save(agent, task)
+    record = service.continuity.read_owned(project_key("repo"))
+    assert record is not None and record["checkpoint"] is None
+
+
+def test_maintenance_refreshes_grant_after_waiting_for_writer(
+    service: HubService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    set_continuity(service, True)
+    current = HubProtocol(service)
+    task = prepare(current)
+    checkpoint = save(current, task)
+    finish(current, task)
+    permission = service.grant()
+    assert permission is not None
+    previous = {**permission, "grant_id": "b" * 32, "enabled": False}
+    service.seals.write(service.home / "permission.json", previous, "permission")
+
+    @contextmanager
+    def replaced_before_lock(home: Path, *, name: str = "writer.lock") -> Any:
+        # A competing setup finishes just before this maintenance tick obtains the lock.
+        service.seals.write(service.home / "permission.json", permission, "permission")
+        with writer_lock(home, name=name):
+            yield
+
+    monkeypatch.setattr(service_module, "writer_lock", replaced_before_lock)
+    assert service.tick()["status"] == "idle"
+    assert (
+        service.state()["projects"][0]["continuity"]["checkpoint_id"] == checkpoint["checkpoint_id"]
+    )
+
+
+def test_corrupted_record_reset_is_explicit_and_allows_a_fresh_checkpoint(
+    service: HubService,
+) -> None:
+    set_continuity(service, True)
+    agent = HubProtocol(service)
+    task = prepare(agent)
+    saved = save(agent, task)
+    finish(agent, task)
+    with pytest.raises(ValueError, match="readable"):
+        desktop(service, "preview", project_id="repo", enabled=False, reset=True)
+    path = service.continuity.path(project_key("repo"))
+    path.write_bytes(b"fictional invalid signed record")
+    assert service.state()["projects"][0]["continuity_issue"] == "unavailable"
+    reset = desktop(service, "preview", project_id="repo", enabled=False, reset=True)
+    assert reset["reset"] and reset["removes_checkpoint"]
+    assert "revision" not in reset
+    assert desktop(service, "apply", preview_id=reset["preview_id"]) == {
+        "status": "disabled",
+        "project_id": "repo",
+    }
+    assert not service.state()["projects"][0]["continuity_enabled"]
+    set_continuity(service, True)
+    fresh = HubProtocol(service)
+    new_task = prepare(fresh)
+    assert new_task["continuity"]["checkpoint_id"] is None
+    assert new_task["continuity"]["handoff"] is None
+    new_checkpoint = save(fresh, new_task)
+    assert new_checkpoint["checkpoint_id"] != saved["checkpoint_id"]
+    assert saved["checkpoint_id"] not in path.read_text()
+
+
+def test_reset_rejects_changed_or_replaced_record(service: HubService) -> None:
+    set_continuity(service, True)
+    agent = HubProtocol(service)
+    task = prepare(agent)
+    checkpoint = save(agent, task)
+    path = service.continuity.path(project_key("repo"))
+    healthy = path.read_bytes()
+    path.write_bytes(b"fictional damaged record")
+    preview = desktop(service, "preview", project_id="repo", enabled=False, reset=True)
+    path.write_bytes(b"different fictional damaged record")
+    with pytest.raises(ValueError, match="checkpoint changed"):
+        desktop(service, "apply", preview_id=preview["preview_id"])
+    path.write_bytes(healthy)
+    with pytest.raises(ValueError, match="readable"):
+        desktop(service, "apply", preview_id=preview["preview_id"])
+    assert path.read_bytes() == healthy
+    assert (
+        service.state()["projects"][0]["continuity"]["checkpoint_id"] == checkpoint["checkpoint_id"]
+    )

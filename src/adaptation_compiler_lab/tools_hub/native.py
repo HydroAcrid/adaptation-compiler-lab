@@ -27,7 +27,6 @@ class NativeHubAgentProtocol:
         *,
         agent: bool,
         cancellation: RenderCancellation | None = None,
-        native_session: str | None = None,
     ) -> dict[str, object]:
         from .protocol import HubProtocol
 
@@ -35,8 +34,11 @@ class NativeHubAgentProtocol:
             native_hub_service(self.config_path),
             config_path=self.config_path,
             task_owner=self.task_owner,
-        ).dispatch(
-            method, params, agent=agent, cancellation=cancellation, native_session=native_session
+        ).dispatch(method, params, agent=agent, cancellation=cancellation)
+
+    def record_checkpoint_retrieval(self, receipt: dict[str, object], checkpoint_id: str) -> None:
+        native_hub_service(self.config_path).record_checkpoint_retrieval(
+            receipt, self.task_owner, checkpoint_id
         )
 
     def disconnect(self) -> None:

@@ -84,17 +84,12 @@ class Checkpoint(Handoff):
 class ContinuityPreview(Parameters):
     project_id: str = Field(min_length=1, max_length=160)
     enabled: bool
+    reset: bool = False
 
 
 class ContinuityReference(Parameters):
     project_id: str = Field(min_length=1, max_length=160)
     checkpoint_id: str = Field(pattern=r"^[a-f0-9]{32}$")
-
-
-class ContinuityAcknowledgement(Parameters):
-    task_receipt: dict[str, Any]
-    checkpoint_id: str = Field(pattern=r"^[a-f0-9]{32}$")
-    session_id: str = Field(min_length=1, max_length=160)
 
 
 class Turn(Parameters):
@@ -126,7 +121,6 @@ SCHEMAS: dict[str, type[BaseModel]] = {
     "tools_hub.continuity.apply": PreviewId,
     "tools_hub.continuity.read": ContinuityReference,
     "tools_hub.continuity.clear": ContinuityReference,
-    "tools_hub.continuity.acknowledge": ContinuityAcknowledgement,
     "tools_hub.render": Render,
     "tools_hub.runtime.preview": RuntimePreview,
     "tools_hub.runtime.enable": PreviewId,
@@ -143,7 +137,6 @@ AGENT_METHODS = {
     "tools_hub.select",
     "tools_hub.finish",
     "tools_hub.checkpoint",
-    "tools_hub.continuity.acknowledge",
     "tools_hub.render",
 }
 
@@ -165,7 +158,6 @@ class HubProtocol:
         idempotency_key: str | None = None,
         agent: bool = False,
         cancellation: RenderCancellation | None = None,
-        native_session: str | None = None,
     ) -> dict[str, Any]:
         if method not in SCHEMAS or (agent and method not in AGENT_METHODS):
             raise ValueError("Unsupported repository setup operation")
@@ -200,7 +192,9 @@ class HubProtocol:
         elif isinstance(value, Control):
             result = self.service.control(value.operation, value.project_id)
         elif isinstance(value, ContinuityPreview):
-            result = self.service.preview_continuity(value.project_id, value.enabled)
+            result = self.service.preview_continuity(
+                value.project_id, value.enabled, reset=value.reset
+            )
         elif method == "tools_hub.continuity.apply" and isinstance(value, PreviewId):
             result = self.service.apply_continuity(value.preview_id)
         elif method == "tools_hub.continuity.clear" and isinstance(value, ContinuityReference):
@@ -273,13 +267,7 @@ class HubProtocol:
                         }
                     )
                 ),
-                native_session,
             )
-        elif isinstance(value, ContinuityAcknowledgement) and owner is not None:
-            self.service.acknowledge_continuity(
-                value.task_receipt, owner, value.checkpoint_id, value.session_id
-            )
-            result = {}
         elif isinstance(value, Render) and owner is not None:
             result = self.service.render(
                 value.task_receipt, owner, value.spec.model_dump(), cancellation=cancellation
@@ -354,3 +342,7 @@ class HubProtocol:
             if len(self.replays) > 128:
                 self.replays.pop(next(iter(self.replays)))
         return result
+
+    def record_checkpoint_retrieval(self, receipt: dict[str, Any], checkpoint_id: str) -> None:
+        if self.task_owner is not None:
+            self.service.record_checkpoint_retrieval(receipt, self.task_owner, checkpoint_id)

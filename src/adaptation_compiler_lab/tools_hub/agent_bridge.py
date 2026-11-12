@@ -73,8 +73,6 @@ class PendingTask:
     receipt: dict[str, Any]
     nonce: str
     turn: tuple[str, str] | None = None
-    native_session: str | None = None
-    delivered_checkpoint: str | None = None
 
     @property
     def token(self) -> str:
@@ -245,6 +243,7 @@ def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
     for frame in input_frames(stdin):
         request = frame.message
         request_id = request.get("id")
+        retrieval: tuple[dict[str, Any], str] | None = None
         try:
             if frame.error is not None:
                 raise ValueError(frame.error)
@@ -284,22 +283,7 @@ def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
                     for candidate in candidates.values():
                         if candidate.nonce == value.lifecycle_nonce:
                             candidate.turn = (value.session_id, value.turn_id)
-                            candidate.native_session = value.session_id
                             candidate.nonce = ""
-                            if candidate.delivered_checkpoint:
-                                # Receipt metadata must not interfere with native turn cleanup.
-                                with suppress(
-                                    ValueError, TypeError, KeyError, OSError, sqlite3.Error
-                                ):
-                                    protocol.dispatch(
-                                        "tools_hub.continuity.acknowledge",
-                                        {
-                                            "task_receipt": candidate.receipt,
-                                            "checkpoint_id": candidate.delivered_checkpoint,
-                                            "session_id": value.session_id,
-                                        },
-                                        agent=True,
-                                    )
                             break
                 elif name == "temper_hub_end_turn":
                     ending = EndTurn.model_validate(args)
@@ -320,27 +304,6 @@ def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
                             candidates.pop(project)
                     if failure is not None:
                         raise failure
-                elif name == "temper_hub_checkpoint":
-                    checkpoint = Checkpoint.model_validate(args)
-                    claim = checkpoint.task_receipt.get("payload")
-                    checkpoint_project = (
-                        claim.get("project_id") if isinstance(claim, dict) else None
-                    )
-                    current = (
-                        candidates.get(checkpoint_project)
-                        if isinstance(checkpoint_project, str)
-                        else None
-                    )
-                    packet = protocol.dispatch(
-                        "tools_hub.checkpoint",
-                        args,
-                        agent=True,
-                        native_session=(
-                            current.native_session
-                            if current and current.receipt == checkpoint.task_receipt
-                            else None
-                        ),
-                    )
                 else:
                     if frame.cancellation is not None:
                         frame.cancellation.check()
@@ -360,8 +323,9 @@ def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
                     project = packet["project_id"]
                     candidate = PendingTask(packet["task_receipt"], nonce)
                     continuity = packet.get("continuity") or {}
-                    if continuity.get("handoff") is not None:
-                        candidate.delivered_checkpoint = continuity.get("checkpoint_id")
+                    checkpoint_id = continuity.get("checkpoint_id")
+                    if continuity.get("handoff") is not None and isinstance(checkpoint_id, str):
+                        retrieval = (candidate.receipt, checkpoint_id)
                     previous = candidates.get(project)
                     if previous is not None and previous.token == candidate.token:
                         candidate.turn = previous.turn
@@ -383,5 +347,10 @@ def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
         if frame.cancellation is None or frame.cancellation.complete():
             stdout.write(json.dumps(response) + "\n")
             stdout.flush()
+            if retrieval is not None and "result" in response:
+                # The Hub can record a flushed response on a later connection.
+                # A hook's caller-supplied session ID does not attest model use.
+                with suppress(ValueError, TypeError, KeyError, OSError, sqlite3.Error):
+                    protocol.record_checkpoint_retrieval(*retrieval)
         if frame.overflow:
             break

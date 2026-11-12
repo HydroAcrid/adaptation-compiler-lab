@@ -171,6 +171,7 @@ function CheckpointActivity({ checkpoint }: { checkpoint: HubCheckpoint }) {
 
 export type ContinuingWorkAction =
   | { type: "toggle"; project: HubProject }
+  | { type: "reset"; project: HubProject }
   | { type: "clear"; project: HubProject; checkpoint: HubCheckpoint };
 
 export function ContinuingWork({
@@ -254,6 +255,7 @@ export function ContinuingWork({
       {shown.map((project) => {
         const checkpoint = project.continuity;
         const status = projectStatus(state, project);
+        const resetNeeded = project.continuity_issue === "unavailable";
         return (
           <div className="continuity-project" key={project.id}>
             <div className="continuity-project__heading">
@@ -281,31 +283,39 @@ export function ContinuingWork({
               <div className="continuity-project__actions">
                 <Button
                   type="button"
-                  aria-label={`${project.continuity_enabled ? "Turn off" : "Turn on"} continuing work for ${project.label}`}
+                  aria-label={
+                    resetNeeded
+                      ? `Reset saved work for ${project.label}`
+                      : `${project.continuity_enabled ? "Turn off" : "Turn on"} continuing work for ${project.label}`
+                  }
                   disabled={
                     actionsUnavailable ||
-                    project.continuity_issue === "unavailable" ||
-                    (!project.continuity_enabled &&
+                    (!resetNeeded &&
+                      !project.continuity_enabled &&
                       (!canEnable ||
                         project.paused ||
                         !!project.attention ||
                         project.pending_recovery))
                   }
                   onClick={(event) =>
-                    onAction({ type: "toggle", project }, event.currentTarget)
+                    onAction(
+                      { type: resetNeeded ? "reset" : "toggle", project },
+                      event.currentTarget,
+                    )
                   }
                 >
-                  {project.continuity_enabled ? "Turn off" : "Turn on"}
+                  {resetNeeded
+                    ? "Reset saved work"
+                    : project.continuity_enabled
+                      ? "Turn off"
+                      : "Turn on"}
                 </Button>
-                {checkpoint ? (
+                {checkpoint && !resetNeeded ? (
                   <Button
                     type="button"
                     tone="quiet"
                     aria-label={`Remove checkpoint for ${project.label}`}
-                    disabled={
-                      actionsUnavailable ||
-                      project.continuity_issue === "unavailable"
-                    }
+                    disabled={actionsUnavailable}
                     onClick={(event) =>
                       onAction(
                         { type: "clear", project, checkpoint },

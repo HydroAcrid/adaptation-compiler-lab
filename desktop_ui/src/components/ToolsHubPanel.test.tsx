@@ -270,6 +270,101 @@ it("keeps the checkpoint after a failed read and allows retry and exact removal"
   expect(within(section).queryByText(savedContents.next_step)).toBeNull();
 });
 
+it("requires a scoped reset review before discarding an unreadable checkpoint", async () => {
+  const user = userEvent.setup();
+  const project = continuing.projects[0];
+  let state: HubState = {
+    ...continuing,
+    projects: [
+      {
+        ...project,
+        continuity: null,
+        continuity_enabled: false,
+        continuity_issue: "unavailable",
+      },
+      {
+        ...project,
+        id: "other-repository",
+        label: "Other",
+        continuity: { ...checkpoint, checkpoint_id: "other-checkpoint" },
+      },
+    ],
+  };
+  api.hubRequest.mockImplementation(async (operation: string) => {
+    if (operation === "status") return state;
+    if (operation === "continuity_preview")
+      return {
+        preview_id: "fictional-reset",
+        project_id: project.id,
+        enabled: false,
+        removes_checkpoint: true,
+        reset: true,
+      };
+    state = {
+      ...state,
+      projects: [
+        { ...project, continuity: null, continuity_enabled: false },
+        state.projects[1],
+      ],
+    };
+    return { status: "disabled", project_id: project.id };
+  });
+  render(<ToolsHubPanel nativeRuntime />);
+  const section = await screen.findByRole("region", {
+    name: "Continuing work",
+  });
+  expect(within(section).getByText("Checkpoint unavailable")).toBeVisible();
+  const reset = within(section).getByRole("button", {
+    name: "Reset saved work for Example",
+  });
+  await user.click(reset);
+  const dialog = await screen.findByRole("dialog", {
+    name: "Reset saved work",
+  });
+  expect(dialog).toHaveTextContent(
+    "Remove the unreadable saved work for Example and turn off continuing work.",
+  );
+  expect(api.hubRequest).toHaveBeenCalledWith(
+    "continuity_preview",
+    { project_id: project.id, enabled: false, reset: true },
+    state.digest,
+  );
+  expect(api.hubRequest).not.toHaveBeenCalledWith(
+    "continuity_apply",
+    expect.anything(),
+    expect.anything(),
+  );
+  await user.keyboard("{Escape}");
+  await waitFor(() => expect(reset).toHaveFocus());
+  await user.keyboard("{Enter}");
+  await user.click(
+    within(await screen.findByRole("dialog")).getByRole("button", {
+      name: "Reset saved work",
+    }),
+  );
+  expect(api.hubRequest).toHaveBeenCalledWith(
+    "continuity_apply",
+    { preview_id: "fictional-reset" },
+    state.digest,
+  );
+  expect(
+    await within(section).findByText(
+      "Saved work was reset. Continuing work is off.",
+    ),
+  ).toBeVisible();
+  expect(
+    within(section).getByRole("button", {
+      name: "Turn on continuing work for Example",
+    }),
+  ).toBeEnabled();
+  expect(
+    within(section).getByRole("button", {
+      name: "Remove checkpoint for Other",
+    }),
+  ).toBeEnabled();
+  expect(within(section).queryByText("Checkpoint unavailable")).toBeNull();
+});
+
 it("retains the last checkpoint on a status error and prevents clearing replaced work", async () => {
   vi.useFakeTimers();
   const project = continuing.projects[0];

@@ -21,9 +21,9 @@ from .continuity import (
     RETENTION_SECONDS,
     ContinuityStore,
     Handoff,
+    connection_digest,
     goal_key,
     reject_credentials,
-    session_digest,
 )
 from .controller import MARKER, PROJECT_MARKER, Hub, fingerprint, raw
 from .dependencies import dependencies
@@ -400,6 +400,13 @@ class HubService:
         if current is None or current["grant_id"] != grant["grant_id"]:
             raise ValueError("Repository setup permission changed during this operation")
 
+    def require_same_project(
+        self, grant: dict[str, Any], project: dict[str, Any], *, active: bool = True
+    ) -> None:
+        current_grant, current_project = self.require_project(project["id"], active=active)
+        if current_grant["grant_id"] != grant["grant_id"] or current_project != project:
+            raise ValueError("Repository setup changed during this operation")
+
     def bind_publication_context(
         self,
         hub: Hub,
@@ -614,17 +621,19 @@ class HubService:
     def continuity_status(
         self, key: str, grant: dict[str, Any], project: dict[str, Any]
     ) -> dict[str, Any]:
-        if not grant.get("enabled"):
-            return {"continuity_enabled": False, "continuity": None}
         try:
             state = self.continuity.read(key, grant, project)
             checkpoint = self.continuity.current(state)
+            if checkpoint:
+                self.continuity.decode_ciphertext(checkpoint)
         except (OSError, ValueError, KeyError, TypeError):
             return {
                 "continuity_enabled": False,
                 "continuity": None,
                 "continuity_issue": "unavailable",
             }
+        if not grant.get("enabled"):
+            return {"continuity_enabled": False, "continuity": None}
         return {
             "continuity_enabled": bool(state and state["enabled"]),
             "continuity": self.continuity.summary(checkpoint) if checkpoint else None,
@@ -635,24 +644,37 @@ class HubService:
             ),
         }
 
-    def preview_continuity(self, project_id: str, enabled: bool) -> dict[str, Any]:
+    def preview_continuity(
+        self, project_id: str, enabled: bool, *, reset: bool = False
+    ) -> dict[str, Any]:
+        if reset and enabled:
+            raise ValueError("Resetting the checkpoint turns off task continuity")
         with writer_lock(self.home):
             grant, project = self.require_project(project_id, active=enabled)
             key = project_key(project_id)
             if enabled:
                 self.require_continuity_enable(grant, key)
-            state = self.continuity.read(key, grant, project)
+            state = None if reset else self.continuity.read(key, grant, project)
             preview = {
                 "preview_id": secrets.token_hex(16),
                 "project_id": project_id,
                 "enabled": enabled,
-                "removes_checkpoint": bool(not enabled and (state or {}).get("checkpoint")),
+                "removes_checkpoint": reset
+                or bool(not enabled and (state or {}).get("checkpoint")),
                 "expires": time.time() + 900,
                 "grant_id": grant["grant_id"],
-                "revision": fingerprint(state),
+                "revision": self.continuity.unreadable_revision(key)
+                if reset
+                else fingerprint(state),
+                "reset": reset,
+                "project": project,
             }
             self.seals.write(self.home / "continuity-preview.json", preview, "continuity_preview")
-        return {key: value for key, value in preview.items() if key not in {"grant_id", "revision"}}
+        return {
+            key: value
+            for key, value in preview.items()
+            if key not in {"grant_id", "revision", "project"}
+        }
 
     def require_continuity_enable(self, grant: dict[str, Any], key: str) -> None:
         if not grant.get("bridge_configured"):
@@ -668,18 +690,22 @@ class HubService:
             if preview["preview_id"] != preview_id or preview["expires"] <= time.time():
                 raise ValueError("The continuity preview expired; preview it again")
             project_id, enabled = preview["project_id"], preview["enabled"]
+            reset = preview.get("reset", False)
             grant, project = self.require_project(project_id, active=enabled)
             key = project_key(project_id)
-            state = self.continuity.read(key, grant, project)
-            if preview["grant_id"] != grant["grant_id"] or preview["revision"] != fingerprint(
-                state
+            state = None if reset else self.continuity.read(key, grant, project)
+            if (
+                preview["grant_id"] != grant["grant_id"]
+                or preview["project"] != project
+                or (not reset and preview["revision"] != fingerprint(state))
             ):
                 raise ValueError("Task continuity changed; preview it again")
             if enabled:
                 self.require_continuity_enable(grant, key)
             with writer_lock(self.home, name="permission.lock"):
-                if enabled:
-                    self.require_same_grant(grant)
+                self.require_same_project(grant, project, active=enabled)
+                if reset and preview["revision"] != self.continuity.unreadable_revision(key):
+                    raise ValueError("The unreadable checkpoint changed; preview the reset again")
                 if state is None or state["enabled"] != enabled:
                     self.continuity.write(
                         key,
@@ -757,7 +783,6 @@ class HubService:
         goal: str,
         expected_checkpoint_id: str | None,
         handoff: Handoff,
-        native_session: str | None,
     ) -> dict[str, Any]:
         with writer_lock(self.home):
             grant = self.grant(active=True)
@@ -804,19 +829,19 @@ class HubService:
                 "goal_digest": claim["goal_digest"],
                 "task_class": claim["task_class"],
                 "relative_directory": claim["relative_directory"],
-                "native_session": session_digest(native_session) if native_session else None,
+                "origin_connection": connection_digest(owner.connection_id),
                 "guidance": [row["name"] for row in profile.get("selected", [])],
                 "token_digest": token_digest,
                 "previous_id": current_id,
             }
             checkpoint["encrypted"] = self.continuity.encrypt(state, checkpoint, content)
             with writer_lock(self.home, name="permission.lock"):
-                self.require_same_grant(grant)
+                self.require_same_project(grant, project)
                 self.continuity.write(key, {**state, "checkpoint": checkpoint})
             return self.continuity.summary(checkpoint)
 
-    def acknowledge_continuity(
-        self, receipt: dict[str, Any], owner: TaskOwner, checkpoint_id: str, native_session: str
+    def record_checkpoint_retrieval(
+        self, receipt: dict[str, Any], owner: TaskOwner, checkpoint_id: str
     ) -> None:
         with writer_lock(self.home):
             grant = self.grant(active=True)
@@ -826,17 +851,19 @@ class HubService:
                 raise ValueError("Task belongs to a different connected agent")
             project_id = claim["project_id"]
             key = project_key(project_id)
+            grant, project = self.require_project(project_id)
             state, checkpoint = self.require_checkpoint(project_id, checkpoint_id)
             if (
                 state["generation"] != claim.get("continuity_generation")
                 or checkpoint["resumed_at"] is not None
-                or checkpoint["native_session"] in {None, session_digest(native_session)}
+                or checkpoint.get("origin_connection")
+                in {None, connection_digest(owner.connection_id)}
             ):
                 return
             with self.controller(grant) as hub:
                 hub.require_task(key, owner, claim["task_token"])
             with writer_lock(self.home, name="permission.lock"):
-                self.require_same_grant(grant)
+                self.require_same_project(grant, project)
                 self.continuity.write(
                     key, {**state, "checkpoint": {**checkpoint, "resumed_at": time.time()}}
                 )
@@ -873,12 +900,14 @@ class HubService:
                 ):
                     assert state is not None
                     content = self.continuity.decrypt(state, checkpoint)
+                    self.require_same_project(grant, project)
                     handoff = content["handoff"]
                     if continue_previous:
                         goal = content["goal"]
                         task_class = checkpoint["task_class"]
                         relative_directory = checkpoint["relative_directory"]
             except (OSError, ValueError, KeyError, TypeError):
+                self.require_same_project(grant, project)
                 if continue_previous:
                     raise ValueError("The saved checkpoint could not be verified") from None
                 # Ordinary tasks still get the approved tool lifecycle if continuity fails.
@@ -974,8 +1003,6 @@ class HubService:
                         for row in result["authorized_catalog"]
                     ]
                 if task_receipt is not None:
-                    if handoff is not None:
-                        self.require_same_grant(grant)
                     result["task_receipt"] = task_receipt
                     result["effective_task"] = {
                         "project_id": project_id,
@@ -1001,6 +1028,10 @@ class HubService:
                             result["continuity"]["live_style_defaults"] = self.continuity_style(
                                 project_id, task_class
                             )
+                    if handoff is not None:
+                        self.require_same_project(grant, project)
+                        assert checkpoint is not None
+                        self.require_checkpoint(project_id, checkpoint["checkpoint_id"])
                 if lease.get("retained_owner_files"):
                     result["retained_owner_files"] = lease["retained_owner_files"]
                 return {**result, "project_id": project_id, "personal_evidence_created": False}
@@ -1554,7 +1585,10 @@ class HubService:
                 with writer_lock(self.home):
                     self.drain_finishes()
                     self.reap_tasks()
-                    self.expire_continuity(grant)
+                    with writer_lock(self.home, name="permission.lock"):
+                        grant = self.grant()
+                        if grant is not None:
+                            self.expire_continuity(grant)
             except ValueError as error:
                 if str(error) != "Hub maintenance is already running; retry shortly":
                     raise

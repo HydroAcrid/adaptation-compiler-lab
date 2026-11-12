@@ -107,7 +107,10 @@ shows the latest checkpoint and Tools manages permission and removal per reposit
 
 - `tools_hub.continuity.preview` takes `project_id` and `enabled`, and returns a review token
   bound to the project and current revision. `tools_hub.continuity.apply` takes `preview_id`.
-  Turning continuity off also removes that repository's checkpoint.
+  Turning continuity off also removes that repository's checkpoint. `reset: true` with
+  `enabled: false` previews removal of an unreadable record. Apply requires the same file
+  revision and disables continuity for that repository. Use ordinary clear for a readable
+  checkpoint.
 - `tools_hub.continuity.read` takes `project_id` and `checkpoint_id`. It returns the exact
   checkpoint's progress, facts, requirements, reported checks, and next step on demand.
 - `tools_hub.continuity.clear` takes the same identifiers and removes the matching checkpoint.
@@ -124,11 +127,13 @@ effective goal, and `expected_checkpoint_id` for the current revision, or null f
 checkpoint. Current requests and manually written native instructions take precedence.
 
 Each enabled repository can retain one bounded, locally encrypted checkpoint for up to 30 days.
+Maintenance removes expired or out-of-scope verified records. An unreadable record at the
+repository's checkpoint path can be removed through the explicit owner reset.
 Its contents are agent-reported task context. Learning, governed style defaults, and preference
-evidence have their own scope and permissions. The desktop records retrieval when a later
-Codex session binds a prepare response that carried the checkpoint to a distinct native session.
-That receipt establishes delivery. Actual use and the outcome of the reported checks require
-separate evidence.
+evidence have their own scope and permissions. The desktop records retrieval after a prepare
+response containing the checkpoint is written to a different Hub connection. Native hook session
+identifiers are used for task cleanup. Evidence of a distinct Codex session, actual use, or the
+outcome of the reported checks comes from the session itself.
 
 ## Claude hook channel
 
