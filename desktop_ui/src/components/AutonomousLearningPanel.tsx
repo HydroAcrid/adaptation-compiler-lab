@@ -13,7 +13,7 @@ import {
 } from "../autonomy";
 import { engineFailureMessage, type EngineProject } from "../engine";
 import { usePageVisibility } from "../pageVisibility";
-import { Button, StatusPill, Toggle } from "./ui";
+import { Button, LoadingStatus, StatusPill, Toggle } from "./ui";
 
 const categories: { id: StyleCategory; label: string }[] = [
   { id: "communication_detail", label: "Amount of detail" },
@@ -196,12 +196,7 @@ export function AutonomousLearningPanel({
           </Button>
         </header>
         {statusNotice}
-        {loading && (
-          <div className="page-loading-card" role="status">
-            <span>Checking learning status…</span>
-            <span className="page-loading-card__line" aria-hidden="true" />
-          </div>
-        )}
+        {loading && <LoadingStatus>Checking learning status…</LoadingStatus>}
         {status && !loadError && (
           <>
             <p className="autonomy-panel__intro">
@@ -262,12 +257,7 @@ export function AutonomousLearningPanel({
         )}
       </header>
       {statusNotice}
-      {loading && (
-        <div className="page-loading-card" role="status">
-          <span>Checking learning status…</span>
-          <span className="page-loading-card__line" aria-hidden="true" />
-        </div>
-      )}
+      {loading && <LoadingStatus>Checking learning status…</LoadingStatus>}
       {busy && (
         <p className="learning-secondary" role="status">
           Updating learning…

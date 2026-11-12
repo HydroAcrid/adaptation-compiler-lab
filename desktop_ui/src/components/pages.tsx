@@ -23,18 +23,12 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import {
-  lazy,
-  Suspense,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { AgentBrandMark } from "./AgentBrandMark";
 import { AutonomousLearningPanel } from "./AutonomousLearningPanel";
 import { LearningRepositories } from "./LearningRepositories";
+import { ToolsHubPanel } from "./ToolsHubPanel";
 import {
   analyzeInstructionEnvironment,
   applyClaudeConnection,
@@ -97,6 +91,7 @@ import { PackageReviewQueue } from "./PackageReviewQueue";
 import {
   Button,
   Divider,
+  LoadingStatus,
   SectionHeading,
   StatusPill,
   TemperSelect,
@@ -118,15 +113,10 @@ function restorePageDialogFocus(
   }
 }
 
-const ToolsHubPanel = lazy(() =>
-  import("./ToolsHubPanel").then((module) => ({
-    default: module.ToolsHubPanel,
-  })),
-);
-
 export function TodayPage({
   onReview,
   onOpenCore,
+  onOpenTools,
   feedback,
   onFeedback,
   workspace,
@@ -141,6 +131,7 @@ export function TodayPage({
 }: {
   onReview: (suggestionId: string) => void;
   onOpenCore: () => void;
+  onOpenTools: () => void;
   feedback: FeedbackValue | null;
   onFeedback: (value: FeedbackValue) => void;
   workspace: WorkspaceScope;
@@ -213,9 +204,10 @@ export function TodayPage({
       <header className="today-learning-heading">
         <div>
           <h1>Overview</h1>
-          <p>See what Temper has learned and what’s ready for review.</p>
+          <p>See which workflows Temper can use and what’s ready for review.</p>
         </div>
       </header>
+      <ToolsHubPanel nativeRuntime={nativeAutonomy} onOpenTools={onOpenTools} />
       {nativeAutonomy && (
         <AutonomousLearningPanel
           projects={liveProjects}
@@ -1312,33 +1304,20 @@ export function ModesPage({
       <header className="modes-heading">
         <div>
           <h1>Tools &amp; workflows</h1>
-          <p>
-            Set up automatic tools or choose a saved workflow for a specific
-            task.
-          </p>
-        </div>
-        <div className="modes-heading__actions">
-          <button
-            disabled={!nativeRuntime || !snapshotDigest}
-            onClick={() => setPackageAction({ intent: "import" })}
-            type="button"
-          >
-            <Upload aria-hidden="true" size={14} /> Import package
-          </button>
         </div>
       </header>
-      <Suspense
-        fallback={
-          <div className="page-loading-card" role="status">
-            <span>Loading automatic tools…</span>
-            <span className="page-loading-card__line" aria-hidden="true" />
-            <span className="page-loading-card__line" aria-hidden="true" />
-          </div>
-        }
-      >
-        <ToolsHubPanel nativeRuntime={nativeRuntime} />
-      </Suspense>
-      <h2 className="modes-section-title">Saved workflows</h2>
+      <ToolsHubPanel nativeRuntime={nativeRuntime} />
+      <div className="modes-section-heading">
+        <h2 className="modes-section-title">Saved workflows</h2>
+        <Button
+          type="button"
+          tone="quiet"
+          disabled={!nativeRuntime || !snapshotDigest}
+          onClick={() => setPackageAction({ intent: "import" })}
+        >
+          <Upload aria-hidden="true" size={14} /> Import package
+        </Button>
+      </div>
       {nativeRuntime ? (
         <PackageReviewQueue
           busyReviewId={busyPackageReview}
@@ -1355,11 +1334,7 @@ export function ModesPage({
           projects={reviewProjects}
         />
       ) : null}
-      {loading ? (
-        <div className="modes-empty" role="status">
-          Loading saved workflows…
-        </div>
-      ) : null}
+      {loading ? <LoadingStatus>Loading saved workflows…</LoadingStatus> : null}
       {error ? (
         <div className="modes-empty" role="alert">
           {error}
@@ -1367,14 +1342,12 @@ export function ModesPage({
       ) : null}
       <div className="mode-catalog">
         {modes.map((mode) => (
-          <article className="mode-card" key={mode.mode_id}>
-            <div className="mode-card__mark" aria-hidden="true">
-              <Sparkles size={22} strokeWidth={1.4} />
-            </div>
-            <div className="mode-card__copy">
-              <span className="folio-kicker">
-                {mode.source_kind === "imported" ? "Imported" : "Curated"} · v
-                {mode.mode_version} ·{" "}
+          <article className="mode-row" key={mode.mode_id}>
+            <div className="mode-row__copy">
+              <h3>{mode.name}</h3>
+              <p>{mode.summary}</p>
+              <p className="mode-row__meta">
+                {mode.source_kind === "imported" ? "Imported" : "Curated"} ·{" "}
                 {mode.evaluation_status === "product_evaluated"
                   ? "Tested"
                   : mode.evaluation_status === "failed"
@@ -1382,25 +1355,17 @@ export function ModesPage({
                     : mode.evaluation_status === "revoked"
                       ? "Unavailable"
                       : "Evaluation pending"}
-              </span>
-              <h3>{mode.name}</h3>
-              <p>{mode.summary}</p>
-              <div className="mode-card__facts">
-                <span>One task</span>
-                {mode.personalized ? <span>Personalized</span> : null}
-                <span>
-                  {mode.source_count} reviewed source
-                  {mode.source_count === 1 ? "" : "s"}
-                </span>
-                <span>
-                  {mode.requested_tools.length
-                    ? "Requests tools"
-                    : "No new tools"}
-                </span>
-              </div>
+                {mode.requested_tools.length > 0 && " · Requests tools"}
+                {mode.personalized && (
+                  <>
+                    {" "}
+                    · <span>Personalized</span>
+                  </>
+                )}
+              </p>
             </div>
-            <button
-              className="folio-primary-action mode-card__action"
+            <Button
+              className="mode-row__action"
               onClick={(event) => {
                 modeTrigger.current = event.currentTarget;
                 setSelected(mode);
@@ -1408,7 +1373,7 @@ export function ModesPage({
               type="button"
             >
               View workflow <ArrowRight aria-hidden="true" size={15} />
-            </button>
+            </Button>
           </article>
         ))}
       </div>

@@ -136,7 +136,7 @@ describe("Temper prototype", () => {
     expect(screen.getByText("Personalized")).toBeInTheDocument();
     expect(screen.getAllByText(/evaluation pending/i)).toHaveLength(3);
     expect(
-      screen.getByText(/choose a saved workflow for a specific task/i),
+      screen.getByText("Saved workflows apply to one task at a time."),
     ).toBeInTheDocument();
     await user.click(
       screen.getAllByRole("button", { name: "View workflow" })[0]!,

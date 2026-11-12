@@ -44,6 +44,54 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+it("shows the automatic lifecycle and the current approved scope on the Overview", async () => {
+  const user = userEvent.setup();
+  const openTools = vi.fn();
+  api.hubRequest.mockResolvedValue({
+    ...initial,
+    enabled: true,
+    indexed: true,
+    native_hooks_configured: true,
+    project_count: 1,
+    sources: [{ ...initial.sources[0], approved: true }],
+    projects: [
+      {
+        id: "repo",
+        label: "Example",
+        root: "/example",
+        paused: false,
+        active: ["debugging"],
+        pending_recovery: false,
+      },
+    ],
+  });
+  render(<ToolsHubPanel nativeRuntime onOpenTools={openTools} />);
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "Checking workflow status",
+  );
+  const lifecycle = screen.getByRole("list", {
+    name: "How automatic workflows work",
+  });
+  expect(lifecycle).toHaveTextContent(/switches guidance as tasks change/);
+  expect(lifecycle).toHaveTextContent(
+    /removes its unchanged copies when a task ends/,
+  );
+  expect(await screen.findByText("Set up for tasks")).toBeVisible();
+  expect(
+    screen.getByText(
+      "1 approved repository · 1 approved publisher · 1 guide available",
+    ),
+  ).toBeVisible();
+  await user.click(
+    screen.getByRole("button", { name: "View automatic workflows" }),
+  );
+  expect(openTools).toHaveBeenCalledOnce();
+  expect(screen.getByText(/Approved publishers.*Superpowers/)).toBeVisible();
+  expect(screen.getByText("Example")).toBeVisible();
+  expect(screen.getByText(/Available guidance.*debugging/)).toBeVisible();
+  expect(screen.queryByRole("button", { name: "Pause updates" })).toBeNull();
+});
+
 it("does not treat learning repositories as tool permission and previews exact destinations", async () => {
   const user = userEvent.setup();
   api.hubRequest.mockImplementation(async (operation: string) => {
@@ -98,7 +146,7 @@ it("does not treat learning repositories as tool permission and previews exact d
   );
   await waitFor(() =>
     expect(
-      screen.getByRole("heading", { name: "Automatic tools" }),
+      screen.getByRole("heading", { name: "Automatic workflows" }),
     ).toHaveFocus(),
   );
 });
@@ -289,7 +337,7 @@ it("retains visible repositories on refresh failure and disables changes until r
       projects: [{ ...enabled.projects[0], active: [] }],
     });
   render(<ToolsHubPanel nativeRuntime />);
-  expect(screen.getByText("Checking status")).toBeVisible();
+  expect(screen.getByText("Checking workflow status…")).toBeVisible();
   await act(async () => {});
   expect(screen.getByText(/Available guidance.*debugging/)).toBeVisible();
 
@@ -298,7 +346,8 @@ it("retains visible repositories on refresh failure and disables changes until r
   expect(screen.getByText("Connection lost")).not.toBeVisible();
   fireEvent.click(screen.getByText("Technical details"));
   expect(screen.getByText("Connection lost")).toBeVisible();
-  expect(screen.getByText(/Available guidance.*debugging/)).toBeVisible();
+  expect(screen.getByText(/Last known guidance.*debugging/)).toBeVisible();
+  expect(screen.queryByText(/Available guidance.*debugging/)).toBeNull();
   fireEvent.click(screen.getByText("Tool settings"));
   expect(screen.getByRole("button", { name: "Pause updates" })).toBeDisabled();
 
@@ -353,7 +402,7 @@ it("keeps the loaded panel across navigation and refreshes when reopened", async
   expect(
     screen.getByRole("button", { name: "Set up repository tools" }),
   ).toBeVisible();
-  expect(screen.queryByText("Checking status")).toBeNull();
+  expect(screen.queryByText("Checking workflow status…")).toBeNull();
   await act(async () => {});
   expect(api.hubRequest).toHaveBeenCalledTimes(2);
 });
@@ -381,7 +430,7 @@ it("keeps a deferred connection review on Tools and restores it on return", asyn
     </>
   );
   const { rerender } = render(pages(true));
-  const heading = screen.getByRole("heading", { name: "Automatic tools" });
+  const heading = screen.getByRole("heading", { name: "Automatic workflows" });
   const trigger = await screen.findByRole("button", { name: "Connect Codex" });
   await user.click(trigger);
   await waitFor(() => expect(resolvePreview).toBeDefined());

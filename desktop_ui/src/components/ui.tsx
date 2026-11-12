@@ -1,6 +1,6 @@
 import * as Select from "@radix-ui/react-select";
 import * as Switch from "@radix-ui/react-switch";
-import { Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, LoaderCircle } from "lucide-react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -20,6 +20,15 @@ export function Button({
       {icon}
       <span>{children}</span>
     </button>
+  );
+}
+
+export function LoadingStatus({ children }: { children: ReactNode }) {
+  return (
+    <div className="loading-status" role="status">
+      <LoaderCircle aria-hidden="true" size={16} strokeWidth={1.8} />
+      <span>{children}</span>
+    </div>
   );
 }
 

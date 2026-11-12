@@ -12,7 +12,7 @@ import {
 } from "../autonomy";
 import { engineFailureMessage } from "../engine";
 import { usePageVisibility } from "../pageVisibility";
-import { Button, StatusPill } from "./ui";
+import { Button, LoadingStatus, StatusPill } from "./ui";
 
 /** A read-only view of the signed learning registry, separate from task runners. */
 export function LearningRepositories() {
@@ -84,13 +84,20 @@ export function LearningRepositories() {
       <div className="subsection-heading">
         <div>
           <h2 id="learning-repositories-heading">Chat learning</h2>
-          <p>
-            {error
-              ? "Repository access could not be refreshed. The list below is last known state."
-              : projects
-                ? `${authorized} of ${projects.length} repositories approved for learning.`
-                : "Checking repository access…"}
-          </p>
+          {error ? (
+            <p>
+              {projects
+                ? "Showing the last known repository access."
+                : "Temper couldn’t check repository access."}
+            </p>
+          ) : projects ? (
+            <p>
+              {authorized} of {projects.length} repositories approved for
+              learning.
+            </p>
+          ) : !status ? (
+            <LoadingStatus>Checking repository access…</LoadingStatus>
+          ) : null}
         </div>
         <Button tone="quiet" onClick={() => setAttempt((value) => value + 1)}>
           Refresh learning access

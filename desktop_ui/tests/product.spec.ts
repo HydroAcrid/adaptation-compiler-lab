@@ -9,6 +9,109 @@ const supportedWindowSizes = [
   { width: 2540, height: 1379 },
 ];
 
+test("primary pages use flat sections instead of cards in both themes", async ({
+  page,
+}) => {
+  const groups = [
+    ".tools-hub-panel",
+    ".today-review-summary",
+    ".autonomy-panel",
+    ".learning-facts > div",
+    ".personalization-library",
+    ".core-group",
+    ".native-context",
+    ".mode-catalog",
+    ".mode-row",
+    ".connection-list",
+    ".connection-card",
+    ".project-list",
+    ".project-row",
+    ".settings-group",
+    ".settings-surface",
+    ".toggle-row",
+    ".setting-inline",
+    ".privacy-summary",
+  ].join(", ");
+  for (const theme of ["light", "dark"]) {
+    for (const screen of [
+      "today",
+      "core",
+      "modes",
+      "connections",
+      "settings",
+    ]) {
+      await page.goto(`/?screen=${screen}&theme=${theme}`);
+      await expect(page.locator(".page-view--active")).toBeVisible();
+      const shapes = await page
+        .locator(".page-view--active")
+        .locator(groups)
+        .evaluateAll((elements) =>
+          elements
+            .filter(
+              (element) =>
+                element.getBoundingClientRect().width > 200 &&
+                element.getBoundingClientRect().height > 30,
+            )
+            .map((element) => {
+              const style = getComputedStyle(element);
+              return {
+                selector: element.className,
+                shadow: style.boxShadow,
+                radius: style.borderTopLeftRadius,
+                leftBorder: parseFloat(style.borderLeftWidth),
+                rightBorder: parseFloat(style.borderRightWidth),
+                background: style.backgroundColor,
+              };
+            }),
+        );
+      expect(
+        shapes.length,
+        `${screen} should exercise real content sections`,
+      ).toBeGreaterThan(0);
+      for (const shape of shapes) {
+        expect(
+          shape.shadow,
+          `${theme}/${screen}/${shape.selector}: no card shadow`,
+        ).toBe("none");
+        expect(
+          shape.radius,
+          `${theme}/${screen}/${shape.selector}: no card corners`,
+        ).toBe("0px");
+        expect(
+          shape.leftBorder + shape.rightBorder,
+          `${theme}/${screen}/${shape.selector}: use section rules, not boxed panels`,
+        ).toBe(0);
+        expect(
+          shape.background,
+          `${theme}/${screen}/${shape.selector}: no filled card surface`,
+        ).toMatch(/^(transparent|rgba\(0, 0, 0, 0\))$/);
+      }
+    }
+  }
+});
+
+test("Overview makes automatic workflows visible before learning details", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/?screen=today&theme=light");
+  const workflows = page.getByRole("region", {
+    name: "Automatic workflows",
+    exact: true,
+  });
+  await expect(workflows).toBeVisible();
+  await expect(workflows).toContainText("switches guidance as tasks change");
+  await expect(workflows).toContainText("when a task ends");
+  const heading = await workflows
+    .getByRole("heading", { name: "Automatic workflows", exact: true })
+    .boundingBox();
+  expect(heading?.y).toBeLessThan(300);
+  await workflows.getByRole("button", { name: /automatic workflows/i }).click();
+  await expect(page.getByRole("main")).toHaveAccessibleName(
+    "Tools & workflows",
+  );
+});
+
 test("the product surface fills the real window at every supported size", async ({
   page,
 }) => {

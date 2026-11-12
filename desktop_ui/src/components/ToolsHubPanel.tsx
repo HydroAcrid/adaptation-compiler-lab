@@ -1,5 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { engineFailureMessage } from "../engine";
 import { usePageVisibility } from "../pageVisibility";
 import {
@@ -7,10 +7,11 @@ import {
   type ConnectionPreview,
   type HubOperation,
   type HubPreview,
+  type HubProject,
   type HubState,
   type RuntimePreview,
 } from "../toolsHub";
-import { Button, StatusPill } from "./ui";
+import { Button, LoadingStatus } from "./ui";
 
 type Repository = { id: string; label: string; root: string };
 type Review =
@@ -19,7 +20,92 @@ type Review =
   | { type: "runtime"; value: RuntimePreview }
   | { type: "stop" | "repair" };
 
-export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
+const workflowSummary =
+  "Once set up, Codex chooses guidance for each task. Temper manages the files in your approved repositories.";
+
+function WorkflowLifecycle() {
+  return (
+    <ol
+      className="tools-hub-lifecycle"
+      aria-label="How automatic workflows work"
+    >
+      <li>
+        <strong>Choose</strong>
+        <span>Codex picks up to two guides for the task.</span>
+      </li>
+      <li>
+        <strong>Keep current</strong>
+        <span>Temper checks approved publishers for updates.</span>
+      </li>
+      <li>
+        <strong>Switch</strong>
+        <span>Temper switches guidance as tasks change.</span>
+      </li>
+      <li>
+        <strong>Clean up</strong>
+        <span>Temper removes its unchanged copies when a task ends.</span>
+      </li>
+    </ol>
+  );
+}
+
+function RepositoryGuidance({
+  rows,
+  ready,
+  stale,
+}: {
+  rows: HubProject[];
+  ready: boolean;
+  stale: boolean;
+}) {
+  return (
+    <div className="tools-hub-repositories">
+      {rows.map((row) => (
+        <div className="tools-hub-project" key={row.id}>
+          <div>
+            <strong>{row.label}</strong>
+            {row.pending_recovery && <span>Recovery needed</span>}
+            {row.attention && (
+              <span>
+                {row.attention.status === "task_cleanup_blocked"
+                  ? "Task cleanup needs attention"
+                  : "Edited files need attention"}
+              </span>
+            )}
+            {row.paused && <span>Updates paused</span>}
+            {row.active.length ? (
+              <span className="tools-hub-guidance">
+                {stale ? "Last known guidance" : "Available guidance"} ·{" "}
+                {row.active.join(", ")}
+              </span>
+            ) : (
+              <span>
+                {stale
+                  ? "No guidance at the last check"
+                  : ready &&
+                      !row.paused &&
+                      !row.pending_recovery &&
+                      !row.attention
+                    ? "Waiting for a task"
+                    : "No guidance installed"}
+              </span>
+            )}
+          </div>
+        </div>
+      ))}
+      {!rows.length && <p>No repositories to show.</p>}
+    </div>
+  );
+}
+
+export function ToolsHubPanel({
+  nativeRuntime,
+  onOpenTools,
+}: {
+  nativeRuntime: boolean;
+  onOpenTools?: () => void;
+}) {
+  const headingId = useId();
   const [state, setState] = useState<HubState | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<{
@@ -183,7 +269,7 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
         ? "Status out of date"
         : "Status unavailable"
       : !state
-        ? "Checking status"
+        ? "Checking workflow status…"
         : state.cleanup_pending
           ? "Cleanup needed"
           : attention
@@ -198,37 +284,110 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                     ? "Set up for tasks"
                     : "Setup needed";
 
+  const checking = nativeRuntime && !state && !loadError;
+  const publishers = state?.sources.filter((source) => source.approved) ?? [];
+  const guideCount =
+    state?.projects.reduce((count, row) => count + row.active.length, 0) ?? 0;
+  const stateTone =
+    loadError || attention || state?.cleanup_pending
+      ? "attention"
+      : state?.enabled && ready && !state.paused && !working
+        ? "positive"
+        : "neutral";
+  const readyForTask = !!(
+    ready &&
+    !state?.paused &&
+    !working &&
+    !attention &&
+    !loadError
+  );
+  if (onOpenTools) {
+    return (
+      <section
+        className="tools-hub-panel tools-hub-panel--overview"
+        aria-labelledby={headingId}
+      >
+        <div className="tools-hub-panel__heading">
+          <div>
+            <h2 id={headingId}>Automatic workflows</h2>
+            <p>{workflowSummary}</p>
+          </div>
+          <Button onClick={onOpenTools}>
+            {state && !state.enabled && !state.cleanup_pending && !loadError
+              ? "Set up automatic workflows"
+              : "View automatic workflows"}
+          </Button>
+        </div>
+        <WorkflowLifecycle />
+        {checking ? (
+          <LoadingStatus>{status}</LoadingStatus>
+        ) : (
+          <div className="tools-hub-status-row">
+            <strong className="tools-hub-state" data-tone={stateTone}>
+              {status}
+            </strong>
+            {state && (state.enabled || state.cleanup_pending) && (
+              <span>
+                {state.project_count} approved{" "}
+                {state.project_count === 1 ? "repository" : "repositories"}
+                {" · "}
+                {publishers.length} approved{" "}
+                {publishers.length === 1 ? "publisher" : "publishers"}
+                {" · "}
+                {guideCount} {guideCount === 1 ? "guide" : "guides"} available
+              </span>
+            )}
+          </div>
+        )}
+        {state && (state.enabled || state.cleanup_pending) && (
+          <div className="tools-hub-scope">
+            {publishers.length > 0 && (
+              <p>
+                {loadError ? "Last known publishers" : "Approved publishers"} ·{" "}
+                {publishers.map((source) => source.label).join(", ")}
+              </p>
+            )}
+            <RepositoryGuidance
+              rows={state.projects.slice(0, 3)}
+              ready={readyForTask}
+              stale={!!loadError}
+            />
+            {state.projects.length > 3 && (
+              <p>
+                View automatic workflows to see all {state.projects.length}{" "}
+                repositories.
+              </p>
+            )}
+          </div>
+        )}
+      </section>
+    );
+  }
+
   return (
-    <section
-      className="tools-hub-panel folio-card"
-      aria-labelledby="tools-hub-title"
-    >
+    <section className="tools-hub-panel" aria-labelledby={headingId}>
       <div className="tools-hub-panel__heading">
         <div>
-          <h2 id="tools-hub-title" ref={panelHeading} tabIndex={-1}>
-            Automatic tools
+          <h2 id={headingId} ref={panelHeading} tabIndex={-1}>
+            Automatic workflows
           </h2>
-          <p>
-            Codex can choose up to two guides for each task from publishers you
-            approve, in the repositories you choose.
-          </p>
+          <p>{workflowSummary}</p>
         </div>
-        <StatusPill
-          tone={
-            loadError || attention || state?.cleanup_pending
-              ? "attention"
-              : state?.enabled && ready && !state.paused && !working
-                ? "positive"
-                : "neutral"
-          }
-        >
-          {status}
-        </StatusPill>
       </div>
-      {nativeRuntime && !state && !loadError && (
-        <div className="tools-hub-skeleton" aria-hidden="true">
-          <span />
-          <span />
+      <WorkflowLifecycle />
+      {checking ? (
+        <LoadingStatus>{status}</LoadingStatus>
+      ) : (
+        <div className="tools-hub-status-row">
+          <strong className="tools-hub-state" data-tone={stateTone}>
+            {status}
+          </strong>
+          {state?.enabled && publishers.length > 0 && (
+            <span>
+              {loadError ? "Last known publishers" : "Approved publishers"} ·{" "}
+              {publishers.map((source) => source.label).join(", ")}
+            </span>
+          )}
         </div>
       )}
       {loadError && !review && (
@@ -415,8 +574,9 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                       "Automatic tool updates are paused."
                     ) : state.native_hooks_configured ? (
                       <>
-                        In Codex, use <code>/hooks</code> to review and trust
-                        Temper’s hooks. Then start a new chat.
+                        To start using automatic workflows, review and trust
+                        Temper in Codex with <code>/hooks</code>, then open a
+                        new chat. Any guide files you edit are kept.
                       </>
                     ) : state.indexed ? (
                       "Connect Codex so it can prepare tools when you start a task."
@@ -505,55 +665,16 @@ export function ToolsHubPanel({ nativeRuntime }: { nativeRuntime: boolean }) {
                 )}
                 <div className="tools-hub-overview">
                   <h3>Approved repositories</h3>
-                  <div className="tools-hub-repositories">
-                    {state.projects.map((row) => (
-                      <div className="tools-hub-project" key={row.id}>
-                        <div>
-                          <strong>{row.label}</strong>
-                          {row.pending_recovery && <span>Recovery needed</span>}
-                          {row.attention && (
-                            <span>
-                              {row.attention.status === "task_cleanup_blocked"
-                                ? "Task cleanup needs attention"
-                                : "Edited files need attention"}
-                            </span>
-                          )}
-                          {row.paused && <span>Updates paused</span>}
-                          {row.active.length ? (
-                            <span>
-                              Available guidance · {row.active.join(", ")}
-                            </span>
-                          ) : (
-                            <span>
-                              {ready &&
-                              !state.paused &&
-                              !row.paused &&
-                              !working &&
-                              !row.pending_recovery &&
-                              !row.attention &&
-                              !attention
-                                ? "Waiting for a task"
-                                : "No guidance installed"}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    {!state.projects.length && <p>No repositories to show.</p>}
-                  </div>
+                  <RepositoryGuidance
+                    rows={state.projects}
+                    ready={readyForTask}
+                    stale={!!loadError}
+                  />
                 </div>
                 <details className="tools-hub-settings">
                   <summary>Tool settings</summary>
-                  <p>
-                    Approved publishers ·{" "}
-                    {state.sources
-                      .filter((source) => source.approved)
-                      .map((source) => source.label)
-                      .join(", ") || "None"}
-                  </p>
                   <p className="subtle">
-                    Temper checks approved publishers every six hours using its
-                    private copy of {state.manager}.
+                    Temper checks approved publishers every six hours.
                   </p>
                   <div className="tools-hub-actions">
                     {!state.paused && (

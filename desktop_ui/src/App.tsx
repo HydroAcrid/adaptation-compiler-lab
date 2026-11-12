@@ -706,6 +706,7 @@ export default function App() {
               feedback={feedback}
               onFeedback={recordFeedback}
               onOpenCore={() => navigate("core")}
+              onOpenTools={() => navigate("modes")}
               onReview={reviewSuggestion}
               workspace={activeWorkspace}
               workspaceControl={

@@ -1,8 +1,8 @@
-import { AlertTriangle, LoaderCircle, RotateCcw } from "lucide-react";
+import { AlertTriangle, RotateCcw } from "lucide-react";
 
 import type { EngineClientFailure } from "../engine";
-import { BotanicalFlourish } from "./BotanicalFlourish";
 import { BrandMark } from "./BrandMark";
+import { Button, LoadingStatus } from "./ui";
 
 export function NativeStartup({
   failure,
@@ -15,18 +15,18 @@ export function NativeStartup({
 }) {
   return (
     <div className="native-startup">
-      <BotanicalFlourish placement="onboarding" />
       <header className="native-startup__header">
         <BrandMark />
       </header>
       <main className="native-startup__content">
-        <div className="native-startup__mark" aria-hidden="true">
-          {failure ? (
-            <AlertTriangle size={25} strokeWidth={1.6} />
-          ) : (
-            <LoaderCircle className="native-startup__spinner" size={25} />
-          )}
-        </div>
+        {failure ? (
+          <AlertTriangle
+            aria-hidden="true"
+            className="native-startup__mark"
+            size={24}
+            strokeWidth={1.7}
+          />
+        ) : null}
         <h1>
           {failure
             ? failureStage === "refresh"
@@ -34,18 +34,21 @@ export function NativeStartup({
               : "Temper could not open its local state."
             : "Opening Temper"}
         </h1>
-        <p>
-          {failure ? failure.message : "Loading your projects and preferences."}
-        </p>
         {failure ? (
-          <button
-            className="folio-primary-action"
-            onClick={onRetry}
-            type="button"
-          >
-            Try again <RotateCcw aria-hidden="true" size={16} />
-          </button>
-        ) : null}
+          <>
+            <p>{failure.message}</p>
+            <Button
+              icon={<RotateCcw aria-hidden="true" size={16} />}
+              onClick={onRetry}
+              tone="primary"
+              type="button"
+            >
+              Try again
+            </Button>
+          </>
+        ) : (
+          <LoadingStatus>Loading your projects and preferences…</LoadingStatus>
+        )}
       </main>
     </div>
   );
@@ -54,14 +57,16 @@ export function NativeStartup({
 export function DesktopHostRequired() {
   return (
     <div className="native-startup">
-      <BotanicalFlourish placement="onboarding" />
       <header className="native-startup__header">
         <BrandMark />
       </header>
       <main className="native-startup__content">
-        <div className="native-startup__mark" aria-hidden="true">
-          <AlertTriangle size={25} strokeWidth={1.6} />
-        </div>
+        <AlertTriangle
+          aria-hidden="true"
+          className="native-startup__mark"
+          size={24}
+          strokeWidth={1.7}
+        />
         <h1>Open the Temper desktop app.</h1>
         <p>This page needs the desktop app to access your local Temper data.</p>
       </main>

@@ -30,7 +30,7 @@ async function openScene(page: Page, screen: string, theme: "light" | "dark") {
     await page.getByRole("dialog").waitFor({ state: "visible" });
   }
   if (screen === "modes") {
-    await page.getByRole("heading", { name: "Automatic tools" }).waitFor();
+    await page.getByRole("heading", { name: "Automatic workflows" }).waitFor();
   }
   await page.evaluate(() => document.fonts.ready);
   await page.evaluate(() => window.scrollTo(0, 0));
