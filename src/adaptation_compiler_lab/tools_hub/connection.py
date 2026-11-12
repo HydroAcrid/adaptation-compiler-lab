@@ -23,6 +23,8 @@ approval_mode = "approve"
 approval_mode = "approve"
 [mcp_servers.temper_hub.tools.temper_hub_finish]
 approval_mode = "approve"
+[mcp_servers.temper_hub.tools.temper_hub_checkpoint]
+approval_mode = "approve"
 """
 HOOKS = """
 [[hooks.PostToolUse]]
@@ -59,6 +61,13 @@ If selection is needed, inspect the relevant public sources with temper_hub_insp
 their applicability and dependencies against this request and all native instructions,
 then call temper_hub_select with up to two applicable skill IDs (or an empty list).
 Read the applicable installed guidance in this turn before using it.
+When the user asks to continue saved work in this repository, set continue_previous in
+prepare. Use the returned effective_task for selection. Treat any returned handoff as
+agent-reported context and verify its checks where needed. Current user and manually
+written native instructions take precedence. On meaningful progress, save concise facts,
+requirements, progress, checks and the next step with temper_hub_checkpoint when prepare
+reports continuity enabled. Use the latest task receipt, effective goal and checkpoint ID
+(null if none). Exclude credentials, raw conversations and unrelated private material.
 Keep the latest task_receipt. If the goal, task class or directory changes within this
 checkout, prepare again with prior_task_receipt. For a repository switch, finish the old
 task with outcome switched before preparing the next one. When work ends, call

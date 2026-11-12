@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
@@ -47,6 +48,7 @@ afterEach(() => {
 const populated: HubState = {
   ...initial,
   enabled: true,
+  bridge_configured: true,
   indexed: true,
   native_hooks_configured: true,
   project_count: 1,
@@ -74,6 +76,305 @@ const populated: HubState = {
     result: { status: "indexed", skills: 8 },
   },
 };
+
+const checkpoint = {
+  checkpoint_id: "fictional-checkpoint",
+  status: "saved" as const,
+  saved_at: 1_793_625_600,
+  resumed_at: null,
+  task_class: "debugging",
+  guidance: ["Systematic Debugging"],
+};
+const continuing: HubState = {
+  ...populated,
+  projects: [
+    {
+      ...populated.projects[0],
+      continuity_enabled: true,
+      continuity: checkpoint,
+    },
+  ],
+};
+const savedContents = {
+  checkpoint_id: checkpoint.checkpoint_id,
+  progress: ["Reproduced the bad tide marker."],
+  facts: ["The marker is drawn from the offshore reading."],
+  requirements: ["Keep the shoreline reading as the default."],
+  checks: ["Ran the station selection tests."],
+  next_step: "Add the harbor station to the fixture.",
+};
+
+it("shows saved guidance on Overview and fetches the checkpoint only when opened", async () => {
+  const user = userEvent.setup();
+  let completeRead: ((value: typeof savedContents) => void) | undefined;
+  api.hubRequest.mockImplementation((operation: string) =>
+    operation === "continuity_read"
+      ? new Promise((resolve) => {
+          completeRead = resolve;
+        })
+      : Promise.resolve(continuing),
+  );
+  render(<ToolsHubPanel nativeRuntime onOpenTools={() => {}} />);
+  const section = await screen.findByRole("region", {
+    name: "Continuing work",
+  });
+  expect(within(section).getByText("Saved for a later chat")).toBeVisible();
+  expect(within(section).getByText("Systematic Debugging")).toBeVisible();
+  expect(within(section).queryByText("Retrieved by Codex")).toBeNull();
+  expect(api.hubRequest).toHaveBeenCalledTimes(1);
+
+  await user.click(within(section).getByText("Saved checkpoint"));
+  expect(await within(section).findByText("Opening checkpoint…")).toBeVisible();
+  expect(api.hubRequest).toHaveBeenCalledWith("continuity_read", {
+    project_id: continuing.projects[0].id,
+    checkpoint_id: checkpoint.checkpoint_id,
+  });
+  expect(within(section).getByText("Systematic Debugging")).toBeVisible();
+  await act(async () => completeRead?.(savedContents));
+  expect(within(section).getByText(savedContents.next_step)).toBeVisible();
+  expect(within(section).getByText("Reported checks")).toBeVisible();
+  for (const item of [
+    ...savedContents.facts,
+    ...savedContents.progress,
+    ...savedContents.requirements,
+    ...savedContents.checks,
+  ]) {
+    expect(within(section).getByText(item)).toBeVisible();
+  }
+});
+
+it("reviews the repository permission before enabling continuing work", async () => {
+  const user = userEvent.setup();
+  const project = continuing.projects[0];
+  let state = {
+    ...continuing,
+    projects: [{ ...project, continuity_enabled: false, continuity: null }],
+  };
+  api.hubRequest.mockImplementation(async (operation: string) => {
+    if (operation === "status") return state;
+    if (operation === "continuity_preview")
+      return {
+        preview_id: "fictional-continuity-review",
+        project_id: project.id,
+        enabled: true,
+        removes_checkpoint: false,
+      };
+    state = {
+      ...state,
+      projects: [{ ...project, continuity_enabled: true, continuity: null }],
+    };
+    return { status: "enabled", project_id: project.id };
+  });
+  render(<ToolsHubPanel nativeRuntime />);
+  const section = await screen.findByRole("region", {
+    name: "Continuing work",
+  });
+  expect(within(section).getByText("Off")).toBeVisible();
+  const trigger = within(section).getByRole("button", {
+    name: "Turn on continuing work for Example",
+  });
+  await user.click(trigger);
+  const dialog = await screen.findByRole("dialog", {
+    name: "Turn on continuing work",
+  });
+  expect(dialog).toHaveTextContent(/save a brief checkpoint for Example/);
+  expect(api.hubRequest).toHaveBeenCalledWith(
+    "continuity_preview",
+    { project_id: project.id, enabled: true },
+    state.digest,
+  );
+  expect(api.hubRequest).not.toHaveBeenCalledWith(
+    "continuity_apply",
+    expect.anything(),
+    expect.anything(),
+  );
+  await user.keyboard("{Escape}");
+  await waitFor(() => expect(trigger).toHaveFocus());
+  await user.keyboard("{Enter}");
+  await user.click(
+    within(await screen.findByRole("dialog")).getByRole("button", {
+      name: "Turn on",
+    }),
+  );
+  expect(api.hubRequest).toHaveBeenCalledWith(
+    "continuity_apply",
+    { preview_id: "fictional-continuity-review" },
+    state.digest,
+  );
+  expect(await within(section).findByText("No checkpoint saved")).toBeVisible();
+  await waitFor(() =>
+    expect(
+      screen.getByRole("heading", { name: "Automatic workflows" }),
+    ).toHaveFocus(),
+  );
+});
+
+it("keeps the checkpoint after a failed read and allows retry and exact removal", async () => {
+  const user = userEvent.setup();
+  const project = continuing.projects[0];
+  let state = {
+    ...continuing,
+    projects: [
+      {
+        ...project,
+        continuity: {
+          ...checkpoint,
+          status: "resumed" as const,
+          resumed_at: checkpoint.saved_at + 120,
+        },
+      },
+    ],
+  } as HubState;
+  let reads = 0;
+  api.hubRequest.mockImplementation(async (operation: string) => {
+    if (operation === "status") return state;
+    if (operation === "continuity_read") {
+      if (reads++ === 0) throw new Error("Unavailable");
+      return savedContents;
+    }
+    state = { ...state, projects: [{ ...project, continuity: null }] };
+    return { status: "cleared", project_id: project.id };
+  });
+  render(<ToolsHubPanel nativeRuntime />);
+  const section = await screen.findByRole("region", {
+    name: "Continuing work",
+  });
+  expect(within(section).getByText("Retrieved by Codex")).toBeVisible();
+  expect(within(section).getByText("Retrieved")).toBeVisible();
+  await user.click(within(section).getByText("Saved checkpoint"));
+  await user.click(
+    await within(section).findByRole("button", { name: "Retry checkpoint" }),
+  );
+  expect(
+    await within(section).findByText(savedContents.next_step),
+  ).toBeVisible();
+
+  await user.click(
+    within(section).getByRole("button", {
+      name: "Remove checkpoint for Example",
+    }),
+  );
+  const dialog = await screen.findByRole("dialog", {
+    name: "Remove saved checkpoint",
+  });
+  await user.click(
+    within(dialog).getByRole("button", { name: "Remove checkpoint" }),
+  );
+  expect(api.hubRequest).toHaveBeenCalledWith(
+    "continuity_clear",
+    { project_id: project.id, checkpoint_id: checkpoint.checkpoint_id },
+    state.digest,
+  );
+  expect(await within(section).findByText("Checkpoint removed.")).toBeVisible();
+  expect(await within(section).findByText("No checkpoint saved")).toBeVisible();
+  expect(within(section).queryByText(savedContents.next_step)).toBeNull();
+});
+
+it("retains the last checkpoint on a status error and prevents clearing replaced work", async () => {
+  vi.useFakeTimers();
+  const project = continuing.projects[0];
+  const replacement = {
+    ...continuing,
+    projects: [
+      {
+        ...project,
+        continuity: {
+          ...checkpoint,
+          checkpoint_id: "replacement-checkpoint",
+          guidance: ["Verification Before Completion"],
+        },
+      },
+    ],
+  };
+  api.hubRequest
+    .mockResolvedValueOnce(continuing)
+    .mockRejectedValueOnce(new Error("Unavailable"))
+    .mockResolvedValueOnce(continuing)
+    .mockResolvedValue(replacement);
+  render(<ToolsHubPanel nativeRuntime />);
+  await act(async () => {});
+  const section = screen.getByRole("region", { name: "Continuing work" });
+  const remove = within(section).getByRole("button", {
+    name: "Remove checkpoint for Example",
+  });
+
+  await act(async () => vi.advanceTimersByTimeAsync(3000));
+  expect(within(section).getByText("Systematic Debugging")).toBeVisible();
+  expect(
+    within(section).getByText("Showing the last known checkpoint status."),
+  ).toBeVisible();
+  expect(remove).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: "Refresh status" }));
+  await act(async () => {});
+  expect(remove).toBeEnabled();
+  fireEvent.click(remove);
+  await act(async () => vi.advanceTimersByTimeAsync(3000));
+  const dialog = screen.getByRole("dialog", {
+    name: "Remove saved checkpoint",
+  });
+  expect(within(dialog).getByText(/This checkpoint has changed/)).toBeVisible();
+  expect(
+    within(dialog).getByRole("button", { name: "Remove checkpoint" }),
+  ).toBeDisabled();
+  expect(api.hubRequest).not.toHaveBeenCalledWith(
+    "continuity_clear",
+    expect.anything(),
+    expect.anything(),
+  );
+});
+
+it("discards an in-flight details read when its checkpoint is replaced", async () => {
+  vi.useFakeTimers();
+  const project = continuing.projects[0];
+  const replacementId = "replacement-checkpoint";
+  const replacementContents = {
+    ...savedContents,
+    checkpoint_id: replacementId,
+    next_step: "Review the harbor station result.",
+  };
+  let state = continuing;
+  let completeOldRead: ((value: typeof savedContents) => void) | undefined;
+  api.hubRequest.mockImplementation(
+    (operation: string, params?: { checkpoint_id: string }) => {
+      if (operation === "status") return Promise.resolve(state);
+      if (params?.checkpoint_id === replacementId)
+        return Promise.resolve(replacementContents);
+      return new Promise((resolve) => {
+        completeOldRead = resolve;
+      });
+    },
+  );
+  render(<ToolsHubPanel nativeRuntime onOpenTools={() => {}} />);
+  await act(async () => {});
+  const section = screen.getByRole("region", { name: "Continuing work" });
+  const initialDisclosure = within(section).getByText("Saved checkpoint");
+  fireEvent.click(initialDisclosure);
+  await act(async () => vi.advanceTimersByTimeAsync(0));
+  expect(within(section).getByText("Opening checkpoint…")).toBeVisible();
+
+  state = {
+    ...state,
+    projects: [
+      {
+        ...project,
+        continuity: { ...checkpoint, checkpoint_id: replacementId },
+      },
+    ],
+  };
+  await act(async () => vi.advanceTimersByTimeAsync(3000));
+  const disclosure =
+    within(section).getByText("Saved checkpoint").parentElement!;
+  expect(disclosure).not.toHaveAttribute("open");
+  await act(async () => completeOldRead?.(savedContents));
+  expect(within(section).queryByText(savedContents.next_step)).toBeNull();
+
+  fireEvent.click(within(section).getByText("Saved checkpoint"));
+  await act(async () => vi.advanceTimersByTimeAsync(0));
+  expect(
+    within(section).getByText(replacementContents.next_step),
+  ).toBeVisible();
+  expect(within(section).queryByText(savedContents.next_step)).toBeNull();
+});
 
 it("shows repository guidance and the latest task check on the compact Overview", async () => {
   const user = userEvent.setup();

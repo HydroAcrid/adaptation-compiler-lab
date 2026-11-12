@@ -1,6 +1,31 @@
 import { invoke } from "@tauri-apps/api/core";
 import { ENGINE_PROTOCOL_VERSION, type EngineResponse } from "./engine";
 
+export interface HubCheckpoint {
+  checkpoint_id: string;
+  status: "saved" | "resumed";
+  saved_at: number;
+  resumed_at: number | null;
+  task_class: string;
+  guidance: string[];
+}
+
+export interface HubCheckpointDetails {
+  checkpoint_id: string;
+  progress: string[];
+  facts: string[];
+  requirements: string[];
+  checks: string[];
+  next_step: string;
+}
+
+export interface ContinuityPreview {
+  preview_id: string;
+  project_id: string;
+  enabled: boolean;
+  removes_checkpoint: boolean;
+}
+
 export interface HubProject {
   id: string;
   label: string;
@@ -10,6 +35,9 @@ export interface HubProject {
   pending_recovery: boolean;
   attention?: { status: string; conflicts: string[] } | null;
   can_rollback?: boolean;
+  continuity_enabled?: boolean;
+  continuity?: HubCheckpoint | null;
+  continuity_issue?: "unavailable" | "expired";
 }
 export interface HubState {
   version: 1;
@@ -78,6 +106,10 @@ export type HubOperation =
   | "control"
   | "connection_preview"
   | "connection_apply"
+  | "continuity_read"
+  | "continuity_preview"
+  | "continuity_apply"
+  | "continuity_clear"
   | "refresh"
   | "repair"
   | "runtime_preview"

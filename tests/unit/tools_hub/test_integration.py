@@ -123,6 +123,7 @@ def make_service(tmp_path: Path) -> HubService:
         codex_home=codex,
         manager=FixtureManager(tmp_path / "hub/manager"),
         sources=FixtureSnapshots,
+        continuity_key=lambda: b"f" * 32,
     )
 
 
@@ -377,6 +378,7 @@ def test_mcp_exposes_only_task_tools_and_never_grants(service: HubService) -> No
         "temper_hub_inspect",
         "temper_hub_select",
         "temper_hub_finish",
+        "temper_hub_checkpoint",
         "temper_hub_render",
         "temper_hub_bind_turn",
         "temper_hub_end_turn",

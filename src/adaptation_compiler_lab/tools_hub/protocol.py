@@ -7,6 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from .connection import CodexHubConnection
+from .continuity import Handoff
 from .controller import fingerprint
 from .service import HubService
 from .task_lifecycle import TaskOutcome, TaskOwner
@@ -43,6 +44,10 @@ class Task(Parameters):
     prior_task_receipt: dict[str, Any] | None = None
 
 
+class Prepare(Task):
+    continue_previous: bool = False
+
+
 class Selection(Task):
     selection_ticket: dict[str, Any]
     choices: list[str] = Field(max_length=2)
@@ -70,6 +75,28 @@ class Finish(Parameters):
     outcome: TaskOutcome
 
 
+class Checkpoint(Handoff):
+    task_receipt: dict[str, Any]
+    goal: str = Field(min_length=1, max_length=2000)
+    expected_checkpoint_id: str | None = Field(pattern=r"^[a-f0-9]{32}$")
+
+
+class ContinuityPreview(Parameters):
+    project_id: str = Field(min_length=1, max_length=160)
+    enabled: bool
+
+
+class ContinuityReference(Parameters):
+    project_id: str = Field(min_length=1, max_length=160)
+    checkpoint_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+
+
+class ContinuityAcknowledgement(Parameters):
+    task_receipt: dict[str, Any]
+    checkpoint_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+    session_id: str = Field(min_length=1, max_length=160)
+
+
 class Turn(Parameters):
     session_id: str = Field(min_length=1, max_length=160)
     turn_id: str = Field(min_length=1, max_length=160)
@@ -83,17 +110,23 @@ class EndTurn(Turn):
     outcome: Literal["completed", "cancelled"]
 
 
-SCHEMAS: dict[str, type[Parameters]] = {
+SCHEMAS: dict[str, type[BaseModel]] = {
     "tools_hub.status": Empty,
     "tools_hub.inventory": Empty,
     "tools_hub.maintenance": Empty,
     "tools_hub.permission.preview": PermissionPreview,
     "tools_hub.permission.enable": PreviewId,
     "tools_hub.control": Control,
-    "tools_hub.prepare": Task,
+    "tools_hub.prepare": Prepare,
     "tools_hub.inspect": Inspection,
     "tools_hub.select": Selection,
     "tools_hub.finish": Finish,
+    "tools_hub.checkpoint": Checkpoint,
+    "tools_hub.continuity.preview": ContinuityPreview,
+    "tools_hub.continuity.apply": PreviewId,
+    "tools_hub.continuity.read": ContinuityReference,
+    "tools_hub.continuity.clear": ContinuityReference,
+    "tools_hub.continuity.acknowledge": ContinuityAcknowledgement,
     "tools_hub.render": Render,
     "tools_hub.runtime.preview": RuntimePreview,
     "tools_hub.runtime.enable": PreviewId,
@@ -109,6 +142,8 @@ AGENT_METHODS = {
     "tools_hub.inspect",
     "tools_hub.select",
     "tools_hub.finish",
+    "tools_hub.checkpoint",
+    "tools_hub.continuity.acknowledge",
     "tools_hub.render",
 }
 
@@ -130,6 +165,7 @@ class HubProtocol:
         idempotency_key: str | None = None,
         agent: bool = False,
         cancellation: RenderCancellation | None = None,
+        native_session: str | None = None,
     ) -> dict[str, Any]:
         if method not in SCHEMAS or (agent and method not in AGENT_METHODS):
             raise ValueError("Unsupported repository setup operation")
@@ -149,6 +185,8 @@ class HubProtocol:
             return {"projects": self.service.inventory()}
         if method == "tools_hub.maintenance":
             return self.service.tick()
+        if method == "tools_hub.continuity.read" and isinstance(value, ContinuityReference):
+            return self.service.read_continuity(value.project_id, value.checkpoint_id)
         if method not in AGENT_METHODS and (
             not idempotency_key
             or len(idempotency_key) > 160
@@ -161,6 +199,12 @@ class HubProtocol:
             result = self.service.enable(value.preview_id)
         elif isinstance(value, Control):
             result = self.service.control(value.operation, value.project_id)
+        elif isinstance(value, ContinuityPreview):
+            result = self.service.preview_continuity(value.project_id, value.enabled)
+        elif method == "tools_hub.continuity.apply" and isinstance(value, PreviewId):
+            result = self.service.apply_continuity(value.preview_id)
+        elif method == "tools_hub.continuity.clear" and isinstance(value, ContinuityReference):
+            result = self.service.clear_continuity(value.project_id, value.checkpoint_id)
         elif method == "tools_hub.refresh":
             result = self.service.start("maintenance", lambda: self.service.maintain(force=True))
         elif method == "tools_hub.repair":
@@ -191,9 +235,11 @@ class HubProtocol:
 
             with writer_lock(self.service.home):
                 result = self.service.inspect(value.selection_ticket, value.skill_id, owner=owner)
-        elif isinstance(value, Task):
+        elif isinstance(value, Prepare):
             # Do not run a manager or persist a goal when the repository is unapproved.
             self.service.require_project(value.project_id)
+            if value.continue_previous and not agent:
+                raise ValueError("Continue saved work through a connected agent")
 
             def prepare_task() -> dict[str, Any]:
                 return self.service.prepare(
@@ -203,6 +249,7 @@ class HubProtocol:
                     value.relative_directory,
                     owner=owner,
                     prior_task_receipt=value.prior_task_receipt,
+                    continue_previous=value.continue_previous,
                 )
 
             if agent:
@@ -211,6 +258,28 @@ class HubProtocol:
                 result = self.service.start("prepare", prepare_task)
         elif isinstance(value, Finish) and owner is not None:
             result = self.service.finish(value.task_receipt, owner, value.outcome)
+        elif isinstance(value, Checkpoint) and owner is not None:
+            result = self.service.save_checkpoint(
+                value.task_receipt,
+                owner,
+                value.goal,
+                value.expected_checkpoint_id,
+                Handoff.model_validate(
+                    value.model_dump(
+                        exclude={
+                            "task_receipt",
+                            "goal",
+                            "expected_checkpoint_id",
+                        }
+                    )
+                ),
+                native_session,
+            )
+        elif isinstance(value, ContinuityAcknowledgement) and owner is not None:
+            self.service.acknowledge_continuity(
+                value.task_receipt, owner, value.checkpoint_id, value.session_id
+            )
+            result = {}
         elif isinstance(value, Render) and owner is not None:
             result = self.service.render(
                 value.task_receipt, owner, value.spec.model_dump(), cancellation=cancellation

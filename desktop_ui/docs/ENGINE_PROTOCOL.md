@@ -97,6 +97,39 @@ engine version plus public snapshot-schema digest returned by the handshake.
 `TEMPER_ENGINE_BINARY` is a debug-only override and cannot replace the bundled engine in a release
 application.
 
+## Continuing work
+
+Continuing work is off by default, including for existing Tools Hub grants. An owner can enable it
+for one approved, connected repository at a time. The desktop calls the fixed
+`tools_hub_request` operation enum. `tools_hub.status` returns per-project permission and checkpoint
+metadata, including save time, selected guidance, and retrieval time when available. Overview
+shows the latest checkpoint and Tools manages permission and removal per repository.
+
+- `tools_hub.continuity.preview` takes `project_id` and `enabled`, and returns a review token
+  bound to the project and current revision. `tools_hub.continuity.apply` takes `preview_id`.
+  Turning continuity off also removes that repository's checkpoint.
+- `tools_hub.continuity.read` takes `project_id` and `checkpoint_id`. It returns the exact
+  checkpoint's progress, facts, requirements, reported checks, and next step on demand.
+- `tools_hub.continuity.clear` takes the same identifiers and removes the matching checkpoint.
+  Clearing invalidates prior write receipts while leaving continuing work enabled.
+
+Preview, apply, and clear use the current Hub status digest and an idempotency key. Read requires
+only the matching project and checkpoint identifiers. These four operations are desktop-only.
+
+On the separate Codex Hub connection, `temper_hub_prepare` can return an enabled repository's
+matching handoff for the current goal, task class, and directory. When the user asks to continue
+saved work, `continue_previous` requests that repository's current handoff. Subsequent selection
+uses the returned `effective_task`. `temper_hub_checkpoint` requires the connected task receipt,
+effective goal, and `expected_checkpoint_id` for the current revision, or null for an empty
+checkpoint. Current requests and manually written native instructions take precedence.
+
+Each enabled repository can retain one bounded, locally encrypted checkpoint for up to 30 days.
+Its contents are agent-reported task context. Learning, governed style defaults, and preference
+evidence have their own scope and permissions. The desktop records retrieval when a later
+Codex session binds a prepare response that carried the checkpoint to a distinct native session.
+That receipt establishes delivery. Actual use and the outcome of the reported checks require
+separate evidence.
+
 ## Claude hook channel
 
 Claude hooks do not enter through the renderer command surface. The bundled `temper-hook` helper

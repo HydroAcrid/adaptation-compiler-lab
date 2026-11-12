@@ -13,7 +13,9 @@ from queue import Empty, Full, Queue
 from threading import Event, Lock, Thread
 from typing import Any, TextIO, cast
 
-from .protocol import BindTurn, EndTurn, Finish, Inspection, Parameters, Render, Selection, Task
+from pydantic import BaseModel
+
+from .protocol import BindTurn, Checkpoint, EndTurn, Finish, Inspection, Prepare, Render, Selection
 from .workflow_runtime import RenderCancellation
 
 FRAME_LIMIT = 262_144
@@ -27,7 +29,9 @@ DESCRIPTIONS = {
         "Prepare the current task in an explicitly Hub-authorized "
         "repository. May remove the previous task's owned skills. Reuse a "
         "matching ready profile, or use the returned selection ticket to "
-        "inspect and choose applicable skills. Supply the task's relative working directory."
+        "inspect and choose applicable skills. Supply the task's relative working directory. "
+        "When enabled, a matching saved handoff is returned. Use continue_previous only "
+        "when the user asks to continue saved work in this repository."
     ),
     "temper_hub_inspect": (
         "Read one approved public skill and its resource list before "
@@ -43,6 +47,12 @@ DESCRIPTIONS = {
     "temper_hub_finish": (
         "Release the exact task receipt after completion, failure, cancellation or a repository "
         "switch. Preserves owner edits and completed artifacts."
+    ),
+    "temper_hub_checkpoint": (
+        "Save concise agent-reported facts, requirements, progress, checks and the next step "
+        "for the current task in a repository with task continuity enabled. Supply the task's "
+        "effective goal and latest checkpoint ID, or null if empty. Exclude credentials and "
+        "transcripts. Saved context never becomes preference evidence."
     ),
     "temper_hub_render": (
         "Render a short MP4 through the separately owner-approved Remotion runtime for the current "
@@ -63,6 +73,8 @@ class PendingTask:
     receipt: dict[str, Any]
     nonce: str
     turn: tuple[str, str] | None = None
+    native_session: str | None = None
+    delivered_checkpoint: str | None = None
 
     @property
     def token(self) -> str:
@@ -200,11 +212,12 @@ def serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
 
 
 def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
-    schemas: dict[str, type[Parameters]] = {
-        "temper_hub_prepare": Task,
+    schemas: dict[str, type[BaseModel]] = {
+        "temper_hub_prepare": Prepare,
         "temper_hub_inspect": Inspection,
         "temper_hub_select": Selection,
         "temper_hub_finish": Finish,
+        "temper_hub_checkpoint": Checkpoint,
         "temper_hub_render": Render,
         "temper_hub_bind_turn": BindTurn,
         "temper_hub_end_turn": EndTurn,
@@ -219,7 +232,7 @@ def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
             "annotations": {
                 "readOnlyHint": name.endswith(("status", "inspect")),
                 "destructiveHint": name.endswith(
-                    ("prepare", "select", "finish", "end_turn", "render")
+                    ("prepare", "select", "finish", "checkpoint", "end_turn", "render")
                 ),
                 "openWorldHint": False,
             },
@@ -271,7 +284,22 @@ def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
                     for candidate in candidates.values():
                         if candidate.nonce == value.lifecycle_nonce:
                             candidate.turn = (value.session_id, value.turn_id)
+                            candidate.native_session = value.session_id
                             candidate.nonce = ""
+                            if candidate.delivered_checkpoint:
+                                # Receipt metadata must not interfere with native turn cleanup.
+                                with suppress(
+                                    ValueError, TypeError, KeyError, OSError, sqlite3.Error
+                                ):
+                                    protocol.dispatch(
+                                        "tools_hub.continuity.acknowledge",
+                                        {
+                                            "task_receipt": candidate.receipt,
+                                            "checkpoint_id": candidate.delivered_checkpoint,
+                                            "session_id": value.session_id,
+                                        },
+                                        agent=True,
+                                    )
                             break
                 elif name == "temper_hub_end_turn":
                     ending = EndTurn.model_validate(args)
@@ -292,6 +320,27 @@ def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
                             candidates.pop(project)
                     if failure is not None:
                         raise failure
+                elif name == "temper_hub_checkpoint":
+                    checkpoint = Checkpoint.model_validate(args)
+                    claim = checkpoint.task_receipt.get("payload")
+                    checkpoint_project = (
+                        claim.get("project_id") if isinstance(claim, dict) else None
+                    )
+                    current = (
+                        candidates.get(checkpoint_project)
+                        if isinstance(checkpoint_project, str)
+                        else None
+                    )
+                    packet = protocol.dispatch(
+                        "tools_hub.checkpoint",
+                        args,
+                        agent=True,
+                        native_session=(
+                            current.native_session
+                            if current and current.receipt == checkpoint.task_receipt
+                            else None
+                        ),
+                    )
                 else:
                     if frame.cancellation is not None:
                         frame.cancellation.check()
@@ -310,6 +359,9 @@ def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
                     nonce = secrets.token_hex(16)
                     project = packet["project_id"]
                     candidate = PendingTask(packet["task_receipt"], nonce)
+                    continuity = packet.get("continuity") or {}
+                    if continuity.get("handoff") is not None:
+                        candidate.delivered_checkpoint = continuity.get("checkpoint_id")
                     previous = candidates.get(project)
                     if previous is not None and previous.token == candidate.token:
                         candidate.turn = previous.turn

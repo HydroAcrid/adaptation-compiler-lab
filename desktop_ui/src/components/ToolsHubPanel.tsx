@@ -5,6 +5,7 @@ import { usePageVisibility } from "../pageVisibility";
 import {
   hubRequest,
   type ConnectionPreview,
+  type ContinuityPreview,
   type HubOperation,
   type HubPreview,
   type HubProject,
@@ -12,6 +13,7 @@ import {
   type RuntimePreview,
 } from "../toolsHub";
 import { Button, LoadingStatus } from "./ui";
+import { ContinuingWork, type ContinuingWorkAction } from "./ContinuingWork";
 import "./ToolsHubPanel.css";
 
 type Repository = { id: string; label: string; root: string };
@@ -19,6 +21,13 @@ type Review =
   | { type: "permission"; value: HubPreview }
   | { type: "connection"; value: ConnectionPreview }
   | { type: "runtime"; value: RuntimePreview }
+  | { type: "continuity"; value: ContinuityPreview; label: string }
+  | {
+      type: "clear_checkpoint";
+      projectId: string;
+      checkpointId: string;
+      label: string;
+    }
   | { type: "stop" | "repair" };
 
 const taskOutcomes: Record<string, string> = {
@@ -186,6 +195,9 @@ export function ToolsHubPanel({
   const statusRequest = useRef<Promise<HubState> | null>(null);
   const [statusPending, setStatusPending] = useState(false);
   const [awaitingActionStatus, setAwaitingActionStatus] = useState(false);
+  const [continuityNotice, setContinuityNotice] = useState<string | null>(null);
+  const [preparingContinuityReview, setPreparingContinuityReview] =
+    useState(false);
   const actionsUnavailable =
     busy ||
     awaitingActionStatus ||
@@ -308,11 +320,60 @@ export function ToolsHubPanel({
       await mutate("connection_apply", { preview_id: review.value.preview_id });
     } else if (review.type === "runtime") {
       await mutate("runtime_enable", { preview_id: review.value.preview_id });
+    } else if (review.type === "continuity") {
+      await mutate("continuity_apply", { preview_id: review.value.preview_id });
+      setContinuityNotice(
+        review.value.enabled
+          ? "Continuing work is on."
+          : "Continuing work is off.",
+      );
+    } else if (review.type === "clear_checkpoint") {
+      await mutate("continuity_clear", {
+        project_id: review.projectId,
+        checkpoint_id: review.checkpointId,
+      });
+      setContinuityNotice("Checkpoint removed.");
     } else if (review.type === "repair") await mutate("repair");
     else await mutate("control", { operation: "stop" });
     // Confirmation can remove the opener on the next status refresh.
     reviewTrigger.current = null;
     setReview(null);
+  }
+
+  function reviewContinuity(
+    intent: ContinuingWorkAction,
+    trigger: HTMLButtonElement,
+  ) {
+    setContinuityNotice(null);
+    setActionError(null);
+    const { project } = intent;
+    if (intent.type === "clear") {
+      openReview(
+        {
+          type: "clear_checkpoint",
+          projectId: project.id,
+          checkpointId: intent.checkpoint.checkpoint_id,
+          label: project.label,
+        },
+        trigger,
+      );
+      return;
+    }
+    void action(async () => {
+      setPreparingContinuityReview(true);
+      try {
+        const value = await mutate<ContinuityPreview>("continuity_preview", {
+          project_id: project.id,
+          enabled: !project.continuity_enabled,
+        });
+        openReview(
+          { type: "continuity", value, label: project.label },
+          trigger,
+        );
+      } finally {
+        setPreparingContinuityReview(false);
+      }
+    });
   }
   const failed =
     state?.job?.state === "failed" || state?.job?.state === "interrupted";
@@ -352,6 +413,10 @@ export function ToolsHubPanel({
                     : "Setup needed";
 
   const checking = nativeRuntime && !state && !loadError;
+  const checkpointChanged =
+    review?.type === "clear_checkpoint" &&
+    state?.projects.find((project) => project.id === review.projectId)
+      ?.continuity?.checkpoint_id !== review.checkpointId;
   const publishers = state?.sources.filter((source) => source.approved) ?? [];
   const stateTone =
     loadError || attention || state?.cleanup_pending
@@ -427,6 +492,16 @@ export function ToolsHubPanel({
             <p className="tools-hub-guidance">No task activity recorded.</p>
           )}
         {showStartAction && <StartWorkflows />}
+        {state ? (
+          <ContinuingWork
+            compact
+            state={state}
+            stale={!!loadError}
+            pending={statusPending}
+            actionsUnavailable={actionsUnavailable}
+            onRefresh={() => setRefreshKey((key) => key + 1)}
+          />
+        ) : null}
       </section>
     );
   }
@@ -475,6 +550,18 @@ export function ToolsHubPanel({
       {state?.secure_store_ready === false && (
         <p role="status">Unlock your secure store to make changes.</p>
       )}
+      {state ? (
+        <ContinuingWork
+          state={state}
+          stale={!!loadError}
+          pending={statusPending}
+          actionsUnavailable={actionsUnavailable}
+          notice={continuityNotice}
+          preparingReview={preparingContinuityReview}
+          onRefresh={() => setRefreshKey((key) => key + 1)}
+          onAction={reviewContinuity}
+        />
+      ) : null}
       {!nativeRuntime ? (
         <p>Open the desktop app to choose repositories and connect Codex.</p>
       ) : (
@@ -975,7 +1062,11 @@ export function ToolsHubPanel({
                     ? "Allow Remotion video rendering"
                     : review?.type === "repair"
                       ? "Repair the private manager"
-                      : "Stop managing repository tools"}
+                      : review?.type === "continuity"
+                        ? `${review.value.enabled ? "Turn on" : "Turn off"} continuing work`
+                        : review?.type === "clear_checkpoint"
+                          ? "Remove saved checkpoint"
+                          : "Stop managing repository tools"}
             </Dialog.Title>
             <Dialog.Description>
               {review?.type === "permission"
@@ -986,9 +1077,24 @@ export function ToolsHubPanel({
                     ? "Allow short MP4 renders with this exact local toolchain during active tasks in these repositories."
                     : review?.type === "repair"
                       ? "Reinstall the pinned private SkillKit copy, discard its downloaded source cache, and fetch approved sources again. Repository profiles and permissions are preserved."
-                      : "Stop updates and remove unchanged Temper-managed skill files. Files you edited are preserved and may need your attention."}
+                      : review?.type === "continuity"
+                        ? review.value.enabled
+                          ? `Allow Codex to save a brief checkpoint for ${review.label} on this device and retrieve it in a later chat in the same repository.`
+                          : review.value.removes_checkpoint
+                            ? `Stop saving checkpoints for ${review.label} and remove the saved checkpoint.`
+                            : `Stop saving checkpoints for ${review.label}.`
+                        : review?.type === "clear_checkpoint"
+                          ? `Remove the saved checkpoint for ${review.label}. Codex can save a new checkpoint when you work in this repository again.`
+                          : "Stop updates and remove unchanged Temper-managed skill files. Files you edited are preserved and may need your attention."}
             </Dialog.Description>
-            {actionError && <p role="alert">{actionError.message}</p>}
+            {checkpointChanged ? (
+              <p role="alert">
+                This checkpoint has changed. Close this review to see the latest
+                saved work.
+              </p>
+            ) : actionError ? (
+              <p role="alert">{actionError.message}</p>
+            ) : null}
             {state?.secure_store_ready === false && (
               <p role="status">Unlock your secure store to make changes.</p>
             )}
@@ -1093,7 +1199,7 @@ export function ToolsHubPanel({
             )}
             <div className="tools-hub-actions">
               <Button
-                disabled={actionsUnavailable}
+                disabled={actionsUnavailable || checkpointChanged}
                 onClick={() =>
                   void action(
                     confirm,
@@ -1111,7 +1217,13 @@ export function ToolsHubPanel({
                     ? "Stop and clean up"
                     : review?.type === "repair"
                       ? "Repair setup"
-                      : "Allow and continue"}
+                      : review?.type === "continuity"
+                        ? review.value.enabled
+                          ? "Turn on"
+                          : "Turn off"
+                        : review?.type === "clear_checkpoint"
+                          ? "Remove checkpoint"
+                          : "Allow and continue"}
               </Button>
               <Button
                 type="button"

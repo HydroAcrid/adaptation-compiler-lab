@@ -137,6 +137,7 @@ def test_connection_reviews_only_the_current_routine_hub_writes(tmp_path: Path) 
         "temper_hub_select": {"approval_mode": "approve"},
         "temper_hub_render": {"approval_mode": "approve"},
         "temper_hub_finish": {"approval_mode": "approve"},
+        "temper_hub_checkpoint": {"approval_mode": "approve"},
     }
     service.apply(preview)
     config = tomllib.loads((service.home / "config.toml").read_text())
