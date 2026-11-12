@@ -47,7 +47,12 @@ def tree_digest(path: Path) -> str:
     return fingerprint(
         {
             item.relative_to(path).as_posix(): intake.sha(item.read_bytes())
-            for item in files(path, maximum_bytes=120_000_000, maximum_entries=12_500)
+            for item in files(
+                path,
+                maximum_bytes=120_000_000,
+                maximum_entries=12_500,
+                enforce_windows_budget=True,
+            )
         }
     )
 

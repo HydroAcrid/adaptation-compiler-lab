@@ -311,10 +311,14 @@ class Hub:
             )
         )
 
-    def suggestions(self, root: Path, goal: str, corpus: list[dict[str, Any]]) -> dict[str, Any]:
-        output = self.native(
-            ["skillkit", "recommend", "--task=" + goal, "--json", "--limit", "8"], root
-        )
+    def suggestions(self, goal: str, corpus: list[dict[str, Any]]) -> dict[str, Any]:
+        # SkillKit 1.24 writes a project profile before searching, but --task ranks
+        # using only the query and the admitted index in the private manager home.
+        with tempfile.TemporaryDirectory(prefix="recommend-", dir=self.home) as folder:
+            output = self.native(
+                ["skillkit", "recommend", "--task=" + goal, "--json", "--limit", "8"],
+                Path(folder),
+            )
         ranked = unpack(output)
         if not isinstance(ranked, list):
             raise ValueError("Native recommendation schema changed")
@@ -897,7 +901,7 @@ class Hub:
                 result = {
                     "status": "needs_agent_selection",
                     "changed": cleared,
-                    **self.suggestions(root, goal, index["corpus"]),
+                    **self.suggestions(goal, index["corpus"]),
                     "native_calls": self.calls,
                 }
                 self.event(

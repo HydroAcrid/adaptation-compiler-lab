@@ -8,6 +8,8 @@ import io
 import json
 import os
 import re
+import secrets
+import stat
 import tarfile
 import tempfile
 import time
@@ -15,7 +17,7 @@ import urllib.request
 from pathlib import Path, PurePosixPath
 from typing import Any, BinaryIO, cast
 
-from adaptation_compiler_lab.tools_hub.paths import check_root, files, safe
+from adaptation_compiler_lab.tools_hub.paths import check_root, check_windows_path, files, safe
 
 MARKER = ".temper-discovery-sandbox"
 
@@ -182,10 +184,28 @@ def refresh(catalog: Path, cache: Path) -> dict[str, Any]:
             commit = json.load(response)["sha"]
         if not re.fullmatch(r"[0-9a-f]{40}", commit):
             raise ValueError("Upstream did not return a full revision")
-        target = safe(cache, owner + "/" + repo + "/" + commit)
-        reused = target.is_dir()
+        target_relative = owner + "/" + repo + "/" + commit
+        if os.name == "nt":
+            check_windows_path(
+                cache / target_relative,
+                directory=True,
+                operation="final snapshot",
+                relative=target_relative,
+            )
+        target = safe(cache, target_relative)
+        try:
+            target_mode = target.lstat().st_mode
+        except FileNotFoundError:
+            reused = False
+        except OSError as error:
+            raise OSError("Could not inspect final source snapshot") from error
+        else:
+            if not stat.S_ISDIR(target_mode):
+                raise ValueError("Cached source path must be a directory")
+            reused = True
         archive_digest = None
         downloaded = 0
+        expected: dict[str, str] = {}
         if not reused:
             with urllib.request.urlopen(
                 f"https://codeload.github.com/{identity}/tar.gz/{commit}", timeout=45
@@ -196,45 +216,84 @@ def refresh(catalog: Path, cache: Path) -> dict[str, Any]:
             if len(payload) > 20_000_000:
                 raise ValueError("Archive exceeds prototype download bound")
             archive_digest = sha(payload)
-            stage = Path(tempfile.mkdtemp(prefix="intake-", dir=cache))
-            total = 0
+            stage = cache / ("intake-" + secrets.token_urlsafe(6))
+            if os.name == "nt":
+                check_windows_path(stage, directory=True, operation="staged snapshot")
             try:
-                with (
-                    gzip.GzipFile(fileobj=io.BytesIO(payload)) as uncompressed,
-                    tarfile.open(
-                        fileobj=cast(Any, BoundedArchiveReader(cast(BinaryIO, uncompressed))),
-                        mode="r|",
-                    ) as archive,
-                ):
-                    for number, member in enumerate(archive, 1):
-                        if number > 12_000:
-                            raise ValueError("Archive exceeds its entry bound")
-                        archive_name = PurePosixPath(member.name)
-                        if archive_name.is_absolute() or ".." in archive_name.parts:
-                            raise ValueError("Archive contains a noncanonical member path")
-                        relative = "/".join(member.name.split("/")[1:])
-                        if not relative or member.isdir():
-                            continue
-                        if not member.isfile():
-                            raise ValueError("Archive links and special files are unsupported")
-                        total += member.size
-                        if total > 120_000_000 or member.size > 20_000_000:
-                            raise ValueError("Archive exceeds prototype expanded bound")
+                stage.mkdir(mode=0o700)
+            except OSError as error:
+                raise OSError("Could not create staged source snapshot") from error
+            total = 0
+            with (
+                gzip.GzipFile(fileobj=io.BytesIO(payload)) as uncompressed,
+                tarfile.open(
+                    fileobj=cast(Any, BoundedArchiveReader(cast(BinaryIO, uncompressed))),
+                    mode="r|",
+                ) as archive,
+            ):
+                for number, member in enumerate(archive, 1):
+                    if number > 12_000:
+                        raise ValueError("Archive exceeds its entry bound")
+                    archive_name = PurePosixPath(member.name)
+                    if archive_name.is_absolute() or ".." in archive_name.parts:
+                        raise ValueError("Archive contains a noncanonical member path")
+                    relative = "/".join(member.name.split("/")[1:])
+                    if not relative:
+                        continue
+                    directory = member.isdir()
+                    if not directory and not member.isfile():
+                        raise ValueError("Archive links and special files are unsupported")
+                    if os.name == "nt":
+                        kind = "directory" if directory else "file"
+                        check_windows_path(
+                            stage / relative,
+                            directory=directory,
+                            operation=f"staged archive {kind}",
+                            relative=relative,
+                        )
+                        check_windows_path(
+                            target / relative,
+                            directory=directory,
+                            operation=f"final archive {kind}",
+                            relative=relative,
+                        )
+                    if directory:
+                        continue
+                    total += member.size
+                    if total > 120_000_000 or member.size > 20_000_000:
+                        raise ValueError("Archive exceeds prototype expanded bound")
+                    stream = archive.extractfile(member)
+                    if stream is None:
+                        raise ValueError("Unreadable archive member")
+                    content = stream.read()
+                    try:
                         destination = safe(stage, relative)
                         destination.parent.mkdir(parents=True, exist_ok=True)
-                        stream = archive.extractfile(member)
-                        if stream is None:
-                            raise ValueError("Unreadable archive member")
-                        destination.write_bytes(stream.read())
+                        destination.write_bytes(content)
+                    except OSError as error:
+                        label = ascii(relative)[:96]
+                        raise OSError(f"Could not extract source archive member {label}") from error
+                    expected[relative] = sha(content)
+            try:
                 target.parent.mkdir(parents=True, exist_ok=True)
                 os.replace(stage, target)
-            except BaseException:
-                # Keep rejected material inside the marked cache for inspection.
-                raise
-        hashes = {
-            p.relative_to(target).as_posix(): sha(p.read_bytes())
-            for p in files(target, maximum_bytes=120_000_000, maximum_entries=12_500)
-        }
+            except OSError as error:
+                raise OSError("Could not promote staged source snapshot") from error
+        try:
+            hashes = {
+                p.relative_to(target).as_posix(): sha(p.read_bytes())
+                for p in files(
+                    target,
+                    maximum_bytes=120_000_000,
+                    maximum_entries=12_500,
+                    enforce_windows_budget=True,
+                )
+            }
+        except OSError as error:
+            operation = "reused" if reused else "promoted"
+            raise OSError(f"Could not verify {operation} source snapshot") from error
+        if not reused and hashes != expected:
+            raise ValueError("The promoted source manifest differs from the archive")
         tree_digest = sha(json.dumps(hashes, sort_keys=True).encode())
         if reused and source.get("tree_sha256") != tree_digest:
             raise ValueError("Cached source differs or has no recorded integrity binding")

@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import os
+import stat
 from collections.abc import Iterator
 from contextlib import contextmanager
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Any, cast
 
 RESERVED = {
@@ -51,9 +52,41 @@ def safe(root: Path, relative: str) -> Path:
     return path
 
 
-def files(root: Path, *, maximum_bytes: int, maximum_entries: int = 20_000) -> list[Path]:
-    """Bound traversal before entering a directory, including Windows junctions."""
+def check_windows_path(
+    path: PurePath, *, directory: bool, operation: str, relative: str = "."
+) -> None:
+    """Admit only paths compatible with ordinary Win32 file and directory APIs."""
+
+    def units(value: str) -> int:
+        return len(value.encode("utf-16-le", errors="surrogatepass")) // 2
+
+    def check(value: str, limit: int, kind: str) -> None:
+        length = units(value)
+        if length > limit:
+            label = ascii(relative)[:96]
+            raise ValueError(
+                f"Windows {operation} {label}: {kind} uses {length} UTF-16 units (limit {limit})"
+            )
+
+    # MAX_PATH includes the NUL. Leave another 12 units for directory creation.
+    if not directory:
+        check(str(path), 259, "file path")
+    for parent in (path, *path.parents) if directory else path.parents:
+        check(str(parent), 247, "directory path")
+    for component in path.parts[bool(path.anchor) :]:
+        check(component, 255, "path component")
+
+
+def files(
+    root: Path,
+    *,
+    maximum_bytes: int,
+    maximum_entries: int = 20_000,
+    enforce_windows_budget: bool = False,
+) -> list[Path]:
+    """Bound traversal and fail on any unavailable or unsupported resource."""
     root = check_root(root)
+    windows_budget = enforce_windows_budget and os.name == "nt"
     pending = [root]
     result = []
     count = total = 0
@@ -62,15 +95,29 @@ def files(root: Path, *, maximum_bytes: int, maximum_entries: int = 20_000) -> l
         count += 1
         if count > maximum_entries:
             raise ValueError("Hub resource entry limit reached")
-        if path.is_symlink() or path.is_junction():
+        if windows_budget:
+            relative = path.relative_to(root).as_posix()
+            check_windows_path(
+                path, directory=path == root, operation="snapshot resource", relative=relative
+            )
+        info = path.lstat()
+        if stat.S_ISLNK(info.st_mode) or (
+            getattr(info, "st_reparse_tag", 0) == stat.IO_REPARSE_TAG_MOUNT_POINT
+        ):
             raise ValueError("Hub resources must not be redirected")
-        if path.is_dir():
+        if stat.S_ISDIR(info.st_mode):
+            if windows_budget and path != root:
+                check_windows_path(
+                    path, directory=True, operation="snapshot resource", relative=relative
+                )
             pending.extend(path.iterdir())
-        elif path.is_file():
-            total += path.stat().st_size
+        elif stat.S_ISREG(info.st_mode):
+            total += info.st_size
             if total > maximum_bytes:
                 raise ValueError("Hub resource storage limit reached")
             result.append(path)
+        else:
+            raise ValueError("Hub resources must be regular files or directories")
     return sorted(result)
 
 
