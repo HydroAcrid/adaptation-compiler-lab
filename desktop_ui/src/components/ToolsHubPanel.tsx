@@ -22,7 +22,7 @@ type Review =
   | { type: "stop" | "repair" };
 
 const taskOutcomes: Record<string, string> = {
-  ready: "Guidance prepared",
+  ready: "Check complete",
   needs_agent_selection: "Selection requested",
   paused: "Repository updates paused",
   paused_owner_edit: "Edited files need attention",
@@ -79,6 +79,15 @@ function PublisherCheck({ timestamp }: { timestamp: number | null }) {
         timeStyle: "short",
       })}
     </time>
+  );
+}
+
+function StartWorkflows() {
+  return (
+    <p className="tools-hub-guidance">
+      To start, review Temper with <code>/hooks</code> in Codex, then open a new
+      chat.
+    </p>
   );
 }
 
@@ -350,6 +359,16 @@ export function ToolsHubPanel({
       : state?.enabled && ready && !state.paused && !working
         ? "positive"
         : "neutral";
+  const showStartAction =
+    state?.enabled &&
+    ready &&
+    !state.last_task &&
+    !state.projects.some((row) => row.active.length) &&
+    !state.paused &&
+    !working &&
+    !attention &&
+    !state.cleanup_pending &&
+    !loadError;
   if (onOpenTools) {
     const relevantRepositories = (
       state?.enabled || state?.cleanup_pending ? state.projects : []
@@ -407,6 +426,7 @@ export function ToolsHubPanel({
           !loadError && (
             <p className="tools-hub-guidance">No task activity recorded.</p>
           )}
+        {showStartAction && <StartWorkflows />}
       </section>
     );
   }
@@ -727,6 +747,7 @@ export function ToolsHubPanel({
                         "The latest tool operation needs attention.")}
                   </p>
                 )}
+                {showStartAction && <StartWorkflows />}
                 <details className="tools-hub-settings">
                   <summary>Tool settings</summary>
                   <div className="tools-hub-actions">

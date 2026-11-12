@@ -46,12 +46,17 @@ type HabitEvidence = Awaited<ReturnType<typeof explainHabit>>["value"];
 
 function ApprovedLearningProjects({
   projects,
+  stale,
 }: {
   projects: LearningProjectAccess[];
+  stale: boolean;
 }) {
   return (
     <details className="learning-details">
-      <summary>Approved repositories ({projects.length})</summary>
+      <summary>
+        {stale ? "Last known approved repositories" : "Approved repositories"} (
+        {projects.length})
+      </summary>
       <div className="learning-details__body">
         <ul className="learning-history">
           {projects.map((project) => (
@@ -245,20 +250,23 @@ export function AutonomousLearningPanel({
               </p>
             )}
             {status.grant_enabled && (
-              <dl className="learning-facts" aria-label="Learning coverage">
-                <div>
-                  <dt>Approved projects</dt>
-                  <dd>{approvedCount ?? "Unavailable"}</dd>
-                </div>
-                <div>
-                  <dt>Conversations captured</dt>
-                  <dd>{capturedCount ?? "Unavailable"}</dd>
-                </div>
-                <div>
-                  <dt>Habits found</dt>
-                  <dd>{habitCount}</dd>
-                </div>
-              </dl>
+              <>
+                {loadError && <p>Last known learning coverage</p>}
+                <dl className="learning-facts" aria-label="Learning coverage">
+                  <div>
+                    <dt>Approved projects</dt>
+                    <dd>{approvedCount ?? "Unavailable"}</dd>
+                  </div>
+                  <div>
+                    <dt>Conversations captured</dt>
+                    <dd>{capturedCount ?? "Unavailable"}</dd>
+                  </div>
+                  <div>
+                    <dt>Habits found</dt>
+                    <dd>{habitCount}</dd>
+                  </div>
+                </dl>
+              </>
             )}
           </>
         )}
@@ -660,6 +668,7 @@ export function AutonomousLearningPanel({
             </span>
           </div>
           <div className="learning-details learning-details__body">
+            {loadError && <p>Last known activity</p>}
             <dl
               className="learning-facts"
               aria-label={
@@ -693,7 +702,10 @@ export function AutonomousLearningPanel({
             </dl>
           </div>
           {approvedProjects?.length ? (
-            <ApprovedLearningProjects projects={approvedProjects} />
+            <ApprovedLearningProjects
+              projects={approvedProjects}
+              stale={Boolean(loadError)}
+            />
           ) : (
             <div className="learning-details">
               <p className="learning-secondary">

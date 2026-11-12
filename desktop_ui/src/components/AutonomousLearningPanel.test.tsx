@@ -385,6 +385,10 @@ it("leads with scoped habits and shows actual activity while keeping help folded
   );
   expect(heading).toBeVisible();
   expect(screen.getByLabelText("Last known activity")).toBeVisible();
+  expect(screen.getByText("Last known activity")).toBeVisible();
+  expect(
+    screen.getByText("Last known approved repositories (1)"),
+  ).toBeVisible();
   expect(
     within(row).getByRole("button", { name: "Undo habit" }),
   ).toBeDisabled();
@@ -632,6 +636,12 @@ it("shows measured coverage on Overview without claiming the observer is running
     .setup()
     .click(screen.getByRole("button", { name: "Manage learning" }));
   expect(open).toHaveBeenCalledOnce();
+  api.loadAutonomy.mockRejectedValueOnce(new Error("Read unavailable"));
+  await act(async () => fireEvent.focus(window));
+  expect(await screen.findByText("Last known learning coverage")).toBeVisible();
+  expect(
+    screen.getByText("Approved projects").nextElementSibling,
+  ).toHaveTextContent("1");
 });
 
 it("suspends page status reads while another page is selected", async () => {

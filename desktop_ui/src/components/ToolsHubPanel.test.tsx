@@ -88,7 +88,7 @@ it("shows repository guidance and the latest task check on the compact Overview"
   expect(screen.getByText("Example")).toBeVisible();
   expect(screen.getByText(/Available guidance.*debugging/)).toBeVisible();
   expect(
-    screen.getByText(/Latest task check.*Example.*Guidance prepared/),
+    screen.getByText(/Latest task check.*Example.*Check complete/),
   ).toBeVisible();
   expect(screen.queryByText("How automatic workflows work")).toBeNull();
 
@@ -103,7 +103,7 @@ it("shows recorded activity and keeps workflow help collapsed on Tools", async (
   api.hubRequest.mockResolvedValue(populated);
   const { container } = render(<ToolsHubPanel nativeRuntime />);
 
-  expect(await screen.findByText("Example · Guidance prepared")).toBeVisible();
+  expect(await screen.findByText("Example · Check complete")).toBeVisible();
   expect(screen.getByText(/Available guidance.*debugging/)).toBeVisible();
   expect(screen.getByText("Superpowers")).toBeVisible();
   expect(screen.getByText("Complete")).toBeVisible();
@@ -154,7 +154,7 @@ it("keeps guidance visible during maintenance and reports paused updates after r
   expect(screen.queryByText("Publisher check in progress…")).toBeNull();
 });
 
-it("reports empty task history and publisher checks without inventing activity", async () => {
+it("reports empty task history and publisher checks and shows the first-use action", async () => {
   api.hubRequest.mockResolvedValue({
     ...populated,
     last_task: null,
@@ -167,6 +167,19 @@ it("reports empty task history and publisher checks without inventing activity",
   expect(screen.getByText("No successful check recorded")).toBeVisible();
   expect(screen.getByText("No guidance installed")).toBeVisible();
   expect(container.querySelector("time")).toBeNull();
+  expect(screen.getByText(/To start, review Temper/)).toHaveTextContent(
+    "To start, review Temper with /hooks in Codex, then open a new chat.",
+  );
+});
+
+it("shows the first-use action on the configured Overview before the first task", async () => {
+  api.hubRequest.mockResolvedValue({
+    ...populated,
+    last_task: null,
+    projects: [{ ...populated.projects[0], active: [] }],
+  });
+  render(<ToolsHubPanel nativeRuntime onOpenTools={() => {}} />);
+  expect(await screen.findByText(/To start, review Temper/)).toBeVisible();
 });
 
 it("does not treat learning repositories as tool permission and previews exact destinations", async () => {
