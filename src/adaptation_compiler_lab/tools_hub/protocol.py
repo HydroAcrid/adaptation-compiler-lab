@@ -2,13 +2,30 @@
 
 from __future__ import annotations
 
+import time
+from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from .connection import CodexHubConnection
 from .continuity import Handoff
 from .controller import fingerprint
+from .portable_setup import (
+    MAX_PACKAGE,
+    Digest,
+    FileName,
+    ItemId,
+    ProjectId,
+    SetupDraft,
+    SetupError,
+    SetupPackage,
+    build_package,
+    package_path,
+    parse_package,
+    read_regular,
+    write_package,
+)
 from .service import HubService
 from .task_lifecycle import TaskOutcome, TaskOwner
 from .workflow_runtime import MotionVideo, RenderCancellation
@@ -97,6 +114,36 @@ class Turn(Parameters):
     turn_id: str = Field(min_length=1, max_length=160)
 
 
+class SetupProject(Parameters):
+    project_id: ProjectId
+
+
+class SetupExport(Parameters):
+    digest: Digest
+    destination: FileName
+
+
+class SetupImport(SetupProject):
+    source: FileName
+
+
+class SetupReference(SetupProject):
+    digest: Digest
+
+
+class SetupApproval(SetupReference):
+    active_digest: Digest | None
+
+
+class SetupContext(SetupProject):
+    task_receipt: dict[str, Any]
+
+
+class SetupItemRequest(SetupContext):
+    digest: Digest
+    item_id: ItemId
+
+
 class BindTurn(Turn):
     lifecycle_nonce: str = Field(min_length=32, max_length=32)
 
@@ -138,7 +185,32 @@ AGENT_METHODS = {
     "tools_hub.finish",
     "tools_hub.checkpoint",
     "tools_hub.render",
+    "tools_hub.setup_context",
+    "tools_hub.setup_skill",
+    "tools_hub.setup_check",
 }
+SETUP_DESKTOP_SCHEMAS: dict[str, type[BaseModel]] = {
+    "portable_setup.status": SetupProject,
+    "portable_setup.export.preview": SetupDraft,
+    "portable_setup.export.create": SetupExport,
+    "portable_setup.import.preview": SetupImport,
+    "portable_setup.import.approve": SetupApproval,
+    "portable_setup.remove": SetupReference,
+}
+SCHEMAS.update(
+    {
+        **SETUP_DESKTOP_SCHEMAS,
+        "tools_hub.setup_context": SetupContext,
+        "tools_hub.setup_skill": SetupItemRequest,
+        "tools_hub.setup_check": SetupItemRequest,
+    }
+)
+SETUP_MUTATIONS = {
+    "portable_setup.export.create",
+    "portable_setup.import.approve",
+    "portable_setup.remove",
+}
+SETUP_PREVIEW_SECONDS = 900
 
 
 class HubProtocol:
@@ -148,6 +220,13 @@ class HubProtocol:
         self.service, self.config_path = service, config_path
         self.task_owner = task_owner
         self.replays: dict[str, tuple[str, dict[str, Any]]] = {}
+        self.export_setup: tuple[float, SetupPackage] | None = None
+        self.import_setup: (
+            tuple[
+                float, SetupPackage, tuple[dict[str, Any], dict[str, Any], str | None], str | None
+            ]
+            | None
+        ) = None
 
     def dispatch(
         self,
@@ -161,7 +240,23 @@ class HubProtocol:
     ) -> dict[str, Any]:
         if method not in SCHEMAS or (agent and method not in AGENT_METHODS):
             raise ValueError("Unsupported repository setup operation")
-        value = SCHEMAS[method].model_validate(params)
+        if method == "portable_setup.export.preview":
+            self.export_setup = None
+        if method == "portable_setup.import.preview":
+            self.import_setup = None
+        try:
+            value = SCHEMAS[method].model_validate(params)
+        except ValidationError as error:
+            if method not in SETUP_DESKTOP_SCHEMAS:
+                raise
+            issue = error.errors(include_input=False, include_context=False, include_url=False)[0]
+            if issue["type"] == "value_error":
+                raise SetupError(
+                    "Review the setup for unsafe, invalid, or oversized content"
+                ) from error
+            raise SetupError(
+                "Complete the setup fields using the supported types and limits"
+            ) from error
         if agent and self.task_owner is None:
             self.task_owner = TaskOwner.current()
         owner = self.task_owner if agent else None
@@ -171,6 +266,26 @@ class HubProtocol:
             if before != request_digest:
                 raise ValueError("Idempotency key was reused for a different operation")
             return result
+        if method in SETUP_DESKTOP_SCHEMAS:
+            if method in SETUP_MUTATIONS and (not idempotency_key or len(idempotency_key) > 160):
+                raise SetupError("This setup change needs a fresh approval request")
+            result = self.desktop_setup(value)
+            if method in SETUP_MUTATIONS and idempotency_key:
+                self.remember(idempotency_key, request_digest, result)
+            return result
+        if isinstance(value, SetupContext):
+            if owner is None:
+                raise SetupError("Use the connected agent to access an approved setup")
+            if isinstance(value, SetupItemRequest):
+                return self.service.setup_for_task(
+                    value.project_id,
+                    value.task_receipt,
+                    owner,
+                    digest=value.digest,
+                    item_id=value.item_id,
+                    kind="skill" if method == "tools_hub.setup_skill" else "check",
+                )
+            return self.service.setup_for_task(value.project_id, value.task_receipt, owner)
         if method == "tools_hub.status":
             return self.service.state()
         if method == "tools_hub.inventory":
@@ -338,10 +453,73 @@ class HubProtocol:
         else:
             raise ValueError("Unsupported repository setup request")
         if idempotency_key:
-            self.replays[idempotency_key] = (request_digest, result)
-            if len(self.replays) > 128:
-                self.replays.pop(next(iter(self.replays)))
+            self.remember(idempotency_key, request_digest, result)
         return result
+
+    def remember(self, key: str, digest: str, result: dict[str, Any]) -> None:
+        self.replays[key] = (digest, result)
+        if len(self.replays) > 128:
+            self.replays.pop(next(iter(self.replays)))
+
+    def desktop_setup(self, value: BaseModel) -> dict[str, Any]:
+        now = time.monotonic()
+        if isinstance(value, SetupDraft):
+            package = build_package(value, self.service.seals)
+            self.export_setup = (now + SETUP_PREVIEW_SECONDS, package)
+            return package.preview()
+        if isinstance(value, SetupExport):
+            pending = self.export_setup
+            if pending is None or pending[0] <= now or pending[1].digest != value.digest:
+                raise SetupError("Preview this exact setup again before saving it")
+            write_package(Path(value.destination), pending[1])
+            self.export_setup = None
+            return pending[1].preview()
+        if isinstance(value, SetupImport):
+            grant, project, revision, current = self.service.setup_status(
+                value.project_id, active=True
+            )
+            source = package_path(Path(value.source))
+            try:
+                package = parse_package(read_regular(source, MAX_PACKAGE))
+            except OSError as error:
+                raise SetupError("The selected setup file could not be read") from error
+            active_digest = current.digest if current else None
+            self.import_setup = (
+                now + SETUP_PREVIEW_SECONDS,
+                package,
+                (grant, project, revision),
+                active_digest,
+            )
+            return {
+                **package.preview(),
+                "project_id": value.project_id,
+                "active_digest": active_digest,
+                "source_name": source.name,
+            }
+        if isinstance(value, SetupApproval):
+            reviewed = self.import_setup
+            if (
+                reviewed is None
+                or reviewed[0] <= now
+                or reviewed[1].digest != value.digest
+                or reviewed[2][1]["id"] != value.project_id
+                or reviewed[3] != value.active_digest
+            ):
+                raise SetupError(
+                    "Preview this exact setup and repository again before approving it"
+                )
+            self.service.change_setup(
+                value.project_id, value.active_digest, reviewed[1], reviewed_binding=reviewed[2]
+            )
+            self.import_setup = None
+            return reviewed[1].preview()
+        if isinstance(value, SetupReference):
+            self.service.change_setup(value.project_id, value.digest, None)
+            return {"active": None}
+        if isinstance(value, SetupProject):
+            _, _, _, current = self.service.setup_status(value.project_id)
+            return {"active": current.preview() if current else None}
+        raise SetupError("Unsupported portable setup operation")
 
     def record_checkpoint_retrieval(self, receipt: dict[str, Any], checkpoint_id: str) -> None:
         if self.task_owner is not None:

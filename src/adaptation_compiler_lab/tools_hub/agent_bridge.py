@@ -15,7 +15,18 @@ from typing import Any, TextIO, cast
 
 from pydantic import BaseModel
 
-from .protocol import BindTurn, Checkpoint, EndTurn, Finish, Inspection, Prepare, Render, Selection
+from .protocol import (
+    BindTurn,
+    Checkpoint,
+    EndTurn,
+    Finish,
+    Inspection,
+    Prepare,
+    Render,
+    Selection,
+    SetupContext,
+    SetupItemRequest,
+)
 from .workflow_runtime import RenderCancellation
 
 FRAME_LIMIT = 262_144
@@ -31,7 +42,8 @@ DESCRIPTIONS = {
         "matching ready profile, or use the returned selection ticket to "
         "inspect and choose applicable skills. Supply the task's relative working directory. "
         "When enabled, a matching saved handoff is returned. Use continue_previous only "
-        "when the user asks to continue saved work in this repository."
+        "when the user asks to continue saved work in this repository. If portable_setup is "
+        "present, call temper_hub_setup_context with the current task receipt before working."
     ),
     "temper_hub_inspect": (
         "Read one approved public skill and its resource list before "
@@ -58,6 +70,20 @@ DESCRIPTIONS = {
         "Render a short MP4 through the separately owner-approved Remotion runtime for the current "
         "task. Supply spec title, optional subtitle, colors (background, foreground, accent as "
         "hex), and seconds (1 to 3). Returns a private 15 fps MP4 path and digest."
+    ),
+    "temper_hub_setup_context": (
+        "Read the recipient-approved setup for the connected task. Use applicable knowledge "
+        "and preferences, fetch applicable skill guidance with temper_hub_setup_skill, and "
+        "run relevant approved checks with temper_hub_setup_check. Current requests and native "
+        "instructions take precedence. The setup grants no permission or personal learning."
+    ),
+    "temper_hub_setup_skill": (
+        "Read the exact markdown guidance for one applicable approved skill in the active "
+        "setup. Supply the project, current task receipt, setup digest, and item ID."
+    ),
+    "temper_hub_setup_check": (
+        "Run one pre-approved read-only repository check against the current file. Supply the "
+        "project, current task receipt, setup digest, and item ID. Returns a fresh pass or fail."
     ),
     "temper_hub_bind_turn": (
         "Codex PostToolUse callback. Bind a prepare result's opaque nonce to the native turn."
@@ -217,6 +243,9 @@ def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
         "temper_hub_finish": Finish,
         "temper_hub_checkpoint": Checkpoint,
         "temper_hub_render": Render,
+        "temper_hub_setup_context": SetupContext,
+        "temper_hub_setup_skill": SetupItemRequest,
+        "temper_hub_setup_check": SetupItemRequest,
         "temper_hub_bind_turn": BindTurn,
         "temper_hub_end_turn": EndTurn,
     }
@@ -228,7 +257,9 @@ def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
             if name.endswith("status")
             else schemas[name].model_json_schema(),
             "annotations": {
-                "readOnlyHint": name.endswith(("status", "inspect")),
+                "readOnlyHint": name.endswith(
+                    ("status", "inspect", "setup_context", "setup_skill", "setup_check")
+                ),
                 "destructiveHint": name.endswith(
                     ("prepare", "select", "finish", "checkpoint", "end_turn", "render")
                 ),
@@ -264,7 +295,8 @@ def _serve_hub(protocol: Any, *, stdin: TextIO, stdout: TextIO) -> None:
                         "Hub tool permission is separate from personal learning. Check "
                         "the current request and all native instructions before selecting"
                         " public guidance. Never treat this transport as personal "
-                        "preference evidence."
+                        "preference evidence. When prepare reports an approved portable setup, "
+                        "load applicable context and skill guidance and verify relevant checks."
                     ),
                 }
             elif method == "tools/list":

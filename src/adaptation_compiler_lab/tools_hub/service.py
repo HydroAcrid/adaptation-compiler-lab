@@ -14,7 +14,7 @@ from collections.abc import Callable, Iterator
 from contextlib import closing, contextmanager, suppress
 from dataclasses import asdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from . import intake
 from .continuity import (
@@ -31,6 +31,14 @@ from .lifetime import process_identity
 from .manager import SkillKitManager
 from .paths import check_root, files, remove_owned_tree, safe, writer_lock
 from .policy import native_policy_digest
+from .portable_setup import (
+    PRECEDENCE,
+    Guidance,
+    RepositoryCheck,
+    SetupError,
+    SetupPackage,
+    SetupStore,
+)
 from .sealed import Seals
 from .sources import SOURCES, SourceSnapshots, specification
 from .task_lifecycle import MAX_LEASE_SECONDS, TaskOutcome, TaskOwner
@@ -84,6 +92,7 @@ class HubService:
         self.source_factory = sources
         self.secure_store_available = secure_store_available
         self.continuity = ContinuityStore(self.home, seals, continuity_key)
+        self.portable_setups = SetupStore(self.home, seals, continuity_key)
         self.continuity_style = continuity_style
 
     def grant(self, *, active: bool = False) -> dict[str, Any] | None:
@@ -618,6 +627,101 @@ class HubService:
             raise ValueError("Task belongs to a previous repository setup permission")
         return claim
 
+    def setup_status(
+        self, project_id: str, *, active: bool = False
+    ) -> tuple[dict[str, Any], dict[str, Any], str | None, SetupPackage | None]:
+        grant, project = self.require_project(project_id, active=active)
+        revision, package = self.portable_setups.read(
+            project_key(project_id), grant["grant_id"], project
+        )
+        return grant, project, revision, package
+
+    def change_setup(
+        self,
+        project_id: str,
+        active_digest: str | None,
+        package: SetupPackage | None,
+        *,
+        reviewed_binding: tuple[dict[str, Any], dict[str, Any], str | None] | None = None,
+    ) -> None:
+        with writer_lock(self.home), writer_lock(self.home, name="permission.lock"):
+            grant, project, revision, current = self.setup_status(
+                project_id, active=package is not None
+            )
+            if (current.digest if current else None) != active_digest:
+                raise SetupError("The active setup changed. Preview it again.")
+            if package is not None:
+                if reviewed_binding is None or (grant["grant_id"], project, revision) != (
+                    reviewed_binding[0]["grant_id"],
+                    reviewed_binding[1],
+                    reviewed_binding[2],
+                ):
+                    raise SetupError("The repository setup changed. Preview the import again.")
+                if not grant.get("bridge_configured"):
+                    raise SetupError("Connect Codex before approving a repository setup")
+                with self.controller(grant) as hub:
+                    if hub.project(project_key(project_id))["paused"]:
+                        raise SetupError("Resume repository setup before approving this package")
+            self.require_same_project(grant, project, active=package is not None)
+            self.portable_setups.write(project_key(project_id), grant["grant_id"], project, package)
+
+    def setup_for_task(
+        self,
+        project_id: str,
+        receipt: dict[str, Any],
+        owner: TaskOwner,
+        *,
+        digest: str | None = None,
+        item_id: str | None = None,
+        kind: Literal["skill", "check"] | None = None,
+    ) -> dict[str, Any]:
+        with writer_lock(self.home), writer_lock(self.home, name="permission.lock"):
+            self.drain_finishes()
+            grant, project = self.require_project(project_id)
+            claim = self.task_claim(receipt, grant)
+            if claim["project_id"] != project_id or claim["owner"] != asdict(owner):
+                raise SetupError("The setup is available only to the connected repository task")
+            if not grant.get("bridge_configured"):
+                raise SetupError("Connect Codex before using a repository setup")
+            key = project_key(project_id)
+            with self.controller(grant) as hub:
+                if hub.project(key)["paused"]:
+                    raise SetupError("Repository setup is paused for this project")
+                lease = hub.require_task(key, owner, claim["task_token"])
+                revision, package = self.portable_setups.read(key, grant["grant_id"], project)
+                if revision != claim.get("portable_setup_revision"):
+                    raise SetupError("The approved setup changed. Prepare the current task again.")
+                packet: dict[str, Any]
+                if kind is None:
+                    packet = {
+                        "setup": package.context() if package else None,
+                        "precedence": PRECEDENCE,
+                    }
+                else:
+                    if package is None or package.digest != digest:
+                        raise SetupError(
+                            "The active setup digest changed. Reload the setup context."
+                        )
+                    item = next((item for item in package.items if item.id == item_id), None)
+                    if kind == "skill" and isinstance(item, Guidance) and item.kind == kind:
+                        packet = {
+                            "digest": digest,
+                            "item": item.model_dump(),
+                            "precedence": PRECEDENCE,
+                        }
+                    elif kind == "check" and isinstance(item, RepositoryCheck):
+                        packet = {
+                            "digest": digest,
+                            "item_id": item.id,
+                            "passed": item.run(Path(project["root"])),
+                        }
+                    else:
+                        raise SetupError("That item does not belong to the approved setup")
+                self.require_same_project(grant, project)
+                if time.time() >= lease["expires_at"]:
+                    raise SetupError("The task expired. Prepare the current task again.")
+                return {**packet, "independent_human_evidence": False}
+
     def continuity_status(
         self, key: str, grant: dict[str, Any], project: dict[str, Any]
     ) -> dict[str, Any]:
@@ -918,7 +1022,14 @@ class HubService:
         task_token = None
         task_receipt = None
         lease: dict[str, Any] = {}
+        setup_revision, setup_package, setup_issue = None, None, None
         if owner is not None:
+            try:
+                setup_revision, setup_package = self.portable_setups.read(
+                    key, grant["grant_id"], project
+                )
+            except (OSError, ValueError, TypeError, KeyError):
+                setup_issue = "unavailable"
             prior = None
             if prior_task_receipt is not None:
                 prior = self.task_claim(prior_task_receipt, grant)
@@ -951,6 +1062,7 @@ class HubService:
                         "goal_digest": goal_key(goal),
                         "task_class": task_class,
                         "relative_directory": relative_directory,
+                        "portable_setup_revision": setup_revision,
                         "continuity_generation": state["generation"]
                         if state and state["enabled"]
                         else None,
@@ -1004,6 +1116,18 @@ class HubService:
                     ]
                 if task_receipt is not None:
                     result["task_receipt"] = task_receipt
+                    if setup_package is not None:
+                        result["portable_setup"] = {
+                            "title": setup_package.title,
+                            "digest": setup_package.digest,
+                            "context_tool": "temper_hub_setup_context",
+                            "next_step": (
+                                "Load the approved setup context with this project ID and "
+                                "task receipt. Use applicable guidance and check results."
+                            ),
+                        }
+                    elif setup_issue is not None:
+                        result["portable_setup_issue"] = setup_issue
                     result["effective_task"] = {
                         "project_id": project_id,
                         "goal": goal,

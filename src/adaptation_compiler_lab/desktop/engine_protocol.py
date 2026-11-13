@@ -220,8 +220,10 @@ class EngineProtocolRouter:
             )
         if request.method.startswith("autonomy."):
             return self._handle_autonomy(request)
-        if request.method.startswith("tools_hub."):
+        if request.method.startswith(("tools_hub.", "portable_setup.")):
             import sqlite3
+
+            from adaptation_compiler_lab.tools_hub.portable_setup import SetupError
 
             if self._tools_hub_factory is None:
                 return self._error(
@@ -248,7 +250,19 @@ class EngineProtocolRouter:
                     result=result,
                     snapshot_digest=result.get("digest") or canonical_digest(result),
                 )
+            except SetupError as error:
+                return self._error(
+                    request, "portable_setup_unavailable", str(error), retryable=True
+                )
             except (OSError, ValueError, KeyError, TypeError, sqlite3.Error):
+                if request.method.startswith("portable_setup."):
+                    return self._error(
+                        request,
+                        "portable_setup_unavailable",
+                        "Temper could not access the selected file or repository setup. "
+                        "Refresh and try again.",
+                        retryable=True,
+                    )
                 return self._error(
                     request,
                     "tools_hub_unavailable",

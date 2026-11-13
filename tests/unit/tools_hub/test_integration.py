@@ -380,6 +380,9 @@ def test_mcp_exposes_only_task_tools_and_never_grants(service: HubService) -> No
         "temper_hub_finish",
         "temper_hub_checkpoint",
         "temper_hub_render",
+        "temper_hub_setup_context",
+        "temper_hub_setup_skill",
+        "temper_hub_setup_check",
         "temper_hub_bind_turn",
         "temper_hub_end_turn",
     }
