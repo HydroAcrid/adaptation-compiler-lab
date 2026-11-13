@@ -685,6 +685,7 @@ strong {
 }
 .dialog-close {
   position: absolute;
+  z-index: 1;
   top: 14px;
   right: 14px;
   display: grid;
