@@ -47,7 +47,7 @@ function overview(health: "ready" | "consent_expired") {
           suggestedScope: "Fixture project",
         },
       ]}
-      workspace="all"
+      workspaceProjectId={null}
     />
   );
 }
@@ -83,9 +83,15 @@ it("shows saved guidance counts while retaining portability actions", async () =
   );
   expect(screen.getByText("1 saved")).toBeVisible();
   expect(screen.getByText("Report test results")).toBeVisible();
-  expect(screen.getByRole("button", { name: "Export" })).toBeEnabled();
-  expect(screen.getByRole("button", { name: "Import" })).toBeEnabled();
-  expect(screen.getByRole("button", { name: "Share pack" })).toBeEnabled();
+  expect(
+    screen.getByRole("button", { name: "Export personal backup" }),
+  ).toBeEnabled();
+  expect(
+    screen.getByRole("button", { name: "Import personal backup" }),
+  ).toBeEnabled();
+  expect(
+    screen.getByRole("button", { name: "Share preferences" }),
+  ).toBeEnabled();
   await user.click(screen.getByRole("button", { name: "Skills" }));
   expect(screen.getByText("0 saved")).toBeVisible();
   expect(screen.getByText("No items match these filters.")).toBeVisible();
@@ -106,6 +112,8 @@ it("puts the saved workflow lifecycle explanation behind a disclosure", async ()
       snapshotDigest={null}
     />,
   );
+  expect(screen.getByText("No saved workflows yet.")).not.toBeVisible();
+  await user.click(screen.getByText("Saved workflows"));
   expect(screen.getByText("No saved workflows yet.")).toBeVisible();
   const explanation = screen.getByText(
     "Saved workflows apply to one task at a time.",
@@ -192,4 +200,60 @@ it("keeps connection rows short and preserves capability and cost details in the
   ).toBeVisible();
   expect(dialog.getByText("Delivers guidance to managed tasks.")).toBeVisible();
   expect(dialog.getByText(/Uses the connected subscription/)).toBeVisible();
+});
+
+it("identifies each feedback target and submits the selected delivery", async () => {
+  const user = userEvent.setup();
+  const onFeedback = vi.fn();
+  render(
+    <TodayPage
+      automaticLearning={false}
+      feedback={null}
+      feedbackTargets={[
+        {
+          id: "east-delivery",
+          taskLabel: "Dispatch East",
+          completedAt: "2026-10-04T10:00:00Z",
+          guidance: ["Release details"],
+          outcomes: ["helped", "hurt"],
+        },
+        {
+          id: "west-delivery",
+          taskLabel: "Dispatch West",
+          completedAt: "2026-10-04T13:00:00Z",
+          guidance: ["Brief summaries"],
+          outcomes: ["irrelevant"],
+        },
+      ]}
+      liveSummary={{
+        ...reviewSummary,
+        pendingFeedbackCount: 2,
+        pendingReviewCount: 0,
+      }}
+      nativeAutonomy
+      onFeedback={onFeedback}
+      onOpenCore={vi.fn()}
+      onOpenTools={vi.fn()}
+      onReview={vi.fn()}
+      selectedSuggestionId={null}
+      suggestions={[]}
+      workspaceProjectId={null}
+    />,
+  );
+
+  const east = screen.getByRole("group", {
+    name: "Rate guidance for Dispatch East",
+  });
+  const west = screen.getByRole("group", {
+    name: "Rate guidance for Dispatch West",
+  });
+  expect(screen.getByText("Brief summaries")).toBeVisible();
+  expect(screen.getByText("Release details")).toBeVisible();
+  expect(document.querySelectorAll("time")).toHaveLength(2);
+  expect(within(east).queryByRole("button", { name: "Irrelevant" })).toBeNull();
+  await user.click(within(west).getByRole("button", { name: "Irrelevant" }));
+  expect(onFeedback).toHaveBeenCalledExactlyOnceWith(
+    "irrelevant",
+    "west-delivery",
+  );
 });

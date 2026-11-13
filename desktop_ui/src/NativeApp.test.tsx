@@ -1,4 +1,11 @@
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -6,6 +13,7 @@ const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 
 import App from "./App";
+import { modes as sampleModes } from "./data/demo";
 import { ENGINE_PROTOCOL_VERSION } from "./engine";
 
 const digest = `sha256:${"a".repeat(64)}`;
@@ -225,6 +233,36 @@ const betaSuggestion = {
   available_actions: ["keep_suggested", "ignore"],
 };
 
+function readyResponse(command: string, workspace: unknown = snapshot) {
+  if (command === "engine_handshake") return handshake(true);
+  if (command === "snapshot_get") return response(workspace, digest);
+  if (command === "setup_status") return response(configuredSetup, digest);
+  if (command === "modes_list")
+    return response({ modes: [], raw_payloads_exposed: false });
+  if (command === "instruction_environment_get")
+    return response({ environments: [], raw_payloads_exposed: false });
+  if (command === "package_review_list")
+    return response({
+      items: [],
+      pending_count: 0,
+      raw_payloads_exposed: false,
+    });
+  throw new Error(`Unexpected command: ${command}`);
+}
+
+function savedReceipt(targetId: string, message: string) {
+  return response(
+    {
+      receipt_version: "1.0.0",
+      target_id: targetId,
+      message,
+      resulting_snapshot_digest: digest,
+      raw_payloads_exposed: false,
+    },
+    digest,
+  );
+}
+
 afterEach(() => {
   cleanup();
   invoke.mockReset();
@@ -361,10 +399,10 @@ describe("installed Temper state boundaries", () => {
     });
 
     render(<App />);
-    await user.click(
-      await screen.findByRole("button", { name: "Connections" }),
-    );
+    await screen.findByRole("heading", { name: "Overview" });
+    await user.click(screen.getByRole("button", { name: "Connections" }));
     const addProject = screen.getByRole("button", { name: "Add task project" });
+    await waitFor(() => expect(addProject).toBeEnabled());
     await user.click(addProject);
     expect(invoke).toHaveBeenCalledWith("project_registration_preview");
     await user.click(screen.getByRole("button", { name: "Settings" }));
@@ -526,6 +564,126 @@ describe("installed Temper state boundaries", () => {
 
     expect(screen.getByText("1 to review")).toBeInTheDocument();
     expect(screen.queryByText("2 to review")).not.toBeInTheDocument();
+  });
+
+  it("keeps same-named repositories distinct in the Overview review filter", async () => {
+    const user = userEvent.setup();
+    window.__TAURI_INTERNALS__ = {};
+    const projects = ["dispatch-east", "dispatch-west"].map((projectId) => ({
+      project_id: projectId,
+      display_name: "Dispatch",
+      registered_prospectively: true,
+      task_runner_enabled: true,
+    }));
+    const scopedSnapshot = {
+      ...snapshot,
+      projects,
+      suggestions: projects.map(({ project_id }) => ({
+        ...globalSuggestion,
+        queue_id: `review-${project_id}`,
+        proposed_behavior: `Suggestion for ${project_id}`,
+        suggested_scope: { ...emptyScope, project_ids: [project_id] },
+      })),
+    };
+    invoke.mockImplementation(async (command: string) => {
+      if (command === "instruction_environment_get")
+        return response({
+          raw_payloads_exposed: false,
+          environments: [
+            {
+              project_id: "dispatch-east",
+              raw_payloads_exposed: false,
+              sources: [],
+              conflicts: [
+                {
+                  severity: "blocking",
+                  resolution_state: "unresolved",
+                  source_display_path: "AGENTS.md",
+                  rationale: "East repository instructions conflict.",
+                },
+              ],
+            },
+          ],
+        });
+      return readyResponse(command, scopedSnapshot);
+    });
+
+    render(<App />);
+    expect(
+      await screen.findByText("East repository instructions conflict."),
+    ).toBeVisible();
+    await user.click(
+      screen.getByRole("button", { name: "Review project: All projects" }),
+    );
+    expect(
+      screen.getByRole("menuitem", { name: "Dispatch · dispatch-east" }),
+    ).toBeVisible();
+    await user.click(
+      screen.getByRole("menuitem", { name: "Dispatch · dispatch-west" }),
+    );
+
+    expect(
+      screen.getByRole("button", {
+        name: "Review project: Dispatch · dispatch-west",
+      }),
+    ).toBeVisible();
+    expect(screen.getByText("1 to review")).toBeVisible();
+    expect(screen.getByText("Suggestion for dispatch-west")).toBeVisible();
+    expect(
+      screen.queryByText("Suggestion for dispatch-east"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("East repository instructions conflict."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the repository named all distinct from All projects", async () => {
+    const user = userEvent.setup();
+    window.__TAURI_INTERNALS__ = {};
+    const scopedSnapshot = {
+      ...snapshot,
+      projects: [
+        {
+          project_id: "all",
+          display_name: "all",
+          registered_prospectively: true,
+          task_runner_enabled: true,
+        },
+        snapshot.projects[1]!,
+      ],
+      suggestions: [
+        betaSuggestion,
+        {
+          ...globalSuggestion,
+          queue_id: "review-all-repository",
+          proposed_behavior: "Suggestion for the all repository",
+          suggested_scope: { ...emptyScope, project_ids: ["all"] },
+        },
+      ],
+    };
+    invoke.mockImplementation(async (command: string) =>
+      readyResponse(command, scopedSnapshot),
+    );
+
+    render(<App />);
+    expect(await screen.findByText("2 to review")).toBeVisible();
+    await user.click(
+      screen.getByRole("button", { name: "Review project: All projects" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "all" }));
+    expect(
+      screen.getByRole("button", { name: "Review project: all" }),
+    ).toBeVisible();
+    expect(screen.getByText("Suggestion for the all repository")).toBeVisible();
+    expect(
+      screen.queryByText(betaSuggestion.proposed_behavior),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Review project: all" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "All projects" }));
+    expect(screen.getByText("2 to review")).toBeVisible();
+    expect(screen.getByText(betaSuggestion.proposed_behavior)).toBeVisible();
   });
 
   it("gates pending review and managed tasks when consent is expired", async () => {
@@ -944,6 +1102,86 @@ describe("installed Temper state boundaries", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("filters Personalization by registered ID for duplicate names and the all repository", async () => {
+    const user = userEvent.setup();
+    window.__TAURI_INTERNALS__ = {};
+    const projects = [
+      { project_id: "dispatch-east", display_name: "Dispatch" },
+      { project_id: "dispatch-west", display_name: "Dispatch" },
+      { project_id: "all", display_name: "all" },
+    ].map((project) => ({
+      ...project,
+      registered_prospectively: true,
+      task_runner_enabled: true,
+    }));
+    const adaptations = projects.map(({ project_id }) => ({
+      artifact_id: `guidance-${project_id}`,
+      artifact_type: "preference",
+      intent: `Guidance for ${project_id}`,
+      required_behaviors: [],
+      scope: { ...emptyScope, project_ids: [project_id] },
+      evidence_count: 1,
+    }));
+    const environments = projects.map(({ project_id }) => ({
+      project_id,
+      blocking_conflict_count: 0,
+      raw_payloads_exposed: false,
+      sources: [
+        {
+          source_id: `source-${project_id}`,
+          display_path: `${project_id}.md`,
+          kind: "project_instructions",
+          target: "codex",
+          status: "ready",
+          instruction_count: 1,
+          observed_context_only: true,
+          raw_payloads_exposed: false,
+        },
+      ],
+    }));
+    invoke.mockImplementation(async (command: string) => {
+      if (command === "instruction_environment_get") {
+        return response({ environments, raw_payloads_exposed: false });
+      }
+      return readyResponse(command, { ...snapshot, projects, adaptations });
+    });
+
+    render(<App />);
+    await screen.findByRole("heading", { name: "Overview" });
+    await user.click(screen.getByRole("button", { name: "Personalization" }));
+    const picker = screen.getByRole("combobox", { name: "Show for" });
+    await user.click(picker);
+    expect(
+      screen.getByRole("option", { name: "Dispatch · dispatch-east" }),
+    ).toBeVisible();
+    await user.click(
+      screen.getByRole("option", { name: "Dispatch · dispatch-west" }),
+    );
+    expect(screen.getByText("Guidance for dispatch-west")).toBeVisible();
+    expect(
+      screen.queryByText("Guidance for dispatch-east"),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByText("Existing agent setup", { selector: "summary" }),
+    );
+    expect(screen.getByText("dispatch-west.md")).toBeVisible();
+    expect(screen.queryByText("dispatch-east.md")).not.toBeInTheDocument();
+
+    await user.click(picker);
+    await user.click(screen.getByRole("option", { name: "all" }));
+    expect(screen.getByText("Guidance for all")).toBeVisible();
+    expect(
+      screen.queryByText("Guidance for dispatch-west"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("all.md")).toBeVisible();
+    expect(screen.queryByText("dispatch-west.md")).not.toBeInTheDocument();
+
+    await user.click(picker);
+    await user.click(screen.getByRole("option", { name: "All projects" }));
+    expect(screen.getByText("3 saved")).toBeVisible();
+    expect(screen.getByText("Guidance for dispatch-east")).toBeVisible();
+  });
+
   it("sends an explicit multi-project narrowing decision to the engine", async () => {
     const user = userEvent.setup();
     window.__TAURI_INTERNALS__ = {};
@@ -1071,6 +1309,239 @@ describe("installed Temper state boundaries", () => {
         }),
       }),
     );
+  });
+
+  it("submits the selected registered ID when repository names match", async () => {
+    const user = userEvent.setup();
+    window.__TAURI_INTERNALS__ = {};
+    let currentSnapshot = {
+      ...snapshot,
+      projects: ["dispatch-east", "dispatch-west"].map((id) => ({
+        ...snapshot.projects[0]!,
+        project_id: id,
+        display_name: "Dispatch",
+      })),
+      suggestions: [globalSuggestion],
+    };
+    invoke.mockImplementation(async (command: string) => {
+      if (command === "review_decide") {
+        currentSnapshot = { ...currentSnapshot, suggestions: [] };
+        return savedReceipt("review-global", "Adaptation kept in one project.");
+      }
+      return readyResponse(command, currentSnapshot);
+    });
+
+    render(<App />);
+    await user.click(
+      await screen.findByRole("button", { name: "Review suggestion" }),
+    );
+    await user.click(screen.getByRole("combobox", { name: "Keep only in" }));
+    expect(
+      screen.getByRole("option", { name: "Dispatch · dispatch-east" }),
+    ).toBeVisible();
+    await user.click(
+      screen.getByRole("option", { name: "Dispatch · dispatch-west" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Only in Dispatch · dispatch-west" }),
+    );
+
+    expect(invoke).toHaveBeenCalledWith(
+      "review_decide",
+      expect.objectContaining({
+        decision: "keep_project",
+        projectId: "dispatch-west",
+      }),
+    );
+    const destination = screen.getByRole("main", { name: "Personalization" });
+    await waitFor(() => expect(destination).toHaveFocus());
+  });
+
+  it("keeps review open through a pending decision and unlocks dismissal after a failed save", async () => {
+    const user = userEvent.setup();
+    window.__TAURI_INTERNALS__ = {};
+    let failDecision!: (error: Error) => void;
+    const pendingDecision = new Promise<never>((_, reject) => {
+      failDecision = reject;
+    });
+    const scopedSnapshot = {
+      ...snapshot,
+      suggestions: [globalSuggestion, betaSuggestion],
+    };
+    invoke.mockImplementation(async (command: string) => {
+      if (command === "review_decide") return pendingDecision;
+      return readyResponse(command, scopedSnapshot);
+    });
+
+    render(<App />);
+    const opener = await screen.findByRole("button", {
+      name: "Review suggestion",
+    });
+    await waitFor(() => expect(opener).toBeEnabled());
+    await user.click(opener);
+    const dialog = screen.getByRole("dialog", { name: /explain the purpose/i });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Keep as suggested" }),
+    );
+    expect(within(dialog).getByRole("status")).toHaveTextContent(
+      "Saving your decision",
+    );
+    const close = within(dialog).getByRole("button", { name: "Close review" });
+    expect(close).toBeDisabled();
+    await user.click(close);
+    await user.keyboard("{Escape}");
+    await user.click(document.querySelector(".dialog-overlay")!);
+    expect(dialog).toBeVisible();
+
+    await act(async () => {
+      failDecision(new Error("The decision could not be recorded."));
+    });
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "The decision could not be recorded.",
+    );
+    expect(close).toBeEnabled();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(opener).toHaveFocus());
+    expect(screen.getByRole("main", { name: "Overview" })).toBeVisible();
+  });
+
+  it("keeps the workspace and saved acknowledgement when the workflow catalog refresh fails", async () => {
+    const user = userEvent.setup();
+    window.__TAURI_INTERNALS__ = {};
+    let currentSnapshot = snapshot;
+    let failCatalog!: (error: Error) => void;
+    const pendingCatalog = new Promise<never>((_, reject) => {
+      failCatalog = reject;
+    });
+    let catalogReadCount = 0;
+    const modes = [sampleModes[0]!];
+    invoke.mockImplementation(async (command: string) => {
+      if (command === "preferences_update") {
+        currentSnapshot = { ...snapshot, background_enabled: false };
+        return savedReceipt("desktop-preferences", "Preferences updated.");
+      }
+      if (command === "modes_list") {
+        if (++catalogReadCount === 2) return pendingCatalog;
+        return response({ modes, raw_payloads_exposed: false });
+      }
+      return readyResponse(command, currentSnapshot);
+    });
+
+    render(<App />);
+    await screen.findByRole("heading", { name: "Overview" });
+    await user.click(screen.getByRole("button", { name: "Tools & workflows" }));
+    await user.click(screen.getByText(/^Saved workflows ·/));
+    expect(
+      await screen.findByRole("heading", { name: "Frontend Studio" }),
+    ).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+    const preference = screen.getByRole("switch", {
+      name: "Reviewed suggestions",
+    });
+    await waitFor(() => expect(preference).toBeEnabled());
+    await user.click(preference);
+
+    expect(await screen.findByText("Preferences updated.")).toBeVisible();
+    await waitFor(() => expect(preference).not.toBeChecked());
+    await waitFor(() => expect(preference).toBeEnabled());
+    expect(screen.getByRole("navigation", { name: "Primary" })).toBeVisible();
+    await act(async () => {
+      failCatalog(new Error("The catalog is temporarily unavailable."));
+    });
+    await user.click(screen.getByRole("button", { name: "Tools & workflows" }));
+    expect(
+      await screen.findByText(/Saved workflows may be out of date/),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Frontend Studio" }),
+    ).toBeVisible();
+    const commandCount = invoke.mock.calls.length;
+    await user.click(
+      screen.getByRole("button", { name: "Retry saved workflows" }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/Saved workflows may be out of date/),
+      ).not.toBeInTheDocument(),
+    );
+    expect(invoke.mock.calls.slice(commandCount)).toEqual([["modes_list"]]);
+    expect(screen.getByText("Preferences updated.")).toBeVisible();
+  });
+
+  it("records usefulness for the task whose guidance the user rated", async () => {
+    const user = userEvent.setup();
+    window.__TAURI_INTERNALS__ = {};
+    const completedAt = "2026-08-28T12:00:00Z";
+    const activations = ["alpha", "beta"].map((name) => ({
+      summary_version: "1.0.0",
+      activation_id: `activation-${name}`,
+      delivery_receipt_digest: digest,
+      active_artifact_ids: [`guidance-${name}`],
+      projection_utf8_bytes: 42,
+      activated_at: "2026-08-28T11:00:00Z",
+      completed_at: completedAt,
+      available_outcomes: ["helped", "hurt", "irrelevant"],
+      raw_payloads_exposed: false,
+    }));
+    let currentSnapshot = {
+      ...snapshot,
+      activation_feedback: activations,
+      terminal: {
+        ...snapshot.terminal,
+        review_mode: {
+          ...snapshot.terminal.review_mode,
+          activation_feedback: activations.map((activation, index) => ({
+            ...activation,
+            task_ref_id: index === 0 ? "Shipping audit" : "Returns audit",
+          })),
+        },
+      },
+      adaptations: activations.map((activation, index) => ({
+        artifact_id: activation.active_artifact_ids[0],
+        artifact_type: "preference",
+        intent:
+          index === 0 ? "Verify carrier coverage" : "Describe return limits",
+        required_behaviors: [],
+        scope: emptyScope,
+        evidence_count: 2,
+      })),
+    };
+    invoke.mockImplementation(async (command: string) => {
+      if (command === "feedback_record") {
+        currentSnapshot = {
+          ...currentSnapshot,
+          activation_feedback: activations.slice(0, 1),
+        };
+        return savedReceipt("activation-beta", "Feedback recorded.");
+      }
+      return readyResponse(command, currentSnapshot);
+    });
+
+    const { container } = render(<App />);
+    const target = await screen.findByRole("group", {
+      name: "Rate guidance for Task Returns audit",
+    });
+    expect(screen.getByText("Describe return limits")).toBeVisible();
+    expect(
+      container.querySelectorAll(`time[datetime="${completedAt}"]`),
+    ).toHaveLength(2);
+    await user.click(within(target).getByRole("button", { name: "Helped" }));
+
+    expect(invoke).toHaveBeenCalledWith(
+      "feedback_record",
+      expect.objectContaining({
+        activationId: "activation-beta",
+        outcome: "helped",
+      }),
+    );
+    expect(await screen.findByText("Feedback recorded.")).toBeVisible();
+    expect(
+      screen.getByRole("group", {
+        name: "Rate guidance for Task Shipping audit",
+      }),
+    ).toBeVisible();
+    expect(target).not.toBeInTheDocument();
   });
 
   it("shows and can disable an inherited reporting permission", async () => {

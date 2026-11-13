@@ -6,6 +6,8 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type Dispatch,
+  type SetStateAction,
   type RefObject,
 } from "react";
 import { normalizeEngineFailure } from "../engine";
@@ -25,14 +27,16 @@ import {
   type SetupPreview,
 } from "../portableSetup";
 import { hubRequest, type HubProject, type HubState } from "../toolsHub";
+import { setupImportBlock } from "./RepositoryReadiness";
 import { useDialogFocusReturn } from "./dialogFocus";
 import { Button, LoadingStatus, TemperSelect } from "./ui";
 import "./PortableSetupPanel.css";
 
 type RepositorySetup = {
-  repository: HubProject;
+  projectId: string;
   active: SetupPreview | null;
   issue?: string;
+  stale?: boolean;
   recoveryDigest?: string | null;
 };
 
@@ -62,6 +66,17 @@ function newDraftItem(kind: SetupKind): DraftItem {
   };
 }
 
+function fromSetupItem(item: SetupItem): DraftItem {
+  return {
+    id: item.id,
+    kind: item.kind,
+    title: item.title,
+    text: item.text ?? "",
+    path: item.kind === "check" ? item.path : "",
+    operation: item.kind === "check" ? item.operation : "file_exists",
+  };
+}
+
 function toSetupItem(item: DraftItem): SetupItem {
   const { id, kind, title, text, path, operation } = item;
   if (kind !== "check") return { id, kind, title: title.trim(), text };
@@ -75,38 +90,88 @@ function toSetupItem(item: DraftItem): SetupItem {
   };
 }
 
+type RepositoryStatus = {
+  state: HubState | null;
+  pending: boolean;
+  failed: boolean;
+  revision: number;
+  refresh: () => void;
+};
+
+const setupGroups = [
+  ["skill", "Skills"],
+  ["knowledge", "Knowledge"],
+  ["preference", "Preferences"],
+  ["check", "Checks"],
+] as const;
+
 export function PortableSetupPanel({
   nativeRuntime,
+  status,
+  onContinue,
 }: {
   nativeRuntime: boolean;
+  status?: RepositoryStatus;
+  onContinue?: () => void;
 }) {
   const visible = usePageVisibility();
   const heading = useId();
   const panelHeading = useRef<HTMLHeadingElement>(null);
   const [rows, setRows] = useState<RepositorySetup[] | null>(null);
+  const [standaloneState, setStandaloneState] = useState<HubState | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [refresh, setRefresh] = useState(0);
-  const [loadedRefresh, setLoadedRefresh] = useState(-1);
+  const state = status ? status.state : standaloneState;
+  const suppliedProjects = status?.state
+    ? JSON.stringify(status.state.projects.map((project) => project.id))
+    : null;
+  const sharedStatus = status !== undefined;
+  const awaitingHubStatus = Boolean(status?.pending);
+  const requestKey = JSON.stringify([
+    suppliedProjects,
+    status?.revision ?? 0,
+    refresh,
+  ]);
+  const [loadedRequest, setLoadedRequest] = useState<string | null>(null);
+  const loading =
+    nativeRuntime &&
+    !status?.failed &&
+    (status?.pending || loadedRequest !== requestKey);
   const [notice, setNotice] = useState<string | null>(null);
   const [action, setAction] = useState<SetupAction | null>(null);
-  const loading = nativeRuntime && loadedRefresh !== refresh;
+  const [title, setTitle] = useState("");
+  const [items, setItems] = useState<DraftItem[]>([]);
 
   useEffect(() => {
-    if (!nativeRuntime || !visible) return;
+    if (
+      !nativeRuntime ||
+      !visible ||
+      awaitingHubStatus ||
+      (sharedStatus && suppliedProjects === null)
+    )
+      return;
     let live = true;
     async function load() {
       try {
-        const state = await hubRequest<HubState>("status");
+        let projectIds: string[];
+        if (suppliedProjects !== null) {
+          projectIds = JSON.parse(suppliedProjects) as string[];
+        } else {
+          const next = await hubRequest<HubState>("status");
+          if (!live) return;
+          setStandaloneState(next);
+          projectIds = next.projects.map((project) => project.id);
+        }
         const results = await Promise.allSettled(
-          state.projects.map((repository) => loadSetupStatus(repository.id)),
+          projectIds.map((projectId) => loadSetupStatus(projectId)),
         );
         if (!live) return;
-        setRows(
-          state.projects.map((repository, index) => {
+        setRows((previous) =>
+          projectIds.map((projectId, index) => {
             const result = results[index];
             return result.status === "fulfilled"
               ? {
-                  repository,
+                  projectId,
                   active: result.value.active,
                   issue: result.value.issue
                     ? "Temper could not verify the saved setup."
@@ -114,8 +179,11 @@ export function PortableSetupPanel({
                   recoveryDigest: result.value.recovery_digest,
                 }
               : {
-                  repository,
-                  active: null,
+                  projectId,
+                  active:
+                    previous?.find((row) => row.projectId === projectId)
+                      ?.active ?? null,
+                  stale: true,
                   issue: normalizeEngineFailure(
                     result.reason,
                     "Temper could not read this setup.",
@@ -133,22 +201,80 @@ export function PortableSetupPanel({
             ).message,
           );
       } finally {
-        if (live) setLoadedRefresh(refresh);
+        if (live) setLoadedRequest(requestKey);
       }
     }
     void load();
     return () => {
       live = false;
     };
-  }, [nativeRuntime, refresh, visible]);
+  }, [
+    awaitingHubStatus,
+    nativeRuntime,
+    requestKey,
+    sharedStatus,
+    suppliedProjects,
+    visible,
+  ]);
+
+  function clearDraft() {
+    setTitle("");
+    setItems([]);
+  }
 
   function completed(message: string) {
+    if (action?.type === "compose") clearDraft();
     setNotice(message);
     setAction(null);
     setRefresh((value) => value + 1);
   }
 
-  const repositories = rows?.map((row) => row.repository) ?? [];
+  const repositories = state?.projects ?? [];
+  const statusUnavailable = Boolean(status?.failed || statusError);
+  function importBlock(repository?: HubProject) {
+    if (statusUnavailable)
+      return "Refresh repository status to import a setup.";
+    if (loading) return "Wait for repository status before importing a setup.";
+    if (!state) return "Repository setup is unavailable.";
+    const block = setupImportBlock(state, repository);
+    if (block) return block;
+    const row =
+      repository && rows?.find((row) => row.projectId === repository.id);
+    if (row?.stale) return "Refresh this repository’s setup before importing.";
+    if (row?.issue)
+      return "Resolve the saved setup issue for this repository before importing.";
+    return null;
+  }
+
+  const importable = repositories.filter(
+    (repository) => !importBlock(repository),
+  );
+  const importReason =
+    importBlock() ??
+    (!repositories.length
+      ? "Add a repository to automatic workflows to import a setup."
+      : !importable.length
+        ? repositories.length === 1
+          ? importBlock(repositories[0])
+          : "Resolve the setup issues shown beside the repositories below."
+        : null);
+  const shareUnavailable = state?.secure_store_ready === false;
+  const hasDraft = Boolean(title || items.length);
+  let repositoryActionBlocked = false;
+  if (action?.type === "remove" || action?.type === "reset") {
+    const project = repositories.find((row) => row.id === action.repository.id);
+    const row = rows?.find((row) => row.projectId === project?.id);
+    const expectedDigest =
+      action.type === "remove" ? action.setup.digest : action.digest;
+    const currentDigest =
+      action.type === "remove" ? row?.active?.digest : row?.recoveryDigest;
+    repositoryActionBlocked =
+      loading ||
+      statusUnavailable ||
+      shareUnavailable ||
+      Boolean(row?.stale) ||
+      currentDigest !== expectedDigest;
+  }
   return (
     <section className="portable-setup-section" aria-labelledby={heading}>
       <div className="portable-setup-heading">
@@ -158,22 +284,29 @@ export function PortableSetupPanel({
           ref={panelHeading}
           tabIndex={-1}
         >
-          Portable setups
+          Repository setup
         </h2>
         {nativeRuntime && (
-          <div className="portable-setup-actions">
+          <div className="portable-setup-actions repository-setup-actions">
+            {onContinue && (
+              <Button type="button" onClick={onContinue}>
+                Continue work
+              </Button>
+            )}
             <Button
               type="button"
+              disabled={shareUnavailable}
               onClick={() => setAction({ type: "compose" })}
             >
-              <Plus aria-hidden="true" size={15} /> Create setup
+              <Plus aria-hidden="true" size={15} />{" "}
+              {hasDraft ? "Resume setup draft" : "Create setup"}
             </Button>
             <Button
               type="button"
-              disabled={loading || !!statusError || !repositories.length}
+              disabled={Boolean(importReason)}
               onClick={() => setAction({ type: "open" })}
             >
-              <FileUp aria-hidden="true" size={15} /> Open setup
+              <FileUp aria-hidden="true" size={15} /> Import setup
             </Button>
           </div>
         )}
@@ -186,22 +319,49 @@ export function PortableSetupPanel({
           {loading && (
             <LoadingStatus>
               {rows
-                ? "Refreshing portable setups…"
-                : "Loading portable setups…"}
+                ? "Refreshing repository setups…"
+                : "Loading repository setups…"}
             </LoadingStatus>
           )}
           {statusError && <p role="alert">{statusError}</p>}
-          {rows
-            ?.filter((row) => row.active || row.issue)
-            .map(({ repository, active, issue, recoveryDigest }) => (
-              <div className="portable-setup-active" key={repository.id}>
+          {shareUnavailable && <p>Unlock secure storage to share a setup.</p>}
+          {hasDraft && rows?.some((row) => row.active) && (
+            <p>
+              Finish or discard your draft before sharing a different setup.
+            </p>
+          )}
+          {importReason && !loading && <p>{importReason}</p>}
+          {repositories.map((repository) => {
+            const row = rows?.find((item) => item.projectId === repository.id);
+            const { active, issue, recoveryDigest, stale } = row ?? {};
+            const setupOutOfDate = statusUnavailable || stale;
+            const setupActionsUnavailable =
+              loading || setupOutOfDate || shareUnavailable;
+            const block =
+              !loading && !statusUnavailable && !importBlock()
+                ? importBlock(repository)
+                : null;
+            return (
+              <div className="repository-setup-row" key={repository.id}>
                 <div className="portable-setup-heading">
                   <div>
-                    <strong>{active?.title ?? repository.label}</strong>
+                    <strong>{repository.label}</strong>
+                    <small>{repository.root}</small>
+                    {repository.paused && <p>Repository updates paused</p>}
+                    {repository.pending_recovery && (
+                      <p>Repository recovery needed</p>
+                    )}
+                    {repository.attention && (
+                      <p>
+                        {repository.attention.status === "task_cleanup_blocked"
+                          ? "Task cleanup needs attention"
+                          : "Edited files need attention"}
+                      </p>
+                    )}
                     {active && (
                       <p>
-                        {repository.label} · {active.items.length}{" "}
-                        {active.items.length === 1 ? "item" : "items"}
+                        {setupOutOfDate ? "Last known setup" : "Approved setup"}{" "}
+                        · {active.title}
                       </p>
                     )}
                   </div>
@@ -209,7 +369,7 @@ export function PortableSetupPanel({
                     <Button
                       type="button"
                       tone="quiet"
-                      disabled={loading || !!statusError}
+                      disabled={setupActionsUnavailable}
                       onClick={() =>
                         setAction({
                           type: "reset",
@@ -222,18 +382,76 @@ export function PortableSetupPanel({
                     </Button>
                   )}
                   {active && (
-                    <Button
-                      type="button"
-                      tone="quiet"
-                      disabled={loading || !!statusError}
-                      onClick={() =>
-                        setAction({ type: "remove", repository, setup: active })
-                      }
-                    >
-                      Remove setup
-                    </Button>
+                    <div className="repository-setup-actions">
+                      <Button
+                        type="button"
+                        aria-label={"Share setup for " + repository.label}
+                        disabled={setupActionsUnavailable || hasDraft}
+                        onClick={() => {
+                          setTitle(active.title);
+                          setItems(active.items.map(fromSetupItem));
+                          setAction({ type: "compose" });
+                        }}
+                      >
+                        Share setup
+                      </Button>
+                      <Button
+                        type="button"
+                        tone="quiet"
+                        disabled={setupActionsUnavailable}
+                        onClick={() =>
+                          setAction({
+                            type: "remove",
+                            repository,
+                            setup: active,
+                          })
+                        }
+                      >
+                        Remove setup
+                      </Button>
+                    </div>
                   )}
                 </div>
+                <dl className="repository-setup-items">
+                  {setupGroups.map(([kind, label]) => {
+                    const names =
+                      active?.items
+                        .filter((item) => item.kind === kind)
+                        .map((item) => item.title) ?? [];
+                    const installed = kind === "skill" ? repository.active : [];
+                    return (
+                      <div key={kind}>
+                        <dt>{label}</dt>
+                        <dd>
+                          {installed.length > 0 && (
+                            <span>
+                              {statusUnavailable
+                                ? "Last known installed skills"
+                                : "Managed skills installed"}{" "}
+                              · {installed.join(", ")}
+                            </span>
+                          )}
+                          {names.length > 0 && (
+                            <span>
+                              {kind === "skill" &&
+                                (setupOutOfDate
+                                  ? "From last known setup · "
+                                  : "From approved setup · ")}
+                              {names.join(", ")}
+                            </span>
+                          )}
+                          {!installed.length &&
+                            !names.length &&
+                            (issue || statusUnavailable
+                              ? "Unavailable"
+                              : row
+                                ? "None"
+                                : "Checking…")}
+                        </dd>
+                      </div>
+                    );
+                  })}
+                </dl>
                 {active && (
                   <details>
                     <summary>View setup contents</summary>
@@ -241,32 +459,41 @@ export function PortableSetupPanel({
                   </details>
                 )}
                 {issue && <p role="alert">{issue}</p>}
+                {block && repositories.length > 1 && <p>{block}</p>}
               </div>
-            ))}
+            );
+          })}
           {!loading &&
-            !statusError &&
-            rows?.every((row) => !row.active && !row.issue) && (
-              <p>
-                {repositories.length
-                  ? "No active portable setups."
-                  : "Add a repository to automatic workflows before opening a setup."}
-              </p>
+          !statusUnavailable &&
+          rows?.length &&
+          rows.every((row) => !row.active && !row.issue) ? (
+            <p>No approved portable setups.</p>
+          ) : null}
+          {!loading &&
+            (statusUnavailable ||
+              rows?.some((row) => row.issue) ||
+              !sharedStatus) && (
+              <Button
+                type="button"
+                tone="quiet"
+                onClick={() => {
+                  status?.refresh();
+                  setRefresh((value) => value + 1);
+                }}
+              >
+                Refresh repositories
+              </Button>
             )}
-          {!loading && (
-            <Button
-              type="button"
-              tone="quiet"
-              onClick={() => setRefresh((value) => value + 1)}
-            >
-              Refresh repositories
-            </Button>
-          )}
         </>
       )}
       {action && (
         <PortableSetupDialog
           action={action}
           repositories={repositories}
+          blockedReason={importReason}
+          repositoryActionBlocked={repositoryActionBlocked}
+          targetBlock={importBlock}
+          draft={{ title, items, setTitle, setItems, clear: clearDraft }}
           returnFocusFallback={panelHeading}
           onClose={() => setAction(null)}
           onComplete={completed}
@@ -282,20 +509,6 @@ function SetupContents({ value }: { value: SetupPreview }) {
       <header>
         <strong>{value.title}</strong>
       </header>
-      <dl className="mode-detail-list">
-        <div>
-          <dt>Signer fingerprint</dt>
-          <dd>
-            <code>{value.signer_fingerprint}</code>
-          </dd>
-        </div>
-        <div>
-          <dt>Setup digest</dt>
-          <dd>
-            <code>{value.digest}</code>
-          </dd>
-        </div>
-      </dl>
       <ul aria-label="Setup contents">
         {value.items.map((item) => (
           <li key={item.id}>
@@ -321,6 +534,23 @@ function SetupContents({ value }: { value: SetupPreview }) {
           </li>
         ))}
       </ul>
+      <details className="workflow-provenance">
+        <summary>Signature and file details</summary>
+        <dl className="mode-detail-list">
+          <div>
+            <dt>Signer fingerprint</dt>
+            <dd>
+              <code>{value.signer_fingerprint}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>Setup digest</dt>
+            <dd>
+              <code>{value.digest}</code>
+            </dd>
+          </div>
+        </dl>
+      </details>
     </div>
   );
 }
@@ -328,20 +558,33 @@ function SetupContents({ value }: { value: SetupPreview }) {
 function PortableSetupDialog({
   action,
   repositories,
+  blockedReason,
+  repositoryActionBlocked,
+  targetBlock,
+  draft,
   returnFocusFallback,
   onClose,
   onComplete,
 }: {
   action: SetupAction;
   repositories: HubProject[];
+  blockedReason: string | null;
+  repositoryActionBlocked: boolean;
+  targetBlock: (repository?: HubProject) => string | null;
+  draft: {
+    title: string;
+    items: DraftItem[];
+    setTitle: Dispatch<SetStateAction<string>>;
+    setItems: Dispatch<SetStateAction<DraftItem[]>>;
+    clear: () => void;
+  };
   returnFocusFallback: RefObject<HTMLHeadingElement | null>;
   onClose: () => void;
   onComplete: (message: string) => void;
 }) {
   const visible = usePageVisibility();
   const focusReturn = useDialogFocusReturn(visible);
-  const [title, setTitle] = useState("");
-  const [items, setItems] = useState<DraftItem[]>([]);
+  const { title, setTitle, items, setItems, clear } = draft;
   const [newKind, setNewKind] = useState<SetupKind>("skill");
   const [exportPreview, setExportPreview] = useState<SetupPreview | null>(null);
   const [importPreview, setImportPreview] = useState<SetupImportPreview | null>(
@@ -359,6 +602,8 @@ function PortableSetupDialog({
   const preview = exportPreview ?? importPreview;
   const editing = action.type === "compose" && !exportPreview;
   const target = repositories.find((row) => row.id === projectId);
+  const selectedBlock = target ? targetBlock(target) : blockedReason;
+  const targetChanged = Boolean(projectId && !target);
 
   useEffect(() => {
     if (preview) {
@@ -420,6 +665,7 @@ function PortableSetupDialog({
   }
 
   function chooseFile() {
+    if (!target || selectedBlock) return;
     void run("Opening and verifying the setup…", async () => {
       const result = await openSetupFile(projectId);
       if (result.project_id !== projectId)
@@ -432,6 +678,7 @@ function PortableSetupDialog({
   }
 
   function complete() {
+    if (repositoryActionBlocked) return;
     if (exportPreview) {
       void run("Saving the setup file…", async () => {
         const saved = await saveSetupFile(exportPreview.digest);
@@ -441,7 +688,7 @@ function PortableSetupDialog({
           );
         onComplete(`Saved “${saved.title}”.`);
       });
-    } else if (importPreview && consent) {
+    } else if (importPreview && consent && target && !selectedBlock) {
       void run("Applying the setup…", async () => {
         const active = await approveSetup(importPreview);
         if (active.digest !== importPreview.digest)
@@ -475,8 +722,8 @@ function PortableSetupDialog({
       : action.type === "reset"
         ? "Clear the unreadable setup?"
         : action.type === "open"
-          ? "Open a portable setup"
-          : "Create a portable setup";
+          ? "Import setup"
+          : "Share setup";
 
   return (
     <Dialog.Root
@@ -512,7 +759,7 @@ function PortableSetupDialog({
           <Dialog.Title>{dialogTitle}</Dialog.Title>
           <Dialog.Description>
             {action.type === "compose"
-              ? "Add the guidance and repository checks you want to share. The recipient reviews the signed file before applying it."
+              ? "Choose what to share in a signed setup file. The recipient reviews its contents before applying it."
               : action.type === "open"
                 ? "Choose the repository that will receive the setup, then open a signed .temper-setup file."
                 : action.type === "reset"
@@ -670,8 +917,20 @@ function PortableSetupDialog({
                 )}
                 <div className="core-dialog__actions">
                   <Button type="button" tone="quiet" onClick={onClose}>
-                    Cancel
+                    {title || items.length ? "Keep draft" : "Cancel"}
                   </Button>
+                  {(title || items.length > 0) && (
+                    <Button
+                      type="button"
+                      tone="quiet"
+                      onClick={() => {
+                        clear();
+                        onClose();
+                      }}
+                    >
+                      Discard draft
+                    </Button>
+                  )}
                   <Button type="submit" tone="primary" disabled={!items.length}>
                     Review setup
                   </Button>
@@ -689,7 +948,7 @@ function PortableSetupDialog({
                   ariaLabel="Target repository"
                   disabled={!!busy}
                   portalled={false}
-                  value={projectId || "#"}
+                  value={target?.id ?? "#"}
                   onValueChange={(value) => {
                     setProjectId(value === "#" ? "" : value);
                     setError(null);
@@ -702,7 +961,7 @@ function PortableSetupDialog({
                     ...repositories.map((repository) => ({
                       value: repository.id,
                       label: repository.label,
-                      description: repository.root,
+                      description: targetBlock(repository) ?? repository.root,
                     })),
                   ]}
                 />
@@ -724,7 +983,7 @@ function PortableSetupDialog({
                 <Button
                   type="button"
                   tone="primary"
-                  disabled={!!busy || !target}
+                  disabled={!!busy || !target || Boolean(selectedBlock)}
                   onClick={chooseFile}
                 >
                   Choose setup file
@@ -758,9 +1017,10 @@ function PortableSetupDialog({
               {importPreview && (
                 <>
                   <p>
-                    Confirm the signer with the sender. Future tasks in this
-                    repository can load this guidance and the results of these
-                    read-only file checks through Temper.
+                    Confirm the signer with the sender under Signature and file
+                    details. Future tasks in this repository can load this
+                    guidance and the results of these read-only file checks
+                    through Temper.
                   </p>
                   <label className="portable-setup-consent">
                     <input
@@ -796,7 +1056,11 @@ function PortableSetupDialog({
                 <Button
                   type="button"
                   tone="primary"
-                  disabled={!!busy || (!!importPreview && !consent)}
+                  disabled={
+                    !!busy ||
+                    (!!importPreview &&
+                      (!consent || targetChanged || Boolean(selectedBlock)))
+                  }
                   onClick={complete}
                 >
                   {importPreview
@@ -809,6 +1073,12 @@ function PortableSetupDialog({
             </>
           )}
 
+          {repositoryActionBlocked && (
+            <p role="status">
+              Close this review and check the latest repository setup before
+              making changes.
+            </p>
+          )}
           {(action.type === "remove" || action.type === "reset") && (
             <div className="core-dialog__actions">
               <Button
@@ -822,7 +1092,7 @@ function PortableSetupDialog({
               <Button
                 type="button"
                 tone="primary"
-                disabled={!!busy}
+                disabled={!!busy || repositoryActionBlocked}
                 onClick={complete}
               >
                 {action.type === "reset"
@@ -832,6 +1102,12 @@ function PortableSetupDialog({
             </div>
           )}
 
+          {action.type === "open" && (selectedBlock || targetChanged) && (
+            <p role="status">
+              {selectedBlock ??
+                "This repository is no longer available. Choose another repository."}
+            </p>
+          )}
           {busy && <LoadingStatus>{busy}</LoadingStatus>}
           {error && (
             <p className="portability-error" role="alert">

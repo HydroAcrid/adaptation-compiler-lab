@@ -10,11 +10,13 @@ import {
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import { ToolsHubPanel } from "./ToolsHubPanel";
+import { loadSetupStatus } from "../portableSetup";
 import { PageVisibility } from "../pageVisibility";
 import type { HubState } from "../toolsHub";
 
 const api = vi.hoisted(() => ({ hubRequest: vi.fn() }));
 vi.mock("../toolsHub", () => api);
+vi.mock("../portableSetup", { spy: true });
 const initial: HubState = {
   version: 1,
   digest: "fixture-digest",
@@ -486,6 +488,11 @@ it("shows repository guidance and the latest task check on the compact Overview"
   expect(
     screen.getByText(/Latest task check.*Example.*Check complete/),
   ).toBeVisible();
+  expect(
+    screen.getByText(/Before using automatic workflows/),
+  ).toHaveTextContent(
+    "Before using automatic workflows, review and trust Temper with /hooks in Codex, then open a new chat.",
+  );
   expect(screen.queryByText("How automatic workflows work")).toBeNull();
 
   await user.click(
@@ -511,6 +518,11 @@ it("shows recorded activity and keeps workflow help collapsed on Tools", async (
     screen.getByRole("button", { name: "Check for updates" }),
   ).toBeEnabled();
   const help = screen.getByText("How automatic workflows work");
+  expect(
+    screen.getByText(/Before using automatic workflows/),
+  ).toHaveTextContent(
+    "Before using automatic workflows, review and trust Temper with /hooks in Codex, then open a new chat.",
+  );
   const cleanup = screen.getByText(
     /removes its unchanged copies when a task ends/,
   );
@@ -564,9 +576,9 @@ it("reports empty task history and publisher checks and shows the first-use acti
   expect(screen.getByText("No guidance installed")).toBeVisible();
   expect(container.querySelector("time")).toBeNull();
   expect(
-    screen.getByText(/To start, review and trust Temper/),
+    screen.getByText(/Before using automatic workflows/),
   ).toHaveTextContent(
-    "To start, review and trust Temper with /hooks in Codex, then open a new chat.",
+    "Before using automatic workflows, review and trust Temper with /hooks in Codex, then open a new chat.",
   );
 });
 
@@ -578,7 +590,7 @@ it("shows the first-use action on the configured Overview before the first task"
   });
   render(<ToolsHubPanel nativeRuntime onOpenTools={() => {}} />);
   expect(
-    await screen.findByText(/To start, review and trust Temper/),
+    await screen.findByText(/Before using automatic workflows/),
   ).toBeVisible();
 });
 
@@ -1126,4 +1138,91 @@ it("hides Remotion admission on unsupported native platforms", async () => {
   render(<ToolsHubPanel nativeRuntime />);
   await screen.findByText("Tool settings");
   expect(screen.queryByText("Remotion video rendering")).toBeNull();
+});
+
+it("reports an incomplete Codex connection consistently and offers to repair the connection", async () => {
+  const user = userEvent.setup();
+  api.hubRequest.mockImplementation(async (operation: string) =>
+    operation === "connection_preview"
+      ? { preview_id: "connection", files: [], new_chat_required: true }
+      : { ...continuing, bridge_configured: false },
+  );
+  render(<ToolsHubPanel nativeRuntime />);
+  const panel = screen.getByRole("region", { name: "Automatic workflows" });
+  const savedWork = await within(panel).findByRole("region", {
+    name: "Continuing work",
+  });
+  expect(within(panel).getAllByText("Codex setup needed")).toHaveLength(2);
+  expect(within(savedWork).getByText("Codex setup needed")).toBeVisible();
+  expect(
+    within(panel).getByRole("button", { name: "Connect Codex" }),
+  ).toBeEnabled();
+  expect(within(savedWork).queryByText(/Ask Codex to continue/)).toBeNull();
+  await user.click(
+    within(panel).getByRole("button", { name: "Connect Codex" }),
+  );
+  await waitFor(() =>
+    expect(api.hubRequest).toHaveBeenCalledWith(
+      "connection_preview",
+      {},
+      continuing.digest,
+    ),
+  );
+});
+
+it("retries the initial Overview workflow read in place", async () => {
+  api.hubRequest
+    .mockRejectedValueOnce(new Error("Read unavailable"))
+    .mockResolvedValue(populated);
+  const user = userEvent.setup();
+  const openTools = vi.fn();
+  render(<ToolsHubPanel nativeRuntime onOpenTools={openTools} />);
+  expect(
+    await screen.findByText("Temper couldn’t check workflow status."),
+  ).toBeVisible();
+  await user.click(
+    screen.getByRole("button", { name: "Retry workflow status" }),
+  );
+  expect(await screen.findByText("Codex connection configured")).toBeVisible();
+  expect(openTools).not.toHaveBeenCalled();
+});
+
+it("updates setup eligibility in place after resuming automatic workflows", async () => {
+  const user = userEvent.setup();
+  let state: HubState = { ...continuing, paused: true };
+  vi.mocked(loadSetupStatus).mockResolvedValue({ active: null });
+  api.hubRequest.mockImplementation(
+    async (operation: string, params?: { operation: string }) => {
+      if (operation === "status") return state;
+      if (operation === "control" && params?.operation === "resume") {
+        state = { ...state, paused: false };
+        return { status: "resumed" };
+      }
+      throw new Error(operation);
+    },
+  );
+
+  render(<ToolsHubPanel nativeRuntime showRepositorySetup />);
+  const setup = screen.getByRole("region", { name: "Repository setup" });
+  expect(
+    await within(setup).findByText("Resume updates to import a setup."),
+  ).toBeVisible();
+  const trigger = within(setup).getByRole("button", { name: "Import setup" });
+  expect(trigger).toBeDisabled();
+  expect(within(setup).getByText("Skills")).toBeVisible();
+  expect(within(setup).getByText("Knowledge")).toBeVisible();
+  expect(within(setup).getByText("Preferences")).toBeVisible();
+  expect(within(setup).getByText("Checks")).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "Resume updates" }));
+  await waitFor(() => expect(trigger).toBeEnabled());
+  expect(loadSetupStatus).toHaveBeenCalledTimes(2);
+  await user.click(
+    within(setup).getByRole("button", { name: "Continue work" }),
+  );
+  expect(screen.getByText("Saved work")).toHaveFocus();
+  expect(
+    within(screen.getByRole("region", { name: "Continuing work" })).getByText(
+      "Saved for a later chat",
+    ),
+  ).toBeVisible();
 });

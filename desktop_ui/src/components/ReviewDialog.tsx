@@ -4,46 +4,47 @@ import { Check, ChevronDown, Folder, X } from "lucide-react";
 import { useState } from "react";
 
 import type { Suggestion, SuggestionDecision } from "../types";
-import { Button, TemperSelect } from "./ui";
+import { Button, LoadingStatus, TemperSelect } from "./ui";
 
 export function ReviewDialog({
   suggestion,
-  availableProjects = [],
+  projectChoices,
+  preferredProjectId,
   open,
   previewMode = false,
   onOpenChange,
+  onReturnFocus,
   onDecision,
 }: {
   suggestion: Suggestion;
-  availableProjects?: string[];
+  projectChoices: Array<{ id: string; label: string }>;
+  preferredProjectId?: string | null;
   open: boolean;
   previewMode?: boolean;
   onOpenChange: (open: boolean) => void;
+  onReturnFocus: () => void;
   onDecision: (
     decision: SuggestionDecision,
-    projectNames?: string[],
+    projectIds?: string[],
   ) => void | Promise<void>;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [decisionError, setDecisionError] = useState<string | null>(null);
-  const projectChoices =
-    suggestion.projectNames?.length && !suggestion.isGlobal
-      ? suggestion.projectNames
-      : availableProjects.length
-        ? availableProjects
-        : suggestion.sourceProject
-          ? [suggestion.sourceProject]
-          : [];
-  const [selectedProject, setSelectedProject] = useState(
-    suggestion.sourceProject ?? projectChoices[0] ?? "",
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    null,
   );
-  const [narrowedProjects, setNarrowedProjects] = useState<string[]>(
-    suggestion.projectNames?.length
-      ? projectChoices
-      : selectedProject
-        ? [selectedProject]
-        : [],
+  const [narrowedProjectIds, setNarrowedProjectIds] = useState<string[] | null>(
+    null,
+  );
+  const selectedProject =
+    projectChoices.find(
+      ({ id }) => id === (selectedProjectId ?? preferredProjectId),
+    ) ?? (selectedProjectId === null ? projectChoices[0] : undefined);
+  const narrowedProjects = projectChoices.filter(({ id }) =>
+    narrowedProjectIds
+      ? narrowedProjectIds.includes(id)
+      : Boolean(suggestion.projectNames?.length) || id === selectedProject?.id,
   );
   const availableDecisions = suggestion.availableDecisions ?? [
     "suggested",
@@ -83,30 +84,45 @@ export function ReviewDialog({
     suggestion.isGlobal === true ||
     !suggestion.projectNames?.length ||
     narrowedProjects.length < projectChoices.length;
-  function submit(decision: SuggestionDecision, projectNames: string[] = []) {
+  async function submit(
+    decision: SuggestionDecision,
+    projectIds: string[] = [],
+  ) {
     setBusy(true);
     setDecisionError(null);
-    void Promise.resolve(onDecision(decision, projectNames))
-      .catch((error: unknown) =>
-        setDecisionError(
-          error instanceof Error
-            ? error.message
-            : "Temper could not save that decision.",
-        ),
-      )
-      .finally(() => setBusy(false));
+    try {
+      await onDecision(decision, projectIds);
+    } catch (error) {
+      setDecisionError(
+        error instanceof Error
+          ? error.message
+          : "Temper could not save that decision.",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
   return (
-    <Dialog.Root onOpenChange={onOpenChange} open={open}>
+    <Dialog.Root
+      onOpenChange={(nextOpen) => {
+        if (!busy || nextOpen) onOpenChange(nextOpen);
+      }}
+      open={open}
+    >
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
         <Dialog.Content
           aria-describedby="review-description"
           className="review-dialog review-sheet"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            onReturnFocus();
+          }}
         >
           <Dialog.Close
             aria-label="Close review"
             className="icon-button dialog-close"
+            disabled={busy}
           >
             <X size={18} />
           </Dialog.Close>
@@ -160,26 +176,30 @@ export function ReviewDialog({
                 <label htmlFor="review-project">Keep only in</label>
                 <TemperSelect
                   ariaLabel="Keep only in"
+                  disabled={busy}
                   id="review-project"
-                  onValueChange={(project) => {
-                    setSelectedProject(project);
-                    setNarrowedProjects([project]);
+                  onValueChange={(projectId) => {
+                    setSelectedProjectId(projectId);
+                    setNarrowedProjectIds([projectId]);
                   }}
                   options={projectChoices.map((project) => ({
-                    label: project,
-                    value: project,
+                    label: project.label,
+                    value: project.id,
                   }))}
                   portalled={false}
-                  value={selectedProject}
+                  value={selectedProject?.id ?? ""}
                 />
                 <Button
                   className="review-action--scope"
                   disabled={busy || !selectedProject}
                   icon={<Folder aria-hidden="true" size={17} />}
-                  onClick={() => submit("project", [selectedProject])}
+                  onClick={() =>
+                    selectedProject &&
+                    void submit("project", [selectedProject.id])
+                  }
                   tone="quiet"
                 >
-                  Only in {selectedProject}
+                  Only in {selectedProject?.label ?? "selected project"}
                 </Button>
               </div>
             ) : null}
@@ -199,6 +219,7 @@ export function ReviewDialog({
               {decisionError}
             </p>
           ) : null}
+          {busy ? <LoadingStatus>Saving your decision…</LoadingStatus> : null}
           <Collapsible.Root onOpenChange={setDetailsOpen} open={detailsOpen}>
             <Collapsible.Trigger className="details-trigger">
               <span>Why am I seeing this?</span>
@@ -210,22 +231,23 @@ export function ReviewDialog({
             </Collapsible.Trigger>
             <Collapsible.Content className="provenance-detail">
               {canKeepNarrowed ? (
-                <fieldset className="review-narrowing">
+                <fieldset className="review-narrowing" disabled={busy}>
                   <legend>Use in selected projects</legend>
                   {projectChoices.map((project) => (
-                    <label key={project}>
+                    <label key={project.id}>
                       <input
                         checked={narrowedProjects.includes(project)}
-                        onChange={(event) =>
-                          setNarrowedProjects((current) =>
+                        onChange={(event) => {
+                          const ids = narrowedProjects.map(({ id }) => id);
+                          setNarrowedProjectIds(
                             event.target.checked
-                              ? [...new Set([...current, project])].sort()
-                              : current.filter((item) => item !== project),
-                          )
-                        }
+                              ? [...ids, project.id]
+                              : ids.filter((id) => id !== project.id),
+                          );
+                        }}
                         type="checkbox"
                       />
-                      {project}
+                      {project.label}
                     </label>
                   ))}
                   <Button
@@ -234,7 +256,12 @@ export function ReviewDialog({
                       narrowedProjects.length === 0 ||
                       !narrowedSelectionIsStrict
                     }
-                    onClick={() => submit("narrowed", narrowedProjects)}
+                    onClick={() =>
+                      submit(
+                        "narrowed",
+                        narrowedProjects.map(({ id }) => id),
+                      )
+                    }
                     tone="quiet"
                   >
                     Keep in selected projects

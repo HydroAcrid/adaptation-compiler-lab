@@ -14,6 +14,8 @@ import {
 } from "../toolsHub";
 import { Button, LoadingStatus } from "./ui";
 import { ContinuingWork, type ContinuingWorkAction } from "./ContinuingWork";
+import { PortableSetupPanel } from "./PortableSetupPanel";
+import { connectionReadiness } from "./RepositoryReadiness";
 import "./ToolsHubPanel.css";
 
 type Repository = { id: string; label: string; root: string };
@@ -91,11 +93,11 @@ function PublisherCheck({ timestamp }: { timestamp: number | null }) {
   );
 }
 
-function StartWorkflows() {
+function CodexTrustStep() {
   return (
     <p className="tools-hub-guidance">
-      To start, review and trust Temper with <code>/hooks</code> in Codex, then
-      open a new chat.
+      Before using automatic workflows, review and trust Temper with{" "}
+      <code>/hooks</code> in Codex, then open a new chat.
     </p>
   );
 }
@@ -104,10 +106,6 @@ function WorkflowLifecycle() {
   return (
     <details className="tools-hub-details">
       <summary>How automatic workflows work</summary>
-      <p>
-        In Codex, review and trust Temper with <code>/hooks</code>, then open a
-        new chat.
-      </p>
       <ul className="tools-hub-lifecycle">
         <li>
           <strong>Choose</strong>
@@ -177,9 +175,11 @@ function RepositoryGuidance({
 export function ToolsHubPanel({
   nativeRuntime,
   onOpenTools,
+  showRepositorySetup = false,
 }: {
   nativeRuntime: boolean;
   onOpenTools?: () => void;
+  showRepositorySetup?: boolean;
 }) {
   const headingId = useId();
   const [state, setState] = useState<HubState | null>(null);
@@ -204,6 +204,9 @@ export function ToolsHubPanel({
     !!loadError ||
     state?.secure_store_ready === false;
   const [refreshKey, setRefreshKey] = useState(0);
+  const [setupRevision, setSetupRevision] = useState(0);
+  const continuingWork = useRef<HTMLDetailsElement>(null);
+  const continuingSummary = useRef<HTMLElement>(null);
   const [repositories, setRepositories] = useState<Repository[] | null>(null);
   const [chosen, setChosen] = useState<string[]>([]);
   const [sources, setSources] = useState<string[]>([]);
@@ -296,7 +299,10 @@ export function ToolsHubPanel({
     await statusRequest.current?.catch(() => undefined);
     if (!operation.endsWith("_preview")) setAwaitingActionStatus(true);
     const current = await hubRequest<HubState>("status");
-    return hubRequest<T>(operation, params, current.digest);
+    const result = await hubRequest<T>(operation, params, current.digest);
+    if (!operation.endsWith("_preview"))
+      setSetupRevision((revision) => revision + 1);
+    return result;
   }
   function toggle(
     value: string,
@@ -396,7 +402,8 @@ export function ToolsHubPanel({
       .includes(query.trim().toLowerCase()),
   );
   const attention = needsAttention || taskFailed || failed;
-  const ready = state?.indexed && state.native_hooks_configured;
+  const connection = state ? connectionReadiness(state) : null;
+  const ready = connection === "configured";
   const status = !nativeRuntime
     ? "Desktop feature"
     : loadError
@@ -417,7 +424,9 @@ export function ToolsHubPanel({
                   ? "Paused"
                   : ready
                     ? "Codex connection configured"
-                    : "Setup needed";
+                    : connection === "preparing"
+                      ? "Preparing repository tools"
+                      : "Codex setup needed";
 
   const checking = nativeRuntime && !state && !loadError;
   const checkpointChanged =
@@ -431,11 +440,9 @@ export function ToolsHubPanel({
       : state?.enabled && ready && !state.paused && !working
         ? "positive"
         : "neutral";
-  const showStartAction =
+  const showCodexTrustStep =
     state?.enabled &&
     ready &&
-    !state.last_task &&
-    !state.projects.some((row) => row.active.length) &&
     !state.paused &&
     !working &&
     !attention &&
@@ -482,6 +489,28 @@ export function ToolsHubPanel({
             )}
           </div>
         )}
+        {loadError && (
+          <div className="tools-hub-notice" role="alert">
+            <p>
+              {state
+                ? "Showing the last known workflow status."
+                : "Temper couldn’t check workflow status."}
+            </p>
+            <Button
+              type="button"
+              disabled={statusPending}
+              onClick={() => setRefreshKey((key) => key + 1)}
+            >
+              {statusPending ? "Refreshing…" : "Retry workflow status"}
+            </Button>
+          </div>
+        )}
+        {state?.enabled && !loadError && connection === "connection_needed" && (
+          <p className="tools-hub-guidance">
+            Connect Codex in Tools to use automatic workflows.
+          </p>
+        )}
+        {showCodexTrustStep && <CodexTrustStep />}
         {shownRepositories.length > 0 && (
           <RepositoryGuidance rows={shownRepositories} stale={!!loadError} />
         )}
@@ -498,7 +527,6 @@ export function ToolsHubPanel({
           !loadError && (
             <p className="tools-hub-guidance">No task activity recorded.</p>
           )}
-        {showStartAction && <StartWorkflows />}
         {state ? (
           <ContinuingWork
             compact
@@ -557,18 +585,30 @@ export function ToolsHubPanel({
       {state?.secure_store_ready === false && (
         <p role="status">Unlock your secure store to make changes.</p>
       )}
-      {state ? (
-        <ContinuingWork
-          state={state}
-          stale={!!loadError}
-          pending={statusPending}
-          actionsUnavailable={actionsUnavailable}
-          notice={continuityNotice}
-          preparingReview={preparingContinuityReview}
-          onRefresh={() => setRefreshKey((key) => key + 1)}
-          onAction={reviewContinuity}
+      {showCodexTrustStep && <CodexTrustStep />}
+      {showRepositorySetup && (
+        <PortableSetupPanel
+          nativeRuntime={nativeRuntime}
+          status={{
+            state,
+            pending: checking || busy || awaitingActionStatus,
+            failed: Boolean(loadError),
+            revision: setupRevision,
+            refresh: () => setRefreshKey((key) => key + 1),
+          }}
+          onContinue={
+            state?.projects.some(
+              (project) => project.continuity_enabled !== undefined,
+            )
+              ? () => {
+                  if (continuingWork.current)
+                    continuingWork.current.open = true;
+                  continuingSummary.current?.focus();
+                }
+              : undefined
+          }
         />
-      ) : null}
+      )}
       {!nativeRuntime ? (
         <p>Open the desktop app to choose repositories and connect Codex.</p>
       ) : (
@@ -754,17 +794,19 @@ export function ToolsHubPanel({
                     )}
                   </dl>
                 </div>
-                <div className="tools-hub-overview">
-                  <h3>
-                    {loadError
-                      ? "Last known repositories"
-                      : "Approved repositories"}
-                  </h3>
-                  <RepositoryGuidance
-                    rows={state.projects}
-                    stale={!!loadError}
-                  />
-                </div>
+                {!showRepositorySetup && (
+                  <div className="tools-hub-overview">
+                    <h3>
+                      {loadError
+                        ? "Last known repositories"
+                        : "Approved repositories"}
+                    </h3>
+                    <RepositoryGuidance
+                      rows={state.projects}
+                      stale={!!loadError}
+                    />
+                  </div>
+                )}
                 <div className="tools-hub-actions">
                   {state.paused ? (
                     <Button
@@ -777,9 +819,7 @@ export function ToolsHubPanel({
                     >
                       Resume updates
                     </Button>
-                  ) : !state.native_hooks_configured &&
-                    state.indexed &&
-                    !working ? (
+                  ) : connection === "connection_needed" && !working ? (
                     <Button
                       disabled={actionsUnavailable}
                       onClick={(event) => {
@@ -841,7 +881,6 @@ export function ToolsHubPanel({
                         "The latest tool operation needs attention.")}
                   </p>
                 )}
-                {showStartAction && <StartWorkflows />}
                 <details className="tools-hub-settings">
                   <summary>Tool settings</summary>
                   <div className="tools-hub-actions">
@@ -860,8 +899,7 @@ export function ToolsHubPanel({
                     )}
                     {(failed || taskFailed) &&
                       !state.paused &&
-                      ((state.indexed && !state.native_hooks_configured) ||
-                        working) && (
+                      (connection === "connection_needed" || working) && (
                         <Button
                           type="button"
                           disabled={
@@ -1034,6 +1072,27 @@ export function ToolsHubPanel({
           </>
         )
       )}
+      {state?.projects.some(
+        (project) => project.continuity_enabled !== undefined,
+      ) ? (
+        <details
+          className="tools-hub-details"
+          ref={continuingWork}
+          open={!showRepositorySetup}
+        >
+          <summary ref={continuingSummary}>Saved work</summary>
+          <ContinuingWork
+            state={state}
+            stale={!!loadError}
+            pending={statusPending}
+            actionsUnavailable={actionsUnavailable}
+            notice={continuityNotice}
+            preparingReview={preparingContinuityReview}
+            onRefresh={() => setRefreshKey((key) => key + 1)}
+            onAction={reviewContinuity}
+          />
+        </details>
+      ) : null}
       {nativeRuntime && <WorkflowLifecycle />}
       <Dialog.Root
         open={pageVisible && review !== null}

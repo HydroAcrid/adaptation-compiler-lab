@@ -6,6 +6,7 @@ import {
   type HubProject,
   type HubState,
 } from "../toolsHub";
+import { connectionReadiness } from "./RepositoryReadiness";
 import { Button, LoadingStatus } from "./ui";
 
 const taskLabels: Record<string, string> = {
@@ -130,18 +131,11 @@ function projectStatus(state: HubState, project: HubProject) {
     return "Checkpoint unavailable";
   if (project.attention || project.pending_recovery || state.cleanup_pending)
     return "Needs attention";
-  if (!project.continuity_enabled) {
-    return state.indexed && state.native_hooks_configured
-      ? "Off"
-      : "Codex setup needed";
-  }
   if (!state.enabled || state.paused || project.paused) return "Paused";
-  if (
-    !state.indexed ||
-    !state.bridge_configured ||
-    !state.native_hooks_configured
-  )
-    return "Codex setup needed";
+  const connection = connectionReadiness(state);
+  if (connection === "preparing") return "Preparing repository tools";
+  if (connection === "connection_needed") return "Codex setup needed";
+  if (!project.continuity_enabled) return "Off";
   if (project.continuity?.status === "resumed") return "Retrieved by Codex";
   if (project.continuity_issue === "expired") return "Checkpoint expired";
   return project.continuity ? "Saved for a later chat" : "No checkpoint saved";
@@ -216,9 +210,7 @@ export function ContinuingWork({
   const canEnable =
     state.enabled &&
     !state.paused &&
-    state.bridge_configured &&
-    state.indexed &&
-    state.native_hooks_configured &&
+    connectionReadiness(state) === "configured" &&
     !state.cleanup_pending;
 
   return (

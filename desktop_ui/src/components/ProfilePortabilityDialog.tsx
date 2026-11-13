@@ -8,6 +8,7 @@ import {
   exportProfile,
   loadProfileExportPreview,
   loadProfileImportPreview,
+  normalizeEngineFailure,
   stageProfileImport,
   type ProfileExportPreview,
   type ProfileImportPreview,
@@ -49,6 +50,7 @@ export function ProfilePortabilityDialog({
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(mode === "export" && nativeRuntime);
   const [error, setError] = useState<string | null>(null);
+  const [previewRequest, setPreviewRequest] = useState(0);
   const isExport = mode === "export";
   const passphraseReady =
     passphrase.length >= 12 && (isExport ? passphrase === confirmation : true);
@@ -72,7 +74,7 @@ export function ProfilePortabilityDialog({
     return () => {
       active = false;
     };
-  }, [isExport, nativeRuntime]);
+  }, [isExport, nativeRuntime, previewRequest]);
 
   async function chooseImport() {
     if (!passphraseReady) return;
@@ -161,6 +163,18 @@ export function ProfilePortabilityDialog({
           {error ? (
             <div className="portability-error" role="alert">
               {error}
+              {isExport && !preview ? (
+                <Button
+                  disabled={busy}
+                  onClick={() => {
+                    setError(null);
+                    setBusy(true);
+                    setPreviewRequest((request) => request + 1);
+                  }}
+                >
+                  Retry preview
+                </Button>
+              ) : null}
             </div>
           ) : null}
 
@@ -296,14 +310,12 @@ function ProfilePreview({ value }: { value: PortableProfilePreview }) {
 }
 
 function readError(reason: unknown): string {
-  if (reason instanceof Error) return reason.message;
-  if (
-    typeof reason === "object" &&
-    reason !== null &&
-    "message" in reason &&
-    typeof reason.message === "string"
-  ) {
-    return reason.message;
+  const failure = normalizeEngineFailure(
+    reason,
+    "Temper could not complete that profile action. Try again.",
+  );
+  if (failure.code === "export_unavailable") {
+    return "Your preferences could not be prepared for export. Retry the preview to check again.";
   }
-  return "Temper could not complete that local action.";
+  return failure.message;
 }

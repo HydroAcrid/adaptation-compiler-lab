@@ -82,12 +82,10 @@ import type {
   PackageReviewItem,
   Suggestion,
   Theme,
-  WorkspaceScope,
 } from "../types";
 import { ProfilePortabilityDialog } from "./ProfilePortabilityDialog";
 import { RecoveryExportDialog } from "./RecoveryDialog";
 import { ShareablePackageDialog } from "./ShareablePackageDialog";
-import { PortableSetupPanel } from "./PortableSetupPanel";
 import { PackageReviewQueue } from "./PackageReviewQueue";
 import {
   Button,
@@ -115,12 +113,15 @@ function restorePageDialogFocus(
 }
 
 export function TodayPage({
+  resourceStatus,
   onReview,
+  reviewAvailable = true,
   onOpenCore,
   onOpenTools,
   feedback,
   onFeedback,
-  workspace,
+  feedbackTargets = [],
+  workspaceProjectId,
   suggestions,
   selectedSuggestionId,
   automaticLearning,
@@ -130,12 +131,22 @@ export function TodayPage({
   nativeAutonomy = false,
   workspaceControl,
 }: {
-  onReview: (suggestionId: string) => void;
+  resourceStatus?: ReactNode;
+  reviewAvailable?: boolean;
+  onReview: (suggestionId: string, opener?: HTMLButtonElement) => void;
   onOpenCore: () => void;
   onOpenTools: () => void;
   feedback: FeedbackValue | null;
-  onFeedback: (value: FeedbackValue) => void;
-  workspace: WorkspaceScope;
+  onFeedback: (value: FeedbackValue, activationId?: string) => void;
+  feedbackTargets?: Array<{
+    id: string;
+    taskLabel: string;
+    completedAt: string;
+    guidance: string[];
+    outcomes: FeedbackValue[];
+    busy?: boolean;
+  }>;
+  workspaceProjectId: string | null;
   suggestions: Suggestion[];
   selectedSuggestionId: string | null;
   automaticLearning: boolean;
@@ -156,12 +167,8 @@ export function TodayPage({
 }) {
   const applicableEnvironments = instructionEnvironments.filter(
     (environment) =>
-      workspace === "all" ||
-      liveProjects.some(
-        (project) =>
-          project.project_id === environment.project_id &&
-          project.display_name === workspace,
-      ),
+      workspaceProjectId === null ||
+      environment.project_id === workspaceProjectId,
   );
   const nativeConflict = applicableEnvironments
     .flatMap((environment) => environment.conflicts ?? [])
@@ -171,13 +178,17 @@ export function TodayPage({
         conflict.resolution_state === "unresolved",
     );
   const applicableSuggestions =
-    workspace === "all"
+    workspaceProjectId === null
       ? suggestions
       : suggestions.filter((item) =>
-          item.projectNames
-            ? item.isGlobal === true || item.projectNames.includes(workspace)
-            : item.suggestedScope === "All projects" ||
-              item.suggestedScope.split(", ").includes(workspace),
+          nativeAutonomy
+            ? item.isGlobal === true ||
+              item.projectIds?.includes(workspaceProjectId)
+            : item.isGlobal === true ||
+              item.suggestedScope === "All projects" ||
+              (item.projectNames ?? item.suggestedScope.split(", ")).includes(
+                workspaceProjectId,
+              ),
         );
   const selectedSuggestion =
     applicableSuggestions.find((item) => item.id === selectedSuggestionId) ??
@@ -187,9 +198,9 @@ export function TodayPage({
   const suggestionCount = applicableSuggestions.length;
   const feedbackCount = liveSummary?.pendingFeedbackCount ?? 0;
   const reviewUnavailable = nativeAutonomy && !liveSummary;
-  const canRate = liveSummary ? feedbackCount > 0 : !nativeAutonomy;
+  const canRate = nativeAutonomy ? feedbackTargets.length > 0 : true;
   const pendingReviewCount =
-    workspace === "all"
+    workspaceProjectId === null
       ? (liveSummary?.pendingReviewCount ?? suggestionCount)
       : suggestionCount;
   const reviewCounts = [
@@ -213,6 +224,7 @@ export function TodayPage({
           <h1>Overview</h1>
         </div>
       </header>
+      {resourceStatus}
       <ToolsHubPanel nativeRuntime={nativeAutonomy} onOpenTools={onOpenTools} />
       {nativeAutonomy && (
         <AutonomousLearningPanel
@@ -224,6 +236,7 @@ export function TodayPage({
         className="today-review-summary"
         open={
           !nativeAutonomy ||
+          workspaceProjectId !== null ||
           pendingReviewCount > 0 ||
           suggestionCount > 0 ||
           feedbackCount > 0 ||
@@ -271,7 +284,10 @@ export function TodayPage({
                 <p>{selectedSuggestion.explanation}</p>
                 <button
                   className="folio-primary-action"
-                  onClick={() => onReview(selectedSuggestion.id)}
+                  disabled={!reviewAvailable}
+                  onClick={(event) =>
+                    onReview(selectedSuggestion.id, event.currentTarget)
+                  }
                   type="button"
                 >
                   Review suggestion <ArrowRight aria-hidden="true" size={16} />
@@ -318,7 +334,10 @@ export function TodayPage({
                         .map((item) => (
                           <li key={item.id}>
                             <button
-                              onClick={() => onReview(item.id)}
+                              disabled={!reviewAvailable}
+                              onClick={(event) =>
+                                onReview(item.id, event.currentTarget)
+                              }
                               type="button"
                             >
                               <span className="queue-copy">
@@ -353,45 +372,71 @@ export function TodayPage({
               ) : null}
             </div>
           )}
-          {(feedback || canRate) && (
+          {(canRate || (!nativeAutonomy && feedback)) && (
             <div className="margin-feedback">
-              <h2>Was Temper useful?</h2>
-              <p>
-                {liveSummary
-                  ? "Rate the guidance used in a recent task."
-                  : "Try a sample rating."}
-              </p>
-              {feedback ? (
+              <h2>Was this guidance useful?</h2>
+              {nativeAutonomy ? (
+                feedbackTargets.map((target) => {
+                  const completed = new Date(target.completedAt);
+                  return (
+                    <div className="feedback-task" key={target.id}>
+                      <strong>{target.taskLabel}</strong>
+                      {Number.isFinite(completed.getTime()) && (
+                        <time dateTime={target.completedAt}>
+                          {completed.toLocaleString(undefined, {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })}
+                        </time>
+                      )}
+                      <p>{target.guidance.join(", ")}</p>
+                      <div
+                        className="feedback-row feedback-row--folio"
+                        role="group"
+                        aria-label={`Rate guidance for ${target.taskLabel}`}
+                      >
+                        {target.outcomes.map((value) => (
+                          <button
+                            key={value}
+                            disabled={
+                              liveSummary?.feedbackAvailable === false ||
+                              target.busy
+                            }
+                            onClick={() => onFeedback(value, target.id)}
+                            type="button"
+                          >
+                            {feedbackLabels[value]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : feedback ? (
                 <div className="feedback-thanks" role="status">
                   <Check aria-hidden="true" size={15} /> Rating saved
                 </div>
               ) : (
-                <div
-                  className="feedback-row feedback-row--folio"
-                  aria-label="Rate recent guidance"
-                >
-                  <button
-                    disabled={liveSummary?.feedbackAvailable === false}
-                    onClick={() => onFeedback("helped")}
-                    type="button"
+                <>
+                  <p>Try a sample rating.</p>
+                  <div
+                    className="feedback-row feedback-row--folio"
+                    role="group"
+                    aria-label="Rate sample guidance"
                   >
-                    Helped
-                  </button>
-                  <button
-                    disabled={liveSummary?.feedbackAvailable === false}
-                    onClick={() => onFeedback("hurt")}
-                    type="button"
-                  >
-                    Hurt
-                  </button>
-                  <button
-                    disabled={liveSummary?.feedbackAvailable === false}
-                    onClick={() => onFeedback("irrelevant")}
-                    type="button"
-                  >
-                    Irrelevant
-                  </button>
-                </div>
+                    {(Object.keys(feedbackLabels) as FeedbackValue[]).map(
+                      (value) => (
+                        <button
+                          key={value}
+                          onClick={() => onFeedback(value)}
+                          type="button"
+                        >
+                          {feedbackLabels[value]}
+                        </button>
+                      ),
+                    )}
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -400,6 +445,12 @@ export function TodayPage({
     </div>
   );
 }
+
+const feedbackLabels: Record<FeedbackValue, string> = {
+  helped: "Helped",
+  hurt: "Hurt",
+  irrelevant: "Irrelevant",
+};
 
 const evidenceStrengthLabels: Record<EvidenceStrength, string> = {
   strong: "Strong evidence",
@@ -418,7 +469,8 @@ const coreKinds: Array<{ id: CoreKind; label: string }> = [
 ];
 
 export function CorePage({
-  availableWorkspaces,
+  resourceStatus,
+  workspaceProjects = [],
   initialItems = [],
   nativeRuntime = false,
   governedMutationsAvailable = true,
@@ -432,7 +484,8 @@ export function CorePage({
   liveProjects = [],
   nativeAutonomy = false,
 }: {
-  availableWorkspaces?: ProjectName[];
+  resourceStatus?: ReactNode;
+  workspaceProjects?: Array<{ id: string; label: string }>;
   initialItems?: CoreItem[];
   nativeRuntime?: boolean;
   governedMutationsAvailable?: boolean;
@@ -449,7 +502,7 @@ export function CorePage({
   const [previewItems, setItems] = useState(initialItems);
   const items = nativeRuntime ? initialItems : previewItems;
   const [kind, setKind] = useState<CoreKind | "all">("all");
-  const [scope, setScope] = useState<ProjectName | "all">("all");
+  const [scopeValue, setScopeValue] = useState("all");
   const [selected, setSelected] = useState<CoreItem | null>(null);
   const [revokeSelected, setRevokeSelected] = useState<CoreItem | null>(null);
   const [removed, setRemoved] = useState<{
@@ -460,25 +513,26 @@ export function CorePage({
     "export" | "import" | null
   >(null);
   const [shareablePackageOpen, setShareablePackageOpen] = useState(false);
-  const workspaceChoices = availableWorkspaces ?? [];
-  const appliesToProject = (item: CoreItem, project: ProjectName) =>
+  const projectOptions = workspaceProjects.map((project) => ({
+    ...project,
+    value: `project:${project.id}`,
+  }));
+  const scopeProject = projectOptions.find(({ value }) => value === scopeValue);
+  const appliesToProject = (item: CoreItem, projectId: string) =>
     item.isGlobal === true ||
-    (item.projectNames
-      ? item.projectNames.includes(project)
-      : item.scope === "Everywhere" || item.scope === project);
+    (nativeRuntime
+      ? item.projectIds?.includes(projectId)
+      : item.projectNames
+        ? item.projectNames.includes(projectId)
+        : item.scope === "Everywhere" || item.scope === projectId);
   const visibleItems = items.filter(
     (item) =>
       (kind === "all" || item.kind === kind) &&
-      (scope === "all" || appliesToProject(item, scope)),
+      (!scopeProject || appliesToProject(item, scopeProject.id)),
   );
-  const visibleEnvironments = instructionEnvironments.filter((environment) => {
-    if (scope === "all") return true;
-    return liveProjects.some(
-      (project) =>
-        project.project_id === environment.project_id &&
-        project.display_name === scope,
-    );
-  });
+  const visibleEnvironments = instructionEnvironments.filter(
+    ({ project_id }) => !scopeProject || project_id === scopeProject.id,
+  );
 
   function removeItem(item: CoreItem) {
     setRemoved({
@@ -519,7 +573,7 @@ export function CorePage({
               title={governedMutationUnavailableReason ?? undefined}
               type="button"
             >
-              <Download aria-hidden="true" size={14} /> Export
+              <Download aria-hidden="true" size={14} /> Export personal backup
             </button>
             <button
               disabled={nativeRuntime && !governedMutationsAvailable}
@@ -527,7 +581,7 @@ export function CorePage({
               title={governedMutationUnavailableReason ?? undefined}
               type="button"
             >
-              <Upload aria-hidden="true" size={14} /> Import
+              <Upload aria-hidden="true" size={14} /> Import personal backup
             </button>
             <button
               disabled={nativeRuntime && !governedMutationsAvailable}
@@ -535,11 +589,12 @@ export function CorePage({
               title={governedMutationUnavailableReason ?? undefined}
               type="button"
             >
-              <Share2 aria-hidden="true" size={14} /> Share pack
+              <Share2 aria-hidden="true" size={14} /> Share preferences
             </button>
           </div>
         </div>
       </header>
+      {resourceStatus}
       {nativeAutonomy && <AutonomousLearningPanel projects={liveProjects} />}
       <section
         className="personalization-library"
@@ -566,8 +621,8 @@ export function CorePage({
               governedMutationsAvailable={governedMutationsAvailable}
               onComplete={(message) => onNotice?.(message)}
               projectLabel={(projectId) =>
-                liveProjects.find((project) => project.project_id === projectId)
-                  ?.display_name ?? projectId
+                workspaceProjects.find((project) => project.id === projectId)
+                  ?.label ?? projectId
               }
               snapshotDigest={snapshotDigest}
             />
@@ -601,15 +656,12 @@ export function CorePage({
             <TemperSelect
               ariaLabel="Show for"
               className="core-scope-select"
-              onValueChange={setScope}
+              onValueChange={setScopeValue}
               options={[
                 { label: "All projects", value: "all" as const },
-                ...workspaceChoices.map((workspace) => ({
-                  label: workspace,
-                  value: workspace,
-                })),
+                ...projectOptions,
               ]}
-              value={scope}
+              value={scopeProject?.value ?? "all"}
             />
           </div>
         </div>
@@ -666,7 +718,7 @@ export function CorePage({
       </section>
       {selected ? (
         <CoreItemDialog
-          availableScopes={workspaceChoices}
+          availableScopes={workspaceProjects.map(({ label }) => label)}
           item={selected}
           key={selected.id}
           onClose={() => setSelected(null)}
@@ -1217,6 +1269,7 @@ function CoreRevocationDialog({
 }
 
 export function ModesPage({
+  resourceStatus,
   modes,
   nativeRuntime,
   loading,
@@ -1231,7 +1284,10 @@ export function ModesPage({
   instructionEnvironments = [],
   packageReviews = [],
   onPackageDecision,
+  savedWorkflowsStatus,
+  packageReviewsStatus,
 }: {
+  resourceStatus?: ReactNode;
   modes: CapabilityModeSummary[];
   nativeRuntime: boolean;
   loading: boolean;
@@ -1248,6 +1304,8 @@ export function ModesPage({
   snapshotDigest: string | null;
   instructionEnvironments?: EngineInstructionEnvironmentSummary[];
   packageReviews?: PackageReviewItem[];
+  savedWorkflowsStatus?: ReactNode;
+  packageReviewsStatus?: ReactNode;
   onPackageDecision?: (
     item: PackageReviewItem,
     decision: "approved" | "rejected",
@@ -1270,95 +1328,107 @@ export function ModesPage({
           <h1>Tools &amp; workflows</h1>
         </div>
       </header>
-      <ToolsHubPanel nativeRuntime={nativeRuntime} />
-      <PortableSetupPanel nativeRuntime={nativeRuntime} />
-      <div className="modes-section-heading">
-        <div>
-          <h2 className="modes-section-title">Saved workflows</h2>
-          {modes.length > 0 && (
-            <StatusPill tone="neutral">{modes.length} saved</StatusPill>
-          )}
+      {resourceStatus}
+      <ToolsHubPanel nativeRuntime={nativeRuntime} showRepositorySetup />
+      <details
+        className="saved-workflows"
+        open={
+          packageReviews.length > 0 ||
+          Boolean(savedWorkflowsStatus) ||
+          Boolean(packageReviewsStatus) ||
+          undefined
+        }
+      >
+        <summary>
+          Saved workflows{modes.length > 0 ? ` · ${modes.length}` : ""}
+        </summary>
+        <div className="modes-section-heading">
+          <p>Start a saved workflow for a single task.</p>
+          <Button
+            type="button"
+            tone="quiet"
+            disabled={!nativeRuntime || !snapshotDigest}
+            onClick={() => setPackageAction({ intent: "import" })}
+          >
+            <Upload aria-hidden="true" size={14} /> Import workflow package
+          </Button>
         </div>
-        <Button
-          type="button"
-          tone="quiet"
-          disabled={!nativeRuntime || !snapshotDigest}
-          onClick={() => setPackageAction({ intent: "import" })}
-        >
-          <Upload aria-hidden="true" size={14} /> Import package
-        </Button>
-      </div>
-      {nativeRuntime ? (
-        <PackageReviewQueue
-          busyReviewId={busyPackageReview}
-          items={packageReviews}
-          onDecision={async (item, decision, projectIds) => {
-            if (!onPackageDecision) return;
-            setBusyPackageReview(item.review_id);
-            try {
-              await onPackageDecision(item, decision, projectIds);
-            } finally {
-              setBusyPackageReview(null);
-            }
-          }}
-          projects={reviewProjects}
-        />
-      ) : null}
-      {loading ? <LoadingStatus>Loading saved workflows…</LoadingStatus> : null}
-      {error ? (
-        <div className="modes-empty" role="alert">
-          {error}
+        {packageReviewsStatus}
+        {nativeRuntime ? (
+          <PackageReviewQueue
+            busyReviewId={busyPackageReview}
+            items={packageReviews}
+            onDecision={async (item, decision, projectIds) => {
+              if (!onPackageDecision) return;
+              setBusyPackageReview(item.review_id);
+              try {
+                await onPackageDecision(item, decision, projectIds);
+              } finally {
+                setBusyPackageReview(null);
+              }
+            }}
+            projects={reviewProjects}
+          />
+        ) : null}
+        {savedWorkflowsStatus}
+        {loading ? (
+          <LoadingStatus>Loading saved workflows…</LoadingStatus>
+        ) : null}
+        {error ? (
+          <div className="modes-empty" role="alert">
+            {error}
+          </div>
+        ) : null}
+        <div className="mode-catalog">
+          {modes.map((mode) => (
+            <article className="mode-row" key={mode.mode_id}>
+              <div className="mode-row__copy">
+                <h3>{mode.name}</h3>
+                <p>{mode.summary}</p>
+                <p className="mode-row__meta">
+                  {mode.source_kind === "imported" ? "Imported" : "Curated"} ·{" "}
+                  {mode.evaluation_status === "product_evaluated"
+                    ? "Tested"
+                    : mode.evaluation_status === "failed"
+                      ? "Did not pass testing"
+                      : mode.evaluation_status === "revoked"
+                        ? "Unavailable"
+                        : "Evaluation pending"}
+                  {mode.requested_tools.length > 0 && " · Requests tools"}
+                  {mode.personalized && (
+                    <>
+                      {" "}
+                      · <span>Personalized</span>
+                    </>
+                  )}
+                </p>
+              </div>
+              <Button
+                className="mode-row__action"
+                onClick={(event) => {
+                  modeTrigger.current = event.currentTarget;
+                  setSelected(mode);
+                }}
+                type="button"
+              >
+                View workflow <ArrowRight aria-hidden="true" size={15} />
+              </Button>
+            </article>
+          ))}
         </div>
-      ) : null}
-      <div className="mode-catalog">
-        {modes.map((mode) => (
-          <article className="mode-row" key={mode.mode_id}>
-            <div className="mode-row__copy">
-              <h3>{mode.name}</h3>
-              <p>{mode.summary}</p>
-              <p className="mode-row__meta">
-                {mode.source_kind === "imported" ? "Imported" : "Curated"} ·{" "}
-                {mode.evaluation_status === "product_evaluated"
-                  ? "Tested"
-                  : mode.evaluation_status === "failed"
-                    ? "Did not pass testing"
-                    : mode.evaluation_status === "revoked"
-                      ? "Unavailable"
-                      : "Evaluation pending"}
-                {mode.requested_tools.length > 0 && " · Requests tools"}
-                {mode.personalized && (
-                  <>
-                    {" "}
-                    · <span>Personalized</span>
-                  </>
-                )}
-              </p>
-            </div>
-            <Button
-              className="mode-row__action"
-              onClick={(event) => {
-                modeTrigger.current = event.currentTarget;
-                setSelected(mode);
-              }}
-              type="button"
-            >
-              View workflow <ArrowRight aria-hidden="true" size={15} />
-            </Button>
-          </article>
-        ))}
-      </div>
-      {!loading && !error && modes.length === 0 ? (
-        <div className="modes-empty">No saved workflows yet.</div>
-      ) : null}
-      <footer className="mode-footer">
-        <details>
-          <summary>How saved workflows run</summary>
-          <p>Saved workflows apply to one task at a time.</p>
-        </details>
-        <button onClick={onOpenCore} type="button">
-          View personalization <ArrowRight aria-hidden="true" size={14} />
-        </button>
-      </footer>
+        {!loading && !error && !savedWorkflowsStatus && modes.length === 0 ? (
+          <div className="modes-empty">No saved workflows yet.</div>
+        ) : null}
+        <footer className="mode-footer">
+          <details>
+            <summary>How saved workflows run</summary>
+            <p>Saved workflows apply to one task at a time.</p>
+          </details>
+          <button onClick={onOpenCore} type="button">
+            View personalization <ArrowRight aria-hidden="true" size={14} />
+          </button>
+        </footer>
+      </details>
       {selected ? (
         <ModeDetailsDialog
           mode={selected}
@@ -1520,124 +1590,12 @@ function ModeDetailsDialog({
           <Dialog.Close aria-label="Close" className="dialog-close">
             <X size={18} />
           </Dialog.Close>
-          <span className="folio-kicker">
-            Saved workflow · v{mode.mode_version}
-          </span>
           <Dialog.Title>{mode.name}</Dialog.Title>
           <Dialog.Description>{mode.summary}</Dialog.Description>
-          <dl className="mode-detail-list">
-            <div>
-              <dt>Evaluation status</dt>
-              <dd>
-                {mode.evaluation_status === "product_evaluated"
-                  ? "Passed effectiveness testing"
-                  : "Reviewed. Comparative testing pending."}
-              </dd>
-            </div>
-            <div>
-              <dt>Based on</dt>
-              <dd>
-                {detail
-                  ? detail.sources
-                      .map((source) => source.publisher)
-                      .join(" and ")
-                  : `${mode.source_count} pinned open-source source${mode.source_count === 1 ? "" : "s"}`}
-              </dd>
-            </div>
-            <div>
-              <dt>Duration</dt>
-              <dd>One task, up to {mode.task_lease_hours} hours</dd>
-            </div>
-            <div>
-              <dt>Instruction formats</dt>
-              <dd>{mode.compatible_target_families.join(" and ")}</dd>
-            </div>
-            <div>
-              <dt>Available now</dt>
-              <dd>New Codex tasks started by Temper</dd>
-            </div>
-            <div>
-              <dt>Added tools</dt>
-              <dd>
-                {mode.requested_tools.length
-                  ? mode.requested_tools.join(", ")
-                  : "None"}
-              </dd>
-            </div>
-            <div>
-              <dt>Safety and format checks</dt>
-              <dd>
-                {mode.evaluation_valid
-                  ? `${mode.evaluation_case_count} checks passed`
-                  : "Needs attention"}
-              </dd>
-            </div>
-            <div>
-              <dt>Effectiveness</dt>
-              <dd>
-                {mode.effectiveness_evaluated
-                  ? "Passed comparative testing"
-                  : "Comparative evaluation pending"}
-              </dd>
-            </div>
-            <div>
-              <dt>Personalization</dt>
-              <dd>
-                {mode.personalized
-                  ? "Uses your approved guidance for this task"
-                  : "Uses the workflow’s default guidance"}
-              </dd>
-            </div>
-          </dl>
-          {detail ? (
-            <section className="mode-source-list" aria-label="Workflow sources">
-              <h3>Reviewed sources</h3>
-              {detail.sources.map((source) => (
-                <div key={`${source.repository_url}:${source.source_path}`}>
-                  <span>{source.publisher}</span>
-                  <small>
-                    {source.repository_url.replace("https://github.com/", "")} ·{" "}
-                    {source.license_spdx} · {source.commit_sha.slice(0, 8)}
-                    {source.excluded_resource_count
-                      ? ` · ${source.excluded_resource_count} executable resource excluded`
-                      : ""}
-                  </small>
-                </div>
-              ))}
-            </section>
-          ) : null}
           <div className="mode-authority-note">
             Your request, project rules, security settings and saved guidance
             take precedence over workflow defaults.
           </div>
-          {projectId ? (
-            <details className="learning-details">
-              <summary>Instruction checks</summary>
-              <dl className="mode-detail-list" aria-label="Instruction checks">
-                <div>
-                  <dt>Existing setup considered</dt>
-                  <dd>
-                    {selectedEnvironment
-                      ? `${selectedEnvironment.source_count} source${selectedEnvironment.source_count === 1 ? "" : "s"}`
-                      : "Not analyzed yet"}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Workflow instructions</dt>
-                  <dd>
-                    {mode.projection_utf8_bytes} bytes before duplicate
-                    instructions are removed
-                  </dd>
-                </div>
-                <div>
-                  <dt>Blocking conflicts</dt>
-                  <dd>
-                    {selectedEnvironment?.blocking_conflict_count ?? "Unknown"}
-                  </dd>
-                </div>
-              </dl>
-            </details>
-          ) : null}
           <div className="mode-task-form">
             <div className="core-field">
               <span>Project</span>
@@ -1686,9 +1644,8 @@ function ModeDetailsDialog({
               <div className="mode-activation-preview" role="status">
                 <strong>Ready for one task</strong>
                 <span>
-                  {preview.included_clause_count} clauses ·{" "}
-                  {preview.projection_utf8_bytes} bytes · {preview.source_count}{" "}
-                  sources
+                  {preview.included_clause_count} guidance items from{" "}
+                  {preview.source_count} sources
                 </span>
                 <span>
                   {preview.requested_tools.length === 0
@@ -1728,6 +1685,123 @@ function ModeDetailsDialog({
                   : "Available in desktop app"}
             </Button>
           </div>
+          {projectId ? (
+            <details className="learning-details">
+              <summary>Instruction checks</summary>
+              <dl className="mode-detail-list" aria-label="Instruction checks">
+                <div>
+                  <dt>Existing setup considered</dt>
+                  <dd>
+                    {selectedEnvironment
+                      ? `${selectedEnvironment.source_count} source${selectedEnvironment.source_count === 1 ? "" : "s"}`
+                      : "Not analyzed yet"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Workflow guidance size</dt>
+                  <dd>
+                    {mode.projection_utf8_bytes.toLocaleString()} bytes before
+                    removing duplicates
+                  </dd>
+                </div>
+                <div>
+                  <dt>Blocking conflicts</dt>
+                  <dd>
+                    {selectedEnvironment?.blocking_conflict_count ?? "Unknown"}
+                  </dd>
+                </div>
+              </dl>
+            </details>
+          ) : null}
+
+          <details className="workflow-provenance">
+            <summary>Workflow details and sources</summary>
+            <p>Version {mode.mode_version}</p>
+            <dl className="mode-detail-list">
+              <div>
+                <dt>Evaluation status</dt>
+                <dd>
+                  {mode.evaluation_status === "product_evaluated"
+                    ? "Passed effectiveness testing"
+                    : "Reviewed. Comparative testing pending."}
+                </dd>
+              </div>
+              <div>
+                <dt>Based on</dt>
+                <dd>
+                  {detail
+                    ? detail.sources
+                        .map((source) => source.publisher)
+                        .join(" and ")
+                    : `${mode.source_count} pinned open-source source${mode.source_count === 1 ? "" : "s"}`}
+                </dd>
+              </div>
+              <div>
+                <dt>Duration</dt>
+                <dd>One task, up to {mode.task_lease_hours} hours</dd>
+              </div>
+              <div>
+                <dt>Instruction formats</dt>
+                <dd>{mode.compatible_target_families.join(" and ")}</dd>
+              </div>
+              <div>
+                <dt>Available now</dt>
+                <dd>New Codex tasks started by Temper</dd>
+              </div>
+              <div>
+                <dt>Added tools</dt>
+                <dd>
+                  {mode.requested_tools.length
+                    ? mode.requested_tools.join(", ")
+                    : "None"}
+                </dd>
+              </div>
+              <div>
+                <dt>Safety and format checks</dt>
+                <dd>
+                  {mode.evaluation_valid
+                    ? `${mode.evaluation_case_count} checks passed`
+                    : "Needs attention"}
+                </dd>
+              </div>
+              <div>
+                <dt>Effectiveness</dt>
+                <dd>
+                  {mode.effectiveness_evaluated
+                    ? "Passed comparative testing"
+                    : "Comparative evaluation pending"}
+                </dd>
+              </div>
+              <div>
+                <dt>Personalization</dt>
+                <dd>
+                  {mode.personalized
+                    ? "Uses your approved guidance for this task"
+                    : "Uses the workflow’s default guidance"}
+                </dd>
+              </div>
+            </dl>
+            {detail ? (
+              <section
+                className="mode-source-list"
+                aria-label="Workflow sources"
+              >
+                <h3>Reviewed sources</h3>
+                {detail.sources.map((source) => (
+                  <div key={`${source.repository_url}:${source.source_path}`}>
+                    <span>{source.publisher}</span>
+                    <small>
+                      {source.repository_url.replace("https://github.com/", "")}{" "}
+                      · {source.license_spdx} · {source.commit_sha.slice(0, 8)}
+                      {source.excluded_resource_count
+                        ? ` · ${source.excluded_resource_count} executable resource excluded`
+                        : ""}
+                    </small>
+                  </div>
+                ))}
+              </section>
+            ) : null}
+          </details>
         </Dialog.Content>
       </PageDialogPortal>
     </Dialog.Root>
@@ -1829,6 +1903,7 @@ function CoreItemDialog({
 }
 
 export function ConnectionsPage({
+  resourceStatus,
   nativeRuntime = false,
   liveConnections,
   liveProjects,
@@ -1842,6 +1917,7 @@ export function ConnectionsPage({
   onInstructionChanged,
   onRefresh,
 }: {
+  resourceStatus?: ReactNode;
   nativeRuntime?: boolean;
   liveConnections?: EngineAgentConnection[];
   liveProjects?: EngineProject[];
@@ -1990,6 +2066,7 @@ export function ConnectionsPage({
           <h1>Connections</h1>
         </div>
       </header>
+      {resourceStatus}
       {nativeRuntime ? (
         <div className="connections-toolbar">
           <Button
@@ -2957,6 +3034,7 @@ function connectionStatusLabel(status: AgentConnection["status"]): string {
 }
 
 export function SettingsPage({
+  resourceStatus,
   theme,
   onThemeChange,
   advancedMode,
@@ -2975,6 +3053,7 @@ export function SettingsPage({
   snapshotDigest = null,
   onRecoveryCreated,
 }: {
+  resourceStatus?: ReactNode;
   theme: Theme;
   onThemeChange: (theme: Theme) => void;
   advancedMode: boolean;
@@ -3012,6 +3091,7 @@ export function SettingsPage({
   const [preferenceBusy, setPreferenceBusy] = useState(false);
   const [preferenceError, setPreferenceError] = useState<string | null>(null);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const preferencesUnavailable = nativeRuntime && !snapshotDigest;
 
   async function savePreferences(
     nextLearning: boolean,
@@ -3019,7 +3099,12 @@ export function SettingsPage({
     nextNotifications: boolean,
     nextLaunch: boolean,
   ) {
-    if (!nativeRuntime || !onGovernedPreferencesChange) return;
+    if (
+      !nativeRuntime ||
+      preferencesUnavailable ||
+      !onGovernedPreferencesChange
+    )
+      return;
     setPreferenceBusy(true);
     setPreferenceError(null);
     try {
@@ -3079,6 +3164,7 @@ export function SettingsPage({
           <h1>Settings</h1>
         </div>
       </header>
+      {resourceStatus}
       <SettingsGroup
         title={nativeRuntime ? "Reviewed suggestions" : "Learning"}
       >
@@ -3090,7 +3176,7 @@ export function SettingsPage({
               : "Notice possible preferences in completed work from registered projects."
           }
           label={nativeRuntime ? "Reviewed suggestions" : "Background learning"}
-          disabled={preferenceBusy}
+          disabled={preferenceBusy || preferencesUnavailable}
           onCheckedChange={(enabled) => {
             setLearning(enabled);
             if (nativeRuntime) {
@@ -3106,7 +3192,7 @@ export function SettingsPage({
         <Toggle
           checked={nativeRuntime ? decisionNotificationsEnabled : notifications}
           label="Review notifications"
-          disabled={preferenceBusy}
+          disabled={preferenceBusy || preferencesUnavailable}
           onCheckedChange={(enabled) => {
             void saveNotificationPreference(enabled);
           }}
@@ -3149,7 +3235,7 @@ export function SettingsPage({
         <Toggle
           checked={nativeRuntime ? launchAtLoginEnabled : launch}
           label="Launch at sign-in"
-          disabled={preferenceBusy}
+          disabled={preferenceBusy || preferencesUnavailable}
           onCheckedChange={(enabled) => {
             setLaunch(enabled);
             if (nativeRuntime) {
@@ -3501,6 +3587,7 @@ function ReportRow({ label, value }: { label: string; value: string }) {
 }
 
 export function AdvancedPage({
+  resourceStatus,
   nativeRuntime = false,
   projects: liveProjects = [],
   previewProjects = [],
@@ -3514,6 +3601,7 @@ export function AdvancedPage({
   onDiscard,
   onDiagnostics,
 }: {
+  resourceStatus?: ReactNode;
   nativeRuntime?: boolean;
   projects?: Array<{ id: string; label: string }>;
   previewProjects?: Array<{ id: string; label: string }>;
@@ -3561,9 +3649,7 @@ export function AdvancedPage({
   }
   return (
     <div className="page">
-      <header className="page-topline">
-        <div />
-      </header>
+      {resourceStatus}
       <SectionHeading
         eyebrow="Advanced"
         title="Run with Temper"
@@ -3732,10 +3818,13 @@ export function AdvancedPage({
         </section>
       ) : null}
       {nativeRuntime && longitudinalGate ? (
-        <LongitudinalGateCard gate={longitudinalGate} />
+        <details className="settings-group workflow-provenance">
+          <summary>Learning assessment</summary>
+          <LongitudinalGateCard gate={longitudinalGate} />
+        </details>
       ) : null}
       <section className="settings-group">
-        <h2>Instrument status</h2>
+        <h2>Local diagnostics</h2>
         {diagnostics ? (
           <p>
             {diagnostics.project_count} projects ·{" "}
@@ -3777,7 +3866,6 @@ function LongitudinalGateCard({ gate }: { gate: EngineLongitudinalGate }) {
     <section aria-labelledby="longitudinal-gate-title" className="gate-card">
       <div className="gate-card__heading">
         <div>
-          <span>Genuine learning gate</span>
           <h2 id="longitudinal-gate-title">
             {gate.evidence_ready
               ? "Evidence set complete"
@@ -3841,7 +3929,7 @@ function LongitudinalGateCard({ gate }: { gate: EngineLongitudinalGate }) {
           <dd>{gate.repeated_correction_count}</dd>
         </div>
         <div>
-          <dt>Latest projection</dt>
+          <dt>Latest guidance size</dt>
           <dd>{latestPack.toLocaleString()} bytes</dd>
         </div>
       </dl>

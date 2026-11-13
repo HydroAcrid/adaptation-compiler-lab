@@ -1,9 +1,10 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { loadAutonomy } from "../autonomy";
 import { usePageNavigation } from "../usePageNavigation";
 import { LearningRepositories } from "./LearningRepositories";
+import { NativeStartup } from "./NativeStartup";
 import { Shell } from "./Shell";
 
 vi.mock("../autonomy", () => ({
@@ -40,6 +41,40 @@ function NavigationFixture() {
     />
   );
 }
+
+it("keeps the workspace navigation visible while opening and retrying", () => {
+  const retry = vi.fn();
+  const { rerender } = render(
+    <NativeStartup advancedMode failure={null} onRetry={retry} />,
+  );
+  const navigation = screen.getByRole("navigation", { name: "Primary" });
+  const main = screen.getByRole("main", { name: "Overview" });
+
+  expect(within(navigation).getAllByRole("button")).toHaveLength(6);
+  expect(
+    within(navigation).getByRole("button", { name: "Overview" }),
+  ).toHaveAttribute("aria-current", "page");
+  expect(
+    within(navigation).getByRole("button", { name: "Advanced" }),
+  ).toBeDisabled();
+  expect(within(main).getByRole("status")).toHaveTextContent(
+    "Loading your projects and preferences",
+  );
+
+  rerender(
+    <NativeStartup
+      advancedMode
+      failure={{ code: "engine_unavailable", message: "Engine unavailable." }}
+      onRetry={retry}
+    />,
+  );
+  expect(screen.getByRole("navigation", { name: "Primary" })).toBe(navigation);
+  expect(within(main).getByRole("alert")).toHaveTextContent(
+    "Engine unavailable.",
+  );
+  fireEvent.click(within(main).getByRole("button", { name: "Try again" }));
+  expect(retry).toHaveBeenCalledOnce();
+});
 
 it("mounts pages when opened and preserves their inputs and scroll positions", () => {
   const { container } = render(<NavigationFixture />);

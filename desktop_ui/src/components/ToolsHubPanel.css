@@ -98,6 +98,61 @@
   margin-top: 4px;
 }
 
+.repository-setup-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-block: 12px;
+}
+
+.repository-setup-row {
+  padding-block: 12px;
+  border-block-start: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+
+.repository-setup-row .portable-setup-heading small,
+.repository-setup-items dd > span {
+  display: block;
+}
+
+.repository-setup-row .portable-setup-heading small {
+  color: var(--muted);
+  font-size: var(--type-label);
+}
+
+.repository-setup-row .portable-setup-heading p {
+  margin-block: 5px 0;
+}
+
+.repository-setup-row > details {
+  margin-top: 8px;
+  font-size: var(--type-body);
+}
+
+.repository-setup-items {
+  margin: 8px 0 0;
+  font-size: var(--type-body);
+  line-height: 1.5;
+}
+
+.repository-setup-items > div {
+  display: grid;
+  grid-template-columns: minmax(92px, 24%) minmax(0, 1fr);
+  gap: 6px 14px;
+  padding-block: 7px;
+  border-block-start: 1px solid var(--border);
+}
+
+.repository-setup-items dt {
+  color: var(--muted);
+}
+
+.repository-setup-items dd {
+  margin: 0;
+}
+
 @supports (interpolate-size: allow-keywords) {
   @media (prefers-reduced-motion: no-preference) {
     .continuity-details::details-content {

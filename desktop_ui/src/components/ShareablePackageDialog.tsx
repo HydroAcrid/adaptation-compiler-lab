@@ -9,6 +9,7 @@ import {
   exportPackage,
   loadPackageExportPreview,
   loadPackageImportPreview,
+  normalizeEngineFailure,
   stagePackageImport,
   type PackageExportPreview,
   type PackageImportPreview,
@@ -40,6 +41,7 @@ export function ShareablePackageDialog({
   >(null);
   const [busy, setBusy] = useState(intent !== "import" && nativeRuntime);
   const [error, setError] = useState<string | null>(null);
+  const [previewRequest, setPreviewRequest] = useState(0);
   const exporting = intent !== "import";
 
   useEffect(() => {
@@ -54,11 +56,11 @@ export function ShareablePackageDialog({
         if (active) setPreview(result);
       } catch (reason: unknown) {
         if (active) {
+          const failure = normalizeEngineFailure(reason);
           setError(
-            engineFailureMessage(
-              reason,
-              "Temper could not prepare this package.",
-            ),
+            failure.code === "package_export_unavailable"
+              ? "This pack could not be prepared for sharing. Retry the preview to check again."
+              : failure.message,
           );
         }
       } finally {
@@ -69,7 +71,7 @@ export function ShareablePackageDialog({
     return () => {
       active = false;
     };
-  }, [exporting, intent, mode?.mode_id, nativeRuntime]);
+  }, [exporting, intent, mode?.mode_id, nativeRuntime, previewRequest]);
 
   async function chooseImport() {
     if (!nativeRuntime) return;
@@ -127,8 +129,8 @@ export function ShareablePackageDialog({
 
   const title = exporting
     ? intent === "export-mode"
-      ? `Share ${mode?.name ?? "this Mode"}`
-      : "Share approved behaviors"
+      ? `Share ${mode?.name ?? "this workflow"}`
+      : "Share approved preferences"
     : "Review a Temper package";
 
   return (
@@ -148,12 +150,12 @@ export function ShareablePackageDialog({
           <span className="portability-symbol" aria-hidden="true">
             {exporting ? <Share2 size={21} /> : <PackageOpen size={21} />}
           </span>
-          <span className="folio-kicker">Offline package</span>
+          <span className="folio-kicker">Share a pack</span>
           <Dialog.Title>{title}</Dialog.Title>
           <Dialog.Description>
             {exporting
-              ? "Create a signed, raw-free package. The recipient must review it before anything can become active."
-              : "Verify who signed the package, what it contains, and any conflicts before staging it inactive."}
+              ? "Share this guidance without your conversations or account details. The recipient reviews it before deciding what to use."
+              : "Check the sender, contents and any conflicts. Imported guidance waits for your review before it can be used."}
           </Dialog.Description>
 
           {busy && !preview ? (
@@ -162,6 +164,18 @@ export function ShareablePackageDialog({
           {error ? (
             <div className="portability-error" role="alert">
               {error}
+              {exporting && !preview ? (
+                <Button
+                  disabled={busy}
+                  onClick={() => {
+                    setError(null);
+                    setBusy(true);
+                    setPreviewRequest((request) => request + 1);
+                  }}
+                >
+                  Retry preview
+                </Button>
+              ) : null}
             </div>
           ) : null}
           {!exporting && !preview ? (

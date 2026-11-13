@@ -12,7 +12,6 @@ export type Screen =
 export type Theme = "light" | "dark" | "system";
 export type FeedbackValue = "helped" | "hurt" | "irrelevant";
 export type ProjectName = string;
-export type WorkspaceScope = "all" | ProjectName;
 export type EvidenceStrength = "strong" | "promising" | "developing";
 export type AutomationDisposition =
   "eligible" | "review-required" | "collect-more";
@@ -25,6 +24,7 @@ export interface Suggestion {
   explanation: string;
   suggestedScope: string;
   sourceProject: ProjectName | null;
+  projectIds?: string[];
   projectNames?: ProjectName[];
   isGlobal?: boolean;
   availableDecisions?: SuggestionDecision[];
@@ -55,6 +55,7 @@ export interface CoreItem {
   title: string;
   description: string;
   scope: CoreScope;
+  projectIds?: string[];
   projectNames?: ProjectName[];
   isGlobal?: boolean;
   sourceSummary: string;

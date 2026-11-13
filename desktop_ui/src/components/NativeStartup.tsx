@@ -2,41 +2,31 @@ import { AlertTriangle, RotateCcw } from "lucide-react";
 
 import type { EngineClientFailure } from "../engine";
 import { BrandMark } from "./BrandMark";
+import { WorkspaceFrame } from "./Shell";
 import { Button, LoadingStatus } from "./ui";
 
 export function NativeStartup({
+  advancedMode,
   failure,
-  failureStage,
   onRetry,
 }: {
+  advancedMode: boolean;
   failure: EngineClientFailure | null;
-  failureStage: "startup" | "refresh";
   onRetry: () => void;
 }) {
   return (
-    <div className="native-startup">
-      <header className="native-startup__header">
-        <BrandMark />
-      </header>
-      <main className="native-startup__content">
+    <WorkspaceFrame advancedMode={advancedMode} page="today">
+      <div className="page folio-page folio-page--today">
+        <header className="today-learning-heading">
+          <h1>
+            {failure
+              ? "Temper could not open its local state."
+              : "Opening Temper"}
+          </h1>
+        </header>
         {failure ? (
-          <AlertTriangle
-            aria-hidden="true"
-            className="native-startup__mark"
-            size={24}
-            strokeWidth={1.7}
-          />
-        ) : null}
-        <h1>
-          {failure
-            ? failureStage === "refresh"
-              ? "Temper could not refresh its local state."
-              : "Temper could not open its local state."
-            : "Opening Temper"}
-        </h1>
-        {failure ? (
-          <>
-            <p>{failure.message}</p>
+          <section aria-label="Startup error" className="startup-error">
+            <p role="alert">{failure.message}</p>
             <Button
               icon={<RotateCcw aria-hidden="true" size={16} />}
               onClick={onRetry}
@@ -45,12 +35,34 @@ export function NativeStartup({
             >
               Try again
             </Button>
-          </>
+          </section>
         ) : (
-          <LoadingStatus>Loading your projects and preferences…</LoadingStatus>
+          <div className="startup-placeholder">
+            <div className="startup-placeholder__section">
+              <LoadingStatus>
+                Loading your projects and preferences…
+              </LoadingStatus>
+              <div aria-hidden="true" className="startup-placeholder__row">
+                <span />
+                <span />
+              </div>
+              <div aria-hidden="true" className="startup-placeholder__row">
+                <span />
+              </div>
+            </div>
+            <div aria-hidden="true" className="startup-placeholder__section">
+              <span className="startup-placeholder__heading" />
+              <div className="startup-placeholder__row">
+                <span />
+              </div>
+            </div>
+            <div aria-hidden="true" className="startup-placeholder__section">
+              <span className="startup-placeholder__heading" />
+            </div>
+          </div>
         )}
-      </main>
-    </div>
+      </div>
+    </WorkspaceFrame>
   );
 }
 

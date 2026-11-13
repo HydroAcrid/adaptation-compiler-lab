@@ -18,6 +18,17 @@ const repository = {
   id: "fictional-repo",
   label: "Example repository",
   root: "C:/fictional/example",
+  active: [],
+  paused: false,
+  pending_recovery: false,
+};
+const workflowState = {
+  enabled: true,
+  indexed: true,
+  bridge_configured: true,
+  native_hooks_configured: true,
+  paused: false,
+  projects: [repository],
 };
 const setup: SetupPreview = {
   title: "Release routine",
@@ -99,12 +110,23 @@ it("preserves the compose draft through review failure, back, and picker cancell
   const create = screen.getByRole("button", { name: "Create setup" });
   expect(create).toHaveFocus();
   await user.keyboard("{Enter}");
-  const dialog = within(await screen.findByRole("dialog"));
+  let dialog = within(await screen.findByRole("dialog"));
   await user.type(dialog.getByLabelText("Setup name"), setup.title);
   await user.click(dialog.getByRole("button", { name: "Add item" }));
   await user.type(dialog.getByLabelText("Item name"), "Triage");
   await user.type(
     dialog.getByLabelText("Skill guidance"),
+    "Read recent changes",
+  );
+  await user.keyboard("{Escape}");
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  const resume = screen.getByRole("button", { name: "Resume setup draft" });
+  await waitFor(() => expect(resume).toHaveFocus());
+  await user.keyboard("{Enter}");
+  dialog = within(await screen.findByRole("dialog"));
+  expect(dialog.getByLabelText("Setup name")).toHaveValue(setup.title);
+  expect(dialog.getByLabelText("Item name")).toHaveValue("Triage");
+  expect(dialog.getByLabelText("Skill guidance")).toHaveValue(
     "Read recent changes",
   );
   await user.click(dialog.getByRole("button", { name: "Review setup" }));
@@ -129,14 +151,17 @@ it("preserves the compose draft through review failure, back, and picker cancell
   await user.click(dialog.getByRole("button", { name: "Save setup file" }));
   expect(await screen.findByText("Saved “Release routine”.")).toBeVisible();
   await waitFor(() => expect(create).toHaveFocus());
+  await user.keyboard("{Enter}");
+  dialog = within(await screen.findByRole("dialog"));
+  expect(dialog.getByLabelText("Setup name")).toHaveValue("");
+  expect(dialog.queryByLabelText("Skill guidance")).toBeNull();
 });
 
 it("recovers from a bad file and requires consent for the exact target and all four reviewed items", async () => {
   let active: SetupPreview | null = null;
   let attempts = 0;
   native.mockImplementation(async (command) => {
-    if (command === "tools_hub_request")
-      return response({ projects: [repository] });
+    if (command === "tools_hub_request") return response(workflowState);
     if (command === "portable_setup_status") return response({ active });
     if (command === "portable_setup_import_preview") {
       if (attempts++ === 0)
@@ -164,8 +189,8 @@ it("recovers from a bad file and requires consent for the exact target and all f
   });
   const user = userEvent.setup();
   render(<PortableSetupPanel nativeRuntime />);
-  await screen.findByText("No active portable setups.");
-  await user.click(screen.getByRole("button", { name: "Open setup" }));
+  await screen.findByText("No approved portable setups.");
+  await user.click(screen.getByRole("button", { name: "Import setup" }));
   const dialog = within(await screen.findByRole("dialog"));
   expect(
     dialog.getByRole("button", { name: "Choose setup file" }),
@@ -200,7 +225,7 @@ it("recovers from a bad file and requires consent for the exact target and all f
   await user.click(await screen.findByText("View setup contents"));
   expect(screen.getByText("Read recent changes")).toBeVisible();
 
-  await user.click(screen.getByRole("button", { name: "Open setup" }));
+  await user.click(screen.getByRole("button", { name: "Import setup" }));
   const replacement = within(await screen.findByRole("dialog"));
   await user.click(
     replacement.getByRole("combobox", { name: "Target repository" }),
@@ -239,7 +264,7 @@ it("recovers from a bad file and requires consent for the exact target and all f
       name: "Remove setup",
     }),
   );
-  expect(await screen.findByText("No active portable setups.")).toBeVisible();
+  expect(await screen.findByText("No approved portable setups.")).toBeVisible();
 });
 
 it("keeps a status failure retryable and shows that setup status is loading", async () => {
@@ -251,12 +276,12 @@ it("keeps a status failure retryable and shows that setup status is loading", as
           resolveFirst = resolve;
         }),
     )
-    .mockResolvedValueOnce(response({ projects: [repository] }))
+    .mockResolvedValueOnce(response(workflowState))
     .mockResolvedValueOnce(response({ active: null }));
   const user = userEvent.setup();
   render(<PortableSetupPanel nativeRuntime />);
-  expect(screen.getByText("Loading portable setups…")).toBeVisible();
-  expect(screen.getByRole("button", { name: "Open setup" })).toBeDisabled();
+  expect(screen.getByText("Loading repository setups…")).toBeVisible();
+  expect(screen.getByRole("button", { name: "Import setup" })).toBeDisabled();
   resolveFirst?.({
     ...response({}),
     ok: false,
@@ -268,7 +293,7 @@ it("keeps a status failure retryable and shows that setup status is loading", as
   await user.click(
     screen.getByRole("button", { name: "Refresh repositories" }),
   );
-  expect(await screen.findByText("No active portable setups.")).toBeVisible();
+  expect(await screen.findByText("No approved portable setups.")).toBeVisible();
 });
 
 it("requires confirmation to clear an unreadable setup and refreshes after a stale recovery", async () => {
@@ -276,8 +301,7 @@ it("requires confirmation to clear an unreadable setup and refreshes after a sta
   let attempts = 0;
   const recoveryDigest = "sha256:unreadable";
   native.mockImplementation(async (command) => {
-    if (command === "tools_hub_request")
-      return response({ projects: [repository] });
+    if (command === "tools_hub_request") return response(workflowState);
     if (command === "portable_setup_status")
       return response(
         unreadable
@@ -337,5 +361,173 @@ it("requires confirmation to clear an unreadable setup and refreshes after a sta
     digest: recoveryDigest,
     idempotencyKey: expect.any(String),
   });
-  expect(await screen.findByText("No active portable setups.")).toBeVisible();
+  expect(await screen.findByText("No approved portable setups.")).toBeVisible();
+});
+
+it("blocks paused and disconnected setup imports before file selection", async () => {
+  native.mockResolvedValue(response({ active: null }));
+  const state = {
+    version: 1 as const,
+    digest: "fixture",
+    ...workflowState,
+    project_count: 1,
+    manager: "fixture",
+    manager_ready: true,
+    sources: [],
+    cleanup_pending: false,
+    last_checked: null,
+    job: null,
+  };
+  function panel(overrides: Partial<typeof state>) {
+    return (
+      <PortableSetupPanel
+        nativeRuntime
+        status={{
+          state: { ...state, ...overrides },
+          pending: false,
+          failed: false,
+          revision: 0,
+          refresh: vi.fn(),
+        }}
+      />
+    );
+  }
+
+  const user = userEvent.setup();
+  const { rerender } = render(panel({ paused: true }));
+  expect(
+    await screen.findByText("Resume updates to import a setup."),
+  ).toBeVisible();
+  const trigger = screen.getByRole("button", { name: "Import setup" });
+  expect(trigger).toBeDisabled();
+  rerender(panel({ bridge_configured: false }));
+  expect(screen.getByText("Connect Codex to import a setup.")).toBeVisible();
+  expect(trigger).toBeDisabled();
+  rerender(panel({ projects: [{ ...repository, paused: true }] }));
+  expect(
+    screen.getByText("Resume updates for this repository to import a setup."),
+  ).toBeVisible();
+  expect(trigger).toBeDisabled();
+  expect(native).not.toHaveBeenCalledWith(
+    "portable_setup_import_preview",
+    expect.anything(),
+  );
+
+  rerender(panel({}));
+  await user.click(trigger);
+  const dialog = within(await screen.findByRole("dialog"));
+  await user.click(dialog.getByRole("combobox", { name: "Target repository" }));
+  await user.click(screen.getByRole("option", { name: /Example repository/ }));
+  expect(
+    dialog.getByRole("button", { name: "Choose setup file" }),
+  ).toBeEnabled();
+  rerender(panel({ paused: true }));
+  expect(
+    dialog.getByRole("button", { name: "Choose setup file" }),
+  ).toBeDisabled();
+  expect(dialog.getByText("Resume updates to import a setup.")).toBeVisible();
+});
+
+it("shares an approved repository setup with its real contents and protects an existing draft", async () => {
+  native.mockImplementation(async (command) => {
+    if (command === "tools_hub_request") return response(workflowState);
+    if (command === "portable_setup_status") return response({ active: setup });
+    if (command === "portable_setup_export_preview") return response(setup);
+    throw new Error(command);
+  });
+  const user = userEvent.setup();
+  render(<PortableSetupPanel nativeRuntime />);
+  const share = await screen.findByRole("button", {
+    name: "Share setup for Example repository",
+  });
+  expect(share).toBeEnabled();
+  await user.click(screen.getByRole("button", { name: "Create setup" }));
+  let dialog = within(await screen.findByRole("dialog"));
+  await user.type(dialog.getByLabelText("Setup name"), "Unrelated setup");
+  await user.keyboard("{Escape}");
+  expect(share).toBeDisabled();
+  await user.click(screen.getByRole("button", { name: "Resume setup draft" }));
+  dialog = within(await screen.findByRole("dialog"));
+  await user.click(dialog.getByRole("button", { name: "Discard draft" }));
+  expect(share).toBeEnabled();
+  await user.click(share);
+  dialog = within(await screen.findByRole("dialog"));
+  expect(dialog.getByLabelText("Setup name")).toHaveValue(setup.title);
+  expect(dialog.getByLabelText("Skill guidance")).toHaveValue(
+    "Read recent changes",
+  );
+  expect(dialog.getByLabelText("Knowledge text")).toHaveValue("Docs live here");
+  expect(dialog.getByLabelText("Preference text")).toHaveValue(
+    "Use plain language",
+  );
+  expect(dialog.getByLabelText("Text to find")).toHaveValue("READY");
+  await user.click(dialog.getByRole("button", { name: "Review setup" }));
+  expect(native).toHaveBeenCalledWith("portable_setup_export_preview", {
+    title: setup.title,
+    items: setup.items,
+  });
+});
+
+it("keeps all last verified items during a pending and failed refresh, then recovers", async () => {
+  let settleRefresh: ((value: unknown) => void) | undefined;
+  let reads = 0;
+  native.mockImplementation(async (command) => {
+    if (command === "tools_hub_request") return response(workflowState);
+    if (command !== "portable_setup_status") throw new Error(command);
+    if (++reads === 2) {
+      return new Promise((resolve) => {
+        settleRefresh = resolve;
+      });
+    }
+    return response({ active: reads === 1 ? setup : null });
+  });
+  const user = userEvent.setup();
+  render(<PortableSetupPanel nativeRuntime />);
+  const panel = within(
+    screen.getByRole("region", { name: "Repository setup" }),
+  );
+  const share = await panel.findByRole("button", {
+    name: "Share setup for Example repository",
+  });
+  const remove = panel.getByRole("button", { name: "Remove setup" });
+  const importSetup = panel.getByRole("button", { name: "Import setup" });
+  const refresh = panel.getByRole("button", { name: "Refresh repositories" });
+  expect(share).toBeEnabled();
+  expect(remove).toBeEnabled();
+  expect(importSetup).toBeEnabled();
+
+  await user.click(refresh);
+  expect(panel.getByText("Refreshing repository setups…")).toBeVisible();
+  for (const item of setup.items) {
+    expect(
+      panel.getByText(item.title, { exact: false, selector: "dd > span" }),
+    ).toBeVisible();
+  }
+  expect(remove).toBeDisabled();
+
+  settleRefresh?.({
+    ...response({}),
+    ok: false,
+    error: { message: "This repository could not be reached." },
+  });
+  expect(
+    await panel.findByText("Last known setup · Release routine"),
+  ).toBeVisible();
+  expect(panel.getByRole("alert")).toHaveTextContent(
+    "This repository could not be reached.",
+  );
+  for (const item of setup.items) {
+    expect(
+      panel.getByText(item.title, { exact: false, selector: "dd > span" }),
+    ).toBeVisible();
+  }
+  expect(share).toBeDisabled();
+  expect(remove).toBeDisabled();
+  expect(importSetup).toBeDisabled();
+
+  await user.click(panel.getByRole("button", { name: "Refresh repositories" }));
+  expect(await panel.findByText("No approved portable setups.")).toBeVisible();
+  expect(panel.queryByText(/Last known setup/)).toBeNull();
+  expect(panel.queryByText("Readiness")).toBeNull();
+  expect(importSetup).toBeEnabled();
 });

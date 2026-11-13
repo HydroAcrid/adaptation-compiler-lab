@@ -1,5 +1,12 @@
 import * as Tooltip from "@radix-ui/react-tooltip";
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { Onboarding } from "./components/Onboarding";
 import { DesktopHostRequired, NativeStartup } from "./components/NativeStartup";
@@ -14,7 +21,9 @@ import {
 } from "./components/pages";
 import { ReviewDialog } from "./components/ReviewDialog";
 import { Shell, WorkspacePicker } from "./components/Shell";
+import { Button, LoadingStatus } from "./components/ui";
 import { usePageNavigation } from "./usePageNavigation";
+import { useWorkspaceResource } from "./useWorkspaceResource";
 import {
   connections as demoConnections,
   coreItems as demoCoreItems,
@@ -47,14 +56,12 @@ import {
   updateEnginePreferences,
   type EngineSuggestion,
   type EngineDesktopSnapshot,
-  type EngineSetupSnapshot,
   type EngineTaskResult,
   type EngineDiagnostics,
   type EngineClientFailure,
   type EngineInstructionEnvironmentSummary,
 } from "./engine";
 import type {
-  CapabilityModeSummary,
   CoreItem,
   CoreKind,
   FeedbackValue,
@@ -62,7 +69,6 @@ import type {
   Suggestion,
   SuggestionDecision,
   Theme,
-  WorkspaceScope,
   PackageReviewItem,
 } from "./types";
 
@@ -85,12 +91,11 @@ function initialScreen(): Screen {
   return value && supportedScreens.has(value) ? value : "today";
 }
 
-function initialWorkspace(): WorkspaceScope {
-  if (!import.meta.env.DEV) return "all";
+function initialWorkspaceProject(): string | null {
   const value = new URLSearchParams(window.location.search).get("project");
   if (value === "green-meadow") return "Green Meadow";
   if (value === "kairn") return "Kairn";
-  return "all";
+  return null;
 }
 
 function initialTheme(): Theme {
@@ -100,6 +105,51 @@ function initialTheme(): Theme {
   }
   const saved = window.localStorage.getItem("temper.theme");
   return saved === "dark" || saved === "system" ? saved : "light";
+}
+
+const noModes: Awaited<ReturnType<typeof loadModes>> = [];
+const noPackageReviews: PackageReviewItem[] = [];
+const noInstructionEnvironments: EngineInstructionEnvironmentSummary[] = [];
+
+function ResourceStatus({
+  label,
+  resource,
+}: {
+  label: string;
+  resource: {
+    data: unknown;
+    error: EngineClientFailure | null;
+    loading: boolean;
+    read: () => Promise<void>;
+  };
+}) {
+  if (!resource.error) {
+    return resource.loading && !resource.data ? (
+      <LoadingStatus>Loading {label.toLowerCase()}…</LoadingStatus>
+    ) : null;
+  }
+  return (
+    <div className="modes-empty">
+      <p role="alert">
+        {resource.data
+          ? `${label} may be out of date.`
+          : `${label} could not load.`}{" "}
+        {resource.error.message}
+      </p>
+      <Button
+        disabled={resource.loading}
+        onClick={() => {
+          void resource.read().catch(() => undefined);
+        }}
+        tone="quiet"
+        type="button"
+      >
+        {resource.loading
+          ? `Retrying ${label.toLowerCase()}…`
+          : `Retry ${label.toLowerCase()}`}
+      </Button>
+    </div>
+  );
 }
 
 export default function App() {
@@ -115,43 +165,65 @@ export default function App() {
       window.localStorage.getItem("temper.advanced") === "true",
   );
   const [reviewOpen, setReviewOpen] = useState(firstScreen === "suggestion");
-  const [activeWorkspace, setActiveWorkspace] =
-    useState<WorkspaceScope>(initialWorkspace);
+  const reviewOpener = useRef<HTMLElement | null>(null);
+  const returnedReviewFocus = useRef<HTMLElement | null>(null);
+  const [workspaceProjectId, setWorkspaceProjectId] = useState<string | null>(
+    () => (browserPreviewRuntime ? initialWorkspaceProject() : null),
+  );
   const [suggestionQueue, setSuggestionQueue] = useState<Suggestion[]>(
     browserPreviewRuntime ? demoSuggestions : [],
   );
-  const [selectedSuggestionId, setSelectedSuggestionId] = useState(
-    browserPreviewRuntime ? (demoSuggestions[0]?.id ?? "") : "",
+  const [reviewSuggestionId, setReviewSuggestionId] = useState<string | null>(
+    null,
   );
   const [automaticLearning, setAutomaticLearning] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackValue | null>(null);
+  const [savingFeedback, setSavingFeedback] = useState(false);
+  const [ratedActivationIds, setRatedActivationIds] = useState<string[]>([]);
   const [toast, setToast] = useState<string | null>(null);
-  const [engineSnapshot, setEngineSnapshot] =
-    useState<EngineDesktopSnapshot | null>(null);
-  const [snapshotDigest, setSnapshotDigest] = useState<string | null>(null);
-  const [setupSnapshot, setSetupSnapshot] =
-    useState<EngineSetupSnapshot | null>(null);
-  const [setupDigest, setSetupDigest] = useState<string | null>(null);
-  const [modeCatalog, setModeCatalog] = useState<CapabilityModeSummary[]>(
-    browserPreviewRuntime ? browserModes : [],
+  const workspace = useWorkspaceResource(loadEngineSnapshot);
+  const setup = useWorkspaceResource(loadSetupSnapshot);
+  const catalog = useWorkspaceResource(loadModes);
+  const environments = useWorkspaceResource(loadInstructionEnvironments);
+  const importedReviews = useWorkspaceResource(loadPackageReviews);
+  const { read: readWorkspace } = workspace;
+  const { read: readSetup } = setup;
+  const { read: readCatalog } = catalog;
+  const { read: readEnvironments } = environments;
+  const { read: readImportedReviews } = importedReviews;
+  const readAuxiliaryResources = useCallback(
+    () =>
+      Promise.allSettled([
+        readCatalog(),
+        readSetup(),
+        readEnvironments(),
+        readImportedReviews(),
+      ]),
+    [readCatalog, readEnvironments, readImportedReviews, readSetup],
   );
-  const [packageReviews, setPackageReviews] = useState<PackageReviewItem[]>([]);
+  const engineSnapshot = workspace.data?.snapshot ?? null;
+  const snapshotDigest =
+    workspace.error || workspace.loading
+      ? null
+      : (workspace.data?.snapshotDigest ?? null);
+  const setupSnapshot = setup.data?.snapshot ?? null;
+  const setupDigest =
+    setup.error || setup.loading ? null : (setup.data?.snapshotDigest ?? null);
+  const modeCatalog =
+    catalog.data ?? (browserPreviewRuntime ? browserModes : noModes);
+  const packageReviews = importedReviews.data ?? noPackageReviews;
+  const instructionEnvironments =
+    environments.data ?? noInstructionEnvironments;
   const [bootstrapState, setBootstrapState] = useState<
     "loading" | "onboarding" | "ready" | "error"
   >(nativeRuntime ? "loading" : "ready");
   const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
   const [engineFailure, setEngineFailure] =
     useState<EngineClientFailure | null>(null);
-  const [failureStage, setFailureStage] = useState<"startup" | "refresh">(
-    "startup",
-  );
   const [taskResult, setTaskResult] = useState<EngineTaskResult | null>(null);
   const [diagnostics, setDiagnostics] = useState<EngineDiagnostics | null>(
     null,
   );
-  const [instructionEnvironments, setInstructionEnvironments] = useState<
-    EngineInstructionEnvironmentSummary[]
-  >([]);
   const displayedSuggestions = useMemo(
     () =>
       engineSnapshot
@@ -161,9 +233,67 @@ export default function App() {
         : suggestionQueue,
     [engineSnapshot, suggestionQueue],
   );
-  const selectedSuggestion =
-    displayedSuggestions.find((item) => item.id === selectedSuggestionId) ??
-    displayedSuggestions[0];
+  const selectedSuggestion = displayedSuggestions[0];
+  const reviewedSuggestion = reviewSuggestionId
+    ? displayedSuggestions.find((item) => item.id === reviewSuggestionId)
+    : selectedSuggestion;
+  const workspaceProjects = useMemo(() => {
+    if (!engineSnapshot) {
+      return browserPreviewRuntime
+        ? browserWorkspaceOptions.map(({ id, label }) => ({ id, label }))
+        : [];
+    }
+    return engineSnapshot.projects.map((project) => {
+      const duplicate = engineSnapshot.projects.some(
+        (other) =>
+          other !== project && other.display_name === project.display_name,
+      );
+      return {
+        id: project.project_id,
+        label: duplicate
+          ? `${project.display_name} · ${project.project_id}`
+          : project.display_name,
+      };
+    });
+  }, [browserPreviewRuntime, engineSnapshot]);
+  const selectedScopeIds = engineSnapshot
+    ? engineSnapshot.suggestions.find(
+        (item) => item.queue_id === reviewedSuggestion?.id,
+      )?.suggested_scope.project_ids
+    : reviewedSuggestion?.projectNames;
+  const activeWorkspaceProjectId = workspaceProjects.some(
+    ({ id }) => id === workspaceProjectId,
+  )
+    ? workspaceProjectId
+    : null;
+  const eligibleReviewProjects = selectedScopeIds?.length
+    ? workspaceProjects.filter(({ id }) => selectedScopeIds.includes(id))
+    : workspaceProjects;
+  const preferredReviewProjectId = browserPreviewRuntime
+    ? reviewedSuggestion?.sourceProject
+    : activeWorkspaceProjectId;
+  const feedbackTargets = engineSnapshot?.activation_feedback
+    .filter(
+      (activation) => !ratedActivationIds.includes(activation.activation_id),
+    )
+    .map((activation) => {
+      const task = engineSnapshot.terminal.review_mode.activation_feedback.find(
+        (item) => item.activation_id === activation.activation_id,
+      );
+      return {
+        id: activation.activation_id,
+        taskLabel: `Task ${shortTaskReference(task?.task_ref_id ?? activation.activation_id)}`,
+        completedAt: activation.completed_at,
+        guidance: activation.active_artifact_ids.map((artifactId) => {
+          const guidance = engineSnapshot.adaptations.find(
+            (item) => item.artifact_id === artifactId,
+          );
+          return guidance?.intent ?? "Previously delivered guidance";
+        }),
+        outcomes: activation.available_outcomes,
+        busy: savingFeedback,
+      };
+    });
 
   useLayoutEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
@@ -188,47 +318,37 @@ export default function App() {
     window.localStorage.setItem("temper.advanced", String(advancedMode));
   }, [advancedMode]);
 
+  useLayoutEffect(() => {
+    const opener = returnedReviewFocus.current;
+    if (opener && !reviewOpenerIsVisible(opener)) {
+      returnedReviewFocus.current = null;
+      if (document.activeElement === document.body) {
+        scrollHost.current?.focus({ preventScroll: true });
+      }
+    }
+  }, [displayedSuggestions, scrollHost, screen]);
+
   useEffect(() => {
     if (!nativeRuntime) return;
     let active = true;
     loadEngineHandshake()
       .then(async (handshake) => {
+        if (!active) return;
         if (!handshake.configured) {
-          const setup = await loadSetupSnapshot();
+          await readSetup();
           if (active) {
-            setSetupSnapshot(setup.snapshot);
-            setSetupDigest(setup.snapshotDigest);
             setScreen("onboarding");
             setBootstrapState("onboarding");
           }
           return;
         }
-        const [
-          { snapshot, snapshotDigest: digest },
-          modes,
-          setup,
-          environments,
-          importedReviews,
-        ] = await Promise.all([
-          loadEngineSnapshot(),
-          loadModes(),
-          loadSetupSnapshot(),
-          loadInstructionEnvironments(),
-          loadPackageReviews(),
-        ]);
+        void readAuxiliaryResources();
+        await readWorkspace();
         if (!active) return;
-        setEngineSnapshot(snapshot);
-        setSnapshotDigest(digest);
-        setModeCatalog(modes);
-        setSetupSnapshot(setup.snapshot);
-        setSetupDigest(setup.snapshotDigest);
-        setInstructionEnvironments(environments);
-        setPackageReviews(importedReviews);
         setBootstrapState("ready");
       })
       .catch((error: unknown) => {
         if (active) {
-          setFailureStage("startup");
           setEngineFailure(
             normalizeEngineFailure(
               error,
@@ -241,46 +361,37 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [bootstrapAttempt, nativeRuntime, setScreen]);
+  }, [
+    bootstrapAttempt,
+    nativeRuntime,
+    readAuxiliaryResources,
+    readSetup,
+    readWorkspace,
+    setScreen,
+  ]);
 
   async function finishOnboarding() {
     if (browserPreviewRuntime) {
       setScreen("today");
       return;
     }
-    const [
-      { snapshot, snapshotDigest: digest },
-      modes,
-      setup,
-      environments,
-      importedReviews,
-    ] = await Promise.all([
-      loadEngineSnapshot(),
-      loadModes(),
-      loadSetupSnapshot(),
-      loadInstructionEnvironments(),
-      loadPackageReviews(),
-    ]);
-    setEngineSnapshot(snapshot);
-    setSnapshotDigest(digest);
-    setModeCatalog(modes);
-    setSetupSnapshot(setup.snapshot);
-    setSetupDigest(setup.snapshotDigest);
-    setInstructionEnvironments(environments);
-    setPackageReviews(importedReviews);
-    setEngineFailure(null);
-    setBootstrapState("ready");
-    setScreen("today");
+    void readAuxiliaryResources();
+    try {
+      await readWorkspace();
+      setEngineFailure(null);
+      setBootstrapState("ready");
+      setScreen("today");
+    } catch (error) {
+      setEngineFailure(
+        normalizeEngineFailure(
+          error,
+          "Temper could not load your local state.",
+        ),
+      );
+      setBootstrapState("error");
+    }
   }
 
-  const workspaces = useMemo(
-    () =>
-      engineSnapshot?.projects.map((project) => ({
-        id: project.display_name,
-        label: project.display_name,
-      })) ?? (browserPreviewRuntime ? browserWorkspaceOptions : []),
-    [browserPreviewRuntime, engineSnapshot],
-  );
   const liveCoreItems = useMemo(
     () =>
       engineSnapshot?.adaptations.map((item) =>
@@ -290,15 +401,19 @@ export default function App() {
   );
   const secureStoreReady = setupSnapshot?.secure_store.status === "ready";
   const governedActionsAvailable = Boolean(
-    engineSnapshot &&
-    engineSnapshot.health !== "consent_expired" &&
-    secureStoreReady,
+    snapshotDigest &&
+    engineSnapshot?.health !== "consent_expired" &&
+    secureStoreReady &&
+    !setup.error,
   );
-  const governedMutationUnavailableReason = !secureStoreReady
-    ? "Secure storage must be available before Temper can save governed changes."
-    : engineSnapshot?.health === "consent_expired"
-      ? "Renew local consent before Temper can save governed changes."
-      : null;
+  const governedMutationUnavailableReason =
+    workspace.error || setup.error
+      ? "Refresh your local state before saving changes."
+      : !secureStoreReady
+        ? "Secure storage must be available before Temper can save governed changes."
+        : engineSnapshot?.health === "consent_expired"
+          ? "Renew local consent before Temper can save governed changes."
+          : null;
   const taskRunnerProjects =
     engineSnapshot?.projects.filter((project) => project.task_runner_enabled) ??
     [];
@@ -310,48 +425,73 @@ export default function App() {
         connection.conformance_state === "compatible",
     ),
   );
-  const managedTaskUnavailableReason = !secureStoreReady
-    ? "Secure storage must be available before Temper can deliver a managed task."
-    : engineSnapshot?.health === "consent_expired"
-      ? "Renew local consent before Temper can deliver a managed task."
-      : !codexConnectionReady
-        ? "A compatible Codex installation signed in with ChatGPT is required."
-        : taskRunnerProjects.length === 0
-          ? "Register a project that allows managed tasks before running this Mode."
-          : null;
+  const managedTaskUnavailableReason =
+    workspace.error || setup.error
+      ? "Refresh your local state before running a saved workflow."
+      : !secureStoreReady
+        ? "Secure storage must be available before Temper can deliver a managed task."
+        : engineSnapshot?.health === "consent_expired"
+          ? "Renew local consent before Temper can deliver a managed task."
+          : !codexConnectionReady
+            ? "A compatible Codex installation signed in with ChatGPT is required."
+            : taskRunnerProjects.length === 0
+              ? "Register a project that allows managed tasks before running this Mode."
+              : null;
 
   function navigate(destination: Screen) {
     setScreen(destination);
-    if (destination === "suggestion") setReviewOpen(true);
+    if (destination === "suggestion") setReviewSuggestionId(null);
+    setReviewOpen(destination === "suggestion");
   }
 
-  function reviewSuggestion(suggestionId: string) {
-    setSelectedSuggestionId(suggestionId);
+  function reviewSuggestion(suggestionId: string, opener?: HTMLElement) {
+    if (nativeRuntime && !governedActionsAvailable) return;
+    reviewOpener.current =
+      opener ??
+      (document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null);
+    returnedReviewFocus.current = null;
+    setReviewSuggestionId(suggestionId);
     setReviewOpen(true);
+  }
+
+  function returnReviewFocus() {
+    const opener = reviewOpener.current;
+    reviewOpener.current = null;
+    if (opener && reviewOpenerIsVisible(opener)) {
+      opener.focus({ preventScroll: true });
+      returnedReviewFocus.current = opener;
+    } else {
+      scrollHost.current?.focus({ preventScroll: true });
+    }
   }
 
   async function decide(
     decision: SuggestionDecision,
-    projectNames: string[] = [],
+    projectIds: string[] = [],
   ) {
-    if (!selectedSuggestion) return;
-    if (nativeRuntime && engineSnapshot && snapshotDigest) {
+    if (!reviewedSuggestion) return;
+    if (nativeRuntime) {
+      if (!engineSnapshot || !snapshotDigest || !governedActionsAvailable) {
+        throw new Error(
+          governedMutationUnavailableReason ??
+            "Refresh your local state before saving changes.",
+        );
+      }
       const suggestion = engineSnapshot.suggestions.find(
-        (item) => item.queue_id === selectedSuggestion.id,
+        (item) => item.queue_id === reviewedSuggestion.id,
       );
       if (!suggestion) return;
-      const selectedProjectIds = projectNames
-        .map(
-          (projectName) =>
-            engineSnapshot.projects.find(
-              (project) => project.display_name === projectName,
-            )?.project_id,
+      const selectedProjectIds = [...new Set(projectIds)].sort();
+      if (
+        selectedProjectIds.some(
+          (id) => !eligibleReviewProjects.some((project) => project.id === id),
         )
-        .filter((projectId): projectId is string => Boolean(projectId))
-        .sort();
-      const projectId =
-        selectedProjectIds[0] ??
-        projectIdForSuggestion(suggestion, engineSnapshot, activeWorkspace);
+      ) {
+        throw new Error("Choose a registered project from this suggestion.");
+      }
+      const projectId = selectedProjectIds[0];
       const engineDecision =
         decision === "suggested"
           ? suggestion.signal_kind === "revocation"
@@ -367,7 +507,7 @@ export default function App() {
       if (!suggestion.available_actions.includes(engineDecision)) {
         throw new Error("That decision is not available for this suggestion.");
       }
-      if (decision === "project" && !projectId) {
+      if (decision === "project" && selectedProjectIds.length !== 1) {
         throw new Error("Choose one registered project first.");
       }
       if (decision === "narrowed" && selectedProjectIds.length === 0) {
@@ -391,7 +531,7 @@ export default function App() {
               : {},
         );
         setReviewOpen(false);
-        setScreen(decision === "ignore" ? "today" : "core");
+        if (decision !== "ignore") setScreen("core");
         await refreshAfterNativeAction(receipt.message);
       } catch (error: unknown) {
         const failure = normalizeEngineFailure(
@@ -404,31 +544,45 @@ export default function App() {
       return;
     }
     const remaining = suggestionQueue.filter(
-      (item) => item.id !== selectedSuggestion.id,
+      (item) => item.id !== reviewedSuggestion.id,
     );
     setSuggestionQueue(remaining);
-    setSelectedSuggestionId(remaining[0]?.id ?? "");
     setReviewOpen(false);
-    setScreen(decision === "ignore" ? "today" : "core");
-    const suggestedScope = selectedSuggestion.suggestedScope;
+    if (decision !== "ignore") setScreen("core");
+    const suggestedScope = reviewedSuggestion.suggestedScope;
     setToast(
       decision === "suggested"
         ? suggestedScope === "All projects"
           ? "Adaptation kept for all projects."
           : `Adaptation kept for ${suggestedScope}.`
         : decision === "project"
-          ? `Adaptation kept for ${selectedSuggestion.sourceProject} only.`
+          ? `Adaptation kept for ${eligibleReviewProjects.find((project) => project.id === projectIds[0])?.label ?? reviewedSuggestion.sourceProject} only.`
           : "Suggestion ignored. Nothing changed.",
     );
   }
 
-  async function recordFeedback(value: FeedbackValue) {
-    if (!nativeRuntime || !engineSnapshot || !snapshotDigest) {
+  async function recordFeedback(value: FeedbackValue, activationId?: string) {
+    if (!nativeRuntime) {
       setFeedback(value);
       return;
     }
-    const activation = engineSnapshot.activation_feedback[0];
-    if (!activation) return;
+    if (
+      !engineSnapshot ||
+      !snapshotDigest ||
+      !governedActionsAvailable ||
+      savingFeedback
+    )
+      return;
+    const activation = engineSnapshot.activation_feedback.find(
+      (item) => item.activation_id === activationId,
+    );
+    if (
+      !activation ||
+      ratedActivationIds.includes(activation.activation_id) ||
+      !activation.available_outcomes.includes(value)
+    )
+      return;
+    setSavingFeedback(true);
     try {
       const receipt = await recordEngineFeedback(
         activation,
@@ -436,7 +590,10 @@ export default function App() {
         snapshotDigest,
         crypto.randomUUID(),
       );
-      setFeedback(value);
+      setRatedActivationIds((current) => [
+        ...current,
+        activation.activation_id,
+      ]);
       await refreshAfterNativeAction(receipt.message);
     } catch (error: unknown) {
       await refreshAfterNativeAction(
@@ -444,6 +601,8 @@ export default function App() {
           ? error.message
           : "Temper could not safely record that feedback.",
       );
+    } finally {
+      setSavingFeedback(false);
     }
   }
 
@@ -528,9 +687,7 @@ export default function App() {
   }
 
   async function refreshConnectionState() {
-    const inspected = await inspectConnections();
-    setSetupSnapshot(inspected.snapshot);
-    setSetupDigest(inspected.snapshotDigest);
+    await readSetup(inspectConnections);
     setToast("Connection status refreshed.");
   }
 
@@ -620,39 +777,8 @@ export default function App() {
   async function refreshAfterNativeAction(message: string) {
     setToast(message);
     if (!nativeRuntime) return;
-    try {
-      const [
-        { snapshot, snapshotDigest: digest },
-        modes,
-        setup,
-        environments,
-        importedReviews,
-      ] = await Promise.all([
-        loadEngineSnapshot(),
-        loadModes(),
-        loadSetupSnapshot(),
-        loadInstructionEnvironments(),
-        loadPackageReviews(),
-      ]);
-      setEngineSnapshot(snapshot);
-      setSnapshotDigest(digest);
-      setModeCatalog(modes);
-      setSetupSnapshot(setup.snapshot);
-      setSetupDigest(setup.snapshotDigest);
-      setInstructionEnvironments(environments);
-      setPackageReviews(importedReviews);
-      setEngineFailure(null);
-      setFeedback(null);
-    } catch (error: unknown) {
-      setFailureStage("refresh");
-      setEngineFailure(
-        normalizeEngineFailure(
-          error,
-          "Temper could not refresh your local state.",
-        ),
-      );
-      setBootstrapState("error");
-    }
+    void readAuxiliaryResources();
+    await readWorkspace().catch(() => undefined);
   }
 
   if (!nativeRuntime && !browserPreviewRuntime) {
@@ -665,10 +791,9 @@ export default function App() {
   ) {
     return (
       <NativeStartup
+        advancedMode={advancedMode}
         failure={bootstrapState === "error" ? engineFailure : null}
-        failureStage={failureStage}
         onRetry={() => {
-          setFailureStage("startup");
           setBootstrapState("loading");
           setEngineFailure(null);
           setBootstrapAttempt((attempt) => attempt + 1);
@@ -690,6 +815,26 @@ export default function App() {
       />
     );
 
+  const workspaceStatus = (
+    <ResourceStatus label="Workspace data" resource={workspace} />
+  );
+  const setupStatus = <ResourceStatus label="Connections" resource={setup} />;
+  const instructionStatus = (
+    <ResourceStatus label="Project instructions" resource={environments} />
+  );
+  const workspaceAndSetupStatus = (
+    <>
+      {workspaceStatus}
+      {setupStatus}
+    </>
+  );
+  const fullWorkspaceStatus = (
+    <>
+      {workspaceAndSetupStatus}
+      {instructionStatus}
+    </>
+  );
+
   return (
     <Tooltip.Provider delayDuration={500}>
       <Shell
@@ -704,17 +849,19 @@ export default function App() {
               nativeAutonomy={nativeRuntime}
               automaticLearning={automaticLearning}
               feedback={feedback}
+              feedbackTargets={feedbackTargets}
               onFeedback={recordFeedback}
               onOpenCore={() => navigate("core")}
               onOpenTools={() => navigate("modes")}
               onReview={reviewSuggestion}
-              workspace={activeWorkspace}
+              reviewAvailable={!nativeRuntime || governedActionsAvailable}
+              workspaceProjectId={activeWorkspaceProjectId}
               workspaceControl={
-                workspaces.length ? (
+                workspaceProjects.length ? (
                   <WorkspacePicker
-                    activeWorkspace={activeWorkspace}
-                    onWorkspaceChange={setActiveWorkspace}
-                    workspaces={workspaces}
+                    projectId={activeWorkspaceProjectId}
+                    onProjectChange={setWorkspaceProjectId}
+                    projects={workspaceProjects}
                   />
                 ) : null
               }
@@ -725,8 +872,7 @@ export default function App() {
                   ? {
                       activeAdaptationCount: liveCoreItems?.length ?? 0,
                       health: engineSnapshot.health,
-                      pendingFeedbackCount:
-                        engineSnapshot.activation_feedback.length,
+                      pendingFeedbackCount: feedbackTargets?.length ?? 0,
                       feedbackAvailable: governedActionsAvailable,
                       pendingReviewCount: displayedSuggestions.length,
                       projectCount: engineSnapshot.projects.length,
@@ -736,6 +882,7 @@ export default function App() {
               }
               instructionEnvironments={instructionEnvironments}
               liveProjects={engineSnapshot?.projects ?? []}
+              resourceStatus={fullWorkspaceStatus}
             />
           ),
           core: (
@@ -750,15 +897,7 @@ export default function App() {
               }
               instructionEnvironments={instructionEnvironments}
               liveProjects={engineSnapshot?.projects ?? []}
-              availableWorkspaces={
-                nativeRuntime
-                  ? engineSnapshot?.projects.map(
-                      (project) => project.display_name,
-                    )
-                  : browserPreviewRuntime
-                    ? demoProjects.map((project) => project.name)
-                    : []
-              }
+              workspaceProjects={workspaceProjects}
               governedMutationUnavailableReason={
                 governedMutationUnavailableReason
               }
@@ -774,13 +913,14 @@ export default function App() {
                 }
               }}
               recentUndo={engineSnapshot?.recent_undos[0]}
+              resourceStatus={fullWorkspaceStatus}
               snapshotDigest={snapshotDigest}
             />
           ),
           modes: (
             <ModesPage
               error={null}
-              loading={false}
+              loading={catalog.loading && !catalog.data && !catalog.error}
               modes={modeCatalog}
               nativeRuntime={nativeRuntime}
               onOpenCore={() => navigate("core")}
@@ -810,6 +950,20 @@ export default function App() {
               snapshotDigest={snapshotDigest}
               instructionEnvironments={instructionEnvironments}
               packageReviews={packageReviews}
+              packageReviewsStatus={
+                importedReviews.error ? (
+                  <ResourceStatus
+                    label="Package reviews"
+                    resource={importedReviews}
+                  />
+                ) : null
+              }
+              savedWorkflowsStatus={
+                catalog.error ? (
+                  <ResourceStatus label="Saved workflows" resource={catalog} />
+                ) : null
+              }
+              resourceStatus={fullWorkspaceStatus}
               onPackageDecision={reviewImportedPackage}
             />
           ),
@@ -830,6 +984,7 @@ export default function App() {
               onInstructionChanged={refreshAfterNativeAction}
               registrationAvailable={governedActionsAvailable}
               registrationUnavailableReason={governedMutationUnavailableReason}
+              resourceStatus={fullWorkspaceStatus}
               snapshotDigest={snapshotDigest}
             />
           ),
@@ -855,9 +1010,10 @@ export default function App() {
                 engineSnapshot?.launch_at_login_enabled ?? false
               }
               consent={engineSnapshot?.consent ?? null}
-              secureStoreReady={setupSnapshot?.secure_store.status === "ready"}
+              secureStoreReady={secureStoreReady && !setup.error}
               snapshotDigest={snapshotDigest}
               onRecoveryCreated={setToast}
+              resourceStatus={workspaceAndSetupStatus}
             />
           ),
           advanced: (
@@ -876,6 +1032,7 @@ export default function App() {
                 label: project.display_name,
               }))}
               previewProjects={browserPreviewRuntime ? browserProjects : []}
+              resourceStatus={workspaceAndSetupStatus}
               runnerReady={codexConnectionReady && governedActionsAvailable}
               runnerUnavailableReason={managedTaskUnavailableReason}
               taskResult={taskResult}
@@ -883,17 +1040,17 @@ export default function App() {
           ),
         }}
       />
-      {selectedSuggestion && (!nativeRuntime || governedActionsAvailable) ? (
+      {reviewedSuggestion ? (
         <ReviewDialog
-          availableProjects={engineSnapshot?.projects.map(
-            (project) => project.display_name,
-          )}
-          key={selectedSuggestion.id}
+          projectChoices={eligibleReviewProjects}
+          preferredProjectId={preferredReviewProjectId}
+          key={reviewedSuggestion.id}
           onDecision={decide}
           onOpenChange={setReviewOpen}
+          onReturnFocus={returnReviewFocus}
           open={reviewOpen}
           previewMode={browserPreviewRuntime}
-          suggestion={selectedSuggestion}
+          suggestion={reviewedSuggestion}
         />
       ) : null}
       {!nativeRuntime && screen === "tray" ? (
@@ -921,21 +1078,28 @@ export default function App() {
   );
 }
 
+function reviewOpenerIsVisible(opener: HTMLElement) {
+  return (
+    opener.isConnected &&
+    !opener.closest("[hidden], [inert], details:not([open])")
+  );
+}
+
+function shortTaskReference(reference: string) {
+  if (reference.length <= 24) return reference;
+  return `${reference.slice(0, 8)}…${reference.slice(-6)}`;
+}
+
 function coreItemFromEngine(
   item: EngineDesktopSnapshot["adaptations"][number],
   snapshot: EngineDesktopSnapshot,
 ): CoreItem {
-  const projectNames = item.scope.project_ids.map(
-    (projectId) =>
-      snapshot.projects.find((project) => project.project_id === projectId)
-        ?.display_name ?? projectId,
-  );
   return {
     description: item.required_behaviors.join(" "),
     id: item.artifact_id,
     kind: coreKind(item.artifact_type),
     isGlobal: scopeIsGlobal(item.scope),
-    projectNames,
+    projectIds: item.scope.project_ids,
     scope: describeScope(item.scope, snapshot),
     sourceSummary: `Approved from ${item.evidence_count} supporting source${item.evidence_count === 1 ? "" : "s"}`,
     title: item.intent,
@@ -989,27 +1153,11 @@ function suggestionFromEngine(
         ? (["ignore"] as const)
         : []),
     ],
+    projectIds: item.suggested_scope.project_ids,
     projectNames,
     sourceProject: projectNames.length === 1 ? projectNames[0] : null,
     suggestedScope: describeScope(item.suggested_scope, snapshot),
   };
-}
-
-function projectIdForSuggestion(
-  suggestion: EngineSuggestion,
-  snapshot: EngineDesktopSnapshot,
-  activeWorkspace: WorkspaceScope,
-): string | null {
-  if (activeWorkspace !== "all") {
-    return (
-      snapshot.projects.find(
-        (project) => project.display_name === activeWorkspace,
-      )?.project_id ?? null
-    );
-  }
-  return suggestion.suggested_scope.project_ids.length === 1
-    ? suggestion.suggested_scope.project_ids[0]
-    : null;
 }
 
 function coreKind(value: string): CoreKind {

@@ -23,6 +23,11 @@
   justify-content: space-between;
 }
 
+.portable-setup-heading > .modes-section-title {
+  margin: 0;
+  font-size: 19px;
+}
+
 .portable-setup-active {
   margin-top: 12px;
   padding-top: 12px;

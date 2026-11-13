@@ -20,12 +20,16 @@ describe("Temper prototype", () => {
     ],
     ["Tools & workflows", "View workflow", "Frontend Studio", "Close"],
     ["Connections", "View details", "Codex", "Done"],
+    ["Overview", "Review suggestion", /lead with the purpose/i, "Close review"],
   ])(
     "returns keyboard focus after closing a %s dialog",
     async (page, label, title, closeLabel) => {
       const user = userEvent.setup();
       render(<App />);
       await user.click(screen.getByRole("button", { name: page }));
+      if (page === "Tools & workflows") {
+        await user.click(screen.getByText(/^Saved workflows ·/));
+      }
       const trigger = screen.getAllByRole("button", { name: label })[0]!;
       trigger.focus();
       await user.keyboard("{Enter}");
@@ -44,6 +48,38 @@ describe("Temper prototype", () => {
       await waitFor(() => expect(trigger).toHaveFocus());
     },
   );
+
+  it("returns keyboard focus to the suggestion row that opened review", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const opener = screen.getByRole("button", {
+      name: /when notes and the repository disagree/i,
+    });
+    opener.focus();
+    await user.keyboard("{Enter}");
+    expect(
+      screen.getByRole("dialog", { name: /when notes and the repository/i }),
+    ).toBeVisible();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(opener).toHaveFocus());
+  });
+
+  it("returns focus to Overview when an ignored suggestion removes its opener", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(
+      screen.getByRole("button", { name: "Review project: All projects" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Green Meadow" }));
+    const opener = screen.getByRole("button", { name: "Review suggestion" });
+    opener.focus();
+    await user.keyboard("{Enter}");
+    await user.click(screen.getByRole("button", { name: "Ignore" }));
+    expect(opener).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("main", { name: "Overview" })).toHaveFocus(),
+    );
+  });
 
   it("starts new pages at the top and restores each page’s scroll on return", async () => {
     const user = userEvent.setup();
@@ -89,7 +125,9 @@ describe("Temper prototype", () => {
     expect(
       screen.getByRole("dialog", { name: /when notes and the repository/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Your review is required")).toBeInTheDocument();
+    expect(
+      screen.getByText(/^Your review is required because/),
+    ).toBeInTheDocument();
   });
 
   it("keeps navigation and focus aligned with the visible page", async () => {
@@ -126,6 +164,7 @@ describe("Temper prototype", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole("button", { name: "Tools & workflows" }));
+    await user.click(screen.getByText(/^Saved workflows ·/));
 
     expect(
       screen.getByRole("heading", { name: "Tools & workflows" }),
@@ -159,7 +198,9 @@ describe("Temper prototype", () => {
     window.history.replaceState({}, "", "/?screen=core");
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Export" }));
+    await user.click(
+      screen.getByRole("button", { name: "Export personal backup" }),
+    );
     expect(
       screen.getByRole("dialog", { name: "Export your preferences" }),
     ).toBeInTheDocument();
@@ -179,7 +220,9 @@ describe("Temper prototype", () => {
     window.history.replaceState({}, "", "/?screen=core");
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Import" }));
+    await user.click(
+      screen.getByRole("button", { name: "Import personal backup" }),
+    );
     await user.type(
       screen.getByLabelText("Profile passphrase"),
       "correct horse battery staple",

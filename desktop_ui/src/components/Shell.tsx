@@ -13,7 +13,7 @@ import {
 import { useState, type ReactNode, type RefObject } from "react";
 
 import { pageForScreen, PageVisibility, type Page } from "../pageVisibility";
-import type { Screen, WorkspaceScope } from "../types";
+import type { Screen } from "../types";
 import { BrandMark } from "./BrandMark";
 
 const navigation = [
@@ -47,6 +47,50 @@ export function Shell({
   }
 
   return (
+    <WorkspaceFrame
+      advancedMode={advancedMode}
+      onNavigate={onNavigate}
+      page={page}
+      previewMode={previewMode}
+      scrollHost={scrollHost}
+    >
+      {navigation.map(({ id }) => {
+        if (!visited.has(id)) return null;
+        const isActive = id === page;
+        return (
+          <div
+            className={isActive ? "page-view page-view--active" : "page-view"}
+            data-screen={id}
+            hidden={!isActive}
+            inert={!isActive}
+            key={id}
+          >
+            <PageVisibility.Provider value={isActive}>
+              {pages[id]}
+            </PageVisibility.Provider>
+          </div>
+        );
+      })}
+    </WorkspaceFrame>
+  );
+}
+
+export function WorkspaceFrame({
+  advancedMode,
+  children,
+  onNavigate,
+  page,
+  previewMode = false,
+  scrollHost,
+}: {
+  advancedMode: boolean;
+  children: ReactNode;
+  onNavigate?: (screen: Screen) => void;
+  page: Page;
+  previewMode?: boolean;
+  scrollHost?: RefObject<HTMLElement | null>;
+}) {
+  return (
     <div className="window-shell">
       {previewMode ? (
         <aside
@@ -67,8 +111,9 @@ export function Shell({
                 <button
                   aria-current={isActive ? "page" : undefined}
                   className={`folio-index-link${id === "advanced" ? " folio-index-link--advanced" : ""}${isActive ? " folio-index-link--active" : ""}`}
+                  disabled={!onNavigate}
                   key={id}
-                  onClick={() => onNavigate(id)}
+                  onClick={() => onNavigate?.(id)}
                   type="button"
                 >
                   <Icon
@@ -89,25 +134,7 @@ export function Shell({
           ref={scrollHost}
           tabIndex={-1}
         >
-          {navigation.map(({ id }) => {
-            if (!visited.has(id)) return null;
-            const isActive = id === page;
-            return (
-              <div
-                className={
-                  isActive ? "page-view page-view--active" : "page-view"
-                }
-                data-screen={id}
-                hidden={!isActive}
-                inert={!isActive}
-                key={id}
-              >
-                <PageVisibility.Provider value={isActive}>
-                  {pages[id]}
-                </PageVisibility.Provider>
-              </div>
-            );
-          })}
+          {children}
         </main>
       </div>
     </div>
@@ -115,23 +142,18 @@ export function Shell({
 }
 
 export function WorkspacePicker({
-  activeWorkspace,
-  onWorkspaceChange,
-  workspaces,
+  projectId,
+  onProjectChange,
+  projects,
 }: {
-  activeWorkspace: WorkspaceScope;
-  onWorkspaceChange: (workspace: WorkspaceScope) => void;
-  workspaces: Array<{ id: string; label: string }>;
+  projectId: string | null;
+  onProjectChange: (projectId: string | null) => void;
+  projects: Array<{ id: string; label: string }>;
 }) {
-  const options = [
-    {
-      id: "all",
-      label: "All projects",
-    },
-    ...workspaces,
-  ];
+  const allProjects = { id: null, label: "All projects" };
+  const options = [allProjects, ...projects];
   const current =
-    options.find((option) => option.id === activeWorkspace) ?? options[0];
+    projects.find((project) => project.id === projectId) ?? allProjects;
   return (
     <DropdownMenu.Root modal={false}>
       <DropdownMenu.Trigger
@@ -139,7 +161,7 @@ export function WorkspacePicker({
         className="workspace-picker-trigger"
       >
         <span aria-hidden="true" className="workspace-picker-icon">
-          {activeWorkspace === "all" ? (
+          {current.id === null ? (
             <Layers3 size={17} strokeWidth={1.7} />
           ) : (
             <FolderGit2 size={17} strokeWidth={1.7} />
@@ -161,11 +183,11 @@ export function WorkspacePicker({
         {options.map((option) => (
           <DropdownMenu.Item
             className="workspace-picker-item"
-            key={option.id}
-            onSelect={() => onWorkspaceChange(option.id)}
+            key={option.id === null ? "all" : `project:${option.id}`}
+            onSelect={() => onProjectChange(option.id)}
           >
             <span className="workspace-picker-check">
-              {option.id === activeWorkspace ? (
+              {option.id === current.id ? (
                 <Check aria-hidden="true" size={14} />
               ) : null}
             </span>
