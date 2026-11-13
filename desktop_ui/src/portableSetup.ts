@@ -37,6 +37,8 @@ export interface SetupImportPreview extends SetupPreview {
 
 export interface SetupStatus {
   active: SetupPreview | null;
+  issue?: "unavailable";
+  recovery_digest?: string | null;
 }
 
 async function request<T>(
@@ -86,6 +88,14 @@ export function loadSetupStatus(projectId: string) {
 
 export function removeSetup(projectId: string, digest: string) {
   return request<SetupStatus>("remove", {
+    projectId,
+    digest,
+    idempotencyKey: crypto.randomUUID(),
+  });
+}
+
+export function resetSetup(projectId: string, digest: string) {
+  return request<SetupStatus>("reset", {
     projectId,
     digest,
     idempotencyKey: crypto.randomUUID(),

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import json
 import os
 import re
 import stat
@@ -25,6 +26,7 @@ from adaptation_compiler_lab.sanitization.scanner import is_sensitive_path
 from adaptation_compiler_lab.serialization.canonical import canonical_bytes, canonical_digest
 
 from .continuity import SECRET_PATTERN
+from .intake import sha
 from .paths import RESERVED, check_root, safe
 from .sealed import Seals
 
@@ -33,6 +35,7 @@ PURPOSE = "portable_repository_setup/v1"
 LOCAL_PURPOSE = b"temper/tools-hub/portable-setup/v1"
 MAX_PAYLOAD = 48_000
 MAX_PACKAGE = 52_000
+MAX_LOCAL_RECORD = 80_000
 MAX_CHECK_FILE = 1_048_576
 PRECEDENCE = "Current requests and manually written native instructions take precedence."
 Digest = Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
@@ -60,6 +63,10 @@ class SetupError(ValueError):
     """A portable-setup error with a message safe to display in desktop and MCP."""
 
 
+class UnreadableSetup(SetupError):
+    """An available record failed local authentication or decoding."""
+
+
 def shareable_text(value: str) -> str:
     if not value.strip() or any(ord(char) < 32 and char not in "\r\n\t" for char in value):
         raise ValueError("Enter shareable text")
@@ -79,6 +86,7 @@ class Item(SetupModel):
     id: ItemId
     title: Title
 
+    _safe_id = field_validator("id")(shareable_text)
     _safe_title = field_validator("title")(shareable_text)
 
 
@@ -98,6 +106,7 @@ class RepositoryCheck(Item):
     @field_validator("path")
     @classmethod
     def approved_relative_path(cls, value: str) -> str:
+        shareable_text(value)
         if (
             is_sensitive_path(value)
             or not CHECK_PATH.fullmatch(value)
@@ -299,21 +308,45 @@ class SetupStore:
         self, key: str, grant_id: str, project: dict[str, Any]
     ) -> tuple[str | None, SetupPackage | None]:
         try:
-            state = self.seals.read(self.path(key), "portable_setup")
+            raw = read_regular(self.path(key), MAX_LOCAL_RECORD)
         except FileNotFoundError:
             return None, None
-        if state["grant_id"] != grant_id or state["project"] != project:
-            return None, None
-        revision = state["revision"]
-        if state["encrypted"] is None:
-            return revision, None
+        return self.decode(raw, grant_id, project)
+
+    def decode(
+        self, raw: bytes, grant_id: str, project: dict[str, Any]
+    ) -> tuple[str | None, SetupPackage | None]:
         try:
+            state = self.seals.open(json.loads(raw), "portable_setup")
+            if state["grant_id"] != grant_id or state["project"] != project:
+                return None, None
+            revision = state["revision"]
+            if not isinstance(revision, str) or not re.fullmatch(r"[0-9a-f]{32}", revision):
+                raise ValueError("Invalid setup revision")
+            if state["encrypted"] is None:
+                return revision, None
             encoded = base64.b64decode(state["encrypted"], validate=True)
+            if len(encoded) < 28:
+                raise ValueError("Invalid encrypted setup")
             aad = canonical_bytes({k: v for k, v in state.items() if k != "encrypted"})
-            raw = self.cipher().decrypt(encoded[:12], encoded[12:], aad)
-            return revision, parse_package(raw)
+        except (ValueError, TypeError, KeyError) as error:
+            raise UnreadableSetup("The saved setup could not be verified") from error
+        # Unlock errors must not be interpreted as a corrupt package.
+        cipher = self.cipher()
+        try:
+            payload = cipher.decrypt(encoded[:12], encoded[12:], aad)
+            return revision, parse_package(payload)
         except (InvalidTag, ValueError, TypeError) as error:
-            raise SetupError("The saved setup could not be verified") from error
+            raise UnreadableSetup("The saved setup could not be verified") from error
+
+    def recovery_digest(self, key: str, grant_id: str, project: dict[str, Any]) -> str:
+        raw = read_regular(self.path(key), MAX_LOCAL_RECORD)
+        self.cipher()
+        try:
+            self.decode(raw, grant_id, project)
+        except UnreadableSetup:
+            return "sha256:" + sha(raw)
+        raise SetupError("The setup is readable. Use the normal setup controls.")
 
     def write(
         self,

@@ -2041,6 +2041,22 @@ async fn portable_setup_remove(
 }
 
 #[tauri::command]
+async fn portable_setup_reset(
+    app: tauri::AppHandle,
+    project_id: String,
+    digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    portable_setup_call(
+        app,
+        "portable_setup.reset",
+        json!({"project_id": project_id, "digest": digest}),
+        Some(idempotency_key),
+    )
+    .await
+}
+
+#[tauri::command]
 async fn package_review_list(app: tauri::AppHandle) -> Result<EngineResponse, PublicError> {
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<EngineState>();
@@ -2536,6 +2552,7 @@ pub fn run() {
             portable_setup_import_approve,
             portable_setup_status,
             portable_setup_remove,
+            portable_setup_reset,
             package_review_list,
             package_review_decide,
             hub_catalog_get,
@@ -2822,6 +2839,7 @@ mod tests {
             "portable_setup_import_approve",
             "portable_setup_status",
             "portable_setup_remove",
+            "portable_setup_reset",
             "package_review_list",
             "package_review_decide",
             "hub_catalog_get",

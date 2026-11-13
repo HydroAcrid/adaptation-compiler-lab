@@ -135,6 +135,10 @@ class SetupApproval(SetupReference):
     active_digest: Digest | None
 
 
+class SetupReset(SetupReference):
+    pass
+
+
 class SetupContext(SetupProject):
     task_receipt: dict[str, Any]
 
@@ -196,6 +200,7 @@ SETUP_DESKTOP_SCHEMAS: dict[str, type[BaseModel]] = {
     "portable_setup.import.preview": SetupImport,
     "portable_setup.import.approve": SetupApproval,
     "portable_setup.remove": SetupReference,
+    "portable_setup.reset": SetupReset,
 }
 SCHEMAS.update(
     {
@@ -209,6 +214,7 @@ SETUP_MUTATIONS = {
     "portable_setup.export.create",
     "portable_setup.import.approve",
     "portable_setup.remove",
+    "portable_setup.reset",
 }
 SETUP_PREVIEW_SECONDS = 900
 
@@ -513,12 +519,14 @@ class HubProtocol:
             )
             self.import_setup = None
             return reviewed[1].preview()
+        if isinstance(value, SetupReset):
+            self.service.reset_setup(value.project_id, value.digest)
+            return {"active": None}
         if isinstance(value, SetupReference):
             self.service.change_setup(value.project_id, value.digest, None)
             return {"active": None}
         if isinstance(value, SetupProject):
-            _, _, _, current = self.service.setup_status(value.project_id)
-            return {"active": current.preview() if current else None}
+            return self.service.setup_desktop_status(value.project_id)
         raise SetupError("Unsupported portable setup operation")
 
     def record_checkpoint_retrieval(self, receipt: dict[str, Any], checkpoint_id: str) -> None:

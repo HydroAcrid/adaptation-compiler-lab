@@ -16,6 +16,7 @@ import {
   openSetupFile,
   previewSetupExport,
   removeSetup,
+  resetSetup,
   saveSetupFile,
   setupKinds,
   type SetupImportPreview,
@@ -32,12 +33,14 @@ type RepositorySetup = {
   repository: HubProject;
   active: SetupPreview | null;
   issue?: string;
+  recoveryDigest?: string | null;
 };
 
 type SetupAction =
   | { type: "compose" }
   | { type: "open" }
-  | { type: "remove"; repository: HubProject; setup: SetupPreview };
+  | { type: "remove"; repository: HubProject; setup: SetupPreview }
+  | { type: "reset"; repository: HubProject; digest: string };
 
 type DraftItem = {
   id: string;
@@ -50,7 +53,7 @@ type DraftItem = {
 
 function newDraftItem(kind: SetupKind): DraftItem {
   return {
-    id: `item-${crypto.randomUUID()}`,
+    id: `item-${crypto.randomUUID().replaceAll("-", "")}`,
     kind,
     title: "",
     text: "",
@@ -102,7 +105,14 @@ export function PortableSetupPanel({
           state.projects.map((repository, index) => {
             const result = results[index];
             return result.status === "fulfilled"
-              ? { repository, active: result.value.active }
+              ? {
+                  repository,
+                  active: result.value.active,
+                  issue: result.value.issue
+                    ? "Temper could not verify the saved setup."
+                    : undefined,
+                  recoveryDigest: result.value.recovery_digest,
+                }
               : {
                   repository,
                   active: null,
@@ -183,7 +193,7 @@ export function PortableSetupPanel({
           {statusError && <p role="alert">{statusError}</p>}
           {rows
             ?.filter((row) => row.active || row.issue)
-            .map(({ repository, active, issue }) => (
+            .map(({ repository, active, issue, recoveryDigest }) => (
               <div className="portable-setup-active" key={repository.id}>
                 <div className="portable-setup-heading">
                   <div>
@@ -195,6 +205,22 @@ export function PortableSetupPanel({
                       </p>
                     )}
                   </div>
+                  {recoveryDigest && (
+                    <Button
+                      type="button"
+                      tone="quiet"
+                      disabled={loading || !!statusError}
+                      onClick={() =>
+                        setAction({
+                          type: "reset",
+                          repository,
+                          digest: recoveryDigest,
+                        })
+                      }
+                    >
+                      Clear unreadable setup
+                    </Button>
+                  )}
                   {active && (
                     <Button
                       type="button"
@@ -426,6 +452,13 @@ function PortableSetupDialog({
           `“${active.title}” is active in ${target?.label ?? "the selected repository"}.`,
         );
       });
+    } else if (action.type === "reset") {
+      void run("Clearing the unreadable setup…", async () => {
+        await resetSetup(action.repository.id, action.digest);
+        onComplete(
+          "Unreadable setup cleared. You can open a setup file again.",
+        );
+      });
     } else if (action.type === "remove") {
       void run("Removing the setup…", async () => {
         await removeSetup(action.repository.id, action.setup.digest);
@@ -439,9 +472,11 @@ function PortableSetupDialog({
   const dialogTitle =
     action.type === "remove"
       ? `Remove “${action.setup.title}”?`
-      : action.type === "open"
-        ? "Open a portable setup"
-        : "Create a portable setup";
+      : action.type === "reset"
+        ? "Clear the unreadable setup?"
+        : action.type === "open"
+          ? "Open a portable setup"
+          : "Create a portable setup";
 
   return (
     <Dialog.Root
@@ -480,7 +515,11 @@ function PortableSetupDialog({
               ? "Add the guidance and repository checks you want to share. The recipient reviews the signed file before applying it."
               : action.type === "open"
                 ? "Choose the repository that will receive the setup, then open a signed .temper-setup file."
-                : `Future tasks in ${action.repository.label} will stop receiving this setup through Temper.`}
+                : action.type === "reset"
+                  ? "Clear the damaged setup from " +
+                    action.repository.label +
+                    ". You can then open and review a setup file again."
+                  : `Future tasks in ${action.repository.label} will stop receiving this setup through Temper.`}
           </Dialog.Description>
 
           {editing && (
@@ -770,7 +809,7 @@ function PortableSetupDialog({
             </>
           )}
 
-          {action.type === "remove" && (
+          {(action.type === "remove" || action.type === "reset") && (
             <div className="core-dialog__actions">
               <Button
                 type="button"
@@ -778,7 +817,7 @@ function PortableSetupDialog({
                 disabled={!!busy}
                 onClick={onClose}
               >
-                Keep setup
+                {action.type === "reset" ? "Cancel" : "Keep setup"}
               </Button>
               <Button
                 type="button"
@@ -786,7 +825,9 @@ function PortableSetupDialog({
                 disabled={!!busy}
                 onClick={complete}
               >
-                Remove setup
+                {action.type === "reset"
+                  ? "Clear unreadable setup"
+                  : "Remove setup"}
               </Button>
             </div>
           )}

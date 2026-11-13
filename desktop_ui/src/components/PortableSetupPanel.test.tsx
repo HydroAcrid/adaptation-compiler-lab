@@ -270,3 +270,72 @@ it("keeps a status failure retryable and shows that setup status is loading", as
   );
   expect(await screen.findByText("No active portable setups.")).toBeVisible();
 });
+
+it("requires confirmation to clear an unreadable setup and refreshes after a stale recovery", async () => {
+  let unreadable = true;
+  let attempts = 0;
+  const recoveryDigest = "sha256:unreadable";
+  native.mockImplementation(async (command) => {
+    if (command === "tools_hub_request")
+      return response({ projects: [repository] });
+    if (command === "portable_setup_status")
+      return response(
+        unreadable
+          ? {
+              active: null,
+              issue: "unavailable",
+              recovery_digest: recoveryDigest,
+            }
+          : { active: null },
+      );
+    if (command === "portable_setup_reset") {
+      if (attempts++ === 0)
+        return {
+          ...response({}),
+          ok: false,
+          error: {
+            message:
+              "The unreadable setup changed. Refresh before trying again.",
+          },
+        };
+      unreadable = false;
+      return response({ active: null });
+    }
+    throw new Error(command);
+  });
+  const user = userEvent.setup();
+  render(<PortableSetupPanel nativeRuntime />);
+  const trigger = await screen.findByRole("button", {
+    name: "Clear unreadable setup",
+  });
+  expect(screen.getByRole("alert")).toHaveTextContent("could not verify");
+  await user.click(trigger);
+  let dialog = within(await screen.findByRole("dialog"));
+  await user.click(dialog.getByRole("button", { name: "Cancel" }));
+  expect(native).not.toHaveBeenCalledWith(
+    "portable_setup_reset",
+    expect.anything(),
+  );
+  await user.click(trigger);
+  dialog = within(await screen.findByRole("dialog"));
+  await user.click(
+    dialog.getByRole("button", { name: "Clear unreadable setup" }),
+  );
+  expect(await dialog.findByRole("alert")).toHaveTextContent("changed");
+  await user.click(dialog.getByRole("button", { name: "Cancel" }));
+  await user.click(
+    screen.getByRole("button", { name: "Refresh repositories" }),
+  );
+  await waitFor(() => expect(trigger).toBeEnabled());
+  await user.click(trigger);
+  dialog = within(await screen.findByRole("dialog"));
+  await user.click(
+    dialog.getByRole("button", { name: "Clear unreadable setup" }),
+  );
+  expect(native).toHaveBeenCalledWith("portable_setup_reset", {
+    projectId: repository.id,
+    digest: recoveryDigest,
+    idempotencyKey: expect.any(String),
+  });
+  expect(await screen.findByText("No active portable setups.")).toBeVisible();
+});

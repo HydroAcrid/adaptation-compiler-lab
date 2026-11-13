@@ -665,6 +665,36 @@ class HubService:
             self.require_same_project(grant, project, active=package is not None)
             self.portable_setups.write(project_key(project_id), grant["grant_id"], project, package)
 
+    def setup_desktop_status(self, project_id: str) -> dict[str, Any]:
+        grant, project = self.require_project(project_id, active=False)
+        key = project_key(project_id)
+        try:
+            _, package = self.portable_setups.read(key, grant["grant_id"], project)
+        except (OSError, ValueError):
+            recovery_digest = None
+            if self.secure_store_available():
+                with suppress(OSError, ValueError):
+                    recovery_digest = self.portable_setups.recovery_digest(
+                        key, grant["grant_id"], project
+                    )
+            return {"active": None, "issue": "unavailable", "recovery_digest": recovery_digest}
+        return {"active": package.preview() if package else None}
+
+    def reset_setup(self, project_id: str, digest: str) -> None:
+        with writer_lock(self.home), writer_lock(self.home, name="permission.lock"):
+            grant, project = self.require_project(project_id, active=False)
+            if not self.secure_store_available():
+                raise SetupError("Unlock the secure store before resetting the setup")
+            key = project_key(project_id)
+            try:
+                current = self.portable_setups.recovery_digest(key, grant["grant_id"], project)
+            except FileNotFoundError as error:
+                raise SetupError("The unreadable setup changed. Refresh its status.") from error
+            if current != digest:
+                raise SetupError("The unreadable setup changed. Refresh its status.")
+            self.require_same_project(grant, project, active=False)
+            self.portable_setups.write(key, grant["grant_id"], project, None)
+
     def setup_for_task(
         self,
         project_id: str,

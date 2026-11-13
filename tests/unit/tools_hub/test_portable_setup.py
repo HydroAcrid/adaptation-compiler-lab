@@ -194,6 +194,40 @@ def test_setup_router_preserves_existing_onboarding_and_excludes_agent_import(
         HubProtocol(service).dispatch("portable_setup.import.preview", args, agent=True)
 
 
+def test_unreadable_setup_reset_requires_exact_revision_and_preserves_permission(
+    service: HubService,
+    package: tuple[HubProtocol, Path, dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    recipient, path, exported = package
+    connect(service)
+    approve(recipient, review(recipient, path))
+    record = service.portable_setups.path(project_key("repo"))
+    permission = (service.home / "permission.json").read_bytes()
+    with pytest.raises(ValueError, match="readable"):
+        desktop(recipient, "reset", project_id="repo", digest=exported["digest"])
+    record.write_text("First broken record")
+    first = desktop(recipient, "status", project_id="repo")
+    assert first["active"] is None and first["issue"] == "unavailable"
+    assert first["recovery_digest"].startswith("sha256:")
+    record.write_text("Changed broken record")
+    with pytest.raises(ValueError, match="changed"):
+        desktop(recipient, "reset", project_id="repo", digest=first["recovery_digest"])
+    current = desktop(recipient, "status", project_id="repo")
+    assert current["recovery_digest"] != first["recovery_digest"]
+    with monkeypatch.context() as patch:
+        patch.setattr(service.portable_setups, "key", None)
+        assert desktop(recipient, "status", project_id="repo")["recovery_digest"] is None
+        with pytest.raises(ValueError, match="secure setup store"):
+            desktop(recipient, "reset", project_id="repo", digest=current["recovery_digest"])
+    assert desktop(recipient, "reset", project_id="repo", digest=current["recovery_digest"]) == {
+        "active": None
+    }
+    assert desktop(recipient, "status", project_id="repo") == {"active": None}
+    assert (service.home / "permission.json").read_bytes() == permission
+    assert approve(recipient, review(recipient, path)) == exported
+
+
 @pytest.mark.parametrize(
     "path", ["../marker", ".git/config", "C:/temp/file", "data/.env", "secrets.txt", "config.jsonl"]
 )
@@ -229,3 +263,22 @@ def test_curated_text_admission(text: str, service: HubService) -> None:
     else:
         with pytest.raises(ValueError, match="unsafe, invalid"):
             desktop(protocol, "export.preview", **draft)
+
+
+@pytest.mark.parametrize(
+    "token",
+    ["ghp_123456789abcdefghijklm", "a1234567-1234-1234-1234-123456789abc"],
+)
+def test_setup_rejects_sensitive_ids_and_path_components(token: str) -> None:
+    check = {
+        "id": "check",
+        "kind": "check",
+        "title": "Marker",
+        "path": "fixtures/marker.txt",
+        "operation": "file_exists",
+    }
+    assert RepositoryCheck.model_validate(check).path == "fixtures/marker.txt"
+    with pytest.raises(ValueError):
+        RepositoryCheck.model_validate({**check, "id": token})
+    with pytest.raises(ValueError):
+        RepositoryCheck.model_validate({**check, "path": f"fixtures/{token}/marker.txt"})

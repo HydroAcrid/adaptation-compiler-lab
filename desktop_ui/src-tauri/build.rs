@@ -207,6 +207,7 @@ fn main() {
             "portable_setup_import_approve",
             "portable_setup_status",
             "portable_setup_remove",
+            "portable_setup_reset",
             "package_review_list",
             "package_review_decide",
             "hub_catalog_get",
