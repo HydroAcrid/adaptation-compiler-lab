@@ -1,0 +1,804 @@
+import * as Dialog from "@radix-ui/react-dialog";
+import { FileUp, Plus, X } from "lucide-react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FormEvent,
+  type RefObject,
+} from "react";
+import { normalizeEngineFailure } from "../engine";
+import { usePageVisibility } from "../pageVisibility";
+import {
+  approveSetup,
+  loadSetupStatus,
+  openSetupFile,
+  previewSetupExport,
+  removeSetup,
+  saveSetupFile,
+  setupKinds,
+  type SetupImportPreview,
+  type SetupItem,
+  type SetupKind,
+  type SetupPreview,
+} from "../portableSetup";
+import { hubRequest, type HubProject, type HubState } from "../toolsHub";
+import { useDialogFocusReturn } from "./dialogFocus";
+import { Button, LoadingStatus, TemperSelect } from "./ui";
+import "./PortableSetupPanel.css";
+
+type RepositorySetup = {
+  repository: HubProject;
+  active: SetupPreview | null;
+  issue?: string;
+};
+
+type SetupAction =
+  | { type: "compose" }
+  | { type: "open" }
+  | { type: "remove"; repository: HubProject; setup: SetupPreview };
+
+type DraftItem = {
+  id: string;
+  kind: SetupKind;
+  title: string;
+  text: string;
+  path: string;
+  operation: "file_exists" | "file_contains";
+};
+
+function newDraftItem(kind: SetupKind): DraftItem {
+  return {
+    id: `item-${crypto.randomUUID()}`,
+    kind,
+    title: "",
+    text: "",
+    path: "",
+    operation: "file_exists",
+  };
+}
+
+function toSetupItem(item: DraftItem): SetupItem {
+  const { id, kind, title, text, path, operation } = item;
+  if (kind !== "check") return { id, kind, title: title.trim(), text };
+  return {
+    id,
+    kind,
+    title: title.trim(),
+    path: path.trim(),
+    operation,
+    ...(operation === "file_contains" ? { text } : {}),
+  };
+}
+
+export function PortableSetupPanel({
+  nativeRuntime,
+}: {
+  nativeRuntime: boolean;
+}) {
+  const visible = usePageVisibility();
+  const heading = useId();
+  const panelHeading = useRef<HTMLHeadingElement>(null);
+  const [rows, setRows] = useState<RepositorySetup[] | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [refresh, setRefresh] = useState(0);
+  const [loadedRefresh, setLoadedRefresh] = useState(-1);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [action, setAction] = useState<SetupAction | null>(null);
+  const loading = nativeRuntime && loadedRefresh !== refresh;
+
+  useEffect(() => {
+    if (!nativeRuntime || !visible) return;
+    let live = true;
+    async function load() {
+      try {
+        const state = await hubRequest<HubState>("status");
+        const results = await Promise.allSettled(
+          state.projects.map((repository) => loadSetupStatus(repository.id)),
+        );
+        if (!live) return;
+        setRows(
+          state.projects.map((repository, index) => {
+            const result = results[index];
+            return result.status === "fulfilled"
+              ? { repository, active: result.value.active }
+              : {
+                  repository,
+                  active: null,
+                  issue: normalizeEngineFailure(
+                    result.reason,
+                    "Temper could not read this setup.",
+                  ).message,
+                };
+          }),
+        );
+        setStatusError(null);
+      } catch (reason: unknown) {
+        if (live)
+          setStatusError(
+            normalizeEngineFailure(
+              reason,
+              "Temper could not load repository setups.",
+            ).message,
+          );
+      } finally {
+        if (live) setLoadedRefresh(refresh);
+      }
+    }
+    void load();
+    return () => {
+      live = false;
+    };
+  }, [nativeRuntime, refresh, visible]);
+
+  function completed(message: string) {
+    setNotice(message);
+    setAction(null);
+    setRefresh((value) => value + 1);
+  }
+
+  const repositories = rows?.map((row) => row.repository) ?? [];
+  return (
+    <section className="portable-setup-section" aria-labelledby={heading}>
+      <div className="portable-setup-heading">
+        <h2
+          className="modes-section-title"
+          id={heading}
+          ref={panelHeading}
+          tabIndex={-1}
+        >
+          Portable setups
+        </h2>
+        {nativeRuntime && (
+          <div className="portable-setup-actions">
+            <Button
+              type="button"
+              onClick={() => setAction({ type: "compose" })}
+            >
+              <Plus aria-hidden="true" size={15} /> Create setup
+            </Button>
+            <Button
+              type="button"
+              disabled={loading || !!statusError || !repositories.length}
+              onClick={() => setAction({ type: "open" })}
+            >
+              <FileUp aria-hidden="true" size={15} /> Open setup
+            </Button>
+          </div>
+        )}
+      </div>
+      {!nativeRuntime ? (
+        <p>Portable setup files are available in the installed desktop app.</p>
+      ) : (
+        <>
+          {notice && <p role="status">{notice}</p>}
+          {loading && (
+            <LoadingStatus>
+              {rows
+                ? "Refreshing portable setups…"
+                : "Loading portable setups…"}
+            </LoadingStatus>
+          )}
+          {statusError && <p role="alert">{statusError}</p>}
+          {rows
+            ?.filter((row) => row.active || row.issue)
+            .map(({ repository, active, issue }) => (
+              <div className="portable-setup-active" key={repository.id}>
+                <div className="portable-setup-heading">
+                  <div>
+                    <strong>{active?.title ?? repository.label}</strong>
+                    {active && (
+                      <p>
+                        {repository.label} · {active.items.length}{" "}
+                        {active.items.length === 1 ? "item" : "items"}
+                      </p>
+                    )}
+                  </div>
+                  {active && (
+                    <Button
+                      type="button"
+                      tone="quiet"
+                      disabled={loading || !!statusError}
+                      onClick={() =>
+                        setAction({ type: "remove", repository, setup: active })
+                      }
+                    >
+                      Remove setup
+                    </Button>
+                  )}
+                </div>
+                {active && (
+                  <details>
+                    <summary>View setup contents</summary>
+                    <SetupContents value={active} />
+                  </details>
+                )}
+                {issue && <p role="alert">{issue}</p>}
+              </div>
+            ))}
+          {!loading &&
+            !statusError &&
+            rows?.every((row) => !row.active && !row.issue) && (
+              <p>
+                {repositories.length
+                  ? "No active portable setups."
+                  : "Add a repository to automatic workflows before opening a setup."}
+              </p>
+            )}
+          {!loading && (
+            <Button
+              type="button"
+              tone="quiet"
+              onClick={() => setRefresh((value) => value + 1)}
+            >
+              Refresh repositories
+            </Button>
+          )}
+        </>
+      )}
+      {action && (
+        <PortableSetupDialog
+          action={action}
+          repositories={repositories}
+          returnFocusFallback={panelHeading}
+          onClose={() => setAction(null)}
+          onComplete={completed}
+        />
+      )}
+    </section>
+  );
+}
+
+function SetupContents({ value }: { value: SetupPreview }) {
+  return (
+    <div className="portability-preview portable-setup-contents">
+      <header>
+        <strong>{value.title}</strong>
+      </header>
+      <dl className="mode-detail-list">
+        <div>
+          <dt>Signer fingerprint</dt>
+          <dd>
+            <code>{value.signer_fingerprint}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>Setup digest</dt>
+          <dd>
+            <code>{value.digest}</code>
+          </dd>
+        </div>
+      </dl>
+      <ul aria-label="Setup contents">
+        {value.items.map((item) => (
+          <li key={item.id}>
+            <span>
+              <small>{setupKinds[item.kind]}</small>
+              <strong>{item.title}</strong>
+              {item.kind === "check" ? (
+                <>
+                  <span>
+                    {item.operation === "file_exists"
+                      ? "File exists"
+                      : "File contains text"}
+                  </span>
+                  <code>{item.path}</code>
+                  {item.operation === "file_contains" && (
+                    <span className="portable-setup-text">{item.text}</span>
+                  )}
+                </>
+              ) : (
+                <span className="portable-setup-text">{item.text}</span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function PortableSetupDialog({
+  action,
+  repositories,
+  returnFocusFallback,
+  onClose,
+  onComplete,
+}: {
+  action: SetupAction;
+  repositories: HubProject[];
+  returnFocusFallback: RefObject<HTMLHeadingElement | null>;
+  onClose: () => void;
+  onComplete: (message: string) => void;
+}) {
+  const visible = usePageVisibility();
+  const focusReturn = useDialogFocusReturn(visible);
+  const [title, setTitle] = useState("");
+  const [items, setItems] = useState<DraftItem[]>([]);
+  const [newKind, setNewKind] = useState<SetupKind>("skill");
+  const [exportPreview, setExportPreview] = useState<SetupPreview | null>(null);
+  const [importPreview, setImportPreview] = useState<SetupImportPreview | null>(
+    null,
+  );
+  const [projectId, setProjectId] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const inFlight = useRef(false);
+  const reviewHeading = useRef<HTMLHeadingElement>(null);
+  const draftName = useRef<HTMLInputElement>(null);
+  const targetSelectId = useId();
+  const openAgain = useRef(false);
+  const preview = exportPreview ?? importPreview;
+  const editing = action.type === "compose" && !exportPreview;
+  const target = repositories.find((row) => row.id === projectId);
+
+  useEffect(() => {
+    if (preview) {
+      reviewHeading.current?.focus();
+      openAgain.current = true;
+    } else if (openAgain.current) {
+      (draftName.current ?? document.getElementById(targetSelectId))?.focus();
+    }
+  }, [preview, targetSelectId]);
+
+  async function run(message: string, work: () => Promise<void>) {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy(message);
+    setError(null);
+    try {
+      await work();
+    } catch (reason: unknown) {
+      const failure = normalizeEngineFailure(
+        reason,
+        "Temper could not complete this setup action.",
+      );
+      if (failure.code !== "cancelled") setError(failure.message);
+    } finally {
+      inFlight.current = false;
+      setBusy(null);
+    }
+  }
+
+  function reviewDraft(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!items.length) return;
+    const draft = items.map(toSetupItem);
+    if (
+      !title.trim() ||
+      draft.some(
+        (item) =>
+          !item.title ||
+          (item.kind === "check"
+            ? !item.path ||
+              (item.operation === "file_contains" && !item.text?.trim())
+            : !item.text.trim()),
+      )
+    ) {
+      setError(
+        "Enter a name and content for every item before reviewing the setup.",
+      );
+      return;
+    }
+    void run("Preparing setup review…", async () => {
+      setExportPreview(await previewSetupExport(title.trim(), draft));
+    });
+  }
+
+  function updateItem(id: string, update: Partial<DraftItem>) {
+    setItems((current) =>
+      current.map((item) => (item.id === id ? { ...item, ...update } : item)),
+    );
+  }
+
+  function chooseFile() {
+    void run("Opening and verifying the setup…", async () => {
+      const result = await openSetupFile(projectId);
+      if (result.project_id !== projectId)
+        throw new Error(
+          "The setup review targets a different repository. Choose the file again.",
+        );
+      setImportPreview(result);
+      setConsent(false);
+    });
+  }
+
+  function complete() {
+    if (exportPreview) {
+      void run("Saving the setup file…", async () => {
+        const saved = await saveSetupFile(exportPreview.digest);
+        if (saved.digest !== exportPreview.digest)
+          throw new Error(
+            "The saved setup digest differs from the reviewed setup. Review the draft again.",
+          );
+        onComplete(`Saved “${saved.title}”.`);
+      });
+    } else if (importPreview && consent) {
+      void run("Applying the setup…", async () => {
+        const active = await approveSetup(importPreview);
+        if (active.digest !== importPreview.digest)
+          throw new Error(
+            "The active setup differs from the reviewed setup. Reopen the file to review it again.",
+          );
+        onComplete(
+          `“${active.title}” is active in ${target?.label ?? "the selected repository"}.`,
+        );
+      });
+    } else if (action.type === "remove") {
+      void run("Removing the setup…", async () => {
+        await removeSetup(action.repository.id, action.setup.digest);
+        onComplete(
+          `Removed “${action.setup.title}” from ${action.repository.label}.`,
+        );
+      });
+    }
+  }
+
+  const dialogTitle =
+    action.type === "remove"
+      ? `Remove “${action.setup.title}”?`
+      : action.type === "open"
+        ? "Open a portable setup"
+        : "Create a portable setup";
+
+  return (
+    <Dialog.Root
+      open={visible}
+      onOpenChange={(open) => {
+        if (!open && !inFlight.current) onClose();
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Overlay className="dialog-overlay" />
+        <Dialog.Content
+          onOpenAutoFocus={focusReturn.onOpenAutoFocus}
+          onCloseAutoFocus={(event) => {
+            focusReturn.onCloseAutoFocus(event);
+            const heading = returnFocusFallback.current;
+            if (
+              visible &&
+              heading &&
+              !heading.closest("[hidden], [inert]") &&
+              document.activeElement === document.body
+            )
+              heading.focus();
+          }}
+          className="core-dialog portability-dialog portable-setup-dialog"
+        >
+          <Dialog.Close
+            aria-label="Close"
+            className="dialog-close"
+            disabled={!!busy}
+          >
+            <X size={18} />
+          </Dialog.Close>
+          <Dialog.Title>{dialogTitle}</Dialog.Title>
+          <Dialog.Description>
+            {action.type === "compose"
+              ? "Add the guidance and repository checks you want to share. The recipient reviews the signed file before applying it."
+              : action.type === "open"
+                ? "Choose the repository that will receive the setup, then open a signed .temper-setup file."
+                : `Future tasks in ${action.repository.label} will stop receiving this setup through Temper.`}
+          </Dialog.Description>
+
+          {editing && (
+            <form onSubmit={reviewDraft}>
+              <fieldset className="portable-setup-fields" disabled={!!busy}>
+                <label className="core-field">
+                  <span>Setup name</span>
+                  <input
+                    ref={draftName}
+                    maxLength={120}
+                    value={title}
+                    onChange={(event) => setTitle(event.currentTarget.value)}
+                    required
+                  />
+                </label>
+                {items.map((item) => (
+                  <fieldset className="portable-setup-item" key={item.id}>
+                    <legend>
+                      {setupKinds[item.kind]}
+                      {item.title.trim() ? ` · ${item.title.trim()}` : ""}
+                    </legend>
+                    <label className="core-field">
+                      <span>Item name</span>
+                      <input
+                        maxLength={120}
+                        value={item.title}
+                        onChange={(event) =>
+                          updateItem(item.id, {
+                            title: event.currentTarget.value,
+                          })
+                        }
+                        required
+                      />
+                    </label>
+                    {item.kind === "check" ? (
+                      <>
+                        <div className="core-field">
+                          <span>Check type</span>
+                          <TemperSelect
+                            ariaLabel="Check type"
+                            disabled={!!busy}
+                            portalled={false}
+                            value={item.operation}
+                            onValueChange={(operation) =>
+                              updateItem(item.id, { operation })
+                            }
+                            options={[
+                              { value: "file_exists", label: "File exists" },
+                              {
+                                value: "file_contains",
+                                label: "File contains text",
+                              },
+                            ]}
+                          />
+                        </div>
+                        <label className="core-field">
+                          <span>Repository-relative file path</span>
+                          <input
+                            maxLength={240}
+                            placeholder="docs/guide.md"
+                            value={item.path}
+                            onChange={(event) =>
+                              updateItem(item.id, {
+                                path: event.currentTarget.value,
+                              })
+                            }
+                            required
+                          />
+                        </label>
+                        {item.operation === "file_contains" && (
+                          <label className="core-field">
+                            <span>Text to find</span>
+                            <input
+                              maxLength={200}
+                              value={item.text}
+                              onChange={(event) =>
+                                updateItem(item.id, {
+                                  text: event.currentTarget.value,
+                                })
+                              }
+                              required
+                            />
+                          </label>
+                        )}
+                      </>
+                    ) : (
+                      <label className="core-field">
+                        <span>
+                          {item.kind === "skill"
+                            ? "Skill guidance"
+                            : item.kind === "knowledge"
+                              ? "Knowledge text"
+                              : "Preference text"}
+                        </span>
+                        <textarea
+                          maxLength={4000}
+                          rows={3}
+                          value={item.text}
+                          onChange={(event) =>
+                            updateItem(item.id, {
+                              text: event.currentTarget.value,
+                            })
+                          }
+                          required
+                        />
+                      </label>
+                    )}
+                    <Button
+                      type="button"
+                      tone="quiet"
+                      onClick={() =>
+                        setItems((current) =>
+                          current.filter((row) => row.id !== item.id),
+                        )
+                      }
+                    >
+                      Remove {setupKinds[item.kind].toLowerCase()}
+                    </Button>
+                  </fieldset>
+                ))}
+                <div className="portable-setup-add">
+                  <div className="core-field">
+                    <span>Item type</span>
+                    <TemperSelect
+                      ariaLabel="Item type"
+                      disabled={!!busy}
+                      portalled={false}
+                      value={newKind}
+                      onValueChange={setNewKind}
+                      options={(Object.keys(setupKinds) as SetupKind[]).map(
+                        (value) => ({ value, label: setupKinds[value] }),
+                      )}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    disabled={items.length >= 20}
+                    onClick={() =>
+                      setItems((current) => [...current, newDraftItem(newKind)])
+                    }
+                  >
+                    Add item
+                  </Button>
+                </div>
+                {!items.length && <p>Add an item to review your setup.</p>}
+                {items.length >= 20 && (
+                  <p>A setup can include up to 20 items.</p>
+                )}
+                <div className="core-dialog__actions">
+                  <Button type="button" tone="quiet" onClick={onClose}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" tone="primary" disabled={!items.length}>
+                    Review setup
+                  </Button>
+                </div>
+              </fieldset>
+            </form>
+          )}
+
+          {action.type === "open" && !importPreview && (
+            <>
+              <div className="core-field">
+                <span>Target repository</span>
+                <TemperSelect
+                  id={targetSelectId}
+                  ariaLabel="Target repository"
+                  disabled={!!busy}
+                  portalled={false}
+                  value={projectId || "#"}
+                  onValueChange={(value) => {
+                    setProjectId(value === "#" ? "" : value);
+                    setError(null);
+                  }}
+                  options={[
+                    {
+                      value: "#",
+                      label: "Choose a repository",
+                    },
+                    ...repositories.map((repository) => ({
+                      value: repository.id,
+                      label: repository.label,
+                      description: repository.root,
+                    })),
+                  ]}
+                />
+              </div>
+              {target && (
+                <p className="portable-setup-path">
+                  <code>{target.root}</code>
+                </p>
+              )}
+              <div className="core-dialog__actions">
+                <Button
+                  type="button"
+                  tone="quiet"
+                  disabled={!!busy}
+                  onClick={onClose}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  tone="primary"
+                  disabled={!!busy || !target}
+                  onClick={chooseFile}
+                >
+                  Choose setup file
+                </Button>
+              </div>
+            </>
+          )}
+
+          {preview && (
+            <>
+              <h3 tabIndex={-1} ref={reviewHeading}>
+                {importPreview
+                  ? "Review before applying"
+                  : "Review before saving"}
+              </h3>
+              {importPreview && (
+                <dl className="mode-detail-list portable-setup-path">
+                  <div>
+                    <dt>File</dt>
+                    <dd>{importPreview.source_name}</dd>
+                  </div>
+                  <div>
+                    <dt>Repository</dt>
+                    <dd>
+                      {target?.label} <code>{target?.root}</code>
+                    </dd>
+                  </div>
+                </dl>
+              )}
+              <SetupContents value={preview} />
+              {importPreview && (
+                <>
+                  <p>
+                    Confirm the signer with the sender. Future tasks in this
+                    repository can load this guidance and the results of these
+                    read-only file checks through Temper.
+                  </p>
+                  <label className="portable-setup-consent">
+                    <input
+                      type="checkbox"
+                      checked={consent}
+                      disabled={!!busy}
+                      onChange={(event) =>
+                        setConsent(event.currentTarget.checked)
+                      }
+                    />
+                    <span>
+                      {importPreview.active_digest
+                        ? "I approve replacing the active setup for this repository."
+                        : "I approve applying these items to this repository."}
+                    </span>
+                  </label>
+                </>
+              )}
+              <div className="core-dialog__actions">
+                <Button
+                  type="button"
+                  tone="quiet"
+                  disabled={!!busy}
+                  onClick={() => {
+                    setExportPreview(null);
+                    setImportPreview(null);
+                    setConsent(false);
+                    setError(null);
+                  }}
+                >
+                  {importPreview ? "Choose another file" : "Back to edit"}
+                </Button>
+                <Button
+                  type="button"
+                  tone="primary"
+                  disabled={!!busy || (!!importPreview && !consent)}
+                  onClick={complete}
+                >
+                  {importPreview
+                    ? importPreview.active_digest
+                      ? "Replace setup"
+                      : "Apply setup"
+                    : "Save setup file"}
+                </Button>
+              </div>
+            </>
+          )}
+
+          {action.type === "remove" && (
+            <div className="core-dialog__actions">
+              <Button
+                type="button"
+                tone="quiet"
+                disabled={!!busy}
+                onClick={onClose}
+              >
+                Keep setup
+              </Button>
+              <Button
+                type="button"
+                tone="primary"
+                disabled={!!busy}
+                onClick={complete}
+              >
+                Remove setup
+              </Button>
+            </div>
+          )}
+
+          {busy && <LoadingStatus>{busy}</LoadingStatus>}
+          {error && (
+            <p className="portability-error" role="alert">
+              {error}
+            </p>
+          )}
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}

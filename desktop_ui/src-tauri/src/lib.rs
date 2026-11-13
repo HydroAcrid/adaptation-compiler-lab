@@ -1895,6 +1895,151 @@ async fn package_import_stage(
     .map_err(|_| unavailable())?
 }
 
+async fn portable_setup_call(
+    app: tauri::AppHandle,
+    operation: &'static str,
+    params: Value,
+    idempotency_key: Option<String>,
+) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<EngineState>();
+        call_engine(&state, operation, params, None, idempotency_key.as_deref())
+    })
+    .await
+    .map_err(|_| unavailable())?
+}
+
+const PORTABLE_SETUP_EXTENSION: &str = "temper-setup";
+
+fn portable_setup_path(
+    mut path: std::path::PathBuf,
+    saving: bool,
+) -> Result<std::path::PathBuf, PublicError> {
+    match path.extension().and_then(|extension| extension.to_str()) {
+        Some(extension) if extension.eq_ignore_ascii_case(PORTABLE_SETUP_EXTENSION) => Ok(path),
+        None if saving && path.extension().is_none() && path.file_name().is_some() => {
+            path.set_extension(PORTABLE_SETUP_EXTENSION);
+            Ok(path)
+        }
+        _ => Err(PublicError {
+            code: "invalid_setup_file",
+            message: "Choose a file with the .temper-setup extension.",
+        }),
+    }
+}
+
+#[tauri::command]
+async fn portable_setup_export_preview(
+    app: tauri::AppHandle,
+    title: String,
+    items: Vec<Value>,
+) -> Result<EngineResponse, PublicError> {
+    portable_setup_call(
+        app,
+        "portable_setup.export.preview",
+        json!({"title": title, "items": items}),
+        None,
+    )
+    .await
+}
+
+#[tauri::command]
+async fn portable_setup_export(
+    app: tauri::AppHandle,
+    digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let destination = rfd::FileDialog::new()
+            .set_file_name("temper-setup.temper-setup")
+            .add_filter("Temper setup", &[PORTABLE_SETUP_EXTENSION])
+            .save_file()
+            .ok_or_else(cancelled)?;
+        let destination = portable_setup_path(destination, true)?;
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "portable_setup.export.create",
+            json!({"digest": digest, "destination": destination}),
+            None,
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
+}
+
+#[tauri::command]
+async fn portable_setup_import_preview(
+    app: tauri::AppHandle,
+    project_id: String,
+) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let source = rfd::FileDialog::new()
+            .add_filter("Temper setup", &[PORTABLE_SETUP_EXTENSION])
+            .pick_file()
+            .ok_or_else(cancelled)?;
+        let source = portable_setup_path(source, false)?;
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "portable_setup.import.preview",
+            json!({"source": source, "project_id": project_id}),
+            None,
+            None,
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
+}
+
+#[tauri::command]
+async fn portable_setup_import_approve(
+    app: tauri::AppHandle,
+    project_id: String,
+    digest: String,
+    active_digest: Option<String>,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    portable_setup_call(
+        app,
+        "portable_setup.import.approve",
+        json!({"project_id": project_id, "digest": digest, "active_digest": active_digest}),
+        Some(idempotency_key),
+    )
+    .await
+}
+
+#[tauri::command]
+async fn portable_setup_status(
+    app: tauri::AppHandle,
+    project_id: String,
+) -> Result<EngineResponse, PublicError> {
+    portable_setup_call(
+        app,
+        "portable_setup.status",
+        json!({"project_id": project_id}),
+        None,
+    )
+    .await
+}
+
+#[tauri::command]
+async fn portable_setup_remove(
+    app: tauri::AppHandle,
+    project_id: String,
+    digest: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    portable_setup_call(
+        app,
+        "portable_setup.remove",
+        json!({"project_id": project_id, "digest": digest}),
+        Some(idempotency_key),
+    )
+    .await
+}
+
 #[tauri::command]
 async fn package_review_list(app: tauri::AppHandle) -> Result<EngineResponse, PublicError> {
     tauri::async_runtime::spawn_blocking(move || {
@@ -2385,6 +2530,12 @@ pub fn run() {
             package_export,
             package_import_preview,
             package_import_stage,
+            portable_setup_export_preview,
+            portable_setup_export,
+            portable_setup_import_preview,
+            portable_setup_import_approve,
+            portable_setup_status,
+            portable_setup_remove,
             package_review_list,
             package_review_decide,
             hub_catalog_get,
@@ -2581,6 +2732,39 @@ mod tests {
         assert!(!source.contains(
             "fn package_import_preview(\n    state: tauri::State<'_, EngineState>,\n    source"
         ));
+        assert!(source.contains(
+            "fn portable_setup_export(\n    app: tauri::AppHandle,\n    digest: String,\n    idempotency_key: String,\n)"
+        ));
+        assert!(source.contains(
+            "fn portable_setup_import_preview(\n    app: tauri::AppHandle,\n    project_id: String,\n)"
+        ));
+    }
+
+    #[test]
+    fn portable_setup_picker_paths_keep_the_reviewed_file_type() {
+        use std::path::{Path, PathBuf};
+
+        for saving in [false, true] {
+            let chosen = PathBuf::from("Example.temper-setup");
+            assert_eq!(
+                portable_setup_path(chosen.clone(), saving).ok(),
+                Some(chosen)
+            );
+            assert!(matches!(
+                portable_setup_path(PathBuf::from("Example.temper-pack"), saving),
+                Err(PublicError {
+                    code: "invalid_setup_file",
+                    ..
+                })
+            ));
+        }
+        assert_eq!(
+            portable_setup_path(PathBuf::from("Example"), true)
+                .ok()
+                .as_deref(),
+            Some(Path::new("Example.temper-setup"))
+        );
+        assert!(portable_setup_path(PathBuf::from("Example"), false).is_err());
     }
 
     #[test]
@@ -2632,6 +2816,12 @@ mod tests {
             "package_export",
             "package_import_preview",
             "package_import_stage",
+            "portable_setup_export_preview",
+            "portable_setup_export",
+            "portable_setup_import_preview",
+            "portable_setup_import_approve",
+            "portable_setup_status",
+            "portable_setup_remove",
             "package_review_list",
             "package_review_decide",
             "hub_catalog_get",

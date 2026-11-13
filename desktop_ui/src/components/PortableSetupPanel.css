@@ -1,0 +1,142 @@
+.portable-setup-section {
+  margin-block: 28px;
+  padding-block: 16px;
+  border-top: 1px solid var(--folio-rule);
+}
+
+.portable-setup-section > p,
+.portable-setup-active p,
+.portable-setup-dialog p {
+  font-size: 13px;
+}
+
+.portable-setup-heading,
+.portable-setup-actions,
+.portable-setup-add {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.portable-setup-heading {
+  justify-content: space-between;
+}
+
+.portable-setup-active {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--folio-rule);
+  overflow-wrap: anywhere;
+}
+
+.portable-setup-active p {
+  margin-block: 4px;
+  color: var(--muted);
+}
+
+.portable-setup-active details {
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.portable-setup-dialog .core-dialog__actions {
+  flex-wrap: wrap;
+}
+
+.portable-setup-dialog h3 {
+  margin-block: 22px 12px;
+  font-size: 16px;
+}
+
+.portable-setup-dialog .core-field > span {
+  color: var(--text-soft);
+  font-size: 12px;
+  text-transform: none;
+}
+
+.portable-setup-dialog
+  .core-field
+  :is(input, textarea, .temper-select-trigger) {
+  min-width: 0;
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.portable-setup-fields,
+.portable-setup-item {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.portable-setup-item {
+  margin-top: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--folio-rule);
+}
+
+.portable-setup-item legend {
+  max-width: 100%;
+  font-size: 13px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.portable-setup-item .button {
+  margin-top: 8px;
+}
+
+.portable-setup-add {
+  align-items: end;
+}
+
+.portable-setup-add .core-field {
+  flex: 1 1 145px;
+}
+
+.portable-setup-add .button {
+  min-height: 42px;
+}
+
+.portable-setup-contents {
+  overflow-wrap: anywhere;
+}
+
+.portable-setup-contents > header {
+  display: block;
+}
+
+.portable-setup-contents li + li {
+  border-top: 1px solid var(--folio-rule);
+}
+
+.portable-setup-text {
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+.portable-setup-path {
+  overflow-wrap: anywhere;
+}
+
+.portable-setup-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.portable-setup-consent input {
+  flex: none;
+  accent-color: var(--accent);
+}

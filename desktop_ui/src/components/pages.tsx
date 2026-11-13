@@ -87,6 +87,7 @@ import type {
 import { ProfilePortabilityDialog } from "./ProfilePortabilityDialog";
 import { RecoveryExportDialog } from "./RecoveryDialog";
 import { ShareablePackageDialog } from "./ShareablePackageDialog";
+import { PortableSetupPanel } from "./PortableSetupPanel";
 import { PackageReviewQueue } from "./PackageReviewQueue";
 import {
   Button,
@@ -1270,6 +1271,7 @@ export function ModesPage({
         </div>
       </header>
       <ToolsHubPanel nativeRuntime={nativeRuntime} />
+      <PortableSetupPanel nativeRuntime={nativeRuntime} />
       <div className="modes-section-heading">
         <div>
           <h2 className="modes-section-title">Saved workflows</h2>
