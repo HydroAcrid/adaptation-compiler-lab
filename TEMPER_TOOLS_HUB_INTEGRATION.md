@@ -92,3 +92,53 @@ native, installation, portability and actual-work gates pass. Signing and public
 distribution have separate requirements. Existing frozen learning evaluation
 results do not qualify this Hub, and Hub evidence cannot complete the historical
 personalization research protocol.
+
+## Evaluate a check update locally
+
+Maintainers can compare two signed `.temper-setup` files against a trusted
+local replay suite. Keep the currently approved package and its recorded digest
+and publisher fingerprint. Use those approved values to pin the baseline and
+publisher in the replay suite.
+
+```text
+uv run python scripts/evaluate_workflow_update.py --baseline baseline.temper-setup --candidate candidate.temper-setup --replay replay.json
+```
+
+The replay JSON uses `format: "temper-workflow-replay/v1"`, `baseline_digest`,
+`signer_fingerprint`, and a `cases` array. Each case has an `id`, a `files`
+array of repository-relative `path` and `text` pairs, and an `expected` object
+mapping check IDs to booleans. Use `null` for a missing fixture file. Supply
+expected pass and fail outcomes for each check on distinct inputs. Define
+expectations independently of the packages being compared.
+
+The evaluator accepts updates to existing check literals from the same approved
+publisher. It holds the setup title, item order and identity, guidance, and
+check paths and operations fixed. Both versions run against the same synthetic
+files in isolated temporary directories. The JSON report gives input digests,
+correct outcomes, and case and check IDs for failures and changes. Exit code 0
+means the candidate fixed at least one miss and passed the whole suite, 1 means
+the update was ineligible, and 2 means an input or usage error.
+
+The report identifies the exact candidate a maintainer evaluated. Evaluation is
+offline and leaves active setups untouched.
+
+## Follow workflow updates in Temper
+
+In Tools & workflows, find the repository's active setup and choose **Connect
+update source**. Select a folder that your approved publisher or distribution
+process can update. Put the publisher's signed candidate in that folder as
+`workflow.temper-setup`. Then select a trusted JSON file containing the test
+cases for the active setup. Keep that file outside the source folder and supply
+it independently of the candidate.
+
+Temper checks the connected folder when you return to the page. Review an
+available version to see how many test outcomes the current and proposed
+versions got right. The new version must fix at least one miss, pass every
+case, and come from the same publisher as your current setup. Choosing **Apply
+workflow update** applies the reviewed version to that repository. **Restore
+previous setup** works even if the source is unavailable. For another version, reconnect
+with trusted test cases pinned to the new active setup.
+
+The source folder can be synced by a distribution process you already trust.
+Temper watches that folder through the desktop workflow. Hosted discovery and
+delivery of source updates are outside this local integration.

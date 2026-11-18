@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 import time
 from pathlib import Path
 from typing import Any, Literal
@@ -29,6 +30,7 @@ from .portable_setup import (
 from .service import HubService
 from .task_lifecycle import TaskOutcome, TaskOwner
 from .workflow_runtime import MotionVideo, RenderCancellation
+from .workflow_update import UpdateDirection, UpdateReview
 
 
 class Parameters(BaseModel):
@@ -127,6 +129,15 @@ class SetupImport(SetupProject):
     source: FileName
 
 
+class SetupUpdateSource(SetupProject):
+    directory: FileName
+    replay: FileName
+
+
+class SetupUpdateApproval(SetupProject):
+    review_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+
+
 class SetupReference(SetupProject):
     digest: Digest
 
@@ -201,6 +212,12 @@ SETUP_DESKTOP_SCHEMAS: dict[str, type[BaseModel]] = {
     "portable_setup.import.approve": SetupApproval,
     "portable_setup.remove": SetupReference,
     "portable_setup.reset": SetupReset,
+    "portable_setup.update.status": SetupProject,
+    "portable_setup.update.source": SetupUpdateSource,
+    "portable_setup.update.preview": SetupProject,
+    "portable_setup.update.rollback_preview": SetupProject,
+    "portable_setup.update.approve": SetupUpdateApproval,
+    "portable_setup.update.disconnect": SetupProject,
 }
 SCHEMAS.update(
     {
@@ -215,6 +232,9 @@ SETUP_MUTATIONS = {
     "portable_setup.import.approve",
     "portable_setup.remove",
     "portable_setup.reset",
+    "portable_setup.update.source",
+    "portable_setup.update.approve",
+    "portable_setup.update.disconnect",
 }
 SETUP_PREVIEW_SECONDS = 900
 
@@ -227,6 +247,7 @@ class HubProtocol:
         self.task_owner = task_owner
         self.replays: dict[str, tuple[str, dict[str, Any]]] = {}
         self.export_setup: tuple[float, SetupPackage] | None = None
+        self.update_review: tuple[float, str, UpdateReview] | None = None
         self.import_setup: (
             tuple[
                 float, SetupPackage, tuple[dict[str, Any], dict[str, Any], str | None], str | None
@@ -275,7 +296,11 @@ class HubProtocol:
         if method in SETUP_DESKTOP_SCHEMAS:
             if method in SETUP_MUTATIONS and (not idempotency_key or len(idempotency_key) > 160):
                 raise SetupError("This setup change needs a fresh approval request")
-            result = self.desktop_setup(value)
+            result = (
+                self.desktop_setup_update(method, value)
+                if method.startswith("portable_setup.update.") and isinstance(value, SetupProject)
+                else self.desktop_setup(value)
+            )
             if method in SETUP_MUTATIONS and idempotency_key:
                 self.remember(idempotency_key, request_digest, result)
             return result
@@ -402,8 +427,6 @@ class HubProtocol:
         elif method == "tools_hub.connection.preview":
             self.service.grant(active=True)
             connection = CodexHubConnection(self.service.codex_home, self.config_path)
-            import secrets
-            import time
 
             previous_path = self.service.home / "connection-state.json"
             previous = (
@@ -428,8 +451,6 @@ class HubProtocol:
                 self.service.home / "connection-preview.json", result, "connection_preview"
             )
         elif method == "tools_hub.connection.apply" and isinstance(value, PreviewId):
-            import time
-
             from .paths import writer_lock
 
             with writer_lock(self.service.home):
@@ -528,6 +549,38 @@ class HubProtocol:
         if isinstance(value, SetupProject):
             return self.service.setup_desktop_status(value.project_id)
         raise SetupError("Unsupported portable setup operation")
+
+    def desktop_setup_update(self, method: str, value: SetupProject) -> dict[str, Any]:
+        project_id = value.project_id
+        if isinstance(value, SetupUpdateSource):
+            return self.service.set_update_source(
+                project_id, directory=Path(value.directory), replay=Path(value.replay)
+            )
+        if isinstance(value, SetupUpdateApproval):
+            pending = self.update_review
+            if (
+                pending is None
+                or pending[0] <= time.monotonic()
+                or pending[1] != value.review_id
+                or pending[2].project["id"] != project_id
+            ):
+                raise SetupError("Review this exact workflow change again before approving it")
+            self.update_review = None
+            return self.service.approve_setup_update(project_id, pending[2])
+        if method == "portable_setup.update.status":
+            return self.service.setup_update_status(project_id)
+        if method == "portable_setup.update.disconnect":
+            return self.service.set_update_source(project_id)
+        if method in {"portable_setup.update.preview", "portable_setup.update.rollback_preview"}:
+            self.update_review = None
+            direction: UpdateDirection = (
+                "rollback" if method.endswith(".rollback_preview") else "update"
+            )
+            review = self.service.preview_setup_update(project_id, direction)
+            review_id = secrets.token_hex(16)
+            self.update_review = (time.monotonic() + SETUP_PREVIEW_SECONDS, review_id, review)
+            return review.preview(review_id)
+        raise SetupError("Unsupported workflow update operation")
 
     def record_checkpoint_retrieval(self, receipt: dict[str, Any], checkpoint_id: str) -> None:
         if self.task_owner is not None:

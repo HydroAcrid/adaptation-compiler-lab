@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import {
   cleanup,
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -23,12 +24,21 @@ const repository = {
   pending_recovery: false,
 };
 const workflowState = {
+  version: 1 as const,
+  digest: "fixture",
   enabled: true,
   indexed: true,
   bridge_configured: true,
   native_hooks_configured: true,
   paused: false,
+  project_count: 1,
   projects: [repository],
+  manager: "fixture",
+  manager_ready: true,
+  sources: [],
+  cleanup_pending: false,
+  last_checked: null,
+  job: null,
 };
 const setup: SetupPreview = {
   title: "Release routine",
@@ -367,18 +377,7 @@ it("requires confirmation to clear an unreadable setup and refreshes after a sta
 
 it("blocks paused and disconnected setup imports before file selection", async () => {
   native.mockResolvedValue(response({ active: null }));
-  const state = {
-    version: 1 as const,
-    digest: "fixture",
-    ...workflowState,
-    project_count: 1,
-    manager: "fixture",
-    manager_ready: true,
-    sources: [],
-    cleanup_pending: false,
-    last_checked: null,
-    job: null,
-  };
+  const state = workflowState;
   function panel(overrides: Partial<typeof state>) {
     return (
       <PortableSetupPanel
@@ -529,4 +528,225 @@ it("keeps all last verified items during a pending and failed refresh, then reco
   expect(panel.queryByText(/Last known setup/)).toBeNull();
   expect(panel.queryByText("Readiness")).toBeNull();
   expect(importSetup).toBeEnabled();
+});
+
+it("reviews a workflow update before applying it and restores the previous setup while the source is unavailable", async () => {
+  const candidate = {
+    ...setup,
+    digest: "sha256:new-release",
+    items: setup.items.map((item) =>
+      item.kind === "check" ? { ...item, text: "SHIPPED" } : item,
+    ),
+  };
+  let active = setup;
+  let sourceIssue = false;
+  let approveAttempts = 0;
+  const approvalKeys: unknown[] = [];
+  native.mockImplementation(async (command, args) => {
+    if (command === "tools_hub_request") return response(workflowState);
+    if (command === "portable_setup_status") return response({ active });
+    expect(args).toMatchObject({ projectId: repository.id });
+    if (command === "portable_setup_update_status")
+      return response({
+        connected: true,
+        available: !sourceIssue && active.digest === setup.digest,
+        can_rollback: active.digest === candidate.digest,
+        ...(sourceIssue ? { issue: "The update folder is unavailable." } : {}),
+      });
+    if (command === "portable_setup_update_preview")
+      return response({
+        ...candidate,
+        project_id: repository.id,
+        source_name: "workflow.temper-setup",
+        active_digest: setup.digest,
+        review_id: "exact-update",
+        direction: "update",
+        baseline_passed: 1,
+        candidate_passed: 2,
+        assertion_count: 2,
+      });
+    if (command === "portable_setup_update_rollback_preview")
+      return response({
+        ...setup,
+        project_id: repository.id,
+        source_name: "Previous setup",
+        active_digest: candidate.digest,
+        review_id: "exact-restore",
+        direction: "rollback",
+      });
+    if (command === "portable_setup_update_approve") {
+      const request = args as { reviewId: string; idempotencyKey: string };
+      expect(request.idempotencyKey).toBeTruthy();
+      approvalKeys.push(request.idempotencyKey);
+      if (request.reviewId === "exact-restore") active = setup;
+      else {
+        expect(request.reviewId).toBe("exact-update");
+        if (approveAttempts++ === 0)
+          throw { code: "busy", message: "Temper is busy. Try again." };
+        active = candidate;
+        sourceIssue = true;
+      }
+      return response(active);
+    }
+    throw new Error(command);
+  });
+
+  const user = userEvent.setup();
+  render(<PortableSetupPanel nativeRuntime />);
+  const reviewUpdate = await screen.findByRole("button", {
+    name: "Review update",
+  });
+  await user.click(reviewUpdate);
+  let dialog = within(
+    await screen.findByRole("dialog", { name: "Review workflow update" }),
+  );
+  expect(dialog.getByText(repository.root)).toBeVisible();
+  expect(dialog.getByText("SHIPPED", { selector: "dd" })).toBeVisible();
+  expect(dialog.getByText("1 of 2 correct")).toBeVisible();
+  expect(dialog.getByText("2 of 2 correct")).toBeVisible();
+  expect(
+    dialog.getByRole("button", { name: "Apply workflow update" }),
+  ).toBeEnabled();
+  expect(approvalKeys).toHaveLength(0);
+  await user.keyboard("{Escape}");
+  await waitFor(() => expect(reviewUpdate).toHaveFocus());
+  expect(approvalKeys).toHaveLength(0);
+
+  await user.click(reviewUpdate);
+  dialog = within(await screen.findByRole("dialog"));
+  await user.click(
+    dialog.getByRole("button", { name: "Apply workflow update" }),
+  );
+  expect(await dialog.findByRole("alert")).toHaveTextContent("Temper is busy");
+  await user.click(
+    dialog.getByRole("button", { name: "Apply workflow update" }),
+  );
+  expect(
+    await screen.findByText("Updated “Release routine” in Example repository."),
+  ).toBeVisible();
+  expect(approvalKeys).toHaveLength(2);
+  expect(approvalKeys[1]).toBe(approvalKeys[0]);
+  expect(
+    await screen.findByText("The update folder is unavailable."),
+  ).toBeVisible();
+  await user.click(
+    await screen.findByRole("button", { name: "Review previous setup" }),
+  );
+  dialog = within(
+    await screen.findByRole("dialog", { name: "Review previous setup" }),
+  );
+  expect(dialog.getByText("READY", { selector: "dd" })).toBeVisible();
+  await user.click(
+    dialog.getByRole("button", { name: "Restore previous setup" }),
+  );
+  expect(
+    await screen.findByText(
+      "Restored “Release routine” in Example repository.",
+    ),
+  ).toBeVisible();
+  expect(approvalKeys[2]).not.toBe(approvalKeys[0]);
+});
+
+it("retries update checks, tolerates picker cancellation, and checks again on focus", async () => {
+  let checks = 0;
+  let connected = false;
+  let picks = 0;
+  let available = false;
+  native.mockImplementation(async (command, args) => {
+    if (command === "tools_hub_request") return response(workflowState);
+    if (command === "portable_setup_status") return response({ active: setup });
+    expect(args).toMatchObject({ projectId: repository.id });
+    if (command === "portable_setup_update_status") {
+      if (checks++ === 0) throw { code: "engine_unavailable" };
+      return response({ connected, available, can_rollback: false });
+    }
+    if (command === "portable_setup_update_source") {
+      expect(args).toMatchObject({ idempotencyKey: expect.any(String) });
+      if (picks++ === 0) throw { code: "cancelled" };
+      connected = true;
+      return response({ connected });
+    }
+    if (command === "portable_setup_update_disconnect") {
+      expect(args).toMatchObject({ idempotencyKey: expect.any(String) });
+      connected = false;
+      available = false;
+      return response({ connected });
+    }
+    throw new Error(command);
+  });
+
+  const user = userEvent.setup();
+  render(<PortableSetupPanel nativeRuntime />);
+  await user.click(
+    await screen.findByRole("button", { name: "Retry update check" }),
+  );
+  expect(await screen.findByText("No update source connected.")).toBeVisible();
+  const connect = screen.getByRole("button", { name: "Connect update source" });
+  await user.click(connect);
+  await waitFor(() => expect(connect).toBeEnabled());
+  expect(screen.queryByRole("alert")).toBeNull();
+  await user.click(connect);
+  expect(
+    await screen.findByRole("button", { name: "Change update source" }),
+  ).toBeVisible();
+  available = true;
+  fireEvent(window, new Event("focus"));
+  expect(
+    await screen.findByRole("button", { name: "Review update" }),
+  ).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "Disconnect source" }));
+  expect(await screen.findByText("No update source connected.")).toBeVisible();
+  expect(screen.queryByRole("button", { name: "Review update" })).toBeNull();
+});
+
+it("blocks approval when the reviewed repository setup changes", async () => {
+  let active = setup;
+  const update = { ...setup, digest: "sha256:pending" };
+  native.mockImplementation(async (command) => {
+    if (command === "portable_setup_status") return response({ active });
+    if (command === "portable_setup_update_status")
+      return response({
+        connected: true,
+        available: true,
+        can_rollback: false,
+      });
+    if (command === "portable_setup_update_preview")
+      return response({
+        ...update,
+        project_id: repository.id,
+        source_name: "workflow.temper-setup",
+        active_digest: setup.digest,
+        review_id: "stale-review",
+        direction: "update",
+      });
+    throw new Error(command);
+  });
+  const user = userEvent.setup();
+  const status = {
+    state: workflowState,
+    pending: false,
+    failed: false,
+    revision: 1,
+    refresh: vi.fn(),
+  };
+  const { rerender } = render(
+    <PortableSetupPanel nativeRuntime status={status} />,
+  );
+  await user.click(
+    await screen.findByRole("button", { name: "Review update" }),
+  );
+  const dialog = within(await screen.findByRole("dialog"));
+  const apply = dialog.getByRole("button", { name: "Apply workflow update" });
+  expect(apply).toBeEnabled();
+  active = { ...setup, digest: "sha256:external-change" };
+  rerender(
+    <PortableSetupPanel nativeRuntime status={{ ...status, revision: 2 }} />,
+  );
+  await waitFor(() => expect(apply).toBeDisabled());
+  expect(dialog.getByText(/Close this review/)).toBeVisible();
+  expect(
+    native.mock.calls.some(
+      ([command]) => command === "portable_setup_update_approve",
+    ),
+  ).toBe(false);
 });

@@ -9,6 +9,7 @@ import re
 import stat
 from collections.abc import Callable
 from contextlib import suppress
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any, Literal, Self
@@ -35,7 +36,7 @@ PURPOSE = "portable_repository_setup/v1"
 LOCAL_PURPOSE = b"temper/tools-hub/portable-setup/v1"
 MAX_PAYLOAD = 48_000
 MAX_PACKAGE = 52_000
-MAX_LOCAL_RECORD = 80_000
+MAX_LOCAL_RECORD = 170_000
 MAX_CHECK_FILE = 1_048_576
 PRECEDENCE = "Current requests and manually written native instructions take precedence."
 Digest = Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
@@ -288,6 +289,23 @@ def write_package(path: Path, package: SetupPackage) -> None:
         raise
 
 
+class UpdateSource(SetupModel):
+    directory: FileName
+    directory_device: int
+    directory_inode: int
+    replay: FileName
+    replay_digest: Digest
+    revision: Annotated[str, Field(pattern=r"^[a-f0-9]{32}$")]
+
+
+@dataclass(frozen=True)
+class StoredSetup:
+    revision: str | None = None
+    active: SetupPackage | None = None
+    previous: SetupPackage | None = None
+    source: UpdateSource | None = None
+
+
 class SetupStore:
     def __init__(self, home: Path, seals: Seals, key: Callable[[], bytes] | None) -> None:
         self.home, self.seals, self.key = home, seals, key
@@ -307,36 +325,53 @@ class SetupStore:
     def read(
         self, key: str, grant_id: str, project: dict[str, Any]
     ) -> tuple[str | None, SetupPackage | None]:
+        record = self.read_record(key, grant_id, project)
+        return record.revision, record.active
+
+    def read_record(self, key: str, grant_id: str, project: dict[str, Any]) -> StoredSetup:
         try:
             raw = read_regular(self.path(key), MAX_LOCAL_RECORD)
         except FileNotFoundError:
-            return None, None
+            return StoredSetup()
         return self.decode(raw, grant_id, project)
 
-    def decode(
-        self, raw: bytes, grant_id: str, project: dict[str, Any]
-    ) -> tuple[str | None, SetupPackage | None]:
+    def decode(self, raw: bytes, grant_id: str, project: dict[str, Any]) -> StoredSetup:
         try:
             state = self.seals.open(json.loads(raw), "portable_setup")
             if state["grant_id"] != grant_id or state["project"] != project:
-                return None, None
+                return StoredSetup()
             revision = state["revision"]
             if not isinstance(revision, str) or not re.fullmatch(r"[0-9a-f]{32}", revision):
                 raise ValueError("Invalid setup revision")
+            version = state.get("version", 1)
+            if type(version) is not int or version not in (1, 2):
+                raise ValueError("Invalid setup record version")
             if state["encrypted"] is None:
-                return revision, None
+                return StoredSetup(revision)
             encoded = base64.b64decode(state["encrypted"], validate=True)
             if len(encoded) < 28:
                 raise ValueError("Invalid encrypted setup")
             aad = canonical_bytes({k: v for k, v in state.items() if k != "encrypted"})
-        except (ValueError, TypeError, KeyError) as error:
+        except (ValueError, TypeError, KeyError, RecursionError) as error:
             raise UnreadableSetup("The saved setup could not be verified") from error
         # Unlock errors must not be interpreted as a corrupt package.
         cipher = self.cipher()
         try:
             payload = cipher.decrypt(encoded[:12], encoded[12:], aad)
-            return revision, parse_package(payload)
-        except (InvalidTag, ValueError, TypeError) as error:
+            if version == 1:
+                return StoredSetup(revision, parse_package(payload))
+            raw_record = json.loads(payload)
+            return StoredSetup(
+                revision,
+                parse_package(canonical_bytes(raw_record["active"])),
+                parse_package(canonical_bytes(raw_record["previous"]))
+                if raw_record["previous"] is not None
+                else None,
+                UpdateSource.model_validate(raw_record["source"])
+                if raw_record["source"] is not None
+                else None,
+            )
+        except (InvalidTag, ValueError, TypeError, KeyError, RecursionError) as error:
             raise UnreadableSetup("The saved setup could not be verified") from error
 
     def recovery_digest(self, key: str, grant_id: str, project: dict[str, Any]) -> str:
@@ -355,12 +390,32 @@ class SetupStore:
         project: dict[str, Any],
         package: SetupPackage | None,
     ) -> None:
-        state = {"grant_id": grant_id, "project": project, "revision": os.urandom(16).hex()}
+        self.write_record(key, grant_id, project, StoredSetup(os.urandom(16).hex(), package))
+
+    def write_record(
+        self, key: str, grant_id: str, project: dict[str, Any], record: StoredSetup
+    ) -> None:
+        state: dict[str, Any] = {
+            "grant_id": grant_id,
+            "project": project,
+            "revision": record.revision,
+        }
         encoded = None
-        if package is not None:
+        if record.active is not None:
             nonce = os.urandom(12)
-            ciphertext = self.cipher().encrypt(
-                nonce, canonical_bytes(package), canonical_bytes(state)
-            )
+            if record.source is None and record.previous is None:
+                payload = canonical_bytes(record.active)
+            else:
+                state["version"] = 2
+                payload = canonical_bytes(
+                    {
+                        "active": record.active.model_dump(mode="json"),
+                        "previous": record.previous.model_dump(mode="json")
+                        if record.previous
+                        else None,
+                        "source": record.source.model_dump(mode="json") if record.source else None,
+                    }
+                )
+            ciphertext = self.cipher().encrypt(nonce, payload, canonical_bytes(state))
             encoded = base64.b64encode(nonce + ciphertext).decode("ascii")
         self.seals.write(self.path(key), {**state, "encrypted": encoded}, "portable_setup")

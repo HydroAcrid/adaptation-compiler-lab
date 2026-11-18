@@ -62,6 +62,18 @@
   padding-block: 4px;
 }
 
+.workflow-updates {
+  margin-top: 12px;
+  padding-block-start: 10px;
+  border-top: 1px solid var(--folio-rule);
+}
+
+.workflow-updates h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+}
+
 .portable-setup-dialog .core-dialog__actions {
   flex-wrap: wrap;
 }

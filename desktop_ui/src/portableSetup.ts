@@ -101,3 +101,56 @@ export function resetSetup(projectId: string, digest: string) {
     idempotencyKey: crypto.randomUUID(),
   });
 }
+export interface SetupUpdateStatus {
+  connected: boolean;
+  available: boolean;
+  can_rollback: boolean;
+  issue?: string;
+}
+
+export interface SetupUpdatePreview extends SetupImportPreview {
+  review_id: string;
+  direction: "update" | "rollback";
+  baseline_passed?: number;
+  candidate_passed?: number;
+  assertion_count?: number;
+}
+
+export function connectSetupUpdateSource(projectId: string) {
+  return request<{ connected: true }>("update_source", {
+    projectId,
+    idempotencyKey: crypto.randomUUID(),
+  });
+}
+
+export function loadSetupUpdateStatus(projectId: string) {
+  return request<SetupUpdateStatus>("update_status", { projectId });
+}
+
+export function previewSetupUpdate(
+  projectId: string,
+  direction: SetupUpdatePreview["direction"],
+) {
+  return request<SetupUpdatePreview>(
+    direction === "update" ? "update_preview" : "update_rollback_preview",
+    { projectId },
+  );
+}
+
+export function approveSetupUpdate(
+  preview: SetupUpdatePreview,
+  idempotencyKey: string,
+) {
+  return request<SetupPreview>("update_approve", {
+    projectId: preview.project_id,
+    reviewId: preview.review_id,
+    idempotencyKey,
+  });
+}
+
+export function disconnectSetupUpdateSource(projectId: string) {
+  return request<{ connected: false }>("update_disconnect", {
+    projectId,
+    idempotencyKey: crypto.randomUUID(),
+  });
+}

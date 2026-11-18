@@ -2057,6 +2057,118 @@ async fn portable_setup_reset(
 }
 
 #[tauri::command]
+async fn portable_setup_update_source(
+    app: tauri::AppHandle,
+    project_id: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let directory = rfd::FileDialog::new()
+            .set_title("Choose a workflow update folder")
+            .pick_folder()
+            .ok_or_else(cancelled)?;
+        let replay = rfd::FileDialog::new()
+            .set_title("Choose the trusted workflow test cases")
+            .add_filter("Workflow test cases", &["json"])
+            .pick_file()
+            .ok_or_else(cancelled)?;
+        if !replay
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("json"))
+        {
+            return Err(PublicError {
+                code: "invalid_workflow_tests",
+                message: "Choose a JSON file containing the trusted workflow test cases.",
+            });
+        }
+        let state = app.state::<EngineState>();
+        call_engine(
+            &state,
+            "portable_setup.update.source",
+            json!({"project_id": project_id, "directory": directory, "replay": replay}),
+            None,
+            Some(&idempotency_key),
+        )
+    })
+    .await
+    .map_err(|_| unavailable())?
+}
+
+#[tauri::command]
+async fn portable_setup_update_status(
+    app: tauri::AppHandle,
+    project_id: String,
+) -> Result<EngineResponse, PublicError> {
+    portable_setup_call(
+        app,
+        "portable_setup.update.status",
+        json!({"project_id": project_id}),
+        None,
+    )
+    .await
+}
+
+#[tauri::command]
+async fn portable_setup_update_preview(
+    app: tauri::AppHandle,
+    project_id: String,
+) -> Result<EngineResponse, PublicError> {
+    portable_setup_call(
+        app,
+        "portable_setup.update.preview",
+        json!({"project_id": project_id}),
+        None,
+    )
+    .await
+}
+
+#[tauri::command]
+async fn portable_setup_update_rollback_preview(
+    app: tauri::AppHandle,
+    project_id: String,
+) -> Result<EngineResponse, PublicError> {
+    portable_setup_call(
+        app,
+        "portable_setup.update.rollback_preview",
+        json!({"project_id": project_id}),
+        None,
+    )
+    .await
+}
+
+#[tauri::command]
+async fn portable_setup_update_approve(
+    app: tauri::AppHandle,
+    project_id: String,
+    review_id: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    portable_setup_call(
+        app,
+        "portable_setup.update.approve",
+        json!({"project_id": project_id, "review_id": review_id}),
+        Some(idempotency_key),
+    )
+    .await
+}
+
+#[tauri::command]
+async fn portable_setup_update_disconnect(
+    app: tauri::AppHandle,
+    project_id: String,
+    idempotency_key: String,
+) -> Result<EngineResponse, PublicError> {
+    portable_setup_call(
+        app,
+        "portable_setup.update.disconnect",
+        json!({"project_id": project_id}),
+        Some(idempotency_key),
+    )
+    .await
+}
+
+#[tauri::command]
 async fn package_review_list(app: tauri::AppHandle) -> Result<EngineResponse, PublicError> {
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<EngineState>();
@@ -2553,6 +2665,12 @@ pub fn run() {
             portable_setup_status,
             portable_setup_remove,
             portable_setup_reset,
+            portable_setup_update_source,
+            portable_setup_update_status,
+            portable_setup_update_preview,
+            portable_setup_update_rollback_preview,
+            portable_setup_update_approve,
+            portable_setup_update_disconnect,
             package_review_list,
             package_review_decide,
             hub_catalog_get,
@@ -2755,6 +2873,9 @@ mod tests {
         assert!(source.contains(
             "fn portable_setup_import_preview(\n    app: tauri::AppHandle,\n    project_id: String,\n)"
         ));
+        assert!(source.contains(
+            "fn portable_setup_update_source(\n    app: tauri::AppHandle,\n    project_id: String,\n    idempotency_key: String,\n)"
+        ));
     }
 
     #[test]
@@ -2840,6 +2961,12 @@ mod tests {
             "portable_setup_status",
             "portable_setup_remove",
             "portable_setup_reset",
+            "portable_setup_update_source",
+            "portable_setup_update_status",
+            "portable_setup_update_preview",
+            "portable_setup_update_rollback_preview",
+            "portable_setup_update_approve",
+            "portable_setup_update_disconnect",
             "package_review_list",
             "package_review_decide",
             "hub_catalog_get",

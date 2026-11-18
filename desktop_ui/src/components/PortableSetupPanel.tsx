@@ -14,9 +14,14 @@ import { normalizeEngineFailure } from "../engine";
 import { usePageVisibility } from "../pageVisibility";
 import {
   approveSetup,
+  approveSetupUpdate,
+  connectSetupUpdateSource,
+  disconnectSetupUpdateSource,
   loadSetupStatus,
+  loadSetupUpdateStatus,
   openSetupFile,
   previewSetupExport,
+  previewSetupUpdate,
   removeSetup,
   resetSetup,
   saveSetupFile,
@@ -25,6 +30,8 @@ import {
   type SetupItem,
   type SetupKind,
   type SetupPreview,
+  type SetupUpdatePreview,
+  type SetupUpdateStatus,
 } from "../portableSetup";
 import { hubRequest, type HubProject, type HubState } from "../toolsHub";
 import { setupImportBlock } from "./RepositoryReadiness";
@@ -424,6 +431,18 @@ export function PortableSetupPanel({
                     </Button>
                   </details>
                 )}
+                {active && (
+                  <WorkflowUpdates
+                    repository={repository}
+                    active={active}
+                    blocked={setupActionsUnavailable || Boolean(issue)}
+                    revision={requestKey}
+                    onComplete={(message) => {
+                      setNotice(message);
+                      setRefresh((value) => value + 1);
+                    }}
+                  />
+                )}
                 {issue && <p role="alert">{issue}</p>}
                 {block && repositories.length > 1 && <p>{block}</p>}
               </div>
@@ -520,6 +539,464 @@ function SetupContents({
         </dl>
       </details>
     </div>
+  );
+}
+
+function WorkflowUpdates({
+  repository,
+  active,
+  blocked,
+  revision,
+  onComplete,
+}: {
+  repository: HubProject;
+  active: SetupPreview;
+  blocked: boolean;
+  revision: string;
+  onComplete: (message: string) => void;
+}) {
+  const visible = usePageVisibility();
+  const headingId = useId();
+  const heading = useRef<HTMLHeadingElement>(null);
+  const { id: projectId } = repository;
+  const [refresh, setRefresh] = useState(0);
+  const [status, setStatus] = useState<SetupUpdateStatus | null>(null);
+  const [statusError, setStatusError] = useState(false);
+  const [lastCheck, setLastCheck] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [review, setReview] = useState<{
+    baseline: SetupPreview;
+    preview: SetupUpdatePreview;
+    idempotencyKey: string;
+  } | null>(null);
+  const inFlight = useRef(false);
+  const reviewOpener = useRef<HTMLButtonElement | null>(null);
+  const checkKey = JSON.stringify([active.digest, refresh, revision]);
+
+  useEffect(() => {
+    if (!visible) return;
+    let live = true;
+    void loadSetupUpdateStatus(projectId).then(
+      (result) => {
+        if (live) {
+          setStatus(result);
+          setStatusError(false);
+          setLastCheck(checkKey);
+        }
+      },
+      () => {
+        if (live) {
+          setStatusError(true);
+          setLastCheck(checkKey);
+        }
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [checkKey, projectId, visible]);
+
+  useEffect(() => {
+    if (!visible) return;
+    function checkOnFocus() {
+      if (!inFlight.current) setRefresh((value) => value + 1);
+    }
+    window.addEventListener("focus", checkOnFocus);
+    return () => window.removeEventListener("focus", checkOnFocus);
+  }, [visible]);
+
+  async function run(message: string, work: () => Promise<void>) {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy(message);
+    setNotice(null);
+    setError(null);
+    try {
+      await work();
+    } catch (reason: unknown) {
+      const failure = normalizeEngineFailure(
+        reason,
+        "Temper could not complete this workflow update action.",
+      );
+      if (failure.code !== "cancelled") setError(failure.message);
+    } finally {
+      inFlight.current = false;
+      setBusy(null);
+      setRefresh((value) => value + 1);
+    }
+  }
+
+  function openReview(
+    direction: SetupUpdatePreview["direction"],
+    opener: HTMLButtonElement,
+  ) {
+    reviewOpener.current = opener;
+    void run(
+      direction === "rollback"
+        ? "Preparing the previous setup for review…"
+        : "Checking the update…",
+      async () => {
+        const preview = await previewSetupUpdate(projectId, direction);
+        if (
+          preview.project_id !== projectId ||
+          preview.direction !== direction ||
+          preview.active_digest !== active.digest
+        )
+          throw new Error(
+            "The repository setup changed. Check again before reviewing.",
+          );
+        setReview({
+          baseline: active,
+          preview,
+          idempotencyKey: crypto.randomUUID(),
+        });
+      },
+    );
+  }
+
+  function changeSource() {
+    void run("Waiting for the update folder and check file…", async () => {
+      await connectSetupUpdateSource(projectId);
+      setNotice("Update source connected.");
+    });
+  }
+
+  const unavailable =
+    blocked || repository.paused || repository.pending_recovery;
+  const rollback = review?.preview.direction === "rollback";
+  const reviewChanged = Boolean(
+    review && review.preview.active_digest !== active.digest,
+  );
+  const statusText =
+    lastCheck !== checkKey
+      ? "Checking for workflow updates…"
+      : statusError
+        ? "Temper could not check for workflow updates."
+        : !status
+          ? null
+          : status.issue
+            ? normalizeEngineFailure(
+                { message: status.issue },
+                "Temper could not use the update source. Check the folder and test cases, then try again.",
+              ).message
+            : status.available
+              ? "A workflow update is available."
+              : status.connected
+                ? "Update source connected. No update is ready to review."
+                : "No update source connected.";
+
+  return (
+    <section className="workflow-updates" aria-labelledby={headingId}>
+      <h3 id={headingId} ref={heading} tabIndex={-1}>
+        Workflow updates
+      </h3>
+      <p role="status">{statusText}</p>
+      {status && (
+        <details
+          className="workflow-provenance"
+          open={!status.connected || undefined}
+        >
+          <summary>How to choose an update source</summary>
+          <p>
+            First choose the folder where your publisher leaves the signed
+            <code> workflow.temper-setup</code> file. Then choose a trusted JSON
+            file with test cases from outside that folder. Each update needs
+            your approval before it changes the setup.
+          </p>
+        </details>
+      )}
+      {status && (
+        <div className="portable-setup-actions repository-setup-actions">
+          {status.available && !statusError && !status.issue && (
+            <Button
+              type="button"
+              tone="primary"
+              disabled={unavailable || Boolean(busy)}
+              onClick={(event) => openReview("update", event.currentTarget)}
+            >
+              Review update
+            </Button>
+          )}
+          {status.can_rollback && (
+            <Button
+              type="button"
+              disabled={unavailable || Boolean(busy)}
+              onClick={(event) => openReview("rollback", event.currentTarget)}
+            >
+              Review previous setup
+            </Button>
+          )}
+          <Button
+            type="button"
+            disabled={unavailable || Boolean(busy)}
+            onClick={changeSource}
+          >
+            {status.connected
+              ? "Change update source"
+              : "Connect update source"}
+          </Button>
+          {status.connected && (
+            <Button
+              type="button"
+              tone="quiet"
+              disabled={blocked || Boolean(busy)}
+              onClick={() => {
+                void run("Disconnecting the update source…", async () => {
+                  await disconnectSetupUpdateSource(projectId);
+                  setNotice("Update source disconnected.");
+                });
+              }}
+            >
+              Disconnect source
+            </Button>
+          )}
+          <Button
+            type="button"
+            tone="quiet"
+            disabled={Boolean(busy)}
+            onClick={() => setRefresh((value) => value + 1)}
+          >
+            Check for updates
+          </Button>
+        </div>
+      )}
+      {!status && statusError && (
+        <Button
+          type="button"
+          tone="quiet"
+          onClick={() => setRefresh((value) => value + 1)}
+        >
+          Retry update check
+        </Button>
+      )}
+      {!review && busy && <LoadingStatus>{busy}</LoadingStatus>}
+      {!review && error && <p role="alert">{error}</p>}
+      {notice && <p role="status">{notice}</p>}
+      {review && (
+        <WorkflowUpdateReview
+          repository={repository}
+          active={review.baseline}
+          preview={review.preview}
+          busy={busy}
+          error={error}
+          canClose={() => !inFlight.current}
+          blocked={unavailable || reviewChanged}
+          fallbackFocus={heading}
+          opener={reviewOpener}
+          onClose={() => {
+            setReview(null);
+            setError(null);
+          }}
+          onApprove={() => {
+            if (unavailable || reviewChanged) return;
+            void run(
+              rollback
+                ? "Restoring the previous setup…"
+                : "Applying the workflow update…",
+              async () => {
+                const applied = await approveSetupUpdate(
+                  review.preview,
+                  review.idempotencyKey,
+                );
+                if (applied.digest !== review.preview.digest) {
+                  throw new Error(
+                    "The active setup differs from the reviewed setup. Check the repository before trying again.",
+                  );
+                }
+                setReview(null);
+                onComplete(
+                  rollback
+                    ? `Restored “${applied.title}” in ${repository.label}.`
+                    : `Updated “${applied.title}” in ${repository.label}.`,
+                );
+              },
+            );
+          }}
+        />
+      )}
+    </section>
+  );
+}
+
+function WorkflowUpdateReview({
+  repository,
+  active,
+  preview,
+  busy,
+  error,
+  blocked,
+  fallbackFocus,
+  opener,
+  canClose,
+  onClose,
+  onApprove,
+}: {
+  repository: HubProject;
+  active: SetupPreview;
+  preview: SetupUpdatePreview;
+  busy: string | null;
+  error: string | null;
+  blocked: boolean;
+  fallbackFocus: RefObject<HTMLHeadingElement | null>;
+  opener: RefObject<HTMLButtonElement | null>;
+  canClose: () => boolean;
+  onClose: () => void;
+  onApprove: () => void;
+}) {
+  const visible = usePageVisibility();
+  const rollback = preview.direction === "rollback";
+  const activeChecks = new Map(
+    active.items
+      .filter((item) => item.kind === "check")
+      .map((item) => [item.id, item]),
+  );
+  const changedChecks = preview.items
+    .filter((item) => item.kind === "check")
+    .flatMap((item) => {
+      const current = activeChecks.get(item.id);
+      return current && current.text !== item.text ? [{ item, current }] : [];
+    });
+
+  return (
+    <Dialog.Root
+      open={visible}
+      onOpenChange={(open) => {
+        if (!open && canClose()) onClose();
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Overlay className="dialog-overlay" />
+        <Dialog.Content
+          className="core-dialog portability-dialog portable-setup-dialog"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            const heading = fallbackFocus.current;
+            if (!visible || heading?.closest("[hidden], [inert]")) return;
+            const target = opener.current;
+            if (target?.isConnected && !target.disabled) target.focus();
+            else heading?.focus();
+          }}
+        >
+          <Dialog.Close
+            aria-label="Close"
+            className="dialog-close"
+            disabled={Boolean(busy)}
+          >
+            <X size={18} />
+          </Dialog.Close>
+          <Dialog.Title>
+            {rollback ? "Review previous setup" : "Review workflow update"}
+          </Dialog.Title>
+          <Dialog.Description>
+            {rollback
+              ? "Review the setup that will replace the current setup for this repository."
+              : "Review the signed setup and the check results before applying the update."}
+          </Dialog.Description>
+          <dl className="mode-detail-list portable-setup-path">
+            <div>
+              <dt>Repository</dt>
+              <dd>
+                {repository.label} <code>{repository.root}</code>
+              </dd>
+            </div>
+          </dl>
+          {preview.assertion_count !== undefined &&
+            preview.baseline_passed !== undefined &&
+            preview.candidate_passed !== undefined && (
+              <>
+                <h3>Check results</h3>
+                <dl className="mode-detail-list">
+                  <div>
+                    <dt>Current setup</dt>
+                    <dd>
+                      {preview.baseline_passed} of {preview.assertion_count}{" "}
+                      correct
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Updated setup</dt>
+                    <dd>
+                      {preview.candidate_passed} of {preview.assertion_count}{" "}
+                      correct
+                    </dd>
+                  </div>
+                </dl>
+              </>
+            )}
+          {changedChecks.length > 0 && (
+            <>
+              <h3>Changed checks</h3>
+              {changedChecks.map(({ item, current }) => (
+                <dl
+                  className="mode-detail-list portable-setup-path"
+                  key={item.id}
+                >
+                  <div>
+                    <dt>{item.title}</dt>
+                    <dd>
+                      <code>{item.path}</code>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Current text</dt>
+                    <dd className="portable-setup-text">{current.text}</dd>
+                  </div>
+                  <div>
+                    <dt>{rollback ? "Text to restore" : "Updated text"}</dt>
+                    <dd className="portable-setup-text">{item.text}</dd>
+                  </div>
+                </dl>
+              ))}
+            </>
+          )}
+          <details className="workflow-provenance">
+            <summary>
+              {rollback ? "View setup to restore" : "View updated setup"}
+            </summary>
+            <p className="portable-setup-path">
+              File <code>{preview.source_name}</code>
+            </p>
+            <SetupContents value={preview} />
+          </details>
+          <details className="workflow-provenance">
+            <summary>View current setup</summary>
+            <SetupContents value={active} />
+          </details>
+          {blocked && (
+            <p role="status">
+              Close this review and check the latest repository setup before
+              making changes.
+            </p>
+          )}
+          <div className="core-dialog__actions">
+            <Button
+              type="button"
+              tone="quiet"
+              disabled={Boolean(busy)}
+              onClick={onClose}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              tone="primary"
+              disabled={Boolean(busy) || blocked}
+              onClick={onApprove}
+            >
+              {rollback ? "Restore previous setup" : "Apply workflow update"}
+            </Button>
+          </div>
+          {busy && <LoadingStatus>{busy}</LoadingStatus>}
+          {error && (
+            <p className="portability-error" role="alert">
+              {error}
+            </p>
+          )}
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 

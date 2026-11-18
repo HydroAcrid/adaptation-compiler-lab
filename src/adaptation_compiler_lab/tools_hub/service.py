@@ -12,7 +12,7 @@ import threading
 import time
 from collections.abc import Callable, Iterator
 from contextlib import closing, contextmanager, suppress
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -38,10 +38,19 @@ from .portable_setup import (
     SetupError,
     SetupPackage,
     SetupStore,
+    StoredSetup,
 )
 from .sealed import Seals
 from .sources import SOURCES, SourceSnapshots, specification
 from .task_lifecycle import MAX_LEASE_SECONDS, TaskOutcome, TaskOwner
+from .workflow_evaluation import evaluate_workflow_packages
+from .workflow_update import (
+    UpdateDirection,
+    UpdateReview,
+    connect_source,
+    source_candidate,
+    source_replay,
+)
 
 if TYPE_CHECKING:
     from .workflow_runtime import RenderCancellation
@@ -657,13 +666,158 @@ class HubService:
                     reviewed_binding[2],
                 ):
                     raise SetupError("The repository setup changed. Preview the import again.")
-                if not grant.get("bridge_configured"):
-                    raise SetupError("Connect Codex before approving a repository setup")
-                with self.controller(grant) as hub:
-                    if hub.project(project_key(project_id))["paused"]:
-                        raise SetupError("Resume repository setup before approving this package")
+                self._require_setup_approval(grant, project_key(project_id))
             self.require_same_project(grant, project, active=package is not None)
             self.portable_setups.write(project_key(project_id), grant["grant_id"], project, package)
+
+    def _require_setup_approval(self, grant: dict[str, Any], key: str) -> None:
+        if not grant.get("bridge_configured"):
+            raise SetupError("Connect Codex before approving a repository setup")
+        with self.controller(grant) as hub:
+            if hub.project(key)["paused"]:
+                raise SetupError("Resume repository setup before approving this package")
+
+    def _update_record(
+        self, project_id: str, *, active: bool
+    ) -> tuple[dict[str, Any], dict[str, Any], str, StoredSetup]:
+        grant, project = self.require_project(project_id, active=active)
+        key = project_key(project_id)
+        record = self.portable_setups.read_record(key, grant["grant_id"], project)
+        return grant, project, key, record
+
+    def set_update_source(
+        self, project_id: str, *, directory: Path | None = None, replay: Path | None = None
+    ) -> dict[str, Any]:
+        connecting = directory is not None and replay is not None
+        with writer_lock(self.home), writer_lock(self.home, name="permission.lock"):
+            grant, project, key, record = self._update_record(project_id, active=connecting)
+            source = None
+            if connecting:
+                if record.active is None:
+                    raise SetupError(
+                        "Approve a repository setup before connecting an update source"
+                    )
+                assert directory is not None and replay is not None
+                self._require_setup_approval(grant, key)
+                source = connect_source(directory, replay, record.active)
+            if source is not None or record.source is not None:
+                self.require_same_project(grant, project, active=connecting)
+                self.portable_setups.write_record(
+                    key, grant["grant_id"], project, replace(record, source=source)
+                )
+        return {"connected": connecting}
+
+    def setup_update_status(self, project_id: str) -> dict[str, Any]:
+        _, _, _, record = self._update_record(project_id, active=False)
+        status = {
+            "connected": record.source is not None,
+            "can_rollback": record.previous is not None,
+            "available": False,
+        }
+        if record.source is None or record.active is None:
+            return status
+        try:
+            manifest = source_replay(record.source)
+            candidate = source_candidate(record.source)
+            if candidate is not None and candidate.digest != record.active.digest:
+                self._require_update_candidate(record.active, candidate, manifest.baseline_digest)
+                status["available"] = True
+        except SetupError as error:
+            return {**status, "issue": str(error)}
+        return status
+
+    @staticmethod
+    def _require_update_candidate(
+        active: SetupPackage,
+        candidate: SetupPackage,
+        baseline_digest: str,
+    ) -> None:
+        if baseline_digest != active.digest:
+            raise SetupError(
+                "Choose a trusted replay for the current setup before reviewing an update"
+            )
+        if active.signature.key_fingerprint != candidate.signature.key_fingerprint:
+            raise SetupError("The workflow update is signed by a different publisher")
+
+    def preview_setup_update(self, project_id: str, direction: UpdateDirection) -> UpdateReview:
+        with writer_lock(self.home), writer_lock(self.home, name="permission.lock"):
+            grant, project, key, record = self._update_record(project_id, active=True)
+            self._require_setup_approval(grant, key)
+            active = record.active
+            if active is None:
+                raise SetupError("Approve a repository setup before reviewing updates")
+            counts: dict[str, int] = {}
+            if direction == "rollback":
+                package = record.previous
+                if package is None:
+                    raise SetupError("There is no previous workflow setup to restore")
+            else:
+                if record.source is None:
+                    raise SetupError(
+                        "Connect a workflow update source before checking for an update"
+                    )
+                manifest = source_replay(record.source)
+                package = source_candidate(record.source)
+                if package is None or package.digest == active.digest:
+                    raise SetupError("The workflow source has no new setup to review")
+                self._require_update_candidate(active, package, manifest.baseline_digest)
+                report = evaluate_workflow_packages(
+                    active, package, manifest, record.source.replay_digest
+                )
+                if report["status"] != "eligible":
+                    raise SetupError(
+                        "The workflow update did not improve the trusted replay without failures"
+                    )
+                counts = {
+                    name: report[name]
+                    for name in ("baseline_passed", "candidate_passed", "assertion_count")
+                }
+            self.require_same_project(grant, project)
+            return UpdateReview(
+                direction,
+                grant["grant_id"],
+                project,
+                record.revision,
+                record.source,
+                active.digest,
+                package,
+                counts,
+            )
+
+    def approve_setup_update(self, project_id: str, review: UpdateReview) -> dict[str, Any]:
+        with writer_lock(self.home), writer_lock(self.home, name="permission.lock"):
+            grant, project, key, record = self._update_record(project_id, active=True)
+            self._require_setup_approval(grant, key)
+            active = record.active
+            if (
+                review.grant_id != grant["grant_id"]
+                or review.project != project
+                or review.revision != record.revision
+                or review.source != record.source
+                or active is None
+                or review.active_digest != active.digest
+            ):
+                raise SetupError("The repository setup or source changed. Review it again.")
+            previous = None
+            if review.direction == "rollback":
+                if record.previous is None or record.previous.digest != review.package.digest:
+                    raise SetupError("The previous workflow setup changed. Review it again.")
+            else:
+                if record.source is None:
+                    raise SetupError("The workflow source changed. Review the update again.")
+                source_replay(record.source)
+                candidate = source_candidate(record.source)
+                if candidate is None or candidate.digest != review.package.digest:
+                    raise SetupError("The workflow update file changed. Review the update again.")
+                previous = active
+            self.require_same_project(grant, project)
+            self.portable_setups.write_record(
+                key,
+                grant["grant_id"],
+                project,
+                StoredSetup(secrets.token_hex(16), review.package, previous, record.source),
+            )
+            return review.package.preview()
 
     def setup_desktop_status(self, project_id: str) -> dict[str, Any]:
         grant, project = self.require_project(project_id, active=False)
