@@ -401,6 +401,9 @@ describe("installed Temper state boundaries", () => {
     render(<App />);
     await screen.findByRole("heading", { name: "Overview" });
     await user.click(screen.getByRole("button", { name: "Connections" }));
+    await user.click(
+      screen.getByRole("button", { name: "Open managed task setup" }),
+    );
     const addProject = screen.getByRole("button", { name: "Add task project" });
     await waitFor(() => expect(addProject).toBeEnabled());
     await user.click(addProject);
@@ -732,14 +735,24 @@ describe("installed Temper state boundaries", () => {
 
     render(<App />);
 
+    const expired = await screen.findByText("Permission expired", {
+      selector: "span",
+    });
+    const reviewDisclosure = expired.closest("details");
+    expect(reviewDisclosure).not.toHaveAttribute("open");
+    await user.click(
+      screen.getByText("Reviewed suggestions", { selector: "summary" }),
+    );
     expect(
-      await screen.findByRole("heading", {
-        name: "Permission expired",
-      }),
-    ).toBeInTheDocument();
+      screen.getByRole("heading", { name: "Permission expired" }),
+    ).toBeVisible();
     expect(
       screen.queryByRole("button", { name: /review suggestion/i }),
     ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Open Settings" }));
+    expect(
+      screen.getByRole("button", { name: "View permissions" }),
+    ).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Advanced" }));
     await user.type(screen.getByLabelText("Task"), "Inspect this fixture.");
     expect(
@@ -751,6 +764,7 @@ describe("installed Temper state boundaries", () => {
   });
 
   it("distinguishes an unavailable secure store from an actionable queue", async () => {
+    const user = userEvent.setup();
     window.__TAURI_INTERNALS__ = {};
     const blockedSnapshot = {
       ...snapshot,
@@ -776,6 +790,13 @@ describe("installed Temper state boundaries", () => {
 
     render(<App />);
 
+    const unavailable = await screen.findByText("Secure storage unavailable", {
+      selector: "span",
+    });
+    expect(unavailable.closest("details")).not.toHaveAttribute("open");
+    await user.click(
+      screen.getByText("Reviewed suggestions", { selector: "summary" }),
+    );
     expect(
       await screen.findByRole("heading", {
         name: "Secure storage unavailable",
@@ -992,6 +1013,9 @@ describe("installed Temper state boundaries", () => {
       name: "Overview",
     });
     await user.click(screen.getByRole("button", { name: "Connections" }));
+    await user.click(
+      screen.getByRole("button", { name: "Open managed task setup" }),
+    );
     await user.click(
       screen.getAllByRole("button", { name: "View details" })[1],
     );

@@ -1,4 +1,4 @@
-import { Fragment, useId, useState } from "react";
+import { useId, useState } from "react";
 import {
   hubRequest,
   type HubCheckpoint,
@@ -8,21 +8,6 @@ import {
 } from "../toolsHub";
 import { connectionReadiness } from "./RepositoryReadiness";
 import { Button, LoadingStatus } from "./ui";
-
-const taskLabels: Record<string, string> = {
-  implementation: "Implementation",
-  debugging: "Debugging",
-  review: "Review",
-  documentation: "Documentation",
-  planning: "Planning",
-};
-
-const checkpointFields = [
-  ["progress", "Progress"],
-  ["facts", "Facts"],
-  ["requirements", "Requirements"],
-  ["checks", "Reported checks"],
-] as const;
 
 function CheckpointTime({ timestamp }: { timestamp: number }) {
   const date = new Date(timestamp * 1000);
@@ -79,43 +64,39 @@ function CheckpointContents({
           void readCheckpoint();
       }}
     >
-      <summary>Saved checkpoint</summary>
+      <summary>View saved notes</summary>
       <div className="continuity-details__body">
         {contents ? (
           <dl>
             <dt>Next step</dt>
             <dd>{contents.next_step}</dd>
-            {checkpointFields.map(([field, label]) =>
-              contents[field].length ? (
-                <Fragment key={field}>
-                  <dt>{label}</dt>
-                  <dd>
-                    <ul>
-                      {contents[field].map((item, index) => (
-                        <li key={index}>{item}</li>
-                      ))}
-                    </ul>
-                  </dd>
-                </Fragment>
-              ) : null,
-            )}
+            {contents.progress.length ? (
+              <>
+                <dt>Where you left off</dt>
+                <dd>
+                  <ul>
+                    {contents.progress.map((item, index) => (
+                      <li key={index}>{item}</li>
+                    ))}
+                  </ul>
+                </dd>
+              </>
+            ) : null}
           </dl>
         ) : requestState === "loading" ? (
-          <LoadingStatus>Opening checkpoint…</LoadingStatus>
+          <LoadingStatus>Opening saved notes…</LoadingStatus>
         ) : (
           <div className="continuity-details__notice">
             {stale || requestState === "failed" ? (
               <p role="status">
                 {stale
                   ? "Refresh status to see what was saved."
-                  : "Temper couldn’t open this checkpoint."}
+                  : "Temper couldn’t open your saved notes."}
               </p>
             ) : null}
             {!stale ? (
               <Button type="button" onClick={() => void readCheckpoint()}>
-                {requestState === "failed"
-                  ? "Retry checkpoint"
-                  : "Load checkpoint"}
+                {requestState === "failed" ? "Try again" : "Load saved notes"}
               </Button>
             ) : null}
           </div>
@@ -125,41 +106,131 @@ function CheckpointContents({
   );
 }
 
-function projectStatus(state: HubState, project: HubProject) {
-  if (state.secure_store_ready === false) return "Secure storage unavailable";
+function resumeBlockReason(state: HubState, project: HubProject) {
+  if (state.secure_store_ready === false)
+    return "Unlock your secure storage to resume.";
   if (project.continuity_issue === "unavailable")
-    return "Checkpoint unavailable";
+    return "Temper couldn’t read the saved work.";
   if (project.attention || project.pending_recovery || state.cleanup_pending)
-    return "Needs attention";
-  if (!state.enabled || state.paused || project.paused) return "Paused";
+    return "Resolve the issue in Tool settings to resume.";
+  if (!state.enabled || state.paused || project.paused)
+    return "Resume automatic workflows to continue.";
   const connection = connectionReadiness(state);
-  if (connection === "preparing") return "Preparing repository tools";
-  if (connection === "connection_needed") return "Codex setup needed";
-  if (!project.continuity_enabled) return "Off";
-  if (project.continuity?.status === "resumed") return "Retrieved by Codex";
-  if (project.continuity_issue === "expired") return "Checkpoint expired";
-  return project.continuity ? "Saved for a later chat" : "No checkpoint saved";
+  if (connection === "preparing")
+    return "Temper is preparing repository tools.";
+  if (connection === "connection_needed")
+    return "Connect Codex to resume saved work.";
+  if (!project.continuity_enabled) return "Saving work is off.";
+  if (project.continuity_issue === "expired")
+    return "Your saved notes have expired.";
+  return null;
 }
 
-function CheckpointActivity({ checkpoint }: { checkpoint: HubCheckpoint }) {
+function ResumeMessage({
+  project,
+  disabled,
+}: {
+  project: HubProject;
+  disabled: boolean;
+}) {
+  const messageId = useId();
+  const [copyState, setCopyState] = useState<
+    "idle" | "copying" | "copied" | "manual"
+  >("idle");
+  const message = `Continue the work Temper saved for this repository. The repository folder is ${project.root}. If this chat is in a different repository, ask me to switch before resuming.`;
+
+  async function copyMessage() {
+    setCopyState("copying");
+    try {
+      await navigator.clipboard.writeText(message);
+      setCopyState("copied");
+    } catch {
+      setCopyState("manual");
+    }
+  }
+
   return (
-    <dl>
-      <dt>Saved</dt>
-      <dd>
-        {taskLabels[checkpoint.task_class] ?? "Work"} ·{" "}
-        <CheckpointTime timestamp={checkpoint.saved_at} />
-      </dd>
-      {checkpoint.resumed_at !== null ? (
-        <>
-          <dt>Retrieved</dt>
-          <dd>
-            <CheckpointTime timestamp={checkpoint.resumed_at} />
-          </dd>
-        </>
+    <div className="continuity-resume">
+      <Button
+        type="button"
+        tone="primary"
+        disabled={disabled || copyState === "copying"}
+        onClick={() => void copyMessage()}
+      >
+        Copy resume message
+      </Button>
+      {copyState === "copied" ? (
+        <p role="status">
+          Copied. Paste it into a new Codex chat for this repository.
+        </p>
       ) : null}
-      <dt>Selected guidance</dt>
-      <dd>{checkpoint.guidance.join(", ") || "None selected"}</dd>
-    </dl>
+      {copyState === "manual" && !disabled ? (
+        <div className="continuity-resume__manual">
+          <label htmlFor={messageId} role="status">
+            Copy this message into a new Codex chat for this repository.
+          </label>
+          <textarea
+            id={messageId}
+            readOnly
+            rows={3}
+            value={message}
+            onFocus={(event) => event.currentTarget.select()}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function OverviewSavedWork({
+  state,
+  unavailable,
+  onOpenTools,
+}: {
+  state: HubState;
+  unavailable: boolean;
+  onOpenTools: () => void;
+}) {
+  const saved = state.projects.flatMap((project) =>
+    project.continuity ? [{ project, checkpoint: project.continuity }] : [],
+  );
+  if (!saved.length) return null;
+
+  const resumable = unavailable
+    ? undefined
+    : saved
+        .sort((a, b) => b.checkpoint.saved_at - a.checkpoint.saved_at)
+        .find(({ project }) => !resumeBlockReason(state, project));
+  return (
+    <div className="tools-hub-overview-saved">
+      <div>
+        <strong>Saved work</strong>
+        {resumable && (
+          <>
+            <span>{resumable.project.label}</span>
+            {state.projects.some(
+              ({ id, label }) =>
+                id !== resumable.project.id &&
+                label === resumable.project.label,
+            ) && <small>{resumable.project.root}</small>}
+          </>
+        )}
+      </div>
+      <div className="tools-hub-actions">
+        {resumable && (
+          <ResumeMessage
+            key={resumable.checkpoint.checkpoint_id}
+            project={resumable.project}
+            disabled={false}
+          />
+        )}
+        {(!resumable || saved.length > 1) && (
+          <Button type="button" onClick={onOpenTools}>
+            View saved work
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -170,156 +241,136 @@ export type ContinuingWorkAction =
 
 export function ContinuingWork({
   state,
-  compact = false,
   stale,
-  pending,
   actionsUnavailable,
   notice,
   preparingReview,
-  onRefresh,
   onAction,
 }: {
   state: HubState;
-  compact?: boolean;
   stale: boolean;
-  pending: boolean;
   actionsUnavailable: boolean;
   notice?: string | null;
   preparingReview?: boolean;
-  onRefresh: () => void;
-  onAction?: (action: ContinuingWorkAction, trigger: HTMLButtonElement) => void;
+  onAction: (action: ContinuingWorkAction, trigger: HTMLButtonElement) => void;
 }) {
-  const headingId = useId();
   const supported = state.projects.filter(
     (project) => project.continuity_enabled !== undefined,
   );
   if (!supported.length) return null;
 
-  const latest = supported.reduce<HubProject | null>((current, project) => {
-    const savedAt = project.continuity?.saved_at;
-    return savedAt !== undefined &&
-      savedAt > (current?.continuity?.saved_at ?? -Infinity)
-      ? project
-      : current;
-  }, null);
-  const shown = compact ? (latest ? [latest] : []) : supported;
-  const enabled = supported.filter((project) => project.continuity_enabled);
-  const unavailable = supported.some(
-    (project) => project.continuity_issue === "unavailable",
-  );
   const canEnable =
     state.enabled &&
     !state.paused &&
     connectionReadiness(state) === "configured" &&
     !state.cleanup_pending;
+  const labelCounts = new Map<string, number>();
+  for (const { label } of supported)
+    labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
 
   return (
     <section
-      className="tools-hub-activity continuity-section"
-      aria-labelledby={headingId}
+      className="continuity-section"
+      aria-label="Saved work by repository"
     >
-      <h3 id={headingId}>Continuing work</h3>
       {stale ? (
-        <div className="continuity-section__stale">
-          <p role="status">Showing the last known checkpoint status.</p>
-          {compact ? (
-            <Button type="button" disabled={pending} onClick={onRefresh}>
-              {pending ? "Refreshing…" : "Refresh status"}
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
-      {preparingReview ? (
-        <LoadingStatus>Preparing checkpoint settings…</LoadingStatus>
-      ) : null}
-      {notice ? <p role="status">{notice}</p> : null}
-      {!shown.length ? (
-        <p>
-          {unavailable
-            ? "Some checkpoint statuses are unavailable."
-            : enabled.length === 1
-              ? projectStatus(state, enabled[0])
-              : enabled.length
-                ? "No checkpoint saved yet."
-                : "Off for all repositories."}
+        <p role="status">
+          Refresh status before resuming or changing saved work.
         </p>
       ) : null}
-      {shown.map((project) => {
+      {preparingReview ? (
+        <LoadingStatus>Opening saved work settings…</LoadingStatus>
+      ) : null}
+      {notice ? <p role="status">{notice}</p> : null}
+      {supported.map((project) => {
         const checkpoint = project.continuity;
-        const status = projectStatus(state, project);
+        const reason = resumeBlockReason(state, project);
         const resetNeeded = project.continuity_issue === "unavailable";
         return (
           <div className="continuity-project" key={project.id}>
             <div className="continuity-project__heading">
-              <strong>{project.label}</strong>
-              <span>{status}</span>
+              <div>
+                <strong>{project.label}</strong>
+                {(labelCounts.get(project.label) ?? 0) > 1 && (
+                  <small>{project.root}</small>
+                )}
+              </div>
+              {checkpoint ? (
+                <span>
+                  Saved <CheckpointTime timestamp={checkpoint.saved_at} />
+                </span>
+              ) : null}
             </div>
+            {reason ? (
+              <p>{reason}</p>
+            ) : !checkpoint ? (
+              <p>Nothing saved yet.</p>
+            ) : null}
             {checkpoint ? (
               <>
-                <CheckpointActivity checkpoint={checkpoint} />
+                {!reason && (
+                  <ResumeMessage
+                    key={`resume-${checkpoint.checkpoint_id}`}
+                    project={project}
+                    disabled={stale || actionsUnavailable}
+                  />
+                )}
                 <CheckpointContents
                   key={checkpoint.checkpoint_id}
                   projectId={project.id}
                   checkpointId={checkpoint.checkpoint_id}
                   stale={stale}
                 />
-                {!stale && status === "Saved for a later chat" ? (
-                  <p className="tools-hub-guidance">
-                    Ask Codex to continue saved work in a new chat for this
-                    repository.
-                  </p>
-                ) : null}
               </>
             ) : null}
-            {!compact && onAction ? (
-              <div className="continuity-project__actions">
+            <div className="continuity-project__actions">
+              <Button
+                type="button"
+                tone={project.continuity_enabled ? "quiet" : "secondary"}
+                aria-label={
+                  resetNeeded
+                    ? `Reset saved work for ${project.label}`
+                    : `${project.continuity_enabled ? "Stop saving work" : "Save work"} for ${project.label}`
+                }
+                disabled={
+                  actionsUnavailable ||
+                  (!resetNeeded &&
+                    !project.continuity_enabled &&
+                    (!canEnable ||
+                      project.paused ||
+                      !!project.attention ||
+                      project.pending_recovery))
+                }
+                onClick={(event) =>
+                  onAction(
+                    { type: resetNeeded ? "reset" : "toggle", project },
+                    event.currentTarget,
+                  )
+                }
+              >
+                {resetNeeded
+                  ? "Reset saved work"
+                  : project.continuity_enabled
+                    ? "Stop saving work"
+                    : "Save work"}
+              </Button>
+              {checkpoint && !resetNeeded ? (
                 <Button
                   type="button"
-                  aria-label={
-                    resetNeeded
-                      ? `Reset saved work for ${project.label}`
-                      : `${project.continuity_enabled ? "Turn off" : "Turn on"} continuing work for ${project.label}`
-                  }
-                  disabled={
-                    actionsUnavailable ||
-                    (!resetNeeded &&
-                      !project.continuity_enabled &&
-                      (!canEnable ||
-                        project.paused ||
-                        !!project.attention ||
-                        project.pending_recovery))
-                  }
+                  tone="quiet"
+                  aria-label={`Remove saved notes for ${project.label}`}
+                  disabled={actionsUnavailable}
                   onClick={(event) =>
                     onAction(
-                      { type: resetNeeded ? "reset" : "toggle", project },
+                      { type: "clear", project, checkpoint },
                       event.currentTarget,
                     )
                   }
                 >
-                  {resetNeeded
-                    ? "Reset saved work"
-                    : project.continuity_enabled
-                      ? "Turn off"
-                      : "Turn on"}
+                  Remove saved notes
                 </Button>
-                {checkpoint && !resetNeeded ? (
-                  <Button
-                    type="button"
-                    tone="quiet"
-                    aria-label={`Remove checkpoint for ${project.label}`}
-                    disabled={actionsUnavailable}
-                    onClick={(event) =>
-                      onAction(
-                        { type: "clear", project, checkpoint },
-                        event.currentTarget,
-                      )
-                    }
-                  >
-                    Remove checkpoint
-                  </Button>
-                ) : null}
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </div>
         );
       })}

@@ -117,6 +117,7 @@ export function TodayPage({
   onReview,
   reviewAvailable = true,
   onOpenCore,
+  onOpenSettings,
   onOpenTools,
   feedback,
   onFeedback,
@@ -135,6 +136,7 @@ export function TodayPage({
   reviewAvailable?: boolean;
   onReview: (suggestionId: string, opener?: HTMLButtonElement) => void;
   onOpenCore: () => void;
+  onOpenSettings?: () => void;
   onOpenTools: () => void;
   feedback: FeedbackValue | null;
   onFeedback: (value: FeedbackValue, activationId?: string) => void;
@@ -157,7 +159,7 @@ export function TodayPage({
     pendingFeedbackCount: number;
     pendingReviewCount: number;
     projectCount: number;
-    secureStoreReady: boolean;
+    secureStoreReady?: boolean;
     message?: string;
   };
   instructionEnvironments?: EngineInstructionEnvironmentSummary[];
@@ -237,12 +239,13 @@ export function TodayPage({
         open={
           !nativeAutonomy ||
           workspaceProjectId !== null ||
-          pendingReviewCount > 0 ||
-          suggestionCount > 0 ||
-          feedbackCount > 0 ||
           Boolean(nativeConflict) ||
-          permissionExpired ||
-          storageUnavailable
+          (reviewAvailable &&
+            !permissionExpired &&
+            !storageUnavailable &&
+            (pendingReviewCount > 0 ||
+              suggestionCount > 0 ||
+              feedbackCount > 0))
         }
       >
         <summary>
@@ -268,9 +271,14 @@ export function TodayPage({
               </h2>
               <p>
                 {permissionExpired
-                  ? "Renew permission in Settings to review suggestions and use approved guidance."
+                  ? "Renew permission under View permissions in Settings to review suggestions and use approved guidance."
                   : "Access to this device’s saved keys is needed to review and apply suggestions."}
               </p>
+              {permissionExpired && onOpenSettings && (
+                <Button onClick={onOpenSettings} tone="quiet">
+                  Open Settings
+                </Button>
+              )}
             </div>
           ) : reviewUnavailable ? (
             <div className="folio-proposal">
@@ -476,6 +484,7 @@ export function CorePage({
   governedMutationsAvailable = true,
   governedMutationUnavailableReason = null,
   snapshotDigest = null,
+  guidanceLoaded = Boolean(snapshotDigest),
   onNotice,
   onRevoke,
   recentUndo,
@@ -491,6 +500,7 @@ export function CorePage({
   governedMutationsAvailable?: boolean;
   governedMutationUnavailableReason?: string | null;
   snapshotDigest?: string | null;
+  guidanceLoaded?: boolean;
   onNotice?: (message: string) => void;
   onRevoke?: (artifactId: string) => Promise<void>;
   recentUndo?: EngineRecentUndo;
@@ -565,37 +575,9 @@ export function CorePage({
         <div>
           <h1>Personalization</h1>
         </div>
-        <div className="core-heading__aside">
-          <div className="core-portability-actions">
-            <button
-              disabled={nativeRuntime && !governedMutationsAvailable}
-              onClick={() => setPortabilityMode("export")}
-              title={governedMutationUnavailableReason ?? undefined}
-              type="button"
-            >
-              <Download aria-hidden="true" size={14} /> Export personal backup
-            </button>
-            <button
-              disabled={nativeRuntime && !governedMutationsAvailable}
-              onClick={() => setPortabilityMode("import")}
-              title={governedMutationUnavailableReason ?? undefined}
-              type="button"
-            >
-              <Upload aria-hidden="true" size={14} /> Import personal backup
-            </button>
-            <button
-              disabled={nativeRuntime && !governedMutationsAvailable}
-              onClick={() => setShareablePackageOpen(true)}
-              title={governedMutationUnavailableReason ?? undefined}
-              type="button"
-            >
-              <Share2 aria-hidden="true" size={14} /> Share preferences
-            </button>
-          </div>
-        </div>
       </header>
-      {resourceStatus}
       {nativeAutonomy && <AutonomousLearningPanel projects={liveProjects} />}
+      {resourceStatus}
       <section
         className="personalization-library"
         aria-labelledby="saved-guidance-heading"
@@ -604,7 +586,7 @@ export function CorePage({
           <div>
             <h2 id="saved-guidance-heading">Saved guidance</h2>
           </div>
-          {(!nativeRuntime || snapshotDigest) && (
+          {(!nativeRuntime || guidanceLoaded) && (
             <StatusPill tone="neutral">{visibleItems.length} saved</StatusPill>
           )}
         </div>
@@ -707,8 +689,8 @@ export function CorePage({
           })}
           {visibleItems.length === 0 ? (
             <div className="core-empty">
-              {nativeRuntime && !snapshotDigest
-                ? "Saved guidance is unavailable. Refresh status in Connections to try again."
+              {nativeRuntime && !guidanceLoaded
+                ? "Saved guidance is unavailable."
                 : items.length === 0
                   ? "No saved guidance yet. Approve a suggestion or import guidance to add it here."
                   : "No items match these filters."}
@@ -716,6 +698,37 @@ export function CorePage({
           ) : null}
         </div>
       </section>
+      <details className="learning-details personalization-portability">
+        <summary>Back up or share preferences</summary>
+        <div className="learning-details__body">
+          <div className="core-portability-actions">
+            <button
+              disabled={nativeRuntime && !governedMutationsAvailable}
+              onClick={() => setPortabilityMode("export")}
+              title={governedMutationUnavailableReason ?? undefined}
+              type="button"
+            >
+              <Download aria-hidden="true" size={14} /> Export personal backup
+            </button>
+            <button
+              disabled={nativeRuntime && !governedMutationsAvailable}
+              onClick={() => setPortabilityMode("import")}
+              title={governedMutationUnavailableReason ?? undefined}
+              type="button"
+            >
+              <Upload aria-hidden="true" size={14} /> Import personal backup
+            </button>
+            <button
+              disabled={nativeRuntime && !governedMutationsAvailable}
+              onClick={() => setShareablePackageOpen(true)}
+              title={governedMutationUnavailableReason ?? undefined}
+              type="button"
+            >
+              <Share2 aria-hidden="true" size={14} /> Share preferences
+            </button>
+          </div>
+        </div>
+      </details>
       {selected ? (
         <CoreItemDialog
           availableScopes={workspaceProjects.map(({ label }) => label)}
@@ -1907,6 +1920,8 @@ export function ConnectionsPage({
   nativeRuntime = false,
   liveConnections,
   liveProjects,
+  connectionsLoading = false,
+  projectsLoading = false,
   instructionEnvironments = [],
   previewConnections = [],
   previewProjects = [],
@@ -1915,12 +1930,15 @@ export function ConnectionsPage({
   snapshotDigest = null,
   onProjectRegistered,
   onInstructionChanged,
+  onOpenPersonalization,
   onRefresh,
 }: {
   resourceStatus?: ReactNode;
   nativeRuntime?: boolean;
   liveConnections?: EngineAgentConnection[];
   liveProjects?: EngineProject[];
+  connectionsLoading?: boolean;
+  projectsLoading?: boolean;
   instructionEnvironments?: EngineInstructionEnvironmentSummary[];
   previewConnections?: AgentConnection[];
   previewProjects?: RegisteredProject[];
@@ -1929,10 +1947,13 @@ export function ConnectionsPage({
   snapshotDigest?: string | null;
   onProjectRegistered?: (message: string) => void | Promise<void>;
   onInstructionChanged?: (message: string) => void | Promise<void>;
+  onOpenPersonalization?: () => void;
   onRefresh?: () => Promise<void>;
 }) {
   const connectionTrigger = useRef<HTMLButtonElement | null>(null);
   const projectTrigger = useRef<HTMLButtonElement | null>(null);
+  const taskSetup = useRef<HTMLDetailsElement | null>(null);
+  const taskSetupSummary = useRef<HTMLElement | null>(null);
   const [selectedConnection, setSelectedConnection] =
     useState<AgentConnection | null>(null);
   const [projectPreview, setProjectPreview] =
@@ -1940,6 +1961,7 @@ export function ConnectionsPage({
   const [projectBusy, setProjectBusy] = useState(false);
   const [projectMessage, setProjectMessage] = useState<string | null>(null);
   const [refreshBusy, setRefreshBusy] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const [projectQuery, setProjectQuery] = useState("");
   const shownConnections: AgentConnection[] = liveConnections
     ? liveConnections.map((connection) => ({
@@ -2060,37 +2082,26 @@ export function ConnectionsPage({
     }
   }
   return (
-    <div className="page">
+    <div className="page connections-page">
       <header className="today-learning-heading">
         <div>
           <h1>Connections</h1>
         </div>
-      </header>
-      {resourceStatus}
-      {nativeRuntime ? (
-        <div className="connections-toolbar">
+        {nativeRuntime && (
           <Button
-            disabled={refreshBusy}
             onClick={() => {
-              if (!onRefresh) return;
-              setRefreshBusy(true);
-              setProjectMessage(null);
-              void onRefresh()
-                .catch((error: unknown) =>
-                  setProjectMessage(
-                    error instanceof Error
-                      ? error.message
-                      : "Temper could not refresh connection status.",
-                  ),
-                )
-                .finally(() => setRefreshBusy(false));
+              if (taskSetup.current) taskSetup.current.open = true;
+              taskSetupSummary.current?.focus();
             }}
             tone="quiet"
           >
-            {refreshBusy ? "Checking…" : "Refresh status"}
+            Open managed task setup
           </Button>
-        </div>
-      ) : null}
+        )}
+      </header>
+      {nativeRuntime && (
+        <LearningRepositories onOpenPersonalization={onOpenPersonalization} />
+      )}
       {!nativeRuntime ? (
         <div className="native-action-note" role="note">
           <Laptop aria-hidden="true" size={16} />
@@ -2099,160 +2110,216 @@ export function ConnectionsPage({
           </span>
         </div>
       ) : null}
-      <div className="subsection-heading">
-        <div>
-          <h2>{connectionsHeading}</h2>
-          {shownConnections.length > 0 && (
-            <p>
-              {
-                shownConnections.filter(
-                  (connection) => connection.status === "connected",
-                ).length
-              }{" "}
-              of {shownConnections.length} connected
-            </p>
-          )}
-        </div>
-      </div>
-      <section className="connection-list" aria-label={connectionsHeading}>
-        {nativeRuntime && shownConnections.length === 0 && (
-          <p className="project-empty">Task agent status unavailable.</p>
+      <details
+        className="learning-details managed-task-setup"
+        open={!nativeRuntime}
+        ref={taskSetup}
+      >
+        <summary ref={taskSetupSummary}>Managed task setup</summary>
+        {nativeRuntime && (
+          <p className="managed-task-setup__description">
+            Connect agents and register project folders to run tasks through
+            Temper.
+          </p>
         )}
-        {shownConnections.map((connection) => (
-          <article className="connection-card" key={connection.id}>
-            <div className={`agent-logo agent-logo--${connection.id}`}>
-              <AgentBrandMark agent={connection.id} />
-            </div>
-            <div className="connection-main">
-              <div className="connection-title">
-                <h3>{connection.name}</h3>
-                <StatusPill
-                  tone={
-                    connection.status === "connected" ? "positive" : "neutral"
-                  }
-                >
-                  {connectionStatusLabel(connection.status)}
-                </StatusPill>
-              </div>
-              {connection.status === "attention" && (
-                <p>{connection.authDescription}</p>
-              )}
-            </div>
+        {resourceStatus}
+        <div className="subsection-heading">
+          <div>
+            <h2>{connectionsHeading}</h2>
+            {shownConnections.length > 0 && (
+              <p>
+                {
+                  shownConnections.filter(
+                    (connection) => connection.status === "connected",
+                  ).length
+                }{" "}
+                of {shownConnections.length} connected
+              </p>
+            )}
+          </div>
+          {nativeRuntime && onRefresh && (
             <Button
-              onClick={(event) => {
-                connectionTrigger.current = event.currentTarget;
-                setSelectedConnection(connection);
+              disabled={refreshBusy}
+              onClick={() => {
+                setRefreshBusy(true);
+                setRefreshError(null);
+                void onRefresh()
+                  .catch((error: unknown) =>
+                    setRefreshError(
+                      error instanceof Error
+                        ? error.message
+                        : "Temper could not refresh task connections.",
+                    ),
+                  )
+                  .finally(() => setRefreshBusy(false));
               }}
               tone="quiet"
             >
-              View details
+              {refreshBusy
+                ? "Refreshing task connections…"
+                : "Refresh task connections"}
             </Button>
-          </article>
-        ))}
-      </section>
-      {nativeRuntime && <LearningRepositories />}
-      <section className="projects-section" aria-label="Task projects">
-        <div className="subsection-heading">
-          <div>
-            <h2>{nativeRuntime ? "Task projects" : "Registered projects"}</h2>
-            {shownProjects.length > 0 && (
-              <p>{shownProjects.length} registered</p>
-            )}
-          </div>
-          <Button
-            disabled={
-              !nativeRuntime ||
-              !snapshotDigest ||
-              projectBusy ||
-              !registrationAvailable
-            }
-            icon={<Plus size={16} />}
-            onClick={(event) => {
-              projectTrigger.current = event.currentTarget;
-              void chooseProject();
-            }}
-            title={registrationUnavailableReason ?? undefined}
-          >
-            {nativeRuntime ? "Add task project" : "Add project"}
-          </Button>
+          )}
         </div>
-        {nativeRuntime &&
-        !registrationAvailable &&
-        registrationUnavailableReason ? (
-          <p className="setup-state-message">{registrationUnavailableReason}</p>
-        ) : null}
-        {shownProjects.length > 0 && (
-          <div className="project-search">
-            <label htmlFor="project-search">Find a project</label>
-            <input
-              id="project-search"
-              type="search"
-              value={projectQuery}
-              onChange={(event) => setProjectQuery(event.target.value)}
-              placeholder="Search projects"
-            />
-          </div>
-        )}
-        <div className="project-list">
-          {filteredProjects.map((project) => {
-            const environment = environmentStatus(project.id);
-            return (
-              <div className="project-row" key={project.id}>
-                <div className="project-monogram">{project.name[0]}</div>
-                <div className="project-row__copy">
-                  <strong>{project.name}</strong>
-                  <span>{project.pathLabel}</span>
-                  {nativeRuntime ? (
-                    <span className="project-row__environment">
-                      {!environment.checked
-                        ? "Agent instructions not checked"
-                        : environment.sourceCount
-                          ? `${environment.sourceCount} instruction source${environment.sourceCount === 1 ? "" : "s"} · ${environment.skillCount} skill${environment.skillCount === 1 ? "" : "s"}`
-                          : "No supported agent instructions detected"}
-                    </span>
-                  ) : null}
-                </div>
-                <div className="project-row__status">
-                  {nativeRuntime ? (
-                    <StatusPill
-                      tone={
-                        environment.status === "understood"
-                          ? "positive"
-                          : "neutral"
-                      }
-                    >
-                      {!environment.checked
-                        ? "Not checked"
-                        : environment.status === "understood" &&
-                            environment.semanticStatus !== "current"
-                          ? semanticAnalysisStatusLabel(
-                              environment.semanticStatus,
-                            )
-                          : instructionEnvironmentStatusLabel(
-                              environment.status,
-                            )}
-                    </StatusPill>
-                  ) : null}
-                  <span className="agent-chip">
-                    {project.connectedAgents.length
-                      ? project.connectedAgents.join(", ")
-                      : "Task runner off"}
-                  </span>
-                </div>
+        {refreshError && <p role="alert">{refreshError}</p>}
+        <section className="connection-list" aria-label={connectionsHeading}>
+          {nativeRuntime &&
+            shownConnections.length === 0 &&
+            (connectionsLoading ? (
+              <LoadingStatus>Checking task agents…</LoadingStatus>
+            ) : (
+              <p className="project-empty">
+                {liveConnections
+                  ? "No task agents found."
+                  : "Task agent status unavailable."}
+              </p>
+            ))}
+          {shownConnections.map((connection) => (
+            <article className="connection-card" key={connection.id}>
+              <div className={`agent-logo agent-logo--${connection.id}`}>
+                <AgentBrandMark agent={connection.id} />
               </div>
-            );
-          })}
-        </div>
-        {filteredProjects.length === 0 && (
-          <p className="project-empty">
-            {shownProjects.length === 0
-              ? nativeRuntime && !snapshotDigest
-                ? "Task project status unavailable."
-                : "No task projects yet."
-              : "No projects match your search."}
+              <div className="connection-main">
+                <div className="connection-title">
+                  <h3>{connection.name}</h3>
+                  <StatusPill
+                    tone={
+                      connection.status === "connected" ? "positive" : "neutral"
+                    }
+                  >
+                    {connectionStatusLabel(connection.status)}
+                  </StatusPill>
+                </div>
+                {connection.status === "attention" && (
+                  <p>{connection.authDescription}</p>
+                )}
+              </div>
+              <Button
+                onClick={(event) => {
+                  connectionTrigger.current = event.currentTarget;
+                  setSelectedConnection(connection);
+                }}
+                tone="quiet"
+              >
+                View details
+              </Button>
+            </article>
+          ))}
+        </section>
+        <section className="projects-section" aria-label="Task projects">
+          <div className="subsection-heading">
+            <div>
+              <h2>{nativeRuntime ? "Task projects" : "Registered projects"}</h2>
+              {shownProjects.length > 0 && (
+                <p>{shownProjects.length} registered</p>
+              )}
+            </div>
+            <Button
+              disabled={
+                !nativeRuntime ||
+                !snapshotDigest ||
+                projectBusy ||
+                !registrationAvailable
+              }
+              icon={<Plus size={16} />}
+              onClick={(event) => {
+                projectTrigger.current = event.currentTarget;
+                void chooseProject();
+              }}
+              title={registrationUnavailableReason ?? undefined}
+            >
+              {nativeRuntime ? "Add task project" : "Add project"}
+            </Button>
+          </div>
+          {nativeRuntime &&
+          !registrationAvailable &&
+          registrationUnavailableReason ? (
+            <p className="setup-state-message">
+              {registrationUnavailableReason}
+            </p>
+          ) : null}
+          {shownProjects.length > 0 && (
+            <div className="project-search">
+              <label htmlFor="project-search">Find a project</label>
+              <input
+                id="project-search"
+                type="search"
+                value={projectQuery}
+                onChange={(event) => setProjectQuery(event.target.value)}
+                placeholder="Search projects"
+              />
+            </div>
+          )}
+          <div className="project-list">
+            {filteredProjects.map((project) => {
+              const environment = environmentStatus(project.id);
+              return (
+                <div className="project-row" key={project.id}>
+                  <div className="project-monogram">{project.name[0]}</div>
+                  <div className="project-row__copy">
+                    <strong>{project.name}</strong>
+                    <span>{project.pathLabel}</span>
+                    {nativeRuntime ? (
+                      <span className="project-row__environment">
+                        {!environment.checked
+                          ? "Agent instructions not checked"
+                          : environment.sourceCount
+                            ? `${environment.sourceCount} instruction source${environment.sourceCount === 1 ? "" : "s"} · ${environment.skillCount} skill${environment.skillCount === 1 ? "" : "s"}`
+                            : "No supported agent instructions detected"}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="project-row__status">
+                    {nativeRuntime ? (
+                      <StatusPill
+                        tone={
+                          environment.status === "understood"
+                            ? "positive"
+                            : "neutral"
+                        }
+                      >
+                        {!environment.checked
+                          ? "Not checked"
+                          : environment.status === "understood" &&
+                              environment.semanticStatus !== "current"
+                            ? semanticAnalysisStatusLabel(
+                                environment.semanticStatus,
+                              )
+                            : instructionEnvironmentStatusLabel(
+                                environment.status,
+                              )}
+                      </StatusPill>
+                    ) : null}
+                    <span className="agent-chip">
+                      {project.connectedAgents.length
+                        ? project.connectedAgents.join(", ")
+                        : "Task runner off"}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {filteredProjects.length === 0 && projectsLoading && !liveProjects ? (
+            <LoadingStatus>Loading task projects…</LoadingStatus>
+          ) : (
+            filteredProjects.length === 0 && (
+              <p className="project-empty">
+                {shownProjects.length === 0
+                  ? nativeRuntime && !liveProjects && !snapshotDigest
+                    ? "Task project status unavailable."
+                    : "No task projects yet."
+                  : "No projects match your search."}
+              </p>
+            )
+          )}
+        </section>
+        {projectMessage && !projectPreview && (
+          <p className="connection-dialog-note" role="alert">
+            {projectMessage}
           </p>
         )}
-      </section>
+      </details>
       {selectedConnection ? (
         <ConnectionDetailsDialog
           connection={selectedConnection}
@@ -2312,11 +2379,6 @@ export function ConnectionsPage({
             </Dialog.Content>
           </PageDialogPortal>
         </Dialog.Root>
-      ) : null}
-      {projectMessage && !projectPreview ? (
-        <p className="connection-dialog-note" role="alert">
-          {projectMessage}
-        </p>
       ) : null}
     </div>
   );

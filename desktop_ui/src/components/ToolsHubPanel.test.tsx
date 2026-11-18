@@ -106,8 +106,34 @@ const savedContents = {
   next_step: "Add the harbor station to the fixture.",
 };
 
-it("shows saved guidance on Overview and fetches the checkpoint only when opened", async () => {
+it("copies a resume message from Overview without loading the saved notes", async () => {
   const user = userEvent.setup();
+  const copy = vi.spyOn(navigator.clipboard, "writeText");
+  api.hubRequest.mockResolvedValue({
+    ...continuing,
+    last_task: null,
+    projects: [{ ...continuing.projects[0], active: [] }],
+  });
+  render(<ToolsHubPanel nativeRuntime onOpenTools={() => {}} />);
+  expect(await screen.findByText("Codex connection configured")).toBeVisible();
+  expect(
+    screen.queryByRole("region", { name: "Saved work by repository" }),
+  ).toBeNull();
+  expect(screen.getByText("Saved work")).toBeVisible();
+  expect(screen.queryByText("First-time Codex setup")).toBeNull();
+  expect(screen.queryByText("No workflow activity recorded.")).toBeNull();
+  expect(screen.queryByText("Systematic Debugging")).toBeNull();
+  await user.click(screen.getByRole("button", { name: "Copy resume message" }));
+  expect(copy).toHaveBeenCalledWith(expect.stringContaining("/fictional-repo"));
+  expect(screen.getByText(/Paste it into a new Codex chat/)).toBeVisible();
+  expect(
+    api.hubRequest.mock.calls.every(([operation]) => operation === "status"),
+  ).toBe(true);
+});
+
+it("copies a repository-specific resume message and only reads notes on request", async () => {
+  const user = userEvent.setup();
+  const writeText = vi.spyOn(navigator.clipboard, "writeText");
   let completeRead: ((value: typeof savedContents) => void) | undefined;
   api.hubRequest.mockImplementation((operation: string) =>
     operation === "continuity_read"
@@ -116,33 +142,55 @@ it("shows saved guidance on Overview and fetches the checkpoint only when opened
         })
       : Promise.resolve(continuing),
   );
-  render(<ToolsHubPanel nativeRuntime onOpenTools={() => {}} />);
+  render(<ToolsHubPanel nativeRuntime />);
   const section = await screen.findByRole("region", {
-    name: "Continuing work",
+    name: "Saved work by repository",
   });
-  expect(within(section).getByText("Saved for a later chat")).toBeVisible();
-  expect(within(section).getByText("Systematic Debugging")).toBeVisible();
-  expect(within(section).queryByText("Retrieved by Codex")).toBeNull();
+  expect(within(section).queryByText("Systematic Debugging")).toBeNull();
+  expect(within(section).queryByText("Debugging", { exact: true })).toBeNull();
+  await user.click(
+    within(section).getByRole("button", { name: "Copy resume message" }),
+  );
+  expect(writeText).toHaveBeenCalledWith(
+    expect.stringContaining(continuing.projects[0].root),
+  );
+  expect(writeText).not.toHaveBeenCalledWith(
+    expect.stringContaining(savedContents.next_step),
+  );
+  expect(
+    within(section).getByText(/Copied. Paste it into a new Codex chat/),
+  ).toBeVisible();
   expect(api.hubRequest).toHaveBeenCalledTimes(1);
 
-  await user.click(within(section).getByText("Saved checkpoint"));
-  expect(await within(section).findByText("Opening checkpoint…")).toBeVisible();
+  await user.click(within(section).getByText("View saved notes"));
+  expect(
+    await within(section).findByText("Opening saved notes…"),
+  ).toBeVisible();
   expect(api.hubRequest).toHaveBeenCalledWith("continuity_read", {
     project_id: continuing.projects[0].id,
     checkpoint_id: checkpoint.checkpoint_id,
   });
-  expect(within(section).getByText("Systematic Debugging")).toBeVisible();
   await act(async () => completeRead?.(savedContents));
   expect(within(section).getByText(savedContents.next_step)).toBeVisible();
-  expect(within(section).getByText("Reported checks")).toBeVisible();
-  for (const item of [
-    ...savedContents.facts,
-    ...savedContents.progress,
-    ...savedContents.requirements,
-    ...savedContents.checks,
-  ]) {
-    expect(within(section).getByText(item)).toBeVisible();
-  }
+  expect(within(section).getByText(savedContents.progress[0])).toBeVisible();
+  expect(within(section).queryByText(savedContents.checks[0])).toBeNull();
+});
+
+it("offers a selectable message when access to the clipboard is denied", async () => {
+  const user = userEvent.setup();
+  vi.spyOn(navigator.clipboard, "writeText").mockRejectedValue(
+    new Error("Denied"),
+  );
+  api.hubRequest.mockResolvedValue(continuing);
+  render(<ToolsHubPanel nativeRuntime />);
+  await user.click(
+    await screen.findByRole("button", { name: "Copy resume message" }),
+  );
+  const message = screen.getByRole("textbox", { name: /Copy this message/ });
+  expect((message as HTMLTextAreaElement).value).toContain(
+    continuing.projects[0].root,
+  );
+  expect(message).toHaveAttribute("readonly");
 });
 
 it("reviews the repository permission before enabling continuing work", async () => {
@@ -169,17 +217,17 @@ it("reviews the repository permission before enabling continuing work", async ()
   });
   render(<ToolsHubPanel nativeRuntime />);
   const section = await screen.findByRole("region", {
-    name: "Continuing work",
+    name: "Saved work by repository",
   });
-  expect(within(section).getByText("Off")).toBeVisible();
+  expect(within(section).getByText("Saving work is off.")).toBeVisible();
   const trigger = within(section).getByRole("button", {
-    name: "Turn on continuing work for Example",
+    name: "Save work for Example",
   });
   await user.click(trigger);
   const dialog = await screen.findByRole("dialog", {
-    name: "Turn on continuing work",
+    name: "Save work for later",
   });
-  expect(dialog).toHaveTextContent(/save a brief checkpoint for Example/);
+  expect(dialog).toHaveTextContent(/keep notes from your work in Example/);
   expect(api.hubRequest).toHaveBeenCalledWith(
     "continuity_preview",
     { project_id: project.id, enabled: true },
@@ -203,11 +251,9 @@ it("reviews the repository permission before enabling continuing work", async ()
     { preview_id: "fictional-continuity-review" },
     state.digest,
   );
-  expect(await within(section).findByText("No checkpoint saved")).toBeVisible();
+  expect(await within(section).findByText("Nothing saved yet.")).toBeVisible();
   await waitFor(() =>
-    expect(
-      screen.getByRole("heading", { name: "Automatic workflows" }),
-    ).toHaveFocus(),
+    expect(screen.getByRole("heading", { name: "Saved work" })).toHaveFocus(),
   );
 });
 
@@ -239,13 +285,14 @@ it("keeps the checkpoint after a failed read and allows retry and exact removal"
   });
   render(<ToolsHubPanel nativeRuntime />);
   const section = await screen.findByRole("region", {
-    name: "Continuing work",
+    name: "Saved work by repository",
   });
-  expect(within(section).getByText("Retrieved by Codex")).toBeVisible();
-  expect(within(section).getByText("Retrieved")).toBeVisible();
-  await user.click(within(section).getByText("Saved checkpoint"));
+  expect(
+    within(section).getByRole("button", { name: "Copy resume message" }),
+  ).toBeEnabled();
+  await user.click(within(section).getByText("View saved notes"));
   await user.click(
-    await within(section).findByRole("button", { name: "Retry checkpoint" }),
+    await within(section).findByRole("button", { name: "Try again" }),
   );
   expect(
     await within(section).findByText(savedContents.next_step),
@@ -253,22 +300,24 @@ it("keeps the checkpoint after a failed read and allows retry and exact removal"
 
   await user.click(
     within(section).getByRole("button", {
-      name: "Remove checkpoint for Example",
+      name: "Remove saved notes for Example",
     }),
   );
   const dialog = await screen.findByRole("dialog", {
-    name: "Remove saved checkpoint",
+    name: "Remove saved notes",
   });
   await user.click(
-    within(dialog).getByRole("button", { name: "Remove checkpoint" }),
+    within(dialog).getByRole("button", { name: "Remove notes" }),
   );
   expect(api.hubRequest).toHaveBeenCalledWith(
     "continuity_clear",
     { project_id: project.id, checkpoint_id: checkpoint.checkpoint_id },
     state.digest,
   );
-  expect(await within(section).findByText("Checkpoint removed.")).toBeVisible();
-  expect(await within(section).findByText("No checkpoint saved")).toBeVisible();
+  expect(
+    await within(section).findByText("Saved notes removed."),
+  ).toBeVisible();
+  expect(await within(section).findByText("Nothing saved yet.")).toBeVisible();
   expect(within(section).queryByText(savedContents.next_step)).toBeNull();
 });
 
@@ -313,9 +362,11 @@ it("requires a scoped reset review before discarding an unreadable checkpoint", 
   });
   render(<ToolsHubPanel nativeRuntime />);
   const section = await screen.findByRole("region", {
-    name: "Continuing work",
+    name: "Saved work by repository",
   });
-  expect(within(section).getByText("Checkpoint unavailable")).toBeVisible();
+  expect(
+    within(section).getByText("Temper couldn’t read the saved work."),
+  ).toBeVisible();
   const reset = within(section).getByRole("button", {
     name: "Reset saved work for Example",
   });
@@ -324,7 +375,7 @@ it("requires a scoped reset review before discarding an unreadable checkpoint", 
     name: "Reset saved work",
   });
   expect(dialog).toHaveTextContent(
-    "Remove the unreadable saved work for Example and turn off continuing work.",
+    "Remove the unreadable notes for Example and stop saving work.",
   );
   expect(api.hubRequest).toHaveBeenCalledWith(
     "continuity_preview",
@@ -351,20 +402,22 @@ it("requires a scoped reset review before discarding an unreadable checkpoint", 
   );
   expect(
     await within(section).findByText(
-      "Saved work was reset. Continuing work is off.",
+      "Saved work was reset. Saving new notes is off.",
     ),
   ).toBeVisible();
   expect(
     within(section).getByRole("button", {
-      name: "Turn on continuing work for Example",
+      name: "Save work for Example",
     }),
   ).toBeEnabled();
   expect(
     within(section).getByRole("button", {
-      name: "Remove checkpoint for Other",
+      name: "Remove saved notes for Other",
     }),
   ).toBeEnabled();
-  expect(within(section).queryByText("Checkpoint unavailable")).toBeNull();
+  expect(
+    within(section).queryByText("Temper couldn’t read the saved work."),
+  ).toBeNull();
 });
 
 it("retains the last checkpoint on a status error and prevents clearing replaced work", async () => {
@@ -390,15 +443,22 @@ it("retains the last checkpoint on a status error and prevents clearing replaced
     .mockResolvedValue(replacement);
   render(<ToolsHubPanel nativeRuntime />);
   await act(async () => {});
-  const section = screen.getByRole("region", { name: "Continuing work" });
+  const section = screen.getByRole("region", {
+    name: "Saved work by repository",
+  });
   const remove = within(section).getByRole("button", {
-    name: "Remove checkpoint for Example",
+    name: "Remove saved notes for Example",
   });
 
   await act(async () => vi.advanceTimersByTimeAsync(3000));
-  expect(within(section).getByText("Systematic Debugging")).toBeVisible();
+  expect(within(section).getByText(project.label)).toBeVisible();
   expect(
-    within(section).getByText("Showing the last known checkpoint status."),
+    within(section).getByRole("button", { name: "Copy resume message" }),
+  ).toBeDisabled();
+  expect(
+    within(section).getByText(
+      "Refresh status before resuming or changing saved work.",
+    ),
   ).toBeVisible();
   expect(remove).toBeDisabled();
   fireEvent.click(screen.getByRole("button", { name: "Refresh status" }));
@@ -407,11 +467,13 @@ it("retains the last checkpoint on a status error and prevents clearing replaced
   fireEvent.click(remove);
   await act(async () => vi.advanceTimersByTimeAsync(3000));
   const dialog = screen.getByRole("dialog", {
-    name: "Remove saved checkpoint",
+    name: "Remove saved notes",
   });
-  expect(within(dialog).getByText(/This checkpoint has changed/)).toBeVisible();
   expect(
-    within(dialog).getByRole("button", { name: "Remove checkpoint" }),
+    within(dialog).getByText(/Your saved notes have changed/),
+  ).toBeVisible();
+  expect(
+    within(dialog).getByRole("button", { name: "Remove notes" }),
   ).toBeDisabled();
   expect(api.hubRequest).not.toHaveBeenCalledWith(
     "continuity_clear",
@@ -441,13 +503,15 @@ it("discards an in-flight details read when its checkpoint is replaced", async (
       });
     },
   );
-  render(<ToolsHubPanel nativeRuntime onOpenTools={() => {}} />);
+  render(<ToolsHubPanel nativeRuntime />);
   await act(async () => {});
-  const section = screen.getByRole("region", { name: "Continuing work" });
-  const initialDisclosure = within(section).getByText("Saved checkpoint");
+  const section = screen.getByRole("region", {
+    name: "Saved work by repository",
+  });
+  const initialDisclosure = within(section).getByText("View saved notes");
   fireEvent.click(initialDisclosure);
   await act(async () => vi.advanceTimersByTimeAsync(0));
-  expect(within(section).getByText("Opening checkpoint…")).toBeVisible();
+  expect(within(section).getByText("Opening saved notes…")).toBeVisible();
 
   state = {
     ...state,
@@ -460,12 +524,12 @@ it("discards an in-flight details read when its checkpoint is replaced", async (
   };
   await act(async () => vi.advanceTimersByTimeAsync(3000));
   const disclosure =
-    within(section).getByText("Saved checkpoint").parentElement!;
+    within(section).getByText("View saved notes").parentElement!;
   expect(disclosure).not.toHaveAttribute("open");
   await act(async () => completeOldRead?.(savedContents));
   expect(within(section).queryByText(savedContents.next_step)).toBeNull();
 
-  fireEvent.click(within(section).getByText("Saved checkpoint"));
+  fireEvent.click(within(section).getByText("View saved notes"));
   await act(async () => vi.advanceTimersByTimeAsync(0));
   expect(
     within(section).getByText(replacementContents.next_step),
@@ -488,11 +552,7 @@ it("shows repository guidance and the latest task check on the compact Overview"
   expect(
     screen.getByText(/Latest task check.*Example.*Check complete/),
   ).toBeVisible();
-  expect(
-    screen.getByText(/Before using automatic workflows/),
-  ).toHaveTextContent(
-    "Before using automatic workflows, review and trust Temper with /hooks in Codex, then open a new chat.",
-  );
+  expect(screen.queryByText(/Before using automatic workflows/)).toBeNull();
   expect(screen.queryByText("How automatic workflows work")).toBeNull();
 
   await user.click(
@@ -508,6 +568,12 @@ it("shows recorded activity and keeps workflow help collapsed on Tools", async (
 
   expect(await screen.findByText("Example · Check complete")).toBeVisible();
   expect(screen.getByText(/Available guidance.*debugging/)).toBeVisible();
+  expect(screen.getByText("Superpowers")).not.toBeVisible();
+  expect(
+    screen.getByRole("button", { name: "Check for updates" }),
+  ).not.toBeVisible();
+  await user.click(screen.getByText("Tool settings"));
+  await user.click(screen.getByText("Publisher and operation details"));
   expect(screen.getByText("Superpowers")).toBeVisible();
   expect(screen.getByText("Complete")).toBeVisible();
   expect(container.querySelector("time")).toHaveAttribute(
@@ -520,11 +586,9 @@ it("shows recorded activity and keeps workflow help collapsed on Tools", async (
   const help = screen.getByText("How automatic workflows work");
   expect(
     screen.getByText(/Before using automatic workflows/),
-  ).toHaveTextContent(
-    "Before using automatic workflows, review and trust Temper with /hooks in Codex, then open a new chat.",
-  );
+  ).not.toBeVisible();
   const cleanup = screen.getByText(
-    /removes its unchanged copies when a task ends/,
+    /removes unchanged copies when Codex reports the task is done/,
   );
   expect(cleanup).not.toBeVisible();
   await user.click(help);
@@ -551,6 +615,7 @@ it("keeps guidance visible during maintenance and reports paused updates after r
   await act(async () => {});
   expect(screen.getByText("Publisher check in progress…")).toBeVisible();
   expect(screen.getByText(/Available guidance.*debugging/)).toBeVisible();
+  fireEvent.click(screen.getByText("Tool settings"));
   expect(
     screen.getByRole("button", { name: "Check for updates" }),
   ).toBeDisabled();
@@ -571,8 +636,10 @@ it("reports empty task history and publisher checks and shows the first-use acti
     projects: [{ ...populated.projects[0], active: [] }],
   });
   const { container } = render(<ToolsHubPanel nativeRuntime />);
-  expect(await screen.findByText("No task activity recorded")).toBeVisible();
-  expect(screen.getByText("No successful check recorded")).toBeVisible();
+  expect(
+    await screen.findByText("No workflow activity recorded"),
+  ).toBeVisible();
+  expect(screen.getByText("No successful check recorded")).not.toBeVisible();
   expect(screen.getByText("No guidance installed")).toBeVisible();
   expect(container.querySelector("time")).toBeNull();
   expect(
@@ -582,16 +649,20 @@ it("reports empty task history and publisher checks and shows the first-use acti
   );
 });
 
-it("shows the first-use action on the configured Overview before the first task", async () => {
+it("offers optional first-use help on the configured Overview before the first task", async () => {
+  const user = userEvent.setup();
   api.hubRequest.mockResolvedValue({
     ...populated,
     last_task: null,
     projects: [{ ...populated.projects[0], active: [] }],
   });
   render(<ToolsHubPanel nativeRuntime onOpenTools={() => {}} />);
+  const setup = await screen.findByText("First-time Codex setup");
   expect(
-    await screen.findByText(/Before using automatic workflows/),
-  ).toBeVisible();
+    screen.getByText(/Before using automatic workflows/),
+  ).not.toBeVisible();
+  await user.click(setup);
+  expect(screen.getByText(/Before using automatic workflows/)).toBeVisible();
 });
 
 it("does not treat learning repositories as tool permission and previews exact destinations", async () => {
@@ -685,6 +756,117 @@ it.each([
   expect(screen.queryByRole("dialog")).toBeNull();
 });
 
+it("reviews stopping the current setup before allowing changes to repository approval", async () => {
+  const user = userEvent.setup();
+  const project = continuing.projects[0];
+  const next = {
+    id: "second-project",
+    label: project.label,
+    root: "/different-repo",
+  };
+  let state = continuing;
+  api.hubRequest.mockImplementation(async (operation: string) => {
+    if (operation === "status") return state;
+    if (operation === "control") {
+      state = { ...state, enabled: false, cleanup_pending: true };
+      return { status: "stopped" };
+    }
+    if (operation === "inventory") return { projects: [project, next] };
+    if (operation === "permission_preview")
+      return {
+        preview_id: "new-scope",
+        projects: [next],
+        destinations: [next.root + "/.agents/skills"],
+        manager_destination: "/fixture/manager",
+        source_specs: [],
+      };
+    throw new Error(operation);
+  });
+  render(<ToolsHubPanel nativeRuntime />);
+  const change = await screen.findByRole("button", {
+    name: "Change approved repositories",
+  });
+  await user.click(change);
+  const review = await screen.findByRole("dialog", {
+    name: "Change approved repositories",
+  });
+  expect(review).toHaveTextContent(/Stopping removes saved work notes/);
+  await user.keyboard("{Escape}");
+  await waitFor(() => expect(change).toHaveFocus());
+  expect(
+    api.hubRequest.mock.calls.every(([operation]) => operation === "status"),
+  ).toBe(true);
+
+  await user.keyboard("{Enter}");
+  await user.click(
+    await screen.findByRole("button", { name: "Stop current setup" }),
+  );
+  expect(await screen.findByText("Cleanup needed")).toBeVisible();
+  expect(
+    screen.queryByRole("button", { name: "Continue repository setup" }),
+  ).toBeNull();
+
+  state = { ...state, cleanup_pending: false };
+  await user.click(
+    await screen.findByRole(
+      "button",
+      { name: "Continue repository setup" },
+      { timeout: 4000 },
+    ),
+  );
+  expect(
+    await screen.findByRole("searchbox", { name: "Find a repository" }),
+  ).toHaveFocus();
+  const current = screen.getByRole("checkbox", {
+    name: "Example · fictional-repo",
+  });
+  const replacement = screen.getByRole("checkbox", {
+    name: "Example · second-project",
+  });
+  expect(current).toBeChecked();
+  expect(replacement).not.toBeChecked();
+  expect(screen.getByRole("checkbox", { name: "Superpowers" })).toBeChecked();
+  await user.click(current);
+  await user.click(replacement);
+  await user.click(screen.getByRole("button", { name: "Review setup" }));
+  expect(api.hubRequest).toHaveBeenCalledWith(
+    "permission_preview",
+    { project_ids: [next.id], source_ids: ["superpowers"] },
+    state.digest,
+  );
+  expect(
+    await screen.findByRole("dialog", { name: "Allow repository tool setup" }),
+  ).toHaveTextContent(next.root);
+  expect(
+    api.hubRequest.mock.calls.some(
+      ([operation]) => operation === "permission_enable",
+    ),
+  ).toBe(false);
+});
+
+it("requires a fresh stop review when workflow status changes before approval", async () => {
+  const user = userEvent.setup();
+  let state = populated;
+  api.hubRequest.mockImplementation(async (operation: string) => {
+    if (operation === "status") return state;
+    throw new Error(operation);
+  });
+  render(<ToolsHubPanel nativeRuntime />);
+  await user.click(
+    await screen.findByRole("button", { name: "Change approved repositories" }),
+  );
+  state = { ...populated, digest: "new-approval-status" };
+  await user.click(
+    await screen.findByRole("button", { name: "Stop current setup" }),
+  );
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Workflow status changed.",
+  );
+  expect(
+    api.hubRequest.mock.calls.every(([operation]) => operation === "status"),
+  ).toBe(true);
+});
+
 it("makes every connection preview block reachable before keyboard consent", async () => {
   const user = userEvent.setup();
   api.hubRequest.mockImplementation(async (operation: string) => {
@@ -712,8 +894,8 @@ it("makes every connection preview block reachable before keyboard consent", asy
     name: "Proposed config.toml section",
   });
   expect(
-    screen.getByText(/automatically prepare tasks, select tools, render/),
-  ).toHaveTextContent(/separately approved runtime/);
+    screen.getByText(/After connecting, review and trust Temper/),
+  ).toHaveTextContent(/\/hooks in Codex, then open a new chat/);
   const instructions = screen.getByRole("region", {
     name: "Proposed AGENTS.md section",
   });
@@ -1150,14 +1332,18 @@ it("reports an incomplete Codex connection consistently and offers to repair the
   render(<ToolsHubPanel nativeRuntime />);
   const panel = screen.getByRole("region", { name: "Automatic workflows" });
   const savedWork = await within(panel).findByRole("region", {
-    name: "Continuing work",
+    name: "Saved work by repository",
   });
-  expect(within(panel).getAllByText("Codex setup needed")).toHaveLength(2);
-  expect(within(savedWork).getByText("Codex setup needed")).toBeVisible();
+  expect(within(panel).getByText("Codex setup needed")).toBeVisible();
+  expect(
+    within(savedWork).getByText("Connect Codex to resume saved work."),
+  ).toBeVisible();
   expect(
     within(panel).getByRole("button", { name: "Connect Codex" }),
   ).toBeEnabled();
-  expect(within(savedWork).queryByText(/Ask Codex to continue/)).toBeNull();
+  expect(
+    within(savedWork).queryByRole("button", { name: "Copy resume message" }),
+  ).toBeNull();
   await user.click(
     within(panel).getByRole("button", { name: "Connect Codex" }),
   );
@@ -1209,20 +1395,25 @@ it("updates setup eligibility in place after resuming automatic workflows", asyn
   ).toBeVisible();
   const trigger = within(setup).getByRole("button", { name: "Import setup" });
   expect(trigger).toBeDisabled();
-  expect(within(setup).getByText("Skills")).toBeVisible();
-  expect(within(setup).getByText("Knowledge")).toBeVisible();
-  expect(within(setup).getByText("Preferences")).toBeVisible();
-  expect(within(setup).getByText("Checks")).toBeVisible();
+  expect(
+    within(setup).getByText("Installed guidance · debugging"),
+  ).toBeVisible();
+  expect(within(setup).getByText("No setup imported")).toBeVisible();
   await user.click(screen.getByRole("button", { name: "Resume updates" }));
   await waitFor(() => expect(trigger).toBeEnabled());
   expect(loadSetupStatus).toHaveBeenCalledTimes(2);
+  expect(
+    within(
+      screen.getByRole("region", { name: "Saved work by repository" }),
+    ).getByRole("button", { name: "Copy resume message" }),
+  ).toBeVisible();
   await user.click(
-    within(setup).getByRole("button", { name: "Continue work" }),
+    within(setup).getByRole("button", { name: "View saved work" }),
   );
   expect(screen.getByText("Saved work")).toHaveFocus();
   expect(
-    within(screen.getByRole("region", { name: "Continuing work" })).getByText(
-      "Saved for a later chat",
-    ),
+    within(
+      screen.getByRole("region", { name: "Saved work by repository" }),
+    ).getByRole("button", { name: "Copy resume message" }),
   ).toBeVisible();
 });

@@ -198,6 +198,7 @@ describe("Temper prototype", () => {
     window.history.replaceState({}, "", "/?screen=core");
     render(<App />);
 
+    await user.click(screen.getByText("Back up or share preferences"));
     await user.click(
       screen.getByRole("button", { name: "Export personal backup" }),
     );
@@ -220,6 +221,7 @@ describe("Temper prototype", () => {
     window.history.replaceState({}, "", "/?screen=core");
     render(<App />);
 
+    await user.click(screen.getByText("Back up or share preferences"));
     await user.click(
       screen.getByRole("button", { name: "Import personal backup" }),
     );

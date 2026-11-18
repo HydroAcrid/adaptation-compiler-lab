@@ -52,7 +52,8 @@ function overview(health: "ready" | "consent_expired") {
   );
 }
 
-it("shows both review queues and surfaces expired permission in the overview", () => {
+it("opens actionable reviews and leaves expired permission behind the disclosure", async () => {
+  const user = userEvent.setup();
   const { rerender } = render(overview("ready"));
   expect(screen.getByText("1 to review · 1 to rate")).toBeVisible();
   expect(
@@ -62,7 +63,12 @@ it("shows both review queues and surfaces expired permission in the overview", (
   expect(
     screen.getByText("Permission expired", { selector: "span" }),
   ).toBeVisible();
-  expect(screen.getByText(/Renew permission in Settings/)).toBeVisible();
+  const renewal = screen.getByText(/Renew permission under View permissions/);
+  expect(renewal).not.toBeVisible();
+  await user.click(
+    screen.getByText("Reviewed suggestions", { selector: "summary" }),
+  );
+  expect(renewal).toBeVisible();
 });
 
 it("shows saved guidance counts while retaining portability actions", async () => {
@@ -83,6 +89,10 @@ it("shows saved guidance counts while retaining portability actions", async () =
   );
   expect(screen.getByText("1 saved")).toBeVisible();
   expect(screen.getByText("Report test results")).toBeVisible();
+  expect(
+    screen.getByText("Back up or share preferences").closest("details"),
+  ).not.toHaveAttribute("open");
+  await user.click(screen.getByText("Back up or share preferences"));
   expect(
     screen.getByRole("button", { name: "Export personal backup" }),
   ).toBeEnabled();
@@ -123,8 +133,21 @@ it("puts the saved workflow lifecycle explanation behind a disclosure", async ()
   expect(explanation).toBeVisible();
 });
 
-it("distinguishes unavailable task project data from an empty registry", () => {
-  const { rerender } = render(<ConnectionsPage nativeRuntime />);
+it("distinguishes loading, unavailable, and empty managed task project data", async () => {
+  const user = userEvent.setup();
+  const { rerender } = render(
+    <ConnectionsPage nativeRuntime connectionsLoading projectsLoading />,
+  );
+  await user.click(
+    screen.getByRole("button", { name: "Open managed task setup" }),
+  );
+  expect(
+    screen.getByText("Managed task setup", { selector: "summary" }),
+  ).toHaveFocus();
+  expect(screen.getByText("Checking task agents…")).toBeVisible();
+  expect(screen.getByText("Loading task projects…")).toBeVisible();
+  expect(screen.queryByText("No task projects yet.")).not.toBeInTheDocument();
+  rerender(<ConnectionsPage nativeRuntime />);
   expect(screen.getByText("Task agent status unavailable.")).toBeVisible();
   const projects = within(
     screen.getByRole("region", { name: "Task projects" }),
@@ -177,6 +200,9 @@ it("keeps connection rows short and preserves capability and cost details in the
         },
       ]}
     />,
+  );
+  await user.click(
+    screen.getByRole("button", { name: "Open managed task setup" }),
   );
   const rows = within(screen.getByRole("region", { name: "Task connections" }));
   expect(rows.getByText("Ready", { exact: true })).toBeVisible();

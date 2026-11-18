@@ -1,11 +1,11 @@
 .portable-setup-section {
-  margin-block: 28px;
+  margin-block: 16px;
   padding-block: 16px;
   border-top: 1px solid var(--folio-rule);
 }
 
 .portable-setup-section > p,
-.portable-setup-active p,
+.repository-setup-row p,
 .portable-setup-dialog p {
   font-size: 13px;
 }
@@ -28,21 +28,38 @@
   font-size: 19px;
 }
 
-.portable-setup-active {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--folio-rule);
+.repository-setup-actions {
+  margin-block: 4px;
+}
+
+.repository-setup-row {
+  padding-block: 12px;
+  border-block-start: 1px solid var(--border);
   overflow-wrap: anywhere;
 }
 
-.portable-setup-active p {
-  margin-block: 4px;
-  color: var(--muted);
+.portable-setup-heading > div {
+  min-width: 0;
 }
 
-.portable-setup-active details {
+.repository-setup-row small {
+  display: block;
+  color: var(--muted);
+  font-size: var(--type-label);
+}
+
+.repository-setup-row p {
+  margin-block: 4px 0;
+}
+
+.repository-setup-row > details {
   margin-top: 8px;
-  font-size: 13px;
+  font-size: var(--type-body);
+}
+
+.repository-setup-row > details > summary {
+  width: fit-content;
+  padding-block: 4px;
 }
 
 .portable-setup-dialog .core-dialog__actions {

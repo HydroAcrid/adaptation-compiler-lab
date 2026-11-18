@@ -222,6 +222,20 @@ export function AutonomousLearningPanel({
       : learningLabel === "Needs attention" || loadError
         ? "attention"
         : "neutral";
+  const personalizationLabel = loadError
+    ? "Status unavailable"
+    : !status?.personalization_enabled
+      ? "Off"
+      : !status.automatic_serving_ready ||
+          !status.secure_store_ready ||
+          status.publication_needs_attention
+        ? "Waiting for checks"
+        : "On";
+  const publicationLabel = !status?.published
+    ? "No habits added to agent instructions"
+    : status.delivery_confirmed
+      ? "Agent loading recorded"
+      : "Instructions updated · agent loading unconfirmed";
 
   if (onOpenPersonalization) {
     const habitCount = currentHabits?.length;
@@ -266,6 +280,13 @@ export function AutonomousLearningPanel({
                     <dd>{habitCount}</dd>
                   </div>
                 </dl>
+                {!loadError && (
+                  <div className="personalization-status">
+                    <span>Personalization</span>
+                    <strong>{personalizationLabel}</strong>
+                    <span>{publicationLabel}</span>
+                  </div>
+                )}
               </>
             )}
           </>
@@ -282,7 +303,7 @@ export function AutonomousLearningPanel({
     >
       <header className="autonomy-panel__heading">
         <div className="autonomy-panel__title">
-          <h2 id={headingId}>Learning</h2>
+          <h2 id={headingId}>Chat learning</h2>
           <StatusPill tone={statusTone}>{learningLabel}</StatusPill>
         </div>
         {status?.grant_enabled && (
@@ -377,7 +398,7 @@ export function AutonomousLearningPanel({
                   </label>
                 ))}
                 {grantProjects.length === 0 && (
-                  <p>Add a learning project in Connections first.</p>
+                  <p>No repositories are available for chat learning.</p>
                 )}
               </div>
             </fieldset>
@@ -456,8 +477,9 @@ export function AutonomousLearningPanel({
                     {preview.value.project_ids
                       .map(
                         (id) =>
-                          projects.find((project) => project.project_id === id)
-                            ?.display_name ?? id,
+                          grantProjects.find(
+                            (project) => project.project_id === id,
+                          )?.display_name ?? id,
                       )
                       .join(", ")}
                   </dd>
@@ -531,6 +553,37 @@ export function AutonomousLearningPanel({
       )}
       {status?.grant_enabled && (
         <>
+          <div className="personalization-status">
+            <span>Personalization</span>
+            <strong>{personalizationLabel}</strong>
+            <span>
+              {loadError
+                ? "The last status could not be refreshed."
+                : publicationLabel}
+            </span>
+          </div>
+          <Toggle
+            label="Use learned habits in new chats"
+            checked={status.personalization_enabled}
+            disabled={
+              busy ||
+              blocked ||
+              (!status.personalization_enabled &&
+                !status.automatic_serving_ready)
+            }
+            onCheckedChange={() =>
+              void control(
+                status.personalization_enabled
+                  ? "disable_personalization"
+                  : "enable_personalization",
+              )
+            }
+            description={
+              status.automatic_serving_ready
+                ? "Turning this off removes Temper’s managed profile where it can safely do so."
+                : "Learning can continue while Temper waits for compatibility, behavior and instruction checks."
+            }
+          />
           <div className="learning-empty">
             <h3 ref={habitsHeading} tabIndex={-1}>
               {loadError ? "Last known habits" : "Learned habits"}
@@ -643,29 +696,13 @@ export function AutonomousLearningPanel({
                 ))}
               </ul>
             ) : (
-              <p>No habits yet.</p>
+              <p>
+                No habits yet.
+                {!loadError &&
+                  learningLabel === "Enabled" &&
+                  " Keep working in Codex in an approved repository."}
+              </p>
             )}
-          </div>
-          <div className="personalization-status">
-            <span>Personalization</span>
-            <strong>
-              {loadError
-                ? "Status unavailable"
-                : !status.personalization_enabled
-                  ? "Off"
-                  : !status.automatic_serving_ready
-                    ? "Waiting for checks"
-                    : "On"}
-            </strong>
-            <span>
-              {loadError
-                ? "The last status could not be refreshed."
-                : !status.published
-                  ? "No habits added to agent instructions"
-                  : status.delivery_confirmed
-                    ? "Agent loading recorded"
-                    : "Instructions updated · agent loading unconfirmed"}
-            </span>
           </div>
           <div className="learning-details learning-details__body">
             {loadError && <p>Last known activity</p>}
@@ -718,30 +755,6 @@ export function AutonomousLearningPanel({
           <details className="learning-details">
             <summary>Learning settings</summary>
             <div className="learning-details__body">
-              <Toggle
-                label="Personalization"
-                checked={status.personalization_enabled}
-                disabled={
-                  busy ||
-                  blocked ||
-                  (!status.personalization_enabled &&
-                    !status.automatic_serving_ready)
-                }
-                onCheckedChange={() =>
-                  void control(
-                    status.personalization_enabled
-                      ? "disable_personalization"
-                      : "enable_personalization",
-                  )
-                }
-                description="Use eligible habits in new chats. Turning this off removes Temper’s managed profile where it can safely do so."
-              />
-              {!status.automatic_serving_ready && (
-                <p>
-                  Learning can continue. Automatic personalization needs
-                  compatibility, behavior and instruction checks to pass first.
-                </p>
-              )}
               <div className="learning-revoke">
                 <p>
                   Revoke access to stop learning and personalization. Local

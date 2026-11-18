@@ -852,6 +852,7 @@ export default function App() {
               feedbackTargets={feedbackTargets}
               onFeedback={recordFeedback}
               onOpenCore={() => navigate("core")}
+              onOpenSettings={() => navigate("settings")}
               onOpenTools={() => navigate("modes")}
               onReview={reviewSuggestion}
               reviewAvailable={!nativeRuntime || governedActionsAvailable}
@@ -876,13 +877,15 @@ export default function App() {
                       feedbackAvailable: governedActionsAvailable,
                       pendingReviewCount: displayedSuggestions.length,
                       projectCount: engineSnapshot.projects.length,
-                      secureStoreReady,
+                      secureStoreReady: setupSnapshot
+                        ? secureStoreReady
+                        : undefined,
                     }
                   : undefined
               }
               instructionEnvironments={instructionEnvironments}
               liveProjects={engineSnapshot?.projects ?? []}
-              resourceStatus={fullWorkspaceStatus}
+              resourceStatus={workspaceStatus}
             />
           ),
           core: (
@@ -902,6 +905,7 @@ export default function App() {
                 governedMutationUnavailableReason
               }
               governedMutationsAvailable={governedActionsAvailable}
+              guidanceLoaded={Boolean(engineSnapshot)}
               nativeRuntime={nativeRuntime}
               onRevoke={revokeAdaptation}
               onUndo={undoRecentAdaptation}
@@ -969,22 +973,27 @@ export default function App() {
           ),
           connections: (
             <ConnectionsPage
-              liveConnections={
-                nativeRuntime ? (setupSnapshot?.connections ?? []) : undefined
-              }
-              liveProjects={
-                nativeRuntime ? (engineSnapshot?.projects ?? []) : undefined
-              }
+              liveConnections={setupSnapshot?.connections}
+              liveProjects={engineSnapshot?.projects}
+              connectionsLoading={setup.loading}
+              projectsLoading={workspace.loading}
               instructionEnvironments={instructionEnvironments}
               nativeRuntime={nativeRuntime}
               previewConnections={browserPreviewRuntime ? demoConnections : []}
               previewProjects={browserPreviewRuntime ? demoProjects : []}
               onRefresh={refreshConnectionState}
+              onOpenPersonalization={() => navigate("core")}
               onProjectRegistered={refreshAfterNativeAction}
               onInstructionChanged={refreshAfterNativeAction}
               registrationAvailable={governedActionsAvailable}
               registrationUnavailableReason={governedMutationUnavailableReason}
-              resourceStatus={fullWorkspaceStatus}
+              resourceStatus={
+                <>
+                  {workspace.error && workspaceStatus}
+                  {setup.error && setupStatus}
+                  {instructionStatus}
+                </>
+              }
               snapshotDigest={snapshotDigest}
             />
           ),

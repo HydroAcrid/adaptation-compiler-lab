@@ -34,9 +34,11 @@ afterEach(() => {
 it("shows signed learning coverage independently of one task project and absent instruction scans", async () => {
   api.loadAutonomy.mockResolvedValue(response);
   const user = userEvent.setup();
+  const onOpenPersonalization = vi.fn();
   render(
     <ConnectionsPage
       nativeRuntime
+      onOpenPersonalization={onOpenPersonalization}
       liveConnections={[
         {
           connection_version: "1.1.0",
@@ -76,6 +78,21 @@ it("shows signed learning coverage independently of one task project and absent 
   expect(within(list).getAllByText("Learning on")).toHaveLength(55);
   expect(within(list).getByText("Learning paused")).toBeInTheDocument();
   expect(within(list).getByText("Learning not approved")).toBeInTheDocument();
+  const chatLearning = screen.getByRole("region", {
+    name: "Codex chat learning",
+  });
+  await user.click(
+    within(chatLearning).getByRole("button", { name: "Manage learning" }),
+  );
+  expect(onOpenPersonalization).toHaveBeenCalledOnce();
+  const taskSetup = screen.getByText("Managed task setup", {
+    selector: "summary",
+  });
+  expect(taskSetup.closest("details")).not.toHaveAttribute("open");
+  await user.click(
+    screen.getByRole("button", { name: "Open managed task setup" }),
+  );
+  expect(taskSetup).toHaveFocus();
   expect(
     screen.getByRole("heading", { name: "Task connections" }),
   ).toBeInTheDocument();
@@ -159,6 +176,9 @@ it("queues a manual refresh behind a pending read and ignores superseded permiss
     screen.getByRole("button", { name: "Refresh learning access" }),
   );
   expect(api.loadAutonomy).toHaveBeenCalledTimes(1);
+  expect(
+    screen.getByRole("button", { name: "Refreshing learning access…" }),
+  ).toBeDisabled();
   await act(async () => finishOld(response));
   expect(api.loadAutonomy).toHaveBeenCalledTimes(2);
   expect(screen.queryByText("Same repository name")).not.toBeInTheDocument();

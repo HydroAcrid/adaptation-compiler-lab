@@ -15,11 +15,16 @@ import { usePageVisibility } from "../pageVisibility";
 import { Button, LoadingStatus, StatusPill } from "./ui";
 
 /** A read-only view of the signed learning registry, separate from task runners. */
-export function LearningRepositories() {
+export function LearningRepositories({
+  onOpenPersonalization,
+}: {
+  onOpenPersonalization?: () => void;
+}) {
   const [status, setStatus] = useState<AutonomyState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [attempt, setAttempt] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   const visible = usePageVisibility();
   const visibleRef = useRef(false);
   const pending = useRef(false);
@@ -58,6 +63,7 @@ export function LearningRepositories() {
       } while (visibleRef.current && queued.current);
     } finally {
       pending.current = false;
+      setRefreshing(false);
     }
   });
 
@@ -78,12 +84,12 @@ export function LearningRepositories() {
   );
   return (
     <section
-      className="projects-section"
+      className="projects-section learning-repositories"
       aria-labelledby="learning-repositories-heading"
     >
       <div className="subsection-heading">
         <div>
-          <h2 id="learning-repositories-heading">Chat learning</h2>
+          <h2 id="learning-repositories-heading">Codex chat learning</h2>
           {error ? (
             <p>
               {projects
@@ -99,18 +105,30 @@ export function LearningRepositories() {
             <LoadingStatus>Checking repository access…</LoadingStatus>
           ) : null}
         </div>
-        <Button tone="quiet" onClick={() => setAttempt((value) => value + 1)}>
-          Refresh learning access
-        </Button>
+        <div className="learning-repositories__actions">
+          {onOpenPersonalization && (
+            <Button tone="quiet" onClick={onOpenPersonalization}>
+              Manage learning
+            </Button>
+          )}
+          <Button
+            disabled={refreshing}
+            tone="quiet"
+            onClick={() => {
+              setRefreshing(true);
+              setAttempt((value) => value + 1);
+            }}
+          >
+            {refreshing
+              ? "Refreshing learning access…"
+              : "Refresh learning access"}
+          </Button>
+        </div>
       </div>
       {error && <p role="alert">{error}</p>}
       {status && !projects && !error && (
         <p>Repository access is unavailable in this engine version.</p>
       )}
-      <p>
-        These permissions cover ordinary Codex chats. Open Personalization to
-        change them.
-      </p>
       {projects && (
         <>
           <div className="project-search">
@@ -125,12 +143,9 @@ export function LearningRepositories() {
               placeholder="Search repositories"
             />
           </div>
-          <div className="project-list" aria-label="Learning repositories">
+          <ul className="project-list" aria-label="Learning repositories">
             {shown?.map((project) => (
-              <div className="project-row" key={project.project_id}>
-                <div className="project-monogram">
-                  {project.display_name[0]}
-                </div>
+              <li className="project-row" key={project.project_id}>
                 <div className="project-row__copy">
                   <strong>{project.display_name}</strong>
                   <span>{project.project_id}</span>
@@ -159,9 +174,9 @@ export function LearningRepositories() {
                     </span>
                   )}
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
           {shown?.length === 0 && (
             <p className="project-empty">
               {projects.length

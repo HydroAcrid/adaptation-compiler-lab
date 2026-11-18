@@ -209,7 +209,8 @@ test("profile import preview remains visible and inactive", async ({
   page,
 }) => {
   await page.goto("/?screen=core&theme=dark");
-  await page.getByRole("button", { name: "Import", exact: true }).click();
+  await page.getByText("Back up or share preferences", { exact: true }).click();
+  await page.getByRole("button", { name: "Import personal backup" }).click();
   await page
     .getByLabel("Profile passphrase")
     .fill("correct horse battery staple");
@@ -232,6 +233,7 @@ test("Frontend Studio is visibly temporary and browser-safe", async ({
   page,
 }) => {
   await page.goto("/?screen=modes&theme=dark");
+  await page.getByText(/^Saved workflows(?: · \d+)?$/).click();
   await page
     .getByRole("article")
     .filter({ hasText: "Frontend Studio" })
@@ -240,6 +242,7 @@ test("Frontend Studio is visibly temporary and browser-safe", async ({
 
   const dialog = page.getByRole("dialog", { name: "Frontend Studio" });
   await expect(dialog).toBeVisible();
+  await dialog.getByText("Workflow details and sources", { exact: true }).click();
   await expect(dialog.getByText(/one task, up to/i)).toBeVisible();
   await expect(dialog.getByText(/added tools/i)).toBeVisible();
   await expect(

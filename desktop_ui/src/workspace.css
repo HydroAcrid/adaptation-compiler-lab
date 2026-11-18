@@ -520,6 +520,40 @@ details > summary {
 .personalization-library {
   margin-top: 28px;
 }
+.personalization-portability {
+  margin-top: 20px;
+}
+.managed-task-setup {
+  margin-top: 28px;
+}
+.managed-task-setup__description {
+  margin-bottom: 20px;
+  color: var(--muted);
+  font-size: var(--type-body);
+}
+.managed-task-setup > summary {
+  scroll-margin-top: 16px;
+}
+.connections-page .today-learning-heading,
+.learning-repositories .subsection-heading {
+  flex-wrap: wrap;
+}
+.learning-repositories {
+  margin-top: 0;
+}
+.learning-repositories__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.learning-repositories .project-list {
+  padding: 0;
+  list-style: none;
+}
+.learning-repositories .project-row__copy {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .workspace-picker-trigger {
   min-height: 44px;
   border: 0;
@@ -596,6 +630,7 @@ details > summary {
 }
 .saved-workflows > summary,
 .workflow-provenance > summary {
+  color: var(--text);
   font-size: var(--type-body);
   font-weight: 650;
 }

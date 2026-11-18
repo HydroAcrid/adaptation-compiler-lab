@@ -189,7 +189,7 @@ it("recovers from a bad file and requires consent for the exact target and all f
   });
   const user = userEvent.setup();
   render(<PortableSetupPanel nativeRuntime />);
-  await screen.findByText("No approved portable setups.");
+  await screen.findByText("No setup imported");
   await user.click(screen.getByRole("button", { name: "Import setup" }));
   const dialog = within(await screen.findByRole("dialog"));
   expect(
@@ -248,6 +248,7 @@ it("recovers from a bad file and requires consent for the exact target and all f
     activeDigest: setup.digest,
     idempotencyKey: expect.any(String),
   });
+  await user.click(await screen.findByText("View setup contents"));
   await waitFor(() =>
     expect(screen.getByRole("button", { name: "Remove setup" })).toBeEnabled(),
   );
@@ -264,7 +265,7 @@ it("recovers from a bad file and requires consent for the exact target and all f
       name: "Remove setup",
     }),
   );
-  expect(await screen.findByText("No approved portable setups.")).toBeVisible();
+  expect(await screen.findByText("No setup imported")).toBeVisible();
 });
 
 it("keeps a status failure retryable and shows that setup status is loading", async () => {
@@ -293,7 +294,7 @@ it("keeps a status failure retryable and shows that setup status is loading", as
   await user.click(
     screen.getByRole("button", { name: "Refresh repositories" }),
   );
-  expect(await screen.findByText("No approved portable setups.")).toBeVisible();
+  expect(await screen.findByText("No setup imported")).toBeVisible();
 });
 
 it("requires confirmation to clear an unreadable setup and refreshes after a stale recovery", async () => {
@@ -361,7 +362,7 @@ it("requires confirmation to clear an unreadable setup and refreshes after a sta
     digest: recoveryDigest,
     idempotencyKey: expect.any(String),
   });
-  expect(await screen.findByText("No approved portable setups.")).toBeVisible();
+  expect(await screen.findByText("No setup imported")).toBeVisible();
 });
 
 it("blocks paused and disconnected setup imports before file selection", async () => {
@@ -489,6 +490,8 @@ it("keeps all last verified items during a pending and failed refresh, then reco
   const share = await panel.findByRole("button", {
     name: "Share setup for Example repository",
   });
+  expect(panel.getByText(setup.items[0].title)).not.toBeVisible();
+  await user.click(panel.getByText("View setup contents"));
   const remove = panel.getByRole("button", { name: "Remove setup" });
   const importSetup = panel.getByRole("button", { name: "Import setup" });
   const refresh = panel.getByRole("button", { name: "Refresh repositories" });
@@ -499,9 +502,7 @@ it("keeps all last verified items during a pending and failed refresh, then reco
   await user.click(refresh);
   expect(panel.getByText("Refreshing repository setups…")).toBeVisible();
   for (const item of setup.items) {
-    expect(
-      panel.getByText(item.title, { exact: false, selector: "dd > span" }),
-    ).toBeVisible();
+    expect(panel.getByText(item.title)).toBeVisible();
   }
   expect(remove).toBeDisabled();
 
@@ -517,16 +518,14 @@ it("keeps all last verified items during a pending and failed refresh, then reco
     "This repository could not be reached.",
   );
   for (const item of setup.items) {
-    expect(
-      panel.getByText(item.title, { exact: false, selector: "dd > span" }),
-    ).toBeVisible();
+    expect(panel.getByText(item.title)).toBeVisible();
   }
   expect(share).toBeDisabled();
   expect(remove).toBeDisabled();
   expect(importSetup).toBeDisabled();
 
   await user.click(panel.getByRole("button", { name: "Refresh repositories" }));
-  expect(await panel.findByText("No approved portable setups.")).toBeVisible();
+  expect(await panel.findByText("No setup imported")).toBeVisible();
   expect(panel.queryByText(/Last known setup/)).toBeNull();
   expect(panel.queryByText("Readiness")).toBeNull();
   expect(importSetup).toBeEnabled();

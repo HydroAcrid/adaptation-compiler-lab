@@ -98,21 +98,14 @@ type RepositoryStatus = {
   refresh: () => void;
 };
 
-const setupGroups = [
-  ["skill", "Skills"],
-  ["knowledge", "Knowledge"],
-  ["preference", "Preferences"],
-  ["check", "Checks"],
-] as const;
-
 export function PortableSetupPanel({
   nativeRuntime,
   status,
-  onContinue,
+  onOpenSavedWork,
 }: {
   nativeRuntime: boolean;
   status?: RepositoryStatus;
-  onContinue?: () => void;
+  onOpenSavedWork?: () => void;
 }) {
   const visible = usePageVisibility();
   const heading = useId();
@@ -288,11 +281,14 @@ export function PortableSetupPanel({
         </h2>
         {nativeRuntime && (
           <div className="portable-setup-actions repository-setup-actions">
-            {onContinue && (
-              <Button type="button" onClick={onContinue}>
-                Continue work
-              </Button>
-            )}
+            <Button
+              type="button"
+              tone={importReason ? "secondary" : "primary"}
+              disabled={Boolean(importReason)}
+              onClick={() => setAction({ type: "open" })}
+            >
+              <FileUp aria-hidden="true" size={15} /> Import setup
+            </Button>
             <Button
               type="button"
               disabled={shareUnavailable}
@@ -301,13 +297,11 @@ export function PortableSetupPanel({
               <Plus aria-hidden="true" size={15} />{" "}
               {hasDraft ? "Resume setup draft" : "Create setup"}
             </Button>
-            <Button
-              type="button"
-              disabled={Boolean(importReason)}
-              onClick={() => setAction({ type: "open" })}
-            >
-              <FileUp aria-hidden="true" size={15} /> Import setup
-            </Button>
+            {onOpenSavedWork && (
+              <Button type="button" tone="quiet" onClick={onOpenSavedWork}>
+                View saved work
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -358,12 +352,24 @@ export function PortableSetupPanel({
                           : "Edited files need attention"}
                       </p>
                     )}
-                    {active && (
+                    {repository.active.length > 0 && (
                       <p>
-                        {setupOutOfDate ? "Last known setup" : "Approved setup"}{" "}
-                        · {active.title}
+                        {statusUnavailable
+                          ? "Last known installed guidance"
+                          : "Installed guidance"}
+                        {" · "}
+                        {repository.active.join(", ")}
                       </p>
                     )}
+                    {active ? (
+                      <p>
+                        {setupOutOfDate ? "Last known setup" : "Imported setup"}
+                        {" · "}
+                        {active.title}
+                      </p>
+                    ) : row && !issue && !statusUnavailable ? (
+                      <p>No setup imported</p>
+                    ) : null}
                   </div>
                   {recoveryDigest && (
                     <Button
@@ -395,67 +401,27 @@ export function PortableSetupPanel({
                       >
                         Share setup
                       </Button>
-                      <Button
-                        type="button"
-                        tone="quiet"
-                        disabled={setupActionsUnavailable}
-                        onClick={() =>
-                          setAction({
-                            type: "remove",
-                            repository,
-                            setup: active,
-                          })
-                        }
-                      >
-                        Remove setup
-                      </Button>
                     </div>
                   )}
                 </div>
-                <dl className="repository-setup-items">
-                  {setupGroups.map(([kind, label]) => {
-                    const names =
-                      active?.items
-                        .filter((item) => item.kind === kind)
-                        .map((item) => item.title) ?? [];
-                    const installed = kind === "skill" ? repository.active : [];
-                    return (
-                      <div key={kind}>
-                        <dt>{label}</dt>
-                        <dd>
-                          {installed.length > 0 && (
-                            <span>
-                              {statusUnavailable
-                                ? "Last known installed skills"
-                                : "Managed skills installed"}{" "}
-                              · {installed.join(", ")}
-                            </span>
-                          )}
-                          {names.length > 0 && (
-                            <span>
-                              {kind === "skill" &&
-                                (setupOutOfDate
-                                  ? "From last known setup · "
-                                  : "From approved setup · ")}
-                              {names.join(", ")}
-                            </span>
-                          )}
-                          {!installed.length &&
-                            !names.length &&
-                            (issue || statusUnavailable
-                              ? "Unavailable"
-                              : row
-                                ? "None"
-                                : "Checking…")}
-                        </dd>
-                      </div>
-                    );
-                  })}
-                </dl>
                 {active && (
                   <details>
                     <summary>View setup contents</summary>
-                    <SetupContents value={active} />
+                    <SetupContents value={active} showTitle={false} />
+                    <Button
+                      type="button"
+                      tone="quiet"
+                      disabled={setupActionsUnavailable}
+                      onClick={() =>
+                        setAction({
+                          type: "remove",
+                          repository,
+                          setup: active,
+                        })
+                      }
+                    >
+                      Remove setup
+                    </Button>
                   </details>
                 )}
                 {issue && <p role="alert">{issue}</p>}
@@ -463,12 +429,6 @@ export function PortableSetupPanel({
               </div>
             );
           })}
-          {!loading &&
-          !statusUnavailable &&
-          rows?.length &&
-          rows.every((row) => !row.active && !row.issue) ? (
-            <p>No approved portable setups.</p>
-          ) : null}
           {!loading &&
             (statusUnavailable ||
               rows?.some((row) => row.issue) ||
@@ -503,12 +463,20 @@ export function PortableSetupPanel({
   );
 }
 
-function SetupContents({ value }: { value: SetupPreview }) {
+function SetupContents({
+  value,
+  showTitle = true,
+}: {
+  value: SetupPreview;
+  showTitle?: boolean;
+}) {
   return (
     <div className="portability-preview portable-setup-contents">
-      <header>
-        <strong>{value.title}</strong>
-      </header>
+      {showTitle && (
+        <header>
+          <strong>{value.title}</strong>
+        </header>
+      )}
       <ul aria-label="Setup contents">
         {value.items.map((item) => (
           <li key={item.id}>

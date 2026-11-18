@@ -159,7 +159,7 @@ it("makes conversation trust explicit and labels unknown authorship", async () =
   });
   const user = userEvent.setup();
   render(<AutonomousLearningPanel projects={[project]} />);
-  await screen.findByRole("heading", { name: "Learning" });
+  await screen.findByRole("heading", { name: "Chat learning" });
   const trust = screen.getByRole("checkbox", {
     name: /Include conversations relayed by agents I authorize/,
   });
@@ -227,9 +227,8 @@ it("requires selected scope and confirmation before granting permission", async 
   await user.click(screen.getByRole("button", { name: "Allow learning" }));
   await screen.findByRole("button", { name: "Pause learning" });
   expect(api.enableLearningGrant).toHaveBeenCalledOnce();
-  await user.click(screen.getByText("Learning settings"));
   expect(
-    screen.getByRole("switch", { name: "Personalization" }),
+    screen.getByRole("switch", { name: "Use learned habits in new chats" }),
   ).toBeDisabled();
 });
 
@@ -275,7 +274,14 @@ it("keeps an empty learning profile distinct from applied personalization", asyn
     digest,
   });
   render(<AutonomousLearningPanel projects={[project]} />);
-  expect(await screen.findByText("No habits yet.")).toBeVisible();
+  expect(
+    await screen.findByText(
+      "No habits yet. Keep working in Codex in an approved repository.",
+    ),
+  ).toBeVisible();
+  expect(
+    screen.getByRole("switch", { name: "Use learned habits in new chats" }),
+  ).toBeChecked();
   expect(
     screen.getByText("No habits added to agent instructions"),
   ).toBeVisible();
@@ -404,7 +410,7 @@ it("leads with scoped habits and shows actual activity while keeping help folded
   ).toHaveTextContent("Not measured");
   expect(api.explainHabit).toHaveBeenCalledWith(habit.habit_id);
   await user.click(within(row).getByRole("button", { name: "Undo habit" }));
-  expect(await screen.findByText("No habits yet.")).toBeVisible();
+  expect(await screen.findByText(/^No habits yet\./)).toBeVisible();
   expect(screen.getByRole("heading", { name: "Learned habits" })).toHaveFocus();
   expect(api.controlAutonomy).toHaveBeenCalledWith(
     "revoke_habit",
@@ -505,7 +511,7 @@ it("shows signed repository coverage and keeps the cutoff in help", async () => 
     screen.getByText("Conversations captured").nextElementSibling,
   ).toHaveTextContent("0");
   expect(screen.getByText(/Older chats are excluded/)).not.toBeVisible();
-  expect(screen.getByText("No habits yet.")).toBeVisible();
+  expect(screen.getByText(/^No habits yet\./)).toBeVisible();
   const user = userEvent.setup();
   await user.click(screen.getByText("Approved repositories (57)"));
   expect(screen.getByText("New 56")).toBeVisible();

@@ -1,30 +1,97 @@
-.tools-hub-activity {
-  padding-top: 14px;
-  border-top: 1px solid var(--border);
+.tools-hub-panel .tools-hub-activity {
+  padding-block: 10px;
 }
 
-.tools-hub-activity h3 {
-  margin: 0 0 12px;
-  font-size: 13px;
-  font-weight: 650;
+.tools-hub-activity > summary {
+  width: fit-content;
+  font-size: var(--type-body);
 }
 
-.tools-hub-activity dl {
+.tools-hub-activity dl,
+.continuity-details__body dl {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
   gap: 8px 20px;
-  margin: 0;
-  font-size: 13px;
+  margin: 10px 0 0;
+  font-size: var(--type-body);
   line-height: 1.55;
 }
 
-.tools-hub-activity dt {
+.tools-hub-activity dt,
+.continuity-details__body dt,
+.tools-hub-latest dt,
+.tools-hub-scope-row > span {
   color: var(--muted);
 }
 
-.tools-hub-activity dd {
+.tools-hub-activity dd,
+.continuity-details__body dd {
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.tools-hub-latest dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-block: 8px 16px;
+  font-size: var(--type-body);
+}
+
+.tools-hub-latest dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.tools-hub-first-use {
+  margin-block-end: 10px;
+  font-size: var(--type-body);
+}
+
+.tools-hub-first-use > summary {
+  width: fit-content;
+  padding-block: 4px;
+}
+
+.tools-hub-overview-saved,
+.tools-hub-scope-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding-block: 12px;
+  border-block-start: 1px solid var(--border);
+  font-size: var(--type-body);
+}
+
+.tools-hub-overview-saved > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  overflow-wrap: anywhere;
+}
+
+.tools-hub-overview-saved small {
+  color: var(--muted);
+}
+
+.tools-hub-overview-saved > div:last-child {
+  max-width: 100%;
+}
+
+.tools-hub-panel .tools-hub-scope-row + .portable-setup-section {
+  margin-block-start: 0;
+}
+
+.tools-hub-saved {
+  padding-block: 16px;
+  border-block-start: 1px solid var(--border);
+}
+
+.tools-hub-panel .tools-hub-saved h2 {
+  margin: 0;
+  font-size: 19px;
 }
 
 .tools-hub-panel .tools-hub-overview .tools-hub-repositories,
@@ -39,10 +106,6 @@
   overflow-wrap: anywhere;
 }
 
-.continuity-section {
-  margin-top: 14px;
-}
-
 .continuity-project {
   padding-block: 12px;
   overflow-wrap: anywhere;
@@ -54,7 +117,7 @@
 
 .continuity-project__heading,
 .continuity-project__actions,
-.continuity-section__stale {
+.continuity-resume {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
@@ -67,12 +130,32 @@
   font-size: 13px;
 }
 
-.continuity-project__heading > span {
+.continuity-project__heading small {
+  display: block;
+  font-size: var(--type-label);
+}
+
+.continuity-project__heading > span,
+.continuity-project__heading small {
   color: var(--muted);
 }
 
 .continuity-project__actions {
   margin-top: 12px;
+}
+
+.continuity-resume__manual {
+  flex: 1 1 100%;
+}
+
+.continuity-resume p {
+  margin: 0;
+}
+
+.continuity-resume__manual textarea {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
 }
 
 .continuity-details {
@@ -112,47 +195,6 @@
   overflow-wrap: anywhere;
 }
 
-.repository-setup-row .portable-setup-heading small,
-.repository-setup-items dd > span {
-  display: block;
-}
-
-.repository-setup-row .portable-setup-heading small {
-  color: var(--muted);
-  font-size: var(--type-label);
-}
-
-.repository-setup-row .portable-setup-heading p {
-  margin-block: 5px 0;
-}
-
-.repository-setup-row > details {
-  margin-top: 8px;
-  font-size: var(--type-body);
-}
-
-.repository-setup-items {
-  margin: 8px 0 0;
-  font-size: var(--type-body);
-  line-height: 1.5;
-}
-
-.repository-setup-items > div {
-  display: grid;
-  grid-template-columns: minmax(92px, 24%) minmax(0, 1fr);
-  gap: 6px 14px;
-  padding-block: 7px;
-  border-block-start: 1px solid var(--border);
-}
-
-.repository-setup-items dt {
-  color: var(--muted);
-}
-
-.repository-setup-items dd {
-  margin: 0;
-}
-
 @supports (interpolate-size: allow-keywords) {
   @media (prefers-reduced-motion: no-preference) {
     .continuity-details::details-content {
@@ -171,12 +213,14 @@
 }
 
 @media (max-width: 480px) {
-  .tools-hub-activity dl {
+  .tools-hub-activity dl,
+  .continuity-details__body dl {
     grid-template-columns: minmax(0, 1fr);
     gap: 2px;
   }
 
-  .tools-hub-activity dd + dt {
+  .tools-hub-activity dd + dt,
+  .continuity-details__body dd + dt {
     margin-top: 8px;
   }
 }

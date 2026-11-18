@@ -13,7 +13,11 @@ import {
   type RuntimePreview,
 } from "../toolsHub";
 import { Button, LoadingStatus } from "./ui";
-import { ContinuingWork, type ContinuingWorkAction } from "./ContinuingWork";
+import {
+  ContinuingWork,
+  OverviewSavedWork,
+  type ContinuingWorkAction,
+} from "./ContinuingWork";
 import { PortableSetupPanel } from "./PortableSetupPanel";
 import { connectionReadiness } from "./RepositoryReadiness";
 import "./ToolsHubPanel.css";
@@ -30,7 +34,8 @@ type Review =
       checkpointId: string;
       label: string;
     }
-  | { type: "stop" | "repair" };
+  | { type: "stop"; digest: string; reconfigure?: boolean }
+  | { type: "repair" };
 
 const taskOutcomes: Record<string, string> = {
   ready: "Check complete",
@@ -102,10 +107,11 @@ function CodexTrustStep() {
   );
 }
 
-function WorkflowLifecycle() {
+function WorkflowLifecycle({ showTrustStep }: { showTrustStep: boolean }) {
   return (
     <details className="tools-hub-details">
       <summary>How automatic workflows work</summary>
+      {showTrustStep && <CodexTrustStep />}
       <ul className="tools-hub-lifecycle">
         <li>
           <strong>Choose</strong>
@@ -123,7 +129,9 @@ function WorkflowLifecycle() {
         </li>
         <li>
           <strong>Clean up</strong>
-          <span>Temper removes its unchanged copies when a task ends.</span>
+          <span>
+            Temper removes unchanged copies when Codex reports the task is done.
+          </span>
         </li>
       </ul>
     </details>
@@ -205,9 +213,9 @@ export function ToolsHubPanel({
     state?.secure_store_ready === false;
   const [refreshKey, setRefreshKey] = useState(0);
   const [setupRevision, setSetupRevision] = useState(0);
-  const continuingWork = useRef<HTMLDetailsElement>(null);
-  const continuingSummary = useRef<HTMLElement>(null);
+  const continuingHeading = useRef<HTMLHeadingElement>(null);
   const [repositories, setRepositories] = useState<Repository[] | null>(null);
+  const [reconfiguring, setReconfiguring] = useState(false);
   const [chosen, setChosen] = useState<string[]>([]);
   const [sources, setSources] = useState<string[]>([]);
   const [query, setQuery] = useState("");
@@ -218,11 +226,17 @@ export function ToolsHubPanel({
   });
   const [review, setReview] = useState<Review | null>(null);
   const reviewTrigger = useRef<HTMLButtonElement | null>(null);
+  const returnToSavedWork = useRef(false);
   const panelHeading = useRef<HTMLHeadingElement | null>(null);
+  const setupEntry = useRef<HTMLDivElement>(null);
+  const setupSearch = useRef<HTMLInputElement>(null);
+  const restoreSetupFocus = useRef(false);
   const remotionSummary = useRef<HTMLElement | null>(null);
 
   function openReview(value: Review, trigger: HTMLButtonElement) {
     reviewTrigger.current = trigger;
+    returnToSavedWork.current =
+      value.type === "continuity" || value.type === "clear_checkpoint";
     setReview(value);
   }
 
@@ -274,6 +288,24 @@ export function ToolsHubPanel({
     };
   }, [nativeRuntime, pageVisible, refreshKey]);
 
+  useEffect(() => {
+    if (!pageVisible) return;
+    if (repositories) {
+      setupSearch.current?.focus();
+    } else if (restoreSetupFocus.current) {
+      restoreSetupFocus.current = false;
+      setupEntry.current?.querySelector("button")?.focus();
+    }
+  }, [repositories, pageVisible]);
+
+  function loadRepositories() {
+    void action(async () => {
+      const result = await hubRequest<{ projects: Repository[] }>("inventory");
+      setRepositories(result.projects);
+      setQuery("");
+    });
+  }
+
   async function action(work: () => Promise<void>, recovery?: string) {
     if (busyRef.current || actionsUnavailable) return;
     busyRef.current = true;
@@ -295,10 +327,16 @@ export function ToolsHubPanel({
   async function mutate<T>(
     operation: HubOperation,
     params: object = {},
+    reviewedDigest?: string,
   ): Promise<T> {
     await statusRequest.current?.catch(() => undefined);
     if (!operation.endsWith("_preview")) setAwaitingActionStatus(true);
     const current = await hubRequest<HubState>("status");
+    if (reviewedDigest !== undefined && reviewedDigest !== current.digest) {
+      throw new Error(
+        "Workflow status changed. Close this review and open it again.",
+      );
+    }
     const result = await hubRequest<T>(operation, params, current.digest);
     if (!operation.endsWith("_preview"))
       setSetupRevision((revision) => revision + 1);
@@ -322,6 +360,7 @@ export function ToolsHubPanel({
         preview_id: review.value.preview_id,
       });
       setRepositories(null);
+      setReconfiguring(false);
     } else if (review.type === "connection") {
       await mutate("connection_apply", { preview_id: review.value.preview_id });
     } else if (review.type === "runtime") {
@@ -330,19 +369,29 @@ export function ToolsHubPanel({
       await mutate("continuity_apply", { preview_id: review.value.preview_id });
       setContinuityNotice(
         review.value.reset
-          ? "Saved work was reset. Continuing work is off."
+          ? "Saved work was reset. Saving new notes is off."
           : review.value.enabled
-            ? "Continuing work is on."
-            : "Continuing work is off.",
+            ? "Temper can save work for this repository."
+            : "Saving work is off for this repository.",
       );
     } else if (review.type === "clear_checkpoint") {
       await mutate("continuity_clear", {
         project_id: review.projectId,
         checkpoint_id: review.checkpointId,
       });
-      setContinuityNotice("Checkpoint removed.");
-    } else if (review.type === "repair") await mutate("repair");
-    else await mutate("control", { operation: "stop" });
+      setContinuityNotice("Saved notes removed.");
+    } else if (review.type === "repair") {
+      await mutate("repair");
+    } else {
+      await mutate("control", { operation: "stop" }, review.digest);
+      if (review.reconfigure && state) {
+        setChosen(state.projects.map(({ id }) => id));
+        setSources(
+          state.sources.filter(({ approved }) => approved).map(({ id }) => id),
+        );
+        setReconfiguring(true);
+      }
+    }
     // Confirmation can remove the opener on the next status refresh.
     reviewTrigger.current = null;
     setReview(null);
@@ -440,9 +489,13 @@ export function ToolsHubPanel({
       : state?.enabled && ready && !state.paused && !working
         ? "positive"
         : "neutral";
+  const hasSavedWork = state?.projects.some((project) => project.continuity);
   const showCodexTrustStep =
     state?.enabled &&
     ready &&
+    !state.last_task &&
+    !hasSavedWork &&
+    !state.projects.some((project) => project.active.length) &&
     !state.paused &&
     !working &&
     !attention &&
@@ -510,7 +563,12 @@ export function ToolsHubPanel({
             Connect Codex in Tools to use automatic workflows.
           </p>
         )}
-        {showCodexTrustStep && <CodexTrustStep />}
+        {showCodexTrustStep && (
+          <details className="tools-hub-first-use">
+            <summary>First-time Codex setup</summary>
+            <CodexTrustStep />
+          </details>
+        )}
         {shownRepositories.length > 0 && (
           <RepositoryGuidance rows={shownRepositories} stale={!!loadError} />
         )}
@@ -523,20 +581,19 @@ export function ToolsHubPanel({
         {state?.enabled &&
           ready &&
           !state.last_task &&
+          !hasSavedWork &&
+          !showCodexTrustStep &&
           !shownRepositories.length &&
           !loadError && (
-            <p className="tools-hub-guidance">No task activity recorded.</p>
+            <p className="tools-hub-guidance">No workflow activity recorded.</p>
           )}
-        {state ? (
-          <ContinuingWork
-            compact
+        {state && (
+          <OverviewSavedWork
             state={state}
-            stale={!!loadError}
-            pending={statusPending}
-            actionsUnavailable={actionsUnavailable}
-            onRefresh={() => setRefreshKey((key) => key + 1)}
+            unavailable={actionsUnavailable}
+            onOpenTools={onOpenTools}
           />
-        ) : null}
+        )}
       </section>
     );
   }
@@ -586,54 +643,30 @@ export function ToolsHubPanel({
         <p role="status">Unlock your secure store to make changes.</p>
       )}
       {showCodexTrustStep && <CodexTrustStep />}
-      {showRepositorySetup && (
-        <PortableSetupPanel
-          nativeRuntime={nativeRuntime}
-          status={{
-            state,
-            pending: checking || busy || awaitingActionStatus,
-            failed: Boolean(loadError),
-            revision: setupRevision,
-            refresh: () => setRefreshKey((key) => key + 1),
-          }}
-          onContinue={
-            state?.projects.some(
-              (project) => project.continuity_enabled !== undefined,
-            )
-              ? () => {
-                  if (continuingWork.current)
-                    continuingWork.current.open = true;
-                  continuingSummary.current?.focus();
-                }
-              : undefined
-          }
-        />
-      )}
       {!nativeRuntime ? (
         <p>Open the desktop app to choose repositories and connect Codex.</p>
       ) : (
         state && (
           <>
             {!state.enabled && !state.cleanup_pending && !repositories && (
-              <div className="tools-hub-primary">
+              <div className="tools-hub-primary" ref={setupEntry}>
                 <p>
-                  Choose where Temper can manage tools and which publishers
-                  Codex can use. Tool setup has its own permissions, separate
-                  from chat learning.
+                  {reconfiguring
+                    ? "Review the repositories and publishers you want to approve."
+                    : "Choose the repositories and publishers Codex can use for automatic workflows."}
                 </p>
                 <Button
+                  tone="primary"
                   disabled={actionsUnavailable}
-                  onClick={() =>
-                    void action(async () => {
-                      const result = await hubRequest<{
-                        projects: Repository[];
-                      }>("inventory");
-                      setRepositories(result.projects);
-                    })
-                  }
+                  onClick={loadRepositories}
                 >
-                  Set up repository tools
+                  {reconfiguring
+                    ? "Continue repository setup"
+                    : "Set up repository tools"}
                 </Button>
+                {busy && !review && (
+                  <LoadingStatus>Loading repositories…</LoadingStatus>
+                )}
               </div>
             )}
             {state.cleanup_pending && !state.enabled && (
@@ -682,6 +715,7 @@ export function ToolsHubPanel({
                 <label>
                   Find a repository
                   <input
+                    ref={setupSearch}
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                     type="search"
@@ -731,7 +765,11 @@ export function ToolsHubPanel({
                 <div className="tools-hub-actions">
                   <Button
                     disabled={
-                      actionsUnavailable || !chosen.length || !sources.length
+                      actionsUnavailable ||
+                      !repositories.some((repository) =>
+                        chosen.includes(repository.id),
+                      ) ||
+                      !sources.length
                     }
                     onClick={(event) => {
                       const trigger = event.currentTarget;
@@ -741,7 +779,14 @@ export function ToolsHubPanel({
                             type: "permission",
                             value: await mutate<HubPreview>(
                               "permission_preview",
-                              { project_ids: chosen, source_ids: sources },
+                              {
+                                project_ids: chosen.filter((id) =>
+                                  repositories.some(
+                                    (repository) => repository.id === id,
+                                  ),
+                                ),
+                                source_ids: sources,
+                              },
                             ),
                           },
                           trigger,
@@ -751,7 +796,13 @@ export function ToolsHubPanel({
                   >
                     Review setup
                   </Button>
-                  <Button type="button" onClick={() => setRepositories(null)}>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      restoreSetupFocus.current = true;
+                      setRepositories(null);
+                    }}
+                  >
                     Cancel
                   </Button>
                 </div>
@@ -759,41 +810,6 @@ export function ToolsHubPanel({
             )}
             {state.enabled && (
               <>
-                <div className="tools-hub-activity">
-                  <h3>
-                    {loadError ? "Last known activity" : "Workflow activity"}
-                  </h3>
-                  <dl>
-                    <dt>Latest task check</dt>
-                    <dd>
-                      {state.last_task ? (
-                        <TaskActivity
-                          task={state.last_task}
-                          projects={state.projects}
-                        />
-                      ) : (
-                        "No task activity recorded"
-                      )}
-                    </dd>
-                    <dt>Approved publishers</dt>
-                    <dd>
-                      {publishers.map((source) => source.label).join(", ") ||
-                        "None"}
-                    </dd>
-                    <dt>Last successful publisher check</dt>
-                    <dd>
-                      <PublisherCheck timestamp={state.last_checked} />
-                    </dd>
-                    {state.job && (
-                      <>
-                        <dt>
-                          {jobLabels[state.job.operation] ?? "Tool operation"}
-                        </dt>
-                        <dd>{jobStates[state.job.state]}</dd>
-                      </>
-                    )}
-                  </dl>
-                </div>
                 {!showRepositorySetup && (
                   <div className="tools-hub-overview">
                     <h3>
@@ -810,6 +826,7 @@ export function ToolsHubPanel({
                 <div className="tools-hub-actions">
                   {state.paused ? (
                     <Button
+                      tone="primary"
                       disabled={actionsUnavailable}
                       onClick={() =>
                         void action(async () => {
@@ -821,6 +838,7 @@ export function ToolsHubPanel({
                     </Button>
                   ) : connection === "connection_needed" && !working ? (
                     <Button
+                      tone="primary"
                       disabled={actionsUnavailable}
                       onClick={(event) => {
                         const trigger = event.currentTarget;
@@ -844,6 +862,7 @@ export function ToolsHubPanel({
                     </Button>
                   ) : attention && (failed || taskFailed) && !working ? (
                     <Button
+                      tone="primary"
                       disabled={actionsUnavailable}
                       onClick={(event) =>
                         openReview({ type: "repair" }, event.currentTarget)
@@ -852,17 +871,6 @@ export function ToolsHubPanel({
                       Repair setup
                     </Button>
                   ) : null}
-                  <Button
-                    type="button"
-                    disabled={actionsUnavailable || working || state.paused}
-                    onClick={() =>
-                      void action(async () => {
-                        await mutate("refresh");
-                      })
-                    }
-                  >
-                    Check for updates
-                  </Button>
                 </div>
 
                 {working && !loadError && (
@@ -881,219 +889,301 @@ export function ToolsHubPanel({
                         "The latest tool operation needs attention.")}
                   </p>
                 )}
-                <details className="tools-hub-settings">
-                  <summary>Tool settings</summary>
-                  <div className="tools-hub-actions">
-                    {!state.paused && (
-                      <Button
-                        type="button"
-                        disabled={actionsUnavailable}
-                        onClick={() =>
-                          void action(async () => {
-                            await mutate("control", { operation: "pause" });
-                          })
-                        }
-                      >
-                        Pause updates
-                      </Button>
-                    )}
-                    {(failed || taskFailed) &&
-                      !state.paused &&
-                      (connection === "connection_needed" || working) && (
-                        <Button
-                          type="button"
-                          disabled={
-                            actionsUnavailable || working || state.paused
-                          }
-                          onClick={(event) =>
-                            openReview({ type: "repair" }, event.currentTarget)
-                          }
-                        >
-                          Repair setup
-                        </Button>
-                      )}
-                    <Button
-                      type="button"
-                      disabled={actionsUnavailable}
-                      onClick={(event) =>
-                        openReview({ type: "stop" }, event.currentTarget)
-                      }
-                    >
-                      Stop managing tools
-                    </Button>
-                  </div>
-                  <div
-                    className="tools-hub-repositories"
-                    aria-label="Repository settings"
-                  >
-                    {state.projects.map((row) => (
-                      <div className="tools-hub-project" key={row.id}>
-                        <div>
-                          <strong>{row.label}</strong>
-                          <small>{row.root}</small>
-                          {row.attention && (
-                            <small>{row.attention.conflicts.join(", ")}</small>
-                          )}
-                        </div>
-                        <div className="tools-hub-actions">
-                          <Button
-                            type="button"
-                            disabled={actionsUnavailable || working}
-                            onClick={() =>
-                              void action(async () => {
-                                await mutate("control", {
-                                  operation: row.paused ? "resume" : "pause",
-                                  project_id: row.id,
-                                });
-                              })
-                            }
-                          >
-                            {row.paused ? "Resume" : "Pause"}
-                          </Button>
-                          <Button
-                            type="button"
-                            disabled={
-                              actionsUnavailable || working || !row.can_rollback
-                            }
-                            onClick={() =>
-                              void action(async () => {
-                                await mutate("control", {
-                                  operation: "rollback",
-                                  project_id: row.id,
-                                });
-                              })
-                            }
-                          >
-                            Undo last change
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {state.remotion_available && (
-                    <details>
-                      <summary ref={remotionSummary}>
-                        Remotion video rendering
-                      </summary>
-                      <p>
-                        Allow the agent to render short videos with an installed
-                        Remotion toolchain on Windows x64. This requires a
-                        separate approval for these repositories.
-                      </p>
-                      {state.remotion_enabled ? (
-                        <Button
-                          type="button"
-                          disabled={actionsUnavailable}
-                          onClick={() =>
-                            void action(async () => {
-                              await mutate("runtime_revoke");
-                              remotionSummary.current?.focus();
-                            })
-                          }
-                        >
-                          Disable Remotion
-                        </Button>
+                <div className="tools-hub-latest">
+                  <dl>
+                    <dt>
+                      {loadError
+                        ? "Last known task check"
+                        : "Latest task check"}
+                    </dt>
+                    <dd>
+                      {state.last_task ? (
+                        <TaskActivity
+                          task={state.last_task}
+                          projects={state.projects}
+                        />
                       ) : (
-                        <div className="tools-hub-setup">
-                          <p>
-                            Enter the full Windows paths to Node.js 24, the
-                            Remotion 4.0.542 node_modules directory, and Chrome
-                            Headless Shell.
-                          </p>
-                          {(
-                            [
-                              ["node", "Node executable"],
-                              [
-                                "node_modules",
-                                "Remotion node_modules directory",
-                              ],
-                              ["browser", "Chrome Headless Shell executable"],
-                            ] as const
-                          ).map(([key, label]) => (
-                            <label key={key}>
-                              {label}
-                              <input
-                                value={runtimePaths[key]}
-                                onChange={(event) => {
-                                  if (actionError?.scope === "runtime")
-                                    setActionError(null);
-                                  setRuntimePaths({
-                                    ...runtimePaths,
-                                    [key]: event.currentTarget.value,
-                                  });
-                                }}
-                              />
-                            </label>
-                          ))}
-                          <Button
-                            disabled={
-                              actionsUnavailable ||
-                              working ||
-                              state.paused ||
-                              Object.values(runtimePaths).some(
-                                (path) => !path.trim(),
-                              )
-                            }
-                            onClick={(event) => {
-                              const trigger = event.currentTarget;
-                              void action(
-                                async () =>
-                                  openReview(
-                                    {
-                                      type: "runtime",
-                                      value: await mutate<RuntimePreview>(
-                                        "runtime_preview",
-                                        runtimePaths,
-                                      ),
-                                    },
-                                    trigger,
-                                  ),
-                                "Remotion setup could not be checked. Verify all three paths and versions, then review setup again.",
-                              );
-                            }}
-                          >
-                            Review Remotion setup
-                          </Button>
-                          {!review && busyScope === "runtime" && (
-                            <p role="status">
-                              Checking the installed toolchain…
-                            </p>
-                          )}
-                          {!review && actionError?.scope === "runtime" && (
-                            <p role="alert">{actionError.message}</p>
-                          )}
-                        </div>
+                        "No workflow activity recorded"
                       )}
-                    </details>
-                  )}
-                </details>
+                    </dd>
+                  </dl>
+                </div>
               </>
             )}
           </>
         )
       )}
+      {nativeRuntime && state?.enabled && (
+        <div className="tools-hub-scope-row">
+          <span>
+            {state.projects.length}{" "}
+            {state.projects.length === 1
+              ? "approved repository"
+              : "approved repositories"}
+          </span>
+          <Button
+            type="button"
+            tone="quiet"
+            disabled={actionsUnavailable || working}
+            onClick={(event) =>
+              openReview(
+                { type: "stop", digest: state.digest, reconfigure: true },
+                event.currentTarget,
+              )
+            }
+          >
+            Change approved repositories
+          </Button>
+        </div>
+      )}
+      {showRepositorySetup && (
+        <PortableSetupPanel
+          nativeRuntime={nativeRuntime}
+          status={{
+            state,
+            pending: checking || busy || awaitingActionStatus,
+            failed: Boolean(loadError),
+            revision: setupRevision,
+            refresh: () => setRefreshKey((key) => key + 1),
+          }}
+          onOpenSavedWork={
+            state?.projects.some((project) => project.continuity)
+              ? () => {
+                  continuingHeading.current?.focus();
+                }
+              : undefined
+          }
+        />
+      )}
       {state?.projects.some(
         (project) => project.continuity_enabled !== undefined,
       ) ? (
-        <details
-          className="tools-hub-details"
-          ref={continuingWork}
-          open={!showRepositorySetup}
-        >
-          <summary ref={continuingSummary}>Saved work</summary>
+        <div className="tools-hub-saved">
+          <h2 ref={continuingHeading} tabIndex={-1}>
+            Saved work
+          </h2>
           <ContinuingWork
             state={state}
             stale={!!loadError}
-            pending={statusPending}
             actionsUnavailable={actionsUnavailable}
             notice={continuityNotice}
             preparingReview={preparingContinuityReview}
-            onRefresh={() => setRefreshKey((key) => key + 1)}
             onAction={reviewContinuity}
           />
-        </details>
+        </div>
       ) : null}
-      {nativeRuntime && <WorkflowLifecycle />}
+      {nativeRuntime && state?.enabled && (
+        <details className="tools-hub-settings">
+          <summary>Tool settings</summary>
+          <div className="tools-hub-actions">
+            <Button
+              type="button"
+              disabled={actionsUnavailable || working || state.paused}
+              onClick={() =>
+                void action(async () => {
+                  await mutate("refresh");
+                })
+              }
+            >
+              Check for updates
+            </Button>
+            {!state.paused && (
+              <Button
+                type="button"
+                disabled={actionsUnavailable}
+                onClick={() =>
+                  void action(async () => {
+                    await mutate("control", { operation: "pause" });
+                  })
+                }
+              >
+                Pause updates
+              </Button>
+            )}
+            {(failed || taskFailed) &&
+              !state.paused &&
+              (connection === "connection_needed" || working) && (
+                <Button
+                  type="button"
+                  disabled={actionsUnavailable || working || state.paused}
+                  onClick={(event) =>
+                    openReview({ type: "repair" }, event.currentTarget)
+                  }
+                >
+                  Repair setup
+                </Button>
+              )}
+            <Button
+              type="button"
+              disabled={actionsUnavailable}
+              onClick={(event) =>
+                openReview(
+                  { type: "stop", digest: state.digest },
+                  event.currentTarget,
+                )
+              }
+            >
+              Stop managing tools
+            </Button>
+          </div>
+          <div
+            className="tools-hub-repositories"
+            aria-label="Repository settings"
+          >
+            {state.projects.map((row) => (
+              <div className="tools-hub-project" key={row.id}>
+                <div>
+                  <strong>{row.label}</strong>
+                  <small>{row.root}</small>
+                  {row.attention && (
+                    <small>{row.attention.conflicts.join(", ")}</small>
+                  )}
+                </div>
+                <div className="tools-hub-actions">
+                  <Button
+                    type="button"
+                    disabled={actionsUnavailable || working}
+                    onClick={() =>
+                      void action(async () => {
+                        await mutate("control", {
+                          operation: row.paused ? "resume" : "pause",
+                          project_id: row.id,
+                        });
+                      })
+                    }
+                  >
+                    {row.paused ? "Resume" : "Pause"}
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={
+                      actionsUnavailable || working || !row.can_rollback
+                    }
+                    onClick={() =>
+                      void action(async () => {
+                        await mutate("control", {
+                          operation: "rollback",
+                          project_id: row.id,
+                        });
+                      })
+                    }
+                  >
+                    Undo last change
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <details className="tools-hub-activity">
+            <summary>Publisher and operation details</summary>
+            <dl>
+              <dt>Approved publishers</dt>
+              <dd>
+                {publishers.map((source) => source.label).join(", ") || "None"}
+              </dd>
+              <dt>Last successful publisher check</dt>
+              <dd>
+                <PublisherCheck timestamp={state.last_checked} />
+              </dd>
+              {state.job && (
+                <>
+                  <dt>{jobLabels[state.job.operation] ?? "Tool operation"}</dt>
+                  <dd>{jobStates[state.job.state]}</dd>
+                </>
+              )}
+            </dl>
+          </details>
+          {state.remotion_available && (
+            <details>
+              <summary ref={remotionSummary}>Remotion video rendering</summary>
+              <p>
+                Allow the agent to render short videos with an installed
+                Remotion toolchain on Windows x64. This requires a separate
+                approval for these repositories.
+              </p>
+              {state.remotion_enabled ? (
+                <Button
+                  type="button"
+                  disabled={actionsUnavailable}
+                  onClick={() =>
+                    void action(async () => {
+                      await mutate("runtime_revoke");
+                      remotionSummary.current?.focus();
+                    })
+                  }
+                >
+                  Disable Remotion
+                </Button>
+              ) : (
+                <div className="tools-hub-setup">
+                  <p>
+                    Enter the full Windows paths to Node.js 24, the Remotion
+                    4.0.542 node_modules directory, and Chrome Headless Shell.
+                  </p>
+                  {(
+                    [
+                      ["node", "Node executable"],
+                      ["node_modules", "Remotion node_modules directory"],
+                      ["browser", "Chrome Headless Shell executable"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <label key={key}>
+                      {label}
+                      <input
+                        value={runtimePaths[key]}
+                        onChange={(event) => {
+                          if (actionError?.scope === "runtime")
+                            setActionError(null);
+                          setRuntimePaths({
+                            ...runtimePaths,
+                            [key]: event.currentTarget.value,
+                          });
+                        }}
+                      />
+                    </label>
+                  ))}
+                  <Button
+                    disabled={
+                      actionsUnavailable ||
+                      working ||
+                      state.paused ||
+                      Object.values(runtimePaths).some((path) => !path.trim())
+                    }
+                    onClick={(event) => {
+                      const trigger = event.currentTarget;
+                      void action(
+                        async () =>
+                          openReview(
+                            {
+                              type: "runtime",
+                              value: await mutate<RuntimePreview>(
+                                "runtime_preview",
+                                runtimePaths,
+                              ),
+                            },
+                            trigger,
+                          ),
+                        "Remotion setup could not be checked. Verify all three paths and versions, then review setup again.",
+                      );
+                    }}
+                  >
+                    Review Remotion setup
+                  </Button>
+                  {!review && busyScope === "runtime" && (
+                    <p role="status">Checking the installed toolchain…</p>
+                  )}
+                  {!review && actionError?.scope === "runtime" && (
+                    <p role="alert">{actionError.message}</p>
+                  )}
+                </div>
+              )}
+            </details>
+          )}
+        </details>
+      )}
+      {nativeRuntime && (
+        <WorkflowLifecycle showTrustStep={!showCodexTrustStep} />
+      )}
       <Dialog.Root
         open={pageVisible && review !== null}
         onOpenChange={(open) => {
@@ -1116,7 +1206,11 @@ export function ToolsHubPanel({
                 return;
               const trigger = reviewTrigger.current;
               if (trigger?.isConnected && !trigger.disabled) trigger.focus();
-              else heading.focus();
+              else
+                (returnToSavedWork.current
+                  ? (continuingHeading.current ?? heading)
+                  : heading
+                ).focus();
             }}
           >
             <Dialog.Title>
@@ -1131,36 +1225,42 @@ export function ToolsHubPanel({
                       : review?.type === "continuity"
                         ? review.value.reset
                           ? "Reset saved work"
-                          : `${review.value.enabled ? "Turn on" : "Turn off"} continuing work`
+                          : review.value.enabled
+                            ? "Save work for later"
+                            : "Stop saving work"
                         : review?.type === "clear_checkpoint"
-                          ? "Remove saved checkpoint"
-                          : "Stop managing repository tools"}
+                          ? "Remove saved notes"
+                          : review?.type === "stop" && review.reconfigure
+                            ? "Change approved repositories"
+                            : "Stop managing repository tools"}
             </Dialog.Title>
             <Dialog.Description>
               {review?.type === "permission"
                 ? "Temper may maintain up to two applicable skills per task in these repositories until you stop it. SkillKit handles installation; your agent chooses what applies."
                 : review?.type === "connection"
-                  ? "Allow Codex to automatically prepare tasks, select tools, render with a separately approved runtime, and finish tasks in approved repositories. Review and trust the lifecycle hooks in Codex before starting a new chat."
+                  ? "Add Temper to Codex so it can choose guidance for your tasks in approved repositories. After connecting, review and trust Temper with /hooks in Codex, then open a new chat."
                   : review?.type === "runtime"
                     ? "Allow short MP4 renders with this exact local toolchain during active tasks in these repositories."
                     : review?.type === "repair"
                       ? "Reinstall the pinned private SkillKit copy, discard its downloaded source cache, and fetch approved sources again. Repository profiles and permissions are preserved."
                       : review?.type === "continuity"
                         ? review.value.reset
-                          ? `Remove the unreadable saved work for ${review.label} and turn off continuing work. You can turn it on again to save a new checkpoint.`
+                          ? `Remove the unreadable notes for ${review.label} and stop saving work. You can turn saving back on later.`
                           : review.value.enabled
-                            ? `Allow Codex to save a brief checkpoint for ${review.label} on this device and retrieve it in a later chat in the same repository.`
+                            ? `Let Temper keep notes from your work in ${review.label} on this device so you can pick it up in a new Codex chat.`
                             : review.value.removes_checkpoint
-                              ? `Stop saving checkpoints for ${review.label} and remove the saved checkpoint.`
-                              : `Stop saving checkpoints for ${review.label}.`
+                              ? `Stop saving work for ${review.label} and remove the saved notes.`
+                              : `Stop saving work for ${review.label}.`
                         : review?.type === "clear_checkpoint"
-                          ? `Remove the saved checkpoint for ${review.label}. Codex can save a new checkpoint when you work in this repository again.`
-                          : "Stop updates and remove unchanged Temper-managed skill files. Files you edited are preserved and may need your attention."}
+                          ? `Remove the saved notes for ${review.label}. Temper can save new notes the next time you work in this repository.`
+                          : review?.type === "stop" && review.reconfigure
+                            ? "To change the list, stop the current setup and then reconnect Codex after approving the new list. Stopping removes saved work notes and unchanged Temper-managed skill files. Imported setups need to be applied again from their setup files."
+                            : "Stop updates and remove saved work notes and unchanged Temper-managed skill files. Files you edited are preserved and may need your attention."}
             </Dialog.Description>
             {checkpointChanged ? (
               <p role="alert">
-                This checkpoint has changed. Close this review to see the latest
-                saved work.
+                Your saved notes have changed. Close this review to see the
+                latest version.
               </p>
             ) : actionError ? (
               <p role="alert">{actionError.message}</p>
@@ -1269,6 +1369,7 @@ export function ToolsHubPanel({
             )}
             <div className="tools-hub-actions">
               <Button
+                tone={review?.type === "stop" ? "danger" : "primary"}
                 disabled={actionsUnavailable || checkpointChanged}
                 onClick={() =>
                   void action(
@@ -1284,7 +1385,9 @@ export function ToolsHubPanel({
                     ? "Checking and saving…"
                     : "Saving…"
                   : review?.type === "stop"
-                    ? "Stop and clean up"
+                    ? review.reconfigure
+                      ? "Stop current setup"
+                      : "Stop and clean up"
                     : review?.type === "repair"
                       ? "Repair setup"
                       : review?.type === "continuity"
@@ -1294,7 +1397,7 @@ export function ToolsHubPanel({
                             ? "Turn on"
                             : "Turn off"
                         : review?.type === "clear_checkpoint"
-                          ? "Remove checkpoint"
+                          ? "Remove notes"
                           : "Allow and continue"}
               </Button>
               <Button
